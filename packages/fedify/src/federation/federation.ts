@@ -13,6 +13,7 @@ import type {
 import type { MeterProvider, TracerProvider } from "@opentelemetry/api";
 import type { ActivityTransformer } from "../compat/types.ts";
 import type { HttpMessageSignaturesSpec } from "../sig/http.ts";
+import type { CircuitBreakerOptions } from "./circuit-breaker.ts";
 import type {
   ActorAliasMapper,
   ActorDispatcher,
@@ -1019,6 +1020,17 @@ export interface FederationOptions<TContextData> {
    * @since 0.12.0
    */
   outboxRetryPolicy?: RetryPolicy;
+
+  /**
+   * The circuit breaker for queued outbound activity delivery.  When enabled,
+   * Fedify tracks repeated failures per remote host and temporarily holds
+   * queued activities instead of repeatedly hammering an unreachable server.
+   *
+   * Passing `false` disables the circuit breaker.
+   *
+   * @since 2.3.0
+   */
+  circuitBreaker?: false | CircuitBreakerOptions;
 
   /**
    * The retry policy for processing incoming activities.  By default, this

@@ -249,12 +249,14 @@ that wouldn't fit in span attributes (which are limited to primitive values).
 
 The following span events are recorded:
 
-| Event name                      | Recorded on span            | Description                                                                      |
-| ------------------------------- | --------------------------- | -------------------------------------------------------------------------------- |
-| `activitypub.activity.received` | `activitypub.inbox`         | Records full activity JSON and verification status when an activity is received. |
-| `activitypub.activity.sent`     | `activitypub.send_activity` | Records delivery details when an activity is sent.                               |
-| `activitypub.delivery.failed`   | `activitypub.outbox`        | Records queued outbox delivery failure details before retry or abandonment.      |
-| `activitypub.object.fetched`    | `activitypub.lookup_object` | Records full object JSON when successfully fetched.                              |
+| Event name                                 | Recorded on span            | Description                                                                      |
+| ------------------------------------------ | --------------------------- | -------------------------------------------------------------------------------- |
+| `activitypub.activity.received`            | `activitypub.inbox`         | Records full activity JSON and verification status when an activity is received. |
+| `activitypub.activity.sent`                | `activitypub.send_activity` | Records delivery details when an activity is sent.                               |
+| `activitypub.circuit_breaker.held`         | `activitypub.outbox`        | Records queued outbox deliveries held by an open circuit.                        |
+| `activitypub.circuit_breaker.state_change` | `activitypub.outbox`        | Records queued outbox circuit breaker state changes.                             |
+| `activitypub.delivery.failed`              | `activitypub.outbox`        | Records queued outbox delivery failure details before retry or abandonment.      |
+| `activitypub.object.fetched`               | `activitypub.lookup_object` | Records full object JSON when successfully fetched.                              |
 
 [span events]: https://opentelemetry.io/docs/concepts/signals/traces/#span-events
 
@@ -295,12 +297,28 @@ auditing, store it in your application before delivery and correlate it with
 
 **`activitypub.delivery.failed` event attributes:**
 
- -  `activitypub.remote.host`: The remote inbox host
+ -  `activitypub.remote.host`: The remote inbox host, including any
+    non-default port
  -  `activitypub.delivery.attempt`: The zero-based queue delivery attempt
  -  `activitypub.delivery.permanent_failure`: Whether Fedify will abandon the
     delivery instead of retrying
  -  `http.response.status_code` (optional): The HTTP response status code
     returned by the remote inbox
+
+**`activitypub.circuit_breaker.state_change` event attributes:**
+
+ -  `activitypub.remote.host`: The remote inbox host, including any
+    non-default port
+ -  `activitypub.circuit_breaker.previous_state`: The previous circuit state
+    (`closed`, `open`, or `half_open`)
+ -  `activitypub.circuit_breaker.state`: The new circuit state (`closed`,
+    `open`, or `half_open`)
+
+**`activitypub.circuit_breaker.held` event attributes:**
+
+ -  `activitypub.remote.host`: The remote inbox host, including any
+    non-default port
+ -  `activitypub.circuit_breaker.state`: The circuit state (`open`)
 
 **`activitypub.object.fetched` event attributes:**
 
@@ -320,6 +338,7 @@ Fedify records the following OpenTelemetry metrics:
 | `activitypub.delivery.sent`                   | Counter       | `{attempt}`   | Counts outgoing ActivityPub delivery attempts.                                                  |
 | `activitypub.delivery.permanent_failure`      | Counter       | `{failure}`   | Counts outgoing deliveries abandoned as permanent failures.                                     |
 | `activitypub.delivery.duration`               | Histogram     | `ms`          | Measures outgoing ActivityPub delivery attempt duration.                                        |
+| `activitypub.circuit_breaker.state_change`    | Counter       | `{change}`    | Counts queued outbox circuit breaker state changes per remote host.                             |
 | `activitypub.inbox.activity`                  | Counter       | `{activity}`  | Classifies inbound activities by lifecycle outcome.                                             |
 | `activitypub.inbox.processing_duration`       | Histogram     | `ms`          | Measures inbox listener processing duration.                                                    |
 | `activitypub.outbox.activity`                 | Counter       | `{activity}`  | Classifies outbound activities by lifecycle outcome.                                            |
@@ -364,6 +383,10 @@ Fedify records the following OpenTelemetry metrics:
 `activitypub.delivery.duration`
 :   `activitypub.remote.host`, `activitypub.delivery.success`, and
     `activitypub.activity.type` when Fedify knows the activity type.
+
+`activitypub.circuit_breaker.state_change`
+:   `activitypub.remote.host` and `activitypub.circuit_breaker.state`.
+    The state value is one of `closed`, `open`, or `half_open`.
 
 `activitypub.inbox.activity`
 :   `activitypub.processing.result` is always present, and is one of:
@@ -576,9 +599,10 @@ Fedify records the following OpenTelemetry metrics:
 
     `activitypub.cache.enabled` is always present and is `true` when the
     caller passed a `KeyCache`, `false` otherwise.  `activitypub.remote.host`
-    is the hostname of the key URL.  `http.response.status_code` is
-    present only when an HTTP response was observed.  Key IDs, full key
-    URLs, and actor IDs are deliberately excluded from these metrics;
+    is the URL host of the key URL, including any non-default port.
+    `http.response.status_code` is present only when an HTTP response was
+    observed.  Key IDs, full key URLs, and actor IDs are deliberately
+    excluded from these metrics;
     they remain on the `activitypub.fetch_key` span for trace-level
     investigation.
 
@@ -608,8 +632,9 @@ Fedify records the following OpenTelemetry metrics:
     surfaces these four values at the loader boundary; `invalid` is
     reserved for the key lookup metrics, where the parser can decide
     that a successful HTTP response still does not contain a usable
-    key.  `activitypub.remote.host` records the hostname of the
-    fetched URL when the URL parses; otherwise it is omitted.
+    key.  `activitypub.remote.host` records the URL host of the
+    fetched URL, including any non-default port, when the URL parses;
+    otherwise it is omitted.
     `activitypub.cache.enabled` is `true` for Fedify's built-in
     `kvCache()`-backed document and context loaders and `false` for the
     authenticated document loader; for user-supplied factories Fedify
@@ -630,7 +655,8 @@ Fedify records the following OpenTelemetry metrics:
     when it did not.  Cache lookups that bypass the KV cache entirely
     (preloaded JSON-LD contexts and call sites without a matching cache
     rule) emit no measurement.  `activitypub.remote.host` records the
-    hostname of the looked-up URL when it parses.
+    URL host of the looked-up URL, including any non-default port, when
+    it parses.
 
 `activitypub.object.lookup`
 :   `activitypub.lookup.kind` is always present and is one of:
@@ -646,13 +672,15 @@ Fedify records the following OpenTelemetry metrics:
         in a `finally` block, so a thrown error is still counted with
         `kind=other`.
 
-    `activitypub.remote.host` is the hostname extracted from the
+    `activitypub.remote.host` is the host extracted from the
     identifier: a parsed `URL`, an `acct:user@host` URI, or a bare
-    `@user@host` / `user@host` handle.  Inputs that do not reduce
-    cleanly to an authority (paths, query strings, fragments, or
-    whitespace mixed in with the handle suffix) result in the
-    attribute being omitted, rather than recording a high-cardinality
-    value.  This counter has no companion histogram: `lookupObject()`
+    `@user@host` / `user@host` handle.  For URL identifiers and
+    handle authorities, non-default ports are included.  Inputs that
+    do not reduce cleanly to an authority (paths, query strings,
+    fragments, or whitespace mixed in with the handle suffix) result
+    in the attribute being omitted, rather than recording a
+    high-cardinality value.  This counter has no companion histogram:
+    `lookupObject()`
     drives `activitypub.document.fetch.duration` through the document
     loader, and emitting another duration here would double-count
     latency.  Use `activitypub.object.lookup` for the parsed-result
@@ -670,8 +698,9 @@ Fedify records the following OpenTelemetry metrics:
         discovery (including `TypeError`s from a malformed alias URL or
         an invalid `preferredUsername`).
 
-    `activitypub.remote.host` records `actor.id.hostname` when known
-    and is omitted otherwise.  Actor IDs and handle strings are
+    `activitypub.remote.host` records `actor.id.host`, including any
+    non-default port, when known and is omitted otherwise.  Actor IDs
+    and handle strings are
     deliberately excluded so attacker-controlled actor data cannot
     inflate metric cardinality.  Per-WebFinger-call failure detail
     (HTTP status, parse failure, network failure, etc.) lives on
@@ -710,10 +739,11 @@ Fedify records the following OpenTelemetry metrics:
     redirecting to an unusual scheme.  The corresponding span
     attribute (`webfinger.resource.scheme` on the `webfinger.lookup`
     span) still records the raw scheme for trace-level investigation.
-    `activitypub.remote.host` records the hostname of the latest URL
-    Fedify attempted, so an operator can see who actually returned a
-    failure even after one or more redirects; it is omitted only when
-    the resource itself was malformed before any URL could be built.
+    `activitypub.remote.host` records the URL host of the latest URL
+    Fedify attempted, including any non-default port, so an operator
+    can see who actually returned a failure even after one or more
+    redirects; it is omitted only when the resource itself was
+    malformed before any URL could be built.
     `http.response.status_code` is recorded only when an HTTP response
     was observed (including non-2xx errors and redirects that exceeded
     `maxRedirection`).  Full resource URIs, lookup URLs, and remote
@@ -831,8 +861,11 @@ or processed-task throughput) remain available on `fedify.queue.task.enqueued`
 `fedify.queue.task.completed`; the activity-level counters are
 intentionally not a queue-mechanism replacement.
 
-Fedify records `activitypub.remote.host` as the URL hostname only; ports, paths,
-and query strings are deliberately excluded to keep metric cardinality bounded.
+Fedify records `activitypub.remote.host` as the URL host: the hostname plus
+any non-default port.  Paths and query strings are deliberately excluded to
+keep metric cardinality bounded, but ports are preserved so distinct services
+on the same hostname do not collapse into one metric series or circuit
+breaker key.
 Activity types use the same qualified URI form as Fedify's trace attributes,
 for example `https://www.w3.org/ns/activitystreams#Create`.
 
@@ -881,74 +914,76 @@ for ActivityPub as of November 2024.  However, Fedify provides a set of semantic
 [attributes] for ActivityPub.  The following table shows the semantic attributes
 for ActivityPub:
 
-| Attribute                                | Type     | Description                                                                                                                  | Example                                                              |
-| ---------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `activitypub.activity.id`                | string   | The URI of the activity object.                                                                                              | `"https://example.com/activity/1"`                                   |
-| `activitypub.activity.type`              | string[] | The qualified URI(s) of the activity type(s).                                                                                | `["https://www.w3.org/ns/activitystreams#Create"]`                   |
-| `activitypub.activity.to`                | string[] | The URI(s) of the recipient collections/actors of the activity.                                                              | `["https://example.com/1/followers/2"]`                              |
-| `activitypub.activity.cc`                | string[] | The URI(s) of the carbon-copied recipient collections/actors of the activity.                                                | `["https://www.w3.org/ns/activitystreams#Public"]`                   |
-| `activitypub.activity.bto`               | string[] | The URI(s) of the blind recipient collections/actors of the activity.                                                        | `["https://example.com/1/followers/2"]`                              |
-| `activitypub.activity.bcc`               | string[] | The URI(s) of the blind carbon-copied recipient collections/actors of the activity.                                          | `["https://www.w3.org/ns/activitystreams#Public"]`                   |
-| `activitypub.activity.retries`           | int      | The ordinal number of activity resending attempt (if and only if it's retried).                                              | `3`                                                                  |
-| `activitypub.delivery.attempt`           | int      | The zero-based delivery attempt number for a queued outgoing activity.                                                       | `0`                                                                  |
-| `activitypub.delivery.permanent_failure` | boolean  | Whether an outgoing delivery failure will be abandoned instead of retried.                                                   | `true`                                                               |
-| `activitypub.processing.result`          | string   | Lifecycle outcome of an inbox or outbox activity: `queued`, `processed`, `retried`, `rejected`, or `abandoned`.              | `"retried"`                                                          |
-| `activitypub.actor.discovery.result`     | string   | Terminal outcome of `getActorHandle()`: `resolved`, `not_found`, or `error`.                                                 | `"resolved"`                                                         |
-| `activitypub.actor.id`                   | string   | The URI of the actor object.                                                                                                 | `"https://example.com/actor/1"`                                      |
-| `activitypub.actor.key.cached`           | boolean  | Whether the actor's public keys are cached.                                                                                  | `true`                                                               |
-| `activitypub.actor.type`                 | string[] | The qualified URI(s) of the actor type(s).                                                                                   | `["https://www.w3.org/ns/activitystreams#Person"]`                   |
-| `activitypub.key.id`                     | string   | The URI of the cryptographic key being verified.                                                                             | `"https://example.com/actor/1#main-key"`                             |
-| `activitypub.key_ownership.method`       | string   | The method used to verify key ownership (`owner_id` or `actor_fetch`).                                                       | `"actor_fetch"`                                                      |
-| `activitypub.key_ownership.verified`     | boolean  | Whether the key ownership was successfully verified.                                                                         | `true`                                                               |
-| `activitypub.collection.id`              | string   | The URI of the collection object.                                                                                            | `"https://example.com/collection/1"`                                 |
-| `activitypub.collection.kind`            | string   | The bounded collection kind: `inbox`, `outbox`, `following`, `followers`, `liked`, `featured`, `featured_tags`, or `custom`. | `"followers"`                                                        |
-| `activitypub.collection.page`            | boolean  | Whether the collection request targets a cursor page rather than the collection object.                                      | `false`                                                              |
-| `activitypub.collection.result`          | string   | Terminal collection request outcome: `served`, `not_found`, `not_acceptable`, `unauthorized`, or `error`.                    | `"served"`                                                           |
-| `activitypub.collection.type`            | string[] | The qualified URI(s) of the collection type(s).                                                                              | `["https://www.w3.org/ns/activitystreams#OrderedCollection"]`        |
-| `activitypub.collection.total_items`     | int      | The total number of items in the collection.                                                                                 | `42`                                                                 |
-| `activitypub.object.id`                  | string   | The URI of the object or the object enclosed by the activity.                                                                | `"https://example.com/object/1"`                                     |
-| `activitypub.object.type`                | string[] | The qualified URI(s) of the object type(s).                                                                                  | `["https://www.w3.org/ns/activitystreams#Note"]`                     |
-| `activitypub.object.in_reply_to`         | string[] | The URI(s) of the original object to which the object reply.                                                                 | `["https://example.com/object/1"]`                                   |
-| `activitypub.inboxes`                    | int      | The number of inboxes the activity is sent to.                                                                               | `12`                                                                 |
-| `activitypub.remote.host`                | string   | The hostname of the remote ActivityPub server.                                                                               | `"example.com"`                                                      |
-| `activitypub.shared_inbox`               | boolean  | Whether the activity is sent to the shared inbox.                                                                            | `true`                                                               |
-| `docloader.context_url`                  | string   | The URL of the JSON-LD context document (if provided via Link header).                                                       | `"https://www.w3.org/ns/activitystreams"`                            |
-| `docloader.document_url`                 | string   | The final URL of the fetched document (after following redirects).                                                           | `"https://example.com/object/1"`                                     |
-| `fedify.actor.identifier`                | string   | The identifier of the actor.                                                                                                 | `"1"`                                                                |
-| `fedify.endpoint`                        | string   | The bounded endpoint category that classified an inbound HTTP request handled by `Federation.fetch()`.                       | `"actor"`                                                            |
-| `fedify.route.template`                  | string   | The matched URI Template, with parameter names (not values).                                                                 | `"/users/{identifier}"`                                              |
-| `fedify.inbox.recipient`                 | string   | The identifier of the inbox recipient.                                                                                       | `"1"`                                                                |
-| `fedify.object.type`                     | string   | The URI of the object type.                                                                                                  | `"https://www.w3.org/ns/activitystreams#Note"`                       |
-| `fedify.object.values.{parameter}`       | string[] | The argument values of the object dispatcher.                                                                                | `["1", "2"]`                                                         |
-| `fedify.collection.dispatcher`           | string   | The collection dispatcher family: `built_in` or `custom`.                                                                    | `"built_in"`                                                         |
-| `fedify.collection.cursor`               | string   | The cursor of the collection.                                                                                                | `"eyJpZCI6IjEiLCJ0eXBlIjoiT3JkZXJlZENvbGxlY3Rpb24ifQ=="`             |
-| `fedify.collection.items`                | number   | The number of materialized items in the collection response or page.  It can be less than the total items.                   | `10`                                                                 |
-| `fedify.queue.role`                      | string   | The Fedify queue role for the task: `inbox`, `outbox`, or `fanout`.                                                          | `"outbox"`                                                           |
-| `fedify.queue.backend`                   | string   | The queue implementation's constructor name (best-effort backend identifier).                                                | `"RedisMessageQueue"`                                                |
-| `fedify.queue.native_retrial`            | boolean  | Whether the queue backend declares `nativeRetrial`, meaning Fedify defers retry handling to the backend.                     | `true`                                                               |
-| `fedify.queue.task.attempt`              | int      | The zero-based attempt number recorded on `fedify.queue.task.enqueued`; non-zero for retry re-enqueues.                      | `1`                                                                  |
-| `fedify.queue.task.result`               | string   | The terminal outcome of queue task processing: `completed`, `failed`, or `aborted`.                                          | `"failed"`                                                           |
-| `http.redirect.url`                      | string   | The redirect URL when a document fetch results in a redirect.                                                                | `"https://example.com/new-location"`                                 |
-| `http.response.status_code`              | int      | The HTTP response status code.                                                                                               | `200`                                                                |
-| `http_signatures.signature`              | string   | The signature of the HTTP request in hexadecimal.                                                                            | `"73a74c990beabe6e59cc68f9c6db7811b59cbb22fd12dcffb3565b651540efe9"` |
-| `http_signatures.algorithm`              | string   | The algorithm of the HTTP request signature.                                                                                 | `"rsa-sha256"`                                                       |
-| `http_signatures.key_id`                 | string   | The public key ID of the HTTP request signature.                                                                             | `"https://example.com/actor/1#main-key"`                             |
-| `http_signatures.verified`               | boolean  | Whether the HTTP request signature was verified successfully.                                                                | `false`                                                              |
-| `http_signatures.failure_reason`         | string   | Why HTTP signature verification failed (`noSignature`, `invalidSignature`, or `keyFetchError`).                              | `"keyFetchError"`                                                    |
-| `http_signatures.key_fetch_status`       | int      | The HTTP status code from a failed signing-key fetch, when available.                                                        | `410`                                                                |
-| `http_signatures.key_fetch_error`        | string   | The error type from a non-HTTP signing-key fetch failure, when available.                                                    | `"TypeError"`                                                        |
-| `http_signatures.digest.{algorithm}`     | string   | The digest of the HTTP request body in hexadecimal.  The `{algorithm}` is the digest algorithm (e.g., `sha`, `sha-256`).     | `"d41d8cd98f00b204e9800998ecf8427e"`                                 |
-| `ld_signatures.key_id`                   | string   | The public key ID of the Linked Data signature.                                                                              | `"https://example.com/actor/1#main-key"`                             |
-| `ld_signatures.signature`                | string   | The signature of the Linked Data in hexadecimal.                                                                             | `"73a74c990beabe6e59cc68f9c6db7811b59cbb22fd12dcffb3565b651540efe9"` |
-| `ld_signatures.type`                     | string   | The algorithm of the Linked Data signature.                                                                                  | `"RsaSignature2017"`                                                 |
-| `object_integrity_proofs.cryptosuite`    | string   | The cryptographic suite of the object integrity proof.                                                                       | `"eddsa-jcs-2022"`                                                   |
-| `object_integrity_proofs.key_id`         | string   | The public key ID of the object integrity proof.                                                                             | `"https://example.com/actor/1#main-key"`                             |
-| `object_integrity_proofs.signature`      | string   | The integrity proof of the object in hexadecimal.                                                                            | `"73a74c990beabe6e59cc68f9c6db7811b59cbb22fd12dcffb3565b651540efe9"` |
-| `url.full`                               | string   | The full URL being fetched by the document loader.                                                                           | `"https://example.com/actor/1"`                                      |
-| `webfinger.handle.result`                | string   | Terminal outcome of an incoming WebFinger request: `resolved`, `invalid`, `not_found`, `tombstoned`, or `error`.             | `"resolved"`                                                         |
-| `webfinger.lookup.result`                | string   | Terminal outcome of an outgoing WebFinger lookup: `found`, `not_found`, `invalid`, `network_error`, or `error`.              | `"found"`                                                            |
-| `webfinger.resource`                     | string   | The queried resource URI.                                                                                                    | `"acct:fedify@hollo.social"`                                         |
-| `webfinger.resource.scheme`              | string   | The scheme of the queried resource URI.  Metric attribute is bucketed to `acct`, `http`, `https`, `mailto`, or `other`.      | `"acct"`                                                             |
+| Attribute                                    | Type     | Description                                                                                                                  | Example                                                              |
+| -------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `activitypub.activity.id`                    | string   | The URI of the activity object.                                                                                              | `"https://example.com/activity/1"`                                   |
+| `activitypub.activity.type`                  | string[] | The qualified URI(s) of the activity type(s).                                                                                | `["https://www.w3.org/ns/activitystreams#Create"]`                   |
+| `activitypub.activity.to`                    | string[] | The URI(s) of the recipient collections/actors of the activity.                                                              | `["https://example.com/1/followers/2"]`                              |
+| `activitypub.activity.cc`                    | string[] | The URI(s) of the carbon-copied recipient collections/actors of the activity.                                                | `["https://www.w3.org/ns/activitystreams#Public"]`                   |
+| `activitypub.activity.bto`                   | string[] | The URI(s) of the blind recipient collections/actors of the activity.                                                        | `["https://example.com/1/followers/2"]`                              |
+| `activitypub.activity.bcc`                   | string[] | The URI(s) of the blind carbon-copied recipient collections/actors of the activity.                                          | `["https://www.w3.org/ns/activitystreams#Public"]`                   |
+| `activitypub.activity.retries`               | int      | The ordinal number of activity resending attempt (if and only if it's retried).                                              | `3`                                                                  |
+| `activitypub.delivery.attempt`               | int      | The zero-based delivery attempt number for a queued outgoing activity.                                                       | `0`                                                                  |
+| `activitypub.delivery.permanent_failure`     | boolean  | Whether an outgoing delivery failure will be abandoned instead of retried.                                                   | `true`                                                               |
+| `activitypub.circuit_breaker.previous_state` | string   | Previous queued outbox circuit breaker state: `closed`, `open`, or `half_open`.                                              | `"closed"`                                                           |
+| `activitypub.circuit_breaker.state`          | string   | Current queued outbox circuit breaker state: `closed`, `open`, or `half_open`.                                               | `"open"`                                                             |
+| `activitypub.processing.result`              | string   | Lifecycle outcome of an inbox or outbox activity: `queued`, `processed`, `retried`, `rejected`, or `abandoned`.              | `"retried"`                                                          |
+| `activitypub.actor.discovery.result`         | string   | Terminal outcome of `getActorHandle()`: `resolved`, `not_found`, or `error`.                                                 | `"resolved"`                                                         |
+| `activitypub.actor.id`                       | string   | The URI of the actor object.                                                                                                 | `"https://example.com/actor/1"`                                      |
+| `activitypub.actor.key.cached`               | boolean  | Whether the actor's public keys are cached.                                                                                  | `true`                                                               |
+| `activitypub.actor.type`                     | string[] | The qualified URI(s) of the actor type(s).                                                                                   | `["https://www.w3.org/ns/activitystreams#Person"]`                   |
+| `activitypub.key.id`                         | string   | The URI of the cryptographic key being verified.                                                                             | `"https://example.com/actor/1#main-key"`                             |
+| `activitypub.key_ownership.method`           | string   | The method used to verify key ownership (`owner_id` or `actor_fetch`).                                                       | `"actor_fetch"`                                                      |
+| `activitypub.key_ownership.verified`         | boolean  | Whether the key ownership was successfully verified.                                                                         | `true`                                                               |
+| `activitypub.collection.id`                  | string   | The URI of the collection object.                                                                                            | `"https://example.com/collection/1"`                                 |
+| `activitypub.collection.kind`                | string   | The bounded collection kind: `inbox`, `outbox`, `following`, `followers`, `liked`, `featured`, `featured_tags`, or `custom`. | `"followers"`                                                        |
+| `activitypub.collection.page`                | boolean  | Whether the collection request targets a cursor page rather than the collection object.                                      | `false`                                                              |
+| `activitypub.collection.result`              | string   | Terminal collection request outcome: `served`, `not_found`, `not_acceptable`, `unauthorized`, or `error`.                    | `"served"`                                                           |
+| `activitypub.collection.type`                | string[] | The qualified URI(s) of the collection type(s).                                                                              | `["https://www.w3.org/ns/activitystreams#OrderedCollection"]`        |
+| `activitypub.collection.total_items`         | int      | The total number of items in the collection.                                                                                 | `42`                                                                 |
+| `activitypub.object.id`                      | string   | The URI of the object or the object enclosed by the activity.                                                                | `"https://example.com/object/1"`                                     |
+| `activitypub.object.type`                    | string[] | The qualified URI(s) of the object type(s).                                                                                  | `["https://www.w3.org/ns/activitystreams#Note"]`                     |
+| `activitypub.object.in_reply_to`             | string[] | The URI(s) of the original object to which the object reply.                                                                 | `["https://example.com/object/1"]`                                   |
+| `activitypub.inboxes`                        | int      | The number of inboxes the activity is sent to.                                                                               | `12`                                                                 |
+| `activitypub.remote.host`                    | string   | The host of the remote ActivityPub server, including any non-default port.                                                   | `"example.com:8443"`                                                 |
+| `activitypub.shared_inbox`                   | boolean  | Whether the activity is sent to the shared inbox.                                                                            | `true`                                                               |
+| `docloader.context_url`                      | string   | The URL of the JSON-LD context document (if provided via Link header).                                                       | `"https://www.w3.org/ns/activitystreams"`                            |
+| `docloader.document_url`                     | string   | The final URL of the fetched document (after following redirects).                                                           | `"https://example.com/object/1"`                                     |
+| `fedify.actor.identifier`                    | string   | The identifier of the actor.                                                                                                 | `"1"`                                                                |
+| `fedify.endpoint`                            | string   | The bounded endpoint category that classified an inbound HTTP request handled by `Federation.fetch()`.                       | `"actor"`                                                            |
+| `fedify.route.template`                      | string   | The matched URI Template, with parameter names (not values).                                                                 | `"/users/{identifier}"`                                              |
+| `fedify.inbox.recipient`                     | string   | The identifier of the inbox recipient.                                                                                       | `"1"`                                                                |
+| `fedify.object.type`                         | string   | The URI of the object type.                                                                                                  | `"https://www.w3.org/ns/activitystreams#Note"`                       |
+| `fedify.object.values.{parameter}`           | string[] | The argument values of the object dispatcher.                                                                                | `["1", "2"]`                                                         |
+| `fedify.collection.dispatcher`               | string   | The collection dispatcher family: `built_in` or `custom`.                                                                    | `"built_in"`                                                         |
+| `fedify.collection.cursor`                   | string   | The cursor of the collection.                                                                                                | `"eyJpZCI6IjEiLCJ0eXBlIjoiT3JkZXJlZENvbGxlY3Rpb24ifQ=="`             |
+| `fedify.collection.items`                    | number   | The number of materialized items in the collection response or page.  It can be less than the total items.                   | `10`                                                                 |
+| `fedify.queue.role`                          | string   | The Fedify queue role for the task: `inbox`, `outbox`, or `fanout`.                                                          | `"outbox"`                                                           |
+| `fedify.queue.backend`                       | string   | The queue implementation's constructor name (best-effort backend identifier).                                                | `"RedisMessageQueue"`                                                |
+| `fedify.queue.native_retrial`                | boolean  | Whether the queue backend declares `nativeRetrial`, meaning Fedify defers retry handling to the backend.                     | `true`                                                               |
+| `fedify.queue.task.attempt`                  | int      | The zero-based attempt number recorded on `fedify.queue.task.enqueued`; non-zero for retry re-enqueues.                      | `1`                                                                  |
+| `fedify.queue.task.result`                   | string   | The terminal outcome of queue task processing: `completed`, `failed`, or `aborted`.                                          | `"failed"`                                                           |
+| `http.redirect.url`                          | string   | The redirect URL when a document fetch results in a redirect.                                                                | `"https://example.com/new-location"`                                 |
+| `http.response.status_code`                  | int      | The HTTP response status code.                                                                                               | `200`                                                                |
+| `http_signatures.signature`                  | string   | The signature of the HTTP request in hexadecimal.                                                                            | `"73a74c990beabe6e59cc68f9c6db7811b59cbb22fd12dcffb3565b651540efe9"` |
+| `http_signatures.algorithm`                  | string   | The algorithm of the HTTP request signature.                                                                                 | `"rsa-sha256"`                                                       |
+| `http_signatures.key_id`                     | string   | The public key ID of the HTTP request signature.                                                                             | `"https://example.com/actor/1#main-key"`                             |
+| `http_signatures.verified`                   | boolean  | Whether the HTTP request signature was verified successfully.                                                                | `false`                                                              |
+| `http_signatures.failure_reason`             | string   | Why HTTP signature verification failed (`noSignature`, `invalidSignature`, or `keyFetchError`).                              | `"keyFetchError"`                                                    |
+| `http_signatures.key_fetch_status`           | int      | The HTTP status code from a failed signing-key fetch, when available.                                                        | `410`                                                                |
+| `http_signatures.key_fetch_error`            | string   | The error type from a non-HTTP signing-key fetch failure, when available.                                                    | `"TypeError"`                                                        |
+| `http_signatures.digest.{algorithm}`         | string   | The digest of the HTTP request body in hexadecimal.  The `{algorithm}` is the digest algorithm (e.g., `sha`, `sha-256`).     | `"d41d8cd98f00b204e9800998ecf8427e"`                                 |
+| `ld_signatures.key_id`                       | string   | The public key ID of the Linked Data signature.                                                                              | `"https://example.com/actor/1#main-key"`                             |
+| `ld_signatures.signature`                    | string   | The signature of the Linked Data in hexadecimal.                                                                             | `"73a74c990beabe6e59cc68f9c6db7811b59cbb22fd12dcffb3565b651540efe9"` |
+| `ld_signatures.type`                         | string   | The algorithm of the Linked Data signature.                                                                                  | `"RsaSignature2017"`                                                 |
+| `object_integrity_proofs.cryptosuite`        | string   | The cryptographic suite of the object integrity proof.                                                                       | `"eddsa-jcs-2022"`                                                   |
+| `object_integrity_proofs.key_id`             | string   | The public key ID of the object integrity proof.                                                                             | `"https://example.com/actor/1#main-key"`                             |
+| `object_integrity_proofs.signature`          | string   | The integrity proof of the object in hexadecimal.                                                                            | `"73a74c990beabe6e59cc68f9c6db7811b59cbb22fd12dcffb3565b651540efe9"` |
+| `url.full`                                   | string   | The full URL being fetched by the document loader.                                                                           | `"https://example.com/actor/1"`                                      |
+| `webfinger.handle.result`                    | string   | Terminal outcome of an incoming WebFinger request: `resolved`, `invalid`, `not_found`, `tombstoned`, or `error`.             | `"resolved"`                                                         |
+| `webfinger.lookup.result`                    | string   | Terminal outcome of an outgoing WebFinger lookup: `found`, `not_found`, `invalid`, `network_error`, or `error`.              | `"found"`                                                            |
+| `webfinger.resource`                         | string   | The queried resource URI.                                                                                                    | `"acct:fedify@hollo.social"`                                         |
+| `webfinger.resource.scheme`                  | string   | The scheme of the queried resource URI.  Metric attribute is bucketed to `acct`, `http`, `https`, `mailto`, or `other`.      | `"acct"`                                                             |
 
 [attributes]: https://opentelemetry.io/docs/specs/otel/common/#attribute
 [OpenTelemetry Semantic Conventions]: https://opentelemetry.io/docs/specs/semconv/

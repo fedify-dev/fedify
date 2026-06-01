@@ -5,6 +5,7 @@
  */
 export { createFederationBuilder } from "./builder.ts";
 export * from "./callback.ts";
+export * from "./circuit-breaker.ts";
 export * from "./collection.ts";
 export * from "./context.ts";
 export * from "./federation.ts";

@@ -76,6 +76,13 @@ export type InboxActivityResult =
 export type OutboxActivityResult = "queued" | "retried" | "abandoned";
 
 /**
+ * The bounded circuit breaker state value recorded on
+ * `activitypub.circuit_breaker.state_change`.
+ * @since 2.3.0
+ */
+export type CircuitBreakerMetricState = "closed" | "open" | "half_open";
+
+/**
  * Common attributes shared by all queue task metrics.
  * @since 2.3.0
  */
@@ -278,9 +285,10 @@ export type KeyLookupResult = Exclude<LookupResult, "miss">;
 
 /**
  * Attributes accepted by {@link recordKeyLookup}.  `remoteUrl` is taken as
- * a `URL` so that the helper can derive the hostname-only
- * `activitypub.remote.host` attribute internally and refuse to record
- * high-cardinality values such as full key IDs or actor URLs.
+ * a `URL` so that the helper can derive the URL host, including any
+ * non-default port, for the `activitypub.remote.host` attribute internally
+ * and refuse to record high-cardinality values such as full key IDs or actor
+ * URLs.
  * @since 2.3.0
  */
 export interface KeyLookupAttributes {
@@ -473,6 +481,7 @@ class FederationMetrics {
   readonly fanoutRecipients: Histogram;
   readonly inboxActivity: Counter;
   readonly outboxActivity: Counter;
+  readonly circuitBreakerStateChange: Counter;
   readonly keyLookup: Counter;
   readonly keyLookupDuration: Histogram;
   readonly documentFetch: Counter;
@@ -648,6 +657,13 @@ class FederationMetrics {
         "live on `activitypub.delivery.*`.",
       unit: "{activity}",
     });
+    this.circuitBreakerStateChange = meter.createCounter(
+      "activitypub.circuit_breaker.state_change",
+      {
+        description: "Outbound ActivityPub delivery circuit breaker changes.",
+        unit: "{change}",
+      },
+    );
     this.keyLookup = meter.createCounter("activitypub.key.lookup", {
       description:
         "Public-key lookup attempts performed by Fedify, including both " +
@@ -976,6 +992,16 @@ class FederationMetrics {
     );
   }
 
+  recordCircuitBreakerStateChange(
+    remoteHost: string,
+    state: CircuitBreakerMetricState,
+  ): void {
+    this.circuitBreakerStateChange.add(1, {
+      "activitypub.remote.host": remoteHost,
+      "activitypub.circuit_breaker.state": state,
+    });
+  }
+
   recordKeyLookup(attrs: KeyLookupAttributes): void {
     const attributes: Attributes = {
       "activitypub.lookup.kind": "public_key",
@@ -1226,6 +1252,21 @@ export function recordOutboxActivity(
 }
 
 /**
+ * Records one outbound delivery circuit breaker state transition.
+ * @since 2.3.0
+ */
+export function recordCircuitBreakerStateChange(
+  meterProvider: MeterProvider | undefined,
+  remoteHost: string,
+  state: CircuitBreakerMetricState,
+): void {
+  getFederationMetrics(meterProvider).recordCircuitBreakerStateChange(
+    remoteHost,
+    state,
+  );
+}
+
+/**
  * Records one measurement on `activitypub.key.lookup` (counter) and
  * `activitypub.key.lookup.duration` (histogram) for a public-key lookup.
  *
@@ -1423,9 +1464,10 @@ export interface InstrumentDocumentLoaderOptions {
  * and as `fetched` on success.  The wrapper rethrows whatever the
  * wrapped loader throws so caller behavior is unchanged.
  *
- * The wrapper records the hostname of the requested URL on
- * `activitypub.remote.host` when the URL parses; full URLs, paths, and
- * query strings are deliberately excluded to keep cardinality bounded.
+ * The wrapper records the host of the requested URL, including any
+ * non-default port, on `activitypub.remote.host` when the URL parses; full
+ * URLs, paths, and query strings are deliberately excluded to keep
+ * cardinality bounded.
  * HTTP status codes are recorded only when the failure carries a
  * `Response` (currently, when the wrapped loader throws a
  * {@link FetchError} with a non-`null` `response`).
@@ -1562,7 +1604,7 @@ export function getFederationMetrics(
  * @since 2.3.0
  */
 export function getRemoteHost(url: URL): string {
-  return url.hostname;
+  return url.host;
 }
 
 /**

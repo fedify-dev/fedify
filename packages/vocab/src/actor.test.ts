@@ -298,6 +298,31 @@ test("getActorHandle() records activitypub.actor.discovery counter", {
     );
 
     await t.step(
+      "records non-default ports for actor IDs",
+      async () => {
+        fetchMock.removeRoutes();
+        fetchMock.get(
+          "begin:https://foo.example.com:8443/.well-known/webfinger?",
+          { status: 404 },
+        );
+        const [meterProvider, recorder] = createTestMeterProvider();
+        await rejects(
+          () =>
+            getActorHandle(new URL("https://foo.example.com:8443/@john"), {
+              meterProvider,
+            }),
+          TypeError,
+        );
+        const counter = recorder.getMeasurement("activitypub.actor.discovery");
+        ok(counter != null);
+        deepStrictEqual(
+          counter.attributes["activitypub.remote.host"],
+          "foo.example.com:8443",
+        );
+      },
+    );
+
+    await t.step(
       "records result=error when a malformed WebFinger alias throws TypeError",
       async () => {
         // The "[" byte makes `new URL("https://[/")` throw `TypeError`

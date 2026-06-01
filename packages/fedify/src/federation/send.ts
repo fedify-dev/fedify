@@ -1,4 +1,5 @@
 import type { Recipient } from "@fedify/vocab";
+import { FetchError } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
 import {
   type Attributes,
@@ -314,12 +315,15 @@ async function sendActivityInternal(
       ? await fetch(request)
       : await doubleKnock(request, rsaKey, { tracerProvider, specDeterminer });
   } catch (error) {
+    const transportError = error instanceof FetchError
+      ? error
+      : createFetchError(inbox.href, error);
     logger.error(
       "Failed to send activity {activityId} to {inbox}:\n{error}",
       {
         activityId,
         inbox: inbox.href,
-        error,
+        error: transportError,
       },
     );
     federationMetrics.recordDelivery(
@@ -328,7 +332,7 @@ async function sendActivityInternal(
       false,
       activityType,
     );
-    throw error;
+    throw transportError;
   }
   try {
     if (!response.ok) {
@@ -358,6 +362,7 @@ async function sendActivityInternal(
         `Failed to send activity ${activityId} to ${inbox.href} ` +
           `(${response.status} ${response.statusText}):\n${error}`,
         error,
+        response.headers,
       );
     }
 
@@ -386,6 +391,13 @@ async function sendActivityInternal(
   }
 }
 
+function createFetchError(url: string, cause: unknown): FetchError {
+  const message = cause instanceof Error ? cause.message : String(cause);
+  const error = new FetchError(url, message);
+  error.cause = cause;
+  return error;
+}
+
 /**
  * An error that is thrown when an activity fails to send to a remote inbox.
  * It contains structured information about the failure, including the HTTP
@@ -412,22 +424,31 @@ export class SendActivityError extends Error {
   readonly responseBody: string;
 
   /**
+   * The response headers from the inbox.
+   * @since 2.3.0
+   */
+  readonly responseHeaders: Headers;
+
+  /**
    * Creates a new {@link SendActivityError}.
    * @param inbox The inbox URL.
    * @param statusCode The HTTP status code.
    * @param message The error message.
    * @param responseBody The response body.
+   * @param responseHeaders The response headers.
    */
   constructor(
     inbox: URL,
     statusCode: number,
     message: string,
     responseBody: string,
+    responseHeaders?: HeadersInit,
   ) {
     super(message);
     this.name = "SendActivityError";
     this.inbox = inbox;
     this.statusCode = statusCode;
     this.responseBody = responseBody;
+    this.responseHeaders = new Headers(responseHeaders);
   }
 }

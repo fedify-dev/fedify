@@ -5,7 +5,9 @@ import { FetchError } from "@fedify/vocab-runtime";
 import type { MessageQueue } from "./mq.ts";
 import {
   classifyFetchError,
+  getRemoteHost,
   instrumentDocumentLoader,
+  recordCircuitBreakerStateChange,
   recordCollectionDispatchDuration,
   recordCollectionPageItems,
   recordCollectionRequest,
@@ -28,6 +30,21 @@ const noopQueue: MessageQueue = {
     return Promise.resolve();
   },
 };
+
+test("getRemoteHost() includes non-default ports", () => {
+  assertEquals(
+    getRemoteHost(new URL("https://example.com/inbox")),
+    "example.com",
+  );
+  assertEquals(
+    getRemoteHost(new URL("https://example.com:8443/inbox")),
+    "example.com:8443",
+  );
+  assertEquals(
+    getRemoteHost(new URL("https://example.com:443/inbox")),
+    "example.com",
+  );
+});
 
 test("recordFanoutRecipients() records the recipient count with activity type", () => {
   const [meterProvider, recorder] = createTestMeterProvider();
@@ -163,6 +180,29 @@ test("recordOutboxActivity() records counter with result and activity type", () 
   assertEquals(
     measurements.map((m) => m.attributes["activitypub.processing.result"]),
     ["queued", "retried", "abandoned"],
+  );
+});
+
+test("recordCircuitBreakerStateChange() records counter with bounded attributes", () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  recordCircuitBreakerStateChange(
+    meterProvider,
+    "remote.example",
+    "half_open",
+  );
+  const measurements = recorder.getMeasurements(
+    "activitypub.circuit_breaker.state_change",
+  );
+  assertEquals(measurements.length, 1);
+  assertEquals(measurements[0].type, "counter");
+  assertEquals(measurements[0].value, 1);
+  assertEquals(
+    measurements[0].attributes["activitypub.remote.host"],
+    "remote.example",
+  );
+  assertEquals(
+    measurements[0].attributes["activitypub.circuit_breaker.state"],
+    "half_open",
   );
 });
 
