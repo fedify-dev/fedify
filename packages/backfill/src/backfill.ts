@@ -175,6 +175,13 @@ async function waitForInterval(
 
 function durationToMilliseconds(duration: Temporal.DurationLike): number {
   if (typeof duration === "string") {
+    if (typeof Temporal === "undefined") {
+      throw new TypeError(
+        "Temporal is not globally available; pass interval as a " +
+          "Temporal.DurationLike object instead of a string, or provide a " +
+          "Temporal polyfill.",
+      );
+    }
     return Temporal.Duration.from(duration).total({ unit: "milliseconds" });
   }
 
