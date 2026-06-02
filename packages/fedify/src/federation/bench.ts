@@ -14,6 +14,7 @@ import { extractInboxes } from "./send.ts";
 
 /**
  * Metric reader owned by `benchmarkMode`.
+ * @since 2.3.0
  */
 export class BenchmarkMetricReader extends MetricReader {
   protected onShutdown(): Promise<void> {
@@ -25,6 +26,11 @@ export class BenchmarkMetricReader extends MetricReader {
   }
 }
 
+/**
+ * Creates the in-process OpenTelemetry meter provider used by benchmark mode.
+ * @returns The meter provider and the metric reader attached to it.
+ * @since 2.3.0
+ */
 export function createBenchmarkMeterProvider(): {
   readonly meterProvider: MeterProvider;
   readonly reader: BenchmarkMetricReader;
@@ -36,44 +42,92 @@ export function createBenchmarkMeterProvider(): {
   };
 }
 
+/**
+ * A serialized snapshot of all benchmark-mode OpenTelemetry metrics.
+ *
+ * The `scopeMetrics` field contains the collected metrics grouped by
+ * instrumentation scope.  The `errors` field contains stringified collection
+ * errors reported by the metric reader.
+ * @since 2.3.0
+ */
 export interface BenchmarkMetricSnapshot {
+  /** The schema version of this snapshot shape. */
   readonly version: 1;
+  /** The snapshot source.  Always `"server"` for Fedify benchmark targets. */
   readonly source: "server";
+  /** The ISO 8601 time when the snapshot was generated. */
   readonly generatedAt: string;
+  /** Metrics grouped by OpenTelemetry instrumentation scope. */
   readonly scopeMetrics: readonly BenchmarkScopeMetrics[];
+  /** Stringified metric collection errors, if any. */
   readonly errors: readonly string[];
 }
 
+/**
+ * Metrics collected from one OpenTelemetry instrumentation scope.
+ * @since 2.3.0
+ */
 export interface BenchmarkScopeMetrics {
+  /** The OpenTelemetry instrumentation scope descriptor. */
   readonly scope: {
+    /** The instrumentation scope name. */
     readonly name: string;
+    /** The instrumentation scope version, if provided. */
     readonly version?: string;
   };
+  /** The metrics emitted by the scope. */
   readonly metrics: readonly BenchmarkMetric[];
 }
 
+/**
+ * A serialized OpenTelemetry metric in a benchmark snapshot.
+ * @since 2.3.0
+ */
 export interface BenchmarkMetric {
+  /** The OpenTelemetry metric name. */
   readonly name: string;
+  /** The OpenTelemetry metric description. */
   readonly description: string;
+  /** The OpenTelemetry metric unit, such as `ms` or `{count}`. */
   readonly unit: string;
+  /** The metric data point kind. */
   readonly dataPointType:
     | "histogram"
     | "exponential_histogram"
     | "gauge"
     | "sum";
+  /** The serialized data points for the metric. */
   readonly dataPoints: readonly BenchmarkDataPoint[];
 }
 
+/**
+ * A serialized OpenTelemetry metric data point.
+ *
+ * The timestamp fields use OpenTelemetry high-resolution time tuples.
+ * Histogram values preserve their SDK histogram shape, including bucket
+ * boundaries and counts.
+ * @since 2.3.0
+ */
 export interface BenchmarkDataPoint {
+  /** The metric attributes attached to the data point. */
   readonly attributes: Record<string, unknown>;
+  /** The OpenTelemetry data point start time. */
   readonly startTime: readonly [number, number];
+  /** The OpenTelemetry data point end time. */
   readonly endTime: readonly [number, number];
+  /** The data point value or histogram payload. */
   readonly value:
     | number
     | Histogram
     | ExponentialHistogram;
 }
 
+/**
+ * Collects and serializes benchmark-mode metrics from a benchmark reader.
+ * @param reader The benchmark metric reader to collect from.
+ * @returns A server metric snapshot with any collection errors stringified.
+ * @since 2.3.0
+ */
 export async function collectBenchmarkMetrics(
   reader: BenchmarkMetricReader,
 ): Promise<BenchmarkMetricSnapshot> {
@@ -87,6 +141,13 @@ export async function collectBenchmarkMetrics(
   };
 }
 
+/**
+ * Handles `GET /.well-known/fedify/bench/stats`.
+ * @param request The HTTP request to handle.
+ * @param reader The benchmark metric reader to collect from.
+ * @returns A JSON metric snapshot response, or `405 Method Not Allowed`.
+ * @since 2.3.0
+ */
 export async function handleBenchmarkStats(
   request: Request,
   reader: BenchmarkMetricReader,
@@ -102,6 +163,18 @@ export async function handleBenchmarkStats(
   });
 }
 
+/**
+ * Handles `POST /.well-known/fedify/bench/trigger`.
+ *
+ * The handler validates a benchmark trigger request, checks recipients against
+ * server-controlled trigger options, and calls `Context.sendActivity()` to use
+ * the target's normal outbox path.
+ * @param request The HTTP request to handle.
+ * @param context The Fedify context used to resolve actors and send activity.
+ * @param options Server-controlled benchmark trigger delivery options.
+ * @returns A JSON response describing the sent activity, or a validation error.
+ * @since 2.3.0
+ */
 export async function handleBenchmarkTrigger<TContextData>(
   request: Request,
   context: Context<TContextData>,
@@ -148,6 +221,7 @@ export async function handleBenchmarkTrigger<TContextData>(
       {
         version: 1,
         activityId: activity.id?.href ?? null,
+        queueCorrelationId: null,
         recipientCount: recipients.length,
         inboxCount: inboxUrls.length,
       },
@@ -161,8 +235,17 @@ export async function handleBenchmarkTrigger<TContextData>(
   }
 }
 
+/**
+ * Server-controlled options for benchmark trigger delivery.
+ * @since 2.3.0
+ */
 export interface BenchmarkTriggerOptions {
+  /** Inbox URLs that the trigger endpoint may deliver to. */
   readonly sinks?: ReadonlySet<string>;
+  /**
+   * Whether recipients outside {@link BenchmarkTriggerOptions.sinks} may be
+   * used.
+   */
   readonly allowUnsafeRecipients?: boolean;
 }
 

@@ -94,11 +94,21 @@ export interface QueueTaskCommonAttributes {
 }
 
 /**
- * A queue to observe for `fedify.queue.depth`.
+ * An entry for observing one queue role in `fedify.queue.depth`.
+ *
+ * This public API is used by {@link registerQueueDepthGauge()} to associate a
+ * queue depth source with the task role it represents.
  * @since 2.3.0
  */
 export interface QueueDepthGaugeEntry {
+  /**
+   * The task role whose queue depth is observed.
+   */
   role: QueueTaskRole;
+
+  /**
+   * The message queue to observe, or `undefined` when the role has no queue.
+   */
   queue?: MessageQueue;
 }
 

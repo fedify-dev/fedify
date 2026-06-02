@@ -677,11 +677,13 @@ test("benchmarkMode trigger endpoint", async (t) => {
     const body = await response.json() as {
       version: number;
       activityId: string;
+      queueCorrelationId: string | null;
       recipientCount: number;
       inboxCount: number;
     };
     assertEquals(body.version, 1);
     assertEquals(body.activityId, "https://example.com/activities/bench-1");
+    assertEquals(body.queueCorrelationId, null);
     assertEquals(body.recipientCount, 1);
     assertEquals(body.inboxCount, 1);
     assertEquals(messages.length, 1);

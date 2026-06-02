@@ -153,6 +153,7 @@ A successful trigger returns `202 Accepted`:
 {
   "version": 1,
   "activityId": "https://example.com/activities/bench-1",
+  "queueCorrelationId": null,
   "recipientCount": 1,
   "inboxCount": 1
 }
