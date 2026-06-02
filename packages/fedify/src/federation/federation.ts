@@ -804,7 +804,7 @@ export interface FederationBuilder<TContextData>
    * Builds the federation object.
    * @param options Parameters for initializing the federation object.
    * @returns The federation object.
-   * @throws {TypeError} If `benchmarkMode: true` and `meterProvider` are both
+   * @throws {TypeError} If benchmark mode and `meterProvider` are both
    * specified.
    */
   build(
@@ -847,6 +847,27 @@ export interface InboxChallengePolicy {
    * @default `300` (5 minutes)
    */
   nonceTtlSeconds?: number;
+}
+
+/**
+ * Options for cooperative benchmark mode.
+ * @since 2.3.0
+ */
+export interface FederationBenchmarkOptions {
+  /**
+   * Server-controlled inbox URLs that the benchmark trigger endpoint may
+   * deliver to.
+   */
+  triggerSinks?: readonly (string | URL)[];
+
+  /**
+   * Whether the benchmark trigger endpoint may deliver to recipients outside
+   * {@link FederationBenchmarkOptions.triggerSinks}.
+   *
+   * Do not enable this option unless the benchmark endpoint is only reachable
+   * by a trusted benchmark controller.
+   */
+  allowUnsafeTriggerRecipients?: boolean;
 }
 
 /**
@@ -940,7 +961,8 @@ export interface FederationOptions<TContextData> {
   /**
    * Whether to enable cooperative benchmark mode.  This mode exposes
    * benchmark-only endpoints and relaxes selected defaults for benchmark
-   * targets.  Do not enable this option in production.
+   * targets.  Pass an object to configure benchmark trigger delivery.
+   * Do not enable this option in production.
    *
    * When enabled, {@link FederationOptions.allowPrivateAddress} defaults to
    * `true` unless {@link FederationOptions.documentLoaderFactory} or
@@ -950,7 +972,7 @@ export interface FederationOptions<TContextData> {
    * Turned off by default.
    * @since 2.3.0
    */
-  benchmarkMode?: boolean;
+  benchmarkMode?: boolean | FederationBenchmarkOptions;
 
   /**
    * Options for making `User-Agent` strings for HTTP requests.

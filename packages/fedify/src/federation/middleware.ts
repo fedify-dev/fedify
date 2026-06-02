@@ -59,6 +59,7 @@ import { handleNodeInfo, handleNodeInfoJrd } from "../nodeinfo/handler.ts";
 import type { JsonValue, NodeInfo } from "../nodeinfo/types.ts";
 import {
   type BenchmarkMetricReader,
+  type BenchmarkTriggerOptions,
   createBenchmarkMeterProvider,
   handleBenchmarkStats,
   handleBenchmarkTrigger,
@@ -111,6 +112,7 @@ import type {
 import type {
   ConstructorWithTypeId,
   Federation,
+  FederationBenchmarkOptions,
   FederationFetchOptions,
   FederationOptions,
   FederationStartQueueOptions,
@@ -259,9 +261,14 @@ function getBenchmarkRelaxations(
       secureDefaultSeconds: 3600,
     });
   } else {
-    const seconds = Temporal.Duration.from(signatureTimeWindow).total({
-      unit: "seconds",
-    });
+    let seconds: number;
+    try {
+      seconds = Temporal.Duration.from(signatureTimeWindow).total({
+        unit: "seconds",
+      });
+    } catch {
+      return relaxations;
+    }
     if (seconds !== 3600) {
       relaxations.push({
         protection: "http_signature_time_window",
@@ -290,6 +297,23 @@ function formatBenchmarkRelaxations(
           `(secure default: ${relaxation.secureDefaultSeconds}s)`;
     }
   }).join("; ");
+}
+
+function getBenchmarkTriggerOptions(
+  benchmarkOptions: FederationBenchmarkOptions,
+): BenchmarkTriggerOptions {
+  const sinks = benchmarkOptions.triggerSinks?.map((sink) => {
+    try {
+      return new URL(sink).href;
+    } catch {
+      throw new TypeError("benchmarkMode.triggerSinks must contain only URLs.");
+    }
+  });
+  return {
+    sinks: sinks == null ? undefined : new Set(sinks),
+    allowUnsafeRecipients:
+      benchmarkOptions.allowUnsafeTriggerRecipients === true,
+  };
 }
 
 function maxDelay(
@@ -498,7 +522,7 @@ export interface FederationOrigin {
  * Create a new {@link Federation} instance.
  * @param options Parameters for initializing the instance.
  * @returns A new {@link Federation} instance.
- * @throws {TypeError} If `benchmarkMode: true` and `meterProvider` are both
+ * @throws {TypeError} If benchmark mode and `meterProvider` are both
  * specified.
  * @since 0.10.0
  */
@@ -540,10 +564,15 @@ export class FederationImpl<TContextData>
   inboxChallengePolicy?: InboxChallengePolicy;
   benchmarkMode: boolean;
   benchmarkMetricReader?: BenchmarkMetricReader;
+  benchmarkTriggerOptions: BenchmarkTriggerOptions;
 
   constructor(options: FederationOptions<TContextData>) {
     super();
-    const benchmarkMode = options.benchmarkMode ?? false;
+    const benchmarkMode = options.benchmarkMode != null &&
+      options.benchmarkMode !== false;
+    const benchmarkOptions = typeof options.benchmarkMode === "object"
+      ? options.benchmarkMode
+      : {};
     const hasCustomLoaderFactory = options.documentLoaderFactory != null ||
       options.contextLoaderFactory != null;
     const allowPrivateAddress = options.allowPrivateAddress ??
@@ -571,6 +600,9 @@ export class FederationImpl<TContextData>
       );
     }
     this.benchmarkMode = benchmarkMode;
+    this.benchmarkTriggerOptions = benchmarkMode
+      ? getBenchmarkTriggerOptions(benchmarkOptions)
+      : {};
     this.kv = options.kv;
     this.kvPrefixes = {
       ...({
@@ -2451,7 +2483,11 @@ export class FederationImpl<TContextData>
       case "benchmarkStats":
         return await handleBenchmarkStats(request, this.benchmarkMetricReader!);
       case "benchmarkTrigger":
-        return await handleBenchmarkTrigger(request, context);
+        return await handleBenchmarkTrigger(
+          request,
+          context,
+          this.benchmarkTriggerOptions,
+        );
     }
 
     // Routes that require JSON-LD Accepts header:

@@ -136,6 +136,16 @@ test("createFederation()", async (t) => {
     assertEquals(federation.signatureTimeWindow, { minutes: 10 });
   });
 
+  await t.step("benchmarkMode tolerates calendar time windows", () => {
+    const federation = createFederation<number>({
+      kv,
+      benchmarkMode: true,
+      signatureTimeWindow: { months: 1 },
+    });
+    assertInstanceOf(federation, FederationImpl);
+    assertEquals(federation.signatureTimeWindow, { months: 1 });
+  });
+
   await t.step("benchmarkMode leaves custom loader factories alone", () => {
     const federation = createFederation<number>({
       kv,
@@ -471,7 +481,9 @@ test("createFederation() registers queue depth for regular metrics", async () =>
 });
 
 test("benchmarkMode trigger endpoint", async (t) => {
-  const createTriggerTarget = () => {
+  const createTriggerTarget = (
+    options: { allowUnsafeTriggerRecipients?: boolean } = {},
+  ) => {
     const messages: OutboxMessage[] = [];
     const queue: MessageQueue = {
       enqueue(message: OutboxMessage) {
@@ -484,7 +496,10 @@ test("benchmarkMode trigger endpoint", async (t) => {
     };
     const federation = createFederation<void>({
       kv: new MemoryKvStore(),
-      benchmarkMode: true,
+      benchmarkMode: {
+        triggerSinks: ["https://sink.example/inbox"],
+        allowUnsafeTriggerRecipients: options.allowUnsafeTriggerRecipients,
+      },
       contextLoaderFactory: () => mockDocumentLoader,
       queue: { outbox: queue },
     });
@@ -511,7 +526,7 @@ test("benchmarkMode trigger endpoint", async (t) => {
     } = {},
   ) => ({
     sender: { identifier: "alice" },
-    sinks: options.sinks ?? ["https://sink.example/inbox"],
+    sinks: options.sinks,
     recipients: [
       {
         "@context": "https://www.w3.org/ns/activitystreams",
@@ -560,26 +575,8 @@ test("benchmarkMode trigger endpoint", async (t) => {
     });
   });
 
-  await t.step("rejects recipients outside the sink list", async () => {
-    const { federation, messages } = createTriggerTarget();
-    const response = await federation.fetch(
-      new Request("https://example.com/.well-known/fedify/bench/trigger", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          await createTriggerBody({
-            recipientInbox: "https://not-a-sink.example/inbox",
-          }),
-        ),
-      }),
-      { contextData: undefined },
-    );
-    assertEquals(response.status, 403);
-    assertEquals(messages, []);
-  });
-
   await t.step(
-    "allows unsafe recipients only with an explicit override",
+    "rejects recipients outside configured trigger sinks",
     async () => {
       const { federation, messages } = createTriggerTarget();
       const response = await federation.fetch(
@@ -589,7 +586,52 @@ test("benchmarkMode trigger endpoint", async (t) => {
           body: JSON.stringify(
             await createTriggerBody({
               recipientInbox: "https://not-a-sink.example/inbox",
+            }),
+          ),
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 403);
+      assertEquals(messages, []);
+    },
+  );
+
+  await t.step(
+    "does not trust request-provided trigger sinks or bypasses",
+    async () => {
+      const { federation, messages } = createTriggerTarget();
+      const response = await federation.fetch(
+        new Request("https://example.com/.well-known/fedify/bench/trigger", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            await createTriggerBody({
+              recipientInbox: "https://not-a-sink.example/inbox",
+              sinks: ["https://not-a-sink.example/inbox"],
               allowUnsafeRecipients: true,
+            }),
+          ),
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 403);
+      assertEquals(messages, []);
+    },
+  );
+
+  await t.step(
+    "allows unsafe recipients only with a server override",
+    async () => {
+      const { federation, messages } = createTriggerTarget({
+        allowUnsafeTriggerRecipients: true,
+      });
+      const response = await federation.fetch(
+        new Request("https://example.com/.well-known/fedify/bench/trigger", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            await createTriggerBody({
+              recipientInbox: "https://not-a-sink.example/inbox",
             }),
           ),
         }),

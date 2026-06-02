@@ -131,11 +131,12 @@ To be released.
     When enabled, Fedify exposes `GET /.well-known/fedify/bench/stats`
     for in-process OpenTelemetry metric snapshots and
     `POST /.well-known/fedify/bench/trigger` for driving `sendActivity()`
-    to explicit benchmark sink recipients.  Benchmark mode also defaults
-    `allowPrivateAddress` to `true` when built-in loaders are used, defaults
-    `signatureTimeWindow` to `false`, reports queue depth through the new
-    `fedify.queue.depth` gauge, and adds explicit low-latency buckets to
-    the signature verification duration histogram.  [[#744], [#782], [#787]]
+    to server-configured benchmark sink recipients.  Benchmark mode also
+    defaults `allowPrivateAddress` to `true` when built-in loaders are used,
+    defaults `signatureTimeWindow` to `false`, reports queue depth through
+    the new `fedify.queue.depth` gauge, and adds explicit low-latency
+    buckets to the signature verification duration histogram.
+    [[#744], [#782], [#787]]
 
  -  Added OpenTelemetry metrics for ActivityPub fanout and activity
     lifecycle events, complementing the per-recipient

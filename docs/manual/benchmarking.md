@@ -23,7 +23,8 @@ measurements without a separate metrics backend.
 Enabling benchmark mode
 -----------------------
 
-Set `benchmarkMode: true` when creating the `Federation` object:
+Enable `benchmarkMode` when creating the `Federation` object.  If you use the
+benchmark trigger endpoint, configure the sink inboxes on the server:
 
 ~~~~ typescript twoslash
 import type { KvStore } from "@fedify/fedify";
@@ -34,7 +35,9 @@ const federation = createFederation<void>({
 // ---cut-start---
   kv: null as unknown as KvStore,
 // ---cut-end---
-  benchmarkMode: true,
+  benchmarkMode: {
+    triggerSinks: ["https://sink.example/inbox"],
+  },
 });
 ~~~~
 
@@ -65,12 +68,14 @@ const meterProvider = null as unknown as MeterProvider;
 // ---cut-end---
 import { createFederation } from "@fedify/fedify";
 
-const benchmarkMode = process.env.FEDIFY_BENCHMARK === "1";
+const benchmarkEnabled = process.env.FEDIFY_BENCHMARK === "1";
 
 const federation = createFederation<void>({
   kv,
-  benchmarkMode,
-  meterProvider: benchmarkMode ? undefined : meterProvider,
+  benchmarkMode: benchmarkEnabled
+    ? { triggerSinks: ["https://sink.example/inbox"] }
+    : false,
+  meterProvider: benchmarkEnabled ? undefined : meterProvider,
 });
 ~~~~
 
@@ -108,7 +113,6 @@ The request body has this shape:
 ~~~~ json
 {
   "sender": { "identifier": "alice" },
-  "sinks": ["https://sink.example/inbox"],
   "recipients": [
     {
       "@context": "https://www.w3.org/ns/activitystreams",
@@ -136,9 +140,12 @@ The `sender` must be either `{ "identifier": string }` or
 have `id` and `inbox` properties.  The activity is parsed as an ActivityPub
 `Activity`.
 
-By default, every recipient inbox must appear in the `sinks` list.  This keeps
-benchmark traffic pointed at benchmark sink inboxes.  To bypass this guard for
-a controlled run, set `"allowUnsafeRecipients": true`.
+By default, every recipient inbox must appear in the server-configured
+`~FederationBenchmarkOptions.triggerSinks` list.  This keeps benchmark traffic
+pointed at benchmark sink inboxes and prevents callers from choosing their own
+allowlist.  To bypass this guard for a controlled run, set
+`~FederationBenchmarkOptions.allowUnsafeTriggerRecipients` to `true` in the
+application configuration.
 
 A successful trigger returns `202 Accepted`:
 

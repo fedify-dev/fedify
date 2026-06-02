@@ -105,6 +105,7 @@ export async function handleBenchmarkStats(
 export async function handleBenchmarkTrigger<TContextData>(
   request: Request,
   context: Context<TContextData>,
+  options: BenchmarkTriggerOptions = {},
 ): Promise<Response> {
   if (request.method !== "POST") {
     return new Response("Method not allowed", {
@@ -121,13 +122,14 @@ export async function handleBenchmarkTrigger<TContextData>(
   try {
     const body = asRecord(json, "request body");
     const sender = parseSender(body.sender);
-    const sinks = parseSinks(body.sinks);
     const recipients = await parseRecipients(body.recipients, context);
     const activity = await parseActivity(body.activity, context);
     const inboxes = extractInboxes({ recipients });
     const inboxUrls = Object.keys(inboxes);
-    const unsafeInboxes = inboxUrls.filter((inbox) => !sinks.has(inbox));
-    if (unsafeInboxes.length > 0 && body.allowUnsafeRecipients !== true) {
+    const unsafeInboxes = options.allowUnsafeRecipients
+      ? []
+      : inboxUrls.filter((inbox) => !options.sinks?.has(inbox));
+    if (unsafeInboxes.length > 0) {
       return jsonResponse(
         {
           error: "unsafe_recipient",
@@ -154,6 +156,11 @@ export async function handleBenchmarkTrigger<TContextData>(
   }
 }
 
+export interface BenchmarkTriggerOptions {
+  readonly sinks?: ReadonlySet<string>;
+  readonly allowUnsafeRecipients?: boolean;
+}
+
 class BenchmarkTriggerError extends Error {
   constructor(message: string, readonly status = 400) {
     super(message);
@@ -173,22 +180,6 @@ function parseSender(value: unknown): BenchmarkSender {
   throw new BenchmarkTriggerError(
     "sender must be { identifier } or { username }.",
   );
-}
-
-function parseSinks(value: unknown): Set<string> {
-  if (!Array.isArray(value)) {
-    throw new BenchmarkTriggerError("sinks must be an array of inbox URLs.");
-  }
-  return new Set(value.map((sink) => {
-    if (typeof sink !== "string") {
-      throw new BenchmarkTriggerError("sinks must contain only URL strings.");
-    }
-    try {
-      return new URL(sink).href;
-    } catch {
-      throw new BenchmarkTriggerError("sinks must contain only valid URLs.");
-    }
-  }));
 }
 
 async function parseRecipients<TContextData>(
