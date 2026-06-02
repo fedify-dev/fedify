@@ -100,6 +100,7 @@ Here is the list of packages:
 | [@fedify/create](/packages/create/)               |                                  | [npm][npm:@fedify/create]        | Create a new Fedify project              |
 | [@fedify/amqp](/packages/amqp/)                   | [JSR][jsr:@fedify/amqp]          | [npm][npm:@fedify/amqp]          | AMQP/RabbitMQ driver                     |
 | [@fedify/astro](/packages/astro/)                 | [JSR][jsr:@fedify/astro]         | [npm][npm:@fedify/astro]         | Astro integration                        |
+| [@fedify/backfill](/packages/backfill/)           | [JSR][jsr:@fedify/backfill]      | [npm][npm:@fedify/backfill]      | ActivityPub backfill support             |
 | [@fedify/cfworkers](/packages/cfworkers/)         | [JSR][jsr:@fedify/cfworkers]     | [npm][npm:@fedify/cfworkers]     | Cloudflare Workers integration           |
 | [@fedify/debugger](/packages/debugger/)           | [JSR][jsr:@fedify/debugger]      | [npm][npm:@fedify/debugger]      | Embedded ActivityPub debug dashboard     |
 | [@fedify/denokv](/packages/denokv/)               | [JSR][jsr:@fedify/denokv]        |                                  | Deno KV integration                      |
@@ -136,6 +137,8 @@ Here is the list of packages:
 [npm:@fedify/amqp]: https://www.npmjs.com/package/@fedify/amqp
 [jsr:@fedify/astro]: https://jsr.io/@fedify/astro
 [npm:@fedify/astro]: https://www.npmjs.com/package/@fedify/astro
+[jsr:@fedify/backfill]: https://jsr.io/@fedify/backfill
+[npm:@fedify/backfill]: https://www.npmjs.com/package/@fedify/backfill
 [jsr:@fedify/cfworkers]: https://jsr.io/@fedify/cfworkers
 [npm:@fedify/cfworkers]: https://www.npmjs.com/package/@fedify/cfworkers
 [jsr:@fedify/debugger]: https://jsr.io/@fedify/debugger
