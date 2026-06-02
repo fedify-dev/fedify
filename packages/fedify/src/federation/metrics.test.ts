@@ -27,6 +27,7 @@ import {
   recordOutboxActivity,
   recordOutboxEnqueue,
   recordWebFingerHandle,
+  registerQueueDepthGauge,
 } from "./metrics.ts";
 
 class TestMetricReader extends MetricReader {
@@ -129,6 +130,71 @@ test("signature verification duration uses explicit low-latency buckets", async 
     1000,
   ]);
   await meterProvider.shutdown();
+});
+
+test("registerQueueDepthGauge() skips unavailable depth snapshots", async () => {
+  const reader = new TestMetricReader();
+  const meterProvider = new MeterProvider({ readers: [reader] });
+  try {
+    const throwingQueue: MessageQueue = {
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+      getDepth() {
+        throw new TypeError("backend unavailable");
+      },
+    };
+    const nullDepthQueue: MessageQueue = {
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+      getDepth() {
+        return Promise.resolve(null as never);
+      },
+    };
+    const healthyQueue: MessageQueue = {
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+      getDepth() {
+        return Promise.resolve({ queued: 7 });
+      },
+    };
+
+    registerQueueDepthGauge(meterProvider, [
+      { role: "inbox", queue: throwingQueue },
+      { role: "outbox", queue: nullDepthQueue },
+      { role: "fanout", queue: healthyQueue },
+    ]);
+
+    const result = await reader.collect();
+    assertEquals(result.errors, []);
+    const queueDepth = result.resourceMetrics.scopeMetrics
+      .flatMap((scope) => scope.metrics)
+      .find((metric) => metric.descriptor.name === "fedify.queue.depth");
+    assertEquals(queueDepth?.dataPointType, DataPointType.GAUGE);
+    assertEquals(
+      queueDepth?.dataPoints.map((point) => ({
+        state: point.attributes["fedify.queue.depth.state"],
+        role: point.attributes["fedify.queue.role"],
+        value: point.value,
+      })),
+      [
+        { state: "queued", role: "fanout", value: 7 },
+      ],
+    );
+  } finally {
+    await meterProvider.shutdown();
+  }
 });
 
 test("recordInboxActivity() records counter with result and activity type", () => {

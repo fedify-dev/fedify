@@ -1223,7 +1223,13 @@ export function registerQueueDepthGauge(
   const gauge = getFederationMetrics(meterProvider).queueDepth;
   gauge.addCallback(async (observableResult) => {
     for (const [queue, roles] of uniqueQueues) {
-      const depth = await queue.getDepth!();
+      let depth;
+      try {
+        depth = await queue.getDepth!();
+      } catch {
+        continue;
+      }
+      if (depth == null) continue;
       const attributes = buildQueueDepthAttributes(queue, roles);
       observableResult.observe(depth.queued, {
         ...attributes,
