@@ -97,6 +97,90 @@ test("createFederation()", async (t) => {
       }), TypeError);
   });
 
+  await t.step("benchmarkMode applies cooperative benchmark defaults", () => {
+    const federation = createFederation<number>({
+      kv,
+      benchmarkMode: true,
+    });
+    assertInstanceOf(federation, FederationImpl);
+    assertEquals(federation.allowPrivateAddress, true);
+    assertEquals(federation.signatureTimeWindow, false);
+  });
+
+  await t.step("benchmarkMode preserves explicit option overrides", () => {
+    const federation = createFederation<number>({
+      kv,
+      benchmarkMode: true,
+      allowPrivateAddress: false,
+      signatureTimeWindow: { minutes: 10 },
+    });
+    assertInstanceOf(federation, FederationImpl);
+    assertEquals(federation.allowPrivateAddress, false);
+    assertEquals(federation.signatureTimeWindow, { minutes: 10 });
+  });
+
+  await t.step("benchmarkMode leaves custom loader factories alone", () => {
+    const federation = createFederation<number>({
+      kv,
+      benchmarkMode: true,
+      documentLoaderFactory: () => mockDocumentLoader,
+      contextLoaderFactory: () => mockDocumentLoader,
+      authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
+    });
+    assertInstanceOf(federation, FederationImpl);
+    assertEquals(federation.allowPrivateAddress, false);
+  });
+
+  await t.step("benchmarkMode rejects an explicit meterProvider", () => {
+    const [meterProvider] = createTestMeterProvider();
+    assertThrows(
+      () =>
+        createFederation<number>({
+          kv,
+          benchmarkMode: true,
+          meterProvider,
+        }),
+      TypeError,
+      "benchmarkMode requires Fedify to own the meterProvider",
+    );
+  });
+
+  await t.step(
+    "benchmarkMode warns that benchmark-only relaxations are on",
+    async () => {
+      await withLogtapeLock(async () => {
+        const records: LogRecord[] = [];
+        await reset();
+        try {
+          await configure({
+            sinks: {
+              test(record) {
+                records.push(record);
+              },
+            },
+            loggers: [
+              {
+                category: ["fedify", "federation", "benchmark"],
+                lowestLevel: "warning",
+                sinks: ["test"],
+              },
+            ],
+          });
+          createFederation<number>({ kv, benchmarkMode: true });
+          assertEquals(records.length, 1);
+          assertEquals(records[0].level, "warning");
+          assertEquals(
+            records[0].rawMessage,
+            "Fedify benchmarkMode is enabled; benchmark-only relaxations are " +
+              "active and must not be used in production.",
+          );
+        } finally {
+          await reset();
+        }
+      });
+    },
+  );
+
   await t.step("origin", () => {
     const f = createFederation<void>({ kv, origin: "http://example.com:8080" });
     assertInstanceOf(f, FederationImpl);

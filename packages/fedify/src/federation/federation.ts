@@ -935,6 +935,20 @@ export interface FederationOptions<TContextData> {
   allowPrivateAddress?: boolean;
 
   /**
+   * Whether to enable cooperative benchmark mode.  This mode exposes
+   * benchmark-only endpoints and relaxes selected defaults for benchmark
+   * targets.  Do not enable this option in production.
+   *
+   * When enabled, {@link FederationOptions.allowPrivateAddress} defaults to
+   * `true` unless a custom document loader is configured, and
+   * {@link FederationOptions.signatureTimeWindow} defaults to `false`.
+   *
+   * Turned off by default.
+   * @since 2.3.0
+   */
+  benchmarkMode?: boolean;
+
+  /**
    * Options for making `User-Agent` strings for HTTP requests.
    * If a string is provided, it is used as the `User-Agent` header.
    * If an object is provided, it is passed to the {@link getUserAgent}

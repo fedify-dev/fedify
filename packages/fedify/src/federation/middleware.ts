@@ -457,9 +457,32 @@ export class FederationImpl<TContextData>
   _meterProvider: MeterProvider | undefined;
   firstKnock?: HttpMessageSignaturesSpec;
   inboxChallengePolicy?: InboxChallengePolicy;
+  benchmarkMode: boolean;
 
   constructor(options: FederationOptions<TContextData>) {
     super();
+    const benchmarkMode = options.benchmarkMode ?? false;
+    const hasCustomLoaderFactory = options.documentLoaderFactory != null ||
+      options.contextLoaderFactory != null ||
+      options.authenticatedDocumentLoaderFactory != null;
+    const allowPrivateAddress = options.allowPrivateAddress ??
+      (benchmarkMode && !hasCustomLoaderFactory ? true : false);
+    const signatureTimeWindow = options.signatureTimeWindow ??
+      (benchmarkMode ? false : { hours: 1 });
+    if (benchmarkMode && options.meterProvider != null) {
+      throw new TypeError(
+        "benchmarkMode requires Fedify to own the meterProvider; " +
+          "OpenTelemetry metric readers cannot be added after a " +
+          "MeterProvider is constructed.",
+      );
+    }
+    if (benchmarkMode) {
+      getLogger(["fedify", "federation", "benchmark"]).warn(
+        "Fedify benchmarkMode is enabled; benchmark-only relaxations are " +
+          "active and must not be used in production.",
+      );
+    }
+    this.benchmarkMode = benchmarkMode;
     this.kv = options.kv;
     this.kvPrefixes = {
       ...({
@@ -566,7 +589,7 @@ export class FederationImpl<TContextData>
     this.router.trailingSlashInsensitive = options.trailingSlashInsensitive ??
       false;
     this._initializeRouter();
-    if (options.allowPrivateAddress || options.userAgent != null) {
+    if (allowPrivateAddress || options.userAgent != null) {
       if (options.documentLoaderFactory != null) {
         throw new TypeError(
           "Cannot set documentLoaderFactory with allowPrivateAddress or " +
@@ -586,8 +609,8 @@ export class FederationImpl<TContextData>
         );
       }
     }
-    const { allowPrivateAddress, userAgent } = options;
-    this.allowPrivateAddress = allowPrivateAddress ?? false;
+    const { userAgent } = options;
+    this.allowPrivateAddress = allowPrivateAddress;
     // The loader factory closures below read `this._meterProvider` at
     // call time, not when they are created.  Factories are only invoked
     // after the constructor has assigned `_meterProvider` (see below), so
@@ -685,7 +708,7 @@ export class FederationImpl<TContextData>
     this.onOutboxError = options.onOutboxError;
     this.permanentFailureStatusCodes = options.permanentFailureStatusCodes ??
       [404, 410];
-    this.signatureTimeWindow = options.signatureTimeWindow ?? { hours: 1 };
+    this.signatureTimeWindow = signatureTimeWindow;
     this.skipSignatureVerification = options.skipSignatureVerification ?? false;
     this.inboxChallengePolicy = options.inboxChallengePolicy;
     this.outboxRetryPolicy = options.outboxRetryPolicy ??
