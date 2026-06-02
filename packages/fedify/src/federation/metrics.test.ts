@@ -8,7 +8,7 @@ import {
 } from "@opentelemetry/sdk-metrics";
 import type { DocumentLoader, RemoteDocument } from "@fedify/vocab-runtime";
 import { FetchError } from "@fedify/vocab-runtime";
-import type { MessageQueue } from "./mq.ts";
+import type { MessageQueue, MessageQueueDepth } from "./mq.ts";
 import {
   classifyFetchError,
   getFederationMetrics,
@@ -100,36 +100,40 @@ test("recordFanoutRecipients() omits activity type when unknown", () => {
 test("signature verification duration uses explicit low-latency buckets", async () => {
   const reader = new TestMetricReader();
   const meterProvider = new MeterProvider({ readers: [reader] });
-  getFederationMetrics(meterProvider).recordSignatureVerificationDuration(
-    7,
-    "http",
-    "verified",
-  );
-
-  const result = await reader.collect();
-  const metric = result.resourceMetrics.scopeMetrics
-    .flatMap((scope) => scope.metrics)
-    .find((metric) =>
-      metric.descriptor.name === "activitypub.signature.verification.duration"
+  try {
+    getFederationMetrics(meterProvider).recordSignatureVerificationDuration(
+      7,
+      "http",
+      "verified",
     );
-  assertEquals(metric?.dataPointType, DataPointType.HISTOGRAM);
-  const histogram = metric as HistogramMetricData | undefined;
-  assertEquals(histogram?.dataPoints[0].value.buckets.boundaries, [
-    0.1,
-    0.25,
-    0.5,
-    1,
-    2.5,
-    5,
-    10,
-    25,
-    50,
-    100,
-    250,
-    500,
-    1000,
-  ]);
-  await meterProvider.shutdown();
+
+    const result = await reader.collect();
+    const metric = result.resourceMetrics.scopeMetrics
+      .flatMap((scope) => scope.metrics)
+      .find((metric) =>
+        metric.descriptor.name ===
+          "activitypub.signature.verification.duration"
+      );
+    assertEquals(metric?.dataPointType, DataPointType.HISTOGRAM);
+    const histogram = metric as HistogramMetricData | undefined;
+    assertEquals(histogram?.dataPoints[0].value.buckets.boundaries, [
+      0.1,
+      0.25,
+      0.5,
+      1,
+      2.5,
+      5,
+      10,
+      25,
+      50,
+      100,
+      250,
+      500,
+      1000,
+    ]);
+  } finally {
+    await meterProvider.shutdown();
+  }
 });
 
 test("registerQueueDepthGauge() skips unavailable depth snapshots", async () => {
@@ -155,7 +159,7 @@ test("registerQueueDepthGauge() skips unavailable depth snapshots", async () => 
         return Promise.resolve();
       },
       getDepth() {
-        return Promise.resolve(null as never);
+        return Promise.resolve(null as unknown as MessageQueueDepth);
       },
     };
     const healthyQueue: MessageQueue = {
