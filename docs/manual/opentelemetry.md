@@ -370,6 +370,7 @@ Fedify records the following OpenTelemetry metrics:
 | `fedify.queue.task.failed`                    | Counter       | `{task}`      | Counts queue tasks Fedify abandoned because processing threw.                                   |
 | `fedify.queue.task.duration`                  | Histogram     | `ms`          | Measures queue task processing duration in Fedify workers.                                      |
 | `fedify.queue.task.in_flight`                 | UpDownCounter | `{task}`      | Tracks queue tasks currently in flight in this Fedify process.                                  |
+| `fedify.queue.depth`                          | Gauge         | `{message}`   | Reports queued, ready, and delayed queue depth when the queue backend supports it.              |
 
 ### Metric attributes
 
@@ -841,6 +842,15 @@ Fedify records the following OpenTelemetry metrics:
     Fedify process*, not cross-process totals.  Aggregate it across
     replicas in your metrics backend.
 
+`fedify.queue.depth`
+:   `fedify.queue.depth.state` is always present and is one of `queued`,
+    `ready`, or `delayed`.  `fedify.queue.role` is `inbox`, `outbox`,
+    `fanout`, or `shared`; `shared` means the same queue instance backs more
+    than one Fedify queue role, and `fedify.queue.roles` lists those roles as a
+    comma-separated string.  `fedify.queue.backend` and
+    `fedify.queue.native_retrial` follow the same rules as the queue task
+    metrics.
+
 The `fedify.queue.task.*` metrics describe what Fedify's workers do with
 queued messages.  They complement the backend-side
 [`MessageQueue.getDepth()` API](./mq.md#queue-depth-reporting), which
@@ -848,6 +858,10 @@ reports how many messages are currently waiting in the queue backend.
 Reading both signals together (task throughput plus backlog depth)
 makes it possible to distinguish a small, slow queue from a large, fast
 one and to set alerting thresholds for delivery latency under load.
+
+When [`benchmarkMode`](./benchmarking.md) is enabled, Fedify serves a
+versioned snapshot of these in-process metrics from
+`/.well-known/fedify/bench/stats`.
 
 The `activitypub.inbox.activity`, `activitypub.outbox.activity`, and
 `activitypub.fanout.recipients` metrics describe what is happening at
@@ -958,9 +972,11 @@ for ActivityPub:
 | `fedify.collection.dispatcher`               | string   | The collection dispatcher family: `built_in` or `custom`.                                                                    | `"built_in"`                                                         |
 | `fedify.collection.cursor`                   | string   | The cursor of the collection.                                                                                                | `"eyJpZCI6IjEiLCJ0eXBlIjoiT3JkZXJlZENvbGxlY3Rpb24ifQ=="`             |
 | `fedify.collection.items`                    | number   | The number of materialized items in the collection response or page.  It can be less than the total items.                   | `10`                                                                 |
-| `fedify.queue.role`                          | string   | The Fedify queue role for the task: `inbox`, `outbox`, or `fanout`.                                                          | `"outbox"`                                                           |
+| `fedify.queue.role`                          | string   | The Fedify queue role: `inbox`, `outbox`, `fanout`, or `shared` for queue depth rows where one queue backs multiple roles.   | `"outbox"`                                                           |
 | `fedify.queue.backend`                       | string   | The queue implementation's constructor name (best-effort backend identifier).                                                | `"RedisMessageQueue"`                                                |
 | `fedify.queue.native_retrial`                | boolean  | Whether the queue backend declares `nativeRetrial`, meaning Fedify defers retry handling to the backend.                     | `true`                                                               |
+| `fedify.queue.depth.state`                   | string   | Queue depth count kind: `queued`, `ready`, or `delayed`.                                                                     | `"queued"`                                                           |
+| `fedify.queue.roles`                         | string   | Comma-separated queue roles when one queue instance backs multiple roles.                                                    | `"fanout,inbox,outbox"`                                              |
 | `fedify.queue.task.attempt`                  | int      | The zero-based attempt number recorded on `fedify.queue.task.enqueued`; non-zero for retry re-enqueues.                      | `1`                                                                  |
 | `fedify.queue.task.result`                   | string   | The terminal outcome of queue task processing: `completed`, `failed`, or `aborted`.                                          | `"failed"`                                                           |
 | `http.redirect.url`                          | string   | The redirect URL when a document fetch results in a redirect.                                                                | `"https://example.com/new-location"`                                 |

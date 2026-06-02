@@ -126,6 +126,17 @@ To be released.
     held activities call the outbox permanent failure handler with
     `reason: "circuit-breaker-ttl"`.  [[#620], [#778]]
 
+ -  Added `benchmarkMode` to `createFederation()` and
+    `FederationBuilder.build()` for cooperative federation benchmarking.
+    When enabled, Fedify exposes `GET /.well-known/fedify/bench/stats`
+    for in-process OpenTelemetry metric snapshots and
+    `POST /.well-known/fedify/bench/trigger` for driving `sendActivity()`
+    to explicit benchmark sink recipients.  Benchmark mode also defaults
+    `allowPrivateAddress` to `true` when built-in loaders are used, defaults
+    `signatureTimeWindow` to `false`, reports queue depth through the new
+    `fedify.queue.depth` gauge, and adds explicit low-latency buckets to
+    the signature verification duration histogram.  [[#744], [#782]]
+
  -  Added OpenTelemetry metrics for ActivityPub fanout and activity
     lifecycle events, complementing the per-recipient
     `activitypub.delivery.*` counters and the per-task
@@ -248,6 +259,7 @@ To be released.
 [#740]: https://github.com/fedify-dev/fedify/issues/740
 [#741]: https://github.com/fedify-dev/fedify/issues/741
 [#742]: https://github.com/fedify-dev/fedify/issues/742
+[#744]: https://github.com/fedify-dev/fedify/issues/744
 [#748]: https://github.com/fedify-dev/fedify/pull/748
 [#752]: https://github.com/fedify-dev/fedify/issues/752
 [#753]: https://github.com/fedify-dev/fedify/pull/753
@@ -261,6 +273,7 @@ To be released.
 [#772]: https://github.com/fedify-dev/fedify/pull/772
 [#777]: https://github.com/fedify-dev/fedify/pull/777
 [#778]: https://github.com/fedify-dev/fedify/pull/778
+[#782]: https://github.com/fedify-dev/fedify/issues/782
 
 ### @fedify/fixture
 
