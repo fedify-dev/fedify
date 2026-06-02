@@ -327,6 +327,12 @@ To be released.
 [#489]: https://github.com/fedify-dev/fedify/issues/489
 
 
+Version 2.2.4
+-------------
+
+To be released.
+
+
 Version 2.2.3
 -------------
 
@@ -699,6 +705,12 @@ Released on April 28, 2026.
 [#706]: https://github.com/fedify-dev/fedify/issues/706
 [#715]: https://github.com/fedify-dev/fedify/pull/715
 [#722]: https://github.com/fedify-dev/fedify/pull/722
+
+
+Version 2.1.15
+--------------
+
+To be released.
 
 
 Version 2.1.14
@@ -1240,6 +1252,12 @@ Released on March 24, 2026.
 [#586]: https://github.com/fedify-dev/fedify/issues/586
 [#597]: https://github.com/fedify-dev/fedify/pull/597
 [#599]: https://github.com/fedify-dev/fedify/pull/599
+
+
+Version 2.0.19
+--------------
+
+To be released.
 
 
 Version 2.0.18
@@ -2204,6 +2222,12 @@ Released on February 22, 2026.
 [#351]: https://github.com/fedify-dev/fedify/issues/351
 
 
+Version 1.10.11
+---------------
+
+To be released.
+
+
 Version 1.10.10
 ---------------
 
@@ -2449,6 +2473,12 @@ Released on December 24, 2025.
 ### @fedify/cfworkers
 
  -  Implemented `list()` method in `WorkersKvStore`.  [[#498], [#500]]
+
+
+Version 1.9.12
+--------------
+
+To be released.
 
 
 Version 1.9.11
