@@ -170,6 +170,7 @@ import { handleWebFinger } from "./webfinger.ts";
 import { hasMalformedKnownTemporalLiteral } from "./temporal.ts";
 
 const circuitBreakerCasWarningKvStores = new WeakSet<KvStore>();
+let nextQueueDepthGaugeSourceId = 0;
 const retryAfterHttpDate = new RegExp(
   "^(?:" +
     "(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), \\d{2} " +
@@ -566,7 +567,9 @@ export class FederationImpl<TContextData>
   benchmarkMode: boolean;
   benchmarkMetricReader?: BenchmarkMetricReader;
   benchmarkTriggerOptions: BenchmarkTriggerOptions;
-  readonly #queueDepthGaugeSourceId = crypto.randomUUID();
+  readonly #queueDepthGaugeSourceId = `fedify-${
+    (++nextQueueDepthGaugeSourceId).toString(36)
+  }`;
   #queueDepthGaugeEntries: readonly QueueDepthGaugeEntry[] = [];
   #queueDepthGaugeMeterProvider?: MeterProvider;
 
