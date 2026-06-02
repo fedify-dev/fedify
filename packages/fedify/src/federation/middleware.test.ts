@@ -148,6 +148,19 @@ test("createFederation()", async (t) => {
     assertEquals(federation.allowPrivateAddress, false);
   });
 
+  await t.step(
+    "benchmarkMode keeps private-address default with auth loader only",
+    () => {
+      const federation = createFederation<number>({
+        kv,
+        benchmarkMode: true,
+        authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
+      });
+      assertInstanceOf(federation, FederationImpl);
+      assertEquals(federation.allowPrivateAddress, true);
+    },
+  );
+
   await t.step("benchmarkMode rejects an explicit meterProvider", () => {
     const [meterProvider] = createTestMeterProvider();
     assertThrows(

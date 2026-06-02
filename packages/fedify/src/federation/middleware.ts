@@ -473,8 +473,7 @@ export class FederationImpl<TContextData>
     super();
     const benchmarkMode = options.benchmarkMode ?? false;
     const hasCustomLoaderFactory = options.documentLoaderFactory != null ||
-      options.contextLoaderFactory != null ||
-      options.authenticatedDocumentLoaderFactory != null;
+      options.contextLoaderFactory != null;
     const allowPrivateAddress = options.allowPrivateAddress ??
       (benchmarkMode && !hasCustomLoaderFactory ? true : false);
     const signatureTimeWindow = options.signatureTimeWindow ??
@@ -599,7 +598,7 @@ export class FederationImpl<TContextData>
     this.router.trailingSlashInsensitive = options.trailingSlashInsensitive ??
       false;
     this._initializeRouter();
-    if (allowPrivateAddress || options.userAgent != null) {
+    if (options.allowPrivateAddress === true || options.userAgent != null) {
       if (options.documentLoaderFactory != null) {
         throw new TypeError(
           "Cannot set documentLoaderFactory with allowPrivateAddress or " +
