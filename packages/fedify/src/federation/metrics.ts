@@ -6,6 +6,7 @@ import {
   type Histogram,
   type MeterProvider,
   metrics,
+  type ObservableGauge,
   type UpDownCounter,
 } from "@opentelemetry/api";
 import metadata from "../../deno.json" with { type: "json" };
@@ -90,6 +91,15 @@ export interface QueueTaskCommonAttributes {
   role: QueueTaskRole;
   queue?: MessageQueue;
   activityType?: string;
+}
+
+/**
+ * A queue to observe for `fedify.queue.depth`.
+ * @since 2.3.0
+ */
+export interface QueueDepthGaugeEntry {
+  role: QueueTaskRole;
+  queue?: MessageQueue;
 }
 
 /**
@@ -478,6 +488,7 @@ class FederationMetrics {
   readonly queueTaskFailed: Counter;
   readonly queueTaskDuration: Histogram;
   readonly queueTaskInFlight: UpDownCounter;
+  readonly queueDepth: ObservableGauge;
   readonly fanoutRecipients: Histogram;
   readonly inboxActivity: Counter;
   readonly outboxActivity: Counter;
@@ -521,6 +532,23 @@ class FederationMetrics {
           "Duration of ActivityPub signature verification, including local " +
           "key lookup and remote key fetches.",
         unit: "ms",
+        advice: {
+          explicitBucketBoundaries: [
+            0.1,
+            0.25,
+            0.5,
+            1,
+            2.5,
+            5,
+            10,
+            25,
+            50,
+            100,
+            250,
+            500,
+            1000,
+          ],
+        },
       },
     );
     this.signatureKeyFetchDuration = meter.createHistogram(
@@ -635,6 +663,12 @@ class FederationMetrics {
         unit: "{task}",
       },
     );
+    this.queueDepth = meter.createObservableGauge("fedify.queue.depth", {
+      description:
+        "Messages waiting in configured Fedify queues, as reported by the " +
+        "queue backend.",
+      unit: "{message}",
+    });
     this.fanoutRecipients = meter.createHistogram(
       "activitypub.fanout.recipients",
       {
@@ -1165,6 +1199,73 @@ export function getQueueBackend(queue?: MessageQueue): string | undefined {
   const name = queue?.constructor?.name;
   if (name == null || name === "" || name === "Object") return undefined;
   return name;
+}
+
+/**
+ * Registers a callback for observing queue backend depth.
+ * @since 2.3.0
+ */
+export function registerQueueDepthGauge(
+  meterProvider: MeterProvider,
+  entries: readonly QueueDepthGaugeEntry[],
+): void {
+  const uniqueQueues = new Map<MessageQueue, QueueTaskRole[]>();
+  for (const { role, queue } of entries) {
+    if (queue?.getDepth == null) continue;
+    const roles = uniqueQueues.get(queue);
+    if (roles == null) {
+      uniqueQueues.set(queue, [role]);
+    } else if (!roles.includes(role)) {
+      roles.push(role);
+    }
+  }
+  if (uniqueQueues.size < 1) return;
+  const gauge = getFederationMetrics(meterProvider).queueDepth;
+  gauge.addCallback(async (observableResult) => {
+    for (const [queue, roles] of uniqueQueues) {
+      const depth = await queue.getDepth!();
+      const attributes = buildQueueDepthAttributes(queue, roles);
+      observableResult.observe(depth.queued, {
+        ...attributes,
+        "fedify.queue.depth.state": "queued",
+      });
+      if (depth.ready != null) {
+        observableResult.observe(depth.ready, {
+          ...attributes,
+          "fedify.queue.depth.state": "ready",
+        });
+      }
+      if (depth.delayed != null) {
+        observableResult.observe(depth.delayed, {
+          ...attributes,
+          "fedify.queue.depth.state": "delayed",
+        });
+      }
+    }
+  });
+}
+
+function buildQueueDepthAttributes(
+  queue: MessageQueue,
+  roles: readonly QueueTaskRole[],
+): Attributes {
+  const sortedRoles = [...roles].sort();
+  const role = sortedRoles.length === 1 ? sortedRoles[0] : "shared";
+  const attributes: Attributes = {
+    "fedify.queue.role": role,
+  };
+  if (role === "shared") {
+    attributes["fedify.queue.roles"] = sortedRoles.join(",");
+  }
+  const backend = getQueueBackend(queue);
+  if (backend != null) {
+    attributes["fedify.queue.backend"] = backend;
+  }
+  const nativeRetrial = queue.nativeRetrial;
+  if (typeof nativeRetrial === "boolean") {
+    attributes["fedify.queue.native_retrial"] = nativeRetrial;
+  }
+  return attributes;
 }
 
 /**

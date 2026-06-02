@@ -58,6 +58,11 @@ import { getNodeInfo, type GetNodeInfoOptions } from "../nodeinfo/client.ts";
 import { handleNodeInfo, handleNodeInfoJrd } from "../nodeinfo/handler.ts";
 import type { JsonValue, NodeInfo } from "../nodeinfo/types.ts";
 import {
+  type BenchmarkMetricReader,
+  createBenchmarkMeterProvider,
+  handleBenchmarkStats,
+} from "./bench.ts";
+import {
   type HttpMessageSignaturesSpec,
   type HttpMessageSignaturesSpecDeterminer,
   verifyRequest,
@@ -139,6 +144,7 @@ import {
   recordInboxActivity,
   recordOutboxActivity,
   recordOutboxEnqueue,
+  registerQueueDepthGauge,
 } from "./metrics.ts";
 import type { MessageQueue } from "./mq.ts";
 import { acceptsJsonLd } from "./negotiation.ts";
@@ -458,6 +464,7 @@ export class FederationImpl<TContextData>
   firstKnock?: HttpMessageSignaturesSpec;
   inboxChallengePolicy?: InboxChallengePolicy;
   benchmarkMode: boolean;
+  benchmarkMetricReader?: BenchmarkMetricReader;
 
   constructor(options: FederationOptions<TContextData>) {
     super();
@@ -718,7 +725,18 @@ export class FederationImpl<TContextData>
     this.activityTransformers = options.activityTransformers ??
       getDefaultActivityTransformers<TContextData>();
     this._tracerProvider = options.tracerProvider;
-    this._meterProvider = options.meterProvider;
+    if (benchmarkMode) {
+      const benchmarkMetrics = createBenchmarkMeterProvider();
+      this._meterProvider = benchmarkMetrics.meterProvider;
+      this.benchmarkMetricReader = benchmarkMetrics.reader;
+      registerQueueDepthGauge(this._meterProvider, [
+        { role: "inbox", queue: this.inboxQueue },
+        { role: "outbox", queue: this.outboxQueue },
+        { role: "fanout", queue: this.fanoutQueue },
+      ]);
+    } else {
+      this._meterProvider = options.meterProvider;
+    }
     this.firstKnock = options.firstKnock;
   }
 
@@ -733,6 +751,9 @@ export class FederationImpl<TContextData>
   _initializeRouter(): void {
     this.router.add("/.well-known/webfinger", "webfinger");
     this.router.add("/.well-known/nodeinfo", "nodeInfoJrd");
+    if (this.benchmarkMode) {
+      this.router.add("/.well-known/fedify/bench/stats", "benchmarkStats");
+    }
   }
 
   override _getTracer(): Tracer {
@@ -2345,6 +2366,8 @@ export class FederationImpl<TContextData>
           context,
           nodeInfoDispatcher: this.nodeInfoDispatcher!,
         });
+      case "benchmarkStats":
+        return await handleBenchmarkStats(request, this.benchmarkMetricReader!);
     }
 
     // Routes that require JSON-LD Accepts header:
@@ -2634,6 +2657,7 @@ type FedifyEndpoint =
   | "featured"
   | "featured_tags"
   | "collection"
+  | "benchmark"
   | "not_found"
   | "not_acceptable"
   | "error";
@@ -2676,6 +2700,9 @@ function getEndpointCategory(routeName: string): FedifyEndpoint {
       return "featured";
     case "featuredTags":
       return "featured_tags";
+    case "benchmarkStats":
+    case "benchmarkTrigger":
+      return "benchmark";
     default:
       return "not_found";
   }

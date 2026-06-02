@@ -64,6 +64,7 @@ import {
   InboxContextImpl,
   KvSpecDeterminer,
 } from "./middleware.ts";
+import { recordInboxActivity } from "./metrics.ts";
 import type { MessageQueue } from "./mq.ts";
 import type { InboxMessage, Message, OutboxMessage } from "./queue.ts";
 
@@ -294,6 +295,85 @@ test("createFederation()", async (t) => {
           },
         }),
       TypeError,
+    );
+  });
+});
+
+test("benchmarkMode stats endpoint", async (t) => {
+  await t.step("is absent when benchmarkMode is off", async () => {
+    const federation = createFederation<void>({ kv: new MemoryKvStore() });
+    const response = await federation.fetch(
+      new Request("https://example.com/.well-known/fedify/bench/stats"),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 404);
+  });
+
+  await t.step("returns a v1 in-process metrics snapshot", async () => {
+    const queue: MessageQueue = {
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+      getDepth() {
+        return Promise.resolve({ queued: 3, ready: 2, delayed: 1 });
+      },
+    };
+    const federation = createFederation<void>({
+      kv: new MemoryKvStore(),
+      benchmarkMode: true,
+      queue,
+    });
+    recordInboxActivity(
+      (federation as FederationImpl<void>).meterProvider,
+      "processed",
+      vocab.Create.typeId.href,
+    );
+
+    const response = await federation.fetch(
+      new Request("https://example.com/.well-known/fedify/bench/stats"),
+      { contextData: undefined },
+    );
+
+    assertEquals(response.status, 200);
+    assertEquals(response.headers.get("Content-Type"), "application/json");
+    const body = await response.json() as {
+      version: number;
+      source: string;
+      generatedAt: string;
+      scopeMetrics: {
+        metrics: {
+          name: string;
+          dataPointType: string;
+          dataPoints: { attributes: Record<string, unknown>; value: unknown }[];
+        }[];
+      }[];
+    };
+    assertEquals(body.version, 1);
+    assertEquals(body.source, "server");
+    assertEquals(Number.isNaN(Date.parse(body.generatedAt)), false);
+    const metrics = body.scopeMetrics.flatMap((scope) => scope.metrics);
+    assertExists(
+      metrics.find((metric) => metric.name === "activitypub.inbox.activity"),
+    );
+    const queueDepth = metrics.find((metric) =>
+      metric.name === "fedify.queue.depth"
+    );
+    assertExists(queueDepth);
+    assertEquals(queueDepth.dataPointType, "gauge");
+    assertEquals(
+      queueDepth.dataPoints.map((point) => ({
+        state: point.attributes["fedify.queue.depth.state"],
+        role: point.attributes["fedify.queue.role"],
+        value: point.value,
+      })).sort((a, b) => String(a.state).localeCompare(String(b.state))),
+      [
+        { state: "delayed", role: "shared", value: 1 },
+        { state: "queued", role: "shared", value: 3 },
+        { state: "ready", role: "shared", value: 2 },
+      ],
     );
   });
 });
