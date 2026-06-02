@@ -3,21 +3,21 @@ import type { Object as APObject } from "@fedify/vocab";
 /**
  * Backfill traversal strategy used to discover the returned object.
  *
- * @since 2.3.0
+ * @since 2.x.0
  */
 export type BackfillStrategy = "context-posts";
 
 /**
  * Source relation that produced a backfilled object.
  *
- * @since 2.3.0
+ * @since 2.x.0
  */
 export type BackfillOrigin = "context" | "collection";
 
 /**
  * Options passed to {@link BackfillDocumentLoader}.
  *
- * @since 2.3.0
+ * @since 2.x.0
  */
 export interface BackfillDocumentLoaderOptions {
   /**
@@ -29,7 +29,7 @@ export interface BackfillDocumentLoaderOptions {
 /**
  * Dereferences an ActivityPub object or collection IRI.
  *
- * @since 2.3.0
+ * @since 2.x.0
  */
 export type BackfillDocumentLoader = (
   iri: URL,
@@ -39,7 +39,7 @@ export type BackfillDocumentLoader = (
 /**
  * Dependencies used by backfill traversal.
  *
- * @since 2.3.0
+ * @since 2.x.0
  */
 export interface BackfillContext {
   /**
@@ -51,7 +51,7 @@ export interface BackfillContext {
 /**
  * Controls direct context collection backfill traversal.
  *
- * @since 2.3.0
+ * @since 2.x.0
  */
 export interface BackfillOptions<
   TObject extends APObject = APObject,
@@ -93,7 +93,7 @@ export interface BackfillOptions<
 /**
  * A single object discovered by backfill traversal.
  *
- * @since 2.3.0
+ * @since 2.x.0
  */
 export interface BackfillItem<
   TObject extends APObject = APObject,
