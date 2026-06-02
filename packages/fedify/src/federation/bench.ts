@@ -197,6 +197,10 @@ export async function handleBenchmarkTrigger<TContextData>(
     const sender = parseSender(body.sender);
     const recipients = await parseRecipients(body.recipients, context);
     const activity = await parseActivity(body.activity, context);
+    if (activity.id == null) {
+      throw new BenchmarkTriggerError("activity must have an id.");
+    }
+    const activityId = activity.id.href;
     const inboxes = extractInboxes({ recipients });
     const inboxUrls = Object.keys(inboxes);
     if (inboxUrls.length < 1) {
@@ -220,8 +224,8 @@ export async function handleBenchmarkTrigger<TContextData>(
     return jsonResponse(
       {
         version: 1,
-        activityId: activity.id?.href ?? null,
-        queueCorrelationId: null,
+        activityId,
+        queueCorrelationId: activityId,
         recipientCount: recipients.length,
         inboxCount: inboxUrls.length,
       },

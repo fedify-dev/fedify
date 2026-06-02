@@ -153,11 +153,14 @@ A successful trigger returns `202 Accepted`:
 {
   "version": 1,
   "activityId": "https://example.com/activities/bench-1",
-  "queueCorrelationId": null,
+  "queueCorrelationId": "https://example.com/activities/bench-1",
   "recipientCount": 1,
   "inboxCount": 1
 }
 ~~~~
+
+The `queueCorrelationId` is the activity ID preserved on the queued fanout or
+outbox work.
 
 
 Metrics
