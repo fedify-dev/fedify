@@ -730,14 +730,14 @@ export class FederationImpl<TContextData>
       const benchmarkMetrics = createBenchmarkMeterProvider();
       this._meterProvider = benchmarkMetrics.meterProvider;
       this.benchmarkMetricReader = benchmarkMetrics.reader;
-      registerQueueDepthGauge(this._meterProvider, [
-        { role: "inbox", queue: this.inboxQueue },
-        { role: "outbox", queue: this.outboxQueue },
-        { role: "fanout", queue: this.fanoutQueue },
-      ]);
     } else {
       this._meterProvider = options.meterProvider;
     }
+    registerQueueDepthGauge(this.meterProvider, [
+      { role: "inbox", queue: this.inboxQueue },
+      { role: "outbox", queue: this.outboxQueue },
+      { role: "fanout", queue: this.fanoutQueue },
+    ]);
     this.firstKnock = options.firstKnock;
   }
 

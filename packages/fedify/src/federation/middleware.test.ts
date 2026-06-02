@@ -51,6 +51,11 @@ import {
 } from "../testing/keys.ts";
 import { FetchError, getDocumentLoader } from "@fedify/vocab-runtime";
 import { SpanStatusCode } from "@opentelemetry/api";
+import {
+  DataPointType,
+  MeterProvider,
+  MetricReader,
+} from "@opentelemetry/sdk-metrics";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 import { CircuitBreaker } from "./circuit-breaker.ts";
 
@@ -78,6 +83,16 @@ async function withLogtapeLock<T>(fn: () => Promise<T>): Promise<T> {
   const run = logtapeLock.then(fn, fn);
   logtapeLock = run.then(() => undefined, () => undefined);
   return await run;
+}
+
+class TestMetricReader extends MetricReader {
+  protected onShutdown(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  protected onForceFlush(): Promise<void> {
+    return Promise.resolve();
+  }
 }
 
 test("createFederation()", async (t) => {
@@ -376,6 +391,51 @@ test("benchmarkMode stats endpoint", async (t) => {
       ],
     );
   });
+});
+
+test("createFederation() registers queue depth for regular metrics", async () => {
+  const reader = new TestMetricReader();
+  const meterProvider = new MeterProvider({ readers: [reader] });
+  try {
+    const queue: MessageQueue = {
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+      getDepth() {
+        return Promise.resolve({ queued: 5, ready: 4, delayed: 3 });
+      },
+    };
+    createFederation<void>({
+      kv: new MemoryKvStore(),
+      meterProvider,
+      queue,
+    });
+
+    const result = await reader.collect();
+    const queueDepth = result.resourceMetrics.scopeMetrics
+      .flatMap((scope) => scope.metrics)
+      .find((metric) => metric.descriptor.name === "fedify.queue.depth");
+
+    assertExists(queueDepth);
+    assertEquals(queueDepth.dataPointType, DataPointType.GAUGE);
+    assertEquals(
+      queueDepth.dataPoints.map((point) => ({
+        state: point.attributes["fedify.queue.depth.state"],
+        role: point.attributes["fedify.queue.role"],
+        value: point.value,
+      })).sort((a, b) => String(a.state).localeCompare(String(b.state))),
+      [
+        { state: "delayed", role: "shared", value: 3 },
+        { state: "queued", role: "shared", value: 5 },
+        { state: "ready", role: "shared", value: 4 },
+      ],
+    );
+  } finally {
+    await meterProvider.shutdown();
+  }
 });
 
 test("benchmarkMode trigger endpoint", async (t) => {
