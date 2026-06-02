@@ -195,6 +195,13 @@ export class FederationBuilderImpl<TContextData>
     this.collectionTypeIds = {};
   }
 
+  /**
+   * Builds the federation object.
+   * @param options Parameters for initializing the federation object.
+   * @returns The federation object.
+   * @throws {TypeError} If `benchmarkMode: true` and `meterProvider` are both
+   * specified.
+   */
   async build(
     options: FederationOptions<TContextData>,
   ): Promise<Federation<TContextData>> {

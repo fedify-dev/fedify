@@ -51,6 +51,29 @@ If you provide `meterProvider` together with `benchmarkMode`, Fedify throws a
 `TypeError`.  OpenTelemetry metric readers have to be attached when a
 `MeterProvider` is constructed, so benchmark mode owns its in-process provider.
 
+If the same application code sometimes runs with benchmark mode and sometimes
+runs with your normal OpenTelemetry pipeline, pass your application
+`meterProvider` only when benchmark mode is off:
+
+~~~~ typescript twoslash
+import type { KvStore } from "@fedify/fedify";
+import type { MeterProvider } from "@opentelemetry/api";
+// ---cut-start---
+declare const process: { env: Record<string, string | undefined> };
+const kv = null as unknown as KvStore;
+const meterProvider = null as unknown as MeterProvider;
+// ---cut-end---
+import { createFederation } from "@fedify/fedify";
+
+const benchmarkMode = process.env.FEDIFY_BENCHMARK === "1";
+
+const federation = createFederation<void>({
+  kv,
+  benchmarkMode,
+  meterProvider: benchmarkMode ? undefined : meterProvider,
+});
+~~~~
+
 
 Benchmark stats endpoint
 ------------------------

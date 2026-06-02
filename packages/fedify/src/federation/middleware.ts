@@ -424,8 +424,10 @@ export interface FederationOrigin {
 
 /**
  * Create a new {@link Federation} instance.
- * @param parameters Parameters for initializing the instance.
+ * @param options Parameters for initializing the instance.
  * @returns A new {@link Federation} instance.
+ * @throws {TypeError} If `benchmarkMode: true` and `meterProvider` are both
+ * specified.
  * @since 0.10.0
  */
 export function createFederation<TContextData>(
