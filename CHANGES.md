@@ -256,6 +256,12 @@ Released on December 24, 2025.
  -  Implemented `list()` method in `WorkersKvStore`.  [[#498], [#500]]
 
 
+Version 1.9.12
+--------------
+
+To be released.
+
+
 Version 1.9.11
 --------------
 
