@@ -1220,16 +1220,17 @@ export function registerQueueDepthGauge(
     }
   }
   if (uniqueQueues.size < 1) return;
+  const queueEntries = Array.from(uniqueQueues.entries());
   const gauge = getFederationMetrics(meterProvider).queueDepth;
   gauge.addCallback(async (observableResult) => {
-    for (const [queue, roles] of uniqueQueues) {
+    await Promise.all(queueEntries.map(async ([queue, roles]) => {
       let depth;
       try {
         depth = await queue.getDepth!();
       } catch {
-        continue;
+        return;
       }
-      if (depth == null) continue;
+      if (depth == null) return;
       const attributes = buildQueueDepthAttributes(queue, roles);
       observableResult.observe(depth.queued, {
         ...attributes,
@@ -1247,7 +1248,7 @@ export function registerQueueDepthGauge(
           "fedify.queue.depth.state": "delayed",
         });
       }
-    }
+    }));
   });
 }
 

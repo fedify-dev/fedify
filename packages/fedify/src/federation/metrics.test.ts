@@ -201,6 +201,62 @@ test("registerQueueDepthGauge() skips unavailable depth snapshots", async () => 
   }
 });
 
+test("registerQueueDepthGauge() queries queue depths in parallel", async () => {
+  const reader = new TestMetricReader();
+  const meterProvider = new MeterProvider({ readers: [reader] });
+  let releaseSlowDepth: ((depth: MessageQueueDepth) => void) | undefined;
+  let fastDepthStarted = false;
+  try {
+    const slowQueue: MessageQueue = {
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+      getDepth() {
+        return new Promise<MessageQueueDepth>((resolve) => {
+          releaseSlowDepth = resolve;
+        });
+      },
+    };
+    const fastQueue: MessageQueue = {
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+      getDepth() {
+        fastDepthStarted = true;
+        return Promise.resolve({ queued: 5 });
+      },
+    };
+
+    registerQueueDepthGauge(meterProvider, [
+      { role: "inbox", queue: slowQueue },
+      { role: "outbox", queue: fastQueue },
+    ]);
+
+    const collection = reader.collect();
+    await Promise.resolve();
+    assertEquals(fastDepthStarted, true);
+    releaseSlowDepth?.({ queued: 3 });
+
+    const result = await collection;
+    const queueDepth = result.resourceMetrics.scopeMetrics
+      .flatMap((scope) => scope.metrics)
+      .find((metric) => metric.descriptor.name === "fedify.queue.depth");
+    assertEquals(
+      queueDepth?.dataPoints.map((point) => point.value).sort(),
+      [3, 5],
+    );
+  } finally {
+    releaseSlowDepth?.({ queued: 0 });
+    await meterProvider.shutdown();
+  }
+});
+
 test("recordInboxActivity() records counter with result and activity type", () => {
   const [meterProvider, recorder] = createTestMeterProvider();
   for (
