@@ -126,6 +126,11 @@ export async function handleBenchmarkTrigger<TContextData>(
     const activity = await parseActivity(body.activity, context);
     const inboxes = extractInboxes({ recipients });
     const inboxUrls = Object.keys(inboxes);
+    if (inboxUrls.length < 1) {
+      throw new BenchmarkTriggerError(
+        "No valid recipient inboxes found. The recipients list must not be empty.",
+      );
+    }
     const unsafeInboxes = options.allowUnsafeRecipients
       ? []
       : inboxUrls.filter((inbox) => !options.sinks?.has(inbox));
@@ -189,8 +194,7 @@ async function parseRecipients<TContextData>(
   if (!Array.isArray(value)) {
     throw new BenchmarkTriggerError("recipients must be an array.");
   }
-  const recipients: Recipient[] = [];
-  for (const item of value) {
+  return await Promise.all(value.map(async (item) => {
     let object: VocabObject;
     try {
       object = await VocabObject.fromJsonLd(item, {
@@ -213,9 +217,8 @@ async function parseRecipients<TContextData>(
         "each recipient must have id and inbox properties.",
       );
     }
-    recipients.push(recipient);
-  }
-  return recipients;
+    return recipient;
+  }));
 }
 
 function isRecipient(value: unknown): value is Recipient {

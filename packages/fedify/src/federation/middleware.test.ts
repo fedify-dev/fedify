@@ -521,13 +521,14 @@ test("benchmarkMode trigger endpoint", async (t) => {
   const createTriggerBody = async (
     options: {
       recipientInbox?: string;
+      recipients?: unknown[];
       sinks?: string[];
       allowUnsafeRecipients?: boolean;
     } = {},
   ) => ({
     sender: { identifier: "alice" },
     sinks: options.sinks,
-    recipients: [
+    recipients: options.recipients ?? [
       {
         "@context": "https://www.w3.org/ns/activitystreams",
         type: "Service",
@@ -573,6 +574,24 @@ test("benchmarkMode trigger endpoint", async (t) => {
     assertEquals(await response.json(), {
       error: "Invalid JSON request body.",
     });
+  });
+
+  await t.step("rejects empty recipient lists", async () => {
+    const { federation, messages } = createTriggerTarget();
+    const response = await federation.fetch(
+      new Request("https://example.com/.well-known/fedify/bench/trigger", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(await createTriggerBody({ recipients: [] })),
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 400);
+    assertEquals(await response.json(), {
+      error:
+        "No valid recipient inboxes found. The recipients list must not be empty.",
+    });
+    assertEquals(messages, []);
   });
 
   await t.step(
