@@ -27,29 +27,13 @@ or `OrderedCollectionPage`.
 Installation
 ------------
 
-::: code-group
-
-~~~~ sh [Deno]
+~~~~ sh
 deno add jsr:@fedify/backfill
+npm  add     @fedify/backfill
+pnpm add     @fedify/backfill
+yarn add     @fedify/backfill
+bun  add     @fedify/backfill
 ~~~~
-
-~~~~ sh [npm]
-npm add @fedify/backfill
-~~~~
-
-~~~~ sh [pnpm]
-pnpm add @fedify/backfill
-~~~~
-
-~~~~ sh [Yarn]
-yarn add @fedify/backfill
-~~~~
-
-~~~~ sh [Bun]
-bun add @fedify/backfill
-~~~~
-
-:::
 
 
 Usage

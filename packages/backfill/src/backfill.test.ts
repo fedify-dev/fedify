@@ -1,6 +1,6 @@
 import { deepStrictEqual, ok, rejects, strictEqual } from "node:assert/strict";
 import test, { describe } from "node:test";
-import { backfill, type BackfillContext } from "./mod.ts";
+import { backfill, type BackfillContext, MaxRequestsExceeded } from "./mod.ts";
 import { Collection, Create, Note } from "@fedify/vocab";
 
 async function collect(
@@ -14,6 +14,7 @@ async function collect(
 describe("backfill", () => {
   test("package exports backfill", () => {
     strictEqual(typeof backfill, "function");
+    strictEqual(typeof MaxRequestsExceeded, "function");
   });
 
   test("context missing yields nothing", async () => {

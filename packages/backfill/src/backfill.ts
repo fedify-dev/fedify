@@ -14,7 +14,12 @@ import type {
   BackfillOptions,
 } from "./types.ts";
 
-class MaxRequestsExceeded extends Error {}
+/**
+ * Thrown when backfill traversal exceeds the configured request budget.
+ *
+ * @since 2.3.0
+ */
+export class MaxRequestsExceeded extends Error {}
 
 interface RequestBudget {
   readonly signal?: AbortSignal;
@@ -26,6 +31,8 @@ interface RequestBudget {
  *
  * The seed object is not yielded by default, but its ID is treated as already
  * seen so it will not be yielded again if the collection contains it.
+ *
+ * @since 2.3.0
  */
 export async function* backfill<
   TObject extends APObject = APObject,

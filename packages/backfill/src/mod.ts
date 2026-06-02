@@ -6,7 +6,7 @@
  *
  * @module
  */
-export { backfill } from "./backfill.ts";
+export { backfill, MaxRequestsExceeded } from "./backfill.ts";
 export type {
   BackfillContext,
   BackfillDocumentLoader,
