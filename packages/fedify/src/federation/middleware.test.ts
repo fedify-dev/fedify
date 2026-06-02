@@ -378,6 +378,150 @@ test("benchmarkMode stats endpoint", async (t) => {
   });
 });
 
+test("benchmarkMode trigger endpoint", async (t) => {
+  const createTriggerTarget = () => {
+    const messages: OutboxMessage[] = [];
+    const queue: MessageQueue = {
+      enqueue(message: OutboxMessage) {
+        messages.push(message);
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+    };
+    const federation = createFederation<void>({
+      kv: new MemoryKvStore(),
+      benchmarkMode: true,
+      contextLoaderFactory: () => mockDocumentLoader,
+      queue: { outbox: queue },
+    });
+    federation
+      .setActorDispatcher(
+        "/users/{identifier}",
+        (ctx, identifier) =>
+          new vocab.Person({
+            id: ctx.getActorUri(identifier),
+            inbox: ctx.getInboxUri(identifier),
+          }),
+      )
+      .setKeyPairsDispatcher(() => [
+        { privateKey: rsaPrivateKey2, publicKey: rsaPublicKey2.publicKey! },
+      ]);
+    return { federation, messages };
+  };
+
+  const createTriggerBody = async (
+    options: {
+      recipientInbox?: string;
+      sinks?: string[];
+      allowUnsafeRecipients?: boolean;
+    } = {},
+  ) => ({
+    sender: { identifier: "alice" },
+    sinks: options.sinks ?? ["https://sink.example/inbox"],
+    recipients: [
+      {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Service",
+        id: "https://sink.example/actors/bob",
+        inbox: options.recipientInbox ?? "https://sink.example/inbox",
+      },
+    ],
+    activity: await new vocab.Create({
+      id: new URL("https://example.com/activities/bench-1"),
+      actor: new URL("https://example.com/users/alice"),
+      object: new vocab.Note({
+        id: new URL("https://example.com/notes/bench-1"),
+        attribution: new URL("https://example.com/users/alice"),
+        content: "benchmark",
+      }),
+    }).toJsonLd({ contextLoader: mockDocumentLoader }),
+    allowUnsafeRecipients: options.allowUnsafeRecipients,
+  });
+
+  await t.step("is absent when benchmarkMode is off", async () => {
+    const federation = createFederation<void>({ kv: new MemoryKvStore() });
+    const response = await federation.fetch(
+      new Request("https://example.com/.well-known/fedify/bench/trigger", {
+        method: "POST",
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 404);
+  });
+
+  await t.step("rejects recipients outside the sink list", async () => {
+    const { federation, messages } = createTriggerTarget();
+    const response = await federation.fetch(
+      new Request("https://example.com/.well-known/fedify/bench/trigger", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          await createTriggerBody({
+            recipientInbox: "https://not-a-sink.example/inbox",
+          }),
+        ),
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 403);
+    assertEquals(messages, []);
+  });
+
+  await t.step(
+    "allows unsafe recipients only with an explicit override",
+    async () => {
+      const { federation, messages } = createTriggerTarget();
+      const response = await federation.fetch(
+        new Request("https://example.com/.well-known/fedify/bench/trigger", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            await createTriggerBody({
+              recipientInbox: "https://not-a-sink.example/inbox",
+              allowUnsafeRecipients: true,
+            }),
+          ),
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 202);
+      assertEquals(messages.length, 1);
+      assertEquals(messages[0].inbox, "https://not-a-sink.example/inbox");
+    },
+  );
+
+  await t.step("sends the activity to explicit sink recipients", async () => {
+    const { federation, messages } = createTriggerTarget();
+    const response = await federation.fetch(
+      new Request("https://example.com/.well-known/fedify/bench/trigger", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(await createTriggerBody()),
+      }),
+      { contextData: undefined },
+    );
+
+    assertEquals(response.status, 202);
+    const body = await response.json() as {
+      version: number;
+      triggerId: string;
+      activityId: string;
+      recipientCount: number;
+      inboxCount: number;
+    };
+    assertEquals(body.version, 1);
+    assertEquals(typeof body.triggerId, "string");
+    assertEquals(body.activityId, "https://example.com/activities/bench-1");
+    assertEquals(body.recipientCount, 1);
+    assertEquals(body.inboxCount, 1);
+    assertEquals(messages.length, 1);
+    assertEquals(messages[0].type, "outbox");
+    assertEquals(messages[0].inbox, "https://sink.example/inbox");
+  });
+});
+
 test({
   name: "Federation.createContext()",
   permissions: { env: true, read: true },

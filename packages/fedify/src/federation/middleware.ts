@@ -61,6 +61,7 @@ import {
   type BenchmarkMetricReader,
   createBenchmarkMeterProvider,
   handleBenchmarkStats,
+  handleBenchmarkTrigger,
 } from "./bench.ts";
 import {
   type HttpMessageSignaturesSpec,
@@ -753,6 +754,7 @@ export class FederationImpl<TContextData>
     this.router.add("/.well-known/nodeinfo", "nodeInfoJrd");
     if (this.benchmarkMode) {
       this.router.add("/.well-known/fedify/bench/stats", "benchmarkStats");
+      this.router.add("/.well-known/fedify/bench/trigger", "benchmarkTrigger");
     }
   }
 
@@ -2368,6 +2370,8 @@ export class FederationImpl<TContextData>
         });
       case "benchmarkStats":
         return await handleBenchmarkStats(request, this.benchmarkMetricReader!);
+      case "benchmarkTrigger":
+        return await handleBenchmarkTrigger(request, context);
     }
 
     // Routes that require JSON-LD Accepts header:
