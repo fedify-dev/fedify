@@ -69,7 +69,8 @@ export interface BackfillOptions<
    */
   interval?:
     | Temporal.DurationLike
-    | ((iteration: number) => Temporal.DurationLike);
+    | string
+    | ((iteration: number) => Temporal.DurationLike | string);
 
   /**
    * Cancels traversal before requests and before yields.

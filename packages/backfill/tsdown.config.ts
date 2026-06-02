@@ -14,6 +14,7 @@ export default [
         dts: format === "cjs" ? ".d.cts" : ".d.ts",
       };
     },
+    deps: { neverBundle: ["@fedify/vocab"] },
   }),
   defineConfig({
     entry: (await Array.fromAsync(glob(`src/**/*.test.ts`)))
@@ -26,6 +27,6 @@ export default [
         dts: format === "cjs" ? ".d.cts" : ".d.ts",
       };
     },
-    deps: { neverBundle: [/^node:/] },
+    deps: { neverBundle: [/^node:/, "@fedify/vocab"] },
   }),
 ];

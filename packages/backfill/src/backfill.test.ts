@@ -1,4 +1,4 @@
-import { deepStrictEqual, ok, rejects, strictEqual } from "node:assert";
+import { deepStrictEqual, ok, rejects, strictEqual } from "node:assert/strict";
 import test, { describe } from "node:test";
 import { backfill, type BackfillContext } from "./mod.ts";
 import { Collection, Create, Note } from "@fedify/vocab";

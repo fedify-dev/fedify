@@ -173,7 +173,9 @@ async function waitForInterval(
   });
 }
 
-function durationToMilliseconds(duration: Temporal.DurationLike): number {
+function durationToMilliseconds(
+  duration: Temporal.DurationLike | string,
+): number {
   if (typeof duration === "string") {
     if (typeof Temporal === "undefined") {
       throw new TypeError(
