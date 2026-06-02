@@ -136,12 +136,10 @@ export async function handleBenchmarkTrigger<TContextData>(
         403,
       );
     }
-    const triggerId = crypto.randomUUID();
     await context.sendActivity(sender, recipients, activity);
     return jsonResponse(
       {
         version: 1,
-        triggerId,
         activityId: activity.id?.href ?? null,
         recipientCount: recipients.length,
         inboxCount: inboxUrls.length,

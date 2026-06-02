@@ -201,8 +201,26 @@ test("createFederation()", async (t) => {
           assertEquals(records[0].level, "warning");
           assertEquals(
             records[0].rawMessage,
-            "Fedify benchmarkMode is enabled; benchmark-only relaxations are " +
-              "active and must not be used in production.",
+            "Fedify benchmarkMode is enabled; private address checks " +
+              "disabled (allowPrivateAddress=true); HTTP Signature time " +
+              "window disabled (signatureTimeWindow=false). Benchmark " +
+              "endpoints are active and must not be used in production.",
+          );
+          assertEquals(
+            records[0].properties.relaxations,
+            [
+              {
+                protection: "private_address_checks",
+                effect: "disabled",
+                effectiveValue: true,
+              },
+              {
+                protection: "http_signature_time_window",
+                effect: "disabled",
+                effectiveValue: false,
+                secureDefaultSeconds: 3600,
+              },
+            ],
           );
         } finally {
           await reset();
@@ -597,13 +615,11 @@ test("benchmarkMode trigger endpoint", async (t) => {
     assertEquals(response.status, 202);
     const body = await response.json() as {
       version: number;
-      triggerId: string;
       activityId: string;
       recipientCount: number;
       inboxCount: number;
     };
     assertEquals(body.version, 1);
-    assertEquals(typeof body.triggerId, "string");
     assertEquals(body.activityId, "https://example.com/activities/bench-1");
     assertEquals(body.recipientCount, 1);
     assertEquals(body.inboxCount, 1);
@@ -8016,13 +8032,20 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
   await t.step("expired held activity is dropped", async () => {
     fetchMock.hardReset();
     fetchMock.spyGlobal();
+    const now = Temporal.Instant.from("2026-05-25T00:00:02Z");
     let dropped: { remoteHost: string; heldSince: Temporal.Instant } | null =
       null;
-    const { federation, queued } = setup({
-      failureThreshold: 1,
-      heldActivityTtl: { seconds: 1 },
-      onActivityDrop(remoteHost, details) {
-        dropped = { remoteHost, heldSince: details.heldSince };
+    const { federation, queued, kv } = setup(false);
+    federation.circuitBreaker = new CircuitBreaker({
+      kv,
+      prefix: ["_fedify", "circuit"],
+      now: () => now,
+      options: {
+        failureThreshold: 1,
+        heldActivityTtl: { seconds: 1 },
+        onActivityDrop(remoteHost, details) {
+          dropped = { remoteHost, heldSince: details.heldSince };
+        },
       },
     });
     let permanentFailureReason: unknown;

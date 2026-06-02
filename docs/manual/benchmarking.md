@@ -145,7 +145,6 @@ A successful trigger returns `202 Accepted`:
 ~~~~ json
 {
   "version": 1,
-  "triggerId": "018f52d9-8cc2-7b9d-9f9a-f0d777dfc14b",
   "activityId": "https://example.com/activities/bench-1",
   "recipientCount": 1,
   "inboxCount": 1

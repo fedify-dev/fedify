@@ -943,7 +943,8 @@ export interface FederationOptions<TContextData> {
    * targets.  Do not enable this option in production.
    *
    * When enabled, {@link FederationOptions.allowPrivateAddress} defaults to
-   * `true` unless a custom document loader is configured, and
+   * `true` unless {@link FederationOptions.documentLoaderFactory} or
+   * {@link FederationOptions.contextLoaderFactory} is configured, and
    * {@link FederationOptions.signatureTimeWindow} defaults to `false`.
    *
    * Turned off by default.

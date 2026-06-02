@@ -220,6 +220,78 @@ function clampNegativeDelay(delay: Temporal.Duration): Temporal.Duration {
   return delay.sign < 0 ? Temporal.Duration.from({ seconds: 0 }) : delay;
 }
 
+type BenchmarkRelaxation =
+  | {
+    readonly protection: "private_address_checks";
+    readonly effect: "disabled";
+    readonly effectiveValue: true;
+  }
+  | {
+    readonly protection: "http_signature_time_window";
+    readonly effect: "disabled";
+    readonly effectiveValue: false;
+    readonly secureDefaultSeconds: 3600;
+  }
+  | {
+    readonly protection: "http_signature_time_window";
+    readonly effect: "changed";
+    readonly effectiveSeconds: number;
+    readonly secureDefaultSeconds: 3600;
+  };
+
+function getBenchmarkRelaxations(
+  allowPrivateAddress: boolean,
+  signatureTimeWindow: Temporal.Duration | Temporal.DurationLike | false,
+): BenchmarkRelaxation[] {
+  const relaxations: BenchmarkRelaxation[] = [];
+  if (allowPrivateAddress) {
+    relaxations.push({
+      protection: "private_address_checks",
+      effect: "disabled",
+      effectiveValue: true,
+    });
+  }
+  if (signatureTimeWindow === false) {
+    relaxations.push({
+      protection: "http_signature_time_window",
+      effect: "disabled",
+      effectiveValue: false,
+      secureDefaultSeconds: 3600,
+    });
+  } else {
+    const seconds = Temporal.Duration.from(signatureTimeWindow).total({
+      unit: "seconds",
+    });
+    if (seconds !== 3600) {
+      relaxations.push({
+        protection: "http_signature_time_window",
+        effect: "changed",
+        effectiveSeconds: seconds,
+        secureDefaultSeconds: 3600,
+      });
+    }
+  }
+  return relaxations;
+}
+
+function formatBenchmarkRelaxations(
+  relaxations: readonly BenchmarkRelaxation[],
+): string {
+  if (relaxations.length < 1) return "no benchmark-only protections relaxed";
+  return relaxations.map((relaxation) => {
+    switch (relaxation.protection) {
+      case "private_address_checks":
+        return "private address checks disabled (allowPrivateAddress=true)";
+      case "http_signature_time_window":
+        if (relaxation.effect === "disabled") {
+          return `HTTP Signature time window disabled (signatureTimeWindow=false)`;
+        }
+        return `HTTP Signature time window set to ${relaxation.effectiveSeconds}s ` +
+          `(secure default: ${relaxation.secureDefaultSeconds}s)`;
+    }
+  }).join("; ");
+}
+
 function maxDelay(
   first: Temporal.Duration,
   second: Temporal.Duration,
@@ -486,9 +558,16 @@ export class FederationImpl<TContextData>
       );
     }
     if (benchmarkMode) {
+      const relaxations = getBenchmarkRelaxations(
+        allowPrivateAddress,
+        signatureTimeWindow,
+      );
+      const relaxationSummary = formatBenchmarkRelaxations(relaxations);
       getLogger(["fedify", "federation", "benchmark"]).warn(
-        "Fedify benchmarkMode is enabled; benchmark-only relaxations are " +
-          "active and must not be used in production.",
+        `Fedify benchmarkMode is enabled; ${relaxationSummary}. Benchmark endpoints are active and must not be used in production.`,
+        {
+          relaxations,
+        },
       );
     }
     this.benchmarkMode = benchmarkMode;

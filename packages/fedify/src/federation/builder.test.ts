@@ -176,6 +176,17 @@ test("FederationBuilder", async (t) => {
     assertEquals(impl.benchmarkMode, true);
     assertEquals(impl.allowPrivateAddress, true);
     assertEquals(impl.signatureTimeWindow, false);
+
+    const overridden = await builder.build({
+      kv: new MemoryKvStore(),
+      benchmarkMode: true,
+      allowPrivateAddress: false,
+      signatureTimeWindow: { minutes: 10 },
+    });
+    const overriddenImpl = overridden as FederationImpl<void>;
+    assertEquals(overriddenImpl.benchmarkMode, true);
+    assertEquals(overriddenImpl.allowPrivateAddress, false);
+    assertEquals(overriddenImpl.signatureTimeWindow, { minutes: 10 });
   });
 
   await t.step("should snapshot router state on build", async () => {
