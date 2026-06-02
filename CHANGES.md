@@ -135,7 +135,7 @@ To be released.
     `allowPrivateAddress` to `true` when built-in loaders are used, defaults
     `signatureTimeWindow` to `false`, reports queue depth through the new
     `fedify.queue.depth` gauge, and adds explicit low-latency buckets to
-    the signature verification duration histogram.  [[#744], [#782]]
+    the signature verification duration histogram.  [[#744], [#782], [#787]]
 
  -  Added OpenTelemetry metrics for ActivityPub fanout and activity
     lifecycle events, complementing the per-recipient
@@ -274,6 +274,7 @@ To be released.
 [#777]: https://github.com/fedify-dev/fedify/pull/777
 [#778]: https://github.com/fedify-dev/fedify/pull/778
 [#782]: https://github.com/fedify-dev/fedify/issues/782
+[#787]: https://github.com/fedify-dev/fedify/pull/787
 
 ### @fedify/fixture
 
