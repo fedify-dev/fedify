@@ -58,6 +58,7 @@ import {
 } from "@opentelemetry/sdk-metrics";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 import { CircuitBreaker } from "./circuit-breaker.ts";
+import { handleBenchmarkTrigger } from "./bench.ts";
 
 const documentLoader = getDocumentLoader();
 import type { Context, GetActorOptions } from "./context.ts";
@@ -509,6 +510,23 @@ test("benchmarkMode trigger endpoint", async (t) => {
       { contextData: undefined },
     );
     assertEquals(response.status, 404);
+  });
+
+  await t.step("rejects unreadable JSON request bodies", async () => {
+    const request = {
+      method: "POST",
+      json() {
+        throw new TypeError("body is unavailable");
+      },
+    } as unknown as Request;
+    const response = await handleBenchmarkTrigger(
+      request,
+      {} as Context<void>,
+    );
+    assertEquals(response.status, 400);
+    assertEquals(await response.json(), {
+      error: "Invalid JSON request body.",
+    });
   });
 
   await t.step("rejects recipients outside the sink list", async () => {

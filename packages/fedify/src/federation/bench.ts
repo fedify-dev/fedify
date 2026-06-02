@@ -112,8 +112,14 @@ export async function handleBenchmarkTrigger<TContextData>(
       headers: { "Allow": "POST" },
     });
   }
+  let json: unknown;
   try {
-    const body = asRecord(await request.json(), "request body");
+    json = await request.json();
+  } catch {
+    return jsonResponse({ error: "Invalid JSON request body." }, 400);
+  }
+  try {
+    const body = asRecord(json, "request body");
     const sender = parseSender(body.sender);
     const sinks = parseSinks(body.sinks);
     const recipients = await parseRecipients(body.recipients, context);
@@ -145,9 +151,6 @@ export async function handleBenchmarkTrigger<TContextData>(
   } catch (error) {
     if (error instanceof BenchmarkTriggerError) {
       return jsonResponse({ error: error.message }, error.status);
-    }
-    if (error instanceof SyntaxError) {
-      return jsonResponse({ error: "Invalid JSON request body." }, 400);
     }
     throw error;
   }
