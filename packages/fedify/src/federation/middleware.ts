@@ -139,6 +139,7 @@ import {
   getRemoteHost,
   instrumentDocumentLoader,
   isAbortError,
+  type QueueDepthGaugeEntry,
   type QueueTaskCommonAttributes,
   type QueueTaskResult,
   recordCircuitBreakerStateChange,
@@ -565,6 +566,9 @@ export class FederationImpl<TContextData>
   benchmarkMode: boolean;
   benchmarkMetricReader?: BenchmarkMetricReader;
   benchmarkTriggerOptions: BenchmarkTriggerOptions;
+  readonly #queueDepthGaugeSourceId = crypto.randomUUID();
+  #queueDepthGaugeEntries: readonly QueueDepthGaugeEntry[] = [];
+  #queueDepthGaugeMeterProvider?: MeterProvider;
 
   constructor(options: FederationOptions<TContextData>) {
     super();
@@ -845,11 +849,14 @@ export class FederationImpl<TContextData>
     } else {
       this._meterProvider = options.meterProvider;
     }
-    registerQueueDepthGauge(this.meterProvider, [
+    this.#queueDepthGaugeEntries = [
       { role: "inbox", queue: this.inboxQueue },
       { role: "outbox", queue: this.outboxQueue },
       { role: "fanout", queue: this.fanoutQueue },
-    ]);
+    ];
+    this.#registerQueueDepthGauge(
+      this._meterProvider ?? metrics.getMeterProvider(),
+    );
     this.firstKnock = options.firstKnock;
   }
 
@@ -858,7 +865,17 @@ export class FederationImpl<TContextData>
   }
 
   get meterProvider(): MeterProvider {
-    return this._meterProvider ?? metrics.getMeterProvider();
+    const meterProvider = this._meterProvider ?? metrics.getMeterProvider();
+    this.#registerQueueDepthGauge(meterProvider);
+    return meterProvider;
+  }
+
+  #registerQueueDepthGauge(meterProvider: MeterProvider): void {
+    if (meterProvider === this.#queueDepthGaugeMeterProvider) return;
+    registerQueueDepthGauge(meterProvider, this.#queueDepthGaugeEntries, {
+      sourceId: this.#queueDepthGaugeSourceId,
+    });
+    this.#queueDepthGaugeMeterProvider = meterProvider;
   }
 
   _initializeRouter(): void {

@@ -50,7 +50,7 @@ import {
   rsaPublicKey3,
 } from "../testing/keys.ts";
 import { FetchError, getDocumentLoader } from "@fedify/vocab-runtime";
-import { SpanStatusCode } from "@opentelemetry/api";
+import { metrics, SpanStatusCode } from "@opentelemetry/api";
 import {
   DataPointType,
   MeterProvider,
@@ -475,6 +475,104 @@ test("createFederation() registers queue depth for regular metrics", async () =>
         { state: "ready", role: "shared", value: 4 },
       ],
     );
+  } finally {
+    await meterProvider.shutdown();
+  }
+});
+
+test("createFederation() registers queue depth after global meterProvider is set", async () => {
+  metrics.disable();
+  const queue: MessageQueue = {
+    enqueue() {
+      return Promise.resolve();
+    },
+    listen() {
+      return Promise.resolve();
+    },
+    getDepth() {
+      return Promise.resolve({ queued: 8 });
+    },
+  };
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    queue,
+  });
+  const reader = new TestMetricReader();
+  const meterProvider = new MeterProvider({ readers: [reader] });
+  try {
+    metrics.setGlobalMeterProvider(meterProvider);
+    (federation as FederationImpl<void>).meterProvider;
+
+    const result = await reader.collect();
+    const queueDepth = result.resourceMetrics.scopeMetrics
+      .flatMap((scope) => scope.metrics)
+      .find((metric) => metric.descriptor.name === "fedify.queue.depth");
+
+    assertExists(queueDepth);
+    assertEquals(queueDepth.dataPointType, DataPointType.GAUGE);
+    assertEquals(
+      queueDepth.dataPoints.map((point) => ({
+        state: point.attributes["fedify.queue.depth.state"],
+        role: point.attributes["fedify.queue.role"],
+        value: point.value,
+      })),
+      [
+        { state: "queued", role: "shared", value: 8 },
+      ],
+    );
+  } finally {
+    metrics.disable();
+    await meterProvider.shutdown();
+  }
+});
+
+test("createFederation() distinguishes queue depth series per federation", async () => {
+  const reader = new TestMetricReader();
+  const meterProvider = new MeterProvider({ readers: [reader] });
+  try {
+    const createQueue = (queued: number): MessageQueue => ({
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+      getDepth() {
+        return Promise.resolve({ queued });
+      },
+    });
+    createFederation<void>({
+      kv: new MemoryKvStore(),
+      meterProvider,
+      queue: createQueue(1),
+    });
+    createFederation<void>({
+      kv: new MemoryKvStore(),
+      meterProvider,
+      queue: createQueue(2),
+    });
+
+    const result = await reader.collect();
+    const queueDepth = result.resourceMetrics.scopeMetrics
+      .flatMap((scope) => scope.metrics)
+      .find((metric) => metric.descriptor.name === "fedify.queue.depth");
+
+    assertExists(queueDepth);
+    const queuedPoints = queueDepth.dataPoints.filter((point) =>
+      point.attributes["fedify.queue.depth.state"] === "queued"
+    );
+    assertEquals(
+      queuedPoints.map((point) => point.value).sort(),
+      [1, 2],
+    );
+    const instanceIds = queuedPoints.map((point) =>
+      point.attributes["fedify.federation.instance_id"]
+    );
+    assertEquals(
+      instanceIds.every((id) => typeof id === "string"),
+      true,
+    );
+    assertEquals(new Set(instanceIds).size, 2);
   } finally {
     await meterProvider.shutdown();
   }

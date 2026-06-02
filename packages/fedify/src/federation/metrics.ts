@@ -113,6 +113,18 @@ export interface QueueDepthGaugeEntry {
 }
 
 /**
+ * Options for observing queue depth metrics.
+ * @since 2.3.0
+ */
+export interface QueueDepthGaugeOptions {
+  /**
+   * An opaque source identifier to distinguish queue depth series registered on
+   * the same meter provider.
+   */
+  sourceId?: string;
+}
+
+/**
  * The kind of ActivityPub signature verified, used as the
  * `activitypub.signature.kind` metric attribute.
  * @since 2.3.0
@@ -1218,6 +1230,7 @@ export function getQueueBackend(queue?: MessageQueue): string | undefined {
 export function registerQueueDepthGauge(
   meterProvider: MeterProvider,
   entries: readonly QueueDepthGaugeEntry[],
+  options: QueueDepthGaugeOptions = {},
 ): void {
   const uniqueQueues = new Map<MessageQueue, QueueTaskRole[]>();
   for (const { role, queue } of entries) {
@@ -1241,7 +1254,7 @@ export function registerQueueDepthGauge(
         return;
       }
       if (depth == null) return;
-      const attributes = buildQueueDepthAttributes(queue, roles);
+      const attributes = buildQueueDepthAttributes(queue, roles, options);
       observableResult.observe(depth.queued, {
         ...attributes,
         "fedify.queue.depth.state": "queued",
@@ -1265,12 +1278,16 @@ export function registerQueueDepthGauge(
 function buildQueueDepthAttributes(
   queue: MessageQueue,
   roles: readonly QueueTaskRole[],
+  options: QueueDepthGaugeOptions,
 ): Attributes {
   const sortedRoles = [...roles].sort();
   const role = sortedRoles.length === 1 ? sortedRoles[0] : "shared";
   const attributes: Attributes = {
     "fedify.queue.role": role,
   };
+  if (options.sourceId != null) {
+    attributes["fedify.federation.instance_id"] = options.sourceId;
+  }
   if (role === "shared") {
     attributes["fedify.queue.roles"] = sortedRoles.join(",");
   }

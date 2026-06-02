@@ -849,7 +849,9 @@ Fedify records the following OpenTelemetry metrics:
     than one Fedify queue role, and `fedify.queue.roles` lists those roles as a
     comma-separated string.  `fedify.queue.backend` and
     `fedify.queue.native_retrial` follow the same rules as the queue task
-    metrics.
+    metrics.  `fedify.federation.instance_id` is an opaque per-Federation
+    instance identifier that keeps queue depth series distinct when multiple
+    Federation instances share one [`MeterProvider`].
 
 The `fedify.queue.task.*` metrics describe what Fedify's workers do with
 queued messages.  They complement the backend-side
@@ -965,6 +967,7 @@ for ActivityPub:
 | `docloader.document_url`                     | string   | The final URL of the fetched document (after following redirects).                                                           | `"https://example.com/object/1"`                                     |
 | `fedify.actor.identifier`                    | string   | The identifier of the actor.                                                                                                 | `"1"`                                                                |
 | `fedify.endpoint`                            | string   | The bounded endpoint category that classified an inbound HTTP request handled by `Federation.fetch()`.                       | `"actor"`                                                            |
+| `fedify.federation.instance_id`              | string   | Opaque per-Federation instance identifier used to distinguish queue depth series on a shared `MeterProvider`.                | `"8b4e6d24-8a66-4d04-9f63-7850c99f6ed6"`                             |
 | `fedify.route.template`                      | string   | The matched URI Template, with parameter names (not values).                                                                 | `"/users/{identifier}"`                                              |
 | `fedify.inbox.recipient`                     | string   | The identifier of the inbox recipient.                                                                                       | `"1"`                                                                |
 | `fedify.object.type`                         | string   | The URI of the object type.                                                                                                  | `"https://www.w3.org/ns/activitystreams#Note"`                       |
