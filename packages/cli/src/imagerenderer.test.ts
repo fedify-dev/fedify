@@ -4,8 +4,8 @@ import path from "node:path";
 import test from "node:test";
 import { downloadImage } from "./imagerenderer.ts";
 
-const TEST_PUBLIC_IMAGE_URL = "https://198.51.100.10/image.png";
-const TEST_PUBLIC_REDIRECT_URL = "https://198.51.100.11/final.png";
+const TEST_PUBLIC_IMAGE_URL = "https://8.8.8.8/image.png";
+const TEST_PUBLIC_REDIRECT_URL = "https://1.1.1.1/final.png";
 
 test("downloadImage - skips private URL without fetching", async () => {
   let called = false;
@@ -182,7 +182,7 @@ test("downloadImage - rejects unsafe extension containing path traversal", async
 
   try {
     const result = await downloadImage(
-      "https://198.51.100.10/image.png/..%2f..%2f..%2fetc%2fpasswd",
+      "https://8.8.8.8/image.png/..%2f..%2f..%2fetc%2fpasswd",
     );
     assert.equal(result, null);
   } finally {
@@ -198,7 +198,7 @@ test("downloadImage - falls back to jpg when URL has no extension", async () => 
 
   let result: string | null = null;
   try {
-    result = await downloadImage("https://198.51.100.10/image");
+    result = await downloadImage("https://8.8.8.8/image");
     assert.notEqual(result, null);
     assert.equal(path.extname(result!), ".jpg");
   } finally {
@@ -220,7 +220,7 @@ test("downloadImage - falls back to content type for extensionless nested path",
 
   let result: string | null = null;
   try {
-    result = await downloadImage("https://198.51.100.10/media/12345");
+    result = await downloadImage("https://8.8.8.8/media/12345");
     assert.notEqual(result, null);
     assert.equal(path.extname(result!), ".png");
   } finally {

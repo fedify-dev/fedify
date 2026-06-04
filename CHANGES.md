@@ -330,7 +330,20 @@ To be released.
 Version 2.2.4
 -------------
 
-To be released.
+Released on June 4, 2026.
+
+### @fedify/vocab-runtime
+
+ -  Fixed `validatePublicUrl()` allowing special-use IPv4 ranges, such as
+    shared address space, benchmarking, multicast, reserved, and documentation
+    ranges, which could bypass private network protections in remote document
+    loading.  [[CVE-2026-50131]]
+
+ -  Fixed `validatePublicUrl()` allowing IPv6 translation and tunneling
+    prefixes, including NAT64, Teredo, and 6to4 addresses, which could bypass
+    private network protections in remote document loading.  [[CVE-2026-50131]]
+
+[CVE-2026-50131]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-xw9q-2mv6-9fr8
 
 
 Version 2.2.3
@@ -710,7 +723,18 @@ Released on April 28, 2026.
 Version 2.1.15
 --------------
 
-To be released.
+Released on June 4, 2026.
+
+### @fedify/vocab-runtime
+
+ -  Fixed `validatePublicUrl()` allowing special-use IPv4 ranges, such as
+    shared address space, benchmarking, multicast, reserved, and documentation
+    ranges, which could bypass private network protections in remote document
+    loading.  [[CVE-2026-50131]]
+
+ -  Fixed `validatePublicUrl()` allowing IPv6 translation and tunneling
+    prefixes, including NAT64, Teredo, and 6to4 addresses, which could bypass
+    private network protections in remote document loading.  [[CVE-2026-50131]]
 
 
 Version 2.1.14
@@ -1257,7 +1281,18 @@ Released on March 24, 2026.
 Version 2.0.19
 --------------
 
-To be released.
+Released on June 4, 2026.
+
+### @fedify/vocab-runtime
+
+ -  Fixed `validatePublicUrl()` allowing special-use IPv4 ranges, such as
+    shared address space, benchmarking, multicast, reserved, and documentation
+    ranges, which could bypass private network protections in remote document
+    loading.  [[CVE-2026-50131]]
+
+ -  Fixed `validatePublicUrl()` allowing IPv6 translation and tunneling
+    prefixes, including NAT64, Teredo, and 6to4 addresses, which could bypass
+    private network protections in remote document loading.  [[CVE-2026-50131]]
 
 
 Version 2.0.18
@@ -2225,7 +2260,18 @@ Released on February 22, 2026.
 Version 1.10.11
 ---------------
 
-To be released.
+Released on June 4, 2026.
+
+### @fedify/fedify
+
+ -  Fixed `validatePublicUrl()` allowing special-use IPv4 ranges, such as
+    shared address space, benchmarking, multicast, reserved, and documentation
+    ranges, which could bypass private network protections in remote document
+    loading.  [[CVE-2026-50131]]
+
+ -  Fixed `validatePublicUrl()` allowing IPv6 translation and tunneling
+    prefixes, including NAT64, Teredo, and 6to4 addresses, which could bypass
+    private network protections in remote document loading.  [[CVE-2026-50131]]
 
 
 Version 1.10.10
@@ -2478,7 +2524,18 @@ Released on December 24, 2025.
 Version 1.9.12
 --------------
 
-To be released.
+Released on June 4, 2026.
+
+### @fedify/fedify
+
+ -  Fixed `validatePublicUrl()` allowing special-use IPv4 ranges, such as
+    shared address space, benchmarking, multicast, reserved, and documentation
+    ranges, which could bypass private network protections in remote document
+    loading.  [[CVE-2026-50131]]
+
+ -  Fixed `validatePublicUrl()` allowing IPv6 translation and tunneling
+    prefixes, including NAT64, Teredo, and 6to4 addresses, which could bypass
+    private network protections in remote document loading.  [[CVE-2026-50131]]
 
 
 Version 1.9.11
