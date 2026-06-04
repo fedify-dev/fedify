@@ -1,0 +1,245 @@
+import {
+  createFederation,
+  generateCryptoKeyPair,
+  MemoryKvStore,
+} from "@fedify/fedify";
+import { Create, Endpoints, Person } from "@fedify/vocab";
+import assert from "node:assert/strict";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import test from "node:test";
+import { serve } from "srvx";
+import runBench from "./action.ts";
+import type { BenchCommand } from "./command.ts";
+
+async function spawnTarget() {
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    benchmarkMode: true,
+  });
+  let keyPairs: CryptoKeyPair[] | undefined;
+  federation
+    .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+      if (identifier !== "alice") return null;
+      const pairs = await ctx.getActorKeyPairs(identifier);
+      return new Person({
+        id: ctx.getActorUri(identifier),
+        preferredUsername: identifier,
+        inbox: ctx.getInboxUri(identifier),
+        endpoints: new Endpoints({ sharedInbox: ctx.getInboxUri() }),
+        publicKey: pairs[0]?.cryptographicKey,
+        assertionMethods: pairs.map((p) => p.multikey),
+      });
+    })
+    .mapHandle((_ctx, username) => (username === "alice" ? "alice" : null))
+    .setKeyPairsDispatcher(async (_ctx, identifier) => {
+      if (identifier !== "alice") return [];
+      keyPairs ??= [
+        await generateCryptoKeyPair("RSASSA-PKCS1-v1_5"),
+        await generateCryptoKeyPair("Ed25519"),
+      ];
+      return keyPairs;
+    });
+  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox").on(
+    Create,
+    () => {},
+  );
+  const server = serve({
+    port: 0,
+    hostname: "127.0.0.1",
+    silent: true,
+    fetch: (request: Request) =>
+      federation.fetch(request, { contextData: undefined }),
+  });
+  await server.ready();
+  return { url: new URL(server.url!), close: () => server.close(true) };
+}
+
+function command(overrides: Partial<BenchCommand>): BenchCommand {
+  return {
+    command: "bench",
+    scenario: "",
+    target: undefined,
+    format: "json",
+    output: undefined,
+    dryRun: false,
+    allowUnsafeTarget: false,
+    userAgent: "Fedify-bench-test/1.0",
+    ...overrides,
+  } as BenchCommand;
+}
+
+async function writeSuite(content: string): Promise<string> {
+  const dir = await mkdtemp(join(tmpdir(), "fedify-bench-"));
+  const path = join(dir, "suite.yaml");
+  await writeFile(path, content, { encoding: "utf-8" });
+  return path;
+}
+
+function inboxSuite(target: URL, expectLine: string): string {
+  const recipient = new URL("/users/alice", target).href;
+  return `version: 1
+target: ${target.href}
+scenarios:
+  - name: inbox-shared
+    type: inbox
+    recipient: ${JSON.stringify(recipient)}
+    inbox: shared
+    load: { concurrency: 2 }
+    duration: 250ms
+    expect:
+${expectLine}
+`;
+}
+
+test("runBench - passing gate exits 0 and writes a valid report", async () => {
+  const target = await spawnTarget();
+  try {
+    const file = await writeSuite(
+      inboxSuite(target.url, '      successRate: ">= 99%"'),
+    );
+    let code = -1;
+    let output = "";
+    await runBench(command({ scenario: file }), {
+      exit: (c) => {
+        code = c;
+      },
+      writeOutput: (c) => {
+        output = c;
+        return Promise.resolve();
+      },
+      log: () => {},
+    });
+    assert.strictEqual(code, 0);
+    const report = JSON.parse(output);
+    assert.strictEqual(report.passed, true);
+    assert.strictEqual(report.scenarios[0].requests.successRate, 1);
+    assert.ok(report.target.statsAvailable);
+  } finally {
+    await target.close();
+  }
+});
+
+test("runBench - failing gate exits 1", async () => {
+  const target = await spawnTarget();
+  try {
+    // An impossible latency threshold makes the gate fail.
+    const file = await writeSuite(
+      inboxSuite(target.url, '      latency.p95: "< 0ms"'),
+    );
+    let code = -1;
+    await runBench(command({ scenario: file }), {
+      exit: (c) => {
+        code = c;
+      },
+      writeOutput: () => Promise.resolve(),
+      log: () => {},
+    });
+    assert.strictEqual(code, 1);
+  } finally {
+    await target.close();
+  }
+});
+
+test("runBench - dry run prints a plan and sends nothing", async () => {
+  const target = await spawnTarget();
+  try {
+    const file = await writeSuite(
+      inboxSuite(target.url, '      successRate: ">= 99%"'),
+    );
+    let code = -1;
+    let output = "";
+    await runBench(command({ scenario: file, dryRun: true }), {
+      exit: (c) => {
+        code = c;
+      },
+      writeOutput: (c) => {
+        output = c;
+        return Promise.resolve();
+      },
+      log: () => {},
+    });
+    assert.strictEqual(code, 0);
+    assert.match(output, /dry run/i);
+    assert.match(output, /No requests were sent/);
+  } finally {
+    await target.close();
+  }
+});
+
+test("runBench - refuses an unsafe public target (exit 2)", async () => {
+  const file = await writeSuite(`version: 1
+target: https://example.com
+scenarios:
+  - name: wf
+    type: webfinger
+    recipient: "acct:alice@example.com"
+`);
+  let code = -1;
+  await runBench(command({ scenario: file }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: () => Promise.resolve(),
+    log: () => {},
+    // Probe fails without network, so the target appears non-benchmark.
+    fetch: () => Promise.reject(new Error("offline")),
+  });
+  assert.strictEqual(code, 2);
+});
+
+test("runBench - rejects a signed scenario against a public target", async () => {
+  const file = await writeSuite(`version: 1
+target: https://staging.example
+scenarios:
+  - name: inbox-shared
+    type: inbox
+    recipient: "https://staging.example/users/alice"
+    load: { concurrency: 2 }
+    duration: 100ms
+`);
+  let code = -1;
+  let message = "";
+  await runBench(command({ scenario: file }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: () => Promise.resolve(),
+    log: (m) => {
+      message = m;
+    },
+    // The target advertises benchmark mode so it passes the safety gate.
+    fetch: () =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({ version: 1, source: "server", scopeMetrics: [] }),
+          { headers: { "content-type": "application/json" } },
+        ),
+      ),
+  });
+  assert.strictEqual(code, 2);
+  assert.match(message, /loopback or private/);
+});
+
+test("runBench - invalid suite exits 2", async () => {
+  const file = await writeSuite(`target: http://localhost:3000
+scenarios:
+  - name: x
+    type: inbox
+    recipient: "acct:a@x"
+`); // missing version
+  let code = -1;
+  let message = "";
+  await runBench(command({ scenario: file }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: () => Promise.resolve(),
+    log: (m) => {
+      message = m;
+    },
+  });
+  assert.strictEqual(code, 2);
+  assert.match(message, /Invalid/);
+});
