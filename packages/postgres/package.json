@@ -1,6 +1,6 @@
 {
   "name": "@fedify/postgres",
-  "version": "2.1.15",
+  "version": "2.1.16",
   "description": "PostgreSQL drivers for Fedify",
   "keywords": [
     "fedify",
