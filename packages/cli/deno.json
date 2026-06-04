@@ -4,6 +4,7 @@
   "license": "MIT",
   "exports": "./src/mod.ts",
   "imports": {
+    "@cfworker/json-schema": "npm:@cfworker/json-schema@^4.1.1",
     "@hongminhee/localtunnel": "jsr:@hongminhee/localtunnel@^0.3.0",
     "@inquirer/prompts": "npm:@inquirer/prompts@^7.8.4",
     "@jimp/core": "npm:@jimp/core@^1.6.1",
@@ -20,6 +21,7 @@
     "smol-toml": "npm:smol-toml@^1.6.1",
     "srvx": "npm:srvx@^0.8.7",
     "valibot": "jsr:@valibot/valibot@^1.4.0",
+    "yaml": "npm:yaml@^2.9.0",
     "#kv": "./src/kv.node.ts"
   },
   "exclude": [

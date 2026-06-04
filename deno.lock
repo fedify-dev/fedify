@@ -9402,6 +9402,7 @@
           "jsr:@hongminhee/localtunnel@0.3",
           "jsr:@hono/hono@^4.8.3",
           "jsr:@valibot/valibot@^1.4.0",
+          "npm:@cfworker/json-schema@^4.1.1",
           "npm:@inquirer/prompts@^7.8.4",
           "npm:@jimp/core@^1.6.1",
           "npm:@jimp/wasm-webp@^1.6.1",
@@ -9414,10 +9415,12 @@
           "npm:ora@^8.2.0",
           "npm:shiki@^1.6.4",
           "npm:smol-toml@^1.6.1",
-          "npm:srvx@~0.8.7"
+          "npm:srvx@~0.8.7",
+          "npm:yaml@^2.9.0"
         ],
         "packageJson": {
           "dependencies": [
+            "npm:@cfworker/json-schema@^4.1.1",
             "npm:@hongminhee/localtunnel@0.3",
             "npm:@inquirer/prompts@^7.8.4",
             "npm:@jimp/core@^1.6.1",
@@ -9436,7 +9439,8 @@
             "npm:shiki@^1.6.4",
             "npm:smol-toml@^1.6.1",
             "npm:srvx@~0.8.7",
-            "npm:valibot@^1.4.0"
+            "npm:valibot@^1.4.0",
+            "npm:yaml@^2.9.0"
           ]
         }
       },

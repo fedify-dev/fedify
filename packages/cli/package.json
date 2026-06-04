@@ -72,6 +72,7 @@
     }
   },
   "dependencies": {
+    "@cfworker/json-schema": "^4.1.1",
     "@fedify/fedify": "workspace:*",
     "@fedify/init": "workspace:*",
     "@fedify/relay": "workspace:*",
@@ -109,7 +110,8 @@
     "shiki": "^1.6.4",
     "smol-toml": "^1.6.1",
     "srvx": "^0.8.7",
-    "valibot": "^1.4.0"
+    "valibot": "^1.4.0",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@types/bun": "catalog:",

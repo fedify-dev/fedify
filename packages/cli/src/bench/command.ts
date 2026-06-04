@@ -1,0 +1,97 @@
+import { bindConfig } from "@optique/config";
+import {
+  argument,
+  choice,
+  command,
+  constant,
+  flag,
+  group,
+  type InferValue,
+  merge,
+  message,
+  object,
+  option,
+  optional,
+  string,
+  withDefault,
+} from "@optique/core";
+import { configContext } from "../config.ts";
+import { userAgentOption } from "../options.ts";
+
+const formatOption = bindConfig(
+  option(
+    "-f",
+    "--format",
+    choice(["text", "json", "markdown"], { metavar: "FORMAT" }),
+    {
+      description: message`The output format for the benchmark report.`,
+    },
+  ),
+  {
+    context: configContext,
+    key: (config) => config.bench?.format ?? "text",
+    default: "text",
+  },
+);
+
+const allowUnsafeTarget = bindConfig(
+  flag("--allow-unsafe-target", {
+    description:
+      message`Allow benchmarking a public target that does not advertise \
+benchmark mode.`,
+  }),
+  {
+    context: configContext,
+    key: (config) => config.bench?.allowUnsafeTarget ?? false,
+    default: false,
+  },
+);
+
+export const benchCommand = command(
+  "bench",
+  merge(
+    "Benchmark options",
+    object({
+      command: constant("bench"),
+      scenario: group(
+        "Arguments",
+        argument(string({ metavar: "SCENARIO_FILE" }), {
+          description:
+            message`Path to the benchmark suite file (YAML or JSON).`,
+        }),
+      ),
+      target: optional(
+        option("-t", "--target", string({ metavar: "URL" }), {
+          description: message`Override the target URL declared in the suite.`,
+        }),
+      ),
+      format: formatOption,
+      output: optional(
+        option("-o", "--output", string({ metavar: "OUTPUT_PATH" }), {
+          description:
+            message`Write the report to a file instead of standard output.`,
+        }),
+      ),
+      dryRun: withDefault(
+        flag("--dry-run", {
+          description:
+            message`Resolve discovery and print the plan without sending load.`,
+        }),
+        false,
+      ),
+      allowUnsafeTarget,
+    }),
+    userAgentOption,
+  ),
+  {
+    brief: message`Benchmark a Fedify federation workload.`,
+    description: message`Run an ActivityPub-specific load benchmark against a \
+cooperative Fedify target running in benchmark mode.
+
+The suite file declares the target, actors, and scenarios.  Only the \`inbox\` \
+and \`webfinger\` scenario types are executed in this version; the format \
+itself can express every scenario type.`,
+  },
+);
+
+export type BenchCommand = InferValue<typeof benchCommand>;

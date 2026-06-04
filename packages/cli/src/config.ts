@@ -109,6 +109,14 @@ const nodeinfoSchema = object({
 });
 
 /**
+ * Schema for the bench command configuration.
+ */
+const benchSchema = object({
+  format: optional(picklist(["text", "json", "markdown"])),
+  allowUnsafeTarget: optional(boolean()),
+});
+
+/**
  * Schema for the complete configuration file.
  */
 export const configSchema = object({
@@ -125,6 +133,7 @@ export const configSchema = object({
   inbox: optional(inboxSchema),
   relay: optional(relaySchema),
   nodeinfo: optional(nodeinfoSchema),
+  bench: optional(benchSchema),
 });
 
 /**
