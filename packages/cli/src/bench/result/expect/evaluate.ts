@@ -17,6 +17,7 @@ import type {
   ScenarioResult,
 } from "../model.ts";
 import { compare, parseAssertion } from "./assert.ts";
+import { type MetricUnit, metricUnit } from "./metrics.ts";
 
 /** The subset of a scenario result that `expect` metrics are looked up from. */
 export type MetricView = Pick<
@@ -58,9 +59,6 @@ export function evaluateExpect(
   return { results, passed };
 }
 
-/** The natural unit class of a metric. */
-type MetricUnit = "ratio" | "ms" | "rate" | "count";
-
 interface MetricLookup {
   /** The measured value, or `null` if the metric was not measured. */
   readonly value: number | null;
@@ -74,10 +72,10 @@ interface MetricLookup {
  */
 function unitCompatible(
   assertionUnit: string | null,
-  metricUnit: MetricUnit,
+  unit: MetricUnit,
 ): boolean {
   if (assertionUnit == null) return true;
-  switch (metricUnit) {
+  switch (unit) {
     case "ratio":
       return assertionUnit === "%";
     case "ms":
@@ -93,46 +91,42 @@ function lookupMetric(
   metrics: MetricView,
   metric: string,
 ): MetricLookup | null {
+  const unit = metricUnit(metric);
+  if (unit == null) return null; // Unknown metric name.
+  return { value: lookupValue(metrics, metric), unit };
+}
+
+function lookupValue(metrics: MetricView, metric: string): number | null {
   switch (metric) {
     case "successRate":
-      return { value: metrics.requests.successRate, unit: "ratio" };
+      return metrics.requests.successRate;
     case "throughputPerSec":
-      return { value: metrics.throughputPerSec, unit: "rate" };
+      return metrics.throughputPerSec;
     case "deliveryThroughput":
       // Recognized (fanout/mixed) but not measured by the runners yet.
-      return { value: null, unit: "rate" };
+      return null;
     case "errors.total":
-      return { value: sumErrors(metrics.errors), unit: "count" };
+      return sumErrors(metrics.errors);
     case "errors.4xx":
-      return { value: sumErrors(metrics.errors, 400, 500), unit: "count" };
+      return sumErrors(metrics.errors, 400, 500);
     case "errors.5xx":
-      return { value: sumErrors(metrics.errors, 500, 600), unit: "count" };
+      return sumErrors(metrics.errors, 500, 600);
   }
   if (metric.startsWith("latency.")) {
-    return {
-      value: latencyField(metrics.client.latencyMs, metric.slice(8)),
-      unit: "ms",
-    };
+    return latencyField(metrics.client.latencyMs, metric.slice(8));
   }
   if (metric.startsWith("signatureVerification.")) {
-    return {
-      value: partialField(
-        metrics.server?.signatureVerificationMs?.overall,
-        metric.slice("signatureVerification.".length),
-      ),
-      unit: "ms",
-    };
+    return partialField(
+      metrics.server?.signatureVerificationMs?.overall,
+      metric.slice("signatureVerification.".length),
+    );
   }
   if (metric.startsWith("queueDrain.")) {
-    return {
-      value: partialField(
-        metrics.server?.queue?.drainMs,
-        metric.slice("queueDrain.".length),
-      ),
-      unit: "ms",
-    };
+    return partialField(
+      metrics.server?.queue?.drainMs,
+      metric.slice("queueDrain.".length),
+    );
   }
-  // Unknown metric name.
   return null;
 }
 
