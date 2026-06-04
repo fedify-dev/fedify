@@ -1,11 +1,11 @@
 <!-- deno-fmt-ignore-file -->
 
-Fedify JSON Schemas
+Fedify JSON schemas
 ===================
 
 This directory holds the published JSON Schemas (draft 2020-12) for Fedify file
-formats.  It is deployed to <https://json-schema.fedify.dev/> by Netlify on every
-push to the *main* branch; the directory layout maps onto the URL, so
+formats.  It is deployed to <https://json-schema.fedify.dev/> by Netlify on
+every push to the *main* branch; the directory layout maps onto the URL, so
 *schema/bench/scenario-v1.json* is served at
 <https://json-schema.fedify.dev/bench/scenario-v1.json>.
 
@@ -16,7 +16,7 @@ Current schemas:
 
 
 Versioning: append-only and immutable
---------------------------------------
+-------------------------------------
 
 A published version file is **never edited**.  Each schema's `$id` equals its
 hosted URL, and external consumers pin that URL, so editing a published file
@@ -27,7 +27,7 @@ available, and review enforces it otherwise.
 
 
 Source of truth and regeneration
----------------------------------
+--------------------------------
 
 The schemas are authored as embedded objects in the CLI so the validator can
 use them without reading files at runtime (which keeps the `deno compile`
@@ -70,7 +70,7 @@ The benchmark schema tests (*packages/cli/src/bench/schema.test.ts*) enforce:
 Hosting
 -------
 
-*_headers* and *netlify.toml* configure Netlify to serve the schemas
+*\_headers* and *netlify.toml* configure Netlify to serve the schemas
 cross-origin (editors and online validators fetch them), with the
 `application/schema+json` media type and a long immutable cache.  Point the
 Netlify site's base directory at this *schema/* folder.
