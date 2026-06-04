@@ -160,3 +160,37 @@ test("normalizeSuite - jit signing allows a time-windowed target", () => {
   assert.strictEqual(s.signing, "jit");
   assert.strictEqual(s.signatureTimeWindow, true);
 });
+
+test("normalizeSuite - rejects warmup not shorter than duration", () => {
+  assert.throws(
+    () =>
+      normalizeSuite(suite({
+        defaults: { duration: "10s", warmup: "10s" },
+      })),
+    (error: unknown) =>
+      error instanceof SuiteNormalizeError && /warmup/.test(error.message),
+  );
+  assert.throws(
+    () =>
+      normalizeSuite(suite({
+        defaults: { duration: "10s", warmup: "30s" },
+      })),
+    SuiteNormalizeError,
+  );
+});
+
+test("normalizeSuite - allows warmup shorter than duration", () => {
+  const s = normalizeSuite(suite({
+    defaults: { duration: "10s", warmup: "9s" },
+  })).scenarios[0];
+  assert.strictEqual(s.durationMs, 10_000);
+  assert.strictEqual(s.warmupMs, 9000);
+});
+
+test("normalizeSuite - rejects multiple runs (runs > 1)", () => {
+  assert.throws(
+    () => normalizeSuite(suite({ defaults: { runs: 3 } })),
+    (error: unknown) =>
+      error instanceof SuiteNormalizeError && /runs/.test(error.message),
+  );
+});

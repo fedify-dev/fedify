@@ -96,7 +96,16 @@ crypto cost is real.
 > [!NOTE]
 > This version runs the `inbox` and `webfinger` scenario types.  The scenario
 > format can express the others (`actor`, `object`, `fanout`, `collection`,
-> `failure`, and `mixed`), but they are not executed yet.
+> `failure`, and `mixed`), but they are not executed yet.  Within the runnable
+> types, a few options the format accepts are also not implemented yet and are
+> rejected up front with a clear message:
+>
+>  -  `runs` greater than `1` (repeated runs).
+>  -  An `inbox` `activity` that is not a `Create` carrying an embedded `Note`;
+>     that is, a non-`Create` `type`, a non-`Note` `object.type`, or
+>     `embedObject: false`.
+>  -  A `warmup` that is not shorter than the `duration` (which would leave no
+>     measured window).
 
 ### A scenario suite
 
@@ -143,6 +152,11 @@ against the [published schema].
 Override the file's target with `--target`, choose the output with
 `--format`/`--output`, and inspect a run without sending anything with
 `--dry-run`.
+
+An `inbox` scenario's `recipient` may be a single value or a list.  With a
+list, deliveries are rotated across the recipients (and across the synthetic
+`actors` signing them), modeling a server that receives from many peers into
+many local inboxes.
 
 [published schema]: https://json-schema.fedify.dev/bench/scenario-v1.json
 

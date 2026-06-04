@@ -81,11 +81,15 @@ export default async function runBench(
     return void exit(2);
   }
 
-  // Preflight every runner so an unsupported scenario type fails fast, before
-  // any probe or load.
+  // Preflight every runner so an unsupported scenario type or an option the
+  // runner cannot honor fails fast, before any probe or load.
   let runners;
   try {
-    runners = suite.scenarios.map((scenario) => runnerFor(scenario.type));
+    runners = suite.scenarios.map((scenario) => {
+      const runner = runnerFor(scenario.type);
+      runner.validate?.(scenario);
+      return runner;
+    });
   } catch (error) {
     log(error instanceof Error ? error.message : String(error));
     return void exit(2);

@@ -140,21 +140,36 @@ function resolveScenario(scenario: Scenario, suite: Suite): ResolvedScenario {
         "open-loop rate, or signing: pipeline or jit.",
     );
   }
+  const durationMs = resolveDuration(
+    scenario.duration ?? defaults.duration,
+    DEFAULT_DURATION_MS,
+  );
+  const warmupMs = resolveDuration(
+    scenario.warmup ?? defaults.warmup,
+    DEFAULT_WARMUP_MS,
+  );
+  if (warmupMs >= durationMs) {
+    throw new SuiteNormalizeError(
+      `Scenario "${scenario.name}": warmup (${warmupMs}ms) must be shorter ` +
+        `than duration (${durationMs}ms); otherwise no requests are measured.`,
+    );
+  }
+  const runs = scenario.runs ?? defaults.runs ?? DEFAULT_RUNS;
+  if (runs > 1) {
+    throw new SuiteNormalizeError(
+      `Scenario "${scenario.name}": multiple runs (runs > 1) are not yet ` +
+        "implemented in fedify bench; set runs to 1.",
+    );
+  }
   return {
     name: scenario.name,
     type: scenario.type,
     load,
-    durationMs: resolveDuration(
-      scenario.duration ?? defaults.duration,
-      DEFAULT_DURATION_MS,
-    ),
-    warmupMs: resolveDuration(
-      scenario.warmup ?? defaults.warmup,
-      DEFAULT_WARMUP_MS,
-    ),
+    durationMs,
+    warmupMs,
     signing,
     signatureTimeWindow,
-    runs: scenario.runs ?? defaults.runs ?? DEFAULT_RUNS,
+    runs,
     recipients: asList(scenario.recipient),
     inbox: scenario.inbox,
     activity: scenario.activity,

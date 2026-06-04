@@ -50,6 +50,10 @@ export function buildScenarioResult(
   measurement: ScenarioMeasurement,
 ): ScenarioResult {
   const { results, passed } = evaluateExpect(scenario.expect, measurement);
+  // A scenario that measured no requests must never pass: an empty sample set
+  // makes every `expect` assertion vacuously true (and a missing-metric one
+  // could only fail), so without this guard a run that sent nothing would
+  // report a green gate.
   return {
     name: scenario.name,
     type: scenario.type,
@@ -60,7 +64,7 @@ export function buildScenarioResult(
     server: measurement.server,
     errors: measurement.errors,
     expectations: results,
-    passed,
+    passed: passed && measurement.requests.total > 0,
     ...(measurement.histogram ? { histogram: measurement.histogram } : {}),
   };
 }

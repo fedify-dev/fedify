@@ -34,6 +34,12 @@ export interface RunContext {
 /** A runner for one scenario type. */
 export interface ScenarioRunner {
   run(context: RunContext): Promise<ScenarioMeasurement>;
+  /**
+   * Optionally rejects a resolved scenario the runner cannot honor, before any
+   * probe or load.  Called during preflight; throwing here surfaces as a
+   * configuration error (exit 2) with the thrown message.
+   */
+  validate?(scenario: ResolvedScenario): void;
 }
 
 /** Performs one HTTP send and classifies the result as a send outcome. */

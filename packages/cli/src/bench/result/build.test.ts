@@ -52,6 +52,16 @@ test("buildScenarioResult - summarizes load and evaluates expect", () => {
   assert.strictEqual(result.passed, true);
 });
 
+test("buildScenarioResult - a run that measured nothing never passes", () => {
+  // No requests means every `expect` assertion is vacuously satisfied, but the
+  // scenario must still fail rather than report a green gate.
+  const result = buildScenarioResult(resolvedInbox(), {
+    ...measurement(),
+    requests: { total: 0, ok: 0, failed: 0, successRate: 1 },
+  });
+  assert.strictEqual(result.passed, false);
+});
+
 test("buildReport - gate passes only when all scenarios pass", () => {
   const ok = buildScenarioResult(resolvedInbox(), measurement());
   const bad = buildScenarioResult(resolvedInbox(), {

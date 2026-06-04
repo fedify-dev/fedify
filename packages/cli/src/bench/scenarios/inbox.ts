@@ -15,6 +15,7 @@ import { runLoad } from "../load/generator.ts";
 import { aggregateSamples } from "../metrics/aggregate.ts";
 import { fetchServerMetrics } from "../metrics/stats-client.ts";
 import { asList } from "../scenario/coerce.ts";
+import type { ResolvedScenario } from "../scenario/normalize.ts";
 import type { ActivitySpec } from "../scenario/types.ts";
 import type { SyntheticActor } from "../server/synthetic.ts";
 import { createActivityIdMinter } from "../signing/activity-id.ts";
@@ -34,8 +35,18 @@ import {
   sendRequest,
 } from "./runner.ts";
 
+/** One discovered delivery target: an inbox and the actor it belongs to. */
+interface InboxTarget {
+  readonly inbox: URL;
+  readonly actorUri: URL;
+}
+
 /** The `inbox` scenario runner. */
 export const inboxRunner: ScenarioRunner = {
+  validate(scenario: ResolvedScenario): void {
+    validateActivity(scenario);
+  },
+
   async run(context: RunContext) {
     const { scenario, fleet } = context;
     if (fleet == null || fleet.actors.length < 1) {
@@ -46,29 +57,40 @@ export const inboxRunner: ScenarioRunner = {
     if (scenario.recipients.length < 1) {
       throw new Error("The inbox scenario requires a recipient.");
     }
+    validateActivity(scenario);
     const fetchImpl = context.fetch ?? fetch;
-    const discovered = await discoverInbox(scenario.recipients[0], {
-      documentLoader: context.documentLoader,
-      contextLoader: context.contextLoader,
-      allowPrivateAddress: context.allowPrivateAddress,
-    });
-    const inbox = selectInbox(discovered, scenario.inbox);
+    // Discover every recipient's inbox the way a real peer would, then rotate
+    // across them so multi-recipient suites spread load over each inbox.
+    const targets: InboxTarget[] = [];
+    for (const recipient of scenario.recipients) {
+      const discovered = await discoverInbox(recipient, {
+        documentLoader: context.documentLoader,
+        contextLoader: context.contextLoader,
+        allowPrivateAddress: context.allowPrivateAddress,
+      });
+      targets.push({
+        inbox: selectInbox(discovered, scenario.inbox),
+        actorUri: discovered.actorUri,
+      });
+    }
 
     const actors = fleet.actors;
     const minter = createActivityIdMinter(fleet.url);
-    let actorIndex = 0;
+    let index = 0;
     const factory = () => {
-      const actor = actors[actorIndex++ % actors.length];
+      const i = index++;
+      const actor = actors[i % actors.length];
+      const target = targets[i % targets.length];
       const activity = buildActivity(
         scenario.activity,
         actor,
         minter.next(),
         fleet.url,
-        discovered.actorUri,
+        target.actorUri,
       );
       return signInboxDelivery({
         actor,
-        inbox,
+        inbox: target.inbox,
         activity,
         contextLoader: context.contextLoader,
       });
@@ -106,6 +128,40 @@ export const inboxRunner: ScenarioRunner = {
   },
 };
 
+/**
+ * Rejects the activity options the inbox runner cannot yet honor: it always
+ * delivers a `Create` carrying an embedded `Note`, so a different activity or
+ * object type, or `embedObject: false`, is refused with a clear message.
+ */
+function validateActivity(scenario: ResolvedScenario): void {
+  const spec = scenario.activity;
+  if (spec == null) return;
+  // `type` and `object.type` are scalar-or-list, so check every supplied value:
+  // a list such as `[Create, Announce]` is just as unsupported as `Announce`.
+  const badType = asList(spec.type).find((type) => type !== "Create");
+  if (badType != null) {
+    throw new Error(
+      `Scenario "${scenario.name}": the inbox runner currently supports only ` +
+        `Create activities; got ${JSON.stringify(badType)}.`,
+    );
+  }
+  if (spec.embedObject === false) {
+    throw new Error(
+      `Scenario "${scenario.name}": the inbox runner always embeds the ` +
+        "activity's object; embedObject: false is not yet supported.",
+    );
+  }
+  const badObjectType = asList(spec.object?.type).find((type) =>
+    type !== "Note"
+  );
+  if (badObjectType != null) {
+    throw new Error(
+      `Scenario "${scenario.name}": the inbox runner currently supports only ` +
+        `Note objects; got ${JSON.stringify(badObjectType)}.`,
+    );
+  }
+}
+
 function buildActivity(
   spec: ActivitySpec | undefined,
   actor: SyntheticActor,
@@ -113,13 +169,7 @@ function buildActivity(
   base: URL,
   recipient: URL,
 ): Activity {
-  const type = asList(spec?.type)[0] ?? "Create";
-  if (type !== "Create") {
-    throw new Error(
-      `The inbox runner currently supports only Create activities; got ` +
-        `${JSON.stringify(type)}.`,
-    );
-  }
+  // `validateActivity` has already rejected anything but a Create/Note here.
   const note = new Note({
     id: new URL(`/objects/${crypto.randomUUID()}`, base),
     attribution: actor.id,

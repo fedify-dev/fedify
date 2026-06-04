@@ -3,7 +3,6 @@
   "version": 1,
   "target": "http://localhost:3000",
   "defaults": {
-    "runs": 3,
     "load": { "rate": "200/s" }
   },
   "actors": [
