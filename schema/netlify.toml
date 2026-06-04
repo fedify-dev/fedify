@@ -1,0 +1,17 @@
+# Netlify configuration for hosting the published JSON Schemas at
+# json-schema.fedify.dev.  Point the Netlify site's base directory at this
+# `schema/` folder; everything here is then served as the site root.
+#
+# The header rules below mirror `_headers` (either mechanism is sufficient):
+# schemas are served cross-origin with the JSON Schema media type and a long
+# immutable cache, because every published version file is immutable.
+
+[build]
+  publish = "."
+
+[[headers]]
+  for = "/bench/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Content-Type = "application/schema+json"
+    Cache-Control = "public, max-age=31536000, immutable"

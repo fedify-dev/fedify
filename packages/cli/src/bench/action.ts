@@ -11,7 +11,7 @@ import {
 } from "./result/build.ts";
 import { probeBenchmarkMode } from "./discovery/probe.ts";
 import { renderReport, type ReportFormat } from "./render/index.ts";
-import { loadSuiteFile } from "./scenario/load.ts";
+import { loadSuiteFile, renderSuiteTemplates } from "./scenario/load.ts";
 import {
   normalizeSuite,
   type ResolvedScenario,
@@ -73,7 +73,8 @@ export default async function runBench(
   let suite: ResolvedSuite;
   try {
     const raw = await loadSuiteFile(command.scenario);
-    validated = validateSuite(raw, command.scenario);
+    const rendered = renderSuiteTemplates(raw, command.target);
+    validated = validateSuite(rendered, command.scenario);
     suite = normalizeSuite(validated, { target: command.target });
   } catch (error) {
     log(error instanceof Error ? error.message : String(error));

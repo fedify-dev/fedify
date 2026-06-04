@@ -9,7 +9,9 @@ defaults:
 scenarios:
   - name: inbox-shared
     type: inbox
-    recipient: "acct:alice@${{ target.host }}"
+    # An actor URI (not an acct: handle) works over a plain-http loopback
+    # target, since WebFinger resolution requires https.
+    recipient: "http://${{ target.host }}/users/alice"
     inbox: shared
     activity:
       type: Create

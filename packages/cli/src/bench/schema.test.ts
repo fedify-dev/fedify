@@ -109,25 +109,49 @@ for (const { name, fileName, schema } of PUBLISHED_SCHEMAS) {
   });
 }
 
-// Guard 4: immutability of already-published schema versions.
-for (const { name, fileName } of PUBLISHED_SCHEMAS) {
-  test(`schema guard - ${name} published file is unchanged from HEAD`, () => {
-    let committed: string;
+// Guard 4: immutability of already-published schema versions.  A published
+// version file must not differ from its content on the main branch; compare
+// against the merge-base so a committed edit on a feature branch is caught
+// (not just an uncommitted one).  The check is skipped when no base ref is
+// available (e.g. a shallow clone) or the file is new since the base.
+function publishedBaseCommit(): string | null {
+  for (const ref of ["origin/main", "main"]) {
     try {
-      committed = execFileSync(
+      execFileSync("git", ["rev-parse", "--verify", "--quiet", ref], {
+        cwd: REPO_ROOT,
+        stdio: "ignore",
+      });
+      return execFileSync("git", ["merge-base", "HEAD", ref], {
+        cwd: REPO_ROOT,
+        encoding: "utf-8",
+      }).trim();
+    } catch {
+      // Ref unavailable; try the next.
+    }
+  }
+  return null;
+}
+
+const baseCommit = publishedBaseCommit();
+for (const { name, fileName } of PUBLISHED_SCHEMAS) {
+  test(`schema guard - ${name} published file is immutable`, () => {
+    if (baseCommit == null) return;
+    let published: string;
+    try {
+      published = execFileSync(
         "git",
-        ["show", `HEAD:schema/bench/${fileName}`],
+        ["show", `${baseCommit}:schema/bench/${fileName}`],
         { cwd: REPO_ROOT, encoding: "utf-8" },
       );
     } catch {
-      // Not yet committed (a brand-new version file): nothing to guard.
+      // Not published at the base (a brand-new version file): nothing to guard.
       return;
     }
     const current = readFileSync(join(SCHEMA_DIR, fileName), "utf-8");
     assert.strictEqual(
       current,
-      committed,
-      `schema/bench/${fileName} is published and immutable; publish a new ` +
+      published,
+      `schema/bench/${fileName} is published and immutable; ship a new ` +
         `version file instead of editing it`,
     );
   });

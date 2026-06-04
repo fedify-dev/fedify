@@ -12,10 +12,10 @@ defaults:
   signing: pipeline
   runs: 3
 actors:
-  - name: "Mastodon-like actor ${{ index }}"
+  - name: "Mastodon-like actor"
     count: 3
     signatureStandards: [draft-cavage-http-signatures-12, ld-signatures]
-  - name: "Hollo-like actor ${{ index }}"
+  - name: "Hollo-like actor"
     count: 2
     signatureStandards: [rfc9421, fep8b32]
 scenarios:

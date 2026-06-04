@@ -58,6 +58,7 @@
         "codegen"
       ]
     },
+    "generate-bench-schema": "deno run -A scripts/generate-bench-schema.ts",
     "test": {
       "command": "deno test --allow-all",
       "dependencies": [

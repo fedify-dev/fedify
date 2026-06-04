@@ -78,13 +78,14 @@ async function writeSuite(content: string): Promise<string> {
 }
 
 function inboxSuite(target: URL, expectLine: string): string {
-  const recipient = new URL("/users/alice", target).href;
+  // Uses `${{ target.host }}` templating to form the actor URI (WebFinger is
+  // https-only, so an acct: handle would not resolve over http loopback).
   return `version: 1
 target: ${target.href}
 scenarios:
   - name: inbox-shared
     type: inbox
-    recipient: ${JSON.stringify(recipient)}
+    recipient: "http://\${{ target.host }}/users/alice"
     inbox: shared
     load: { concurrency: 2 }
     duration: 250ms
