@@ -9,6 +9,7 @@
  * @module
  */
 
+import { reportSchemaV1 } from "./result/schema.ts";
 import { scenarioSchemaV1 } from "./scenario/schema.ts";
 
 /** A published JSON Schema and where it is hosted. */
@@ -27,5 +28,10 @@ export const PUBLISHED_SCHEMAS: readonly PublishedSchema[] = [
     name: "scenario",
     fileName: "scenario-v1.json",
     schema: scenarioSchemaV1 as unknown as Record<string, unknown>,
+  },
+  {
+    name: "report",
+    fileName: "report-v1.json",
+    schema: reportSchemaV1 as unknown as Record<string, unknown>,
   },
 ];

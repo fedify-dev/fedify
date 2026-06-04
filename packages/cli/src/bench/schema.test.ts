@@ -51,11 +51,23 @@ for (const { name, fileName, schema } of PUBLISHED_SCHEMAS) {
 }
 
 // Guard 2: example-fixture validation.
-const scenarioSchema = PUBLISHED_SCHEMAS.find((s) => s.name === "scenario")!;
-const scenarioValidator = new Validator(
-  scenarioSchema.schema as unknown as Schema,
-  "2020-12",
+const validators = new Map(
+  PUBLISHED_SCHEMAS.map((
+    s,
+  ) => [s.name, new Validator(s.schema as unknown as Schema, "2020-12")]),
 );
+
+interface FixtureGroup {
+  readonly dir: string;
+  readonly schema: string;
+  readonly valid: boolean;
+}
+
+const FIXTURE_GROUPS: readonly FixtureGroup[] = [
+  { dir: "scenarios", schema: "scenario", valid: true },
+  { dir: "invalid", schema: "scenario", valid: false },
+  { dir: "reports", schema: "report", valid: true },
+];
 
 function fixtureFiles(dir: string): string[] {
   return readdirSync(join(FIXTURES, dir))
@@ -63,22 +75,25 @@ function fixtureFiles(dir: string): string[] {
     .map((f) => join(FIXTURES, dir, f));
 }
 
-for (const file of fixtureFiles("scenarios")) {
-  test(`schema guard - valid fixture ${file.split("/").pop()}`, () => {
-    const suite = parseSuiteText(readFileSync(file, "utf-8"));
-    const result = scenarioValidator.validate(suite);
-    assert.ok(
-      result.valid,
-      `expected valid, got: ${JSON.stringify(result.errors)}`,
+for (const group of FIXTURE_GROUPS) {
+  const validator = validators.get(group.schema)!;
+  for (const file of fixtureFiles(group.dir)) {
+    const label = `${group.dir}/${file.split("/").pop()}`;
+    test(
+      `schema guard - fixture ${label} is ${group.valid ? "valid" : "invalid"}`,
+      () => {
+        const value = parseSuiteText(readFileSync(file, "utf-8"));
+        const result = validator.validate(value);
+        assert.strictEqual(
+          result.valid,
+          group.valid,
+          group.valid
+            ? `expected valid, got: ${JSON.stringify(result.errors)}`
+            : "expected invalid",
+        );
+      },
     );
-  });
-}
-
-for (const file of fixtureFiles("invalid")) {
-  test(`schema guard - invalid fixture ${file.split("/").pop()}`, () => {
-    const suite = parseSuiteText(readFileSync(file, "utf-8"));
-    assert.ok(!scenarioValidator.validate(suite).valid, "expected invalid");
-  });
+  }
 }
 
 // Guard 3: drift between embedded schema and the published file.

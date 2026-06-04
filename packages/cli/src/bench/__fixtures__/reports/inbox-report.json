@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.fedify.dev/bench/report-v1.json",
+  "schemaVersion": 1,
+  "tool": { "name": "@fedify/cli", "version": "2.3.0" },
+  "environment": {
+    "runtime": "deno",
+    "runtimeVersion": "2.5.0",
+    "os": "linux",
+    "cpuCount": 16
+  },
+  "target": {
+    "url": "http://localhost:3000",
+    "fedifyVersion": "2.3.0",
+    "statsAvailable": true
+  },
+  "startedAt": "2026-06-04T12:00:00.000Z",
+  "finishedAt": "2026-06-04T12:01:10.000Z",
+  "suite": { "name": "Inbox regression suite", "configHash": "sha256:abc123" },
+  "passed": true,
+  "scenarios": [
+    {
+      "name": "inbox-shared",
+      "type": "inbox",
+      "load": {
+        "model": "closed",
+        "concurrency": 50,
+        "durationMs": 60000,
+        "warmupMs": 10000
+      },
+      "requests": {
+        "total": 18240,
+        "ok": 18137,
+        "failed": 103,
+        "successRate": 0.9944
+      },
+      "throughputPerSec": 304.0,
+      "client": {
+        "latencyMs": {
+          "p50": 24,
+          "p95": 91,
+          "p99": 184,
+          "mean": 31.2,
+          "max": 412
+        }
+      },
+      "server": {
+        "signatureVerificationMs": {
+          "overall": { "p50": 6, "p95": 12, "p99": 28 },
+          "byStandard": {
+            "draft-cavage-http-signatures-12": { "p50": 7, "p95": 13 }
+          }
+        },
+        "queue": { "drainMs": { "p50": 900, "p95": 1800 }, "depthMax": 1240 }
+      },
+      "errors": [
+        {
+          "kind": "http",
+          "status": 401,
+          "reason": "signature_failed",
+          "count": 72
+        },
+        {
+          "kind": "http",
+          "status": 500,
+          "reason": "handler_error",
+          "count": 31
+        }
+      ],
+      "expectations": [
+        {
+          "metric": "latency.p95",
+          "op": "lt",
+          "threshold": 100,
+          "unit": "ms",
+          "actual": 91,
+          "severity": "fail",
+          "pass": true
+        },
+        {
+          "metric": "successRate",
+          "op": "gte",
+          "threshold": 0.99,
+          "unit": "%",
+          "actual": 0.9944,
+          "severity": "fail",
+          "pass": true
+        }
+      ],
+      "passed": true
+    }
+  ]
+}
