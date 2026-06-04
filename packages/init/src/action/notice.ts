@@ -1,4 +1,4 @@
-import { text } from "@optique/core";
+import { commandLine, text } from "@optique/core";
 import { flow } from "es-toolkit";
 import type { InitCommand } from "../command.ts";
 import type { InitCommandData } from "../types.ts";
@@ -123,7 +123,7 @@ export const noticeSkippedInstall = (
 ) =>
   printMessage`
 Dependencies were not installed.  Run ${
-    text(`${packageManager} install`)
+    commandLine(`${packageManager} install`)
   } in the project directory to install them.
 `;
 

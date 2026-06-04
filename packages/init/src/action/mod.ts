@@ -39,11 +39,11 @@ import {
  * 5. Converts `InitCommandOptions` into `InitCommandData` via `setData`.
  * 6. Branches based on `isDry`:
  *    - If dry run, executes `handleDryRun`.
- *    - Otherwise, executes `handleHydRun`.
+ *    - Otherwise, executes `handleHydRun`, which installs dependencies, or—when
+ *      `--skip-install` is set—prints how to install them manually via
+ *      `noticeSkippedInstall`.
  * 7. Recommends configuration environment via `recommendConfigEnv`.
- * 8. If installation was skipped and not a dry run, prints how to install
- *    dependencies manually via `noticeSkippedInstall`.
- * 9. Shows how to run the project via `noticeHowToRun`.
+ * 8. Shows how to run the project via `noticeHowToRun`.
  */
 const runInit = (options: InitCommand) =>
   pipe(
@@ -56,7 +56,6 @@ const runInit = (options: InitCommand) =>
     when(isDry, handleDryRun),
     unless(isDry, handleHydRun),
     tap(recommendConfigEnv),
-    tap(unless(isDry, when(isSkipInstall, noticeSkippedInstall))),
     tap(noticeHowToRun),
   );
 
@@ -82,4 +81,5 @@ const handleHydRun = (data: InitCommandData) =>
     tap(when(hasCommand, runPrecommand)),
     tap(patchFiles),
     tap(unless(isSkipInstall, installDependencies)),
+    tap(when(isSkipInstall, noticeSkippedInstall)),
   );
