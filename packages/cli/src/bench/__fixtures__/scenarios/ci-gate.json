@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.fedify.dev/bench/scenario-v1.json",
+  "version": 1,
+  "target": "http://localhost:3000",
+  "defaults": {
+    "runs": 3,
+    "load": { "rate": "200/s" }
+  },
+  "actors": [
+    {
+      "signatureStandards": ["draft-cavage-http-signatures-12"]
+    }
+  ],
+  "scenarios": [
+    {
+      "name": "inbox-shared",
+      "type": "inbox",
+      "recipient": "acct:alice@example.com",
+      "expect": {
+        "successRate": ">= 99%",
+        "errors.5xx": "== 0",
+        "throughputPerSec": ">= 50",
+        "latency.p95": { "assert": "< 250ms", "severity": "warn" }
+      }
+    }
+  ]
+}

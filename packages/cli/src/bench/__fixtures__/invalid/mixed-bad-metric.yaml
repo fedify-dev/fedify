@@ -1,0 +1,11 @@
+# "bogus.metric" is not a recognized metric for a mixed scenario's expect block.
+version: 1
+target: http://localhost:3000
+scenarios:
+  - name: blend
+    type: mixed
+    mix:
+      - { scenario: inbox-shared, weight: 80 }
+      - { scenario: webfinger-lookup, weight: 20 }
+    expect:
+      bogus.metric: ">= 1"

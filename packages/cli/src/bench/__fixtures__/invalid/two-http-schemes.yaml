@@ -1,0 +1,9 @@
+# An actor group must have exactly one HTTP request signature scheme.
+version: 1
+target: http://localhost:3000
+actors:
+  - signatureStandards: [draft-cavage-http-signatures-12, rfc9421]
+scenarios:
+  - name: inbox-shared
+    type: inbox
+    recipient: "acct:alice@example.com"

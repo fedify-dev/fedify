@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://json-schema.fedify.dev/bench/scenario-v1.json
+version: 1
+target: http://localhost:3000
+defaults:
+  duration: 60s
+  warmup: 10s
+  load:
+    concurrency: 50
+scenarios:
+  - name: inbox-shared
+    type: inbox
+    recipient: "acct:alice@${{ target.host }}"
+    inbox: shared
+    activity:
+      type: Create
+      embedObject: true
+      object:
+        type: Note
+        content: { generate: lorem, size: 2KB }
+    expect:
+      successRate: ">= 99%"
+      latency.p95: "< 100ms"
