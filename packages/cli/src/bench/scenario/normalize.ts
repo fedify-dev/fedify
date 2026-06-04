@@ -133,6 +133,13 @@ function resolveScenario(scenario: Scenario, suite: Suite): ResolvedScenario {
         "signing: jit for a time-windowed target.",
     );
   }
+  if (signing === "presign" && load.kind === "closed") {
+    throw new SuiteNormalizeError(
+      `Scenario "${scenario.name}": presign signing needs a fixed request ` +
+        "count, which a closed-loop (concurrency) load does not have; use an " +
+        "open-loop rate, or signing: pipeline or jit.",
+    );
+  }
   return {
     name: scenario.name,
     type: scenario.type,

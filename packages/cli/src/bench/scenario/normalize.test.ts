@@ -135,6 +135,24 @@ test("normalizeSuite - pipeline signing rejects a time-windowed target", () => {
   );
 });
 
+test("normalizeSuite - presign rejects a closed-loop load", () => {
+  assert.throws(
+    () =>
+      normalizeSuite(suite({
+        defaults: { signing: "presign", load: { concurrency: 10 } },
+      })),
+    SuiteNormalizeError,
+  );
+});
+
+test("normalizeSuite - presign allows an open-loop load", () => {
+  const s = normalizeSuite(suite({
+    defaults: { signing: "presign", load: { rate: "100/s" } },
+  })).scenarios[0];
+  assert.strictEqual(s.signing, "presign");
+  assert.strictEqual(s.load.kind, "open");
+});
+
 test("normalizeSuite - jit signing allows a time-windowed target", () => {
   const s = normalizeSuite(suite({
     defaults: { signing: "jit", signatureTimeWindow: true },
