@@ -6,6 +6,7 @@ import {
   type Histogram,
   type MeterProvider,
   metrics,
+  type ObservableGauge,
   type UpDownCounter,
 } from "@opentelemetry/api";
 import metadata from "../../deno.json" with { type: "json" };
@@ -90,6 +91,37 @@ export interface QueueTaskCommonAttributes {
   role: QueueTaskRole;
   queue?: MessageQueue;
   activityType?: string;
+}
+
+/**
+ * An entry for observing one queue role in `fedify.queue.depth`.
+ *
+ * This public API is used by {@link registerQueueDepthGauge()} to associate a
+ * queue depth source with the task role it represents.
+ * @since 2.3.0
+ */
+export interface QueueDepthGaugeEntry {
+  /**
+   * The task role whose queue depth is observed.
+   */
+  role: QueueTaskRole;
+
+  /**
+   * The message queue to observe, or `undefined` when the role has no queue.
+   */
+  queue?: MessageQueue;
+}
+
+/**
+ * Options for observing queue depth metrics.
+ * @since 2.3.0
+ */
+export interface QueueDepthGaugeOptions {
+  /**
+   * An opaque source identifier to distinguish queue depth series registered on
+   * the same meter provider.
+   */
+  sourceId?: string;
 }
 
 /**
@@ -478,6 +510,7 @@ class FederationMetrics {
   readonly queueTaskFailed: Counter;
   readonly queueTaskDuration: Histogram;
   readonly queueTaskInFlight: UpDownCounter;
+  readonly queueDepth: ObservableGauge;
   readonly fanoutRecipients: Histogram;
   readonly inboxActivity: Counter;
   readonly outboxActivity: Counter;
@@ -521,6 +554,23 @@ class FederationMetrics {
           "Duration of ActivityPub signature verification, including local " +
           "key lookup and remote key fetches.",
         unit: "ms",
+        advice: {
+          explicitBucketBoundaries: [
+            0.1,
+            0.25,
+            0.5,
+            1,
+            2.5,
+            5,
+            10,
+            25,
+            50,
+            100,
+            250,
+            500,
+            1000,
+          ],
+        },
       },
     );
     this.signatureKeyFetchDuration = meter.createHistogram(
@@ -635,6 +685,12 @@ class FederationMetrics {
         unit: "{task}",
       },
     );
+    this.queueDepth = meter.createObservableGauge("fedify.queue.depth", {
+      description:
+        "Messages waiting in configured Fedify queues, as reported by the " +
+        "queue backend.",
+      unit: "{message}",
+    });
     this.fanoutRecipients = meter.createHistogram(
       "activitypub.fanout.recipients",
       {
@@ -1165,6 +1221,85 @@ export function getQueueBackend(queue?: MessageQueue): string | undefined {
   const name = queue?.constructor?.name;
   if (name == null || name === "" || name === "Object") return undefined;
   return name;
+}
+
+/**
+ * Registers a callback for observing queue backend depth.
+ * @since 2.3.0
+ */
+export function registerQueueDepthGauge(
+  meterProvider: MeterProvider,
+  entries: readonly QueueDepthGaugeEntry[],
+  options: QueueDepthGaugeOptions = {},
+): void {
+  const uniqueQueues = new Map<MessageQueue, QueueTaskRole[]>();
+  for (const { role, queue } of entries) {
+    if (queue?.getDepth == null) continue;
+    const roles = uniqueQueues.get(queue);
+    if (roles == null) {
+      uniqueQueues.set(queue, [role]);
+    } else if (!roles.includes(role)) {
+      roles.push(role);
+    }
+  }
+  if (uniqueQueues.size < 1) return;
+  const queueEntries = Array.from(uniqueQueues.entries());
+  const gauge = getFederationMetrics(meterProvider).queueDepth;
+  gauge.addCallback(async (observableResult) => {
+    await Promise.all(queueEntries.map(async ([queue, roles]) => {
+      let depth;
+      try {
+        depth = await queue.getDepth!();
+      } catch {
+        return;
+      }
+      if (depth == null) return;
+      const attributes = buildQueueDepthAttributes(queue, roles, options);
+      observableResult.observe(depth.queued, {
+        ...attributes,
+        "fedify.queue.depth.state": "queued",
+      });
+      if (depth.ready != null) {
+        observableResult.observe(depth.ready, {
+          ...attributes,
+          "fedify.queue.depth.state": "ready",
+        });
+      }
+      if (depth.delayed != null) {
+        observableResult.observe(depth.delayed, {
+          ...attributes,
+          "fedify.queue.depth.state": "delayed",
+        });
+      }
+    }));
+  });
+}
+
+function buildQueueDepthAttributes(
+  queue: MessageQueue,
+  roles: readonly QueueTaskRole[],
+  options: QueueDepthGaugeOptions,
+): Attributes {
+  const sortedRoles = roles.toSorted();
+  const role = sortedRoles.length === 1 ? sortedRoles[0] : "shared";
+  const attributes: Attributes = {
+    "fedify.queue.role": role,
+  };
+  if (options.sourceId != null) {
+    attributes["fedify.federation.instance_id"] = options.sourceId;
+  }
+  if (role === "shared") {
+    attributes["fedify.queue.roles"] = sortedRoles.join(",");
+  }
+  const backend = getQueueBackend(queue);
+  if (backend != null) {
+    attributes["fedify.queue.backend"] = backend;
+  }
+  const nativeRetrial = queue.nativeRetrial;
+  if (typeof nativeRetrial === "boolean") {
+    attributes["fedify.queue.native_retrial"] = nativeRetrial;
+  }
+  return attributes;
 }
 
 /**

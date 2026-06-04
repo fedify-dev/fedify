@@ -1,10 +1,17 @@
 import { createTestMeterProvider, test } from "@fedify/fixture";
 import { assertEquals, assertRejects } from "@std/assert";
+import {
+  DataPointType,
+  type HistogramMetricData,
+  MeterProvider,
+  MetricReader,
+} from "@opentelemetry/sdk-metrics";
 import type { DocumentLoader, RemoteDocument } from "@fedify/vocab-runtime";
 import { FetchError } from "@fedify/vocab-runtime";
-import type { MessageQueue } from "./mq.ts";
+import type { MessageQueue, MessageQueueDepth } from "./mq.ts";
 import {
   classifyFetchError,
+  getFederationMetrics,
   getRemoteHost,
   instrumentDocumentLoader,
   recordCircuitBreakerStateChange,
@@ -20,7 +27,18 @@ import {
   recordOutboxActivity,
   recordOutboxEnqueue,
   recordWebFingerHandle,
+  registerQueueDepthGauge,
 } from "./metrics.ts";
+
+class TestMetricReader extends MetricReader {
+  protected onShutdown(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  protected onForceFlush(): Promise<void> {
+    return Promise.resolve();
+  }
+}
 
 const noopQueue: MessageQueue = {
   enqueue() {
@@ -77,6 +95,166 @@ test("recordFanoutRecipients() omits activity type when unknown", () => {
     "activitypub.activity.type" in measurements[0].attributes,
     false,
   );
+});
+
+test("signature verification duration uses explicit low-latency buckets", async () => {
+  const reader = new TestMetricReader();
+  const meterProvider = new MeterProvider({ readers: [reader] });
+  try {
+    getFederationMetrics(meterProvider).recordSignatureVerificationDuration(
+      7,
+      "http",
+      "verified",
+    );
+
+    const result = await reader.collect();
+    const metric = result.resourceMetrics.scopeMetrics
+      .flatMap((scope) => scope.metrics)
+      .find((metric) =>
+        metric.descriptor.name ===
+          "activitypub.signature.verification.duration"
+      );
+    assertEquals(metric?.dataPointType, DataPointType.HISTOGRAM);
+    const histogram = metric as HistogramMetricData | undefined;
+    assertEquals(histogram?.dataPoints[0].value.buckets.boundaries, [
+      0.1,
+      0.25,
+      0.5,
+      1,
+      2.5,
+      5,
+      10,
+      25,
+      50,
+      100,
+      250,
+      500,
+      1000,
+    ]);
+  } finally {
+    await meterProvider.shutdown();
+  }
+});
+
+test("registerQueueDepthGauge() skips unavailable depth snapshots", async () => {
+  const reader = new TestMetricReader();
+  const meterProvider = new MeterProvider({ readers: [reader] });
+  try {
+    const throwingQueue: MessageQueue = {
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+      getDepth() {
+        throw new TypeError("backend unavailable");
+      },
+    };
+    const nullDepthQueue: MessageQueue = {
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+      getDepth() {
+        return Promise.resolve(null as unknown as MessageQueueDepth);
+      },
+    };
+    const healthyQueue: MessageQueue = {
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+      getDepth() {
+        return Promise.resolve({ queued: 7 });
+      },
+    };
+
+    registerQueueDepthGauge(meterProvider, [
+      { role: "inbox", queue: throwingQueue },
+      { role: "outbox", queue: nullDepthQueue },
+      { role: "fanout", queue: healthyQueue },
+    ]);
+
+    const result = await reader.collect();
+    assertEquals(result.errors, []);
+    const queueDepth = result.resourceMetrics.scopeMetrics
+      .flatMap((scope) => scope.metrics)
+      .find((metric) => metric.descriptor.name === "fedify.queue.depth");
+    assertEquals(queueDepth?.dataPointType, DataPointType.GAUGE);
+    assertEquals(
+      queueDepth?.dataPoints.map((point) => ({
+        state: point.attributes["fedify.queue.depth.state"],
+        role: point.attributes["fedify.queue.role"],
+        value: point.value,
+      })),
+      [
+        { state: "queued", role: "fanout", value: 7 },
+      ],
+    );
+  } finally {
+    await meterProvider.shutdown();
+  }
+});
+
+test("registerQueueDepthGauge() queries queue depths in parallel", async () => {
+  const reader = new TestMetricReader();
+  const meterProvider = new MeterProvider({ readers: [reader] });
+  let releaseSlowDepth: ((depth: MessageQueueDepth) => void) | undefined;
+  let fastDepthStarted = false;
+  try {
+    const slowQueue: MessageQueue = {
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+      getDepth() {
+        return new Promise<MessageQueueDepth>((resolve) => {
+          releaseSlowDepth = resolve;
+        });
+      },
+    };
+    const fastQueue: MessageQueue = {
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+      getDepth() {
+        fastDepthStarted = true;
+        return Promise.resolve({ queued: 5 });
+      },
+    };
+
+    registerQueueDepthGauge(meterProvider, [
+      { role: "inbox", queue: slowQueue },
+      { role: "outbox", queue: fastQueue },
+    ]);
+
+    const collection = reader.collect();
+    await Promise.resolve();
+    assertEquals(fastDepthStarted, true);
+    releaseSlowDepth?.({ queued: 3 });
+
+    const result = await collection;
+    const queueDepth = result.resourceMetrics.scopeMetrics
+      .flatMap((scope) => scope.metrics)
+      .find((metric) => metric.descriptor.name === "fedify.queue.depth");
+    assertEquals(
+      queueDepth?.dataPoints.map((point) => point.value).sort(),
+      [3, 5],
+    );
+  } finally {
+    releaseSlowDepth?.({ queued: 0 });
+    await meterProvider.shutdown();
+  }
 });
 
 test("recordInboxActivity() records counter with result and activity type", () => {

@@ -154,6 +154,7 @@ const MANUAL = {
     { text: "Linting", link: "/manual/lint.md" },
     { text: "Logging", link: "/manual/log.md" },
     { text: "OpenTelemetry", link: "/manual/opentelemetry.md" },
+    { text: "Benchmarking", link: "/manual/benchmarking.md" },
     { text: "Deployment", link: "/manual/deploy.md" },
   ],
   activeMatch: "/manual",

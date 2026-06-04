@@ -275,6 +275,27 @@ Turned off by default.
 
 [SSRF]: https://owasp.org/www-community/attacks/Server_Side_Request_Forgery
 
+### `benchmarkMode`
+
+*This API is available since Fedify 2.3.0.*
+
+Whether to enable cooperative benchmark mode.  When enabled, Fedify exposes
+benchmark endpoints under `/.well-known/fedify/bench/` and configures an
+in-process metrics reader for benchmark clients.
+
+This mode changes only benchmark-target defaults:
+
+ -  `allowPrivateAddress` defaults to `true`, unless a custom document loader
+    factory is configured.
+ -  `signatureTimeWindow` defaults to `false`.
+ -  Explicit option values still win.
+
+> [!WARNING]
+> Do not enable `benchmarkMode` in production.
+
+See the [*Benchmarking* section](./benchmarking.md) for endpoint details and
+safety rules.
+
 ### `userAgent`
 
 *This API is available since Fedify 1.3.0.*

@@ -58,6 +58,13 @@ import { getNodeInfo, type GetNodeInfoOptions } from "../nodeinfo/client.ts";
 import { handleNodeInfo, handleNodeInfoJrd } from "../nodeinfo/handler.ts";
 import type { JsonValue, NodeInfo } from "../nodeinfo/types.ts";
 import {
+  type BenchmarkMetricReader,
+  type BenchmarkTriggerOptions,
+  createBenchmarkMeterProvider,
+  handleBenchmarkStats,
+  handleBenchmarkTrigger,
+} from "./bench.ts";
+import {
   type HttpMessageSignaturesSpec,
   type HttpMessageSignaturesSpecDeterminer,
   verifyRequest,
@@ -105,6 +112,7 @@ import type {
 import type {
   ConstructorWithTypeId,
   Federation,
+  FederationBenchmarkOptions,
   FederationFetchOptions,
   FederationOptions,
   FederationStartQueueOptions,
@@ -131,6 +139,7 @@ import {
   getRemoteHost,
   instrumentDocumentLoader,
   isAbortError,
+  type QueueDepthGaugeEntry,
   type QueueTaskCommonAttributes,
   type QueueTaskResult,
   recordCircuitBreakerStateChange,
@@ -139,6 +148,7 @@ import {
   recordInboxActivity,
   recordOutboxActivity,
   recordOutboxEnqueue,
+  registerQueueDepthGauge,
 } from "./metrics.ts";
 import type { MessageQueue } from "./mq.ts";
 import { acceptsJsonLd } from "./negotiation.ts";
@@ -160,6 +170,7 @@ import { handleWebFinger } from "./webfinger.ts";
 import { hasMalformedKnownTemporalLiteral } from "./temporal.ts";
 
 const circuitBreakerCasWarningKvStores = new WeakSet<KvStore>();
+let nextQueueDepthGaugeSourceId = 0;
 const retryAfterHttpDate = new RegExp(
   "^(?:" +
     "(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), \\d{2} " +
@@ -211,6 +222,100 @@ function parseRetryAfterDuration(
 
 function clampNegativeDelay(delay: Temporal.Duration): Temporal.Duration {
   return delay.sign < 0 ? Temporal.Duration.from({ seconds: 0 }) : delay;
+}
+
+type BenchmarkRelaxation =
+  | {
+    readonly protection: "private_address_checks";
+    readonly effect: "disabled";
+    readonly effectiveValue: true;
+  }
+  | {
+    readonly protection: "http_signature_time_window";
+    readonly effect: "disabled";
+    readonly effectiveValue: false;
+    readonly secureDefaultSeconds: 3600;
+  }
+  | {
+    readonly protection: "http_signature_time_window";
+    readonly effect: "changed";
+    readonly effectiveSeconds: number;
+    readonly secureDefaultSeconds: 3600;
+  };
+
+function getBenchmarkRelaxations(
+  allowPrivateAddress: boolean,
+  signatureTimeWindow: Temporal.Duration | Temporal.DurationLike | false,
+): BenchmarkRelaxation[] {
+  const relaxations: BenchmarkRelaxation[] = [];
+  if (allowPrivateAddress) {
+    relaxations.push({
+      protection: "private_address_checks",
+      effect: "disabled",
+      effectiveValue: true,
+    });
+  }
+  if (signatureTimeWindow === false) {
+    relaxations.push({
+      protection: "http_signature_time_window",
+      effect: "disabled",
+      effectiveValue: false,
+      secureDefaultSeconds: 3600,
+    });
+  } else {
+    try {
+      const seconds = Temporal.Duration.from(signatureTimeWindow).total({
+        unit: "seconds",
+      });
+      if (seconds !== 3600) {
+        relaxations.push({
+          protection: "http_signature_time_window",
+          effect: "changed",
+          effectiveSeconds: seconds,
+          secureDefaultSeconds: 3600,
+        });
+      }
+    } catch {
+      // Keep benchmark warning formatting best-effort for unusual
+      // DurationLike values.
+    }
+  }
+  return relaxations;
+}
+
+function formatBenchmarkRelaxations(
+  relaxations: readonly BenchmarkRelaxation[],
+): string {
+  if (relaxations.length < 1) return "no benchmark-only protections relaxed";
+  return relaxations.map((relaxation) => {
+    switch (relaxation.protection) {
+      case "private_address_checks":
+        return "private address checks disabled (allowPrivateAddress=true)";
+      case "http_signature_time_window":
+        if (relaxation.effect === "disabled") {
+          return `HTTP Signature time window disabled (signatureTimeWindow=false)`;
+        }
+        return `HTTP Signature time window set to ${relaxation.effectiveSeconds}s ` +
+          `(secure default: ${relaxation.secureDefaultSeconds}s)`;
+    }
+  }).join("; ");
+}
+
+function getBenchmarkTriggerOptions(
+  benchmarkOptions: FederationBenchmarkOptions,
+): BenchmarkTriggerOptions {
+  const sinks = benchmarkOptions.triggerSinks?.map((sink) => {
+    try {
+      return new URL(sink).href;
+    } catch {
+      throw new TypeError("benchmarkMode.triggerSinks must contain only URLs.");
+    }
+  });
+  return {
+    sinks: sinks == null ? undefined : new Set(sinks),
+    allowUnsafeRecipients:
+      benchmarkOptions.allowUnsafeTriggerRecipients === true,
+  };
 }
 
 function maxDelay(
@@ -417,8 +522,10 @@ export interface FederationOrigin {
 
 /**
  * Create a new {@link Federation} instance.
- * @param parameters Parameters for initializing the instance.
+ * @param options Parameters for initializing the instance.
  * @returns A new {@link Federation} instance.
+ * @throws {TypeError} If benchmark mode and `meterProvider` are both
+ * specified.
  * @since 0.10.0
  */
 export function createFederation<TContextData>(
@@ -457,9 +564,52 @@ export class FederationImpl<TContextData>
   _meterProvider: MeterProvider | undefined;
   firstKnock?: HttpMessageSignaturesSpec;
   inboxChallengePolicy?: InboxChallengePolicy;
+  benchmarkMode: boolean;
+  benchmarkMetricReader?: BenchmarkMetricReader;
+  benchmarkTriggerOptions: BenchmarkTriggerOptions;
+  readonly #queueDepthGaugeSourceId = `fedify-${
+    (++nextQueueDepthGaugeSourceId).toString(36)
+  }`;
+  #queueDepthGaugeEntries: readonly QueueDepthGaugeEntry[] = [];
+  #queueDepthGaugeMeterProvider?: MeterProvider;
 
   constructor(options: FederationOptions<TContextData>) {
     super();
+    const benchmarkMode = options.benchmarkMode != null &&
+      options.benchmarkMode !== false;
+    const benchmarkOptions = typeof options.benchmarkMode === "object"
+      ? options.benchmarkMode
+      : {};
+    const hasCustomLoaderFactory = options.documentLoaderFactory != null ||
+      options.contextLoaderFactory != null;
+    const allowPrivateAddress = options.allowPrivateAddress ??
+      (benchmarkMode && !hasCustomLoaderFactory ? true : false);
+    const signatureTimeWindow = options.signatureTimeWindow ??
+      (benchmarkMode ? false : { hours: 1 });
+    if (benchmarkMode && options.meterProvider != null) {
+      throw new TypeError(
+        "benchmarkMode requires Fedify to own the meterProvider; " +
+          "OpenTelemetry metric readers cannot be added after a " +
+          "MeterProvider is constructed.",
+      );
+    }
+    if (benchmarkMode) {
+      const relaxations = getBenchmarkRelaxations(
+        allowPrivateAddress,
+        signatureTimeWindow,
+      );
+      const relaxationSummary = formatBenchmarkRelaxations(relaxations);
+      getLogger(["fedify", "federation", "benchmark"]).warn(
+        `Fedify benchmarkMode is enabled; ${relaxationSummary}. Benchmark endpoints are active and must not be used in production.`,
+        {
+          relaxations,
+        },
+      );
+    }
+    this.benchmarkMode = benchmarkMode;
+    this.benchmarkTriggerOptions = benchmarkMode
+      ? getBenchmarkTriggerOptions(benchmarkOptions)
+      : {};
     this.kv = options.kv;
     this.kvPrefixes = {
       ...({
@@ -566,7 +716,7 @@ export class FederationImpl<TContextData>
     this.router.trailingSlashInsensitive = options.trailingSlashInsensitive ??
       false;
     this._initializeRouter();
-    if (options.allowPrivateAddress || options.userAgent != null) {
+    if (options.allowPrivateAddress === true || options.userAgent != null) {
       if (options.documentLoaderFactory != null) {
         throw new TypeError(
           "Cannot set documentLoaderFactory with allowPrivateAddress or " +
@@ -586,8 +736,8 @@ export class FederationImpl<TContextData>
         );
       }
     }
-    const { allowPrivateAddress, userAgent } = options;
-    this.allowPrivateAddress = allowPrivateAddress ?? false;
+    const { userAgent } = options;
+    this.allowPrivateAddress = allowPrivateAddress;
     // The loader factory closures below read `this._meterProvider` at
     // call time, not when they are created.  Factories are only invoked
     // after the constructor has assigned `_meterProvider` (see below), so
@@ -685,7 +835,7 @@ export class FederationImpl<TContextData>
     this.onOutboxError = options.onOutboxError;
     this.permanentFailureStatusCodes = options.permanentFailureStatusCodes ??
       [404, 410];
-    this.signatureTimeWindow = options.signatureTimeWindow ?? { hours: 1 };
+    this.signatureTimeWindow = signatureTimeWindow;
     this.skipSignatureVerification = options.skipSignatureVerification ?? false;
     this.inboxChallengePolicy = options.inboxChallengePolicy;
     this.outboxRetryPolicy = options.outboxRetryPolicy ??
@@ -695,7 +845,21 @@ export class FederationImpl<TContextData>
     this.activityTransformers = options.activityTransformers ??
       getDefaultActivityTransformers<TContextData>();
     this._tracerProvider = options.tracerProvider;
-    this._meterProvider = options.meterProvider;
+    if (benchmarkMode) {
+      const benchmarkMetrics = createBenchmarkMeterProvider();
+      this._meterProvider = benchmarkMetrics.meterProvider;
+      this.benchmarkMetricReader = benchmarkMetrics.reader;
+    } else {
+      this._meterProvider = options.meterProvider;
+    }
+    this.#queueDepthGaugeEntries = [
+      { role: "inbox", queue: this.inboxQueue },
+      { role: "outbox", queue: this.outboxQueue },
+      { role: "fanout", queue: this.fanoutQueue },
+    ];
+    this.#registerQueueDepthGauge(
+      this._meterProvider ?? metrics.getMeterProvider(),
+    );
     this.firstKnock = options.firstKnock;
   }
 
@@ -704,12 +868,26 @@ export class FederationImpl<TContextData>
   }
 
   get meterProvider(): MeterProvider {
-    return this._meterProvider ?? metrics.getMeterProvider();
+    const meterProvider = this._meterProvider ?? metrics.getMeterProvider();
+    this.#registerQueueDepthGauge(meterProvider);
+    return meterProvider;
+  }
+
+  #registerQueueDepthGauge(meterProvider: MeterProvider): void {
+    if (meterProvider === this.#queueDepthGaugeMeterProvider) return;
+    registerQueueDepthGauge(meterProvider, this.#queueDepthGaugeEntries, {
+      sourceId: this.#queueDepthGaugeSourceId,
+    });
+    this.#queueDepthGaugeMeterProvider = meterProvider;
   }
 
   _initializeRouter(): void {
     this.router.add("/.well-known/webfinger", "webfinger");
     this.router.add("/.well-known/nodeinfo", "nodeInfoJrd");
+    if (this.benchmarkMode) {
+      this.router.add("/.well-known/fedify/bench/stats", "benchmarkStats");
+      this.router.add("/.well-known/fedify/bench/trigger", "benchmarkTrigger");
+    }
   }
 
   override _getTracer(): Tracer {
@@ -2322,6 +2500,14 @@ export class FederationImpl<TContextData>
           context,
           nodeInfoDispatcher: this.nodeInfoDispatcher!,
         });
+      case "benchmarkStats":
+        return await handleBenchmarkStats(request, this.benchmarkMetricReader!);
+      case "benchmarkTrigger":
+        return await handleBenchmarkTrigger(
+          request,
+          context,
+          this.benchmarkTriggerOptions,
+        );
     }
 
     // Routes that require JSON-LD Accepts header:
@@ -2611,6 +2797,7 @@ type FedifyEndpoint =
   | "featured"
   | "featured_tags"
   | "collection"
+  | "benchmark"
   | "not_found"
   | "not_acceptable"
   | "error";
@@ -2653,6 +2840,9 @@ function getEndpointCategory(routeName: string): FedifyEndpoint {
       return "featured";
     case "featuredTags":
       return "featured_tags";
+    case "benchmarkStats":
+    case "benchmarkTrigger":
+      return "benchmark";
     default:
       return "not_found";
   }

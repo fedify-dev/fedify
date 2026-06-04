@@ -50,9 +50,15 @@ import {
   rsaPublicKey3,
 } from "../testing/keys.ts";
 import { FetchError, getDocumentLoader } from "@fedify/vocab-runtime";
-import { SpanStatusCode } from "@opentelemetry/api";
+import { metrics, SpanStatusCode } from "@opentelemetry/api";
+import {
+  DataPointType,
+  MeterProvider,
+  MetricReader,
+} from "@opentelemetry/sdk-metrics";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 import { CircuitBreaker } from "./circuit-breaker.ts";
+import { handleBenchmarkTrigger } from "./bench.ts";
 
 const documentLoader = getDocumentLoader();
 import type { Context, GetActorOptions } from "./context.ts";
@@ -64,6 +70,7 @@ import {
   InboxContextImpl,
   KvSpecDeterminer,
 } from "./middleware.ts";
+import { recordInboxActivity } from "./metrics.ts";
 import type { MessageQueue } from "./mq.ts";
 import type { InboxMessage, Message, OutboxMessage } from "./queue.ts";
 
@@ -77,6 +84,16 @@ async function withLogtapeLock<T>(fn: () => Promise<T>): Promise<T> {
   const run = logtapeLock.then(fn, fn);
   logtapeLock = run.then(() => undefined, () => undefined);
   return await run;
+}
+
+class TestMetricReader extends MetricReader {
+  protected onShutdown(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  protected onForceFlush(): Promise<void> {
+    return Promise.resolve();
+  }
 }
 
 test("createFederation()", async (t) => {
@@ -96,6 +113,131 @@ test("createFederation()", async (t) => {
         allowPrivateAddress: true,
       }), TypeError);
   });
+
+  await t.step("benchmarkMode applies cooperative benchmark defaults", () => {
+    const federation = createFederation<number>({
+      kv,
+      benchmarkMode: true,
+    });
+    assertInstanceOf(federation, FederationImpl);
+    assertEquals(federation.allowPrivateAddress, true);
+    assertEquals(federation.signatureTimeWindow, false);
+  });
+
+  await t.step("benchmarkMode preserves explicit option overrides", () => {
+    const federation = createFederation<number>({
+      kv,
+      benchmarkMode: true,
+      allowPrivateAddress: false,
+      signatureTimeWindow: { minutes: 10 },
+    });
+    assertInstanceOf(federation, FederationImpl);
+    assertEquals(federation.allowPrivateAddress, false);
+    assertEquals(federation.signatureTimeWindow, { minutes: 10 });
+  });
+
+  await t.step("benchmarkMode tolerates calendar time windows", () => {
+    const federation = createFederation<number>({
+      kv,
+      benchmarkMode: true,
+      signatureTimeWindow: { months: 1 },
+    });
+    assertInstanceOf(federation, FederationImpl);
+    assertEquals(federation.signatureTimeWindow, { months: 1 });
+  });
+
+  await t.step("benchmarkMode leaves custom loader factories alone", () => {
+    const federation = createFederation<number>({
+      kv,
+      benchmarkMode: true,
+      documentLoaderFactory: () => mockDocumentLoader,
+      contextLoaderFactory: () => mockDocumentLoader,
+      authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
+    });
+    assertInstanceOf(federation, FederationImpl);
+    assertEquals(federation.allowPrivateAddress, false);
+  });
+
+  await t.step(
+    "benchmarkMode keeps private-address default with auth loader only",
+    () => {
+      const federation = createFederation<number>({
+        kv,
+        benchmarkMode: true,
+        authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
+      });
+      assertInstanceOf(federation, FederationImpl);
+      assertEquals(federation.allowPrivateAddress, true);
+    },
+  );
+
+  await t.step("benchmarkMode rejects an explicit meterProvider", () => {
+    const [meterProvider] = createTestMeterProvider();
+    assertThrows(
+      () =>
+        createFederation<number>({
+          kv,
+          benchmarkMode: true,
+          meterProvider,
+        }),
+      TypeError,
+      "benchmarkMode requires Fedify to own the meterProvider",
+    );
+  });
+
+  await t.step(
+    "benchmarkMode warns that benchmark-only relaxations are on",
+    async () => {
+      await withLogtapeLock(async () => {
+        const records: LogRecord[] = [];
+        await reset();
+        try {
+          await configure({
+            sinks: {
+              test(record) {
+                records.push(record);
+              },
+            },
+            loggers: [
+              {
+                category: ["fedify", "federation", "benchmark"],
+                lowestLevel: "warning",
+                sinks: ["test"],
+              },
+            ],
+          });
+          createFederation<number>({ kv, benchmarkMode: true });
+          assertEquals(records.length, 1);
+          assertEquals(records[0].level, "warning");
+          assertEquals(
+            records[0].rawMessage,
+            "Fedify benchmarkMode is enabled; private address checks " +
+              "disabled (allowPrivateAddress=true); HTTP Signature time " +
+              "window disabled (signatureTimeWindow=false). Benchmark " +
+              "endpoints are active and must not be used in production.",
+          );
+          assertEquals(
+            records[0].properties.relaxations,
+            [
+              {
+                protection: "private_address_checks",
+                effect: "disabled",
+                effectiveValue: true,
+              },
+              {
+                protection: "http_signature_time_window",
+                effect: "disabled",
+                effectiveValue: false,
+                secureDefaultSeconds: 3600,
+              },
+            ],
+          );
+        } finally {
+          await reset();
+        }
+      });
+    },
+  );
 
   await t.step("origin", () => {
     const f = createFederation<void>({ kv, origin: "http://example.com:8080" });
@@ -211,6 +353,444 @@ test("createFederation()", async (t) => {
         }),
       TypeError,
     );
+  });
+});
+
+test("benchmarkMode stats endpoint", async (t) => {
+  await t.step("is absent when benchmarkMode is off", async () => {
+    const federation = createFederation<void>({ kv: new MemoryKvStore() });
+    const response = await federation.fetch(
+      new Request("https://example.com/.well-known/fedify/bench/stats"),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 404);
+  });
+
+  await t.step("returns a v1 in-process metrics snapshot", async () => {
+    const queue: MessageQueue = {
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+      getDepth() {
+        return Promise.resolve({ queued: 3, ready: 2, delayed: 1 });
+      },
+    };
+    const federation = createFederation<void>({
+      kv: new MemoryKvStore(),
+      benchmarkMode: true,
+      queue,
+    });
+    recordInboxActivity(
+      (federation as FederationImpl<void>).meterProvider,
+      "processed",
+      vocab.Create.typeId.href,
+    );
+
+    const response = await federation.fetch(
+      new Request("https://example.com/.well-known/fedify/bench/stats"),
+      { contextData: undefined },
+    );
+
+    assertEquals(response.status, 200);
+    assertEquals(response.headers.get("Content-Type"), "application/json");
+    const body = await response.json() as {
+      version: number;
+      source: string;
+      generatedAt: string;
+      scopeMetrics: {
+        metrics: {
+          name: string;
+          dataPointType: string;
+          dataPoints: { attributes: Record<string, unknown>; value: unknown }[];
+        }[];
+      }[];
+    };
+    assertEquals(body.version, 1);
+    assertEquals(body.source, "server");
+    assertEquals(Number.isNaN(Date.parse(body.generatedAt)), false);
+    const metrics = body.scopeMetrics.flatMap((scope) => scope.metrics);
+    assertExists(
+      metrics.find((metric) => metric.name === "activitypub.inbox.activity"),
+    );
+    const queueDepth = metrics.find((metric) =>
+      metric.name === "fedify.queue.depth"
+    );
+    assertExists(queueDepth);
+    assertEquals(queueDepth.dataPointType, "gauge");
+    assertEquals(
+      queueDepth.dataPoints.map((point) => ({
+        state: point.attributes["fedify.queue.depth.state"],
+        role: point.attributes["fedify.queue.role"],
+        value: point.value,
+      })).sort((a, b) => String(a.state).localeCompare(String(b.state))),
+      [
+        { state: "delayed", role: "shared", value: 1 },
+        { state: "queued", role: "shared", value: 3 },
+        { state: "ready", role: "shared", value: 2 },
+      ],
+    );
+  });
+});
+
+test("createFederation() registers queue depth for regular metrics", async () => {
+  const reader = new TestMetricReader();
+  const meterProvider = new MeterProvider({ readers: [reader] });
+  try {
+    const queue: MessageQueue = {
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+      getDepth() {
+        return Promise.resolve({ queued: 5, ready: 4, delayed: 3 });
+      },
+    };
+    createFederation<void>({
+      kv: new MemoryKvStore(),
+      meterProvider,
+      queue,
+    });
+
+    const result = await reader.collect();
+    const queueDepth = result.resourceMetrics.scopeMetrics
+      .flatMap((scope) => scope.metrics)
+      .find((metric) => metric.descriptor.name === "fedify.queue.depth");
+
+    assertExists(queueDepth);
+    assertEquals(queueDepth.dataPointType, DataPointType.GAUGE);
+    assertEquals(
+      queueDepth.dataPoints.map((point) => ({
+        state: point.attributes["fedify.queue.depth.state"],
+        role: point.attributes["fedify.queue.role"],
+        value: point.value,
+      })).sort((a, b) => String(a.state).localeCompare(String(b.state))),
+      [
+        { state: "delayed", role: "shared", value: 3 },
+        { state: "queued", role: "shared", value: 5 },
+        { state: "ready", role: "shared", value: 4 },
+      ],
+    );
+  } finally {
+    await meterProvider.shutdown();
+  }
+});
+
+test("createFederation() registers queue depth after global meterProvider is set", async () => {
+  metrics.disable();
+  const queue: MessageQueue = {
+    enqueue() {
+      return Promise.resolve();
+    },
+    listen() {
+      return Promise.resolve();
+    },
+    getDepth() {
+      return Promise.resolve({ queued: 8 });
+    },
+  };
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    queue,
+  });
+  const reader = new TestMetricReader();
+  const meterProvider = new MeterProvider({ readers: [reader] });
+  try {
+    metrics.setGlobalMeterProvider(meterProvider);
+    (federation as FederationImpl<void>).meterProvider;
+
+    const result = await reader.collect();
+    const queueDepth = result.resourceMetrics.scopeMetrics
+      .flatMap((scope) => scope.metrics)
+      .find((metric) => metric.descriptor.name === "fedify.queue.depth");
+
+    assertExists(queueDepth);
+    assertEquals(queueDepth.dataPointType, DataPointType.GAUGE);
+    assertEquals(
+      queueDepth.dataPoints.map((point) => ({
+        state: point.attributes["fedify.queue.depth.state"],
+        role: point.attributes["fedify.queue.role"],
+        value: point.value,
+      })),
+      [
+        { state: "queued", role: "shared", value: 8 },
+      ],
+    );
+  } finally {
+    metrics.disable();
+    await meterProvider.shutdown();
+  }
+});
+
+test("createFederation() distinguishes queue depth series per federation", async () => {
+  const reader = new TestMetricReader();
+  const meterProvider = new MeterProvider({ readers: [reader] });
+  try {
+    const createQueue = (queued: number): MessageQueue => ({
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+      getDepth() {
+        return Promise.resolve({ queued });
+      },
+    });
+    createFederation<void>({
+      kv: new MemoryKvStore(),
+      meterProvider,
+      queue: createQueue(1),
+    });
+    createFederation<void>({
+      kv: new MemoryKvStore(),
+      meterProvider,
+      queue: createQueue(2),
+    });
+
+    const result = await reader.collect();
+    const queueDepth = result.resourceMetrics.scopeMetrics
+      .flatMap((scope) => scope.metrics)
+      .find((metric) => metric.descriptor.name === "fedify.queue.depth");
+
+    assertExists(queueDepth);
+    const queuedPoints = queueDepth.dataPoints.filter((point) =>
+      point.attributes["fedify.queue.depth.state"] === "queued"
+    );
+    assertEquals(
+      queuedPoints.map((point) => point.value).sort(),
+      [1, 2],
+    );
+    const instanceIds = queuedPoints.map((point) =>
+      point.attributes["fedify.federation.instance_id"]
+    );
+    assertEquals(
+      instanceIds.every((id) => typeof id === "string"),
+      true,
+    );
+    assertEquals(new Set(instanceIds).size, 2);
+  } finally {
+    await meterProvider.shutdown();
+  }
+});
+
+test("benchmarkMode trigger endpoint", async (t) => {
+  const createTriggerTarget = (
+    options: { allowUnsafeTriggerRecipients?: boolean } = {},
+  ) => {
+    const messages: OutboxMessage[] = [];
+    const queue: MessageQueue = {
+      enqueue(message: OutboxMessage) {
+        messages.push(message);
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+    };
+    const federation = createFederation<void>({
+      kv: new MemoryKvStore(),
+      benchmarkMode: {
+        triggerSinks: ["https://sink.example/inbox"],
+        allowUnsafeTriggerRecipients: options.allowUnsafeTriggerRecipients,
+      },
+      contextLoaderFactory: () => mockDocumentLoader,
+      queue: { outbox: queue },
+    });
+    federation
+      .setActorDispatcher(
+        "/users/{identifier}",
+        (ctx, identifier) =>
+          new vocab.Person({
+            id: ctx.getActorUri(identifier),
+            inbox: ctx.getInboxUri(identifier),
+          }),
+      )
+      .setKeyPairsDispatcher(() => [
+        { privateKey: rsaPrivateKey2, publicKey: rsaPublicKey2.publicKey! },
+      ]);
+    return { federation, messages };
+  };
+
+  const createTriggerBody = async (
+    options: {
+      recipientInbox?: string;
+      recipients?: unknown[];
+      sinks?: string[];
+      allowUnsafeRecipients?: boolean;
+    } = {},
+  ) => ({
+    sender: { identifier: "alice" },
+    sinks: options.sinks,
+    recipients: options.recipients ?? [
+      {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Service",
+        id: "https://sink.example/actors/bob",
+        inbox: options.recipientInbox ?? "https://sink.example/inbox",
+      },
+    ],
+    activity: await new vocab.Create({
+      id: new URL("https://example.com/activities/bench-1"),
+      actor: new URL("https://example.com/users/alice"),
+      object: new vocab.Note({
+        id: new URL("https://example.com/notes/bench-1"),
+        attribution: new URL("https://example.com/users/alice"),
+        content: "benchmark",
+      }),
+    }).toJsonLd({ contextLoader: mockDocumentLoader }),
+    allowUnsafeRecipients: options.allowUnsafeRecipients,
+  });
+
+  await t.step("is absent when benchmarkMode is off", async () => {
+    const federation = createFederation<void>({ kv: new MemoryKvStore() });
+    const response = await federation.fetch(
+      new Request("https://example.com/.well-known/fedify/bench/trigger", {
+        method: "POST",
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 404);
+  });
+
+  await t.step("rejects unreadable JSON request bodies", async () => {
+    const request = {
+      method: "POST",
+      json() {
+        throw new TypeError("body is unavailable");
+      },
+    } as unknown as Request;
+    const response = await handleBenchmarkTrigger(
+      request,
+      {} as Context<void>,
+    );
+    assertEquals(response.status, 400);
+    assertEquals(await response.json(), {
+      error: "Invalid JSON request body.",
+    });
+  });
+
+  await t.step("rejects empty recipient lists", async () => {
+    const { federation, messages } = createTriggerTarget();
+    const response = await federation.fetch(
+      new Request("https://example.com/.well-known/fedify/bench/trigger", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(await createTriggerBody({ recipients: [] })),
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 400);
+    assertEquals(await response.json(), {
+      error:
+        "No valid recipient inboxes found. The recipients list must not be empty.",
+    });
+    assertEquals(messages, []);
+  });
+
+  await t.step(
+    "rejects recipients outside configured trigger sinks",
+    async () => {
+      const { federation, messages } = createTriggerTarget();
+      const response = await federation.fetch(
+        new Request("https://example.com/.well-known/fedify/bench/trigger", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            await createTriggerBody({
+              recipientInbox: "https://not-a-sink.example/inbox",
+            }),
+          ),
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 403);
+      assertEquals(messages, []);
+    },
+  );
+
+  await t.step(
+    "does not trust request-provided trigger sinks or bypasses",
+    async () => {
+      const { federation, messages } = createTriggerTarget();
+      const response = await federation.fetch(
+        new Request("https://example.com/.well-known/fedify/bench/trigger", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            await createTriggerBody({
+              recipientInbox: "https://not-a-sink.example/inbox",
+              sinks: ["https://not-a-sink.example/inbox"],
+              allowUnsafeRecipients: true,
+            }),
+          ),
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 403);
+      assertEquals(messages, []);
+    },
+  );
+
+  await t.step(
+    "allows unsafe recipients only with a server override",
+    async () => {
+      const { federation, messages } = createTriggerTarget({
+        allowUnsafeTriggerRecipients: true,
+      });
+      const response = await federation.fetch(
+        new Request("https://example.com/.well-known/fedify/bench/trigger", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            await createTriggerBody({
+              recipientInbox: "https://not-a-sink.example/inbox",
+            }),
+          ),
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 202);
+      assertEquals(messages.length, 1);
+      assertEquals(messages[0].inbox, "https://not-a-sink.example/inbox");
+    },
+  );
+
+  await t.step("sends the activity to explicit sink recipients", async () => {
+    const { federation, messages } = createTriggerTarget();
+    const response = await federation.fetch(
+      new Request("https://example.com/.well-known/fedify/bench/trigger", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(await createTriggerBody()),
+      }),
+      { contextData: undefined },
+    );
+
+    assertEquals(response.status, 202);
+    const body = await response.json() as {
+      version: number;
+      activityId: string;
+      queueCorrelationId: string;
+      recipientCount: number;
+      inboxCount: number;
+    };
+    assertEquals(body.version, 1);
+    assertEquals(body.activityId, "https://example.com/activities/bench-1");
+    assertEquals(
+      body.queueCorrelationId,
+      "https://example.com/activities/bench-1",
+    );
+    assertEquals(body.recipientCount, 1);
+    assertEquals(body.inboxCount, 1);
+    assertEquals(messages.length, 1);
+    assertEquals(messages[0].type, "outbox");
+    assertEquals(messages[0].activityId, body.queueCorrelationId);
+    assertEquals(messages[0].inbox, "https://sink.example/inbox");
   });
 });
 
@@ -7617,13 +8197,20 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
   await t.step("expired held activity is dropped", async () => {
     fetchMock.hardReset();
     fetchMock.spyGlobal();
+    const now = Temporal.Instant.from("2026-05-25T00:00:02Z");
     let dropped: { remoteHost: string; heldSince: Temporal.Instant } | null =
       null;
-    const { federation, queued } = setup({
-      failureThreshold: 1,
-      heldActivityTtl: { seconds: 1 },
-      onActivityDrop(remoteHost, details) {
-        dropped = { remoteHost, heldSince: details.heldSince };
+    const { federation, queued, kv } = setup(false);
+    federation.circuitBreaker = new CircuitBreaker({
+      kv,
+      prefix: ["_fedify", "circuit"],
+      now: () => now,
+      options: {
+        failureThreshold: 1,
+        heldActivityTtl: { seconds: 1 },
+        onActivityDrop(remoteHost, details) {
+          dropped = { remoteHost, heldSince: details.heldSince };
+        },
       },
     });
     let permanentFailureReason: unknown;
