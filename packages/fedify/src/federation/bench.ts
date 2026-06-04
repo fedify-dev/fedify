@@ -158,9 +158,7 @@ export async function handleBenchmarkStats(
       headers: { "Allow": "GET" },
     });
   }
-  return new Response(JSON.stringify(await collectBenchmarkMetrics(reader)), {
-    headers: { "Content-Type": "application/json" },
-  });
+  return jsonResponse(await collectBenchmarkMetrics(reader));
 }
 
 /**

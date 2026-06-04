@@ -263,21 +263,21 @@ function getBenchmarkRelaxations(
       secureDefaultSeconds: 3600,
     });
   } else {
-    let seconds: number;
     try {
-      seconds = Temporal.Duration.from(signatureTimeWindow).total({
+      const seconds = Temporal.Duration.from(signatureTimeWindow).total({
         unit: "seconds",
       });
+      if (seconds !== 3600) {
+        relaxations.push({
+          protection: "http_signature_time_window",
+          effect: "changed",
+          effectiveSeconds: seconds,
+          secureDefaultSeconds: 3600,
+        });
+      }
     } catch {
-      return relaxations;
-    }
-    if (seconds !== 3600) {
-      relaxations.push({
-        protection: "http_signature_time_window",
-        effect: "changed",
-        effectiveSeconds: seconds,
-        secureDefaultSeconds: 3600,
-      });
+      // Keep benchmark warning formatting best-effort for unusual
+      // DurationLike values.
     }
   }
   return relaxations;

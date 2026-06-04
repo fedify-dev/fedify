@@ -1280,7 +1280,7 @@ function buildQueueDepthAttributes(
   roles: readonly QueueTaskRole[],
   options: QueueDepthGaugeOptions,
 ): Attributes {
-  const sortedRoles = [...roles].sort();
+  const sortedRoles = roles.toSorted();
   const role = sortedRoles.length === 1 ? sortedRoles[0] : "shared";
   const attributes: Attributes = {
     "fedify.queue.role": role,
