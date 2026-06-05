@@ -475,7 +475,7 @@ export async function collectAsyncItems<T>(
   }
 }
 
-const signalTimers = new WeakMap<AbortSignal, number>();
+const signalTimers = new WeakMap<AbortSignal, ReturnType<typeof setTimeout>>();
 
 export function createTimeoutSignal(
   timeoutSeconds?: number,
