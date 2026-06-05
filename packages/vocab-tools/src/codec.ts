@@ -30,7 +30,13 @@ function* generatePreprocessorBlock(
       `;
   for (const pp of property.preprocessors) {
     const varName = moduleVarNames.get(pp.module);
-    if (varName == null) continue;
+    if (varName == null) {
+      throw new Error(
+        `Preprocessor module "${pp.module}" is not registered ` +
+          `in the generated imports. Ensure all preprocessor ` +
+          `modules used in property schemas are available.`,
+      );
+    }
     yield `
         if (_handled === undefined) {
           const _result = await ${varName}[${JSON.stringify(pp.function)}](v, {
@@ -401,6 +407,10 @@ export async function* generateDecoder(
     if (options.baseUrl == null && values["@id"] != null && URL.canParse(values["@id"])) {
       options = { ...options, baseUrl: new URL(values["@id"]) };
     }
+    const _baseUrl =
+      values["@id"] == null || !URL.canParse(values["@id"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values["@id"], options.baseUrl);
   `;
   const subtypes = getSubtypes(typeUri, types, true);
   yield `
@@ -473,7 +483,7 @@ export async function* generateDecoder(
       property,
       getTypeNames(property.range, types),
       variable,
-      `(values["@id"] == null || !URL.canParse(values["@id"], options.baseUrl) ? options.baseUrl : new URL(values["@id"], options.baseUrl))`,
+      `_baseUrl`,
       moduleVarNames,
     );
     if (!areAllScalarTypes(property.range, types)) {
@@ -497,7 +507,7 @@ export async function* generateDecoder(
           types,
           "v",
           "options",
-          `(values["@id"] == null || !URL.canParse(values["@id"], options.baseUrl) ? options.baseUrl : new URL(values["@id"], options.baseUrl))`,
+          `_baseUrl`,
         )
       };
       if (typeof decoded === "undefined") continue;
@@ -511,7 +521,7 @@ export async function* generateDecoder(
         types,
         "v",
         "options",
-        `(values["@id"] == null || !URL.canParse(values["@id"], options.baseUrl) ? options.baseUrl : new URL(values["@id"], options.baseUrl))`,
+        `_baseUrl`,
       );
       for (const code of decoders) yield code;
       yield `
