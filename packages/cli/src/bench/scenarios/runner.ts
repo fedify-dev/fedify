@@ -54,10 +54,27 @@ export async function sendRequest(
   request: Request,
   fetchImpl: typeof fetch,
 ): Promise<SendOutcome> {
+  // Never follow redirects: a redirect could carry signed benchmark load to a
+  // host the safety gate never classified, so treat any redirect as a failed
+  // send.  Requests are normally built with `redirect: "manual"` already; this
+  // re-wraps any that are not, as a safety net.
+  const noFollow = request.redirect === "manual"
+    ? request
+    : new Request(request, { redirect: "manual" });
   try {
-    const response = await fetchImpl(request);
+    const response = await fetchImpl(noFollow);
     // Drain the body so the connection can be reused.
     await response.arrayBuffer().catch(() => {});
+    if (
+      response.type === "opaqueredirect" ||
+      (response.status >= 300 && response.status < 400)
+    ) {
+      return {
+        ok: false,
+        status: response.status === 0 ? undefined : response.status,
+        reason: "redirect",
+      };
+    }
     if (response.ok) return { ok: true, status: response.status };
     return {
       ok: false,

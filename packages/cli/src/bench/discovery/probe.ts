@@ -32,8 +32,13 @@ export async function probeBenchmarkMode(
   fetchImpl: typeof fetch = fetch,
 ): Promise<BenchmarkProbe> {
   try {
+    // Do not follow redirects: a public target whose `stats` endpoint redirects
+    // to a host that does serve benchmark-mode JSON must not be taken as
+    // advertising benchmark mode itself.  A redirect yields a non-ok (manual)
+    // response, which falls through to "not advertised".
     const response = await fetchImpl(new URL(STATS_PATH, target), {
       headers: { accept: "application/json" },
+      redirect: "manual",
     });
     if (!response.ok) return notAdvertised();
     const json = await response.json() as {

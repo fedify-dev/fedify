@@ -40,7 +40,10 @@ export const webfingerRunner: ScenarioRunner = {
         : [context.target.host]).map((r) => webfingerUrl(context.target, r));
     let index = 0;
     const rawSend = () =>
-      sendRequest(new Request(urls[index++ % urls.length]), fetchImpl);
+      sendRequest(
+        new Request(urls[index++ % urls.length], { redirect: "manual" }),
+        fetchImpl,
+      );
     // Snapshot the server's cumulative metrics at the measured-window boundary
     // so warm-up and earlier scenarios are diffed out of the reported numbers.
     // A few warm-up requests still in flight when the baseline is taken may be

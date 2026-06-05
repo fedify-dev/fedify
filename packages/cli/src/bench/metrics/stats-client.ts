@@ -169,7 +169,11 @@ export async function fetchServerSnapshot(
   fetchImpl: typeof fetch = fetch,
 ): Promise<ServerSnapshot | null> {
   try {
-    const response = await fetchImpl(new URL(STATS_PATH, target));
+    // Do not follow redirects: the stats reading must come from the target
+    // itself, not from wherever a redirect points.
+    const response = await fetchImpl(new URL(STATS_PATH, target), {
+      redirect: "manual",
+    });
     if (!response.ok) return null;
     return parseServerSnapshot(await response.json());
   } catch {

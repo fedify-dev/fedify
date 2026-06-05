@@ -70,6 +70,9 @@ export async function signInboxDelivery(
     method: "POST",
     headers: { "content-type": "application/activity+json" },
     body,
+    // Benchmark deliveries must not follow redirects to an ungated host; the
+    // sender re-applies this as a safety net if signing drops it.
+    redirect: "manual",
   });
   return await signRequest(
     request,

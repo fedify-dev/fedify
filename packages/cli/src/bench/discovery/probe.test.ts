@@ -50,3 +50,24 @@ test("probeBenchmarkMode - a network error means no benchmark mode", async () =>
   );
   assert.deepEqual(probe, { benchmarkMode: false, fedifyVersion: null });
 });
+
+test("probeBenchmarkMode - does not follow redirects", async () => {
+  // The probe requests a non-following (manual) redirect; a redirect response
+  // therefore does not advertise benchmark mode, even if the redirect target
+  // would.
+  let requestedRedirect: string | undefined;
+  const probe = await probeBenchmarkMode(
+    new URL("http://public.example"),
+    (_input, init) => {
+      requestedRedirect = init?.redirect;
+      return Promise.resolve(
+        new Response(null, {
+          status: 302,
+          headers: { location: "https://benchmark.example/stats" },
+        }),
+      );
+    },
+  );
+  assert.strictEqual(requestedRedirect, "manual");
+  assert.deepEqual(probe, { benchmarkMode: false, fedifyVersion: null });
+});

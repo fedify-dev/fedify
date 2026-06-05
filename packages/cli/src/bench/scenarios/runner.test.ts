@@ -1,9 +1,50 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { SendOutcome } from "../load/generator.ts";
-import { withMeasuredWindowStart } from "./runner.ts";
+import { sendRequest, withMeasuredWindowStart } from "./runner.ts";
 
 const ok: SendOutcome = { ok: true, status: 200 };
+
+test("sendRequest - does not follow redirects and counts them as failures", async () => {
+  let requestedRedirect: RequestRedirect | undefined;
+  const outcome = await sendRequest(
+    new Request("http://target.test/inbox", { method: "POST" }),
+    (input) => {
+      requestedRedirect = (input as Request).redirect;
+      return Promise.resolve(
+        new Response(null, {
+          status: 308,
+          headers: { location: "https://public.example/inbox" },
+        }),
+      );
+    },
+  );
+  // The send used a non-following (manual) redirect, and the redirect is a
+  // failed send rather than a delivery to the redirect target.
+  assert.strictEqual(requestedRedirect, "manual");
+  assert.strictEqual(outcome.ok, false);
+  assert.strictEqual(outcome.reason, "redirect");
+});
+
+test("sendRequest - a 2xx is a successful send", async () => {
+  const outcome = await sendRequest(
+    new Request("http://target.test/inbox", { method: "POST" }),
+    () => Promise.resolve(new Response(null, { status: 202 })),
+  );
+  assert.deepEqual(outcome, { ok: true, status: 202 });
+});
+
+test("sendRequest - a 4xx/5xx is a failed send with its status", async () => {
+  const outcome = await sendRequest(
+    new Request("http://target.test/inbox", { method: "POST" }),
+    () => Promise.resolve(new Response(null, { status: 500 })),
+  );
+  assert.deepEqual(outcome, {
+    ok: false,
+    status: 500,
+    reason: "status_500",
+  });
+});
 
 test("withMeasuredWindowStart - fires once at the warm-up boundary", async () => {
   const seenAt: number[] = [];
