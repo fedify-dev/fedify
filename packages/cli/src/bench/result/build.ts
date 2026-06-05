@@ -137,7 +137,13 @@ export function configHash(config: unknown): string {
   return `sha256:${digest}`;
 }
 
-function canonicalJson(value: unknown): string {
+/** A guard against unbounded recursion on pathologically nested input. */
+const MAX_HASH_DEPTH = 100;
+
+function canonicalJson(value: unknown, depth = 0): string {
+  if (depth > MAX_HASH_DEPTH) {
+    throw new RangeError("Maximum depth exceeded while hashing the config.");
+  }
   // Mirror JSON.stringify: `undefined` is dropped from objects and becomes
   // `null` inside arrays.
   if (value === undefined) return "null";
@@ -146,18 +152,19 @@ function canonicalJson(value: unknown): string {
   // are hashed by their serialized form rather than as an empty object.
   const toJson = (value as { toJSON?: unknown }).toJSON;
   if (typeof toJson === "function") {
-    return canonicalJson((toJson as () => unknown).call(value));
+    return canonicalJson((toJson as () => unknown).call(value), depth + 1);
   }
   if (Array.isArray(value)) {
-    return `[${value.map(canonicalJson).join(",")}]`;
+    return `[${value.map((v) => canonicalJson(v, depth + 1)).join(",")}]`;
   }
   const entries = Object.entries(value as Record<string, unknown>)
     .filter(([, v]) => v !== undefined)
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
   return `{${
-    entries.map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`).join(
-      ",",
+    entries.map(([k, v]) =>
+      `${JSON.stringify(k)}:${canonicalJson(v, depth + 1)}`
     )
+      .join(",")
   }}`;
 }
 

@@ -130,3 +130,9 @@ test("detectEnvironment - reports runtime, os, and cpu count", () => {
   assert.ok(env.os.length > 0);
   assert.ok(env.cpuCount >= 0);
 });
+
+test("configHash - rejects pathologically deep config", () => {
+  let deep: unknown = 1;
+  for (let i = 0; i < 200; i++) deep = { n: deep };
+  assert.throws(() => configHash(deep), RangeError);
+});

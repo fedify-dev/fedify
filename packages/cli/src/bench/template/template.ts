@@ -36,6 +36,9 @@ const IDENT_RE = /^[A-Za-z_]\w*$/;
 /** Property names that must never be resolved, to avoid prototype access. */
 const FORBIDDEN = new Set(["__proto__", "prototype", "constructor"]);
 
+/** A guard against unbounded recursion on pathologically nested input. */
+const MAX_DEPTH = 100;
+
 /**
  * Recursively renders every `${{ ... }}` expression in a value.
  *
@@ -52,15 +55,35 @@ export function renderTemplates<T>(value: T, context: TemplateContext = {}): T {
   return renderValue(value, context) as T;
 }
 
-function renderValue(value: unknown, ctx: TemplateContext): unknown {
+function renderValue(
+  value: unknown,
+  ctx: TemplateContext,
+  depth = 0,
+): unknown {
+  if (depth > MAX_DEPTH) {
+    throw new TemplateError("Maximum template nesting depth exceeded.");
+  }
   if (typeof value === "string") return renderString(value, ctx);
-  if (Array.isArray(value)) return value.map((item) => renderValue(item, ctx));
+  // Walk arrays and objects, but keep the original reference for any subtree
+  // that did not change, to avoid needless cloning.
+  if (Array.isArray(value)) {
+    let changed = false;
+    const out = value.map((item) => {
+      const rendered = renderValue(item, ctx, depth + 1);
+      if (rendered !== item) changed = true;
+      return rendered;
+    });
+    return changed ? out : value;
+  }
   if (value != null && typeof value === "object") {
+    let changed = false;
     const out: Record<string, unknown> = {};
     for (const [key, item] of Object.entries(value)) {
-      out[key] = renderValue(item, ctx);
+      const rendered = renderValue(item, ctx, depth + 1);
+      if (rendered !== item) changed = true;
+      out[key] = rendered;
     }
-    return out;
+    return changed ? out : value;
   }
   return value;
 }

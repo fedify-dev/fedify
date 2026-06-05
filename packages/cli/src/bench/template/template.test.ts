@@ -115,3 +115,14 @@ test("defaultHelpers - uuid returns a UUID string", () => {
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
   );
 });
+
+test("renderTemplates - rejects pathologically deep nesting", () => {
+  let deep: unknown = "leaf";
+  for (let i = 0; i < 200; i++) deep = { nested: deep };
+  assert.throws(() => renderTemplates(deep, ctx), TemplateError);
+});
+
+test("renderTemplates - returns the same reference for unchanged subtrees", () => {
+  const value = { a: { b: "no expressions here" }, list: [1, 2] };
+  assert.strictEqual(renderTemplates(value, ctx), value);
+});

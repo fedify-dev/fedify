@@ -71,3 +71,18 @@ test("resolveGenerate - unknown generator throws", () => {
     RangeError,
   );
 });
+
+test("resolveGenerate - rejects an oversized payload", () => {
+  // Guards against memory exhaustion / String.repeat overflow from a huge size.
+  // `parseSize` still parses the units; the limit applies when generating.
+  assert.strictEqual(parseSize("1GB"), 1024 ** 3);
+  assert.throws(
+    () => resolveGenerate({ generate: "lorem", size: "200MB" }),
+    RangeError,
+  );
+  // The maximum (100 MiB) itself is still produced.
+  assert.strictEqual(
+    resolveGenerate({ generate: "lorem", size: "100MB" }).length,
+    100 * 1024 * 1024,
+  );
+});

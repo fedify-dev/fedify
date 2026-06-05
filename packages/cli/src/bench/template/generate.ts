@@ -9,6 +9,14 @@
  * @module
  */
 
+/**
+ * The largest payload {@link resolveGenerate} will produce (100 MiB).  A
+ * generated payload is held in memory as a single string, so a much larger size
+ * would exhaust memory or overflow `String.repeat`; a realistic benchmark body
+ * is far smaller.  (`parseSize` itself stays a plain parser with no limit.)
+ */
+const MAX_PAYLOAD_SIZE = 100 * 1024 * 1024;
+
 /** Multipliers for the size units accepted by {@link parseSize}. */
 const SIZE_UNITS: Readonly<Record<string, number>> = {
   b: 1,
@@ -98,6 +106,12 @@ const LOREM =
  */
 export function resolveGenerate(directive: GenerateDirective): string {
   const size = directive.size == null ? 0 : parseSize(directive.size);
+  if (size > MAX_PAYLOAD_SIZE) {
+    throw new RangeError(
+      `Payload size ${JSON.stringify(directive.size)} exceeds the maximum of ` +
+        `${MAX_PAYLOAD_SIZE} bytes.`,
+    );
+  }
   switch (directive.generate) {
     case "lorem":
       return generateLorem(size);
