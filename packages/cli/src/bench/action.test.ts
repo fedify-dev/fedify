@@ -223,6 +223,39 @@ scenarios:
   assert.match(message, /loopback or private/);
 });
 
+test("runBench - malformed expect assertion exits 2 before any load", async () => {
+  // The expect typo must be caught in preflight, so the run exits 2 (a config
+  // error) without ever probing the target or sending load.
+  const file = await writeSuite(`version: 1
+target: http://localhost:3000
+scenarios:
+  - name: wf
+    type: webfinger
+    recipient: "acct:alice@x"
+    expect:
+      successRate: "totally not valid"
+`);
+  let code = -1;
+  let message = "";
+  let fetched = false;
+  await runBench(command({ scenario: file }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: () => Promise.resolve(),
+    log: (m) => {
+      message = m;
+    },
+    fetch: () => {
+      fetched = true;
+      return Promise.reject(new Error("no request should be sent"));
+    },
+  });
+  assert.strictEqual(code, 2);
+  assert.match(message, /expect|assertion/i);
+  assert.strictEqual(fetched, false);
+});
+
 test("runBench - invalid suite exits 2", async () => {
   const file = await writeSuite(`target: http://localhost:3000
 scenarios:

@@ -11,6 +11,7 @@ import {
 } from "./result/build.ts";
 import { probeBenchmarkMode } from "./discovery/probe.ts";
 import { renderReport, type ReportFormat } from "./render/index.ts";
+import { validateExpectBlock } from "./result/expect/evaluate.ts";
 import { loadSuiteFile, renderSuiteTemplates } from "./scenario/load.ts";
 import {
   normalizeSuite,
@@ -81,13 +82,15 @@ export default async function runBench(
     return void exit(2);
   }
 
-  // Preflight every runner so an unsupported scenario type or an option the
-  // runner cannot honor fails fast, before any probe or load.
+  // Preflight every runner so an unsupported scenario type, an option the
+  // runner cannot honor, or a malformed `expect` assertion fails fast, before
+  // any probe or load.
   let runners;
   try {
     runners = suite.scenarios.map((scenario) => {
       const runner = runnerFor(scenario.type);
       runner.validate?.(scenario);
+      validateExpectBlock(scenario.expect);
       return runner;
     });
   } catch (error) {

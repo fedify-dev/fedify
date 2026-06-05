@@ -16,8 +16,38 @@ import type {
   PartialLatencyMs,
   ScenarioResult,
 } from "../model.ts";
-import { compare, parseAssertion } from "./assert.ts";
+import { AssertionParseError, compare, parseAssertion } from "./assert.ts";
 import { type MetricUnit, metricUnit } from "./metrics.ts";
+
+/**
+ * Parses every assertion in an `expect` block, throwing on the first malformed
+ * one.  Run during preflight so that a typo in a CI gate is reported as a
+ * configuration error before any load is sent, instead of crashing the run with
+ * an uncaught {@link AssertionParseError} after the traffic has already gone out.
+ * @param expect The scenario's `expect` block.
+ * @throws {AssertionParseError} If an entry has no assertion string or its
+ *         assertion cannot be parsed.
+ */
+export function validateExpectBlock(expect: ExpectBlock): void {
+  for (const [metric, value] of Object.entries(expect)) {
+    const assertion = typeof value === "string" ? value : value.assert;
+    if (typeof assertion !== "string") {
+      throw new AssertionParseError(
+        `The \`expect\` entry for "${metric}" has no assertion string.`,
+      );
+    }
+    try {
+      parseAssertion(assertion);
+    } catch (error) {
+      if (!(error instanceof AssertionParseError)) throw error;
+      throw new AssertionParseError(
+        `Invalid \`expect\` assertion for "${metric}": ${
+          JSON.stringify(assertion)
+        }.`,
+      );
+    }
+  }
+}
 
 /** The subset of a scenario result that `expect` metrics are looked up from. */
 export type MetricView = Pick<

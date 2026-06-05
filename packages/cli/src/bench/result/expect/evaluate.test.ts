@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { evaluateExpect, type MetricView } from "./evaluate.ts";
+import { AssertionParseError } from "./assert.ts";
+import {
+  evaluateExpect,
+  type MetricView,
+  validateExpectBlock,
+} from "./evaluate.ts";
 
 function metrics(overrides: Partial<MetricView> = {}): MetricView {
   return {
@@ -118,4 +123,32 @@ test("evaluateExpect - incompatible assertion unit fails", () => {
     metrics(),
   );
   assert.strictEqual(results[0].pass, false);
+});
+
+test("validateExpectBlock - accepts a well-formed block", () => {
+  assert.doesNotThrow(() =>
+    validateExpectBlock({
+      successRate: ">= 99%",
+      "latency.p95": "< 100ms",
+      "errors.5xx": "== 0",
+      "queueDrain.p95": { assert: "< 2s", severity: "warn" },
+    })
+  );
+});
+
+test("validateExpectBlock - throws on a malformed assertion", () => {
+  assert.throws(
+    () => validateExpectBlock({ successRate: "totally not valid" }),
+    (error: unknown) =>
+      error instanceof AssertionParseError &&
+      /successRate/.test(error.message),
+  );
+});
+
+test("validateExpectBlock - throws on an entry without an assertion", () => {
+  assert.throws(
+    // deno-lint-ignore no-explicit-any
+    () => validateExpectBlock({ successRate: { severity: "warn" } as any }),
+    AssertionParseError,
+  );
 });
