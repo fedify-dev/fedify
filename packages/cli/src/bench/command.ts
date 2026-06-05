@@ -79,6 +79,15 @@ export const benchCommand = command(
         }),
         false,
       ),
+      advertiseHost: optional(
+        option("--advertise-host", string({ metavar: "HOST" }), {
+          description:
+            message`Host (name or IP) a non-loopback target can reach the \
+benchmark's synthetic actor server at.  Required for signed scenarios against a \
+non-loopback target; binds the synthetic server on all interfaces and uses this \
+host in the actor and key URLs the target dereferences.`,
+        }),
+      ),
       allowUnsafeTarget,
     }),
     userAgentOption,

@@ -24,6 +24,7 @@ import { assertTargetAllowed, UnsafeTargetError } from "./safety/gate.ts";
 import { classifyTarget } from "./safety/tiers.ts";
 import { runnerFor } from "./scenarios/registry.ts";
 import {
+  resolveAdvertiseHost,
   spawnSyntheticServer,
   type SyntheticServer,
 } from "./server/synthetic.ts";
@@ -93,6 +94,9 @@ export default async function runBench(
       validateExpectBlock(scenario.expect);
       return runner;
     });
+    if (command.advertiseHost != null) {
+      resolveAdvertiseHost(command.advertiseHost);
+    }
   } catch (error) {
     log(error instanceof Error ? error.message : String(error));
     return void exit(2);
@@ -120,17 +124,21 @@ export default async function runBench(
     throw error;
   }
 
-  // The synthetic actor server is only reachable on the client's loopback, so
-  // a remote (public) target cannot dereference its keys.  Signed scenarios
-  // therefore require a loopback or private target.
+  // The target dereferences the synthetic actor server while verifying
+  // signatures.  By default that server is loopback-only, reachable just by a
+  // same-machine (loopback) target; a non-loopback target needs an advertised,
+  // reachable host (--advertise-host).  Without one, refuse signed scenarios
+  // rather than let every signed delivery fail key lookup.
   if (
-    tier === "public" && suite.scenarios.some((s) => SIGNED_TYPES.has(s.type))
+    tier !== "loopback" && command.advertiseHost == null &&
+    suite.scenarios.some((s) => SIGNED_TYPES.has(s.type))
   ) {
     log(
-      "Signed scenarios (inbox) require a loopback or private target: the " +
-        "benchmark's synthetic actor server is only reachable on the client's " +
-        "loopback, so a public target cannot dereference its keys.  Use a " +
-        "local target, or a read scenario such as webfinger.",
+      "Signed scenarios (inbox) need the benchmark's synthetic actor server to " +
+        "be reachable from the target.  A loopback target reaches it " +
+        "automatically; for a non-loopback target, pass --advertise-host with " +
+        "an address the target can reach (the synthetic server then binds all " +
+        "interfaces), or use a read scenario such as webfinger.",
     );
     return void exit(2);
   }
@@ -149,7 +157,9 @@ export default async function runBench(
   const startedAt = new Date().toISOString();
   try {
     if (suite.scenarios.some((s) => SIGNED_TYPES.has(s.type))) {
-      fleet = await spawnSyntheticServer(await buildFleet(suite.actors));
+      fleet = await spawnSyntheticServer(await buildFleet(suite.actors), {
+        advertiseHost: command.advertiseHost,
+      });
     }
     const results = [];
     for (let i = 0; i < suite.scenarios.length; i++) {

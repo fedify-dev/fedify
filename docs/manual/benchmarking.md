@@ -251,10 +251,14 @@ which goes over HTTPS, so against a plain-HTTP loopback target give the
 unaffected: it requests `/.well-known/webfinger` on the target directly, so it
 can benchmark `acct:` lookups over plain HTTP.
 
-Signed scenarios such as `inbox` also require a loopback or private target,
-because the benchmark's synthetic actor server is only reachable on the
-client's loopback; a public target cannot dereference its keys, so use a read
-scenario such as `webfinger` there.
+Signed scenarios such as `inbox` make the target dereference the benchmark's
+synthetic actor server while verifying signatures, so that server must be
+reachable from the target.  A loopback target reaches it automatically (both
+run on the same machine).  For a non-loopback target, pass `--advertise-host`
+with an address the target can reach (for example the client's LAN IP); the
+synthetic server then binds every interface and advertises that host in the
+actor and key URLs.  Without it, a non-loopback signed scenario is refused
+(use a read scenario such as `webfinger`, which needs no synthetic server).
 
 
 Benchmark stats endpoint

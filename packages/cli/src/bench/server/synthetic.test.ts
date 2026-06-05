@@ -3,7 +3,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { getContextLoader, getDocumentLoader } from "../../docloader.ts";
 import { buildFleet } from "../actor/fleet.ts";
-import { spawnSyntheticServer } from "./synthetic.ts";
+import {
+  AdvertiseHostError,
+  resolveAdvertiseHost,
+  spawnSyntheticServer,
+} from "./synthetic.ts";
 
 test("spawnSyntheticServer - serves a verifiable actor document", async () => {
   const fleet = await buildFleet([{
@@ -53,6 +57,34 @@ test("spawnSyntheticServer - serves a verifiable actor document", async () => {
   }
 });
 
+test("spawnSyntheticServer - advertises a reachable host in actor URLs", async () => {
+  const fleet = await buildFleet([{
+    count: 1,
+    signatureStandards: ["draft-cavage-http-signatures-12"],
+  }]);
+  // 192.0.2.0/24 is TEST-NET-1: a non-loopback host that is never actually
+  // routed, so this checks the advertised URLs without needing a remote peer.
+  const server = await spawnSyntheticServer(fleet, {
+    advertiseHost: "192.0.2.10",
+  });
+  try {
+    const actor = server.actors[0];
+    assert.strictEqual(actor.id.hostname, "192.0.2.10");
+    assert.strictEqual(server.url.hostname, "192.0.2.10");
+    assert.strictEqual(actor.rsaKeyId?.hostname, "192.0.2.10");
+    // The advertised port matches the bound port, and the document is still
+    // served (the server binds all interfaces, so loopback reaches it).
+    const local = new URL(
+      actor.id.pathname,
+      `http://127.0.0.1:${actor.id.port}`,
+    );
+    const response = await fetch(local);
+    assert.strictEqual(response.status, 200);
+  } finally {
+    await server.close();
+  }
+});
+
 test("spawnSyntheticServer - unknown paths 404", async () => {
   const fleet = await buildFleet([{
     signatureStandards: ["rfc9421"],
@@ -66,5 +98,54 @@ test("spawnSyntheticServer - unknown paths 404", async () => {
     assert.ok(server.actors[0].ed25519KeyId == null);
   } finally {
     await server.close();
+  }
+});
+
+test("resolveAdvertiseHost - DNS and IPv4 bind all IPv4 interfaces", () => {
+  assert.deepEqual(resolveAdvertiseHost("bench.local"), {
+    bindHost: "0.0.0.0",
+    urlHost: "bench.local",
+  });
+  assert.deepEqual(resolveAdvertiseHost("192.168.1.10"), {
+    bindHost: "0.0.0.0",
+    urlHost: "192.168.1.10",
+  });
+  // Surrounding whitespace is trimmed.
+  assert.deepEqual(resolveAdvertiseHost("  10.0.0.5  "), {
+    bindHost: "0.0.0.0",
+    urlHost: "10.0.0.5",
+  });
+});
+
+test("resolveAdvertiseHost - IPv6 binds all IPv6 interfaces and is bracketed", () => {
+  assert.deepEqual(resolveAdvertiseHost("2001:db8::1"), {
+    bindHost: "::",
+    urlHost: "[2001:db8::1]",
+  });
+  // An already-bracketed literal is accepted as-is.
+  assert.deepEqual(resolveAdvertiseHost("[2001:db8::1]"), {
+    bindHost: "::",
+    urlHost: "[2001:db8::1]",
+  });
+});
+
+test("resolveAdvertiseHost - rejects ports, schemes, paths, and junk", () => {
+  for (
+    const bad of [
+      "",
+      "  ",
+      "10.0.0.5:8080",
+      "http://10.0.0.5",
+      "10.0.0.5/path",
+      "user@host",
+      "[2001:db8::1",
+      "2001:db8:::",
+    ]
+  ) {
+    assert.throws(
+      () => resolveAdvertiseHost(bad),
+      AdvertiseHostError,
+      `expected ${JSON.stringify(bad)} to be rejected`,
+    );
   }
 });

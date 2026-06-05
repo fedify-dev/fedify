@@ -220,7 +220,36 @@ scenarios:
       ),
   });
   assert.strictEqual(code, 2);
-  assert.match(message, /loopback or private/);
+  assert.match(message, /advertise-host/);
+});
+
+test("runBench - rejects a signed scenario against a non-loopback target", async () => {
+  // A private (non-loopback) target passes the safety gate, but a signed
+  // scenario without --advertise-host cannot reach the synthetic actor server,
+  // so it is refused (exit 2) before any load.
+  const file = await writeSuite(`version: 1
+target: http://10.10.0.5:8000
+scenarios:
+  - name: inbox-shared
+    type: inbox
+    recipient: "http://10.10.0.5:8000/users/alice"
+    load: { concurrency: 2 }
+    duration: 100ms
+`);
+  let code = -1;
+  let message = "";
+  await runBench(command({ scenario: file }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: () => Promise.resolve(),
+    log: (m) => {
+      message = m;
+    },
+    fetch: () => Promise.reject(new Error("offline")),
+  });
+  assert.strictEqual(code, 2);
+  assert.match(message, /advertise-host/);
 });
 
 test("runBench - malformed expect assertion exits 2 before any load", async () => {

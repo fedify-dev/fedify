@@ -2,8 +2,12 @@
  * The benchmark's own synthetic actor/key server.
  *
  * It serves the actor documents (with embedded keys) that the target
- * dereferences while verifying signatures, over plain loopback HTTP — which
- * works because `benchmarkMode` enables `allowPrivateAddress` on the target.
+ * dereferences while verifying signatures, over plain HTTP — which works
+ * because `benchmarkMode` enables `allowPrivateAddress` on the target.  By
+ * default it binds loopback and advertises a `127.0.0.1` base URL, which a
+ * same-machine (loopback) target can reach.  For a non-loopback target, pass
+ * `advertiseHost`: the server then binds every interface and advertises that
+ * host in the actor/key URLs, so the remote target can dereference them.
  * @since 2.3.0
  * @module
  */
@@ -38,6 +42,12 @@ export interface SyntheticServer {
 export interface SyntheticServerOptions {
   /** The context loader used to render actor documents. */
   readonly contextLoader?: DocumentLoader;
+  /**
+   * A host (name or IP) reachable from the target.  When set, the server binds
+   * every interface and advertises actor/key URLs at this host (with its chosen
+   * port) instead of `127.0.0.1`, so a non-loopback target can dereference them.
+   */
+  readonly advertiseHost?: string;
 }
 
 /**
@@ -51,10 +61,17 @@ export async function spawnSyntheticServer(
   members: readonly FleetMember[],
   options: SyntheticServerOptions = {},
 ): Promise<SyntheticServer> {
+  // Resolved before binding so a malformed --advertise-host fails fast.
+  const advertised = options.advertiseHost == null
+    ? null
+    : resolveAdvertiseHost(options.advertiseHost);
   const routes = new Map<string, string>();
   const server = serve({
     port: 0,
-    hostname: "127.0.0.1",
+    // Bind a reachable interface when advertising a host (every IPv6 or every
+    // IPv4 interface, matching the advertised host's family), otherwise stay on
+    // loopback.
+    hostname: advertised?.bindHost ?? "127.0.0.1",
     silent: true,
     fetch(request: Request): Response {
       const { pathname } = new URL(request.url);
@@ -69,7 +86,13 @@ export async function spawnSyntheticServer(
   await server.ready();
   const actors: SyntheticActor[] = [];
   try {
-    const base = new URL(server.url!);
+    const bound = new URL(server.url!);
+    // Actor and key IDs must use an address the target can dereference; the
+    // bound (loopback) URL works for a same-machine target, otherwise the
+    // advertised host (with the bound port) is used.
+    const base = advertised == null
+      ? bound
+      : new URL(`http://${advertised.urlHost}:${bound.port}/`);
     const contextLoader = options.contextLoader ??
       await getContextLoader({ allowPrivateAddress: true });
     for (const member of members) {
@@ -89,7 +112,7 @@ export async function spawnSyntheticServer(
       actors.push(actor);
     }
     return {
-      url: new URL(server.url!),
+      url: base,
       actors,
       async close() {
         await server.close(true);
@@ -100,4 +123,78 @@ export async function spawnSyntheticServer(
     await server.close(true);
     throw error;
   }
+}
+
+/** A validated advertise host: where to bind and how to write it in a URL. */
+export interface ResolvedAdvertiseHost {
+  /** The address to bind the synthetic server to. */
+  readonly bindHost: string;
+  /** The host as it appears in a URL authority (IPv6 is bracketed). */
+  readonly urlHost: string;
+}
+
+/** An error raised when `--advertise-host` is not a usable bare host. */
+export class AdvertiseHostError extends Error {}
+
+/**
+ * Validates and normalizes an `--advertise-host` value into a bind address and a
+ * URL-authority host.  It must be a bare host name, IPv4 address, or IPv6
+ * literal (bracketed or not); a scheme, port, path, or other URL syntax is
+ * rejected, since the synthetic server's chosen port is appended automatically.
+ * An IPv6 host binds every IPv6 interface (`::`); anything else binds every IPv4
+ * interface (`0.0.0.0`).
+ * @param host The raw `--advertise-host` value.
+ * @returns The bind address and the URL-authority host.
+ * @throws {AdvertiseHostError} If the value is not a usable bare host.
+ */
+export function resolveAdvertiseHost(host: string): ResolvedAdvertiseHost {
+  const trimmed = host.trim();
+  if (trimmed === "") {
+    throw new AdvertiseHostError("--advertise-host must not be empty.");
+  }
+  if (/[\s/\\@?#]/.test(trimmed) || trimmed.includes("://")) {
+    throw new AdvertiseHostError(
+      `Invalid --advertise-host ${JSON.stringify(host)}: give a bare host ` +
+        "name or IP address, with no scheme, path, or whitespace.",
+    );
+  }
+  let urlHost: string;
+  let bindHost: string;
+  if (trimmed.startsWith("[")) {
+    if (!trimmed.endsWith("]")) {
+      throw new AdvertiseHostError(
+        `Invalid --advertise-host ${JSON.stringify(host)}: unbalanced ` +
+          "brackets around the IPv6 address.",
+      );
+    }
+    urlHost = trimmed;
+    bindHost = "::";
+  } else {
+    const colons = (trimmed.match(/:/g) ?? []).length;
+    if (colons === 1) {
+      throw new AdvertiseHostError(
+        `Invalid --advertise-host ${
+          JSON.stringify(host)
+        }: omit the port; the ` +
+          "synthetic server's chosen port is appended automatically.",
+      );
+    }
+    if (colons >= 2) {
+      // A bare IPv6 literal; bracket it for the URL authority.
+      urlHost = `[${trimmed}]`;
+      bindHost = "::";
+    } else {
+      urlHost = trimmed;
+      bindHost = "0.0.0.0";
+    }
+  }
+  try {
+    new URL(`http://${urlHost}/`);
+  } catch {
+    throw new AdvertiseHostError(
+      `Invalid --advertise-host ${JSON.stringify(host)}: not a valid host ` +
+        "name or IP address.",
+    );
+  }
+  return { bindHost, urlHost };
 }
