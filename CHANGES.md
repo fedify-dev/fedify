@@ -6,7 +6,7 @@ Fedify changelog
 Version 2.1.16
 --------------
 
-To be released.
+Released on June 5, 2026.
 
 ### @fedify/cli
 
