@@ -145,3 +145,10 @@ test("renderTemplates - copy-on-write keeps unchanged siblings intact", () => {
   assert.strictEqual(out.keep, value.keep);
   assert.notStrictEqual(out.host, value.host);
 });
+
+test("renderTemplates - handles escaped quotes in helper arguments", () => {
+  // The single-quoted argument contains an escaped single quote.
+  assert.strictEqual(renderTemplates("${{ upper('a\\'b') }}", ctx), "A'B");
+  // And a double-quoted argument with an escaped double quote.
+  assert.strictEqual(renderTemplates('${{ lower("X\\"Y") }}', ctx), 'x"y');
+});

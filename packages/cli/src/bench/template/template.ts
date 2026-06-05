@@ -143,8 +143,17 @@ function splitTopLevel(source: string): string[] {
   const parts: string[] = [];
   let current = "";
   let quote: string | null = null;
+  let escaped = false;
   for (const char of source) {
-    if (quote != null) {
+    if (escaped) {
+      // A backslash escapes the next character (including a quote), so it does
+      // not open or close a string.
+      current += char;
+      escaped = false;
+    } else if (char === "\\") {
+      current += char;
+      escaped = true;
+    } else if (quote != null) {
       if (char === quote) quote = null;
       current += char;
     } else if (char === "'" || char === '"') {
@@ -165,8 +174,9 @@ function splitTopLevel(source: string): string[] {
 }
 
 function parseArg(arg: string, ctx: TemplateContext): unknown {
-  const str = arg.match(/^'([^']*)'$/) ?? arg.match(/^"([^"]*)"$/);
-  if (str != null) return str[1];
+  // Accept escaped quotes inside a quoted string, then unescape `\x` to `x`.
+  const str = arg.match(/^'([\s\S]*)'$/) ?? arg.match(/^"([\s\S]*)"$/);
+  if (str != null) return str[1].replace(/\\(.)/g, "$1");
   if (/^-?\d+(?:\.\d+)?$/.test(arg)) return Number(arg);
   if (arg === "true") return true;
   if (arg === "false") return false;
