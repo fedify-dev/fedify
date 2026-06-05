@@ -78,6 +78,15 @@ export async function signInboxDelivery(
     request,
     actor.keys.rsa.privateKey,
     actor.rsaKeyId,
-    { spec: actor.httpStandard, body: body.buffer as ArrayBuffer },
+    {
+      spec: actor.httpStandard,
+      // Slice exactly the encoded view: passing `body.buffer` would include
+      // any trailing bytes were `body` ever a view into a larger buffer, and
+      // signRequest's `body` option is an ArrayBuffer (not a Uint8Array).
+      body: body.buffer.slice(
+        body.byteOffset,
+        body.byteOffset + body.byteLength,
+      ) as ArrayBuffer,
+    },
   );
 }
