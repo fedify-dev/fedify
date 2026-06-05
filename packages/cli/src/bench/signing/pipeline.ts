@@ -74,6 +74,10 @@ export function createSigningPipeline(
       fillTarget: total,
       signers,
       countStarvation: false,
+      // Sign the whole run up front and then stop: the background signers must
+      // not refill as the buffer drains, or signing would run during the timed
+      // window and defeat the point of presigning.
+      maxProduced: total,
     });
   }
   const bufferSize = options.bufferSize ?? DEFAULT_BUFFER_SIZE;
@@ -99,6 +103,12 @@ interface BufferedOptions {
   readonly fillTarget: number;
   readonly signers: number;
   readonly countStarvation: boolean;
+  /**
+   * A cap on how many requests the background signers produce in total.  Used by
+   * `presign` to sign the run once and then stop; omitted (unbounded) for
+   * `pipeline`, which refills the buffer for the whole run.
+   */
+  readonly maxProduced?: number;
 }
 
 function createBuffered(
@@ -110,6 +120,8 @@ function createBuffered(
     resolve: (request: Request) => void;
     reject: (error: unknown) => void;
   }> = [];
+  const maxProduced = options.maxProduced ?? Infinity;
+  let produced = 0;
   let starvationCount = 0;
   let inFlight = 0;
   let closed = false;
@@ -137,6 +149,10 @@ function createBuffered(
 
   async function producer(): Promise<void> {
     while (!closed) {
+      // Stop once the whole run is signed (presign): don't refill as the buffer
+      // drains, so signing stays out of the timed window.  Unbounded for
+      // `pipeline`, which keeps the buffer full for the whole run.
+      if (produced + inFlight >= maxProduced) break;
       if (
         waiters.length === 0 && ready.length + inFlight >= options.bufferSize
       ) {
@@ -154,6 +170,7 @@ function createBuffered(
         const result = await Promise.race([pending, closeSignal]);
         if (result === CLOSED || closed) break;
         consecutiveFailures = 0;
+        produced++;
         deliver(result);
       } catch (error) {
         // A transient failure is dropped, but a run of failures with no
@@ -176,6 +193,10 @@ function createBuffered(
       if (buffered != null) return Promise.resolve(buffered);
       if (fatalError != null) return Promise.reject(fatalError);
       if (closed) return Promise.reject(new PipelineClosedError("closed"));
+      // Presign overshoot: the run asked for more than the pre-signed total
+      // (e.g. a few extra Poisson arrivals), so sign the extra on demand rather
+      // than refilling the whole run in the background.
+      if (produced >= maxProduced) return Promise.resolve().then(factory);
       if (options.countStarvation) starvationCount++;
       return new Promise<Request>((resolve, reject) => {
         waiters.push({ resolve, reject });

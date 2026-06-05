@@ -73,6 +73,28 @@ test("presign - signs the whole run up front without starvation", async () => {
   await pipeline.close();
 });
 
+test("presign - signs exactly the run up front and never refills", async () => {
+  let calls = 0;
+  const factory = () => {
+    calls++;
+    return Promise.resolve(new Request("http://sink/x", { method: "POST" }));
+  };
+  const pipeline = createSigningPipeline("presign", factory, {
+    total: 3,
+    signers: 2,
+  });
+  await pipeline.prime();
+  // The whole run is signed up front, and nothing beyond it.
+  assert.strictEqual(calls, 3);
+  // Draining the buffer must not trigger background refills during the run.
+  for (let i = 0; i < 3; i++) await pipeline.next();
+  assert.strictEqual(calls, 3);
+  // Overshooting the pre-signed estimate signs the extra on demand.
+  await pipeline.next();
+  assert.strictEqual(calls, 4);
+  await pipeline.close();
+});
+
 test("close - rejects a pending consumer", async () => {
   const pipeline = createSigningPipeline("pipeline", fakeFactory(50), {
     bufferSize: 1,
