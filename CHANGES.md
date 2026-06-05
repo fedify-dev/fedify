@@ -341,6 +341,30 @@ To be released.
 
 [#489]: https://github.com/fedify-dev/fedify/issues/489
 
+### @fedify/vocab-runtime
+
+ -  Added `PropertyPreprocessor`, `PropertyPreprocessorContext`, and `Json`
+    types for normalizing wire-level JSON-LD property values before the
+    generated range decoder runs.  [[#792]]
+
+[#792]: https://github.com/fedify-dev/fedify/issues/792
+
+### @fedify/vocab
+
+ -  Explicit ActivityStreams `Link` objects in `icon` and `image` properties
+    are now normalized to `Image` during decoding via the new
+    `normalizeLinkToImage` preprocessor.  The public `Image`-oriented
+    TypeScript API is unchanged.  [[#790], [#792]]
+
+[#790]: https://github.com/fedify-dev/fedify/issues/790
+
+### @fedify/vocab-tools
+
+ -  Property schemas now support a `preprocessors` field that lists
+    module/function pairs.  Generated decoders dynamically import and run
+    these preprocessors for each expanded JSON-LD property value before
+    falling back to the normal range decoder.  [[#792]]
+
 
 Version 2.2.5
 -------------
