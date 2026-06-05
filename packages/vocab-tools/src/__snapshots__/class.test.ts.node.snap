@@ -1,5 +1,5 @@
 exports[`generateClasses() 1`] = `
-"// deno-lint-ignore-file ban-unused-ignore no-unused-vars prefer-const verbatim-module-syntax
+"// deno-lint-ignore-file ban-unused-ignore no-explicit-any no-unused-vars prefer-const verbatim-module-syntax
 import jsonld from \\"@fedify/vocab-runtime/jsonld\\";
 import { getLogger } from \\"@logtape/logtape\\";
 import { type Span, SpanStatusCode, type TracerProvider, trace }
@@ -3661,6 +3661,26 @@ get names(): ((string | LanguageString))[] {
         this._tracerProvider ?? trace.getTracerProvider();
       const baseUrl = options.baseUrl;
     
+        const _expanded = await jsonld.expand(jsonLd, {
+          documentLoader: contextLoader,
+          keepFreeFloatingNodes: true,
+        });
+        for (const _pp_obj of _expanded) {
+      
+          {
+            const _ppM0 = await import(\\"./preprocessors.ts\\");
+            const _result = await _ppM0[\\"normalizeLinkToImage\\"](_pp_obj, {
+              documentLoader,
+              contextLoader,
+              tracerProvider,
+              baseUrl,
+            });
+            if (_result instanceof Error) throw _result;
+            if (_result !== undefined) return _result as Image;
+          }
+        
+        }
+      
         try {
           return await Image.fromJsonLd(
             jsonLd,
@@ -3975,6 +3995,26 @@ get names(): ((string | LanguageString))[] {
         this._tracerProvider ?? trace.getTracerProvider();
       const baseUrl = options.baseUrl;
     
+        const _expanded = await jsonld.expand(jsonLd, {
+          documentLoader: contextLoader,
+          keepFreeFloatingNodes: true,
+        });
+        for (const _pp_obj of _expanded) {
+      
+          {
+            const _ppM0 = await import(\\"./preprocessors.ts\\");
+            const _result = await _ppM0[\\"normalizeLinkToImage\\"](_pp_obj, {
+              documentLoader,
+              contextLoader,
+              tracerProvider,
+              baseUrl,
+            });
+            if (_result instanceof Error) throw _result;
+            if (_result !== undefined) return _result as Image;
+          }
+        
+        }
+      
         try {
           return await Image.fromJsonLd(
             jsonLd,
@@ -10737,6 +10777,29 @@ get urls(): ((URL | Link))[] {
     ) {
       if (v == null) continue;
     
+      {
+        let _handled: Image | undefined;
+      
+        if (_handled === undefined) {
+          const _ppM0 = await import(\\"./preprocessors.ts\\");
+          const _result = await _ppM0[\\"normalizeLinkToImage\\"](v, {
+            documentLoader: options.documentLoader,
+            contextLoader: options.contextLoader,
+            tracerProvider: options.tracerProvider,
+            baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])),
+          });
+          if (_result instanceof Error) throw _result;
+          if (_result !== undefined) {
+            _handled = _result as Image;
+          }
+        }
+      
+        if (_handled !== undefined) {
+          _33CjRLy5ujtsUrwRSCrsggvGdKuR_icon.push(_handled);
+          continue;
+        }
+      }
+      
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _33CjRLy5ujtsUrwRSCrsggvGdKuR_icon.push(
@@ -10770,6 +10833,29 @@ get urls(): ((URL | Link))[] {
     ) {
       if (v == null) continue;
     
+      {
+        let _handled: Image | undefined;
+      
+        if (_handled === undefined) {
+          const _ppM0 = await import(\\"./preprocessors.ts\\");
+          const _result = await _ppM0[\\"normalizeLinkToImage\\"](v, {
+            documentLoader: options.documentLoader,
+            contextLoader: options.contextLoader,
+            tracerProvider: options.tracerProvider,
+            baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])),
+          });
+          if (_result instanceof Error) throw _result;
+          if (_result !== undefined) {
+            _handled = _result as Image;
+          }
+        }
+      
+        if (_handled !== undefined) {
+          _3dXrUdkARxwyJLtJcYi1AJ92H41U_image.push(_handled);
+          continue;
+        }
+      }
+      
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3dXrUdkARxwyJLtJcYi1AJ92H41U_image.push(
