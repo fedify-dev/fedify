@@ -101,11 +101,7 @@ test("spawnSyntheticServer - unknown paths 404", async () => {
   }
 });
 
-test("resolveAdvertiseHost - DNS and IPv4 bind all IPv4 interfaces", () => {
-  assert.deepEqual(resolveAdvertiseHost("bench.local"), {
-    bindHost: "0.0.0.0",
-    urlHost: "bench.local",
-  });
+test("resolveAdvertiseHost - IPv4 literal binds the IPv4 wildcard", () => {
   assert.deepEqual(resolveAdvertiseHost("192.168.1.10"), {
     bindHost: "0.0.0.0",
     urlHost: "192.168.1.10",
@@ -114,6 +110,15 @@ test("resolveAdvertiseHost - DNS and IPv4 bind all IPv4 interfaces", () => {
   assert.deepEqual(resolveAdvertiseHost("  10.0.0.5  "), {
     bindHost: "0.0.0.0",
     urlHost: "10.0.0.5",
+  });
+});
+
+test("resolveAdvertiseHost - a hostname binds dual-stack", () => {
+  // A hostname can resolve to an A or AAAA record, so bind every interface of
+  // both families rather than assuming IPv4.
+  assert.deepEqual(resolveAdvertiseHost("bench.local"), {
+    bindHost: "::",
+    urlHost: "bench.local",
   });
 });
 

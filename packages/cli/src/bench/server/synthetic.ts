@@ -185,7 +185,9 @@ export function resolveAdvertiseHost(host: string): ResolvedAdvertiseHost {
       bindHost = "::";
     } else {
       urlHost = trimmed;
-      bindHost = "0.0.0.0";
+      // An IPv4 literal binds the IPv4 wildcard; a hostname can resolve to
+      // either family, so bind dual-stack (::) to also serve an AAAA record.
+      bindHost = /^\d{1,3}(?:\.\d{1,3}){3}$/.test(trimmed) ? "0.0.0.0" : "::";
     }
   }
   try {
