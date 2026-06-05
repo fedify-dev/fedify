@@ -352,8 +352,8 @@ To be released.
 ### @fedify/vocab
 
  -  Explicit ActivityStreams `Link` objects in `icon` and `image` properties
-    are now normalized to `Image` during decoding via the new
-    `normalizeLinkToImage` preprocessor.  The public `Image`-oriented
+    are now normalized to `Image` during decoding via the new exported
+    `normalizeLinkToImage()` preprocessor.  The public `Image`-oriented
     TypeScript API is unchanged.  [[#790], [#792]]
 
 [#790]: https://github.com/fedify-dev/fedify/issues/790
