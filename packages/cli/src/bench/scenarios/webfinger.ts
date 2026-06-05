@@ -37,7 +37,9 @@ export const webfingerRunner: ScenarioRunner = {
     const urls =
       (context.scenario.recipients.length > 0
         ? context.scenario.recipients
-        : [context.target.host]).map((r) => webfingerUrl(context.target, r));
+        // Fall back to the target's full URL (a valid URL), not its schemeless
+        // host, which convertUrlIfHandle could not parse.
+        : [context.target.href]).map((r) => webfingerUrl(context.target, r));
     let index = 0;
     const rawSend = () =>
       sendRequest(
