@@ -30,7 +30,7 @@ function* generatePreprocessorBlock(
   let moduleIndex = 0;
   for (const pp of property.preprocessors) {
     yield `
-        {
+        if (_handled === undefined) {
           const _ppM${moduleIndex} = await import(${JSON.stringify(pp.module)});
           const _result = await _ppM${moduleIndex}[${
       JSON.stringify(pp.function)
@@ -45,7 +45,6 @@ function* generatePreprocessorBlock(
             _handled = _result as ${rangeTypeName};
           }
         }
-        if (_handled !== undefined) break;
       `;
     moduleIndex++;
   }

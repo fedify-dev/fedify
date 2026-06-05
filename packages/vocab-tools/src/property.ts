@@ -176,7 +176,7 @@ async function* generateProperty(
           const _ppM${moduleIndex} = await import(${JSON.stringify(pp.module)});
           const _result = await _ppM${moduleIndex}[${
           JSON.stringify(pp.function)
-        }](jsonLd, {
+        }](jsonLd as any, {
             documentLoader,
             contextLoader,
             tracerProvider,

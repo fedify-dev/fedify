@@ -1844,6 +1844,107 @@ test("Person.fromJsonLd() with relative URLs and baseUrl", async () => {
   );
 });
 
+test("Object.fromJsonLd() normalizes Link icon to Image", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "content": "Hello",
+    "icon": {
+      "type": "Link",
+      "href": "https://example.com/icon.png",
+      "mediaType": "image/png",
+      "name": "Icon",
+      "width": 64,
+      "height": 64,
+    },
+  };
+  const obj = await Object.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  const icon = await obj.getIcon();
+  deepStrictEqual(
+    icon?.url?.href,
+    "https://example.com/icon.png",
+  );
+  deepStrictEqual(icon?.mediaType, "image/png");
+  deepStrictEqual(icon?.names, ["Icon"]);
+  deepStrictEqual(icon?.width, 64);
+  deepStrictEqual(icon?.height, 64);
+});
+
+test("Object.fromJsonLd() normalizes Link image to Image", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "content": "Hello",
+    "image": {
+      "type": "Link",
+      "href": "https://example.com/banner.png",
+      "mediaType": "image/png",
+      "width": 800,
+      "height": 200,
+    },
+  };
+  const obj = await Object.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  const images = [];
+  for await (const img of obj.getImages()) {
+    images.push(img);
+  }
+  deepStrictEqual(images[0]?.url?.href, "https://example.com/banner.png");
+  deepStrictEqual(images[0]?.mediaType, "image/png");
+  deepStrictEqual(images[0]?.width, 800);
+  deepStrictEqual(images[0]?.height, 200);
+});
+
+test("Object.fromJsonLd() normalizes Link icon with relative URL", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "id": "https://example.com/notes/1",
+    "content": "Hello",
+    "icon": {
+      "type": "Link",
+      "href": "/icons/icon.png",
+    },
+  };
+  const obj = await Object.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  const icon = await obj.getIcon();
+  deepStrictEqual(
+    icon?.url?.href,
+    "https://example.com/icons/icon.png",
+  );
+});
+
+test("Object.fromJsonLd() normalizes multiple Link icons", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "content": "Hello",
+    "icon": [
+      { "type": "Link", "href": "https://example.com/a.png" },
+      { "type": "Image", "url": "https://example.com/b.png" },
+    ],
+  };
+  const obj = await Object.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  const icons = [];
+  for await (const i of obj.getIcons()) {
+    icons.push(i);
+  }
+  deepStrictEqual(icons.length, 2);
+  deepStrictEqual(icons[0]?.url?.href, "https://example.com/a.png");
+  deepStrictEqual(icons[1]?.url?.href, "https://example.com/b.png");
+});
+
 test("FEP-fe34: Trust tracking in object construction", async () => {
   // Test that objects created with embedded objects have trust set
   const note = new Note({
