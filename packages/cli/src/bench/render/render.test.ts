@@ -1,21 +1,18 @@
 import { type Schema, Validator } from "@cfworker/json-schema";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import type { BenchReport } from "../result/model.ts";
 import { reportSchemaV1 } from "../result/schema.ts";
 import { renderReport } from "./index.ts";
 
+// `import.meta.dirname` needs Node >= 20.11; derive it from the URL instead.
+const here = dirname(fileURLToPath(import.meta.url));
 const report = JSON.parse(
   readFileSync(
-    join(
-      import.meta.dirname!,
-      "..",
-      "__fixtures__",
-      "reports",
-      "inbox-report.json",
-    ),
+    join(here, "..", "__fixtures__", "reports", "inbox-report.json"),
     "utf-8",
   ),
 ) as BenchReport;

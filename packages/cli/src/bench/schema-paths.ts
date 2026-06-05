@@ -9,11 +9,16 @@
  * @module
  */
 
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+// `import.meta.dirname` is only available on Node >= 20.11, but this package
+// supports Node >= 20.0, so derive the directory from the module URL instead.
+const here = dirname(fileURLToPath(import.meta.url));
 
 /** The absolute path to the repository's *schema/bench/* directory. */
 export const SCHEMA_DIR: string = join(
-  import.meta.dirname!,
+  here,
   "..",
   "..",
   "..",

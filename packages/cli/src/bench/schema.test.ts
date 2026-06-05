@@ -2,14 +2,16 @@ import { type Schema, Validator } from "@cfworker/json-schema";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import { parseSuiteText } from "./scenario/load.ts";
 import { SCHEMA_DIR, serializeSchema } from "./schema-paths.ts";
 import { PUBLISHED_SCHEMAS } from "./schemas.ts";
 
 const REPO_ROOT = join(SCHEMA_DIR, "..", "..");
-const FIXTURES = join(import.meta.dirname!, "__fixtures__");
+// `import.meta.dirname` needs Node >= 20.11; derive it from the URL instead.
+const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), "__fixtures__");
 
 function collectRefs(node: unknown, refs: string[] = []): string[] {
   if (Array.isArray(node)) {
