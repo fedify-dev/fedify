@@ -33,16 +33,25 @@ export interface FleetMember {
 function httpStandardOf(
   standards: readonly SignatureStandard[],
 ): HttpSignatureStandard {
-  const http = standards.find((s) =>
+  // The JSON Schema already requires exactly one HTTP request scheme per group;
+  // enforce it here too so this function honors its own contract even if called
+  // with unvalidated input, rather than silently picking the first of several.
+  const http = standards.filter((s) =>
     s === "draft-cavage-http-signatures-12" || s === "rfc9421"
   );
-  if (http == null) {
+  if (http.length === 0) {
     throw new TypeError(
       "Every actor group must declare exactly one HTTP request signature " +
         "standard.",
     );
   }
-  return http as HttpSignatureStandard;
+  if (http.length > 1) {
+    throw new TypeError(
+      "Every actor group must declare exactly one HTTP request signature " +
+        `standard, but multiple were given: ${http.join(", ")}.`,
+    );
+  }
+  return http[0] as HttpSignatureStandard;
 }
 
 /**
