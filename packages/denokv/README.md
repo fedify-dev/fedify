@@ -4,7 +4,7 @@
 =========================================
 
 [![JSR][JSR badge]][JSR]
-[![Follow @fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
+[![@fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
 
 *This package is available since Fedify 1.9.0.*
 
@@ -30,7 +30,7 @@ const federation = createFederation({
 
 [JSR badge]: https://jsr.io/badges/@fedify/denokv
 [JSR]: https://jsr.io/@fedify/denokv
-[@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
+[@fedify@hollo.social badge]: https://fedi-badge.minhee.org/@fedify@hollo.social/followers.svg
 [@fedify@hollo.social]: https://hollo.social/@fedify
 [Fedify]: https://fedify.dev/
 [`KvStore`]: https://jsr.io/@fedify/fedify/doc/federation/~/KvStore

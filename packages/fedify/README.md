@@ -7,7 +7,7 @@
 [![npm][npm badge]][npm]
 [![GitHub Actions][GitHub Actions badge]][GitHub Actions]
 [![Matrix][Matrix badge]][Matrix]
-[![Follow @fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
+[![@fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
 
 > [!NOTE]
 > Looking for a quick demo?  Here it is: [Fedify Demo] on Deno Playground.
@@ -61,7 +61,7 @@ in the fediverse!
 [GitHub Actions]: https://github.com/fedify-dev/fedify/actions/workflows/build.yaml
 [Matrix badge]: https://img.shields.io/matrix/fedify%3Amatrix.org?logo=matrix
 [Matrix]: https://matrix.to/#/#fedify:matrix.org
-[@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
+[@fedify@hollo.social badge]: https://fedi-badge.minhee.org/@fedify@hollo.social/followers.svg
 [@fedify@hollo.social]: https://hollo.social/@fedify
 [Fedify Demo]: https://dash.deno.com/playground/fedify-demo
 [ActivityPub]: https://www.w3.org/TR/activitypub/

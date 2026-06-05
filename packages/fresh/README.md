@@ -5,7 +5,7 @@
 @fedify/fresh: Integrate Fedify with Fresh 2.x
 ==============================================
 
-[![Follow @fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
+[![@fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
 
 This package provides a simple way to integrate [Fedify] with [Fresh].
 
@@ -24,7 +24,7 @@ const fedifyMiddleware = define.middleware(
 app.use(fedifyMiddleware);
 ~~~~
 
-[@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
+[@fedify@hollo.social badge]: https://fedi-badge.minhee.org/@fedify@hollo.social/followers.svg
 [@fedify@hollo.social]: https://hollo.social/@fedify
 [Fedify]: https://fedify.dev/
 [Fresh]: https://fresh.deno.dev/

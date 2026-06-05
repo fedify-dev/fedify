@@ -5,7 +5,7 @@
 
 [![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
-[![Follow @fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
+[![@fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
 
 *This package is available since Fedify 1.9.0.*
 
@@ -31,7 +31,7 @@ Put the above code in your *hooks.server.ts* file.
 [JSR]: https://jsr.io/@fedify/sveltekit
 [npm badge]: https://img.shields.io/npm/v/@fedify/sveltekit?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/sveltekit
-[@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
+[@fedify@hollo.social badge]: https://fedi-badge.minhee.org/@fedify@hollo.social/followers.svg
 [@fedify@hollo.social]: https://hollo.social/@fedify
 [Fedify]: https://fedify.dev/
 [SvelteKit]: https://kit.svelte.dev/
