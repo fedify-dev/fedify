@@ -93,7 +93,7 @@ export default async function runBench(
   // Preflight every runner so an unsupported scenario type, an option the
   // runner cannot honor, or a malformed `expect` assertion fails fast, before
   // any probe or load.
-  let runners;
+  let runners: ReturnType<typeof runnerFor>[];
   try {
     runners = suite.scenarios.map((scenario) => {
       const runner = runnerFor(scenario.type);
