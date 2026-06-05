@@ -64,7 +64,10 @@ export const inboxRunner: ScenarioRunner = {
     if (scenario.recipients.length < 1) {
       throw new Error("The inbox scenario requires a recipient.");
     }
+    // `validate()` is optional in the runner contract, so re-check here too,
+    // keeping a direct `run()` call (as in tests) safe.
     validateActivity(scenario);
+    validateInbox(scenario);
     const fetchImpl = context.fetch ?? fetch;
     // Discover every recipient's inbox the way a real peer would, then rotate
     // across them so multi-recipient suites spread load over each inbox.
