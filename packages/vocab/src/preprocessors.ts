@@ -1,6 +1,18 @@
 import type { PropertyPreprocessor } from "@fedify/vocab-runtime";
 import { Image, Link } from "./vocab.ts";
 
+/**
+ * A property preprocessor that normalizes Link values to Image objects.
+ *
+ * When an `icon` or `image` property on a vocabulary object contains an
+ * explicit ActivityStreams `Link` rather than an `Image`, this preprocessor
+ * converts it into an `Image` by mapping `href` to `url`, copying
+ * `mediaType`, `name`, `width`, and `height`, and discarding the rest.
+ *
+ * If the value is not a Link, or the Link has no `href`, it returns
+ * `undefined` so the normal range decoder continues.
+ * @since 2.3.0
+ */
 export const normalizeLinkToImage: PropertyPreprocessor<Image> = async (
   value,
   context,

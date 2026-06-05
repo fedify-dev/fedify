@@ -3,6 +3,7 @@ import type { TracerProvider } from "@opentelemetry/api";
 
 /**
  * JSON value shape passed to property preprocessors.
+ * @since 2.3.0
  */
 export type Json =
   | string
@@ -14,6 +15,7 @@ export type Json =
 
 /**
  * Runtime context provided to property preprocessors.
+ * @since 2.3.0
  */
 export interface PropertyPreprocessorContext {
   /** Loader for remote JSON-LD documents. */
@@ -33,6 +35,7 @@ export interface PropertyPreprocessorContext {
  * object when the value is handled, `undefined` when the value should
  * fall through to the normal range decoder, or an `Error` when the value
  * is recognized but cannot be converted.
+ * @since 2.3.0
  */
 export type PropertyPreprocessor<T = unknown> = (
   value: Json,
