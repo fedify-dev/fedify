@@ -64,26 +64,32 @@ function renderValue(
     throw new TemplateError("Maximum template nesting depth exceeded.");
   }
   if (typeof value === "string") return renderString(value, ctx);
-  // Walk arrays and objects, but keep the original reference for any subtree
-  // that did not change, to avoid needless cloning.
+  // Walk arrays and objects copy-on-write: allocate a new container only once a
+  // child actually changes (back-filling the unchanged prefix), so an unchanged
+  // subtree is returned by reference with no cloning at all.
   if (Array.isArray(value)) {
-    let changed = false;
-    const out = value.map((item) => {
+    let out: unknown[] | undefined;
+    for (let i = 0; i < value.length; i++) {
+      const item = value[i];
       const rendered = renderValue(item, ctx, depth + 1);
-      if (rendered !== item) changed = true;
-      return rendered;
-    });
-    return changed ? out : value;
+      if (out == null && rendered !== item) out = value.slice(0, i);
+      if (out != null) out.push(rendered);
+    }
+    return out ?? value;
   }
   if (value != null && typeof value === "object") {
-    let changed = false;
-    const out: Record<string, unknown> = {};
-    for (const [key, item] of Object.entries(value)) {
+    const entries = Object.entries(value);
+    let out: Record<string, unknown> | undefined;
+    for (let i = 0; i < entries.length; i++) {
+      const [key, item] = entries[i];
       const rendered = renderValue(item, ctx, depth + 1);
-      if (rendered !== item) changed = true;
-      out[key] = rendered;
+      if (out == null && rendered !== item) {
+        out = {};
+        for (let j = 0; j < i; j++) out[entries[j][0]] = entries[j][1];
+      }
+      if (out != null) out[key] = rendered;
     }
-    return changed ? out : value;
+    return out ?? value;
   }
   return value;
 }

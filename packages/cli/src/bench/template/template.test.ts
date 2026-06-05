@@ -126,3 +126,22 @@ test("renderTemplates - returns the same reference for unchanged subtrees", () =
   const value = { a: { b: "no expressions here" }, list: [1, 2] };
   assert.strictEqual(renderTemplates(value, ctx), value);
 });
+
+test("renderTemplates - copy-on-write keeps unchanged siblings intact", () => {
+  // Only some entries change; the rest must be carried over correctly when the
+  // container is lazily copied on the first change.
+  const value = {
+    keep: "static",
+    host: "${{ target.host }}",
+    list: ["x", "${{ name }}", "z"],
+  };
+  const out = renderTemplates(value, ctx) as Record<string, unknown>;
+  assert.deepEqual(out, {
+    keep: "static",
+    host: "example.com",
+    list: ["x", "bob", "z"],
+  });
+  // The unchanged leaf string is the same reference; a changed sibling is not.
+  assert.strictEqual(out.keep, value.keep);
+  assert.notStrictEqual(out.host, value.host);
+});
