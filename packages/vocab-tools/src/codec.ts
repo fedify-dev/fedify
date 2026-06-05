@@ -19,6 +19,7 @@ function* generatePreprocessorBlock(
   rangeTypeName: string,
   variable: string,
   baseUrlExpr: string,
+  moduleVarNames: ReadonlyMap<string, string>,
 ): Iterable<string> {
   if (property.preprocessors == null || property.preprocessors.length === 0) {
     return;
@@ -27,14 +28,12 @@ function* generatePreprocessorBlock(
       {
         let _handled: ${rangeTypeName} | undefined;
       `;
-  let moduleIndex = 0;
   for (const pp of property.preprocessors) {
+    const varName = moduleVarNames.get(pp.module);
+    if (varName == null) continue;
     yield `
         if (_handled === undefined) {
-          const _ppM${moduleIndex} = await import(${JSON.stringify(pp.module)});
-          const _result = await _ppM${moduleIndex}[${
-      JSON.stringify(pp.function)
-    }](v, {
+          const _result = await ${varName}[${JSON.stringify(pp.function)}](v, {
             documentLoader: options.documentLoader,
             contextLoader: options.contextLoader,
             tracerProvider: options.tracerProvider,
@@ -46,7 +45,6 @@ function* generatePreprocessorBlock(
           }
         }
       `;
-    moduleIndex++;
   }
   yield `
         if (_handled !== undefined) {
@@ -315,6 +313,7 @@ export async function* generateEncoder(
 export async function* generateDecoder(
   typeUri: string,
   types: Record<string, TypeSchema>,
+  moduleVarNames: ReadonlyMap<string, string>,
 ): AsyncIterable<string> {
   const type = types[typeUri];
   yield `
@@ -474,7 +473,8 @@ export async function* generateDecoder(
       property,
       getTypeNames(property.range, types),
       variable,
-      `(values["@id"] == null ? options.baseUrl : new URL(values["@id"]))`,
+      `(values["@id"] == null || !URL.canParse(values["@id"]) ? options.baseUrl : new URL(values["@id"]))`,
+      moduleVarNames,
     );
     if (!areAllScalarTypes(property.range, types)) {
       yield `
@@ -497,7 +497,7 @@ export async function* generateDecoder(
           types,
           "v",
           "options",
-          `(values["@id"] == null ? options.baseUrl : new URL(values["@id"]))`,
+          `(values["@id"] == null || !URL.canParse(values["@id"]) ? options.baseUrl : new URL(values["@id"]))`,
         )
       };
       if (typeof decoded === "undefined") continue;

@@ -28,6 +28,8 @@ import {
 } from \\"@fedify/vocab-runtime/temporal\\";
 
 
+import * as _ppM0 from \\"./preprocessors.ts\\";
+
 /** Describes an object of any kind. The Object type serves as the base type for
  * most of the other kinds of objects defined in the Activity Vocabulary,
  * including other Core types such as {@link Activity},
@@ -2334,7 +2336,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               \\"attachment\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#attachment_fromJsonLd(obj, options);
+              v = await this.#attachment_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -2588,7 +2594,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"attributedTo\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#attribution_fromJsonLd(doc, options);
+            v = await this.#attribution_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -2684,7 +2694,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               \\"attributedTo\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#attribution_fromJsonLd(obj, options);
+              v = await this.#attribution_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -2901,7 +2915,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"audience\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#audience_fromJsonLd(doc, options);
+            v = await this.#audience_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -2996,7 +3014,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               \\"audience\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#audience_fromJsonLd(obj, options);
+              v = await this.#audience_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -3257,7 +3279,11 @@ get contents(): ((string | LanguageString))[] {
               \\"context\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#context_fromJsonLd(obj, options);
+              v = await this.#context_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -3525,7 +3551,11 @@ get names(): ((string | LanguageString))[] {
               \\"generator\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#generator_fromJsonLd(obj, options);
+              v = await this.#generator_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -3670,7 +3700,6 @@ get names(): ((string | LanguageString))[] {
         for (const _pp_obj of _expanded) {
       
           {
-            const _ppM0 = await import(\\"./preprocessors.ts\\");
             const _result = await _ppM0[\\"normalizeLinkToImage\\"](_pp_obj, {
               documentLoader,
               contextLoader,
@@ -3763,7 +3792,11 @@ get names(): ((string | LanguageString))[] {
             \\"icon\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#icon_fromJsonLd(doc, options);
+            v = await this.#icon_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -3859,7 +3892,11 @@ get names(): ((string | LanguageString))[] {
               \\"icon\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#icon_fromJsonLd(obj, options);
+              v = await this.#icon_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -4004,7 +4041,6 @@ get names(): ((string | LanguageString))[] {
         for (const _pp_obj of _expanded) {
       
           {
-            const _ppM0 = await import(\\"./preprocessors.ts\\");
             const _result = await _ppM0[\\"normalizeLinkToImage\\"](_pp_obj, {
               documentLoader,
               contextLoader,
@@ -4097,7 +4133,11 @@ get names(): ((string | LanguageString))[] {
             \\"image\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#image_fromJsonLd(doc, options);
+            v = await this.#image_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -4193,7 +4233,11 @@ get names(): ((string | LanguageString))[] {
               \\"image\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#image_fromJsonLd(obj, options);
+              v = await this.#image_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -4419,7 +4463,11 @@ get names(): ((string | LanguageString))[] {
             \\"inReplyTo\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#replyTarget_fromJsonLd(doc, options);
+            v = await this.#replyTarget_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -4514,7 +4562,11 @@ get names(): ((string | LanguageString))[] {
               \\"inReplyTo\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#replyTarget_fromJsonLd(obj, options);
+              v = await this.#replyTarget_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -4740,7 +4792,11 @@ get names(): ((string | LanguageString))[] {
             \\"location\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#location_fromJsonLd(doc, options);
+            v = await this.#location_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -4835,7 +4891,11 @@ get names(): ((string | LanguageString))[] {
               \\"location\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#location_fromJsonLd(obj, options);
+              v = await this.#location_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -5060,7 +5120,11 @@ get names(): ((string | LanguageString))[] {
             \\"preview\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#preview_fromJsonLd(doc, options);
+            v = await this.#preview_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -5154,7 +5218,11 @@ get names(): ((string | LanguageString))[] {
               \\"preview\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#preview_fromJsonLd(obj, options);
+              v = await this.#preview_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -5384,7 +5452,11 @@ get names(): ((string | LanguageString))[] {
             \\"replies\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#replies_fromJsonLd(doc, options);
+            v = await this.#replies_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -5606,7 +5678,11 @@ get names(): ((string | LanguageString))[] {
             \\"shares\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#shares_fromJsonLd(doc, options);
+            v = await this.#shares_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -5828,7 +5904,11 @@ get names(): ((string | LanguageString))[] {
             \\"likes\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#likes_fromJsonLd(doc, options);
+            v = await this.#likes_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -6044,7 +6124,11 @@ get names(): ((string | LanguageString))[] {
             \\"emojiReactions\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#emojiReactions_fromJsonLd(doc, options);
+            v = await this.#emojiReactions_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -6312,7 +6396,11 @@ get summaries(): ((string | LanguageString))[] {
               \\"tag\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#tag_fromJsonLd(obj, options);
+              v = await this.#tag_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -6563,7 +6651,11 @@ get urls(): ((URL | Link))[] {
             \\"to\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#to_fromJsonLd(doc, options);
+            v = await this.#to_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -6658,7 +6750,11 @@ get urls(): ((URL | Link))[] {
               \\"to\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#to_fromJsonLd(obj, options);
+              v = await this.#to_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -6875,7 +6971,11 @@ get urls(): ((URL | Link))[] {
             \\"bto\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#bto_fromJsonLd(doc, options);
+            v = await this.#bto_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -6970,7 +7070,11 @@ get urls(): ((URL | Link))[] {
               \\"bto\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#bto_fromJsonLd(obj, options);
+              v = await this.#bto_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -7187,7 +7291,11 @@ get urls(): ((URL | Link))[] {
             \\"cc\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#cc_fromJsonLd(doc, options);
+            v = await this.#cc_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -7282,7 +7390,11 @@ get urls(): ((URL | Link))[] {
               \\"cc\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#cc_fromJsonLd(obj, options);
+              v = await this.#cc_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -7499,7 +7611,11 @@ get urls(): ((URL | Link))[] {
             \\"bcc\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#bcc_fromJsonLd(doc, options);
+            v = await this.#bcc_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -7594,7 +7710,11 @@ get urls(): ((URL | Link))[] {
               \\"bcc\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#bcc_fromJsonLd(obj, options);
+              v = await this.#bcc_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -7874,7 +7994,11 @@ get urls(): ((URL | Link))[] {
             \\"proof\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#proof_fromJsonLd(doc, options);
+            v = await this.#proof_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -7968,7 +8092,11 @@ get urls(): ((URL | Link))[] {
               \\"proof\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#proof_fromJsonLd(obj, options);
+              v = await this.#proof_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -8224,7 +8352,11 @@ get urls(): ((URL | Link))[] {
             \\"likeAuthorization\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#likeAuthorization_fromJsonLd(doc, options);
+            v = await this.#likeAuthorization_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -8440,7 +8572,11 @@ get urls(): ((URL | Link))[] {
             \\"replyAuthorization\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#replyAuthorization_fromJsonLd(doc, options);
+            v = await this.#replyAuthorization_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -8656,7 +8792,11 @@ get urls(): ((URL | Link))[] {
             \\"announceAuthorization\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#announceAuthorization_fromJsonLd(doc, options);
+            v = await this.#announceAuthorization_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -10602,7 +10742,7 @@ get urls(): ((URL | Link))[] {
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3ocC3VVi88cEd5sPWL8djkZsvTN6_audience.push(decoded);
@@ -10783,12 +10923,11 @@ get urls(): ((URL | Link))[] {
         let _handled: Image | undefined;
       
         if (_handled === undefined) {
-          const _ppM0 = await import(\\"./preprocessors.ts\\");
           const _result = await _ppM0[\\"normalizeLinkToImage\\"](v, {
             documentLoader: options.documentLoader,
             contextLoader: options.contextLoader,
             tracerProvider: options.tracerProvider,
-            baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])),
+            baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])),
           });
           if (_result instanceof Error) throw _result;
           if (_result !== undefined) {
@@ -10814,7 +10953,7 @@ get urls(): ((URL | Link))[] {
       
       const decoded = await Image.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _33CjRLy5ujtsUrwRSCrsggvGdKuR_icon.push(decoded);
@@ -10839,12 +10978,11 @@ get urls(): ((URL | Link))[] {
         let _handled: Image | undefined;
       
         if (_handled === undefined) {
-          const _ppM0 = await import(\\"./preprocessors.ts\\");
           const _result = await _ppM0[\\"normalizeLinkToImage\\"](v, {
             documentLoader: options.documentLoader,
             contextLoader: options.contextLoader,
             tracerProvider: options.tracerProvider,
-            baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])),
+            baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])),
           });
           if (_result instanceof Error) throw _result;
           if (_result !== undefined) {
@@ -10870,7 +11008,7 @@ get urls(): ((URL | Link))[] {
       
       const decoded = await Image.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3dXrUdkARxwyJLtJcYi1AJ92H41U_image.push(decoded);
@@ -11054,7 +11192,7 @@ get urls(): ((URL | Link))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _7UpwM3JWcXhADcscukEehBorf6k_replies.push(decoded);
@@ -11087,7 +11225,7 @@ get urls(): ((URL | Link))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3kAfck9PcEYt2L7xug5y99YPbANs_shares.push(decoded);
@@ -11120,7 +11258,7 @@ get urls(): ((URL | Link))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _S3ceDnpMdzoTRCccB9FkJWrEzYW_likes.push(decoded);
@@ -11153,7 +11291,7 @@ get urls(): ((URL | Link))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _kMatyyNAuxoTD8GQMBfA5ogThMR_emojiReactions.push(decoded);
@@ -11340,7 +11478,7 @@ get urls(): ((URL | Link))[] {
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3hFbw7DTpHhq3cvVhkY8njhcsXbd_to.push(decoded);
@@ -11373,7 +11511,7 @@ get urls(): ((URL | Link))[] {
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _aLZupjwL8XB7tzdLgCMXdjZ6qej_bto.push(decoded);
@@ -11406,7 +11544,7 @@ get urls(): ((URL | Link))[] {
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _42a1SvBs24QSLzKcfjCyNTjW5a1g_cc.push(decoded);
@@ -11439,7 +11577,7 @@ get urls(): ((URL | Link))[] {
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3qvegKUB8YLgTXRpEf8E6JZSkz2H_bcc.push(decoded);
@@ -11514,7 +11652,7 @@ get urls(): ((URL | Link))[] {
     
       const decoded = await Source.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2ZwCFoS787v8y8bXKjMoE6MAbrEB_source.push(decoded);
@@ -11547,7 +11685,7 @@ get urls(): ((URL | Link))[] {
       
       const decoded = await DataIntegrityProof.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _42rPnotok1ivQ2RNCKNbeFJgx8b8_proof.push(decoded);
@@ -11568,7 +11706,7 @@ get urls(): ((URL | Link))[] {
     
       const decoded = await InteractionPolicy.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2MHQfh2N74MMmDLDqYWFo7TxYQK2_interactionPolicy.push(decoded);
@@ -11600,9 +11738,9 @@ get urls(): ((URL | Link))[] {
               : \\"\\"
           )
         )
-        : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))
+        : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"]))
           ? new URL(v[\\"@id\\"])
-          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])));
+          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])));
       if (typeof decoded === \\"undefined\\") continue;
       _23YiVs2miQcEiUdn4u8SvjQKWYim_approvedBy.push(decoded);
     }
@@ -11634,7 +11772,7 @@ get urls(): ((URL | Link))[] {
       
       const decoded = await LikeAuthorization.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization.push(decoded);
@@ -11667,7 +11805,7 @@ get urls(): ((URL | Link))[] {
       
       const decoded = await ReplyAuthorization.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization.push(decoded);
@@ -11700,7 +11838,7 @@ get urls(): ((URL | Link))[] {
       
       const decoded = await AnnounceAuthorization.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization.push(decoded);
@@ -13315,7 +13453,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"quote\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#quote_fromJsonLd(doc, options);
+            v = await this.#quote_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -13554,7 +13696,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"quoteAuthorization\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#quoteAuthorization_fromJsonLd(doc, options);
+            v = await this.#quoteAuthorization_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -13927,7 +14073,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote.push(decoded);
@@ -13986,7 +14132,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await QuoteAuthorization.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization.push(decoded);
@@ -14932,7 +15078,11 @@ instruments?: (Object | URL)[];}
             \\"actor\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#actor_fromJsonLd(doc, options);
+            v = await this.#actor_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -15028,7 +15178,11 @@ instruments?: (Object | URL)[];}
               \\"actor\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#actor_fromJsonLd(obj, options);
+              v = await this.#actor_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -15246,7 +15400,11 @@ instruments?: (Object | URL)[];}
             \\"object\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#object_fromJsonLd(doc, options);
+            v = await this.#object_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -15342,7 +15500,11 @@ instruments?: (Object | URL)[];}
               \\"object\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#object_fromJsonLd(obj, options);
+              v = await this.#object_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -15563,7 +15725,11 @@ instruments?: (Object | URL)[];}
             \\"target\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#target_fromJsonLd(doc, options);
+            v = await this.#target_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -15662,7 +15828,11 @@ instruments?: (Object | URL)[];}
               \\"target\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#target_fromJsonLd(obj, options);
+              v = await this.#target_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -15880,7 +16050,11 @@ instruments?: (Object | URL)[];}
             \\"result\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#result_fromJsonLd(doc, options);
+            v = await this.#result_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -15976,7 +16150,11 @@ instruments?: (Object | URL)[];}
               \\"result\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#result_fromJsonLd(obj, options);
+              v = await this.#result_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -16195,7 +16373,11 @@ instruments?: (Object | URL)[];}
             \\"origin\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#origin_fromJsonLd(doc, options);
+            v = await this.#origin_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -16292,7 +16474,11 @@ instruments?: (Object | URL)[];}
               \\"origin\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#origin_fromJsonLd(obj, options);
+              v = await this.#origin_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -16509,7 +16695,11 @@ instruments?: (Object | URL)[];}
             \\"instrument\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#instrument_fromJsonLd(doc, options);
+            v = await this.#instrument_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -16604,7 +16794,11 @@ instruments?: (Object | URL)[];}
               \\"instrument\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#instrument_fromJsonLd(obj, options);
+              v = await this.#instrument_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -17125,7 +17319,7 @@ instruments?: (Object | URL)[];}
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2MH19yxjn1wnHsNfa5n4JBhJzxyc_object.push(decoded);
@@ -17158,7 +17352,7 @@ instruments?: (Object | URL)[];}
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3JQCmF2Ww56Ag9EWRYoSZRDNCYtF_target.push(decoded);
@@ -17191,7 +17385,7 @@ instruments?: (Object | URL)[];}
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _u4QGFbRFcYmPEKGbPv1hpBR9r5G_result.push(decoded);
@@ -17224,7 +17418,7 @@ instruments?: (Object | URL)[];}
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _25zu2s3VxVujgEKqrDycjE284XQR_origin.push(decoded);
@@ -17257,7 +17451,7 @@ instruments?: (Object | URL)[];}
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3c5t2x7DYRo2shwTxpkd4kYSS5WQ_instrument.push(decoded);
@@ -19316,7 +19510,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"interactingObject\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#interactingObject_fromJsonLd(doc, options);
+            v = await this.#interactingObject_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -19531,7 +19729,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"interactionTarget\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#interactionTarget_fromJsonLd(doc, options);
+            v = await this.#interactionTarget_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -19859,7 +20061,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject.push(decoded);
@@ -19892,7 +20094,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget.push(decoded);
@@ -20882,7 +21084,7 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
     
       const decoded = await InteractionRule.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3JkwVLb3BNCwCWdsb5RftGAg8vyT_canLike.push(decoded);
@@ -20903,7 +21105,7 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
     
       const decoded = await InteractionRule.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2UBgLRi5p3DRGGvWyB227i4Qjhzd_canReply.push(decoded);
@@ -20924,7 +21126,7 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
     
       const decoded = await InteractionRule.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _fu5nmoAj528fBQfnxhY9Daok3Vi_canAnnounce.push(decoded);
@@ -20945,7 +21147,7 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
     
       const decoded = await InteractionRule.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _LE3zBTVacTZw2LSyLt4wVUkXeUy_canQuote.push(decoded);
@@ -21641,9 +21843,9 @@ get manualApprovals(): (URL)[] {
               : \\"\\"
           )
         )
-        : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))
+        : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"]))
           ? new URL(v[\\"@id\\"])
-          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])));
+          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])));
       if (typeof decoded === \\"undefined\\") continue;
       _2rFyCF14HoyNjitj9PmCzek5iSsg_automaticApproval.push(decoded);
     }
@@ -21674,9 +21876,9 @@ get manualApprovals(): (URL)[] {
               : \\"\\"
           )
         )
-        : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))
+        : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"]))
           ? new URL(v[\\"@id\\"])
-          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])));
+          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])));
       if (typeof decoded === \\"undefined\\") continue;
       _sxj8y5XMMMBWUnRYFw85MKedCMj_manualApproval.push(decoded);
     }
@@ -22136,7 +22338,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"interactingObject\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#interactingObject_fromJsonLd(doc, options);
+            v = await this.#interactingObject_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -22351,7 +22557,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"interactionTarget\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#interactionTarget_fromJsonLd(doc, options);
+            v = await this.#interactionTarget_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -22679,7 +22889,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject.push(decoded);
@@ -22712,7 +22922,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget.push(decoded);
@@ -23488,7 +23698,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"interactingObject\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#interactingObject_fromJsonLd(doc, options);
+            v = await this.#interactingObject_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -23703,7 +23917,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"interactionTarget\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#interactionTarget_fromJsonLd(doc, options);
+            v = await this.#interactionTarget_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -24031,7 +24249,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject.push(decoded);
@@ -24064,7 +24282,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget.push(decoded);
@@ -24839,7 +25057,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"interactingObject\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#interactingObject_fromJsonLd(doc, options);
+            v = await this.#interactingObject_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -25054,7 +25276,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"interactionTarget\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#interactionTarget_fromJsonLd(doc, options);
+            v = await this.#interactionTarget_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -25382,7 +25608,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject.push(decoded);
@@ -25415,7 +25641,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget.push(decoded);
@@ -26273,9 +26499,9 @@ get endpoints(): (URL)[] {
               : \\"\\"
           )
         )
-        : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))
+        : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"]))
           ? new URL(v[\\"@id\\"])
-          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])));
+          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])));
       if (typeof decoded === \\"undefined\\") continue;
       _2KM4fetG6FTJ1cphj76rzJ8Dyv7p_serviceEndpoint.push(decoded);
     }
@@ -27459,7 +27685,7 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
       
       const decoded = await Multikey.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2mHVKxqA7zncjveJrDEo3pWpMZqg_verificationMethod.push(decoded);
@@ -28085,7 +28311,11 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
             \\"owner\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#owner_fromJsonLd(doc, options);
+            v = await this.#owner_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -28956,7 +29186,11 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
             \\"controller\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#controller_fromJsonLd(doc, options);
+            v = await this.#controller_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -30136,9 +30370,9 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
               : \\"\\"
           )
         )
-        : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))
+        : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"]))
           ? new URL(v[\\"@id\\"])
-          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])));
+          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])));
       if (typeof decoded === \\"undefined\\") continue;
       _BBAeMUUQDwBQn6cvu3P2Csd6b6h_resourceConformsTo.push(decoded);
     }
@@ -30158,7 +30392,7 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
     
       const decoded = await Measure.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2dLfqTbbRiggEcMQWbHpxkQrtmrc_resourceQuantity.push(decoded);
@@ -30179,7 +30413,7 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
     
       const decoded = await Measure.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _YmNSnuih3Zk4VdR5JPVnQYroLAh_availableQuantity.push(decoded);
@@ -30200,7 +30434,7 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
     
       const decoded = await Measure.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3XueAFds2NBrqNpnV8b7aC8hV72S_minimumQuantity.push(decoded);
@@ -31002,7 +31236,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
       const decoded = await Intent.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _sS5LvXX8cn4c3x6ux836AwYbTyJ_publishes.push(decoded);
@@ -31023,7 +31257,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
       const decoded = await Intent.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _Z4ntJgFwR9BaNTbFvkRTGNEwUwy_reciprocal.push(decoded);
@@ -33389,7 +33623,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"publicKey\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#publicKey_fromJsonLd(doc, options);
+            v = await this.#publicKey_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -33482,7 +33720,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
               \\"publicKey\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#publicKey_fromJsonLd(obj, options);
+              v = await this.#publicKey_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -33701,7 +33943,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"assertionMethod\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#assertionMethod_fromJsonLd(doc, options);
+            v = await this.#assertionMethod_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -33798,7 +34044,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
               \\"assertionMethod\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#assertionMethod_fromJsonLd(obj, options);
+              v = await this.#assertionMethod_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -34054,7 +34304,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"inbox\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#inbox_fromJsonLd(doc, options);
+            v = await this.#inbox_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -34287,7 +34541,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"outbox\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#outbox_fromJsonLd(doc, options);
+            v = await this.#outbox_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -34506,7 +34764,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"following\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#following_fromJsonLd(doc, options);
+            v = await this.#following_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -34728,7 +34990,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"followers\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#followers_fromJsonLd(doc, options);
+            v = await this.#followers_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -34948,7 +35214,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"liked\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#liked_fromJsonLd(doc, options);
+            v = await this.#liked_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -35166,7 +35436,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"featured\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#featured_fromJsonLd(doc, options);
+            v = await this.#featured_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -35384,7 +35658,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"featuredTags\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#featuredTags_fromJsonLd(doc, options);
+            v = await this.#featuredTags_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -35600,7 +35878,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
               \\"streams\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#stream_fromJsonLd(obj, options);
+              v = await this.#stream_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -35926,7 +36208,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"movedTo\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#successor_fromJsonLd(doc, options);
+            v = await this.#successor_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -36180,7 +36466,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"alsoKnownAs\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#alias_fromJsonLd(doc, options);
+            v = await this.#alias_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -36277,7 +36567,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
               \\"alsoKnownAs\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#alias_fromJsonLd(obj, options);
+              v = await this.#alias_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -36496,7 +36790,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"service\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#service_fromJsonLd(doc, options);
+            v = await this.#service_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -36593,7 +36891,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
               \\"service\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#service_fromJsonLd(obj, options);
+              v = await this.#service_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -37701,7 +38003,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await CryptographicKey.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _axq166E2eZADq34V4MYUc8KMZdC_publicKey.push(decoded);
@@ -37734,7 +38036,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Multikey.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.push(decoded);
@@ -37867,7 +38169,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3yAv8jymNfNuJUDuBzJ1NQhdbAee_following.push(decoded);
@@ -37900,7 +38202,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _BBCTgfphhsFzpVfKTykGSpBNwoA_followers.push(decoded);
@@ -37933,7 +38235,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3bgkPwJanyTCoVFM9ovRcus8tKkU_liked.push(decoded);
@@ -37966,7 +38268,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _4N1vBJzXDf8NbBumeECQMFvKetja_featured.push(decoded);
@@ -37999,7 +38301,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags.push(decoded);
@@ -38032,7 +38334,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.push(decoded);
@@ -38053,7 +38355,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
     
       const decoded = await Endpoints.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints.push(decoded);
@@ -38264,7 +38566,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await DidService.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.push(decoded);
@@ -39868,7 +40170,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"quote\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#quote_fromJsonLd(doc, options);
+            v = await this.#quote_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -40107,7 +40413,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"quoteAuthorization\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#quoteAuthorization_fromJsonLd(doc, options);
+            v = await this.#quoteAuthorization_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -40480,7 +40790,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote.push(decoded);
@@ -40539,7 +40849,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await QuoteAuthorization.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization.push(decoded);
@@ -42928,7 +43238,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"current\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#current_fromJsonLd(doc, options);
+            v = await this.#current_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -43144,7 +43458,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"first\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#first_fromJsonLd(doc, options);
+            v = await this.#first_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -43360,7 +43678,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"last\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#last_fromJsonLd(doc, options);
+            v = await this.#last_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -43586,7 +43908,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               \\"items\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#item_fromJsonLd(obj, options);
+              v = await this.#item_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -43802,7 +44128,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"likesOf\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#likesOf_fromJsonLd(doc, options);
+            v = await this.#likesOf_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -44017,7 +44347,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"sharesOf\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#sharesOf_fromJsonLd(doc, options);
+            v = await this.#sharesOf_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -44232,7 +44566,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"repliesOf\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#repliesOf_fromJsonLd(doc, options);
+            v = await this.#repliesOf_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -44447,7 +44785,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"inboxOf\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#inboxOf_fromJsonLd(doc, options);
+            v = await this.#inboxOf_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -44662,7 +45004,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"outboxOf\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#outboxOf_fromJsonLd(doc, options);
+            v = await this.#outboxOf_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -44877,7 +45223,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"followersOf\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#followersOf_fromJsonLd(doc, options);
+            v = await this.#followersOf_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -45092,7 +45442,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"followingOf\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#followingOf_fromJsonLd(doc, options);
+            v = await this.#followingOf_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -45307,7 +45661,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"likedOf\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#likedOf_fromJsonLd(doc, options);
+            v = await this.#likedOf_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -46053,7 +46411,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await CollectionPage.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3UyUdxnyn6cDn53QKrh4MBiearma_current.push(decoded);
@@ -46086,7 +46444,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await CollectionPage.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _J52RqweMe6hhv7RnLJMC8BExTE5_first.push(decoded);
@@ -46119,7 +46477,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await CollectionPage.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _gyJJnyEFnuNVi1HFZKfAn3Hfn26_last.push(decoded);
@@ -46195,7 +46553,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _4TB9Qd9ddtcZEpMfzbHhzafE6jaJ_likesOf.push(decoded);
@@ -46228,7 +46586,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3manzgeKiPsugpztKGiaUUwJ3ito_sharesOf.push(decoded);
@@ -46261,7 +46619,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3T3oGm3twpcQUcrnMisXQtmDZ32X_repliesOf.push(decoded);
@@ -46294,7 +46652,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2bvRkAFZjMfVD8jiUWZJr5YokSeN_inboxOf.push(decoded);
@@ -46327,7 +46685,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _4AHzVZDxHjK6uEWa9UiKHGK34yYm_outboxOf.push(decoded);
@@ -46360,7 +46718,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _41aoZ5M6yRUHy3Zx8q6iuZQxtopb_followersOf.push(decoded);
@@ -46393,7 +46751,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2nXT2Ah42UjEEQF5oJQ39CbKB1xj_followingOf.push(decoded);
@@ -46426,7 +46784,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2bsySzmT3qEZcrnoe3tZ5xBjXSju_likedOf.push(decoded);
@@ -47106,7 +47464,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"partOf\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#partOf_fromJsonLd(doc, options);
+            v = await this.#partOf_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -47320,7 +47682,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"next\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#next_fromJsonLd(doc, options);
+            v = await this.#next_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -47535,7 +47901,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"prev\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#prev_fromJsonLd(doc, options);
+            v = await this.#prev_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -47902,7 +48272,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2kWgBhQKjEauxx8C6qF3ZQamK4Le_partOf.push(decoded);
@@ -47935,7 +48305,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await CollectionPage.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3BT4kQLcXhHx7TAWaNDKh8nFn9eY_next.push(decoded);
@@ -47968,7 +48338,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await CollectionPage.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3b8yG8tDNzQFFEnWhCc13G8eHooA_prev.push(decoded);
@@ -49847,9 +50217,9 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
               : \\"\\"
           )
         )
-        : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))
+        : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"]))
           ? new URL(v[\\"@id\\"])
-          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])));
+          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])));
       if (typeof decoded === \\"undefined\\") continue;
       _2JCYDbSxEHCCLdBYed33cCETfGyR_proxyUrl.push(decoded);
     }
@@ -49880,9 +50250,9 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
               : \\"\\"
           )
         )
-        : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))
+        : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"]))
           ? new URL(v[\\"@id\\"])
-          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])));
+          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])));
       if (typeof decoded === \\"undefined\\") continue;
       _25S6UmgzDead8hxL5sQFezZTAusd_oauthAuthorizationEndpoint.push(decoded);
     }
@@ -49913,9 +50283,9 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
               : \\"\\"
           )
         )
-        : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))
+        : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"]))
           ? new URL(v[\\"@id\\"])
-          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])));
+          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])));
       if (typeof decoded === \\"undefined\\") continue;
       _iAMxqrSba7yBCRB1FZ5kEVdKEZ3_oauthTokenEndpoint.push(decoded);
     }
@@ -49946,9 +50316,9 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
               : \\"\\"
           )
         )
-        : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))
+        : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"]))
           ? new URL(v[\\"@id\\"])
-          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])));
+          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])));
       if (typeof decoded === \\"undefined\\") continue;
       _8Bx9qN8oU7Bpt2xi6khaxWp1gMr_provideClientKey.push(decoded);
     }
@@ -49979,9 +50349,9 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
               : \\"\\"
           )
         )
-        : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))
+        : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"]))
           ? new URL(v[\\"@id\\"])
-          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])));
+          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])));
       if (typeof decoded === \\"undefined\\") continue;
       _3dU7PMVQZJpsCpo2F4RQXxBXdPmS_signClientKey.push(decoded);
     }
@@ -50012,9 +50382,9 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
               : \\"\\"
           )
         )
-        : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))
+        : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"]))
           ? new URL(v[\\"@id\\"])
-          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])));
+          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])));
       if (typeof decoded === \\"undefined\\") continue;
       _3JprUSDLVqqX4dwHRi37qGZZCRCc_sharedInbox.push(decoded);
     }
@@ -52414,7 +52784,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"publicKey\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#publicKey_fromJsonLd(doc, options);
+            v = await this.#publicKey_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -52507,7 +52881,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
               \\"publicKey\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#publicKey_fromJsonLd(obj, options);
+              v = await this.#publicKey_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -52726,7 +53104,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"assertionMethod\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#assertionMethod_fromJsonLd(doc, options);
+            v = await this.#assertionMethod_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -52823,7 +53205,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
               \\"assertionMethod\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#assertionMethod_fromJsonLd(obj, options);
+              v = await this.#assertionMethod_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -53079,7 +53465,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"inbox\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#inbox_fromJsonLd(doc, options);
+            v = await this.#inbox_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -53312,7 +53702,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"outbox\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#outbox_fromJsonLd(doc, options);
+            v = await this.#outbox_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -53531,7 +53925,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"following\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#following_fromJsonLd(doc, options);
+            v = await this.#following_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -53753,7 +54151,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"followers\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#followers_fromJsonLd(doc, options);
+            v = await this.#followers_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -53973,7 +54375,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"liked\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#liked_fromJsonLd(doc, options);
+            v = await this.#liked_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -54191,7 +54597,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"featured\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#featured_fromJsonLd(doc, options);
+            v = await this.#featured_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -54409,7 +54819,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"featuredTags\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#featuredTags_fromJsonLd(doc, options);
+            v = await this.#featuredTags_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -54625,7 +55039,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
               \\"streams\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#stream_fromJsonLd(obj, options);
+              v = await this.#stream_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -54951,7 +55369,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"movedTo\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#successor_fromJsonLd(doc, options);
+            v = await this.#successor_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -55205,7 +55627,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"alsoKnownAs\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#alias_fromJsonLd(doc, options);
+            v = await this.#alias_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -55302,7 +55728,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
               \\"alsoKnownAs\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#alias_fromJsonLd(obj, options);
+              v = await this.#alias_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -55521,7 +55951,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"service\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#service_fromJsonLd(doc, options);
+            v = await this.#service_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -55618,7 +56052,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
               \\"service\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#service_fromJsonLd(obj, options);
+              v = await this.#service_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -56726,7 +57164,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await CryptographicKey.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _axq166E2eZADq34V4MYUc8KMZdC_publicKey.push(decoded);
@@ -56759,7 +57197,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Multikey.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.push(decoded);
@@ -56892,7 +57330,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3yAv8jymNfNuJUDuBzJ1NQhdbAee_following.push(decoded);
@@ -56925,7 +57363,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _BBCTgfphhsFzpVfKTykGSpBNwoA_followers.push(decoded);
@@ -56958,7 +57396,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3bgkPwJanyTCoVFM9ovRcus8tKkU_liked.push(decoded);
@@ -56991,7 +57429,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _4N1vBJzXDf8NbBumeECQMFvKetja_featured.push(decoded);
@@ -57024,7 +57462,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags.push(decoded);
@@ -57057,7 +57495,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.push(decoded);
@@ -57078,7 +57516,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
     
       const decoded = await Endpoints.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints.push(decoded);
@@ -57289,7 +57727,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await DidService.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.push(decoded);
@@ -58626,7 +59064,11 @@ get names(): ((string | LanguageString))[] {
               \\"preview\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#preview_fromJsonLd(obj, options);
+              v = await this.#preview_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -59133,9 +59575,9 @@ get names(): ((string | LanguageString))[] {
               : \\"\\"
           )
         )
-        : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))
+        : URL.canParse(v[\\"@id\\"]) && (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"]))
           ? new URL(v[\\"@id\\"])
-          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])));
+          : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])));
       if (typeof decoded === \\"undefined\\") continue;
       _pVjLsybKQdmkjuU7MHjiVmNnuj7_href.push(decoded);
     }
@@ -63174,7 +63616,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"quote\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#quote_fromJsonLd(doc, options);
+            v = await this.#quote_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -63413,7 +63859,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"quoteAuthorization\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#quoteAuthorization_fromJsonLd(doc, options);
+            v = await this.#quoteAuthorization_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -63786,7 +64236,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote.push(decoded);
@@ -63845,7 +64295,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await QuoteAuthorization.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization.push(decoded);
@@ -64287,7 +64737,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               \\"orderedItems\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#item_fromJsonLd(obj, options);
+              v = await this.#item_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -65024,7 +65478,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               \\"orderedItems\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#item_fromJsonLd(obj, options);
+              v = await this.#item_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -66696,7 +67154,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"publicKey\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#publicKey_fromJsonLd(doc, options);
+            v = await this.#publicKey_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -66789,7 +67251,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
               \\"publicKey\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#publicKey_fromJsonLd(obj, options);
+              v = await this.#publicKey_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -67008,7 +67474,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"assertionMethod\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#assertionMethod_fromJsonLd(doc, options);
+            v = await this.#assertionMethod_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -67105,7 +67575,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
               \\"assertionMethod\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#assertionMethod_fromJsonLd(obj, options);
+              v = await this.#assertionMethod_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -67361,7 +67835,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"inbox\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#inbox_fromJsonLd(doc, options);
+            v = await this.#inbox_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -67594,7 +68072,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"outbox\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#outbox_fromJsonLd(doc, options);
+            v = await this.#outbox_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -67813,7 +68295,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"following\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#following_fromJsonLd(doc, options);
+            v = await this.#following_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -68035,7 +68521,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"followers\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#followers_fromJsonLd(doc, options);
+            v = await this.#followers_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -68255,7 +68745,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"liked\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#liked_fromJsonLd(doc, options);
+            v = await this.#liked_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -68473,7 +68967,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"featured\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#featured_fromJsonLd(doc, options);
+            v = await this.#featured_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -68691,7 +69189,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"featuredTags\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#featuredTags_fromJsonLd(doc, options);
+            v = await this.#featuredTags_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -68907,7 +69409,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
               \\"streams\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#stream_fromJsonLd(obj, options);
+              v = await this.#stream_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -69233,7 +69739,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"movedTo\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#successor_fromJsonLd(doc, options);
+            v = await this.#successor_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -69487,7 +69997,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"alsoKnownAs\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#alias_fromJsonLd(doc, options);
+            v = await this.#alias_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -69584,7 +70098,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
               \\"alsoKnownAs\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#alias_fromJsonLd(obj, options);
+              v = await this.#alias_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -69803,7 +70321,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"service\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#service_fromJsonLd(doc, options);
+            v = await this.#service_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -69900,7 +70422,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
               \\"service\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#service_fromJsonLd(obj, options);
+              v = await this.#service_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -71008,7 +71534,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await CryptographicKey.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _axq166E2eZADq34V4MYUc8KMZdC_publicKey.push(decoded);
@@ -71041,7 +71567,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Multikey.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.push(decoded);
@@ -71174,7 +71700,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3yAv8jymNfNuJUDuBzJ1NQhdbAee_following.push(decoded);
@@ -71207,7 +71733,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _BBCTgfphhsFzpVfKTykGSpBNwoA_followers.push(decoded);
@@ -71240,7 +71766,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3bgkPwJanyTCoVFM9ovRcus8tKkU_liked.push(decoded);
@@ -71273,7 +71799,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _4N1vBJzXDf8NbBumeECQMFvKetja_featured.push(decoded);
@@ -71306,7 +71832,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags.push(decoded);
@@ -71339,7 +71865,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.push(decoded);
@@ -71360,7 +71886,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
     
       const decoded = await Endpoints.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints.push(decoded);
@@ -71571,7 +72097,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await DidService.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.push(decoded);
@@ -73674,7 +74200,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"publicKey\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#publicKey_fromJsonLd(doc, options);
+            v = await this.#publicKey_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -73767,7 +74297,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
               \\"publicKey\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#publicKey_fromJsonLd(obj, options);
+              v = await this.#publicKey_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -73986,7 +74520,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"assertionMethod\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#assertionMethod_fromJsonLd(doc, options);
+            v = await this.#assertionMethod_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -74083,7 +74621,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
               \\"assertionMethod\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#assertionMethod_fromJsonLd(obj, options);
+              v = await this.#assertionMethod_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -74339,7 +74881,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"inbox\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#inbox_fromJsonLd(doc, options);
+            v = await this.#inbox_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -74572,7 +75118,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"outbox\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#outbox_fromJsonLd(doc, options);
+            v = await this.#outbox_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -74791,7 +75341,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"following\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#following_fromJsonLd(doc, options);
+            v = await this.#following_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -75013,7 +75567,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"followers\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#followers_fromJsonLd(doc, options);
+            v = await this.#followers_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -75233,7 +75791,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"liked\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#liked_fromJsonLd(doc, options);
+            v = await this.#liked_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -75451,7 +76013,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"featured\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#featured_fromJsonLd(doc, options);
+            v = await this.#featured_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -75669,7 +76235,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"featuredTags\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#featuredTags_fromJsonLd(doc, options);
+            v = await this.#featuredTags_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -75885,7 +76455,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
               \\"streams\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#stream_fromJsonLd(obj, options);
+              v = await this.#stream_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -76211,7 +76785,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"movedTo\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#successor_fromJsonLd(doc, options);
+            v = await this.#successor_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -76465,7 +77043,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"alsoKnownAs\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#alias_fromJsonLd(doc, options);
+            v = await this.#alias_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -76562,7 +77144,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
               \\"alsoKnownAs\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#alias_fromJsonLd(obj, options);
+              v = await this.#alias_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -76781,7 +77367,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"service\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#service_fromJsonLd(doc, options);
+            v = await this.#service_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -76878,7 +77468,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
               \\"service\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#service_fromJsonLd(obj, options);
+              v = await this.#service_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -77986,7 +78580,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await CryptographicKey.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _axq166E2eZADq34V4MYUc8KMZdC_publicKey.push(decoded);
@@ -78019,7 +78613,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Multikey.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.push(decoded);
@@ -78152,7 +78746,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3yAv8jymNfNuJUDuBzJ1NQhdbAee_following.push(decoded);
@@ -78185,7 +78779,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _BBCTgfphhsFzpVfKTykGSpBNwoA_followers.push(decoded);
@@ -78218,7 +78812,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3bgkPwJanyTCoVFM9ovRcus8tKkU_liked.push(decoded);
@@ -78251,7 +78845,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _4N1vBJzXDf8NbBumeECQMFvKetja_featured.push(decoded);
@@ -78284,7 +78878,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags.push(decoded);
@@ -78317,7 +78911,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.push(decoded);
@@ -78338,7 +78932,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
     
       const decoded = await Endpoints.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints.push(decoded);
@@ -78549,7 +79143,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await DidService.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.push(decoded);
@@ -80461,7 +81055,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             \\"describes\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#describes_fromJsonLd(doc, options);
+            v = await this.#describes_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -80754,7 +81352,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3CLQ1PLSXrhSQbTGGHuxNyaEFKM1_describes.push(decoded);
@@ -81347,7 +81945,11 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
               \\"oneOf\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#exclusiveOption_fromJsonLd(obj, options);
+              v = await this.#exclusiveOption_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -81566,7 +82168,11 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
               \\"anyOf\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#inclusiveOption_fromJsonLd(obj, options);
+              v = await this.#inclusiveOption_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -81814,7 +82420,11 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
             \\"quote\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#quote_fromJsonLd(doc, options);
+            v = await this.#quote_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -82053,7 +82663,11 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
             \\"quoteAuthorization\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#quoteAuthorization_fromJsonLd(doc, options);
+            v = await this.#quoteAuthorization_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -82409,7 +83023,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2N5scKaVEcdYHFmfKYYacAwUhUgQ_oneOf.push(decoded);
@@ -82442,7 +83056,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2mV6isMTPRKbWdLCjcpiEysq5dAY_anyOf.push(decoded);
@@ -82524,7 +83138,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote.push(decoded);
@@ -82583,7 +83197,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
       
       const decoded = await QuoteAuthorization.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization.push(decoded);
@@ -83936,7 +84550,11 @@ relationships?: (Object | URL)[];}
             \\"subject\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#subject_fromJsonLd(doc, options);
+            v = await this.#subject_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -84151,7 +84769,11 @@ relationships?: (Object | URL)[];}
             \\"object\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#object_fromJsonLd(doc, options);
+            v = await this.#object_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -84245,7 +84867,11 @@ relationships?: (Object | URL)[];}
               \\"object\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#object_fromJsonLd(obj, options);
+              v = await this.#object_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -84463,7 +85089,11 @@ relationships?: (Object | URL)[];}
             \\"relationship\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#relationship_fromJsonLd(doc, options);
+            v = await this.#relationship_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -84559,7 +85189,11 @@ relationships?: (Object | URL)[];}
               \\"relationship\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#relationship_fromJsonLd(obj, options);
+              v = await this.#relationship_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -84923,7 +85557,7 @@ relationships?: (Object | URL)[];}
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2Zqdmi46ZnDQsECS6mzwhrv3rUKq_subject.push(decoded);
@@ -84956,7 +85590,7 @@ relationships?: (Object | URL)[];}
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2MH19yxjn1wnHsNfa5n4JBhJzxyc_object.push(decoded);
@@ -84989,7 +85623,7 @@ relationships?: (Object | URL)[];}
       
       const decoded = await Object.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _4Lzz89F9qipAQSGkWyX9DGWiUojG_relationship.push(decoded);
@@ -86653,7 +87287,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"publicKey\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#publicKey_fromJsonLd(doc, options);
+            v = await this.#publicKey_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -86746,7 +87384,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
               \\"publicKey\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#publicKey_fromJsonLd(obj, options);
+              v = await this.#publicKey_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -86965,7 +87607,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"assertionMethod\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#assertionMethod_fromJsonLd(doc, options);
+            v = await this.#assertionMethod_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -87062,7 +87708,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
               \\"assertionMethod\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#assertionMethod_fromJsonLd(obj, options);
+              v = await this.#assertionMethod_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -87318,7 +87968,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"inbox\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#inbox_fromJsonLd(doc, options);
+            v = await this.#inbox_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -87551,7 +88205,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"outbox\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#outbox_fromJsonLd(doc, options);
+            v = await this.#outbox_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -87770,7 +88428,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"following\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#following_fromJsonLd(doc, options);
+            v = await this.#following_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -87992,7 +88654,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"followers\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#followers_fromJsonLd(doc, options);
+            v = await this.#followers_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -88212,7 +88878,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"liked\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#liked_fromJsonLd(doc, options);
+            v = await this.#liked_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -88430,7 +89100,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"featured\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#featured_fromJsonLd(doc, options);
+            v = await this.#featured_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -88648,7 +89322,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"featuredTags\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#featuredTags_fromJsonLd(doc, options);
+            v = await this.#featuredTags_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -88864,7 +89542,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
               \\"streams\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#stream_fromJsonLd(obj, options);
+              v = await this.#stream_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -89190,7 +89872,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"movedTo\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#successor_fromJsonLd(doc, options);
+            v = await this.#successor_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -89444,7 +90130,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"alsoKnownAs\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#alias_fromJsonLd(doc, options);
+            v = await this.#alias_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -89541,7 +90231,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
               \\"alsoKnownAs\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#alias_fromJsonLd(obj, options);
+              v = await this.#alias_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -89760,7 +90454,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
             \\"service\\"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === \\"object\\" && \\"@context\\" in doc) {
-            v = await this.#service_fromJsonLd(doc, options);
+            v = await this.#service_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         
@@ -89857,7 +90555,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
               \\"service\\"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === \\"object\\" && \\"@context\\" in obj) {
-              v = await this.#service_fromJsonLd(obj, options);
+              v = await this.#service_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         
@@ -90965,7 +91667,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await CryptographicKey.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _axq166E2eZADq34V4MYUc8KMZdC_publicKey.push(decoded);
@@ -90998,7 +91700,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Multikey.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.push(decoded);
@@ -91131,7 +91833,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3yAv8jymNfNuJUDuBzJ1NQhdbAee_following.push(decoded);
@@ -91164,7 +91866,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _BBCTgfphhsFzpVfKTykGSpBNwoA_followers.push(decoded);
@@ -91197,7 +91899,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3bgkPwJanyTCoVFM9ovRcus8tKkU_liked.push(decoded);
@@ -91230,7 +91932,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _4N1vBJzXDf8NbBumeECQMFvKetja_featured.push(decoded);
@@ -91263,7 +91965,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags.push(decoded);
@@ -91296,7 +91998,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await Collection.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.push(decoded);
@@ -91317,7 +92019,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
     
       const decoded = await Endpoints.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _sEoQwUbfk4hEfugzNQ2ZiDcLMkG_endpoints.push(decoded);
@@ -91528,7 +92230,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       const decoded = await DidService.fromJsonLd(
       v,
-      { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
+      { ...options, baseUrl: (values[\\"@id\\"] == null || !URL.canParse(values[\\"@id\\"]) ? options.baseUrl : new URL(values[\\"@id\\"])) }
     );
       if (typeof decoded === \\"undefined\\") continue;
       _4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.push(decoded);

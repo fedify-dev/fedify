@@ -37,6 +37,7 @@ export function sortTopologically(types: Record<string, TypeSchema>): string[] {
 async function* generateClass(
   typeUri: string,
   types: Record<string, TypeSchema>,
+  moduleVarNames: ReadonlyMap<string, string>,
 ): AsyncIterable<string> {
   const type = types[typeUri];
   yield `/** ${type.description.replaceAll("\n", "\n * ")}\n */\n`;
@@ -99,9 +100,13 @@ async function* generateClass(
   for await (const code of generateFields(typeUri, types)) yield code;
   for await (const code of generateConstructor(typeUri, types)) yield code;
   for await (const code of generateCloner(typeUri, types)) yield code;
-  for await (const code of generateProperties(typeUri, types)) yield code;
+  for await (const code of generateProperties(typeUri, types, moduleVarNames)) {
+    yield code;
+  }
   for await (const code of generateEncoder(typeUri, types)) yield code;
-  for await (const code of generateDecoder(typeUri, types)) yield code;
+  for await (const code of generateDecoder(typeUri, types, moduleVarNames)) {
+    yield code;
+  }
   for await (const code of generateInspector(typeUri, types)) yield code;
   yield "}\n\n";
   for await (const code of generateInspectorPostClass(typeUri, types)) {
@@ -197,9 +202,27 @@ export async function* generateClasses(
     isTemporalInstant,
 } from "@fedify/vocab-runtime/temporal";\n`;
   yield "\n\n";
+  const moduleVarNames = new Map<string, string>();
   const sorted = sortTopologically(types);
   for (const typeUri of sorted) {
-    for await (const code of generateClass(typeUri, types)) yield code;
+    for (const property of types[typeUri].properties) {
+      if (property.preprocessors == null) continue;
+      for (const pp of property.preprocessors) {
+        if (!moduleVarNames.has(pp.module)) {
+          const name = `_ppM${moduleVarNames.size}`;
+          moduleVarNames.set(pp.module, name);
+        }
+      }
+    }
+  }
+  for (const [modulePath, varName] of moduleVarNames) {
+    yield `import * as ${varName} from ${JSON.stringify(modulePath)};\n`;
+  }
+  if (moduleVarNames.size > 0) yield "\n";
+  for (const typeUri of sorted) {
+    for await (const code of generateClass(typeUri, types, moduleVarNames)) {
+      yield code;
+    }
   }
   for (const code of generateEntityTypeHelpers(sorted, types)) yield code;
 }

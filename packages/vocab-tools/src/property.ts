@@ -26,6 +26,7 @@ async function* generateProperty(
   type: TypeSchema,
   property: PropertySchema,
   types: Record<string, TypeSchema>,
+  moduleVarNames: ReadonlyMap<string, string>,
 ): AsyncIterable<string> {
   const override = emitOverride(type.uri, types, property);
   const doc = `\n/** ${property.description.replaceAll("\n", "\n * ")}\n */\n`;
@@ -176,14 +177,12 @@ async function* generateProperty(
         });
         for (const _pp_obj of _expanded) {
       `;
-      let moduleIndex = 0;
       for (const pp of property.preprocessors) {
+        const varName = moduleVarNames.get(pp.module);
+        if (varName == null) continue;
         yield `
           {
-            const _ppM${moduleIndex} = await import(${
-          JSON.stringify(pp.module)
-        });
-            const _result = await _ppM${moduleIndex}[${
+            const _result = await ${varName}[${
           JSON.stringify(pp.function)
         }](_pp_obj, {
               documentLoader,
@@ -197,7 +196,6 @@ async function* generateProperty(
         };
           }
         `;
-        moduleIndex++;
       }
       yield `
         }
@@ -289,7 +287,11 @@ async function* generateProperty(
             ${JSON.stringify(property.compactName)}];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#${property.singularName}_fromJsonLd(doc, options);
+            v = await this.#${property.singularName}_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                undefined,
+            });
           }
         }
         `;
@@ -388,7 +390,11 @@ async function* generateProperty(
               ${JSON.stringify(property.compactName)}];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#${property.singularName}_fromJsonLd(obj, options);
+              v = await this.#${property.singularName}_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  undefined,
+              });
             }
           }
         `;
@@ -427,9 +433,10 @@ async function* generateProperty(
 export async function* generateProperties(
   typeUri: string,
   types: Record<string, TypeSchema>,
+  moduleVarNames: ReadonlyMap<string, string>,
 ): AsyncIterable<string> {
   const type = types[typeUri];
   for (const property of type.properties) {
-    yield* generateProperty(type, property, types);
+    yield* generateProperty(type, property, types, moduleVarNames);
   }
 }
