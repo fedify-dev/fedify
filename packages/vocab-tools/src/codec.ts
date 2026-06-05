@@ -1,6 +1,6 @@
 import metadata from "../deno.json" with { type: "json" };
 import { generateField, getFieldName } from "./field.ts";
-import type { TypeSchema } from "./schema.ts";
+import type { PropertyPreprocessorSchema, TypeSchema } from "./schema.ts";
 import { isNonFunctionalProperty } from "./schema.ts";
 import {
   areAllScalarTypes,
@@ -10,8 +10,53 @@ import {
   getDecoders,
   getEncoders,
   getSubtypes,
+  getTypeNames,
   isCompactableType,
 } from "./type.ts";
+
+function* generatePreprocessorBlock(
+  property: { preprocessors?: PropertyPreprocessorSchema[] },
+  rangeTypeName: string,
+  variable: string,
+  baseUrlExpr: string,
+): Iterable<string> {
+  if (property.preprocessors == null || property.preprocessors.length === 0) {
+    return;
+  }
+  yield `
+      {
+        let _handled: ${rangeTypeName} | undefined;
+      `;
+  let moduleIndex = 0;
+  for (const pp of property.preprocessors) {
+    yield `
+        {
+          const _ppM${moduleIndex} = await import(${JSON.stringify(pp.module)});
+          const _result = await _ppM${moduleIndex}[${
+      JSON.stringify(pp.function)
+    }](v, {
+            documentLoader: options.documentLoader,
+            contextLoader: options.contextLoader,
+            tracerProvider: options.tracerProvider,
+            baseUrl: ${baseUrlExpr},
+          });
+          if (_result instanceof Error) throw _result;
+          if (_result !== undefined) {
+            _handled = _result as ${rangeTypeName};
+          }
+        }
+        if (_handled !== undefined) break;
+      `;
+    moduleIndex++;
+  }
+  yield `
+        if (_handled !== undefined) {
+          ${variable}.push(_handled);
+          continue;
+        }
+      }
+      `;
+}
 
 export async function* generateEncoder(
   typeUri: string,
@@ -426,6 +471,12 @@ export async function* generateDecoder(
     ) {
       if (v == null) continue;
     `;
+    yield* generatePreprocessorBlock(
+      property,
+      getTypeNames(property.range, types),
+      variable,
+      `(values["@id"] == null ? options.baseUrl : new URL(values["@id"]))`,
+    );
     if (!areAllScalarTypes(property.range, types)) {
       yield `
       if (typeof v === "object" && "@id" in v && !("@type" in v)

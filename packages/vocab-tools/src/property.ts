@@ -165,6 +165,32 @@ async function* generateProperty(
         this._tracerProvider ?? trace.getTracerProvider();
       const baseUrl = options.baseUrl;
     `;
+    if (
+      property.preprocessors != null &&
+      property.preprocessors.length > 0
+    ) {
+      let moduleIndex = 0;
+      for (const pp of property.preprocessors) {
+        yield `
+        {
+          const _ppM${moduleIndex} = await import(${JSON.stringify(pp.module)});
+          const _result = await _ppM${moduleIndex}[${
+          JSON.stringify(pp.function)
+        }](jsonLd, {
+            documentLoader,
+            contextLoader,
+            tracerProvider,
+            baseUrl,
+          });
+          if (_result instanceof Error) throw _result;
+          if (_result !== undefined) return _result as ${
+          getTypeNames(property.range, types)
+        };
+        }
+        `;
+        moduleIndex++;
+      }
+    }
     for (const range of property.range) {
       if (!(range in types)) continue;
       const rangeType = types[range];
