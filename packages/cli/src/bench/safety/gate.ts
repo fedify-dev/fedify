@@ -5,8 +5,8 @@
  * advertises benchmark mode (the operator's "not production" assertion).  Only
  * a public target that does not advertise benchmark mode is gated, behind an
  * explicit `--allow-unsafe-target`.  There is no interactive prompt, so the
- * flag is mandatory in CI and any non-TTY context.  A `--dry-run` only inspects
- * (discovery reads), so it bypasses the gate.
+ * flag is mandatory in CI and any non-TTY context.  An inspection-only run
+ * (the `dryRun` flag) sends no load, so it bypasses the gate.
  * @since 2.3.0
  * @module
  */
