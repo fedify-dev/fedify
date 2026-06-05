@@ -3663,18 +3663,26 @@ get names(): ((string | LanguageString))[] {
         this._tracerProvider ?? trace.getTracerProvider();
       const baseUrl = options.baseUrl;
     
-        {
-          const _ppM0 = await import(\\"./preprocessors.ts\\");
-          const _result = await _ppM0[\\"normalizeLinkToImage\\"](jsonLd as any, {
-            documentLoader,
-            contextLoader,
-            tracerProvider,
-            baseUrl,
-          });
-          if (_result instanceof Error) throw _result;
-          if (_result !== undefined) return _result as Image;
-        }
+        const _expanded = await jsonld.expand(jsonLd, {
+          documentLoader: contextLoader,
+          keepFreeFloatingNodes: true,
+        });
+        for (const _pp_obj of _expanded) {
+      
+          {
+            const _ppM0 = await import(\\"./preprocessors.ts\\");
+            const _result = await _ppM0[\\"normalizeLinkToImage\\"](_pp_obj, {
+              documentLoader,
+              contextLoader,
+              tracerProvider,
+              baseUrl,
+            });
+            if (_result instanceof Error) throw _result;
+            if (_result !== undefined) return _result as Image;
+          }
         
+        }
+      
         try {
           return await Image.fromJsonLd(
             jsonLd,
@@ -3989,18 +3997,26 @@ get names(): ((string | LanguageString))[] {
         this._tracerProvider ?? trace.getTracerProvider();
       const baseUrl = options.baseUrl;
     
-        {
-          const _ppM0 = await import(\\"./preprocessors.ts\\");
-          const _result = await _ppM0[\\"normalizeLinkToImage\\"](jsonLd as any, {
-            documentLoader,
-            contextLoader,
-            tracerProvider,
-            baseUrl,
-          });
-          if (_result instanceof Error) throw _result;
-          if (_result !== undefined) return _result as Image;
-        }
+        const _expanded = await jsonld.expand(jsonLd, {
+          documentLoader: contextLoader,
+          keepFreeFloatingNodes: true,
+        });
+        for (const _pp_obj of _expanded) {
+      
+          {
+            const _ppM0 = await import(\\"./preprocessors.ts\\");
+            const _result = await _ppM0[\\"normalizeLinkToImage\\"](_pp_obj, {
+              documentLoader,
+              contextLoader,
+              tracerProvider,
+              baseUrl,
+            });
+            if (_result instanceof Error) throw _result;
+            if (_result !== undefined) return _result as Image;
+          }
         
+        }
+      
         try {
           return await Image.fromJsonLd(
             jsonLd,

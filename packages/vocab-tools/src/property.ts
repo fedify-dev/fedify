@@ -169,27 +169,39 @@ async function* generateProperty(
       property.preprocessors != null &&
       property.preprocessors.length > 0
     ) {
+      yield `
+        const _expanded = await jsonld.expand(jsonLd, {
+          documentLoader: contextLoader,
+          keepFreeFloatingNodes: true,
+        });
+        for (const _pp_obj of _expanded) {
+      `;
       let moduleIndex = 0;
       for (const pp of property.preprocessors) {
         yield `
-        {
-          const _ppM${moduleIndex} = await import(${JSON.stringify(pp.module)});
-          const _result = await _ppM${moduleIndex}[${
+          {
+            const _ppM${moduleIndex} = await import(${
+          JSON.stringify(pp.module)
+        });
+            const _result = await _ppM${moduleIndex}[${
           JSON.stringify(pp.function)
-        }](jsonLd as any, {
-            documentLoader,
-            contextLoader,
-            tracerProvider,
-            baseUrl,
-          });
-          if (_result instanceof Error) throw _result;
-          if (_result !== undefined) return _result as ${
+        }](_pp_obj, {
+              documentLoader,
+              contextLoader,
+              tracerProvider,
+              baseUrl,
+            });
+            if (_result instanceof Error) throw _result;
+            if (_result !== undefined) return _result as ${
           getTypeNames(property.range, types)
         };
-        }
+          }
         `;
         moduleIndex++;
       }
+      yield `
+        }
+      `;
     }
     for (const range of property.range) {
       if (!(range in types)) continue;

@@ -1945,6 +1945,45 @@ test("Object.fromJsonLd() normalizes multiple Link icons", async () => {
   deepStrictEqual(icons[1]?.url?.href, "https://example.com/b.png");
 });
 
+test("Object.getIcon() normalizes fetched Link document to Image", async () => {
+  const linkDocUrl = "https://example.com/icons/avatar-link";
+  const linkDoc = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Link",
+    href: "https://example.com/avatars/user.png",
+    mediaType: "image/png",
+    width: 128,
+    height: 128,
+  };
+  const docLoader = async (url: string) => {
+    if (url === linkDocUrl) {
+      return {
+        document: linkDoc,
+        documentUrl: url,
+        contextUrl: null,
+      };
+    }
+    return await mockDocumentLoader(url);
+  };
+
+  const person = new Person({
+    id: new URL("https://example.com/ap/actors/test-user"),
+    icon: new URL(linkDocUrl),
+  });
+
+  const icon = await person.getIcon({
+    documentLoader: docLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  deepStrictEqual(
+    icon?.url?.href,
+    "https://example.com/avatars/user.png",
+  );
+  deepStrictEqual(icon?.mediaType, "image/png");
+  deepStrictEqual(icon?.width, 128);
+  deepStrictEqual(icon?.height, 128);
+});
+
 test("FEP-fe34: Trust tracking in object construction", async () => {
   // Test that objects created with embedded objects have trust set
   const note = new Note({
