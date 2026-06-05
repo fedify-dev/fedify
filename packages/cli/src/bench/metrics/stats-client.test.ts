@@ -256,3 +256,39 @@ test("fetchServerSnapshot - null on a failed request, empty on success", async (
   );
   assert.deepEqual(empty, { signature: null, queueDepthMax: null });
 });
+
+test("parseServerSnapshot - skips null metric entries and parses the rest", () => {
+  const snap = parseServerSnapshot({
+    scopeMetrics: [{
+      metrics: [
+        null,
+        {
+          name: "activitypub.signature.verification.duration",
+          dataPointType: "histogram",
+          dataPoints: [
+            { value: { buckets: { boundaries: [5, 10], counts: [1, 2, 3] } } },
+          ],
+        },
+      ],
+    }],
+  });
+  assert.deepEqual(snap?.signature?.counts, [1, 2, 3]);
+});
+
+test("parseServerSnapshot - does not sum histogram points with different boundaries", () => {
+  const snap = parseServerSnapshot({
+    scopeMetrics: [{
+      metrics: [{
+        name: "activitypub.signature.verification.duration",
+        dataPointType: "histogram",
+        dataPoints: [
+          { value: { buckets: { boundaries: [5, 10], counts: [1, 1, 1] } } },
+          { value: { buckets: { boundaries: [5, 20], counts: [2, 2, 2] } } },
+        ],
+      }],
+    }],
+  });
+  // The second point's boundaries differ, so it is skipped, not misaligned.
+  assert.deepEqual(snap?.signature?.boundaries, [5, 10]);
+  assert.deepEqual(snap?.signature?.counts, [1, 1, 1]);
+});

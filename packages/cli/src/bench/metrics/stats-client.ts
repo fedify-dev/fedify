@@ -202,9 +202,12 @@ function flattenMetrics(snapshot: Snapshot): SnapshotMetric[] {
   const scopes = Array.isArray(snapshot?.scopeMetrics)
     ? snapshot.scopeMetrics
     : [];
-  return scopes.flatMap((scope) =>
-    Array.isArray(scope?.metrics) ? scope.metrics : []
-  );
+  return scopes.flatMap((scope) => {
+    const metrics = scope?.metrics;
+    // Drop null/undefined entries so one malformed element does not make the
+    // whole snapshot parse throw and silently omit every server metric.
+    return Array.isArray(metrics) ? metrics.filter((m) => m != null) : [];
+  });
 }
 
 function mergeHistogram(
@@ -223,7 +226,12 @@ function mergeHistogram(
     if (boundaries == null) {
       boundaries = [...b];
       counts = [...c];
-    } else if (counts != null && counts.length === c.length) {
+    } else if (
+      counts != null && counts.length === c.length &&
+      boundaries.length === b.length && boundaries.every((v, i) => v === b[i])
+    ) {
+      // Only sum data points that share the exact same bucketing; differing
+      // boundaries would misalign the counts and skew the percentiles.
       for (let i = 0; i < c.length; i++) counts[i] += c[i];
     }
   }
