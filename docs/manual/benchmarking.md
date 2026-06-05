@@ -179,9 +179,10 @@ heterogeneous fleet, which is what a server actually receives.
 
 ### Templating
 
-Values support GitHub-Actions-style `${{ … }}` templating, kept logic-less
-(references and whitelisted helper calls only).  For example
-`${{ target.host }}` expands to the target's host.  Generated payloads use typed
+Values support GitHub-Actions-style templating, written with double-brace
+delimiters and kept logic-less: references and whitelisted helper calls only, no
+arbitrary code.  The `recipient` line in the example suite above uses one to
+build the actor URI from the target's host.  Generated payloads use typed
 directives such as `content: { generate: lorem, size: 2KB }` rather than string
 templates.  The tool owns actor URLs and activity ids, so each request gets a
 unique activity id automatically (which Fedify's always-on inbox idempotency
