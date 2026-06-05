@@ -9,7 +9,7 @@
 import type { DocumentLoader } from "@fedify/vocab-runtime";
 import type { Rng } from "../load/arrival.ts";
 import type { Clock } from "../load/clock.ts";
-import type { LoadPlan, SendOutcome } from "../load/generator.ts";
+import type { LoadPlan, SendFunction, SendOutcome } from "../load/generator.ts";
 import type { ResolvedScenario } from "../scenario/normalize.ts";
 import type { ScenarioMeasurement } from "../result/build.ts";
 import type { SyntheticServer } from "../server/synthetic.ts";
@@ -81,4 +81,35 @@ export function measuredWindowMs(scenario: ResolvedScenario): number {
 export function estimateTotal(scenario: ResolvedScenario): number | undefined {
   if (scenario.load.kind !== "open") return undefined;
   return Math.ceil(scenario.load.ratePerSec * (scenario.durationMs / 1000));
+}
+
+/**
+ * Wraps a send function so that `onMeasuredWindowStart` runs exactly once, at
+ * the warm-up boundary, and *every* measured request waits for it to settle
+ * before being sent.  Runners use this to snapshot a server-side baseline so
+ * reported server metrics cover only the measured window rather than the
+ * target's cumulative lifetime; awaiting it on every measured send guarantees
+ * the baseline is taken before any measured traffic reaches the target, so no
+ * measured request can leak into the baseline.
+ *
+ * The barrier is cheap: only the handful of requests scheduled while the
+ * baseline snapshot is in flight wait for it (recording that wait as their own
+ * latency, the coordinated-omission-correct outcome); once it settles, later
+ * waits resolve immediately.
+ * @param warmupMs The warm-up window length, in milliseconds.
+ * @param onMeasuredWindowStart The one-shot callback, run at the boundary.
+ * @param send The underlying send function.
+ * @returns A send function that gates measured sends on the callback.
+ */
+export function withMeasuredWindowStart(
+  warmupMs: number,
+  onMeasuredWindowStart: () => void | Promise<void>,
+  send: SendFunction,
+): SendFunction {
+  let started: Promise<void> | undefined;
+  return (scheduledAtMs: number) => {
+    if (scheduledAtMs < warmupMs) return send(scheduledAtMs);
+    started ??= Promise.resolve(onMeasuredWindowStart());
+    return started.then(() => send(scheduledAtMs));
+  };
 }

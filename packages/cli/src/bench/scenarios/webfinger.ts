@@ -8,13 +8,19 @@
 import { convertUrlIfHandle } from "../../webfinger/lib.ts";
 import { runLoad } from "../load/generator.ts";
 import { aggregateSamples } from "../metrics/aggregate.ts";
-import { fetchServerMetrics } from "../metrics/stats-client.ts";
+import {
+  diffSnapshots,
+  fetchServerSnapshot,
+  type ServerSnapshot,
+  snapshotToMetrics,
+} from "../metrics/stats-client.ts";
 import {
   loadPlanOf,
   measuredWindowMs,
   type RunContext,
   type ScenarioRunner,
   sendRequest,
+  withMeasuredWindowStart,
 } from "./runner.ts";
 
 function webfingerUrl(target: URL, recipient: string): URL {
@@ -33,8 +39,22 @@ export const webfingerRunner: ScenarioRunner = {
         ? context.scenario.recipients
         : [context.target.host]).map((r) => webfingerUrl(context.target, r));
     let index = 0;
-    const send = () =>
+    const rawSend = () =>
       sendRequest(new Request(urls[index++ % urls.length]), fetchImpl);
+    // Snapshot the server's cumulative metrics at the measured-window boundary
+    // so warm-up and earlier scenarios are diffed out of the reported numbers.
+    // A few warm-up requests still in flight when the baseline is taken may be
+    // attributed to the window; that residue is bounded by the in-flight count.
+    let baseline: ServerSnapshot | null = null;
+    let baselineTaken = false;
+    const send = withMeasuredWindowStart(
+      context.scenario.warmupMs,
+      async () => {
+        baseline = await fetchServerSnapshot(context.target, fetchImpl);
+        baselineTaken = true;
+      },
+      rawSend,
+    );
     const result = await runLoad(
       loadPlanOf(context.scenario, context.rng),
       send,
@@ -44,7 +64,13 @@ export const webfingerRunner: ScenarioRunner = {
       measuredWindowMs: measuredWindowMs(context.scenario),
       includeHistogram: true,
     });
-    const server = await fetchServerMetrics(context.target, fetchImpl);
+    const end = await fetchServerSnapshot(context.target, fetchImpl);
+    // Only report server metrics when both ends of the window were captured; a
+    // missing baseline cannot be diffed (and falling back to the cumulative
+    // snapshot would silently reintroduce warm-up and earlier-scenario load).
+    const server = baselineTaken && baseline != null && end != null
+      ? snapshotToMetrics(diffSnapshots(baseline, end))
+      : null;
     return { ...measurement, server };
   },
 };

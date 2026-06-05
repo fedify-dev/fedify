@@ -214,8 +214,14 @@ does not infer the format, so pass both (for example
 `--format json --output report.json`).  JSON is the canonical machine form: it
 validates against the [report schema] and carries
 its own `$schema`; the text and Markdown renderers derive from the same model,
-keeping client-measured and server-reported numbers distinct.  In GitHub
-Actions, append the Markdown report to the job summary:
+keeping client-measured and server-reported numbers distinct.  Both sides are
+scoped to a measured window: client latency excludes warm-up samples, and the
+server-reported numbers are the difference between a `stats` snapshot taken when
+the measured window opens and one taken when it closes, so they exclude every
+earlier scenario in the suite and the scenario's own warm-up traffic (apart from
+warm-up requests still in flight at the boundary, a residue no larger than the
+number of requests in flight at that moment).  In GitHub Actions, append the
+Markdown report to the job summary:
 
 ~~~~ sh
 fedify bench scenario.yaml --format markdown >> "$GITHUB_STEP_SUMMARY"

@@ -5,6 +5,12 @@
  * (see *@fedify/fedify*'s benchmark module).  This module projects the relevant
  * instruments — signature verification latency and queue depth — into the
  * report's `server` section, marked distinct from client-measured numbers.
+ *
+ * The server reader is cumulative and has no reset, so a single snapshot covers
+ * the target's whole lifetime.  To scope server numbers to one scenario's
+ * measured window, callers take a {@link ServerSnapshot} baseline at the window
+ * start and another at the end, {@link diffSnapshots} the two, and project the
+ * difference with {@link snapshotToMetrics}.
  * @since 2.3.0
  * @module
  */
@@ -36,53 +42,143 @@ interface Snapshot {
   >;
 }
 
+/** An explicit-bucket histogram: bucket upper boundaries and their counts. */
+export interface ServerHistogram {
+  readonly boundaries: number[];
+  readonly counts: number[];
+}
+
 /**
- * Parses a `stats` snapshot into the report's server metrics, or `null` when
- * the snapshot carries no relevant instruments.
- * @param snapshot The parsed `stats` JSON.
- * @returns The server metrics, or `null`.
+ * The relevant instruments extracted from a `stats` snapshot, kept in raw
+ * (un-projected) form so that two snapshots can be diffed.
  */
-export function parseServerMetrics(snapshot: unknown): ServerMetrics | null {
+export interface ServerSnapshot {
+  /** The signature-verification latency histogram, or `null` if absent. */
+  readonly signature: ServerHistogram | null;
+  /** The maximum observed queue depth, or `null` if absent. */
+  readonly queueDepthMax: number | null;
+}
+
+/**
+ * Parses a `stats` snapshot into raw server instruments.  A successful parse
+ * always yields a snapshot, even when it carries no relevant instruments (both
+ * fields `null`); `null` is reserved for an unparseable snapshot, so callers can
+ * tell "available but empty" apart from "unavailable".
+ * @param snapshot The parsed `stats` JSON.
+ * @returns The raw server snapshot, or `null` if it could not be parsed.
+ */
+export function parseServerSnapshot(snapshot: unknown): ServerSnapshot | null {
   try {
     const metrics = flattenMetrics(snapshot as Snapshot);
-    const result: {
-      signatureVerificationMs?: { overall: PartialLatencyMs };
-      queue?: { depthMax?: number };
-    } = {};
 
-    const signature = metrics.find((m) =>
+    const sig = metrics.find((m) =>
       m.dataPointType === "histogram" &&
       (m.name ?? "").includes("signature.verification")
     );
-    const merged = signature == null
-      ? null
-      : mergeHistogram(signature.dataPoints);
-    if (merged != null) {
-      result.signatureVerificationMs = {
-        overall: {
-          p50: histogramPercentile(merged, 50),
-          p95: histogramPercentile(merged, 95),
-          p99: histogramPercentile(merged, 99),
-        },
-      };
-    }
+    const signature = sig == null ? null : mergeHistogram(sig.dataPoints);
 
+    let queueDepthMax: number | null = null;
     const depth = metrics.find((m) => m.name === "fedify.queue.depth");
     if (depth != null && Array.isArray(depth.dataPoints)) {
-      const values = depth.dataPoints
-        .map((p) => p.value)
-        .filter((v): v is number => typeof v === "number");
-      if (values.length > 0) result.queue = { depthMax: Math.max(...values) };
+      const values = depth.dataPoints.map((p) => p.value).filter(
+        isFiniteNumber,
+      );
+      if (values.length > 0) queueDepthMax = Math.max(...values);
     }
 
-    return Object.keys(result).length > 0 ? result : null;
+    return { signature, queueDepthMax };
   } catch {
     return null;
   }
 }
 
 /**
- * Fetches and parses the target's server metrics.
+ * Subtracts a baseline snapshot from an end snapshot, yielding the instruments
+ * accumulated between the two (the measured window).  Signature histogram
+ * counts are diffed bucket by bucket; the queue depth is a gauge, not a
+ * cumulative count, so the end value is kept as-is.  Callers that cannot obtain
+ * both snapshots should not call this (and should report no server metrics)
+ * rather than passing a stand-in, since a missing baseline cannot be diffed.
+ * @param baseline The snapshot taken at the measured-window start.
+ * @param end The snapshot taken at the measured-window end.
+ * @returns The windowed snapshot.
+ */
+export function diffSnapshots(
+  baseline: ServerSnapshot,
+  end: ServerSnapshot,
+): ServerSnapshot {
+  return {
+    signature: diffHistogram(baseline.signature, end.signature),
+    queueDepthMax: end.queueDepthMax,
+  };
+}
+
+/**
+ * Projects a raw server snapshot into the report's server metrics, or `null`
+ * when it carries no usable measurement.
+ * @param snapshot The raw (optionally diffed) server snapshot.
+ * @returns The projected server metrics, or `null`.
+ */
+export function snapshotToMetrics(
+  snapshot: ServerSnapshot | null,
+): ServerMetrics | null {
+  if (snapshot == null) return null;
+  const result: {
+    signatureVerificationMs?: { overall: PartialLatencyMs };
+    queue?: { depthMax?: number };
+  } = {};
+
+  if (snapshot.signature != null) {
+    const total = snapshot.signature.counts.reduce((sum, n) => sum + n, 0);
+    if (total > 0) {
+      result.signatureVerificationMs = {
+        overall: {
+          p50: histogramPercentile(snapshot.signature, 50),
+          p95: histogramPercentile(snapshot.signature, 95),
+          p99: histogramPercentile(snapshot.signature, 99),
+        },
+      };
+    }
+  }
+  if (snapshot.queueDepthMax != null) {
+    result.queue = { depthMax: snapshot.queueDepthMax };
+  }
+
+  return Object.keys(result).length > 0 ? result : null;
+}
+
+/**
+ * Parses a `stats` snapshot directly into the report's server metrics, or
+ * `null` when no relevant instruments are present.  Equivalent to
+ * `snapshotToMetrics(parseServerSnapshot(snapshot))`.
+ * @param snapshot The parsed `stats` JSON.
+ * @returns The server metrics, or `null`.
+ */
+export function parseServerMetrics(snapshot: unknown): ServerMetrics | null {
+  return snapshotToMetrics(parseServerSnapshot(snapshot));
+}
+
+/**
+ * Fetches and parses the target's raw server snapshot.
+ * @param target The target base URL.
+ * @param fetchImpl The fetch implementation (overridable for tests).
+ * @returns The raw server snapshot, or `null` if unavailable.
+ */
+export async function fetchServerSnapshot(
+  target: URL,
+  fetchImpl: typeof fetch = fetch,
+): Promise<ServerSnapshot | null> {
+  try {
+    const response = await fetchImpl(new URL(STATS_PATH, target));
+    if (!response.ok) return null;
+    return parseServerSnapshot(await response.json());
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetches and projects the target's server metrics from a single snapshot.
  * @param target The target base URL.
  * @param fetchImpl The fetch implementation (overridable for tests).
  * @returns The server metrics, or `null` if unavailable.
@@ -91,13 +187,7 @@ export async function fetchServerMetrics(
   target: URL,
   fetchImpl: typeof fetch = fetch,
 ): Promise<ServerMetrics | null> {
-  try {
-    const response = await fetchImpl(new URL(STATS_PATH, target));
-    if (!response.ok) return null;
-    return parseServerMetrics(await response.json());
-  } catch {
-    return null;
-  }
+  return snapshotToMetrics(await fetchServerSnapshot(target, fetchImpl));
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -113,14 +203,9 @@ function flattenMetrics(snapshot: Snapshot): SnapshotMetric[] {
   );
 }
 
-interface Histogram {
-  readonly boundaries: number[];
-  readonly counts: number[];
-}
-
 function mergeHistogram(
   dataPoints: SnapshotMetric["dataPoints"],
-): Histogram | null {
+): ServerHistogram | null {
   if (!Array.isArray(dataPoints)) return null;
   let boundaries: number[] | null = null;
   let counts: number[] | null = null;
@@ -141,7 +226,34 @@ function mergeHistogram(
   return boundaries != null && counts != null ? { boundaries, counts } : null;
 }
 
-function histogramPercentile(histogram: Histogram, p: number): number {
+function diffHistogram(
+  baseline: ServerHistogram | null,
+  end: ServerHistogram | null,
+): ServerHistogram | null {
+  if (end == null) return null;
+  // A null baseline means nothing was recorded before the window opened, so the
+  // whole end histogram belongs to the window.
+  if (baseline == null) return end;
+  // Two cumulative snapshots of the same instrument share fixed bucket
+  // boundaries; if they somehow disagree, the buckets are not comparable, so
+  // refuse to subtract rather than misattribute counts.
+  if (!histogramsCompatible(baseline, end)) return null;
+  const counts = end.counts.map((count, i) =>
+    Math.max(0, count - baseline.counts[i])
+  );
+  return { boundaries: end.boundaries, counts };
+}
+
+function histogramsCompatible(
+  a: ServerHistogram,
+  b: ServerHistogram,
+): boolean {
+  return a.boundaries.length === b.boundaries.length &&
+    a.counts.length === b.counts.length &&
+    a.boundaries.every((boundary, i) => boundary === b.boundaries[i]);
+}
+
+function histogramPercentile(histogram: ServerHistogram, p: number): number {
   const { boundaries, counts } = histogram;
   const total = counts.reduce((sum, n) => sum + n, 0);
   if (total === 0) return 0;

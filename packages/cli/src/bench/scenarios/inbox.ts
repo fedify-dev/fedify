@@ -13,7 +13,12 @@ import type { Activity } from "@fedify/vocab";
 import { discoverInbox, selectInbox } from "../discovery/discover.ts";
 import { runLoad } from "../load/generator.ts";
 import { aggregateSamples } from "../metrics/aggregate.ts";
-import { fetchServerMetrics } from "../metrics/stats-client.ts";
+import {
+  diffSnapshots,
+  fetchServerSnapshot,
+  type ServerSnapshot,
+  snapshotToMetrics,
+} from "../metrics/stats-client.ts";
 import { asList } from "../scenario/coerce.ts";
 import type { ResolvedScenario } from "../scenario/normalize.ts";
 import type { ActivitySpec } from "../scenario/types.ts";
@@ -33,6 +38,7 @@ import {
   type RunContext,
   type ScenarioRunner,
   sendRequest,
+  withMeasuredWindowStart,
 } from "./runner.ts";
 
 /** One discovered delivery target: an inbox and the actor it belongs to. */
@@ -99,7 +105,7 @@ export const inboxRunner: ScenarioRunner = {
       total: estimateTotal(scenario),
     });
 
-    const send = async () => {
+    const rawSend = async () => {
       let request: Request;
       try {
         request = await pipeline.next();
@@ -108,6 +114,16 @@ export const inboxRunner: ScenarioRunner = {
       }
       return sendRequest(request, fetchImpl);
     };
+    // Snapshot the server's cumulative metrics at the measured-window boundary
+    // so warm-up and earlier scenarios are diffed out of the reported numbers.
+    // A few warm-up requests still in flight when the baseline is taken may be
+    // attributed to the window; that residue is bounded by the in-flight count.
+    let baseline: ServerSnapshot | null = null;
+    let baselineTaken = false;
+    const send = withMeasuredWindowStart(scenario.warmupMs, async () => {
+      baseline = await fetchServerSnapshot(context.target, fetchImpl);
+      baselineTaken = true;
+    }, rawSend);
 
     try {
       await pipeline.prime();
@@ -120,7 +136,13 @@ export const inboxRunner: ScenarioRunner = {
         measuredWindowMs: measuredWindowMs(scenario),
         includeHistogram: true,
       });
-      const server = await fetchServerMetrics(context.target, fetchImpl);
+      const end = await fetchServerSnapshot(context.target, fetchImpl);
+      // Only report server metrics when both ends of the window were captured;
+      // a missing baseline cannot be diffed (and falling back to the cumulative
+      // snapshot would silently reintroduce warm-up and earlier-scenario load).
+      const server = baselineTaken && baseline != null && end != null
+        ? snapshotToMetrics(diffSnapshots(baseline, end))
+        : null;
       return { ...measurement, server };
     } finally {
       await pipeline.close();

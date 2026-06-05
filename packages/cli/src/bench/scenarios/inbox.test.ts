@@ -142,6 +142,56 @@ test("inboxRunner - signed deliveries verify against a benchmarkMode target", as
   }
 });
 
+test("inboxRunner - reports server metrics scoped past the warm-up", async () => {
+  const target = await spawnBenchmarkTarget();
+  let fleet: Awaited<ReturnType<typeof spawnSyntheticServer>> | undefined;
+  try {
+    fleet = await spawnSyntheticServer(
+      await buildFleet([{
+        count: 1,
+        signatureStandards: ["draft-cavage-http-signatures-12"],
+      }]),
+    );
+    const suite: Suite = {
+      version: 1,
+      target: target.url.href,
+      scenarios: [{
+        name: "inbox-warmup",
+        type: "inbox",
+        recipient: new URL("/users/alice", target.url).href,
+        inbox: "shared",
+        load: { concurrency: 2 },
+        // A non-zero warm-up exercises the measured-window baseline snapshot.
+        warmup: "120ms",
+        duration: "400ms",
+      }],
+    };
+    const scenario = normalizeSuite(suite).scenarios[0];
+    const measurement = await inboxRunner.run({
+      scenario,
+      target: target.url,
+      documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+      contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+      allowPrivateAddress: true,
+      fleet,
+    });
+
+    assert.strictEqual(measurement.requests.successRate, 1);
+    // The measured window verified signatures, so server metrics survive the
+    // baseline diff rather than being cancelled out by warm-up traffic.
+    assert.ok(
+      measurement.server?.signatureVerificationMs != null,
+      "expected windowed server signature-verification metrics",
+    );
+  } finally {
+    try {
+      await fleet?.close();
+    } finally {
+      await target.close();
+    }
+  }
+});
+
 test("inboxRunner - rotates deliveries across multiple recipients", async () => {
   const target = await spawnBenchmarkTarget(["alice", "bob"]);
   let fleet: Awaited<ReturnType<typeof spawnSyntheticServer>> | undefined;
