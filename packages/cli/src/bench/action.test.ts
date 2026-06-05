@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { serve } from "srvx";
-import runBench from "./action.ts";
+import runBench, { withUserAgent } from "./action.ts";
 import type { BenchCommand } from "./command.ts";
 
 async function spawnTarget() {
@@ -45,15 +45,24 @@ async function spawnTarget() {
     Create,
     () => {},
   );
+  let inboxUserAgent: string | null = null;
   const server = serve({
     port: 0,
     hostname: "127.0.0.1",
     silent: true,
-    fetch: (request: Request) =>
-      federation.fetch(request, { contextData: undefined }),
+    fetch: (request: Request) => {
+      if (request.method === "POST") {
+        inboxUserAgent = request.headers.get("user-agent");
+      }
+      return federation.fetch(request, { contextData: undefined });
+    },
   });
   await server.ready();
-  return { url: new URL(server.url!), close: () => server.close(true) };
+  return {
+    url: new URL(server.url!),
+    inboxUserAgent: () => inboxUserAgent,
+    close: () => server.close(true),
+  };
 }
 
 function command(overrides: Partial<BenchCommand>): BenchCommand {
@@ -117,9 +126,50 @@ test("runBench - passing gate exits 0 and writes a valid report", async () => {
     assert.strictEqual(report.passed, true);
     assert.strictEqual(report.scenarios[0].requests.successRate, 1);
     assert.ok(report.target.statsAvailable);
+    // The configured User-Agent reached the actual benchmark traffic, not just
+    // the document loader.
+    assert.strictEqual(target.inboxUserAgent(), "Fedify-bench-test/1.0");
   } finally {
     await target.close();
   }
+});
+
+test("withUserAgent - sets the User-Agent on a prebuilt request", async () => {
+  let seen: string | null = null;
+  const wrapped = withUserAgent((input) => {
+    seen = (input as Request).headers.get("user-agent");
+    return Promise.resolve(new Response("ok"));
+  }, "Bench/9.9");
+  await wrapped(new Request("http://x.test/a"));
+  assert.strictEqual(seen, "Bench/9.9");
+});
+
+test("withUserAgent - sets the User-Agent on a URL request, keeping init headers", async () => {
+  let ua: string | null = null;
+  let accept: string | null = null;
+  const wrapped = withUserAgent((_input, init) => {
+    const headers = new Headers(init?.headers);
+    ua = headers.get("user-agent");
+    accept = headers.get("accept");
+    return Promise.resolve(new Response("ok"));
+  }, "Bench/9.9");
+  await wrapped(new URL("http://x.test/a"), {
+    headers: { accept: "application/json" },
+  });
+  assert.strictEqual(ua, "Bench/9.9");
+  assert.strictEqual(accept, "application/json");
+});
+
+test("withUserAgent - does not override an explicit User-Agent", async () => {
+  let seen: string | null = null;
+  const wrapped = withUserAgent((input) => {
+    seen = (input as Request).headers.get("user-agent");
+    return Promise.resolve(new Response("ok"));
+  }, "Bench/9.9");
+  await wrapped(
+    new Request("http://x.test/a", { headers: { "user-agent": "Custom/1" } }),
+  );
+  assert.strictEqual(seen, "Custom/1");
 });
 
 test("runBench - failing gate exits 1", async () => {

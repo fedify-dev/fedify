@@ -67,7 +67,10 @@ export default async function runBench(
   const writeOutput = deps.writeOutput ?? defaultWriteOutput;
   const log = deps.log ??
     ((message: string) => process.stderr.write(`${message}\n`));
-  const fetchImpl = deps.fetch ?? fetch;
+  // Apply the configured User-Agent to all benchmark traffic — the probe, the
+  // stats reads, and the runners' inbox/WebFinger requests — not just the
+  // document loader, so a target that inspects the UA sees it on every request.
+  const fetchImpl = withUserAgent(deps.fetch ?? fetch, command.userAgent);
 
   // Loading, validation, and normalization failures are all user-facing
   // configuration errors.
@@ -200,6 +203,39 @@ export default async function runBench(
   } finally {
     await fleet?.close();
   }
+}
+
+/**
+ * Wraps a fetch implementation so every request carries the given User-Agent,
+ * unless the caller already set one.  A prebuilt {@link Request} (the signed
+ * inbox delivery, a WebFinger GET) is mutated in place rather than recloned, so
+ * an already-signed body and its digest are left untouched; the User-Agent is
+ * not part of the signed header set, so adding it does not affect verification.
+ * @param fetchImpl The underlying fetch implementation.
+ * @param userAgent The User-Agent header value to apply.
+ * @returns A fetch implementation that injects the User-Agent.
+ */
+export function withUserAgent(
+  fetchImpl: typeof fetch,
+  userAgent: string,
+): typeof fetch {
+  // Cast the wrapper to `typeof fetch`: the standard contract it implements is a
+  // subset of the runtime's overloaded fetch type (which carries extra non-
+  // standard overloads), so the assignment is sound but not structurally
+  // inferable.
+  return ((input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    if (input instanceof Request && init === undefined) {
+      if (!input.headers.has("user-agent")) {
+        input.headers.set("user-agent", userAgent);
+      }
+      return fetchImpl(input);
+    }
+    const headers = new Headers(
+      init?.headers ?? (input instanceof Request ? input.headers : undefined),
+    );
+    if (!headers.has("user-agent")) headers.set("user-agent", userAgent);
+    return fetchImpl(input, { ...init, headers });
+  }) as typeof fetch;
 }
 
 async function defaultWriteOutput(
