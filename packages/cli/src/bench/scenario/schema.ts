@@ -136,10 +136,11 @@ export const scenarioSchemaV1 = {
         arrival: { $ref: "#/$defs/arrival" },
         maxInFlight: { type: "integer", minimum: 1 },
       },
-      oneOf: [
-        { required: ["rate"], not: { required: ["concurrency"] } },
-        { required: ["concurrency"], not: { required: ["rate"] } },
-      ],
+      // `rate` (open-loop) and `concurrency` (closed-loop) are mutually
+      // exclusive, but neither is required here: a load block may set only
+      // `arrival`/`maxInFlight` and inherit the model from `defaults` (or the
+      // built-in open-loop default), which the normalizer already supports.
+      not: { required: ["rate", "concurrency"] },
     },
     defaults: {
       type: "object",

@@ -124,28 +124,12 @@
           "minimum": 1
         }
       },
-      "oneOf": [
-        {
-          "required": [
-            "rate"
-          ],
-          "not": {
-            "required": [
-              "concurrency"
-            ]
-          }
-        },
-        {
-          "required": [
-            "concurrency"
-          ],
-          "not": {
-            "required": [
-              "rate"
-            ]
-          }
-        }
-      ]
+      "not": {
+        "required": [
+          "rate",
+          "concurrency"
+        ]
+      }
     },
     "defaults": {
       "type": "object",

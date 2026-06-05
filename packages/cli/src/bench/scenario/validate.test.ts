@@ -61,10 +61,29 @@ test("validateSuite - enforces exactly one HTTP signature scheme", () => {
   assert.throws(() => validateSuite(docOnly), SuiteValidationError);
 });
 
-test("validateSuite - enforces rate XOR concurrency", () => {
+test("validateSuite - rejects rate and concurrency together", () => {
   const bad = validInbox() as Record<string, unknown>;
   bad.defaults = { load: { rate: "100/s", concurrency: 50 } };
   assert.throws(() => validateSuite(bad), SuiteValidationError);
+});
+
+test("validateSuite - accepts a partial load override", () => {
+  // Only `maxInFlight`/`arrival`, inheriting the load model: the normalizer
+  // supports this (falling back to the default open-loop rate), so the schema
+  // must not reject it for lacking `rate`/`concurrency`.
+  const partial = validInbox() as Record<string, unknown>;
+  partial.defaults = { load: { maxInFlight: 100, arrival: "poisson" } };
+  assert.doesNotThrow(() => validateSuite(partial));
+
+  const scenarioOverride = validInbox() as Record<string, unknown>;
+  scenarioOverride.defaults = { load: { rate: "100/s" } };
+  scenarioOverride.scenarios = [{
+    name: "inbox-shared",
+    type: "inbox",
+    recipient: "acct:alice@x",
+    load: { maxInFlight: 50 },
+  }];
+  assert.doesNotThrow(() => validateSuite(scenarioOverride));
 });
 
 test("validateSuite - enforces per-type expect metric allowlist", () => {

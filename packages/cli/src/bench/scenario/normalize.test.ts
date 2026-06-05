@@ -81,6 +81,20 @@ test("normalizeSuite - load inherits arrival/maxInFlight from defaults", () => {
   });
 });
 
+test("normalizeSuite - partial load override keeps the default model", () => {
+  // `maxInFlight` only, with no rate/concurrency anywhere: falls back to the
+  // built-in open-loop default rate while applying the override.
+  const s = normalizeSuite(suite({
+    defaults: { load: { maxInFlight: 100 } },
+  })).scenarios[0];
+  assert.deepEqual(s.load, {
+    kind: "open",
+    ratePerSec: 50,
+    arrival: "constant",
+    maxInFlight: 100,
+  });
+});
+
 test("normalizeSuite - parses fanout queueDrainTimeout to ms", () => {
   const s = normalizeSuite(suite({
     scenarios: [{
