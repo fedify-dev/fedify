@@ -8,6 +8,15 @@ Version 2.0.20
 
 To be released.
 
+### @fedify/cli
+
+ -  Fixed `fedify` command failing under Deno 2.8+/TypeScript 6.0 where
+    `setTimeout()` returns `Timeout` instead of `number`.  Used
+    `ReturnType<typeof setTimeout>` for the `signalTimers` WeakMap so it
+    is compatible across all TypeScript/Deno versions.  [[#789] by Rui Chen]
+
+[#789]: https://github.com/fedify-dev/fedify/pull/789
+
 
 Version 2.0.19
 --------------
