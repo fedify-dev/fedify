@@ -96,3 +96,15 @@ test("withMeasuredWindowStart - never fires if no request reaches the window", a
   for (const offset of [0, 100, 999]) await send(offset);
   assert.strictEqual(fires, 0);
 });
+
+test("withMeasuredWindowStart - a synchronous callback throw becomes a rejection", async () => {
+  const send = withMeasuredWindowStart(
+    0,
+    () => {
+      throw new Error("boom");
+    },
+    () => Promise.resolve(ok),
+  );
+  // The throw must surface as a rejected promise, not escape synchronously.
+  await assert.rejects(send(0), /boom/);
+});

@@ -133,7 +133,9 @@ export function withMeasuredWindowStart(
   let started: Promise<void> | undefined;
   return (scheduledAtMs: number) => {
     if (scheduledAtMs < warmupMs) return send(scheduledAtMs);
-    started ??= Promise.resolve(onMeasuredWindowStart());
+    // Defer the call through `.then` so a synchronous throw in the callback
+    // becomes a rejection rather than escaping the promise chain.
+    started ??= Promise.resolve().then(onMeasuredWindowStart);
     return started.then(() => send(scheduledAtMs));
   };
 }
