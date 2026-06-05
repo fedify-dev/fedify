@@ -248,10 +248,16 @@ export function withUserAgent(
   // inferable.
   return ((input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     if (input instanceof Request && init === undefined) {
-      if (!input.headers.has("user-agent")) {
+      if (input.headers.has("user-agent")) return fetchImpl(input);
+      try {
         input.headers.set("user-agent", userAgent);
+        return fetchImpl(input);
+      } catch {
+        // Some Request objects have immutable headers; fall back to a clone.
+        const headers = new Headers(input.headers);
+        headers.set("user-agent", userAgent);
+        return fetchImpl(new Request(input, { headers }));
       }
-      return fetchImpl(input);
     }
     const headers = new Headers(
       init?.headers ?? (input instanceof Request ? input.headers : undefined),
