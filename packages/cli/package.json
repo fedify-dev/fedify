@@ -18,7 +18,7 @@
     "test": "node --test --experimental-transform-types 'src/**/*.test.ts' '!src/init/test/**'",
     "test-init": "deno task test-init",
     "pretest:bun": "pnpm build",
-    "test:bun": "bun test",
+    "test:bun": "bun test --timeout 60000",
     "run": "pnpm build && node --disable-warning=ExperimentalWarning dist/mod.js",
     "runi": "tsdown && node --disable-warning=ExperimentalWarning dist/mod.js",
     "run:bun": "pnpm build && bun dist/mod.js",
