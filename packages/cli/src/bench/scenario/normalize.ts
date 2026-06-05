@@ -111,6 +111,21 @@ export function normalizeSuite(
   } catch {
     throw new SuiteNormalizeError(`Invalid target URL: ${targetString}.`);
   }
+  // `new URL("localhost:3000")` parses as the `localhost:` scheme with no host,
+  // a common typo for a missing `http://`.  The probe and runners only make
+  // HTTP(S) requests (and `fetch` rejects URLs carrying credentials), so reject
+  // anything that is not a bare http(s) URL with a host.
+  if (
+    (target.protocol !== "http:" && target.protocol !== "https:") ||
+    target.hostname === "" ||
+    target.username !== "" || target.password !== ""
+  ) {
+    throw new SuiteNormalizeError(
+      `Invalid target URL ${JSON.stringify(targetString)}: a benchmark ` +
+        "target must be an http: or https: URL with a host and no embedded " +
+        "credentials (for example http://localhost:3000).",
+    );
+  }
   return {
     target,
     actors: suite.actors ?? [],

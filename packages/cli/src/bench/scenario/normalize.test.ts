@@ -139,6 +139,45 @@ test("normalizeSuite - rejects an invalid target URL", () => {
   );
 });
 
+test("normalizeSuite - rejects a non-http(s) or host-less target", () => {
+  // `localhost:3000` (a missing-scheme typo) parses as the `localhost:` scheme
+  // with no host; reject it rather than misbehave later.
+  for (
+    const bad of [
+      "localhost:3000",
+      "ftp://localhost:3000",
+      "file:///tmp/x",
+      "ws://localhost:3000",
+      // `fetch` rejects URLs carrying credentials, so reject them up front.
+      "http://user@localhost:3000",
+      "http://user:pass@localhost:3000",
+    ]
+  ) {
+    assert.throws(
+      () => normalizeSuite(suite({ target: bad })),
+      SuiteNormalizeError,
+      `expected ${JSON.stringify(bad)} to be rejected`,
+    );
+  }
+  // The same rejection applies to a --target override.
+  assert.throws(
+    () => normalizeSuite(suite(), { target: "localhost:3000" }),
+    SuiteNormalizeError,
+  );
+});
+
+test("normalizeSuite - accepts http and https targets", () => {
+  assert.strictEqual(
+    normalizeSuite(suite({ target: "http://localhost:3000" })).target.protocol,
+    "http:",
+  );
+  assert.strictEqual(
+    normalizeSuite(suite({ target: "https://staging.example" })).target
+      .protocol,
+    "https:",
+  );
+});
+
 test("normalizeSuite - pipeline signing rejects a time-windowed target", () => {
   assert.throws(
     () =>
