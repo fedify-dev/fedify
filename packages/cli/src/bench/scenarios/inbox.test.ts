@@ -303,3 +303,29 @@ test("inboxRunner.validate - rejects activity options it cannot honor", () => {
     inboxRunner.validate!(resolve({ type: "Create", object: { type: "Note" } }))
   );
 });
+
+test("inboxRunner.validate - rejects a malformed or non-http inbox value", () => {
+  function resolve(inbox: string) {
+    return normalizeSuite({
+      version: 1,
+      target: "http://localhost:3000",
+      scenarios: [{
+        name: "inbox",
+        type: "inbox",
+        recipient: "http://localhost:3000/users/alice",
+        inbox,
+      }],
+    }).scenarios[0];
+  }
+  // A typo that is not a URL would otherwise crash selectInbox mid-run.
+  assert.throws(() => inboxRunner.validate!(resolve("shraed")), /inbox/);
+  // A non-http(s) URL would slip to the send path as a failure.
+  assert.throws(
+    () => inboxRunner.validate!(resolve("ftp://host/inbox")),
+    /http\(s\)/,
+  );
+  // shared, personal, and a bare http(s) URL are accepted.
+  for (const ok of ["shared", "personal", "https://host.example/inbox"]) {
+    assert.doesNotThrow(() => inboxRunner.validate!(resolve(ok)));
+  }
+});

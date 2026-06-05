@@ -51,6 +51,7 @@ interface InboxTarget {
 export const inboxRunner: ScenarioRunner = {
   validate(scenario: ResolvedScenario): void {
     validateActivity(scenario);
+    validateInbox(scenario);
   },
 
   async run(context: RunContext) {
@@ -150,6 +151,36 @@ export const inboxRunner: ScenarioRunner = {
     }
   },
 };
+
+/**
+ * Validates the scenario's `inbox` mode.  `"shared"` and `"personal"` select a
+ * discovered inbox; any other value is an explicit inbox URL the run will POST
+ * to, so it must be a usable bare http(s) URL.  Without this preflight check, a
+ * typo like `inbox: shraed` would crash `selectInbox` with an uncaught error
+ * mid-run, and a non-http URL would slip through to the send path.
+ */
+function validateInbox(scenario: ResolvedScenario): void {
+  const mode = scenario.inbox;
+  if (mode == null || mode === "shared" || mode === "personal") return;
+  let url: URL;
+  try {
+    url = new URL(mode);
+  } catch {
+    throw new Error(
+      `Scenario "${scenario.name}": inbox must be "shared", "personal", or an ` +
+        `http(s) URL; got ${JSON.stringify(mode)}.`,
+    );
+  }
+  if (
+    (url.protocol !== "http:" && url.protocol !== "https:") ||
+    url.hostname === "" || url.username !== "" || url.password !== ""
+  ) {
+    throw new Error(
+      `Scenario "${scenario.name}": inbox URL must be a bare http(s) URL with ` +
+        `a host and no credentials; got ${JSON.stringify(mode)}.`,
+    );
+  }
+}
 
 /**
  * Rejects the activity options the inbox runner cannot yet honor: it always
