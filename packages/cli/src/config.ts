@@ -110,10 +110,12 @@ const nodeinfoSchema = object({
 
 /**
  * Schema for the bench command configuration.
+ *
+ * `allowUnsafeTarget` is intentionally absent: the unsafe-target override is a
+ * CLI-only, per-run acknowledgment, never a persisted default.
  */
 const benchSchema = object({
   format: optional(picklist(["text", "json", "markdown"])),
-  allowUnsafeTarget: optional(boolean()),
 });
 
 /**

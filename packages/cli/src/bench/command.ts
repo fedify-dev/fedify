@@ -34,17 +34,17 @@ const formatOption = bindConfig(
   },
 );
 
-const allowUnsafeTarget = bindConfig(
+// Deliberately NOT config-backed: this safety override must be an explicit
+// per-run acknowledgment on the command line, so a persisted config file cannot
+// silently disable the gate for every run.
+const allowUnsafeTarget = withDefault(
   flag("--allow-unsafe-target", {
     description:
       message`Allow benchmarking a public target that does not advertise \
-benchmark mode.`,
+benchmark mode.  Must be given on the command line for each run; it cannot be \
+set in a configuration file.`,
   }),
-  {
-    context: configContext,
-    key: (config) => config.bench?.allowUnsafeTarget ?? false,
-    default: false,
-  },
+  false,
 );
 
 export const benchCommand = command(
