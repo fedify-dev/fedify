@@ -79,14 +79,17 @@ function renderScenario(scenario: ScenarioResult): string[] {
       }`,
     );
   }
-  if (scenario.server?.queue?.drainMs != null) {
-    const depth = scenario.server.queue.depthMax;
+  const queue = scenario.server?.queue;
+  if (queue?.drainMs != null && hasPartial(queue.drainMs)) {
+    const depth = queue.depthMax;
     const suffix = depth == null ? "" : `  (depth max ${formatNumber(depth)})`;
     lines.push(
-      `  Server queue drain (ms): ${
-        describePartial(scenario.server.queue.drainMs)
-      }${suffix}`,
+      `  Server queue drain (ms): ${describePartial(queue.drainMs)}${suffix}`,
     );
+  } else if (queue?.depthMax != null) {
+    // Queue depth is reported even when no drain-latency histogram is present
+    // (the current stats reader supplies depth but not drain latency).
+    lines.push(`  Server queue depth max: ${formatNumber(queue.depthMax)}`);
   }
   if (scenario.errors.length > 0) {
     lines.push("  Errors:");
@@ -126,4 +129,9 @@ function describePartial(latency: PartialLatencyMs): string {
   if (latency.p95 != null) parts.push(`p95 ${formatNumber(latency.p95)}`);
   if (latency.p99 != null) parts.push(`p99 ${formatNumber(latency.p99)}`);
   return parts.join("  ");
+}
+
+/** Whether a partial latency carries at least one renderable percentile. */
+function hasPartial(latency: PartialLatencyMs): boolean {
+  return latency.p50 != null || latency.p95 != null || latency.p99 != null;
 }

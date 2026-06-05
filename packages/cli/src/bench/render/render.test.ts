@@ -60,6 +60,42 @@ test("renderReport - shows actuals in the metric's natural unit", () => {
   assert.match(text, /successRate >= 99%\s+\(actual 99\.4%\)/);
 });
 
+test("renderReport - shows queue depth even without drain latency", () => {
+  // The stats reader supplies queue depth but no drain-latency histogram; both
+  // the text and Markdown forms must still surface the depth.
+  const base = report.scenarios[0];
+  const r: BenchReport = {
+    ...report,
+    scenarios: [{
+      ...base,
+      server: { ...(base.server ?? {}), queue: { depthMax: 42 } },
+    }],
+  };
+  const text = renderReport(r, "text");
+  assert.match(text, /Server queue depth max: 42/);
+  const md = renderReport(r, "markdown");
+  assert.match(md, /Queue depth max \(server\) \| 42/);
+});
+
+test("renderReport - empty drain latency falls back to the depth line", () => {
+  // An empty drainMs object carries no percentile, so neither form should print
+  // a meaningless drain line; both still surface the depth (here zero).
+  const base = report.scenarios[0];
+  const r: BenchReport = {
+    ...report,
+    scenarios: [{
+      ...base,
+      server: { ...(base.server ?? {}), queue: { drainMs: {}, depthMax: 0 } },
+    }],
+  };
+  const text = renderReport(r, "text");
+  assert.doesNotMatch(text, /Server queue drain/);
+  assert.match(text, /Server queue depth max: 0/);
+  const md = renderReport(r, "markdown");
+  assert.doesNotMatch(md, /Queue drain/);
+  assert.match(md, /Queue depth max \(server\) \| 0/);
+});
+
 test("renderReport markdown - includes tables and the gate result", () => {
   const md = renderReport(report, "markdown");
   assert.match(md, /# Fedify benchmark report/);

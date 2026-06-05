@@ -64,6 +64,17 @@ function renderScenario(scenario: ScenarioResult): string[] {
       `| Signature verification p95 (server) | ${formatNumber(sig.p95)}ms |`,
     );
   }
+  const queue = scenario.server?.queue;
+  if (queue?.drainMs?.p95 != null) {
+    lines.push(
+      `| Queue drain p95 (server) | ${formatNumber(queue.drainMs.p95)}ms |`,
+    );
+  }
+  if (queue?.depthMax != null) {
+    lines.push(
+      `| Queue depth max (server) | ${formatNumber(queue.depthMax)} |`,
+    );
+  }
 
   if (scenario.errors.length > 0) {
     lines.push("", "| Error | Count |", "| --- | --- |");
