@@ -404,13 +404,14 @@ export async function* generateDecoder(
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && URL.canParse(values["@id"])) {
-      options = { ...options, baseUrl: new URL(values["@id"]) };
+    const _resolvedUrl =
+      values["@id"] != null && URL.canParse(values["@id"], options.baseUrl)
+        ? new URL(values["@id"], options.baseUrl)
+        : undefined;
+    if (options.baseUrl == null && _resolvedUrl != null) {
+      options = { ...options, baseUrl: _resolvedUrl };
     }
-    const _baseUrl =
-      values["@id"] == null || !URL.canParse(values["@id"], options.baseUrl)
-        ? options.baseUrl
-        : new URL(values["@id"], options.baseUrl);
+    const _baseUrl = _resolvedUrl ?? options.baseUrl;
   `;
   const subtypes = getSubtypes(typeUri, types, true);
   yield `
