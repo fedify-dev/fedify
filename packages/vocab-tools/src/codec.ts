@@ -398,7 +398,7 @@ export async function* generateDecoder(
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null) {
+    if (options.baseUrl == null && values["@id"] != null && URL.canParse(values["@id"])) {
       options = { ...options, baseUrl: new URL(values["@id"]) };
     }
   `;
@@ -511,7 +511,7 @@ export async function* generateDecoder(
         types,
         "v",
         "options",
-        `(values["@id"] == null ? options.baseUrl : new URL(values["@id"]))`,
+        `(values["@id"] == null || !URL.canParse(values["@id"]) ? options.baseUrl : new URL(values["@id"]))`,
       );
       for (const code of decoders) yield code;
       yield `
