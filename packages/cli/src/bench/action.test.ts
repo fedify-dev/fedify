@@ -302,6 +302,40 @@ scenarios:
   assert.match(message, /advertise-host/);
 });
 
+test("runBench - refuses an inbox destination off the gated target (exit 2)", async () => {
+  // A loopback target passes the gate, but an explicit public `inbox:` is the
+  // actual load destination; it must be gated too, or production could be
+  // benchmarked through the back door.
+  const target = await spawnTarget();
+  try {
+    const file = await writeSuite(`version: 1
+target: ${target.url.href}
+scenarios:
+  - name: inbox-shared
+    type: inbox
+    recipient: "${new URL("/users/alice", target.url).href}"
+    inbox: "https://prod.example/inbox"
+    load: { concurrency: 2 }
+    duration: 250ms
+`);
+    let code = -1;
+    let message = "";
+    await runBench(command({ scenario: file }), {
+      exit: (c) => {
+        code = c;
+      },
+      writeOutput: () => Promise.resolve(),
+      log: (m) => {
+        message = m;
+      },
+    });
+    assert.strictEqual(code, 2);
+    assert.match(message, /public inbox|allow-unsafe-target/);
+  } finally {
+    await target.close();
+  }
+});
+
 test("runBench - malformed expect assertion exits 2 before any load", async () => {
   // The expect typo must be caught in preflight, so the run exits 2 (a config
   // error) without ever probing the target or sending load.

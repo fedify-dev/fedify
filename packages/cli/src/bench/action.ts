@@ -20,7 +20,11 @@ import {
 } from "./scenario/normalize.ts";
 import type { Suite } from "./scenario/types.ts";
 import { validateSuite } from "./scenario/validate.ts";
-import { assertTargetAllowed, UnsafeTargetError } from "./safety/gate.ts";
+import {
+  assertInboxDestinationAllowed,
+  assertTargetAllowed,
+  UnsafeTargetError,
+} from "./safety/gate.ts";
 import { classifyTarget } from "./safety/tiers.ts";
 import { runnerFor } from "./scenarios/registry.ts";
 import {
@@ -156,6 +160,16 @@ export default async function runBench(
     userAgent: command.userAgent,
   });
 
+  // Gates each resolved inbox destination (which can differ from the suite
+  // target) before the runner sends load to it.
+  const assertDestinationAllowed = (url: URL): void =>
+    assertInboxDestinationAllowed(url, {
+      targetOrigin: suite.target.origin,
+      targetBenchmarkMode: probe.benchmarkMode,
+      allowUnsafe: command.allowUnsafeTarget,
+      advertised: command.advertiseHost != null,
+    });
+
   let fleet: SyntheticServer | undefined;
   const startedAt = new Date().toISOString();
   try {
@@ -176,6 +190,7 @@ export default async function runBench(
         allowPrivateAddress,
         fleet: fleet ?? null,
         fetch: fetchImpl,
+        assertDestinationAllowed,
       });
       results.push(buildScenarioResult(scenario, measurement));
     }
@@ -200,6 +215,14 @@ export default async function runBench(
       command.output,
     );
     return void exit(report.passed ? 0 : 1);
+  } catch (error) {
+    // A refused inbox destination (gated inside the runner, once resolved) is a
+    // safety error, like the target gate above: report it and exit 2.
+    if (error instanceof UnsafeTargetError) {
+      log(error.message);
+      return void exit(2);
+    }
+    throw error;
   } finally {
     await fleet?.close();
   }
