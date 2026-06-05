@@ -138,9 +138,9 @@ function lookupValue(metrics: MetricView, metric: string): number | null {
     case "errors.total":
       return sumErrors(metrics.errors);
     case "errors.4xx":
-      return sumErrors(metrics.errors, 400, 500);
+      return sumErrors(metrics.errors, { min: 400, max: 500 });
     case "errors.5xx":
-      return sumErrors(metrics.errors, 500, 600);
+      return sumErrors(metrics.errors, { min: 500, max: 600 });
   }
   if (metric.startsWith("latency.")) {
     return latencyField(metrics.client.latencyMs, metric.slice(8));
@@ -194,13 +194,22 @@ function partialField(
   }
 }
 
-function sumErrors(errors: ErrorBucket[], min?: number, max?: number): number {
+/**
+ * Sums error counts, optionally restricted to a half-open HTTP status range.
+ * The bounds are a single coupled argument so a caller cannot pass one without
+ * the other.
+ */
+function sumErrors(
+  errors: ErrorBucket[],
+  range?: { readonly min: number; readonly max: number },
+): number {
   let total = 0;
   for (const error of errors) {
-    if (min == null) {
+    if (range == null) {
       total += error.count;
     } else if (
-      error.status != null && error.status >= min && error.status < max!
+      error.status != null && error.status >= range.min &&
+      error.status < range.max
     ) {
       total += error.count;
     }
