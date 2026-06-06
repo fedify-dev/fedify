@@ -404,8 +404,8 @@ export async function* generateDecoder(
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
-      options = { ...options, baseUrl: new URL(values["@id"] as string) };
+    if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && URL.canParse(values["@id"])) {
+      options = { ...options, baseUrl: new URL(values["@id"]) };
     }
   `;
   const subtypes = getSubtypes(typeUri, types, true);
@@ -432,7 +432,7 @@ export async function* generateDecoder(
   if (type.extends == null) {
     yield `
     const instance = new this(
-      { id: "@id" in values && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string, options.baseUrl) ? new URL(values["@id"] as string, options.baseUrl) : undefined },
+      { id: values["@id"] != null && !values["@id"].startsWith("_:") && URL.canParse(values["@id"], options.baseUrl) ? new URL(values["@id"], options.baseUrl) : undefined },
       options,
     );
     `;
@@ -477,9 +477,9 @@ export async function* generateDecoder(
     `;
     const propertyBaseUrl = `(values["@id"] == null ||
           values["@id"].startsWith("_:") ||
-          !URL.canParse(values["@id"] as string, options.baseUrl)
+          !URL.canParse(values["@id"], options.baseUrl)
         ? options.baseUrl
-        : new URL(values["@id"] as string, options.baseUrl))`;
+        : new URL(values["@id"], options.baseUrl))`;
     yield* generatePreprocessorBlock(
       property,
       getTypeNames(property.range, types),

@@ -130,7 +130,7 @@ export interface PropertySchemaBase {
    * or an `Error` when it recognized the value but failed while converting it.
    *
    * `module` is resolved from the generated vocabulary source file
-   * and imported dynamically at decode time.
+   * and imported statically at the top of the generated file.
    */
   preprocessors?: PropertyPreprocessorSchema[];
 }

@@ -41,9 +41,7 @@ export const normalizeLinkToImage: PropertyPreprocessor<Image> = async (
     id: link.id,
     url: link.href,
     mediaType: link.mediaType,
-    names: link.names?.length != null && link.names.length > 0
-      ? link.names
-      : undefined,
+    names: link.names != null && link.names.length > 0 ? link.names : undefined,
     width: link.width,
     height: link.height,
   });

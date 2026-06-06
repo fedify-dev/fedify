@@ -122,7 +122,7 @@ $defs:
           failed while converting it.
 
           `module` is resolved from the generated vocabulary source file
-          and imported dynamically at decode time.
+          and imported statically at the top of the generated file.
         type: array
         items:
           type: object
