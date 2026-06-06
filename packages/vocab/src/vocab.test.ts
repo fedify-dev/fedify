@@ -1922,6 +1922,57 @@ test("Object.fromJsonLd() normalizes Link icon with relative URL", async () => {
   );
 });
 
+test(
+  "Object.fromJsonLd() normalizes Link icon with relative id and baseUrl",
+  async () => {
+    const json = {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "Note",
+      "id": "/notes/1",
+      "content": "Hello",
+      "icon": {
+        "type": "Link",
+        "href": "/icons/icon.png",
+      },
+    };
+    const obj = await Object.fromJsonLd(json, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      baseUrl: new URL("https://example.com/"),
+    });
+    const icon = await obj.getIcon();
+    deepStrictEqual(obj.id?.href, "https://example.com/notes/1");
+    deepStrictEqual(
+      icon?.url?.href,
+      "https://example.com/icons/icon.png",
+    );
+  },
+);
+
+test("Object.fromJsonLd() decodes Image icon with relative id and baseUrl", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "id": "/notes/1",
+    "content": "Hello",
+    "icon": {
+      "type": "Image",
+      "url": "/icons/icon.png",
+    },
+  };
+  const obj = await Object.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+    baseUrl: new URL("https://example.com/"),
+  });
+  const icon = await obj.getIcon();
+  deepStrictEqual(obj.id?.href, "https://example.com/notes/1");
+  deepStrictEqual(
+    icon?.url?.href,
+    "https://example.com/icons/icon.png",
+  );
+});
+
 test("Object.fromJsonLd() normalizes multiple Link icons", async () => {
   const json = {
     "@context": "https://www.w3.org/ns/activitystreams",

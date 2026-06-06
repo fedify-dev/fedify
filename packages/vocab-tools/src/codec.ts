@@ -475,11 +475,16 @@ export async function* generateDecoder(
     ) {
       if (v == null) continue;
     `;
+    const propertyBaseUrl = `(values["@id"] == null ||
+          values["@id"].startsWith("_:") ||
+          !URL.canParse(values["@id"] as string, options.baseUrl)
+        ? options.baseUrl
+        : new URL(values["@id"] as string, options.baseUrl))`;
     yield* generatePreprocessorBlock(
       property,
       getTypeNames(property.range, types),
       variable,
-      `(values["@id"] == null ? options.baseUrl : new URL(values["@id"]))`,
+      propertyBaseUrl,
       moduleVarNames,
     );
     if (!areAllScalarTypes(property.range, types)) {
@@ -503,7 +508,7 @@ export async function* generateDecoder(
           types,
           "v",
           "options",
-          `(values["@id"] == null ? options.baseUrl : new URL(values["@id"]))`,
+          propertyBaseUrl,
         )
       };
       if (typeof decoded === "undefined") continue;
@@ -517,7 +522,7 @@ export async function* generateDecoder(
         types,
         "v",
         "options",
-        `(values["@id"] == null ? options.baseUrl : new URL(values["@id"]))`,
+        propertyBaseUrl,
       );
       for (const code of decoders) yield code;
       yield `
