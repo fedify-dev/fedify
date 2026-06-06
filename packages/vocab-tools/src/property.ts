@@ -179,7 +179,13 @@ async function* generateProperty(
       `;
       for (const pp of property.preprocessors) {
         const varName = moduleVarNames.get(pp.module);
-        if (varName == null) continue;
+        if (varName == null) {
+          throw new Error(
+            `Preprocessor module "${pp.module}" is not registered ` +
+              `in the generated imports. Ensure all preprocessor ` +
+              `modules used in property schemas are available.`,
+          );
+        }
         yield `
           {
             const _result = await ${varName}[${
