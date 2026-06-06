@@ -404,7 +404,7 @@ export async function* generateDecoder(
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null) {
+    if (options.baseUrl == null && values["@id"] != null && URL.canParse(values["@id"])) {
       options = { ...options, baseUrl: new URL(values["@id"]) };
     }
   `;
@@ -432,7 +432,7 @@ export async function* generateDecoder(
   if (type.extends == null) {
     yield `
     const instance = new this(
-      { id: "@id" in values && URL.canParse(values["@id"] as string) ? new URL(values["@id"] as string) : undefined },
+      { id: "@id" in values && URL.canParse(values["@id"] as string, options.baseUrl) ? new URL(values["@id"] as string, options.baseUrl) : undefined },
       options,
     );
     `;

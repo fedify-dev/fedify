@@ -38,6 +38,7 @@ export const normalizeLinkToImage: PropertyPreprocessor<Image> = async (
   if (link.href == null) return undefined;
 
   return new Image({
+    id: link.id,
     url: link.href,
     mediaType: link.mediaType,
     names: link.names?.length != null && link.names.length > 0
