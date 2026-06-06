@@ -404,7 +404,7 @@ export async function* generateDecoder(
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && URL.canParse(values["@id"])) {
+    if (options.baseUrl == null && values["@id"] != null) {
       options = { ...options, baseUrl: new URL(values["@id"]) };
     }
   `;
@@ -479,7 +479,7 @@ export async function* generateDecoder(
       property,
       getTypeNames(property.range, types),
       variable,
-      `(values["@id"] == null || !URL.canParse(values["@id"], options.baseUrl) ? options.baseUrl : new URL(values["@id"], options.baseUrl))`,
+      `(values["@id"] == null ? options.baseUrl : new URL(values["@id"]))`,
       moduleVarNames,
     );
     if (!areAllScalarTypes(property.range, types)) {
@@ -503,7 +503,7 @@ export async function* generateDecoder(
           types,
           "v",
           "options",
-          `(values["@id"] == null || !URL.canParse(values["@id"], options.baseUrl) ? options.baseUrl : new URL(values["@id"], options.baseUrl))`,
+          `(values["@id"] == null ? options.baseUrl : new URL(values["@id"]))`,
         )
       };
       if (typeof decoded === "undefined") continue;
@@ -517,7 +517,7 @@ export async function* generateDecoder(
         types,
         "v",
         "options",
-        `(values["@id"] == null || !URL.canParse(values["@id"], options.baseUrl) ? options.baseUrl : new URL(values["@id"], options.baseUrl))`,
+        `(values["@id"] == null ? options.baseUrl : new URL(values["@id"]))`,
       );
       for (const code of decoders) yield code;
       yield `
