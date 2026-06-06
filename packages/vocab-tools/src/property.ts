@@ -177,7 +177,7 @@ async function* generateProperty(
         } catch (e) {
           if (!(e instanceof TypeError)) throw e;
         }
-      `;
+`;
     }
     yield `
       throw new TypeError("Expected an object of any type of: " +

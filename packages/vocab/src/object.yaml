@@ -137,6 +137,7 @@ properties:
     (vertical) and should be suitable for presentation at a small size.
   range:
   - "https://www.w3.org/ns/activitystreams#Image"
+  - "https://www.w3.org/ns/activitystreams#Link"
 
 - pluralName: images
   singularName: image

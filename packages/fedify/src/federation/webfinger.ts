@@ -330,12 +330,13 @@ async function handleWebFingerInternal<TContextData>(
       });
     }
   }
-  for await (const image of actor.getIcons()) {
-    if (image.url?.href == null) continue;
+  for await (const icon of actor.getIcons()) {
+    const href = icon instanceof LinkObject ? icon.href : icon.url;
+    if (href?.href == null) continue;
     links.push({
       rel: "http://webfinger.net/rel/avatar",
-      href: image.url.href.toString(),
-      ...(image.mediaType != null && { type: image.mediaType }),
+      href: href.href.toString(),
+      ...(icon.mediaType != null && { type: icon.mediaType }),
     });
   }
 

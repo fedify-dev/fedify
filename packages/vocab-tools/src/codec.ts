@@ -13,6 +13,10 @@ import {
   isCompactableType,
 } from "./type.ts";
 
+const AS_LINK_URI = "https://www.w3.org/ns/activitystreams#Link";
+const AS_OBJECT_URI = "https://www.w3.org/ns/activitystreams#Object";
+const XSD_ANY_URI = "http://www.w3.org/2001/XMLSchema#anyURI";
+
 export async function* generateEncoder(
   typeUri: string,
   types: Record<string, TypeSchema>,
@@ -402,6 +406,9 @@ export async function* generateDecoder(
   }
   for (const property of type.properties) {
     const variable = await getFieldName(property.uri, "");
+    const decodeBareIdAsLink = property.range.includes(AS_LINK_URI) &&
+      !property.range.includes(AS_OBJECT_URI) &&
+      !property.range.includes(XSD_ANY_URI);
     yield await generateField(property, types, "const ");
     const arrayVariable = `${variable}__array`;
     yield `
@@ -427,7 +434,20 @@ export async function* generateDecoder(
       if (v == null) continue;
     `;
     if (!areAllScalarTypes(property.range, types)) {
-      yield `
+      if (decodeBareIdAsLink) {
+        yield `
+      if (typeof v === "object" && "@id" in v && !("@type" in v)
+          && globalThis.Object.keys(v).length === 1) {
+        const href =
+          !URL.canParse(v["@id"]) && v["@id"].startsWith("at://")
+            ? new URL("at://" + encodeURIComponent(v["@id"].substring(5)))
+            : new URL(v["@id"]);
+        ${variable}.push(new Link({ href }));
+        continue;
+      }
+      `;
+      } else {
+        yield `
       if (typeof v === "object" && "@id" in v && !("@type" in v)
           && globalThis.Object.keys(v).length === 1) {
         ${variable}.push(
@@ -438,6 +458,7 @@ export async function* generateDecoder(
         continue;
       }
       `;
+      }
     }
     if (property.range.length == 1) {
       yield `
@@ -468,7 +489,7 @@ export async function* generateDecoder(
       ;
       if (typeof decoded === "undefined") continue;
       ${variable}.push(decoded);
-      `;
+`;
     }
     yield `
     }

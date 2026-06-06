@@ -32,6 +32,7 @@ import {
   Endpoints,
   Follow,
   Hashtag,
+  Image,
   InteractionPolicy,
   InteractionRule,
   Link,
@@ -1766,6 +1767,28 @@ test("Link.fromJsonLd()", async () => {
   );
 });
 
+test("Person.fromJsonLd() treats URL string icon as Link", async () => {
+  const iconUrl = new URL("https://example.com/static/favicon.png");
+  const unavailableDocumentLoader = () => {
+    throw new Error("direct icon URL should not be dereferenced");
+  };
+  const person = await Person.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id: "https://example.com/@alice",
+    type: "Person",
+    icon: iconUrl.href,
+  }, {
+    documentLoader: unavailableDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+
+  const icon = await person.getIcon({
+    documentLoader: unavailableDocumentLoader,
+  }) as unknown;
+  assertInstanceOf(icon, Link);
+  deepStrictEqual((icon as Link).href, iconUrl);
+});
+
 test("Person.fromJsonLd() with relative URLs", async () => {
   const json = {
     "@context": [
@@ -1784,8 +1807,9 @@ test("Person.fromJsonLd() with relative URLs", async () => {
   });
 
   const icon = await person.getIcon();
+  assertInstanceOf(icon, Image);
   deepStrictEqual(
-    icon?.url,
+    icon.url,
     new URL("https://example.com/avatars/test-avatar.jpg"),
   );
 
@@ -1810,8 +1834,9 @@ test("Person.fromJsonLd() with relative URLs", async () => {
   });
 
   const icon2 = await person2.getIcon();
+  assertInstanceOf(icon2, Image);
   deepStrictEqual(
-    icon2?.url,
+    icon2.url,
     new URL("https://media.example.com/avatars/test-avatar.jpg"),
   );
 });
@@ -1838,8 +1863,9 @@ test("Person.fromJsonLd() with relative URLs and baseUrl", async () => {
   });
 
   const icon = await personWithBase.getIcon();
+  assertInstanceOf(icon, Image);
   deepStrictEqual(
-    icon?.url,
+    icon.url,
     new URL("https://example.com/avatars/test-avatar.jpg"),
   );
 });
