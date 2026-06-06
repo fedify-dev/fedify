@@ -2,6 +2,7 @@ import { transformerTwoslash } from "@shikijs/vitepress-twoslash";
 import abbr from "markdown-it-abbr";
 import deflist from "markdown-it-deflist";
 import footnote from "markdown-it-footnote";
+import taskLists from "@hackmd/markdown-it-task-lists";
 import { jsrRef } from "markdown-it-jsr-ref";
 import { readFileSync } from "node:fs";
 import process from "node:process";
@@ -295,6 +296,7 @@ export default withMermaid(defineConfig({
       md.use(abbr);
       md.use(deflist);
       md.use(footnote);
+      md.use(taskLists);
       md.use(groupIconMdPlugin);
       for (const jsrRefPlugin of jsrRefPlugins) {
         md.use(jsrRefPlugin);
