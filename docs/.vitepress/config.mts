@@ -1,8 +1,8 @@
+import taskLists from "@hackmd/markdown-it-task-lists";
 import { transformerTwoslash } from "@shikijs/vitepress-twoslash";
 import abbr from "markdown-it-abbr";
 import deflist from "markdown-it-deflist";
 import footnote from "markdown-it-footnote";
-import taskLists from "@hackmd/markdown-it-task-lists";
 import { jsrRef } from "markdown-it-jsr-ref";
 import { readFileSync } from "node:fs";
 import process from "node:process";
@@ -15,15 +15,24 @@ import {
 import llmstxt from "vitepress-plugin-llms";
 import { withMermaid } from "vitepress-plugin-mermaid";
 
-const jsrRefPlugins: (Awaited<ReturnType<typeof jsrRef>>)[] = [];
-for (const pkg of ["fedify", "vocab", "vocab-runtime", "webfinger", "debugger", "testing"]) {
-  const jsrRefPlugin = await jsrRef({
-    package: `@fedify/${pkg}`,
-    version: process.env.JSR_REF_VERSION ?? "unstable",
-    cachePath: `.jsr-cache-${pkg}.json`,
-  });
-  jsrRefPlugins.push(jsrRefPlugin);
-}
+const jsrRefVersion = process.env.JSR_REF_VERSION ?? "unstable";
+const jsrRefPackages = [
+  ["@fedify/fedify", ".jsr-cache.json"],
+  ["@fedify/vocab", ".jsr-vocab-cache.json"],
+  ["@fedify/vocab-runtime", ".jsr-vocab-runtime-cache.json"],
+  ["@fedify/webfinger", ".jsr-webfinger-cache.json"],
+  ["@fedify/debugger", ".jsr-debugger-cache.json"],
+  ["@fedify/testing", ".jsr-testing-cache.json"],
+] as const;
+const jsrRefPlugins = await Promise.all(
+  jsrRefPackages.map(([packageName, cachePath]) =>
+    jsrRef({
+      package: packageName,
+      version: jsrRefVersion,
+      cachePath,
+    })
+  ),
+);
 
 let extraNav: { text: string; link: string }[] = [];
 if (process.env.EXTRA_NAV_TEXT && process.env.EXTRA_NAV_LINK) {
@@ -103,6 +112,15 @@ const TUTORIAL = {
     },
     { text: "Learning the basics", link: "/tutorial/basics.md" },
     { text: "Creating a microblog", link: "/tutorial/microblog.md" },
+    {
+      text: "Creating an image sharing service",
+      link: "/tutorial/content-sharing.md",
+    },
+    { text: "Building a federated blog", link: "/tutorial/astro-blog.md" },
+    {
+      text: "Building a threadiverse community",
+      link: "/tutorial/threadiverse.md",
+    },
   ],
   activeMatch: "/tutorial",
 };
@@ -116,6 +134,7 @@ const MANUAL = {
     { text: "Vocabulary", link: "/manual/vocab.md" },
     { text: "Actor dispatcher", link: "/manual/actor.md" },
     { text: "Inbox listeners", link: "/manual/inbox.md" },
+    { text: "Outbox listeners", link: "/manual/outbox.md" },
     { text: "Sending activities", link: "/manual/send.md" },
     { text: "Collections", link: "/manual/collections.md" },
     { text: "Object dispatcher", link: "/manual/object.md" },
@@ -126,13 +145,16 @@ const MANUAL = {
     { text: "Pragmatics", link: "/manual/pragmatics.md" },
     { text: "Key–value store", link: "/manual/kv.md" },
     { text: "Message queue", link: "/manual/mq.md" },
+    { text: "Circuit breaker", link: "/manual/circuit-breaker.md" },
     { text: "Integration", link: "/manual/integration.md" },
+    { text: "Migration", link: "/manual/migrate.md" },
     { text: "Relay", link: "/manual/relay.md" },
     { text: "Testing", link: "/manual/test.md" },
     { text: "Debugging", link: "/manual/debug.md" },
     { text: "Linting", link: "/manual/lint.md" },
     { text: "Logging", link: "/manual/log.md" },
     { text: "OpenTelemetry", link: "/manual/opentelemetry.md" },
+    { text: "Benchmarking", link: "/manual/benchmarking.md" },
     { text: "Deployment", link: "/manual/deploy.md" },
   ],
   activeMatch: "/manual",
@@ -270,12 +292,15 @@ export default withMermaid(defineConfig({
       transformerTwoslash({
         twoslashOptions: {
           compilerOptions: {
-            ignoreDeprecations: "6.0",
             moduleResolution: ModuleResolutionKind.Bundler,
             module: ModuleKind.ESNext,
             target: ScriptTarget.ESNext,
             experimentalDecorators: true, // For @fedify/nestjs
             emitDecoratorMetadata: true, // For @fedify/nestjs
+            // Silences TS5101 about the `baseUrl` injected by @typescript/vfs
+            // when Twoslash spins up its virtual TS environment; the option
+            // is deprecated in TypeScript 6.0 and removed in 7.0.
+            ignoreDeprecations: "6.0",
             lib: ["dom", "dom.iterable", "esnext"],
             types: [
               "dom",
@@ -311,14 +336,20 @@ export default withMermaid(defineConfig({
     plugins: [
       groupIconVitePlugin(),
       llmstxt({
-        ignoreFiles: [
-          "changelog.md",
-          "contribute.md",
-          "README.md",
-          "security.md",
-          "sponsors.md",
-          "tutorial.md",
-        ],
+        ignoreFilesPerOutput: {
+          llmsTxt: [
+            "changelog.md",
+            "contribute.md",
+            "README.md",
+            "sponsors.md",
+          ],
+          llmsFullTxt: [
+            "changelog.md",
+            "contribute.md",
+            "README.md",
+            "sponsors.md",
+          ],
+        },
       }),
     ],
   },
