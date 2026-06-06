@@ -2034,6 +2034,24 @@ test(
   },
 );
 
+test(
+  "Object.fromJsonLd() does not resolve blank node @id against baseUrl",
+  async () => {
+    const json = {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "Note",
+      "id": "_:b0",
+    };
+    const obj = await Object.fromJsonLd(json, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      baseUrl: new URL("https://example.com/"),
+    });
+    // Blank node identifiers must not be resolved against baseUrl.
+    deepStrictEqual(obj.id, null);
+  },
+);
+
 test("Object.fromJsonLd() normalizes multiple Link icons", async () => {
   const json = {
     "@context": "https://www.w3.org/ns/activitystreams",
