@@ -129,7 +129,7 @@ export interface PropertySchemaBase {
    * property's declared range, `undefined` when it did not handle the value,
    * or an `Error` when it recognized the value but failed while converting it.
    *
-   * {@link module} is resolved from the generated vocabulary source file
+   * `module` is resolved from the generated vocabulary source file
    * and imported dynamically at decode time.
    */
   preprocessors?: PropertyPreprocessorSchema[];

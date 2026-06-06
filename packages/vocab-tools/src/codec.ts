@@ -437,7 +437,7 @@ export async function* generateDecoder(
   if (type.extends == null) {
     yield `
     const instance = new this(
-      { id: "@id" in values ? new URL(values["@id"] as string) : undefined },
+      { id: _resolvedUrl },
       options,
     );
     `;
