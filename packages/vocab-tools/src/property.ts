@@ -287,11 +287,24 @@ async function* generateProperty(
             ${JSON.stringify(property.compactName)}];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
+      `;
+        if (
+          property.preprocessors != null &&
+          property.preprocessors.length > 0
+        ) {
+          yield `
             v = await this.#${property.singularName}_fromJsonLd(doc, {
               ...options,
               baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
                 undefined,
             });
+      `;
+        } else {
+          yield `
+            v = await this.#${property.singularName}_fromJsonLd(doc, options);
+      `;
+        }
+        yield `
           }
         }
         `;
@@ -390,11 +403,24 @@ async function* generateProperty(
               ${JSON.stringify(property.compactName)}];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
+      `;
+        if (
+          property.preprocessors != null &&
+          property.preprocessors.length > 0
+        ) {
+          yield `
               v = await this.#${property.singularName}_fromJsonLd(obj, {
                 ...options,
                 baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
                   undefined,
               });
+      `;
+        } else {
+          yield `
+              v = await this.#${property.singularName}_fromJsonLd(obj, options);
+      `;
+        }
+        yield `
             }
           }
         `;
