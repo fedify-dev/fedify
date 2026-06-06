@@ -10615,7 +10615,7 @@ get urls(): ((URL | Link))[] {
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
       options,
     );
     
@@ -18469,7 +18469,7 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
       options,
     );
     const _4ZHbBuK7PrsvGgrjM8wgc6KMWjav_name: ((string | LanguageString))[] = [];
@@ -19060,7 +19060,7 @@ unit?: string | null;numericalValue?: Decimal | null;}
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
       options,
     );
     const _27fgyFbosTtMAhuepJH8K3ZGURT6: (string)[] = [];
@@ -21114,7 +21114,7 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
       options,
     );
     const _3JkwVLb3BNCwCWdsb5RftGAg8vyT_canLike: (InteractionRule)[] = [];
@@ -21867,7 +21867,7 @@ get manualApprovals(): (URL)[] {
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
       options,
     );
     const _2rFyCF14HoyNjitj9PmCzek5iSsg_automaticApproval: (URL)[] = [];
@@ -26558,7 +26558,7 @@ get endpoints(): (URL)[] {
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
       options,
     );
     const _2KM4fetG6FTJ1cphj76rzJ8Dyv7p_serviceEndpoint: (URL)[] = [];
@@ -27735,7 +27735,7 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
       options,
     );
     const _3RurJsa7tnptyqMFR5hDGcP9pMs5_cryptosuite: (\\"eddsa-jcs-2022\\")[] = [];
@@ -28709,7 +28709,7 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
       options,
     );
     
@@ -29596,7 +29596,7 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
       options,
     );
     
@@ -30436,7 +30436,7 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
       options,
     );
     const _38VmZKmXJSBy3AvgqNa9GVqbdphy_action: (string)[] = [];
@@ -50391,7 +50391,7 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
       options,
     );
     const _2JCYDbSxEHCCLdBYed33cCETfGyR_proxyUrl: (URL)[] = [];
@@ -59774,7 +59774,7 @@ get names(): ((string | LanguageString))[] {
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
       options,
     );
     const _pVjLsybKQdmkjuU7MHjiVmNnuj7_href: (URL)[] = [];
@@ -93635,7 +93635,7 @@ get contents(): ((string | LanguageString))[] {
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
       options,
     );
     const _4HuuRSdSrXq8Jj2J9gcdYfoCzeuz_content: ((string | LanguageString))[] = [];
