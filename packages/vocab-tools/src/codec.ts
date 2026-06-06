@@ -404,8 +404,8 @@ export async function* generateDecoder(
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null) {
-      options = { ...options, baseUrl: new URL(values["@id"]) };
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+      options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   `;
   const subtypes = getSubtypes(typeUri, types, true);

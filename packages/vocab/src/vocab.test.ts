@@ -2052,6 +2052,57 @@ test(
   },
 );
 
+test(
+  "Object.fromJsonLd() handles blank node @id without baseUrl",
+  () => {
+    const obj = Object.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "Note",
+      "id": "_:b0",
+    }, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    });
+    // Blank node identifier without baseUrl must not throw.
+    return obj.then((o) => deepStrictEqual(o.id, null));
+  },
+);
+
+test(
+  "Object.getAttachments() resolves relative url via stored _baseUrl",
+  async () => {
+    const json = {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "Note",
+      "content": "Hello",
+      "attachment": {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        "type": "Document",
+        "url": "/files/report.pdf",
+        "mediaType": "application/pdf",
+      },
+    };
+    const obj = await Object.fromJsonLd(json, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      baseUrl: new URL("https://example.com/"),
+    });
+    // getAttachments() without explicit baseUrl should use stored _baseUrl.
+    const attachments = [];
+    for await (const a of obj.getAttachments()) {
+      attachments.push(a);
+    }
+    deepStrictEqual(attachments.length, 1);
+    // deno-lint-ignore no-explicit-any
+    const doc = attachments[0] as any;
+    deepStrictEqual(
+      doc?.url?.href,
+      "https://example.com/files/report.pdf",
+    );
+    deepStrictEqual(doc?.mediaType, "application/pdf");
+  },
+);
+
 test("Object.fromJsonLd() normalizes multiple Link icons", async () => {
   const json = {
     "@context": "https://www.w3.org/ns/activitystreams",

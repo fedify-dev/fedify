@@ -309,7 +309,11 @@ async function* generateProperty(
       `;
         } else {
           yield `
-            v = await this.#${property.singularName}_fromJsonLd(doc, options);
+            v = await this.#${property.singularName}_fromJsonLd(doc, {
+              ...options,
+              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                this._baseUrl,
+            });
       `;
         }
         yield `
@@ -425,7 +429,11 @@ async function* generateProperty(
       `;
         } else {
           yield `
-              v = await this.#${property.singularName}_fromJsonLd(obj, options);
+              v = await this.#${property.singularName}_fromJsonLd(obj, {
+                ...options,
+                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
+                  this._baseUrl,
+              });
       `;
         }
         yield `
