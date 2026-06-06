@@ -404,6 +404,9 @@ export async function* generateDecoder(
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
+    if (values["@id"] != null && !values["@id"].startsWith("_:") && !URL.canParse(values["@id"], options.baseUrl)) {
+      throw new TypeError("Invalid @id: " + values["@id"]);
+    }
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && URL.canParse(values["@id"])) {
       options = { ...options, baseUrl: new URL(values["@id"]) };
     }

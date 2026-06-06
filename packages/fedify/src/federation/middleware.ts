@@ -410,7 +410,7 @@ function isPermanentInboxParseError(error: unknown): error is Error {
       (error.name === "jsonld.SyntaxError" &&
         !isRemoteContextLoadingFailure(error)))) ||
     (error instanceof TypeError &&
-      (/^(Invalid JSON-LD:|Invalid type:|Unexpected type:)/
+      (/^(Invalid JSON-LD:|Invalid type:|Unexpected type:|Invalid @id:)/
         .test(error.message) ||
         isInvalidUrlTypeError(error)));
 }
