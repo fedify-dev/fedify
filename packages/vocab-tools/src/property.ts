@@ -296,26 +296,13 @@ async function* generateProperty(
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
       `;
-        if (
-          property.preprocessors != null &&
-          property.preprocessors.length > 0
-        ) {
-          yield `
+        yield `
             v = await this.#${property.singularName}_fromJsonLd(doc, {
               ...options,
               baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
                 this._baseUrl,
             });
       `;
-        } else {
-          yield `
-            v = await this.#${property.singularName}_fromJsonLd(doc, {
-              ...options,
-              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
-                this._baseUrl,
-            });
-      `;
-        }
         yield `
           }
         }
@@ -416,26 +403,13 @@ async function* generateProperty(
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
       `;
-        if (
-          property.preprocessors != null &&
-          property.preprocessors.length > 0
-        ) {
-          yield `
+        yield `
               v = await this.#${property.singularName}_fromJsonLd(obj, {
                 ...options,
                 baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
                   this._baseUrl,
               });
       `;
-        } else {
-          yield `
-              v = await this.#${property.singularName}_fromJsonLd(obj, {
-                ...options,
-                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
-                  this._baseUrl,
-              });
-      `;
-        }
         yield `
             }
           }

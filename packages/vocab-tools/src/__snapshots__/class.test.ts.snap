@@ -10425,7 +10425,7 @@ get urls(): ((URL | Link))[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -13273,7 +13273,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -14283,7 +14283,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -17372,7 +17372,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -18255,7 +18255,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -18765,7 +18765,7 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -19358,7 +19358,7 @@ unit?: string | null;numericalValue?: Decimal | null;}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -20361,7 +20361,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -20818,7 +20818,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -21416,7 +21416,7 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -22187,7 +22187,7 @@ get manualApprovals(): (URL)[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -23247,7 +23247,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -23703,7 +23703,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -24619,7 +24619,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -25075,7 +25075,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -25990,7 +25990,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -26446,7 +26446,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -26898,7 +26898,7 @@ get endpoints(): (URL)[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -27259,7 +27259,7 @@ endpoints?: (URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -28084,7 +28084,7 @@ cryptosuite?: "eddsa-jcs-2022" | null;verificationMethod?: Multikey | URL | null
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -29066,7 +29066,7 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -29977,7 +29977,7 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -30839,7 +30839,7 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -31731,7 +31731,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -32232,7 +32232,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -32572,7 +32572,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -32907,7 +32907,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -38522,7 +38522,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -40081,7 +40081,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -40428,7 +40428,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -41433,7 +41433,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -42082,7 +42082,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -42511,7 +42511,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -42845,7 +42845,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -43185,7 +43185,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -47056,7 +47056,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -49001,7 +49001,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -49508,7 +49508,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -49842,7 +49842,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -50174,7 +50174,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -50975,7 +50975,7 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -51688,7 +51688,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -52023,7 +52023,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -52359,7 +52359,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -57974,7 +57974,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -60512,7 +60512,7 @@ get names(): ((string | LanguageString))[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -61211,7 +61211,7 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -61548,7 +61548,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -61883,7 +61883,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -62221,7 +62221,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -62555,7 +62555,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -62889,7 +62889,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -63223,7 +63223,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -63555,7 +63555,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -63853,7 +63853,7 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -64188,7 +64188,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -65195,7 +65195,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -66005,7 +66005,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -66805,7 +66805,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -72531,7 +72531,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -74092,7 +74092,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -79707,7 +79707,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -81724,7 +81724,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -82609,7 +82609,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -84292,7 +84292,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -84992,7 +84992,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -85326,7 +85326,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -86852,7 +86852,7 @@ relationships?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -87369,7 +87369,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -92984,7 +92984,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -94761,7 +94761,7 @@ get contents(): ((string | LanguageString))[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -95193,7 +95193,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -95527,7 +95527,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -96077,7 +96077,7 @@ get formerTypes(): ($EntityType)[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -96512,7 +96512,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -96851,7 +96851,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -97188,7 +97188,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -97525,7 +97525,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   
@@ -97858,7 +97858,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:")) {
+    if (options.baseUrl == null && values["@id"] != null && !(values["@id"] as string).startsWith("_:") && URL.canParse(values["@id"] as string)) {
       options = { ...options, baseUrl: new URL(values["@id"] as string) };
     }
   

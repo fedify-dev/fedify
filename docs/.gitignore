@@ -1,5 +1,5 @@
 .jsr-cache.json
-.jsr-cache-*.json
+.jsr-*-cache.json
 .vitepress/cache/
 .vitepress/dist/
 node_modules/
