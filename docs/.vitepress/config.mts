@@ -16,7 +16,7 @@ import llmstxt from "vitepress-plugin-llms";
 import { withMermaid } from "vitepress-plugin-mermaid";
 
 const jsrRefPlugins: (Awaited<ReturnType<typeof jsrRef>>)[] = [];
-for (const pkg of ["fedify", "vocab", "vocab-runtime", "webfinger"]) {
+for (const pkg of ["fedify", "vocab", "vocab-runtime", "webfinger", "debugger", "testing"]) {
   const jsrRefPlugin = await jsrRef({
     package: `@fedify/${pkg}`,
     version: process.env.JSR_REF_VERSION ?? "unstable",

@@ -171,11 +171,12 @@ async function* generateProperty(
       property.preprocessors.length > 0
     ) {
       yield `
-        const _expanded = await jsonld.expand(jsonLd, {
-          documentLoader: contextLoader,
-          keepFreeFloatingNodes: true,
-        });
-        for (const _pp_obj of _expanded) {
+        if (jsonLd != null && typeof jsonLd === "object") {
+          const _expanded = await jsonld.expand(jsonLd, {
+            documentLoader: contextLoader,
+            keepFreeFloatingNodes: true,
+          });
+          for (const _pp_obj of _expanded) {
       `;
       for (const pp of property.preprocessors) {
         const varName = moduleVarNames.get(pp.module);
@@ -187,23 +188,24 @@ async function* generateProperty(
           );
         }
         yield `
-          {
-            const _result = await ${varName}[${
+            {
+              const _result = await ${varName}[${
           JSON.stringify(pp.function)
         }](_pp_obj, {
-              documentLoader,
-              contextLoader,
-              tracerProvider,
-              baseUrl,
-            });
-            if (_result instanceof Error) throw _result;
-            if (_result !== undefined) return _result as ${
+                documentLoader,
+                contextLoader,
+                tracerProvider,
+                baseUrl,
+              });
+              if (_result instanceof Error) throw _result;
+              if (_result !== undefined) return _result as ${
           getTypeNames(property.range, types)
         };
-          }
+            }
         `;
       }
       yield `
+          }
         }
       `;
     }
