@@ -1973,6 +1973,67 @@ test("Object.fromJsonLd() decodes Image icon with relative id and baseUrl", asyn
   );
 });
 
+test(
+  "Object.getIcon() resolves relative Link href without id via cached re-parse",
+  async () => {
+    const json = {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "Note",
+      "content": "Hello",
+      "icon": {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        "type": "Link",
+        "href": "/icons/star.png",
+        "mediaType": "image/png",
+      },
+    };
+    const obj = await Object.fromJsonLd(json, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      baseUrl: new URL("https://example.com/"),
+    });
+    // getIcon() is called WITHOUT explicit baseUrl — the accessor
+    // should reuse the baseUrl that was set during fromJsonLd().
+    const icon = await obj.getIcon();
+    deepStrictEqual(
+      icon?.url?.href,
+      "https://example.com/icons/star.png",
+    );
+    deepStrictEqual(icon?.mediaType, "image/png");
+  },
+);
+
+test(
+  "Object.getIcon() ignores mutation of caller's baseUrl after fromJsonLd()",
+  async () => {
+    const origBaseUrl = new URL("https://example.com/");
+    const json = {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "Note",
+      "content": "Hello",
+      "icon": {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        "type": "Link",
+        "href": "/icons/star.png",
+        "mediaType": "image/png",
+      },
+    };
+    const obj = await Object.fromJsonLd(json, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      baseUrl: origBaseUrl,
+    });
+    // Mutate the caller's URL after construction.
+    origBaseUrl.href = "https://attacker.example/";
+    const icon = await obj.getIcon();
+    deepStrictEqual(
+      icon?.url?.href,
+      "https://example.com/icons/star.png",
+    );
+    deepStrictEqual(icon?.mediaType, "image/png");
+  },
+);
+
 test("Object.fromJsonLd() normalizes multiple Link icons", async () => {
   const json = {
     "@context": "https://www.w3.org/ns/activitystreams",

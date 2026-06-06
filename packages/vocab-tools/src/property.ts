@@ -304,7 +304,7 @@ async function* generateProperty(
             v = await this.#${property.singularName}_fromJsonLd(doc, {
               ...options,
               baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
-                undefined,
+                this._baseUrl,
             });
       `;
         } else {
@@ -420,7 +420,7 @@ async function* generateProperty(
               v = await this.#${property.singularName}_fromJsonLd(obj, {
                 ...options,
                 baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
-                  undefined,
+                  this._baseUrl,
               });
       `;
         } else {

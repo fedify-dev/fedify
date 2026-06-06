@@ -97,6 +97,8 @@ export async function* generateConstructor(
     this.#documentLoader = options.documentLoader;
     this.#contextLoader = options.contextLoader;
     this.#tracerProvider = options.tracerProvider;
+    const baseUrl = (options as { baseUrl?: URL }).baseUrl;
+    this.#_baseUrl = baseUrl == null ? undefined : new URL(baseUrl.href);
     if ("$warning" in options) {
       this.#warning = options.$warning as unknown as {
         category: string[];

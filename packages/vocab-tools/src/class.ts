@@ -58,6 +58,7 @@ async function* generateClass(
       values?: Record<string, unknown>;
     };
     #cachedJsonLd?: unknown;
+    readonly #_baseUrl?: URL;
     readonly id: URL | null;
 
     protected get _documentLoader(): DocumentLoader | undefined {
@@ -86,6 +87,10 @@ async function* generateClass(
 
     protected set _cachedJsonLd(value: unknown | undefined) {
       this.#cachedJsonLd = value;
+    }
+
+    protected get _baseUrl(): URL | undefined {
+      return this.#_baseUrl;
     }
     `;
   }

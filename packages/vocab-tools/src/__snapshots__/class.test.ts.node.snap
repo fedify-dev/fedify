@@ -46,6 +46,7 @@ export class Object {
       values?: Record<string, unknown>;
     };
     #cachedJsonLd?: unknown;
+    readonly #_baseUrl?: URL;
     readonly id: URL | null;
 
     protected get _documentLoader(): DocumentLoader | undefined {
@@ -74,6 +75,10 @@ export class Object {
 
     protected set _cachedJsonLd(value: unknown | undefined) {
       this.#cachedJsonLd = value;
+    }
+
+    protected get _baseUrl(): URL | undefined {
+      return this.#_baseUrl;
     }
     
     /**
@@ -203,6 +208,8 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     this.#documentLoader = options.documentLoader;
     this.#contextLoader = options.contextLoader;
     this.#tracerProvider = options.tracerProvider;
+    const baseUrl = (options as { baseUrl?: URL }).baseUrl;
+    this.#_baseUrl = baseUrl == null ? undefined : new URL(baseUrl.href);
     if (\\"$warning\\" in options) {
       this.#warning = options.$warning as unknown as {
         category: string[];
@@ -3782,7 +3789,7 @@ get names(): ((string | LanguageString))[] {
             v = await this.#icon_fromJsonLd(doc, {
               ...options,
               baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
-                undefined,
+                this._baseUrl,
             });
       
           }
@@ -3884,7 +3891,7 @@ get names(): ((string | LanguageString))[] {
               v = await this.#icon_fromJsonLd(obj, {
                 ...options,
                 baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
-                  undefined,
+                  this._baseUrl,
               });
       
             }
@@ -4129,7 +4136,7 @@ get names(): ((string | LanguageString))[] {
             v = await this.#image_fromJsonLd(doc, {
               ...options,
               baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
-                undefined,
+                this._baseUrl,
             });
       
           }
@@ -4231,7 +4238,7 @@ get names(): ((string | LanguageString))[] {
               v = await this.#image_fromJsonLd(obj, {
                 ...options,
                 baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
-                  undefined,
+                  this._baseUrl,
               });
       
             }
@@ -18146,6 +18153,7 @@ export class PropertyValue {
       values?: Record<string, unknown>;
     };
     #cachedJsonLd?: unknown;
+    readonly #_baseUrl?: URL;
     readonly id: URL | null;
 
     protected get _documentLoader(): DocumentLoader | undefined {
@@ -18174,6 +18182,10 @@ export class PropertyValue {
 
     protected set _cachedJsonLd(value: unknown | undefined) {
       this.#cachedJsonLd = value;
+    }
+
+    protected get _baseUrl(): URL | undefined {
+      return this.#_baseUrl;
     }
     
     /**
@@ -18206,6 +18218,8 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
     this.#documentLoader = options.documentLoader;
     this.#contextLoader = options.contextLoader;
     this.#tracerProvider = options.tracerProvider;
+    const baseUrl = (options as { baseUrl?: URL }).baseUrl;
+    this.#_baseUrl = baseUrl == null ? undefined : new URL(baseUrl.href);
     if (\\"$warning\\" in options) {
       this.#warning = options.$warning as unknown as {
         category: string[];
@@ -18747,6 +18761,7 @@ export class Measure {
       values?: Record<string, unknown>;
     };
     #cachedJsonLd?: unknown;
+    readonly #_baseUrl?: URL;
     readonly id: URL | null;
 
     protected get _documentLoader(): DocumentLoader | undefined {
@@ -18775,6 +18790,10 @@ export class Measure {
 
     protected set _cachedJsonLd(value: unknown | undefined) {
       this.#cachedJsonLd = value;
+    }
+
+    protected get _baseUrl(): URL | undefined {
+      return this.#_baseUrl;
     }
     
     /**
@@ -18807,6 +18826,8 @@ unit?: string | null;numericalValue?: Decimal | null;}
     this.#documentLoader = options.documentLoader;
     this.#contextLoader = options.contextLoader;
     this.#tracerProvider = options.tracerProvider;
+    const baseUrl = (options as { baseUrl?: URL }).baseUrl;
+    this.#_baseUrl = baseUrl == null ? undefined : new URL(baseUrl.href);
     if (\\"$warning\\" in options) {
       this.#warning = options.$warning as unknown as {
         category: string[];
@@ -20694,6 +20715,7 @@ export class InteractionPolicy {
       values?: Record<string, unknown>;
     };
     #cachedJsonLd?: unknown;
+    readonly #_baseUrl?: URL;
     readonly id: URL | null;
 
     protected get _documentLoader(): DocumentLoader | undefined {
@@ -20722,6 +20744,10 @@ export class InteractionPolicy {
 
     protected set _cachedJsonLd(value: unknown | undefined) {
       this.#cachedJsonLd = value;
+    }
+
+    protected get _baseUrl(): URL | undefined {
+      return this.#_baseUrl;
     }
     
     /**
@@ -20756,6 +20782,8 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
     this.#documentLoader = options.documentLoader;
     this.#contextLoader = options.contextLoader;
     this.#tracerProvider = options.tracerProvider;
+    const baseUrl = (options as { baseUrl?: URL }).baseUrl;
+    this.#_baseUrl = baseUrl == null ? undefined : new URL(baseUrl.href);
     if (\\"$warning\\" in options) {
       this.#warning = options.$warning as unknown as {
         category: string[];
@@ -21486,6 +21514,7 @@ export class InteractionRule {
       values?: Record<string, unknown>;
     };
     #cachedJsonLd?: unknown;
+    readonly #_baseUrl?: URL;
     readonly id: URL | null;
 
     protected get _documentLoader(): DocumentLoader | undefined {
@@ -21514,6 +21543,10 @@ export class InteractionRule {
 
     protected set _cachedJsonLd(value: unknown | undefined) {
       this.#cachedJsonLd = value;
+    }
+
+    protected get _baseUrl(): URL | undefined {
+      return this.#_baseUrl;
     }
     
     /**
@@ -21548,6 +21581,8 @@ manualApprovals?: (URL)[];}
     this.#documentLoader = options.documentLoader;
     this.#contextLoader = options.contextLoader;
     this.#tracerProvider = options.tracerProvider;
+    const baseUrl = (options as { baseUrl?: URL }).baseUrl;
+    this.#_baseUrl = baseUrl == null ? undefined : new URL(baseUrl.href);
     if (\\"$warning\\" in options) {
       this.#warning = options.$warning as unknown as {
         category: string[];
@@ -26281,6 +26316,7 @@ export class DidService {
       values?: Record<string, unknown>;
     };
     #cachedJsonLd?: unknown;
+    readonly #_baseUrl?: URL;
     readonly id: URL | null;
 
     protected get _documentLoader(): DocumentLoader | undefined {
@@ -26309,6 +26345,10 @@ export class DidService {
 
     protected set _cachedJsonLd(value: unknown | undefined) {
       this.#cachedJsonLd = value;
+    }
+
+    protected get _baseUrl(): URL | undefined {
+      return this.#_baseUrl;
     }
     
     /**
@@ -26341,6 +26381,8 @@ endpoints?: (URL)[];}
     this.#documentLoader = options.documentLoader;
     this.#contextLoader = options.contextLoader;
     this.#tracerProvider = options.tracerProvider;
+    const baseUrl = (options as { baseUrl?: URL }).baseUrl;
+    this.#_baseUrl = baseUrl == null ? undefined : new URL(baseUrl.href);
     if (\\"$warning\\" in options) {
       this.#warning = options.$warning as unknown as {
         category: string[];
@@ -27085,6 +27127,7 @@ export class DataIntegrityProof {
       values?: Record<string, unknown>;
     };
     #cachedJsonLd?: unknown;
+    readonly #_baseUrl?: URL;
     readonly id: URL | null;
 
     protected get _documentLoader(): DocumentLoader | undefined {
@@ -27113,6 +27156,10 @@ export class DataIntegrityProof {
 
     protected set _cachedJsonLd(value: unknown | undefined) {
       this.#cachedJsonLd = value;
+    }
+
+    protected get _baseUrl(): URL | undefined {
+      return this.#_baseUrl;
     }
     
     /**
@@ -27150,6 +27197,8 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
     this.#documentLoader = options.documentLoader;
     this.#contextLoader = options.contextLoader;
     this.#tracerProvider = options.tracerProvider;
+    const baseUrl = (options as { baseUrl?: URL }).baseUrl;
+    this.#_baseUrl = baseUrl == null ? undefined : new URL(baseUrl.href);
     if (\\"$warning\\" in options) {
       this.#warning = options.$warning as unknown as {
         category: string[];
@@ -28124,6 +28173,7 @@ export class CryptographicKey {
       values?: Record<string, unknown>;
     };
     #cachedJsonLd?: unknown;
+    readonly #_baseUrl?: URL;
     readonly id: URL | null;
 
     protected get _documentLoader(): DocumentLoader | undefined {
@@ -28152,6 +28202,10 @@ export class CryptographicKey {
 
     protected set _cachedJsonLd(value: unknown | undefined) {
       this.#cachedJsonLd = value;
+    }
+
+    protected get _baseUrl(): URL | undefined {
+      return this.#_baseUrl;
     }
     
     /**
@@ -28186,6 +28240,8 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
     this.#documentLoader = options.documentLoader;
     this.#contextLoader = options.contextLoader;
     this.#tracerProvider = options.tracerProvider;
+    const baseUrl = (options as { baseUrl?: URL }).baseUrl;
+    this.#_baseUrl = baseUrl == null ? undefined : new URL(baseUrl.href);
     if (\\"$warning\\" in options) {
       this.#warning = options.$warning as unknown as {
         category: string[];
@@ -29017,6 +29073,7 @@ export class Multikey {
       values?: Record<string, unknown>;
     };
     #cachedJsonLd?: unknown;
+    readonly #_baseUrl?: URL;
     readonly id: URL | null;
 
     protected get _documentLoader(): DocumentLoader | undefined {
@@ -29045,6 +29102,10 @@ export class Multikey {
 
     protected set _cachedJsonLd(value: unknown | undefined) {
       this.#cachedJsonLd = value;
+    }
+
+    protected get _baseUrl(): URL | undefined {
+      return this.#_baseUrl;
     }
     
     /**
@@ -29079,6 +29140,8 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
     this.#documentLoader = options.documentLoader;
     this.#contextLoader = options.contextLoader;
     this.#tracerProvider = options.tracerProvider;
+    const baseUrl = (options as { baseUrl?: URL }).baseUrl;
+    this.#_baseUrl = baseUrl == null ? undefined : new URL(baseUrl.href);
     if (\\"$warning\\" in options) {
       this.#warning = options.$warning as unknown as {
         category: string[];
@@ -29915,6 +29978,7 @@ export class Intent {
       values?: Record<string, unknown>;
     };
     #cachedJsonLd?: unknown;
+    readonly #_baseUrl?: URL;
     readonly id: URL | null;
 
     protected get _documentLoader(): DocumentLoader | undefined {
@@ -29943,6 +30007,10 @@ export class Intent {
 
     protected set _cachedJsonLd(value: unknown | undefined) {
       this.#cachedJsonLd = value;
+    }
+
+    protected get _baseUrl(): URL | undefined {
+      return this.#_baseUrl;
     }
     
     /**
@@ -29978,6 +30046,8 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
     this.#documentLoader = options.documentLoader;
     this.#contextLoader = options.contextLoader;
     this.#tracerProvider = options.tracerProvider;
+    const baseUrl = (options as { baseUrl?: URL }).baseUrl;
+    this.#_baseUrl = baseUrl == null ? undefined : new URL(baseUrl.href);
     if (\\"$warning\\" in options) {
       this.#warning = options.$warning as unknown as {
         category: string[];
@@ -49826,6 +49896,7 @@ export class Endpoints {
       values?: Record<string, unknown>;
     };
     #cachedJsonLd?: unknown;
+    readonly #_baseUrl?: URL;
     readonly id: URL | null;
 
     protected get _documentLoader(): DocumentLoader | undefined {
@@ -49854,6 +49925,10 @@ export class Endpoints {
 
     protected set _cachedJsonLd(value: unknown | undefined) {
       this.#cachedJsonLd = value;
+    }
+
+    protected get _baseUrl(): URL | undefined {
+      return this.#_baseUrl;
     }
     
     /**
@@ -49890,6 +49965,8 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
     this.#documentLoader = options.documentLoader;
     this.#contextLoader = options.contextLoader;
     this.#tracerProvider = options.tracerProvider;
+    const baseUrl = (options as { baseUrl?: URL }).baseUrl;
+    this.#_baseUrl = baseUrl == null ? undefined : new URL(baseUrl.href);
     if (\\"$warning\\" in options) {
       this.#warning = options.$warning as unknown as {
         category: string[];
@@ -58783,6 +58860,7 @@ export class Link {
       values?: Record<string, unknown>;
     };
     #cachedJsonLd?: unknown;
+    readonly #_baseUrl?: URL;
     readonly id: URL | null;
 
     protected get _documentLoader(): DocumentLoader | undefined {
@@ -58811,6 +58889,10 @@ export class Link {
 
     protected set _cachedJsonLd(value: unknown | undefined) {
       this.#cachedJsonLd = value;
+    }
+
+    protected get _baseUrl(): URL | undefined {
+      return this.#_baseUrl;
     }
     
     /**
@@ -58853,6 +58935,8 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
     this.#documentLoader = options.documentLoader;
     this.#contextLoader = options.contextLoader;
     this.#tracerProvider = options.tracerProvider;
+    const baseUrl = (options as { baseUrl?: URL }).baseUrl;
+    this.#_baseUrl = baseUrl == null ? undefined : new URL(baseUrl.href);
     if (\\"$warning\\" in options) {
       this.#warning = options.$warning as unknown as {
         category: string[];
@@ -93514,6 +93598,7 @@ export class Source {
       values?: Record<string, unknown>;
     };
     #cachedJsonLd?: unknown;
+    readonly #_baseUrl?: URL;
     readonly id: URL | null;
 
     protected get _documentLoader(): DocumentLoader | undefined {
@@ -93542,6 +93627,10 @@ export class Source {
 
     protected set _cachedJsonLd(value: unknown | undefined) {
       this.#cachedJsonLd = value;
+    }
+
+    protected get _baseUrl(): URL | undefined {
+      return this.#_baseUrl;
     }
     
     /**
@@ -93575,6 +93664,8 @@ contents?: ((string | LanguageString))[];mediaType?: string | null;}
     this.#documentLoader = options.documentLoader;
     this.#contextLoader = options.contextLoader;
     this.#tracerProvider = options.tracerProvider;
+    const baseUrl = (options as { baseUrl?: URL }).baseUrl;
+    this.#_baseUrl = baseUrl == null ? undefined : new URL(baseUrl.href);
     if (\\"$warning\\" in options) {
       this.#warning = options.$warning as unknown as {
         category: string[];
