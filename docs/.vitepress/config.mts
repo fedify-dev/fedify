@@ -269,6 +269,7 @@ export default withMermaid(defineConfig({
       transformerTwoslash({
         twoslashOptions: {
           compilerOptions: {
+            ignoreDeprecations: "6.0",
             moduleResolution: ModuleResolutionKind.Bundler,
             module: ModuleKind.ESNext,
             target: ScriptTarget.ESNext,
