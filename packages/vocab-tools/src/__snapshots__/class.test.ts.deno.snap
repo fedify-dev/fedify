@@ -10290,7 +10290,7 @@ get urls(): ((URL | Link))[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -10558,7 +10558,7 @@ get urls(): ((URL | Link))[] {
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string, options.baseUrl) ? new URL(values[\\"@id\\"] as string, options.baseUrl) : undefined },
       options,
     );
     
@@ -12962,7 +12962,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -13964,7 +13964,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -16997,7 +16997,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -17840,7 +17840,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -18343,7 +18343,7 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -18359,7 +18359,7 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string, options.baseUrl) ? new URL(values[\\"@id\\"] as string, options.baseUrl) : undefined },
       options,
     );
     const _4ZHbBuK7PrsvGgrjM8wgc6KMWjav_name: ((string | LanguageString))[] = [];
@@ -18929,7 +18929,7 @@ unit?: string | null;numericalValue?: Decimal | null;}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -18945,7 +18945,7 @@ unit?: string | null;numericalValue?: Decimal | null;}
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string, options.baseUrl) ? new URL(values[\\"@id\\"] as string, options.baseUrl) : undefined },
       options,
     );
     const _27fgyFbosTtMAhuepJH8K3ZGURT6: (string)[] = [];
@@ -19924,7 +19924,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -20373,7 +20373,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -20964,7 +20964,7 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -20980,7 +20980,7 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string, options.baseUrl) ? new URL(values[\\"@id\\"] as string, options.baseUrl) : undefined },
       options,
     );
     const _3JkwVLb3BNCwCWdsb5RftGAg8vyT_canLike: (InteractionRule)[] = [];
@@ -21712,7 +21712,7 @@ get manualApprovals(): (URL)[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -21728,7 +21728,7 @@ get manualApprovals(): (URL)[] {
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string, options.baseUrl) ? new URL(values[\\"@id\\"] as string, options.baseUrl) : undefined },
       options,
     );
     const _2rFyCF14HoyNjitj9PmCzek5iSsg_automaticApproval: (URL)[] = [];
@@ -22748,7 +22748,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -23196,7 +23196,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -24104,7 +24104,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -24552,7 +24552,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -25459,7 +25459,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -25907,7 +25907,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -26352,7 +26352,7 @@ get endpoints(): (URL)[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -26372,7 +26372,7 @@ get endpoints(): (URL)[] {
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string, options.baseUrl) ? new URL(values[\\"@id\\"] as string, options.baseUrl) : undefined },
       options,
     );
     const _2KM4fetG6FTJ1cphj76rzJ8Dyv7p_serviceEndpoint: (URL)[] = [];
@@ -26705,7 +26705,7 @@ endpoints?: (URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -27523,7 +27523,7 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -27539,7 +27539,7 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string, options.baseUrl) ? new URL(values[\\"@id\\"] as string, options.baseUrl) : undefined },
       options,
     );
     const _3RurJsa7tnptyqMFR5hDGcP9pMs5_cryptosuite: (\\"eddsa-jcs-2022\\")[] = [];
@@ -28490,7 +28490,7 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -28506,7 +28506,7 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string, options.baseUrl) ? new URL(values[\\"@id\\"] as string, options.baseUrl) : undefined },
       options,
     );
     
@@ -29370,7 +29370,7 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -29386,7 +29386,7 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string, options.baseUrl) ? new URL(values[\\"@id\\"] as string, options.baseUrl) : undefined },
       options,
     );
     
@@ -30205,7 +30205,7 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -30221,7 +30221,7 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string, options.baseUrl) ? new URL(values[\\"@id\\"] as string, options.baseUrl) : undefined },
       options,
     );
     const _38VmZKmXJSBy3AvgqNa9GVqbdphy_action: (string)[] = [];
@@ -31077,7 +31077,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -31570,7 +31570,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -31910,7 +31910,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -32245,7 +32245,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -37792,7 +37792,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -39255,7 +39255,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -39602,7 +39602,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -40599,7 +40599,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -41240,7 +41240,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -41669,7 +41669,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -42003,7 +42003,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -42343,7 +42343,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -46166,7 +46166,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -48047,7 +48047,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -48542,7 +48542,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -48876,7 +48876,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -49208,7 +49208,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -50002,7 +50002,7 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -50018,7 +50018,7 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string, options.baseUrl) ? new URL(values[\\"@id\\"] as string, options.baseUrl) : undefined },
       options,
     );
     const _2JCYDbSxEHCCLdBYed33cCETfGyR_proxyUrl: (URL)[] = [];
@@ -50667,7 +50667,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -51002,7 +51002,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -51338,7 +51338,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -56885,7 +56885,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -59316,7 +59316,7 @@ get names(): ((string | LanguageString))[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -59340,7 +59340,7 @@ get names(): ((string | LanguageString))[] {
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string, options.baseUrl) ? new URL(values[\\"@id\\"] as string, options.baseUrl) : undefined },
       options,
     );
     const _pVjLsybKQdmkjuU7MHjiVmNnuj7_href: (URL)[] = [];
@@ -59999,7 +59999,7 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -60336,7 +60336,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -60671,7 +60671,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -61009,7 +61009,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -61343,7 +61343,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -61677,7 +61677,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -62011,7 +62011,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -62343,7 +62343,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -62641,7 +62641,7 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -62976,7 +62976,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -63975,7 +63975,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -64773,7 +64773,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -65561,7 +65561,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -71211,7 +71211,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -72676,7 +72676,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -78223,7 +78223,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -80144,7 +80144,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -81017,7 +81017,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -82680,7 +82680,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -83364,7 +83364,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -83698,7 +83698,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -85204,7 +85204,7 @@ relationships?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -85709,7 +85709,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -91256,7 +91256,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -92930,7 +92930,7 @@ get contents(): ((string | LanguageString))[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -92946,7 +92946,7 @@ get contents(): ((string | LanguageString))[] {
   }
   
     const instance = new this(
-      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string) ? new URL(values[\\"@id\\"] as string) : undefined },
+      { id: \\"@id\\" in values && URL.canParse(values[\\"@id\\"] as string, options.baseUrl) ? new URL(values[\\"@id\\"] as string, options.baseUrl) : undefined },
       options,
     );
     const _4HuuRSdSrXq8Jj2J9gcdYfoCzeuz_content: ((string | LanguageString))[] = [];
@@ -93362,7 +93362,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -93696,7 +93696,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -94246,7 +94246,7 @@ get formerTypes(): (\$EntityType)[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -94681,7 +94681,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -95020,7 +95020,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -95357,7 +95357,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -95694,7 +95694,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
@@ -96027,7 +96027,7 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (options.baseUrl == null && values[\\"@id\\"] != null) {
+    if (options.baseUrl == null && values[\\"@id\\"] != null && URL.canParse(values[\\"@id\\"])) {
       options = { ...options, baseUrl: new URL(values[\\"@id\\"]) };
     }
   
