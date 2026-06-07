@@ -30,6 +30,13 @@ async function* generateProperty(
 ): AsyncIterable<string> {
   const override = emitOverride(type.uri, types, property);
   const doc = `\n/** ${property.description.replaceAll("\n", "\n * ")}\n */\n`;
+  const cachedPropertyBaseUrl = `(options as { baseUrl?: URL }).baseUrl ??
+                this._baseUrl ??
+                (this.id != null &&
+                    (this.id.protocol === "http:" ||
+                      this.id.protocol === "https:")
+                  ? this.id
+                  : undefined)`;
   if (areAllScalarTypes(property.range, types)) {
     if (hasSingularAccessor(property)) {
       yield doc;
@@ -299,8 +306,7 @@ async function* generateProperty(
         yield `
             v = await this.#${property.singularName}_fromJsonLd(doc, {
               ...options,
-              baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
-                this._baseUrl,
+              baseUrl: ${cachedPropertyBaseUrl},
             });
       `;
         yield `
@@ -406,8 +412,7 @@ async function* generateProperty(
         yield `
               v = await this.#${property.singularName}_fromJsonLd(obj, {
                 ...options,
-                baseUrl: (options as { baseUrl?: URL }).baseUrl ?? this.id ??
-                  this._baseUrl,
+                baseUrl: ${cachedPropertyBaseUrl},
               });
       `;
         yield `

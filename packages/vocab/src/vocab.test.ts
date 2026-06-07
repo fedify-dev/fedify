@@ -1993,6 +1993,26 @@ test("Object.fromJsonLd() decodes compact icon id with relative id and baseUrl",
   );
 });
 
+test("Object.fromJsonLd() resolves compact icon id against baseUrl for did id", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "id": "did:plc:example",
+    "content": "Hello",
+    "icon": "/icons/icon.png",
+  };
+  const obj = await Object.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+    baseUrl: new URL("https://example.com/notes/1"),
+  });
+  deepStrictEqual(obj.id?.href, "did:plc:example");
+  deepStrictEqual(
+    obj.iconId?.href,
+    "https://example.com/icons/icon.png",
+  );
+});
+
 test(
   "Object.getIcon() resolves relative Link href without id via cached re-parse",
   async () => {
@@ -2015,6 +2035,36 @@ test(
     // getIcon() is called WITHOUT explicit baseUrl — the accessor
     // should reuse the baseUrl that was set during fromJsonLd().
     const icon = await obj.getIcon();
+    deepStrictEqual(
+      icon?.url?.href,
+      "https://example.com/icons/star.png",
+    );
+    deepStrictEqual(icon?.mediaType, "image/png");
+  },
+);
+
+test(
+  "Object.getIcon() resolves cached relative Link href against baseUrl for did id",
+  async () => {
+    const json = {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "Note",
+      "id": "did:plc:example",
+      "content": "Hello",
+      "icon": {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        "type": "Link",
+        "href": "/icons/star.png",
+        "mediaType": "image/png",
+      },
+    };
+    const obj = await Object.fromJsonLd(json, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      baseUrl: new URL("https://example.com/notes/1"),
+    });
+    const icon = await obj.getIcon();
+    deepStrictEqual(obj.id?.href, "did:plc:example");
     deepStrictEqual(
       icon?.url?.href,
       "https://example.com/icons/star.png",
