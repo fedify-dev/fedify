@@ -147,6 +147,7 @@ function destContext(
   return {
     targetOrigin: "http://127.0.0.1:3000",
     targetTier: "loopback" as const,
+    destinationTier: "public" as const,
     targetBenchmarkMode: false,
     allowUnsafe: false,
     advertised: false,
@@ -210,6 +211,18 @@ test("assertInboxDestinationAllowed - same-origin inbox uses the resolved target
       destContext({
         targetOrigin: "https://staging.example",
         targetTier: "private",
+        advertised: true,
+      }),
+    )
+  );
+});
+
+test("assertInboxDestinationAllowed - off-origin inbox uses destination tier", () => {
+  assert.doesNotThrow(() =>
+    assertInboxDestinationAllowed(
+      new URL("https://shared.staging.example/inbox"),
+      destContext({
+        destinationTier: "private",
         advertised: true,
       }),
     )

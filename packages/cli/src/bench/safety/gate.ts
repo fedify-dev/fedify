@@ -11,7 +11,7 @@
  * @module
  */
 
-import { classifyTarget, type TargetTier } from "./tiers.ts";
+import type { TargetTier } from "./tiers.ts";
 
 /** An error raised when a target is refused by the safety gate. */
 export class UnsafeTargetError extends Error {}
@@ -124,6 +124,8 @@ export interface InboxDestinationGateContext {
   readonly targetOrigin: string;
   /** The resolved target tier used by the main safety gate. */
   readonly targetTier: TargetTier;
+  /** The resolved tier for this inbox destination. */
+  readonly destinationTier: TargetTier;
   /** Whether the gated target advertises benchmark mode. */
   readonly targetBenchmarkMode: boolean;
   /** Whether `--allow-unsafe-target` was given. */
@@ -153,7 +155,7 @@ export function assertInboxDestinationAllowed(
   context: InboxDestinationGateContext,
 ): void {
   const sameOrigin = url.origin === context.targetOrigin;
-  const tier = sameOrigin ? context.targetTier : classifyTarget(url);
+  const tier = sameOrigin ? context.targetTier : context.destinationTier;
   const inheritsTargetGate = sameOrigin &&
     context.targetBenchmarkMode;
   if (tier === "public" && !inheritsTargetGate && !context.allowUnsafe) {

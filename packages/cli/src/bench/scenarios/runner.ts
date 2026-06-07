@@ -31,11 +31,11 @@ export interface RunContext {
   readonly fetch?: typeof fetch;
   /**
    * Gates a resolved load destination (a discovered or explicit inbox URL)
-   * before any load is sent to it, throwing if it is not allowed.  The suite
-   * `target` is gated by the orchestrator; this covers destinations that differ
-   * from it.  Optional so direct runner tests need not supply it.
+   * before any load is sent to it, throwing or rejecting if it is not allowed.
+   * The suite `target` is gated by the orchestrator; this covers destinations
+   * that differ from it.  Optional so direct runner tests need not supply it.
    */
-  readonly assertDestinationAllowed?: (url: URL) => void;
+  readonly assertDestinationAllowed?: (url: URL) => void | Promise<void>;
 }
 
 /** A runner for one scenario type. */

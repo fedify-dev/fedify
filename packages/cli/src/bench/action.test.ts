@@ -28,6 +28,10 @@ async function writeSuite(content: string): Promise<string> {
   return path;
 }
 
+function resolvePublicHost(_hostname: string): Promise<readonly string[]> {
+  return Promise.resolve(["93.184.216.34"]);
+}
+
 function inboxSuite(target: URL, expectLine: string): string {
   // Uses `${{ target.host }}` templating to form the actor URI (WebFinger is
   // https-only, so an acct: handle would not resolve over http loopback).
@@ -246,6 +250,7 @@ scenarios:
           { headers: { "content-type": "application/json" } },
         ),
       ),
+    resolveTargetAddresses: resolvePublicHost,
   });
   assert.strictEqual(code, 2);
   assert.match(message, /advertise-host/);
@@ -306,9 +311,61 @@ scenarios:
       log: (m) => {
         message = m;
       },
+      resolveTargetAddresses: resolvePublicHost,
     });
     assert.strictEqual(code, 2);
     assert.match(message, /public inbox|allow-unsafe-target/);
+  } finally {
+    await target.close();
+  }
+});
+
+test("runBench - allows a DNS-resolved private inbox off the target", async () => {
+  const target = await spawnBenchmarkTarget();
+  try {
+    const file = await writeSuite(`version: 1
+target: ${target.url.href}
+scenarios:
+  - name: inbox-shared
+    type: inbox
+    recipient: "${new URL("/users/alice", target.url).href}"
+    inbox: "https://shared.staging.example/inbox"
+    load: { concurrency: 2 }
+    duration: 250ms
+`);
+    let code = -1;
+    let message = "";
+    const resolved: string[] = [];
+    await runBench(
+      command({
+        scenario: file,
+        advertiseHost: "127.0.0.1",
+      }),
+      {
+        exit: (c) => {
+          code = c;
+        },
+        writeOutput: () => Promise.resolve(),
+        log: (m) => {
+          message = m;
+        },
+        resolveTargetAddresses: (hostname) => {
+          resolved.push(hostname);
+          return Promise.resolve(
+            hostname === "shared.staging.example" ? ["10.0.0.8"] : [],
+          );
+        },
+        fetch: (input) => {
+          const url = new URL(input instanceof Request ? input.url : input);
+          if (url.hostname === "shared.staging.example") {
+            return Promise.resolve(new Response("accepted", { status: 202 }));
+          }
+          return fetch(input);
+        },
+      },
+    );
+    assert.strictEqual(code, 0, message);
+    assert.deepStrictEqual(resolved, ["shared.staging.example"]);
   } finally {
     await target.close();
   }
@@ -343,6 +400,7 @@ scenarios:
         log: (m) => {
           message = m;
         },
+        resolveTargetAddresses: resolvePublicHost,
       },
     );
     assert.strictEqual(code, 2);
@@ -381,6 +439,7 @@ scenarios:
         log: (m) => {
           message = m;
         },
+        resolveTargetAddresses: resolvePublicHost,
       },
     );
     assert.strictEqual(code, 2);
@@ -421,6 +480,7 @@ scenarios:
         log: (m) => {
           message = m;
         },
+        resolveTargetAddresses: resolvePublicHost,
         fetch: (input) => {
           const url = new URL(input instanceof Request ? input.url : input);
           if (url.hostname === "prod.example") {

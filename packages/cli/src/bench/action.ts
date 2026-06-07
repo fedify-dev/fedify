@@ -30,8 +30,8 @@ import {
 } from "./safety/gate.ts";
 import {
   classifyResolvedTarget,
-  classifyTarget,
   type ResolveTargetAddresses,
+  type TargetTier,
 } from "./safety/tiers.ts";
 import { runnerFor } from "./scenarios/registry.ts";
 import {
@@ -165,13 +165,17 @@ export default async function runBench(
 
   // Gates each resolved inbox destination (which can differ from the suite
   // target) before the runner sends load to it.
-  const assertDestinationAllowed = (
+  const assertDestinationAllowed = async (
     url: URL,
     scenario: ResolvedScenario,
-  ): void => {
+  ): Promise<void> => {
+    const destinationTier = url.origin === suite.target.origin
+      ? tier
+      : await classifyResolvedTarget(url, deps.resolveTargetAddresses);
     assertInboxDestinationAllowed(url, {
       targetOrigin: suite.target.origin,
       targetTier: tier,
+      destinationTier,
       targetBenchmarkMode: probe.benchmarkMode,
       allowUnsafe: command.allowUnsafeTarget,
       advertised: command.advertiseHost != null,
@@ -181,6 +185,7 @@ export default async function runBench(
       targetBenchmarkMode: probe.benchmarkMode,
       allowUnsafe: command.allowUnsafeTarget,
       explicitCliTarget: command.target != null,
+      destinationTier,
       suite: validated,
     });
   };
@@ -338,7 +343,7 @@ interface DryRunPlanContext {
   readonly assertDestinationAllowed: (
     url: URL,
     scenario: ResolvedScenario,
-  ) => void;
+  ) => Promise<void>;
 }
 
 async function renderPlan(
@@ -404,9 +409,11 @@ async function describeInboxDiscoveryPlan(
         `inbox ${inbox.href}`,
     );
     lines.push(
-      `  destination safety: ${
-        describeDestinationSafety(inbox, scenario, context)
-      }`,
+      `  destination safety: ${await describeDestinationSafety(
+        inbox,
+        scenario,
+        context,
+      )}`,
     );
   }
   return lines;
@@ -427,13 +434,13 @@ function describeWebFingerPlan(
   });
 }
 
-function describeDestinationSafety(
+async function describeDestinationSafety(
   inbox: URL,
   scenario: ResolvedScenario,
   context: DryRunPlanContext,
-): string {
+): Promise<string> {
   try {
-    context.assertDestinationAllowed(inbox, scenario);
+    await context.assertDestinationAllowed(inbox, scenario);
     return "allowed";
   } catch (error) {
     if (error instanceof UnsafeTargetError) {
@@ -448,6 +455,7 @@ interface PublicDestinationOverrideContext {
   readonly targetBenchmarkMode: boolean;
   readonly allowUnsafe: boolean;
   readonly explicitCliTarget: boolean;
+  readonly destinationTier: TargetTier;
   readonly suite: Suite;
 }
 
@@ -459,7 +467,7 @@ function assertPublicDestinationOverrideAllowed(
   const inheritsTargetGate = url.origin === context.targetOrigin &&
     context.targetBenchmarkMode;
   if (
-    classifyTarget(url) !== "public" || inheritsTargetGate ||
+    context.destinationTier !== "public" || inheritsTargetGate ||
     !context.allowUnsafe
   ) {
     return;
