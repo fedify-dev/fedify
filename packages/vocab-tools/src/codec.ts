@@ -490,6 +490,7 @@ export async function* generateDecoder(
       yield `
       if (typeof v === "object" && "@id" in v && !("@type" in v)
           && globalThis.Object.keys(v).length === 1) {
+        if (v["@id"].startsWith("_:")) continue;
         ${variable}.push(
           !URL.canParse(v["@id"], ${propertyBaseUrl}) && v["@id"].startsWith("at://")
             ? new URL("at://" + encodeURIComponent(v["@id"].substring(5)))

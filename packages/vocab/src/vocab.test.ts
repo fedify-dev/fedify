@@ -2013,6 +2013,23 @@ test("Object.fromJsonLd() resolves compact icon id against document base", async
   );
 });
 
+test("Object.fromJsonLd() skips blank node compact icon id", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "id": "/notes/1",
+    "content": "Hello",
+    "icon": { "@id": "_:b0" },
+  };
+  const obj = await Object.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+    baseUrl: new URL("https://example.com/"),
+  });
+  deepStrictEqual(obj.id?.href, "https://example.com/notes/1");
+  deepStrictEqual(obj.iconId, null);
+});
+
 test("Object.fromJsonLd() resolves compact icon id against baseUrl for did id", async () => {
   const json = {
     "@context": "https://www.w3.org/ns/activitystreams",
