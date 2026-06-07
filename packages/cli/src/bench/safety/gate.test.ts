@@ -1,0 +1,170 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {
+  assertInboxDestinationAllowed,
+  assertTargetAllowed,
+  UnsafeTargetError,
+} from "./gate.ts";
+
+test("assertTargetAllowed - loopback/private are always allowed", () => {
+  assert.doesNotThrow(() =>
+    assertTargetAllowed({
+      tier: "loopback",
+      benchmarkMode: false,
+      allowUnsafe: false,
+      dryRun: false,
+    })
+  );
+  assert.doesNotThrow(() =>
+    assertTargetAllowed({
+      tier: "private",
+      benchmarkMode: false,
+      allowUnsafe: false,
+      dryRun: false,
+    })
+  );
+});
+
+test("assertTargetAllowed - public with benchmark mode is allowed", () => {
+  assert.doesNotThrow(() =>
+    assertTargetAllowed({
+      tier: "public",
+      benchmarkMode: true,
+      allowUnsafe: false,
+      dryRun: false,
+    })
+  );
+});
+
+test("assertTargetAllowed - public without benchmark mode is refused", () => {
+  assert.throws(
+    () =>
+      assertTargetAllowed({
+        tier: "public",
+        benchmarkMode: false,
+        allowUnsafe: false,
+        dryRun: false,
+      }),
+    UnsafeTargetError,
+  );
+});
+
+test("assertTargetAllowed - the unsafe flag overrides the refusal", () => {
+  assert.doesNotThrow(() =>
+    assertTargetAllowed({
+      tier: "public",
+      benchmarkMode: false,
+      allowUnsafe: true,
+      dryRun: false,
+    })
+  );
+});
+
+test("assertTargetAllowed - dry-run bypasses the gate", () => {
+  assert.doesNotThrow(() =>
+    assertTargetAllowed({
+      tier: "public",
+      benchmarkMode: false,
+      allowUnsafe: false,
+      dryRun: true,
+    })
+  );
+});
+
+function destContext(
+  overrides: Partial<Parameters<typeof assertInboxDestinationAllowed>[1]> = {},
+) {
+  return {
+    targetOrigin: "http://127.0.0.1:3000",
+    targetBenchmarkMode: false,
+    allowUnsafe: false,
+    advertised: false,
+    ...overrides,
+  };
+}
+
+test("assertInboxDestinationAllowed - loopback inbox is allowed", () => {
+  assert.doesNotThrow(() =>
+    assertInboxDestinationAllowed(
+      new URL("http://127.0.0.1:3000/inbox"),
+      destContext(),
+    )
+  );
+});
+
+test("assertInboxDestinationAllowed - a public inbox off the target is refused", () => {
+  // A loopback target with a public inbox (a public recipient, or an explicit
+  // inbox URL) must not receive load without the unsafe flag.
+  assert.throws(
+    () =>
+      assertInboxDestinationAllowed(
+        new URL("https://prod.example/inbox"),
+        destContext(),
+      ),
+    (error: unknown) =>
+      error instanceof UnsafeTargetError && /public inbox/.test(error.message),
+  );
+});
+
+test("assertInboxDestinationAllowed - the unsafe flag allows a public inbox", () => {
+  assert.doesNotThrow(() =>
+    assertInboxDestinationAllowed(
+      new URL("https://prod.example/inbox"),
+      destContext({ allowUnsafe: true, advertised: true }),
+    )
+  );
+});
+
+test("assertInboxDestinationAllowed - an inbox on the target origin inherits its gate", () => {
+  // Same origin as the gated target, which advertises benchmark mode.
+  assert.doesNotThrow(() =>
+    assertInboxDestinationAllowed(
+      new URL("https://staging.example/inbox"),
+      destContext({
+        targetOrigin: "https://staging.example",
+        targetBenchmarkMode: true,
+        advertised: true,
+      }),
+    )
+  );
+});
+
+test("assertInboxDestinationAllowed - same host, different scheme does not inherit", () => {
+  // The target is https (its benchmark-mode probe covered port 443); an http
+  // inbox on the same hostname is a different service (port 80), so it must not
+  // inherit the target's gate.
+  assert.throws(
+    () =>
+      assertInboxDestinationAllowed(
+        new URL("http://prod.example/inbox"),
+        destContext({
+          targetOrigin: "https://prod.example",
+          targetBenchmarkMode: true,
+          advertised: true,
+        }),
+      ),
+    (error: unknown) =>
+      error instanceof UnsafeTargetError && /public inbox/.test(error.message),
+  );
+});
+
+test("assertInboxDestinationAllowed - a non-loopback inbox needs an advertised host", () => {
+  // Private inbox is not a safety problem, but the synthetic server is
+  // unreachable from it unless a reachable host was advertised.
+  assert.throws(
+    () =>
+      assertInboxDestinationAllowed(
+        new URL("http://10.0.0.5:8000/inbox"),
+        destContext({ targetOrigin: "http://10.0.0.5:8000" }),
+      ),
+    (error: unknown) =>
+      error instanceof UnsafeTargetError &&
+      /advertise-host/.test(error.message),
+  );
+  assert.doesNotThrow(() =>
+    assertInboxDestinationAllowed(
+      new URL("http://10.0.0.5:8000/inbox"),
+      destContext({ targetOrigin: "http://10.0.0.5:8000", advertised: true }),
+    )
+  );
+});

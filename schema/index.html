@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fedify JSON Schemas</title>
+    <meta
+      name="description"
+      content="Published JSON Schemas for Fedify, including the fedify bench scenario and report formats."
+    />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #ffffff;
+        --fg: #1f2937;
+        --muted: #6b7280;
+        --accent: #0284c7;
+        --card: #f8fafc;
+        --border: #e5e7eb;
+        --code-bg: #f1f5f9;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0b1220;
+          --fg: #e5e7eb;
+          --muted: #9ca3af;
+          --accent: #38bdf8;
+          --card: #111a2e;
+          --border: #1f2a44;
+          --code-bg: #0f1830;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      main {
+        max-width: 44rem;
+        margin: 0 auto;
+        padding: 3rem 1.25rem 5rem;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 2rem;
+      }
+      header img {
+        width: 56px;
+        height: 56px;
+      }
+      h1 {
+        font-size: 1.6rem;
+        margin: 0;
+      }
+      h2 {
+        font-size: 1.15rem;
+        margin: 2.5rem 0 0.75rem;
+      }
+      a {
+        color: var(--accent);
+      }
+      p {
+        color: var(--fg);
+      }
+      .lead {
+        color: var(--muted);
+        font-size: 1.05rem;
+      }
+      ul.schemas {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        gap: 0.75rem;
+      }
+      ul.schemas li {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        padding: 0.9rem 1.1rem;
+      }
+      ul.schemas a {
+        font-weight: 600;
+        text-decoration: none;
+      }
+      ul.schemas a:hover {
+        text-decoration: underline;
+      }
+      ul.schemas .desc {
+        color: var(--muted);
+        font-size: 0.92rem;
+        margin-top: 0.25rem;
+      }
+      pre {
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        padding: 0.9rem 1.1rem;
+        overflow-x: auto;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+        font-size: 0.9em;
+      }
+      footer {
+        margin-top: 3.5rem;
+        color: var(--muted);
+        font-size: 0.9rem;
+        border-top: 1px solid var(--border);
+        padding-top: 1.25rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <img src="./logo.svg" alt="Fedify logo" width="56" height="56" />
+        <h1>Fedify JSON Schemas</h1>
+      </header>
+
+      <p class="lead">
+        Published JSON Schemas (draft 2020-12) for Fedify file formats.  Each
+        version is immutable: a change ships as a new version file, never an
+        edit, so a pinned <code>$schema</code> URL keeps validating the same way.
+      </p>
+
+      <h2>Benchmarking (<code>fedify bench</code>)</h2>
+      <ul class="schemas">
+        <li>
+          <a href="./bench/scenario-v1.json">bench/scenario-v1.json</a>
+          <div class="desc">
+            The benchmark scenario suite format (input).  YAML or JSON.
+          </div>
+        </li>
+        <li>
+          <a href="./bench/report-v1.json">bench/report-v1.json</a>
+          <div class="desc">
+            The benchmark report format (output).  The canonical machine form.
+          </div>
+        </li>
+      </ul>
+
+      <h2>Editor support</h2>
+      <p>
+        Add a schema reference to your scenario file for autocomplete and
+        validation in editors with the YAML Language Server:
+      </p>
+      <pre><code># yaml-language-server: $schema=https://json-schema.fedify.dev/bench/scenario-v1.json
+version: 1
+target: http://localhost:3000
+# …</code></pre>
+      <p>
+        Generated benchmark reports already carry their <code>$schema</code>, so
+        consumers can validate them directly.
+      </p>
+
+      <footer>
+        <a href="https://fedify.dev/">Fedify</a> &middot;
+        <a href="https://github.com/fedify-dev/fedify">Source</a> &middot;
+        <a href="https://github.com/fedify-dev/fedify/tree/main/schema"
+        >Contributing schemas</a>
+      </footer>
+    </main>
+  </body>
+</html>

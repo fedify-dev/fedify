@@ -1,0 +1,11 @@
+# A load block must specify rate XOR concurrency, not both.
+version: 1
+target: http://localhost:3000
+defaults:
+  load:
+    rate: 100/s
+    concurrency: 50
+scenarios:
+  - name: inbox-shared
+    type: inbox
+    recipient: "acct:alice@example.com"

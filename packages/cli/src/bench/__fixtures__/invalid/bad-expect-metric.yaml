@@ -1,0 +1,9 @@
+# signatureVerification.* is not a valid expect metric for a webfinger scenario.
+version: 1
+target: http://localhost:3000
+scenarios:
+  - name: webfinger-lookup
+    type: webfinger
+    recipient: "acct:alice@example.com"
+    expect:
+      signatureVerification.p95: "< 10ms"

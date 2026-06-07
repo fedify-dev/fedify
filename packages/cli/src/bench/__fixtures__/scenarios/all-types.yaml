@@ -1,0 +1,75 @@
+# yaml-language-server: $schema=https://json-schema.fedify.dev/bench/scenario-v1.json
+# Exercises every scenario type the format can express, even though only
+# `inbox` and `webfinger` have runners in this version.
+version: 1
+target: http://localhost:3000
+defaults:
+  duration: 30s
+  warmup: 5s
+  load:
+    rate: 100/s
+    arrival: poisson
+  signing: pipeline
+  runs: 3
+actors:
+  - name: "Mastodon-like actor"
+    count: 3
+    signatureStandards: [draft-cavage-http-signatures-12, ld-signatures]
+  - name: "Hollo-like actor"
+    count: 2
+    signatureStandards: [rfc9421, fep8b32]
+scenarios:
+  - name: inbox-shared
+    type: inbox
+    recipient: "acct:alice@${{ target.host }}"
+    inbox: shared
+    activity:
+      type: Create
+      embedObject: true
+      object:
+        type: Note
+        content: { generate: lorem, size: 2KB }
+    expect:
+      successRate: ">= 99%"
+      latency.p95: "< 100ms"
+  - name: webfinger-lookup
+    type: webfinger
+    recipient:
+      - "acct:alice@${{ target.host }}"
+      - "acct:bob@${{ target.host }}"
+    expect:
+      successRate: ">= 99%"
+  - name: actor-fetch
+    type: actor
+    recipient: "acct:alice@${{ target.host }}"
+    authenticated: true
+  - name: object-fetch
+    type: object
+    source:
+      seed: "acct:alice@${{ target.host }}"
+      collection: [outbox, featured]
+      limit: 500
+      type: Note
+  - name: collection-page
+    type: collection
+    recipient: "acct:alice@${{ target.host }}"
+    collection: followers
+  - name: fanout-1k
+    type: fanout
+    sender: alice
+    followers: 1000
+    trigger: { kind: benchmark-hook }
+    sinkBehavior: { latency: 50ms }
+    queueDrainTimeout: 2m
+    expect:
+      queueDrain.p95: "< 2s"
+      deliveryThroughput: ">= 500/s"
+  - name: bad-signature
+    type: failure
+    fault: [invalid-signature, missing-actor]
+  - name: realistic-blend
+    type: mixed
+    mix:
+      - { scenario: inbox-shared, weight: 70 }
+      - { scenario: object-fetch, weight: 20 }
+      - { scenario: webfinger-lookup, weight: 10 }

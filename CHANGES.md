@@ -277,6 +277,19 @@ To be released.
 [#782]: https://github.com/fedify-dev/fedify/issues/782
 [#787]: https://github.com/fedify-dev/fedify/pull/787
 
+### @fedify/cli
+
+ -  Added the `fedify bench` command for benchmarking Fedify federation
+    workloads.  It acts as a synthetic remote actor that drives
+    ActivityPub-specific load (signed inbox deliveries and WebFinger lookups)
+    against a cooperative `benchmarkMode` target and reports latency,
+    throughput, success rate, and errors, reading server-side metrics from the
+    target's stats endpoint.  Benchmarks are described by a YAML or JSON
+    scenario suite validated against a published JSON Schema, with an `expect`
+    block per scenario that gates a run for CI.  [[#744], [#783]]
+
+[#783]: https://github.com/fedify-dev/fedify/issues/783
+
 ### @fedify/fixture
 
  -  Added `createTestMeterProvider()` and `TestMetricRecorder` helpers for

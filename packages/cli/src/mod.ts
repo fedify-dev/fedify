@@ -1,4 +1,5 @@
 #!/usr/bin/env -S node --disable-warning=ExperimentalWarning
+import { runBench } from "./bench/mod.ts";
 import { runGenerateVocab } from "./generate-vocab/mod.ts";
 import { runInbox } from "./inbox.tsx";
 import { runInit } from "./init/mod.ts";
@@ -28,6 +29,8 @@ async function main() {
     await runGenerateVocab(result);
   } else if (result.command === "relay") {
     await runRelay(result);
+  } else if (result.command === "bench") {
+    await runBench(result);
   } else {
     // Make this branch exhaustive for type safety, even though it should never happen:
     const _exhaustiveCheck: never = result;

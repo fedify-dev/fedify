@@ -6,6 +6,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import process from "node:process";
 import { parse as parseToml } from "smol-toml";
+import { benchCommand } from "./bench/command.ts";
 import { configContext, tryLoadToml } from "./config.ts";
 import { generateVocabCommand } from "./generate-vocab/mod.ts";
 import { inboxCommand } from "./inbox/command.ts";
@@ -66,6 +67,7 @@ export const command = merge(
         inboxCommand,
         nodeInfoCommand,
         relayCommand,
+        benchCommand,
       ),
     ),
     group(

@@ -1,0 +1,8 @@
+# Unknown scenario fields are rejected (additionalProperties: false).
+version: 1
+target: http://localhost:3000
+scenarios:
+  - name: inbox-shared
+    type: inbox
+    recipient: "acct:alice@example.com"
+    bogusField: true
