@@ -1,73 +1,11 @@
-import {
-  createFederation,
-  generateCryptoKeyPair,
-  MemoryKvStore,
-} from "@fedify/fedify";
-import { Create, Endpoints, Person } from "@fedify/vocab";
 import assert from "node:assert/strict";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { serve } from "srvx";
+import { spawnBenchmarkTarget } from "../../../../test/bench/fixture.ts";
 import runBench, { withUserAgent } from "./action.ts";
 import type { BenchCommand } from "./command.ts";
-
-async function spawnTarget() {
-  const federation = createFederation<void>({
-    kv: new MemoryKvStore(),
-    benchmarkMode: true,
-  });
-  let keyPairs: CryptoKeyPair[] | undefined;
-  const requests: { method: string; path: string }[] = [];
-  federation
-    .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-      if (identifier !== "alice") return null;
-      const pairs = await ctx.getActorKeyPairs(identifier);
-      return new Person({
-        id: ctx.getActorUri(identifier),
-        preferredUsername: identifier,
-        inbox: ctx.getInboxUri(identifier),
-        endpoints: new Endpoints({ sharedInbox: ctx.getInboxUri() }),
-        publicKey: pairs[0]?.cryptographicKey,
-        assertionMethods: pairs.map((p) => p.multikey),
-      });
-    })
-    .mapHandle((_ctx, username) => (username === "alice" ? "alice" : null))
-    .setKeyPairsDispatcher(async (_ctx, identifier) => {
-      if (identifier !== "alice") return [];
-      keyPairs ??= [
-        await generateCryptoKeyPair("RSASSA-PKCS1-v1_5"),
-        await generateCryptoKeyPair("Ed25519"),
-      ];
-      return keyPairs;
-    });
-  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox").on(
-    Create,
-    () => {},
-  );
-  let inboxUserAgent: string | null = null;
-  const server = serve({
-    port: 0,
-    hostname: "127.0.0.1",
-    silent: true,
-    fetch: (request: Request) => {
-      const url = new URL(request.url);
-      requests.push({ method: request.method, path: url.pathname });
-      if (request.method === "POST") {
-        inboxUserAgent = request.headers.get("user-agent");
-      }
-      return federation.fetch(request, { contextData: undefined });
-    },
-  });
-  await server.ready();
-  return {
-    url: new URL(server.url!),
-    inboxUserAgent: () => inboxUserAgent,
-    requests: () => requests.slice(),
-    close: () => server.close(true),
-  };
-}
 
 function command(overrides: Partial<BenchCommand>): BenchCommand {
   return {
@@ -108,7 +46,7 @@ ${expectLine}
 }
 
 test("runBench - passing gate exits 0 and writes a valid report", async () => {
-  const target = await spawnTarget();
+  const target = await spawnBenchmarkTarget();
   try {
     const file = await writeSuite(
       inboxSuite(target.url, '      successRate: ">= 99%"'),
@@ -177,7 +115,7 @@ test("withUserAgent - does not override an explicit User-Agent", async () => {
 });
 
 test("runBench - failing gate exits 1", async () => {
-  const target = await spawnTarget();
+  const target = await spawnBenchmarkTarget();
   try {
     // An impossible latency threshold makes the gate fail.
     const file = await writeSuite(
@@ -198,7 +136,7 @@ test("runBench - failing gate exits 1", async () => {
 });
 
 test("runBench - dry run prints a plan and sends nothing", async () => {
-  const target = await spawnTarget();
+  const target = await spawnBenchmarkTarget();
   try {
     const file = await writeSuite(
       inboxSuite(target.url, '      successRate: ">= 99%"'),
@@ -346,7 +284,7 @@ test("runBench - refuses an inbox destination off the gated target (exit 2)", as
   // A loopback target passes the gate, but an explicit public `inbox:` is the
   // actual load destination; it must be gated too, or production could be
   // benchmarked through the back door.
-  const target = await spawnTarget();
+  const target = await spawnBenchmarkTarget();
   try {
     const file = await writeSuite(`version: 1
 target: ${target.url.href}
