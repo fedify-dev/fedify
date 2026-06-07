@@ -478,16 +478,7 @@ export async function* generateDecoder(
     ) {
       if (v == null) continue;
     `;
-    const propertyBaseUrl = `(() => {
-          if (values["@id"] == null || values["@id"].startsWith("_:") ||
-              !URL.canParse(values["@id"], options.baseUrl)) {
-            return options.baseUrl;
-          }
-          const id = new URL(values["@id"], options.baseUrl);
-          return id.protocol === "http:" || id.protocol === "https:"
-            ? id
-            : options.baseUrl;
-        })()`;
+    const propertyBaseUrl = "options.baseUrl";
     yield* generatePreprocessorBlock(
       property,
       getTypeNames(property.range, types),

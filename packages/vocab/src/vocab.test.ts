@@ -1993,6 +1993,26 @@ test("Object.fromJsonLd() decodes compact icon id with relative id and baseUrl",
   );
 });
 
+test("Object.fromJsonLd() resolves compact icon id against document base", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "id": "../notes/1",
+    "content": "Hello",
+    "icon": "icon.png",
+  };
+  const obj = await Object.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+    baseUrl: new URL("https://example.com/outbox/page.json"),
+  });
+  deepStrictEqual(obj.id?.href, "https://example.com/outbox/notes/1");
+  deepStrictEqual(
+    obj.iconId?.href,
+    "https://example.com/outbox/icon.png",
+  );
+});
+
 test("Object.fromJsonLd() resolves compact icon id against baseUrl for did id", async () => {
   const json = {
     "@context": "https://www.w3.org/ns/activitystreams",
@@ -2040,6 +2060,33 @@ test(
       "https://example.com/icons/star.png",
     );
     deepStrictEqual(icon?.mediaType, "image/png");
+  },
+);
+
+test(
+  "Object.fromJsonLd() resolves Link href against document base, not object id",
+  async () => {
+    const json = {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "Note",
+      "id": "../notes/1",
+      "content": "Hello",
+      "icon": {
+        "type": "Link",
+        "href": "icon.png",
+      },
+    };
+    const obj = await Object.fromJsonLd(json, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      baseUrl: new URL("https://example.com/outbox/page.json"),
+    });
+    const icon = await obj.getIcon();
+    deepStrictEqual(obj.id?.href, "https://example.com/outbox/notes/1");
+    deepStrictEqual(
+      icon?.url?.href,
+      "https://example.com/outbox/icon.png",
+    );
   },
 );
 
