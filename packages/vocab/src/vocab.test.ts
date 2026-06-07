@@ -1973,6 +1973,26 @@ test("Object.fromJsonLd() decodes Image icon with relative id and baseUrl", asyn
   );
 });
 
+test("Object.fromJsonLd() decodes compact icon id with relative id and baseUrl", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "id": "/notes/1",
+    "content": "Hello",
+    "icon": "/icons/icon.png",
+  };
+  const obj = await Object.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+    baseUrl: new URL("https://example.com/"),
+  });
+  deepStrictEqual(obj.id?.href, "https://example.com/notes/1");
+  deepStrictEqual(
+    obj.iconId?.href,
+    "https://example.com/icons/icon.png",
+  );
+});
+
 test(
   "Object.getIcon() resolves relative Link href without id via cached re-parse",
   async () => {

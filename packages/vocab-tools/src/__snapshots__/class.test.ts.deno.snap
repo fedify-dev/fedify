@@ -10717,9 +10717,17 @@ get urls(): ((URL | Link))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _49BipA5dq9eoH8LX8xdsVumveTca_attachment.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -10776,9 +10784,17 @@ get urls(): ((URL | Link))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _42CGqJ94zgQ3ZBbfHwD8Hrr2L5Py_attributedTo.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -10849,9 +10865,17 @@ get urls(): ((URL | Link))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3ocC3VVi88cEd5sPWL8djkZsvTN6_audience.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -10910,9 +10934,17 @@ get urls(): ((URL | Link))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3mhZzGXSpQ431mBSz2kvych22v4e_context.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -11007,9 +11039,17 @@ get urls(): ((URL | Link))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _86xFhmgBapoMvYqjbjRuDPayTrS_generator.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -11084,9 +11124,17 @@ get urls(): ((URL | Link))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _33CjRLy5ujtsUrwRSCrsggvGdKuR_icon.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -11147,9 +11195,17 @@ get urls(): ((URL | Link))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3dXrUdkARxwyJLtJcYi1AJ92H41U_image.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -11184,9 +11240,17 @@ get urls(): ((URL | Link))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3fpbDrvZgf3Kq1a5V9aByFn8kx3s_inReplyTo.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -11235,9 +11299,17 @@ get urls(): ((URL | Link))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _31k5MUZJsnsPNg8dQQJieWaXTFnR_location.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -11286,9 +11358,17 @@ get urls(): ((URL | Link))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _gCVTegXxWWCw6wWRxa1QF65zusg_preview.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -11359,9 +11439,17 @@ get urls(): ((URL | Link))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _7UpwM3JWcXhADcscukEehBorf6k_replies.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -11396,9 +11484,17 @@ get urls(): ((URL | Link))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3kAfck9PcEYt2L7xug5y99YPbANs_shares.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -11433,9 +11529,17 @@ get urls(): ((URL | Link))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _S3ceDnpMdzoTRCccB9FkJWrEzYW_likes.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -11470,9 +11574,17 @@ get urls(): ((URL | Link))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _kMatyyNAuxoTD8GQMBfA5ogThMR_emojiReactions.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -11553,9 +11665,17 @@ get urls(): ((URL | Link))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _5chuqj6s95p5gg2sk1HntGfarRf_tag.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -11681,9 +11801,17 @@ get urls(): ((URL | Link))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3hFbw7DTpHhq3cvVhkY8njhcsXbd_to.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -11718,9 +11846,17 @@ get urls(): ((URL | Link))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _aLZupjwL8XB7tzdLgCMXdjZ6qej_bto.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -11755,9 +11891,17 @@ get urls(): ((URL | Link))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _42a1SvBs24QSLzKcfjCyNTjW5a1g_cc.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -11792,9 +11936,17 @@ get urls(): ((URL | Link))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3qvegKUB8YLgTXRpEf8E6JZSkz2H_bcc.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -11908,9 +12060,17 @@ get urls(): ((URL | Link))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _42rPnotok1ivQ2RNCKNbeFJgx8b8_proof.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -12011,9 +12171,17 @@ get urls(): ((URL | Link))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -12048,9 +12216,17 @@ get urls(): ((URL | Link))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -12085,9 +12261,17 @@ get urls(): ((URL | Link))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -14334,9 +14518,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -14397,9 +14589,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -17562,9 +17762,17 @@ instruments?: (Object | URL)[];}
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2DjTTboo3CNHU2a2JQqUSE2dbv9D_actor.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -17635,9 +17843,17 @@ instruments?: (Object | URL)[];}
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2MH19yxjn1wnHsNfa5n4JBhJzxyc_object.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -17672,9 +17888,17 @@ instruments?: (Object | URL)[];}
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3JQCmF2Ww56Ag9EWRYoSZRDNCYtF_target.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -17709,9 +17933,17 @@ instruments?: (Object | URL)[];}
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _u4QGFbRFcYmPEKGbPv1hpBR9r5G_result.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -17746,9 +17978,17 @@ instruments?: (Object | URL)[];}
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _25zu2s3VxVujgEKqrDycjE284XQR_origin.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -17783,9 +18023,17 @@ instruments?: (Object | URL)[];}
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3c5t2x7DYRo2shwTxpkd4kYSS5WQ_instrument.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -20427,9 +20675,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -20464,9 +20720,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -23325,9 +23589,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -23362,9 +23634,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -24703,9 +24983,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -24740,9 +25028,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -26080,9 +26376,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -26117,9 +26421,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -28199,9 +28511,17 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2mHVKxqA7zncjveJrDEo3pWpMZqg_verificationMethod.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -29166,9 +29486,17 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _5UJq9NDh3ZHgswFwwdVxQvJxdx2_owner.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -30080,9 +30408,17 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2yr3eUBTP6cNcyaxKzAXWjFsnGzN_controller.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -38672,9 +39008,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _axq166E2eZADq34V4MYUc8KMZdC_publicKey.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -38709,9 +39053,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -38764,9 +39116,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -38813,9 +39173,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _41QwhqJouoLg3h8dRPKat21brynC_outbox.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -38862,9 +39230,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3yAv8jymNfNuJUDuBzJ1NQhdbAee_following.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -38899,9 +39275,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _BBCTgfphhsFzpVfKTykGSpBNwoA_followers.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -38936,9 +39320,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3bgkPwJanyTCoVFM9ovRcus8tKkU_liked.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -38973,9 +39365,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _4N1vBJzXDf8NbBumeECQMFvKetja_featured.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -39010,9 +39410,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -39047,9 +39455,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -39181,9 +39597,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -39254,9 +39678,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -39327,9 +39759,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -41568,9 +42008,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -41631,9 +42079,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -47236,9 +47692,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3UyUdxnyn6cDn53QKrh4MBiearma_current.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -47273,9 +47737,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _J52RqweMe6hhv7RnLJMC8BExTE5_first.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -47310,9 +47782,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _gyJJnyEFnuNVi1HFZKfAn3Hfn26_last.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -47347,9 +47827,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2JPCKWTcfBmTCcW8Tv3TpRaLVaqg_items.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -47398,9 +47886,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _4TB9Qd9ddtcZEpMfzbHhzafE6jaJ_likesOf.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -47435,9 +47931,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3manzgeKiPsugpztKGiaUUwJ3ito_sharesOf.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -47472,9 +47976,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3T3oGm3twpcQUcrnMisXQtmDZ32X_repliesOf.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -47509,9 +48021,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2bvRkAFZjMfVD8jiUWZJr5YokSeN_inboxOf.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -47546,9 +48066,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _4AHzVZDxHjK6uEWa9UiKHGK34yYm_outboxOf.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -47583,9 +48111,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _41aoZ5M6yRUHy3Zx8q6iuZQxtopb_followersOf.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -47620,9 +48156,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2nXT2Ah42UjEEQF5oJQ39CbKB1xj_followingOf.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -47657,9 +48201,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2bsySzmT3qEZcrnoe3tZ5xBjXSju_likedOf.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -49158,9 +49710,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2kWgBhQKjEauxx8C6qF3ZQamK4Le_partOf.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -49195,9 +49755,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3BT4kQLcXhHx7TAWaNDKh8nFn9eY_next.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -49232,9 +49800,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3b8yG8tDNzQFFEnWhCc13G8eHooA_prev.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -58175,9 +58751,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _axq166E2eZADq34V4MYUc8KMZdC_publicKey.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -58212,9 +58796,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -58267,9 +58859,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -58316,9 +58916,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _41QwhqJouoLg3h8dRPKat21brynC_outbox.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -58365,9 +58973,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3yAv8jymNfNuJUDuBzJ1NQhdbAee_following.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -58402,9 +59018,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _BBCTgfphhsFzpVfKTykGSpBNwoA_followers.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -58439,9 +59063,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3bgkPwJanyTCoVFM9ovRcus8tKkU_liked.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -58476,9 +59108,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _4N1vBJzXDf8NbBumeECQMFvKetja_featured.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -58513,9 +59153,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -58550,9 +59198,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -58684,9 +59340,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -58757,9 +59421,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -58830,9 +59502,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -60850,9 +61530,17 @@ get names(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _gCVTegXxWWCw6wWRxa1QF65zusg_preview.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -65408,9 +66096,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -65471,9 +66167,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -66221,9 +66925,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2JPCKWTcfBmTCcW8Tv3TpRaLVaqg_items.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -67024,9 +67736,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2JPCKWTcfBmTCcW8Tv3TpRaLVaqg_items.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -72777,9 +73497,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _axq166E2eZADq34V4MYUc8KMZdC_publicKey.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -72814,9 +73542,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -72869,9 +73605,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -72918,9 +73662,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _41QwhqJouoLg3h8dRPKat21brynC_outbox.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -72967,9 +73719,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3yAv8jymNfNuJUDuBzJ1NQhdbAee_following.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -73004,9 +73764,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _BBCTgfphhsFzpVfKTykGSpBNwoA_followers.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -73041,9 +73809,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3bgkPwJanyTCoVFM9ovRcus8tKkU_liked.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -73078,9 +73854,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _4N1vBJzXDf8NbBumeECQMFvKetja_featured.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -73115,9 +73899,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -73152,9 +73944,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -73286,9 +74086,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -73359,9 +74167,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -73432,9 +74248,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -79959,9 +80783,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _axq166E2eZADq34V4MYUc8KMZdC_publicKey.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -79996,9 +80828,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -80051,9 +80891,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -80100,9 +80948,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _41QwhqJouoLg3h8dRPKat21brynC_outbox.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -80149,9 +81005,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3yAv8jymNfNuJUDuBzJ1NQhdbAee_following.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -80186,9 +81050,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _BBCTgfphhsFzpVfKTykGSpBNwoA_followers.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -80223,9 +81095,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3bgkPwJanyTCoVFM9ovRcus8tKkU_liked.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -80260,9 +81140,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _4N1vBJzXDf8NbBumeECQMFvKetja_featured.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -80297,9 +81185,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -80334,9 +81230,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -80468,9 +81372,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -80541,9 +81453,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -80614,9 +81534,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -82843,9 +83771,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3CLQ1PLSXrhSQbTGGHuxNyaEFKM1_describes.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -84529,9 +85465,17 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2N5scKaVEcdYHFmfKYYacAwUhUgQ_oneOf.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -84566,9 +85510,17 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2mV6isMTPRKbWdLCjcpiEysq5dAY_anyOf.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -84652,9 +85604,17 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -84715,9 +85675,17 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -87098,9 +88066,17 @@ relationships?: (Object | URL)[];}
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2Zqdmi46ZnDQsECS6mzwhrv3rUKq_subject.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -87135,9 +88111,17 @@ relationships?: (Object | URL)[];}
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2MH19yxjn1wnHsNfa5n4JBhJzxyc_object.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -87172,9 +88156,17 @@ relationships?: (Object | URL)[];}
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _4Lzz89F9qipAQSGkWyX9DGWiUojG_relationship.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -93260,9 +94252,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _axq166E2eZADq34V4MYUc8KMZdC_publicKey.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -93297,9 +94297,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -93352,9 +94360,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -93401,9 +94417,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _41QwhqJouoLg3h8dRPKat21brynC_outbox.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -93450,9 +94474,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3yAv8jymNfNuJUDuBzJ1NQhdbAee_following.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -93487,9 +94519,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _BBCTgfphhsFzpVfKTykGSpBNwoA_followers.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -93524,9 +94564,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3bgkPwJanyTCoVFM9ovRcus8tKkU_liked.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -93561,9 +94609,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _4N1vBJzXDf8NbBumeECQMFvKetja_featured.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -93598,9 +94654,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -93635,9 +94699,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -93769,9 +94841,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -93842,9 +94922,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
@@ -93915,9 +95003,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
       if (typeof v === \\"object\\" && \\"@id\\" in v && !(\\"@type\\" in v)
           && globalThis.Object.keys(v).length === 1) {
         _4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.push(
-          !URL.canParse(v[\\"@id\\"]) && v[\\"@id\\"].startsWith(\\"at://\\")
+          !URL.canParse(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl))) && v[\\"@id\\"].startsWith(\\"at://\\")
             ? new URL(\\"at://\\" + encodeURIComponent(v[\\"@id\\"].substring(5)))
-            : new URL(v[\\"@id\\"])
+            : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ||
+          values[\\"@id\\"].startsWith(\\"_:\\") ||
+          !URL.canParse(values[\\"@id\\"], options.baseUrl)
+        ? options.baseUrl
+        : new URL(values[\\"@id\\"], options.baseUrl)))
         );
         continue;
       }
