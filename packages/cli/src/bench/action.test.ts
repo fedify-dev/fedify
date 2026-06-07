@@ -314,6 +314,82 @@ scenarios:
   }
 });
 
+test("runBench - unsafe public inbox destination needs an explicit CLI target", async () => {
+  const target = await spawnBenchmarkTarget();
+  try {
+    const file = await writeSuite(`version: 1
+target: ${target.url.href}
+scenarios:
+  - name: inbox-shared
+    type: inbox
+    recipient: "${new URL("/users/alice", target.url).href}"
+    inbox: "https://prod.example/inbox"
+    load: { rate: 1/s }
+    duration: 1ms
+`);
+    let code = -1;
+    let message = "";
+    await runBench(
+      command({
+        scenario: file,
+        allowUnsafeTarget: true,
+        advertiseHost: "127.0.0.1",
+      }),
+      {
+        exit: (c) => {
+          code = c;
+        },
+        writeOutput: () => Promise.resolve(),
+        log: (m) => {
+          message = m;
+        },
+      },
+    );
+    assert.strictEqual(code, 2);
+    assert.match(message, /--target/);
+  } finally {
+    await target.close();
+  }
+});
+
+test("runBench - unsafe public inbox destination needs explicit load", async () => {
+  const target = await spawnBenchmarkTarget();
+  try {
+    const file = await writeSuite(`version: 1
+target: ${target.url.href}
+scenarios:
+  - name: inbox-shared
+    type: inbox
+    recipient: "${new URL("/users/alice", target.url).href}"
+    inbox: "https://prod.example/inbox"
+    duration: 1ms
+`);
+    let code = -1;
+    let message = "";
+    await runBench(
+      command({
+        scenario: file,
+        target: target.url.href,
+        allowUnsafeTarget: true,
+        advertiseHost: "127.0.0.1",
+      }),
+      {
+        exit: (c) => {
+          code = c;
+        },
+        writeOutput: () => Promise.resolve(),
+        log: (m) => {
+          message = m;
+        },
+      },
+    );
+    assert.strictEqual(code, 2);
+    assert.match(message, /load/);
+  } finally {
+    await target.close();
+  }
+});
+
 test("runBench - malformed expect assertion exits 2 before any load", async () => {
   // The expect typo must be caught in preflight, so the run exits 2 (a config
   // error) without ever probing the target or sending load.

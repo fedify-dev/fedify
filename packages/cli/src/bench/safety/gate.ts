@@ -122,6 +122,8 @@ export interface InboxDestinationGateContext {
    * (e.g. an `http://host` inbox does not inherit an `https://host` target).
    */
   readonly targetOrigin: string;
+  /** The resolved target tier used by the main safety gate. */
+  readonly targetTier: TargetTier;
   /** Whether the gated target advertises benchmark mode. */
   readonly targetBenchmarkMode: boolean;
   /** Whether `--allow-unsafe-target` was given. */
@@ -150,8 +152,9 @@ export function assertInboxDestinationAllowed(
   url: URL,
   context: InboxDestinationGateContext,
 ): void {
-  const tier = classifyTarget(url);
-  const inheritsTargetGate = url.origin === context.targetOrigin &&
+  const sameOrigin = url.origin === context.targetOrigin;
+  const tier = sameOrigin ? context.targetTier : classifyTarget(url);
+  const inheritsTargetGate = sameOrigin &&
     context.targetBenchmarkMode;
   if (tier === "public" && !inheritsTargetGate && !context.allowUnsafe) {
     throw new UnsafeTargetError(

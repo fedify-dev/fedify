@@ -146,6 +146,7 @@ function destContext(
 ) {
   return {
     targetOrigin: "http://127.0.0.1:3000",
+    targetTier: "loopback" as const,
     targetBenchmarkMode: false,
     allowUnsafe: false,
     advertised: false,
@@ -199,6 +200,22 @@ test("assertInboxDestinationAllowed - an inbox on the target origin inherits its
   );
 });
 
+test("assertInboxDestinationAllowed - same-origin inbox uses the resolved target tier", () => {
+  // The target hostname may be syntactically public but DNS-resolved private.
+  // The discovered same-origin inbox should inherit that resolved tier instead
+  // of being reclassified from the hostname string.
+  assert.doesNotThrow(() =>
+    assertInboxDestinationAllowed(
+      new URL("https://staging.example/inbox"),
+      destContext({
+        targetOrigin: "https://staging.example",
+        targetTier: "private",
+        advertised: true,
+      }),
+    )
+  );
+});
+
 test("assertInboxDestinationAllowed - same host, different scheme does not inherit", () => {
   // The target is https (its benchmark-mode probe covered port 443); an http
   // inbox on the same hostname is a different service (port 80), so it must not
@@ -225,7 +242,10 @@ test("assertInboxDestinationAllowed - a non-loopback inbox needs an advertised h
     () =>
       assertInboxDestinationAllowed(
         new URL("http://10.0.0.5:8000/inbox"),
-        destContext({ targetOrigin: "http://10.0.0.5:8000" }),
+        destContext({
+          targetOrigin: "http://10.0.0.5:8000",
+          targetTier: "private",
+        }),
       ),
     (error: unknown) =>
       error instanceof UnsafeTargetError &&
@@ -234,7 +254,11 @@ test("assertInboxDestinationAllowed - a non-loopback inbox needs an advertised h
   assert.doesNotThrow(() =>
     assertInboxDestinationAllowed(
       new URL("http://10.0.0.5:8000/inbox"),
-      destContext({ targetOrigin: "http://10.0.0.5:8000", advertised: true }),
+      destContext({
+        targetOrigin: "http://10.0.0.5:8000",
+        targetTier: "private",
+        advertised: true,
+      }),
     )
   );
 });

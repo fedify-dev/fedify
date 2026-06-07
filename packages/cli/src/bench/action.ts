@@ -30,6 +30,7 @@ import {
 } from "./safety/gate.ts";
 import {
   classifyResolvedTarget,
+  classifyTarget,
   type ResolveTargetAddresses,
 } from "./safety/tiers.ts";
 import { runnerFor } from "./scenarios/registry.ts";
@@ -164,13 +165,24 @@ export default async function runBench(
 
   // Gates each resolved inbox destination (which can differ from the suite
   // target) before the runner sends load to it.
-  const assertDestinationAllowed = (url: URL): void =>
+  const assertDestinationAllowed = (
+    url: URL,
+    scenario: ResolvedScenario,
+  ): void => {
     assertInboxDestinationAllowed(url, {
       targetOrigin: suite.target.origin,
+      targetTier: tier,
       targetBenchmarkMode: probe.benchmarkMode,
       allowUnsafe: command.allowUnsafeTarget,
       advertised: command.advertiseHost != null,
     });
+    assertPublicDestinationOverrideAllowed(url, scenario, {
+      targetOrigin: suite.target.origin,
+      targetBenchmarkMode: probe.benchmarkMode,
+      allowUnsafe: command.allowUnsafeTarget,
+      explicitCliTarget: command.target != null,
+    });
+  };
 
   if (command.dryRun) {
     try {
@@ -229,7 +241,8 @@ export default async function runBench(
         allowPrivateAddress,
         fleet: fleet ?? null,
         fetch: fetchImpl,
-        assertDestinationAllowed,
+        assertDestinationAllowed: (url) =>
+          assertDestinationAllowed(url, scenario),
       });
       results.push(buildScenarioResult(scenario, measurement));
     }
@@ -321,7 +334,10 @@ interface DryRunPlanContext {
   readonly documentLoader: DocumentLoader;
   readonly contextLoader: DocumentLoader;
   readonly allowPrivateAddress: boolean;
-  readonly assertDestinationAllowed: (url: URL) => void;
+  readonly assertDestinationAllowed: (
+    url: URL,
+    scenario: ResolvedScenario,
+  ) => void;
 }
 
 async function renderPlan(
@@ -387,7 +403,9 @@ async function describeInboxDiscoveryPlan(
         `inbox ${inbox.href}`,
     );
     lines.push(
-      `  destination safety: ${describeDestinationSafety(inbox, context)}`,
+      `  destination safety: ${
+        describeDestinationSafety(inbox, scenario, context)
+      }`,
     );
   }
   return lines;
@@ -410,10 +428,11 @@ function describeWebFingerPlan(
 
 function describeDestinationSafety(
   inbox: URL,
+  scenario: ResolvedScenario,
   context: DryRunPlanContext,
 ): string {
   try {
-    context.assertDestinationAllowed(inbox);
+    context.assertDestinationAllowed(inbox, scenario);
     return "allowed";
   } catch (error) {
     if (error instanceof UnsafeTargetError) {
@@ -423,16 +442,55 @@ function describeDestinationSafety(
   }
 }
 
+interface PublicDestinationOverrideContext {
+  readonly targetOrigin: string;
+  readonly targetBenchmarkMode: boolean;
+  readonly allowUnsafe: boolean;
+  readonly explicitCliTarget: boolean;
+}
+
+function assertPublicDestinationOverrideAllowed(
+  url: URL,
+  scenario: ResolvedScenario,
+  context: PublicDestinationOverrideContext,
+): void {
+  const inheritsTargetGate = url.origin === context.targetOrigin &&
+    context.targetBenchmarkMode;
+  if (
+    classifyTarget(url) !== "public" || inheritsTargetGate ||
+    !context.allowUnsafe
+  ) {
+    return;
+  }
+  assertUnsafeOverrideAllowed({
+    tier: "public",
+    benchmarkMode: false,
+    allowUnsafe: true,
+    explicitCliTarget: context.explicitCliTarget,
+    scenarios: [unsafeOverrideScenario(scenario)],
+  });
+}
+
 function unsafeOverrideScenarios(
   suite: Suite,
 ): Parameters<typeof assertUnsafeOverrideAllowed>[0]["scenarios"] {
-  const defaultDuration = suite.defaults?.duration != null;
-  const defaultLoad = hasExplicitLoad(suite.defaults?.load);
-  return suite.scenarios.map((scenario) => ({
+  return suite.scenarios.map((scenario) =>
+    unsafeOverrideScenario(scenario, suite)
+  );
+}
+
+function unsafeOverrideScenario(
+  scenario: ResolvedScenario | Suite["scenarios"][number],
+  suite?: Suite,
+): Parameters<typeof assertUnsafeOverrideAllowed>[0]["scenarios"][number] {
+  const defaultDuration = suite?.defaults?.duration != null;
+  const defaultLoad = hasExplicitLoad(suite?.defaults?.load);
+  const raw = "raw" in scenario ? scenario.raw : scenario;
+  return {
     name: scenario.name,
-    explicitDuration: scenario.duration != null || defaultDuration,
-    explicitLoad: hasExplicitLoad(scenario.load) || defaultLoad,
-  }));
+    explicitDuration: raw.duration != null || defaultDuration,
+    explicitLoad: hasExplicitLoad(raw.load) || defaultLoad,
+  };
 }
 
 function hasExplicitLoad(load: LoadConfig | undefined): boolean {

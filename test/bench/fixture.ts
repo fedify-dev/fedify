@@ -4,6 +4,12 @@ import {
   MemoryKvStore,
 } from "@fedify/fedify";
 import { Create, Endpoints, Person } from "@fedify/vocab";
+import {
+  createServer,
+  type IncomingMessage,
+  type ServerResponse,
+} from "node:http";
+import type { AddressInfo } from "node:net";
 
 /** A running local benchmark-mode target used by `fedify bench` tests. */
 export interface BenchmarkTargetFixture {
@@ -26,7 +32,7 @@ export interface BenchmarkTargetFixture {
  * verification, and inbox paths that `fedify bench` drives.
  * @returns The running fixture.
  */
-export function spawnBenchmarkTarget(): BenchmarkTargetFixture {
+export async function spawnBenchmarkTarget(): Promise<BenchmarkTargetFixture> {
   const federation = createFederation<void>({
     kv: new MemoryKvStore(),
     benchmarkMode: true,
@@ -60,31 +66,74 @@ export function spawnBenchmarkTarget(): BenchmarkTargetFixture {
     () => {},
   );
   let inboxUserAgent: string | null = null;
-  const abort = new AbortController();
-  const server = Deno.serve(
-    {
-      port: 0,
-      hostname: "127.0.0.1",
-      signal: abort.signal,
-      onListen: () => {},
-    },
-    (request: Request) => {
+  const server = createServer(
+    async (incoming: IncomingMessage, outgoing: ServerResponse) => {
+      const request = await toFetchRequest(incoming);
       const url = new URL(request.url);
       requests.push({ method: request.method, path: url.pathname });
       if (request.method === "POST") {
         inboxUserAgent = request.headers.get("user-agent");
       }
-      return federation.fetch(request, { contextData: undefined });
+      const response = await federation.fetch(request, {
+        contextData: undefined,
+      });
+      await writeFetchResponse(response, outgoing);
     },
   );
-  const address = server.addr as Deno.NetAddr;
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address() as AddressInfo;
   return {
-    url: new URL(`http://${address.hostname}:${address.port}/`),
+    url: new URL(`http://${address.address}:${address.port}/`),
     inboxUserAgent: () => inboxUserAgent,
     requests: () => requests.slice(),
-    close: async () => {
-      abort.abort();
-      await server.finished.catch(() => {});
-    },
+    close: () => new Promise<void>((resolve) => server.close(() => resolve())),
   };
+}
+
+async function toFetchRequest(incoming: IncomingMessage): Promise<Request> {
+  const host = incoming.headers.host ?? "127.0.0.1";
+  const url = new URL(incoming.url ?? "/", `http://${host}`);
+  const headers = new Headers();
+  for (const [name, value] of Object.entries(incoming.headers)) {
+    if (value == null) continue;
+    if (Array.isArray(value)) {
+      for (const item of value) headers.append(name, item);
+    } else {
+      headers.set(name, value);
+    }
+  }
+  const method = incoming.method ?? "GET";
+  const init: RequestInit = { method, headers };
+  if (method !== "GET" && method !== "HEAD") {
+    init.body = await readBody(incoming);
+  }
+  return new Request(url, init);
+}
+
+async function readBody(incoming: IncomingMessage): Promise<ArrayBuffer> {
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of incoming) {
+    chunks.push(
+      typeof chunk === "string" ? new TextEncoder().encode(chunk) : chunk,
+    );
+  }
+  const length = chunks.reduce((total, chunk) => total + chunk.byteLength, 0);
+  const body = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return body.buffer;
+}
+
+async function writeFetchResponse(
+  response: Response,
+  outgoing: ServerResponse,
+): Promise<void> {
+  outgoing.statusCode = response.status;
+  response.headers.forEach((value, name) => {
+    outgoing.setHeader(name, value);
+  });
+  outgoing.end(new Uint8Array(await response.arrayBuffer()));
 }
