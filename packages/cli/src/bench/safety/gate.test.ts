@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   assertInboxDestinationAllowed,
   assertTargetAllowed,
+  assertUnsafeOverrideAllowed,
   UnsafeTargetError,
 } from "./gate.ts";
 
@@ -56,6 +57,75 @@ test("assertTargetAllowed - the unsafe flag overrides the refusal", () => {
       benchmarkMode: false,
       allowUnsafe: true,
       dryRun: false,
+    })
+  );
+});
+
+test("assertUnsafeOverrideAllowed - unsafe flag needs an explicit CLI target", () => {
+  assert.throws(
+    () =>
+      assertUnsafeOverrideAllowed({
+        tier: "public",
+        benchmarkMode: false,
+        allowUnsafe: true,
+        explicitCliTarget: false,
+        scenarios: [{
+          name: "wf",
+          explicitDuration: true,
+          explicitLoad: true,
+        }],
+      }),
+    (error: unknown) =>
+      error instanceof UnsafeTargetError && /--target/.test(error.message),
+  );
+});
+
+test("assertUnsafeOverrideAllowed - unsafe public defaults need explicit load", () => {
+  assert.throws(
+    () =>
+      assertUnsafeOverrideAllowed({
+        tier: "public",
+        benchmarkMode: false,
+        allowUnsafe: true,
+        explicitCliTarget: true,
+        scenarios: [{
+          name: "wf",
+          explicitDuration: true,
+          explicitLoad: false,
+        }],
+      }),
+    (error: unknown) =>
+      error instanceof UnsafeTargetError && /load/.test(error.message),
+  );
+});
+
+test("assertUnsafeOverrideAllowed - unsafe public defaults need explicit duration", () => {
+  assert.throws(
+    () =>
+      assertUnsafeOverrideAllowed({
+        tier: "public",
+        benchmarkMode: false,
+        allowUnsafe: true,
+        explicitCliTarget: true,
+        scenarios: [{
+          name: "wf",
+          explicitDuration: false,
+          explicitLoad: true,
+        }],
+      }),
+    (error: unknown) =>
+      error instanceof UnsafeTargetError && /duration/.test(error.message),
+  );
+});
+
+test("assertUnsafeOverrideAllowed - safe targets do not need unsafe metadata", () => {
+  assert.doesNotThrow(() =>
+    assertUnsafeOverrideAllowed({
+      tier: "loopback",
+      benchmarkMode: false,
+      allowUnsafe: false,
+      explicitCliTarget: false,
+      scenarios: [],
     })
   );
 });

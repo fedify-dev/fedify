@@ -1,8 +1,10 @@
 import { writeFile } from "node:fs/promises";
+import type { DocumentLoader } from "@fedify/vocab-runtime";
 import process from "node:process";
 import { getContextLoader, getDocumentLoader } from "../docloader.ts";
 import { buildFleet } from "./actor/fleet.ts";
 import type { BenchCommand } from "./command.ts";
+import { discoverInbox, selectInbox } from "./discovery/discover.ts";
 import {
   buildReport,
   buildScenarioResult,
@@ -18,20 +20,25 @@ import {
   type ResolvedScenario,
   type ResolvedSuite,
 } from "./scenario/normalize.ts";
-import type { Suite } from "./scenario/types.ts";
+import type { LoadConfig, Suite } from "./scenario/types.ts";
 import { validateSuite } from "./scenario/validate.ts";
 import {
   assertInboxDestinationAllowed,
   assertTargetAllowed,
+  assertUnsafeOverrideAllowed,
   UnsafeTargetError,
 } from "./safety/gate.ts";
-import { classifyTarget } from "./safety/tiers.ts";
+import {
+  classifyResolvedTarget,
+  type ResolveTargetAddresses,
+} from "./safety/tiers.ts";
 import { runnerFor } from "./scenarios/registry.ts";
 import {
   resolveAdvertiseHost,
   spawnSyntheticServer,
   type SyntheticServer,
 } from "./server/synthetic.ts";
+import { convertUrlIfHandle } from "../webfinger/lib.ts";
 
 /** Injectable dependencies for {@link runBench}, overridable in tests. */
 export interface RunBenchDeps {
@@ -46,6 +53,8 @@ export interface RunBenchDeps {
   readonly log?: (message: string) => void;
   /** Fetch implementation. */
   readonly fetch?: typeof fetch;
+  /** Hostname resolver used for target risk classification. */
+  readonly resolveTargetAddresses?: ResolveTargetAddresses;
 }
 
 /** The scenario types that need the synthetic actor/key server. */
@@ -109,19 +118,26 @@ export default async function runBench(
     return void exit(2);
   }
 
-  if (command.dryRun) {
-    await writeOutput(renderPlan(suite), command.output);
-    return void exit(0);
-  }
-
-  const tier = classifyTarget(suite.target);
+  const tier = await classifyResolvedTarget(
+    suite.target,
+    deps.resolveTargetAddresses,
+  );
   const probe = await probeBenchmarkMode(suite.target, fetchImpl);
   try {
+    if (!command.dryRun) {
+      assertUnsafeOverrideAllowed({
+        tier,
+        benchmarkMode: probe.benchmarkMode,
+        allowUnsafe: command.allowUnsafeTarget,
+        explicitCliTarget: command.target != null,
+        scenarios: unsafeOverrideScenarios(validated),
+      });
+    }
     assertTargetAllowed({
       tier,
       benchmarkMode: probe.benchmarkMode,
       allowUnsafe: command.allowUnsafeTarget,
-      dryRun: false,
+      dryRun: command.dryRun,
     });
   } catch (error) {
     if (error instanceof UnsafeTargetError) {
@@ -129,6 +145,49 @@ export default async function runBench(
       return void exit(2);
     }
     throw error;
+  }
+
+  // The target dereferences the synthetic actor server while verifying
+  // signatures.  By default that server is loopback-only, reachable just by a
+  // same-machine (loopback) target; a non-loopback target needs an advertised,
+  // reachable host (--advertise-host).  Without one, refuse signed scenarios
+  // rather than let every signed delivery fail key lookup.
+  const allowPrivateAddress = tier !== "public";
+  const documentLoader = await getDocumentLoader({
+    allowPrivateAddress,
+    userAgent: command.userAgent,
+  });
+  const contextLoader = await getContextLoader({
+    allowPrivateAddress,
+    userAgent: command.userAgent,
+  });
+
+  // Gates each resolved inbox destination (which can differ from the suite
+  // target) before the runner sends load to it.
+  const assertDestinationAllowed = (url: URL): void =>
+    assertInboxDestinationAllowed(url, {
+      targetOrigin: suite.target.origin,
+      targetBenchmarkMode: probe.benchmarkMode,
+      allowUnsafe: command.allowUnsafeTarget,
+      advertised: command.advertiseHost != null,
+    });
+
+  if (command.dryRun) {
+    try {
+      await writeOutput(
+        await renderPlan(suite, {
+          documentLoader,
+          contextLoader,
+          allowPrivateAddress,
+          assertDestinationAllowed,
+        }),
+        command.output,
+      );
+      return void exit(0);
+    } catch (error) {
+      log(error instanceof Error ? error.message : String(error));
+      return void exit(2);
+    }
   }
 
   // The target dereferences the synthetic actor server while verifying
@@ -149,26 +208,6 @@ export default async function runBench(
     );
     return void exit(2);
   }
-
-  const allowPrivateAddress = tier !== "public";
-  const documentLoader = await getDocumentLoader({
-    allowPrivateAddress,
-    userAgent: command.userAgent,
-  });
-  const contextLoader = await getContextLoader({
-    allowPrivateAddress,
-    userAgent: command.userAgent,
-  });
-
-  // Gates each resolved inbox destination (which can differ from the suite
-  // target) before the runner sends load to it.
-  const assertDestinationAllowed = (url: URL): void =>
-    assertInboxDestinationAllowed(url, {
-      targetOrigin: suite.target.origin,
-      targetBenchmarkMode: probe.benchmarkMode,
-      allowUnsafe: command.allowUnsafeTarget,
-      advertised: command.advertiseHost != null,
-    });
 
   let fleet: SyntheticServer | undefined;
   const startedAt = new Date().toISOString();
@@ -278,7 +317,17 @@ async function defaultWriteOutput(
   await writeFile(outputPath, content, { encoding: "utf-8" });
 }
 
-function renderPlan(suite: ResolvedSuite): string {
+interface DryRunPlanContext {
+  readonly documentLoader: DocumentLoader;
+  readonly contextLoader: DocumentLoader;
+  readonly allowPrivateAddress: boolean;
+  readonly assertDestinationAllowed: (url: URL) => void;
+}
+
+async function renderPlan(
+  suite: ResolvedSuite,
+  context: DryRunPlanContext,
+): Promise<string> {
   const lines = [
     "Fedify benchmark plan (dry run)",
     "",
@@ -289,8 +338,13 @@ function renderPlan(suite: ResolvedSuite): string {
     lines.push(
       `- ${scenario.name} (${scenario.type}): ${describePlan(scenario)}`,
     );
+    lines.push(...await describeDiscoveryPlan(scenario, suite, context));
   }
-  lines.push("", "No requests were sent.");
+  lines.push(
+    "",
+    "No benchmark load was sent.  Discovery and stats probe requests may " +
+      "have been sent.",
+  );
   return `${lines.join("\n")}\n`;
 }
 
@@ -299,4 +353,90 @@ function describePlan(scenario: ResolvedScenario): string {
     ? `open-loop ${scenario.load.ratePerSec}/s ${scenario.load.arrival}`
     : `closed-loop concurrency ${scenario.load.concurrency}`;
   return `${load}, duration ${scenario.durationMs}ms, signing ${scenario.signing}`;
+}
+
+async function describeDiscoveryPlan(
+  scenario: ResolvedScenario,
+  suite: ResolvedSuite,
+  context: DryRunPlanContext,
+): Promise<string[]> {
+  switch (scenario.type) {
+    case "inbox":
+      return await describeInboxDiscoveryPlan(scenario, context);
+    case "webfinger":
+      return describeWebFingerPlan(scenario, suite.target);
+    default:
+      return ["  discovery: not available for this scenario type"];
+  }
+}
+
+async function describeInboxDiscoveryPlan(
+  scenario: ResolvedScenario,
+  context: DryRunPlanContext,
+): Promise<string[]> {
+  const lines: string[] = [];
+  for (const recipient of scenario.recipients) {
+    const discovered = await discoverInbox(recipient, {
+      documentLoader: context.documentLoader,
+      contextLoader: context.contextLoader,
+      allowPrivateAddress: context.allowPrivateAddress,
+    });
+    const inbox = selectInbox(discovered, scenario.inbox);
+    lines.push(
+      `  recipient ${recipient}: actor ${discovered.actorUri.href}, ` +
+        `inbox ${inbox.href}`,
+    );
+    lines.push(
+      `  destination safety: ${describeDestinationSafety(inbox, context)}`,
+    );
+  }
+  return lines;
+}
+
+function describeWebFingerPlan(
+  scenario: ResolvedScenario,
+  target: URL,
+): string[] {
+  const recipients = scenario.recipients.length > 0
+    ? scenario.recipients
+    : [target.href];
+  return recipients.map((recipient) => {
+    const resource = convertUrlIfHandle(recipient).href;
+    const url = new URL("/.well-known/webfinger", target);
+    url.searchParams.set("resource", resource);
+    return `  webfinger ${resource}: GET ${url.href}`;
+  });
+}
+
+function describeDestinationSafety(
+  inbox: URL,
+  context: DryRunPlanContext,
+): string {
+  try {
+    context.assertDestinationAllowed(inbox);
+    return "allowed";
+  } catch (error) {
+    if (error instanceof UnsafeTargetError) {
+      return `would be refused: ${error.message}`;
+    }
+    throw error;
+  }
+}
+
+function unsafeOverrideScenarios(
+  suite: Suite,
+): Parameters<typeof assertUnsafeOverrideAllowed>[0]["scenarios"] {
+  const defaultDuration = suite.defaults?.duration != null;
+  const defaultLoad = hasExplicitLoad(suite.defaults?.load);
+  return suite.scenarios.map((scenario) => ({
+    name: scenario.name,
+    explicitDuration: scenario.duration != null || defaultDuration,
+    explicitLoad: hasExplicitLoad(scenario.load) || defaultLoad,
+  }));
+}
+
+function hasExplicitLoad(load: LoadConfig | undefined): boolean {
+  return load != null &&
+    (("rate" in load && load.rate != null) ||
+      ("concurrency" in load && load.concurrency != null));
 }

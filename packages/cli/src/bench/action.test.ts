@@ -19,6 +19,7 @@ async function spawnTarget() {
     benchmarkMode: true,
   });
   let keyPairs: CryptoKeyPair[] | undefined;
+  const requests: { method: string; path: string }[] = [];
   federation
     .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
       if (identifier !== "alice") return null;
@@ -51,6 +52,8 @@ async function spawnTarget() {
     hostname: "127.0.0.1",
     silent: true,
     fetch: (request: Request) => {
+      const url = new URL(request.url);
+      requests.push({ method: request.method, path: url.pathname });
       if (request.method === "POST") {
         inboxUserAgent = request.headers.get("user-agent");
       }
@@ -61,6 +64,7 @@ async function spawnTarget() {
   return {
     url: new URL(server.url!),
     inboxUserAgent: () => inboxUserAgent,
+    requests: () => requests.slice(),
     close: () => server.close(true),
   };
 }
@@ -213,10 +217,46 @@ test("runBench - dry run prints a plan and sends nothing", async () => {
     });
     assert.strictEqual(code, 0);
     assert.match(output, /dry run/i);
-    assert.match(output, /No requests were sent/);
+    assert.match(output, /\/inbox/);
+    assert.match(output, /No benchmark load was sent/);
+    const requests = target.requests();
+    assert.ok(requests.some((r) => r.method === "GET"));
+    assert.ok(!requests.some((r) => r.method === "POST"));
   } finally {
     await target.close();
   }
+});
+
+test("runBench - unsafe override requires an explicit CLI target", async () => {
+  const file = await writeSuite(`version: 1
+target: https://example.com
+scenarios:
+  - name: wf
+    type: webfinger
+    recipient: "acct:alice@example.com"
+    load: { rate: 1/s }
+    duration: 1ms
+`);
+  let code = -1;
+  let message = "";
+  await runBench(command({ scenario: file, allowUnsafeTarget: true }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: () => Promise.resolve(),
+    log: (m) => {
+      message = m;
+    },
+    fetch: (input) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.pathname.includes("/bench/stats")) {
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      }
+      return Promise.resolve(new Response("ok"));
+    },
+  });
+  assert.strictEqual(code, 2);
+  assert.match(message, /--target/);
 });
 
 test("runBench - refuses an unsafe public target (exit 2)", async () => {
