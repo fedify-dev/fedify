@@ -151,7 +151,10 @@ The `# yaml-language-server:` line gives editors autocomplete and validation
 against the [published schema].
 Override the file's target with `--target`, choose the output with
 `--format`/`--output`, and inspect a run without sending anything with
-`--dry-run`.
+`--dry-run`.  A dry run still probes the target's benchmark stats endpoint and
+resolves scenario discovery, such as WebFinger and actor inbox lookup, so the
+printed plan shows the concrete destinations a real run would use.  It does
+not send benchmark load.
 
 An `inbox` scenario's `recipient` may be a single value or a list.  With a
 list, deliveries are rotated across the recipients (and across the synthetic
@@ -241,10 +244,22 @@ belongs in a controlled environment, not a shared CI runner.
 ### Safety
 
 `fedify bench` runs without friction against a loopback or private target, or
-any target that advertises benchmark mode.  A public target that does not
-advertise benchmark mode is refused unless you pass `--allow-unsafe-target`,
-which is mandatory (never prompted) in CI and any non-interactive context.  Use
-`--dry-run` to print the plan without sending anything.
+any target that advertises benchmark mode.  Hostnames are classified from their
+resolved addresses when possible, and DNS failures are treated as public so the
+gate stays conservative.  A public target that does not advertise benchmark
+mode is refused unless you pass `--allow-unsafe-target`, which is mandatory
+(never prompted) in CI and any non-interactive context.
+
+The unsafe override is deliberately narrow.  It must be paired with an
+explicit `--target` on the command line, and every scenario must set its load
+(`rate` or `concurrency`) and `duration` explicitly, either in the scenario or
+in suite defaults.  This prevents a public run from falling back to built-in
+defaults by accident.
+
+Use `--dry-run` as the first step against an unfamiliar target.  It performs
+the benchmark-mode probe and discovery requests needed to print the planned
+WebFinger resources and inbox destinations, but it does not send signed inbox
+deliveries or other benchmark load.
 
 ### Local targets over HTTP
 

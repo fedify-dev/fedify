@@ -75,7 +75,7 @@ export const benchCommand = command(
       dryRun: withDefault(
         flag("--dry-run", {
           description:
-            message`Print the normalized plan without contacting the target or \
+            message`Resolve discovery and print the benchmark plan without \
 sending load.`,
         }),
         false,

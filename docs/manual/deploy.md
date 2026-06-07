@@ -1287,6 +1287,17 @@ operations across your infrastructure.  For production:
 
 [OpenTelemetry]: https://opentelemetry.io/
 
+### Benchmarking before production
+
+Before changing queue backends, federation handlers, or signature-related
+configuration, run [`fedify bench`](./benchmarking.md) against a local or
+staging target that enables `benchmarkMode`.  The benchmark command drives
+signed inbox deliveries and WebFinger lookups, reports latency, throughput,
+success rate, and errors, and can gate CI with `expect` thresholds.  Do not
+enable `benchmarkMode` on production servers; for an unfamiliar target, start
+with `--dry-run` to resolve discovery and inspect the planned destinations
+without sending benchmark load.
+
 ### Error reporting
 
 For error aggregation, the pattern most Fedify applications use is a
