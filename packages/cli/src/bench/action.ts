@@ -181,6 +181,7 @@ export default async function runBench(
       targetBenchmarkMode: probe.benchmarkMode,
       allowUnsafe: command.allowUnsafeTarget,
       explicitCliTarget: command.target != null,
+      suite: validated,
     });
   };
 
@@ -447,6 +448,7 @@ interface PublicDestinationOverrideContext {
   readonly targetBenchmarkMode: boolean;
   readonly allowUnsafe: boolean;
   readonly explicitCliTarget: boolean;
+  readonly suite: Suite;
 }
 
 function assertPublicDestinationOverrideAllowed(
@@ -467,7 +469,7 @@ function assertPublicDestinationOverrideAllowed(
     benchmarkMode: false,
     allowUnsafe: true,
     explicitCliTarget: context.explicitCliTarget,
-    scenarios: [unsafeOverrideScenario(scenario)],
+    scenarios: [unsafeOverrideScenario(scenario, context.suite)],
   });
 }
 

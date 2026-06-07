@@ -390,6 +390,52 @@ scenarios:
   }
 });
 
+test("runBench - unsafe public inbox destination honors suite defaults", async () => {
+  const target = await spawnBenchmarkTarget();
+  try {
+    const file = await writeSuite(`version: 1
+target: ${target.url.href}
+defaults:
+  duration: 1ms
+  load: { rate: 1/s }
+scenarios:
+  - name: inbox-shared
+    type: inbox
+    recipient: "${new URL("/users/alice", target.url).href}"
+    inbox: "https://prod.example/inbox"
+`);
+    let code = -1;
+    let message = "";
+    await runBench(
+      command({
+        scenario: file,
+        target: target.url.href,
+        allowUnsafeTarget: true,
+        advertiseHost: "127.0.0.1",
+      }),
+      {
+        exit: (c) => {
+          code = c;
+        },
+        writeOutput: () => Promise.resolve(),
+        log: (m) => {
+          message = m;
+        },
+        fetch: (input) => {
+          const url = new URL(input instanceof Request ? input.url : input);
+          if (url.hostname === "prod.example") {
+            return Promise.resolve(new Response("accepted", { status: 202 }));
+          }
+          return fetch(input);
+        },
+      },
+    );
+    assert.strictEqual(code, 0, message);
+  } finally {
+    await target.close();
+  }
+});
+
 test("runBench - malformed expect assertion exits 2 before any load", async () => {
   // The expect typo must be caught in preflight, so the run exits 2 (a config
   // error) without ever probing the target or sending load.
