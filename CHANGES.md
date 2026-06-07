@@ -365,7 +365,7 @@ To be released.
 ### @fedify/vocab-tools
 
  -  Property schemas now support a `preprocessors` field that lists
-    module/function pairs.  Generated decoders dynamically import and run
+    module/function pairs.  Generated decoders statically import and run
     these preprocessors for each expanded JSON-LD property value before
     falling back to the normal range decoder.  [[#792]]
 
