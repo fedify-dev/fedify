@@ -38,7 +38,10 @@ export async function spawnBenchmarkTarget(): Promise<BenchmarkTargetFixture> {
     kv: new MemoryKvStore(),
     benchmarkMode: true,
   });
-  let keyPairs: CryptoKeyPair[] | undefined;
+  const keyPairs = Promise.all([
+    generateCryptoKeyPair("RSASSA-PKCS1-v1_5"),
+    generateCryptoKeyPair("Ed25519"),
+  ]);
   const requests: { method: string; path: string }[] = [];
   federation
     .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
@@ -56,11 +59,7 @@ export async function spawnBenchmarkTarget(): Promise<BenchmarkTargetFixture> {
     .mapHandle((_ctx, username) => (username === "alice" ? "alice" : null))
     .setKeyPairsDispatcher(async (_ctx, identifier) => {
       if (identifier !== "alice") return [];
-      keyPairs ??= [
-        await generateCryptoKeyPair("RSASSA-PKCS1-v1_5"),
-        await generateCryptoKeyPair("Ed25519"),
-      ];
-      return keyPairs;
+      return await keyPairs;
     });
   federation.setInboxListeners("/users/{identifier}/inbox", "/inbox").on(
     Create,

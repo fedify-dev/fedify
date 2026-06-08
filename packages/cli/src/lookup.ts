@@ -59,7 +59,7 @@ import {
   userAgentOption,
 } from "./options.ts";
 import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
-import { colorEnabled, colors, formatObject } from "./utils.ts";
+import { colorEnabled, colors, describeError, formatObject } from "./utils.ts";
 
 const logger = getLogger(["fedify", "cli", "lookup"]);
 
@@ -538,7 +538,7 @@ function handleTimeoutError(
 }
 
 function isPrivateAddressError(error: unknown): boolean {
-  const errorMessage = error instanceof Error ? error.message : String(error);
+  const errorMessage = describeError(error);
   const lowerMessage = errorMessage.toLowerCase();
   if (error instanceof UrlError) {
     return (
@@ -600,7 +600,7 @@ function getPrivateContextUrl(error: unknown): URL | null {
   // a trailing `URL: "..."` segment all at once. If jsonld changes those
   // details, this helper and the related lookup tests need to be updated
   // together.
-  const errorMessage = error instanceof Error ? error.message : String(error);
+  const errorMessage = describeError(error);
   if (
     !(error instanceof Error) ||
     error.name !== "jsonld.InvalidUrl" ||

@@ -16,6 +16,7 @@ import { nodeInfoCommand } from "./nodeinfo.ts";
 import { globalOptions } from "./options.ts";
 import { relayCommand } from "./relay/command.ts";
 import { tunnelCommand } from "./tunnel.ts";
+import { describeError } from "./utils.ts";
 import { webFingerCommand } from "./webfinger/mod.ts";
 import metadata from "../deno.json" with { type: "json" };
 
@@ -105,7 +106,7 @@ export function loadConfig(
     } catch (error) {
       printError(
         message`Could not load config file at ${parsed.configPath}: ${
-          error instanceof Error ? error.message : String(error)
+          describeError(error)
         }`,
       );
       process.exit(1);

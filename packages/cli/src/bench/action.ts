@@ -2,6 +2,7 @@ import { writeFile } from "node:fs/promises";
 import type { DocumentLoader } from "@fedify/vocab-runtime";
 import process from "node:process";
 import { getContextLoader, getDocumentLoader } from "../docloader.ts";
+import { describeError } from "../utils.ts";
 import { buildFleet } from "./actor/fleet.ts";
 import type { BenchCommand } from "./command.ts";
 import {
@@ -24,7 +25,7 @@ import {
   type ResolvedScenario,
   type ResolvedSuite,
 } from "./scenario/normalize.ts";
-import type { LoadConfig, Suite } from "./scenario/types.ts";
+import type { LoadConfig, Suite, SuiteDefaults } from "./scenario/types.ts";
 import { validateSuite } from "./scenario/validate.ts";
 import {
   assertInboxDestinationAllowed,
@@ -100,7 +101,7 @@ export default async function runBench(
     validated = validateSuite(rendered, command.scenario);
     suite = normalizeSuite(validated, { target: command.target });
   } catch (error) {
-    log(error instanceof Error ? error.message : String(error));
+    log(describeError(error));
     return void exit(2);
   }
 
@@ -119,7 +120,7 @@ export default async function runBench(
       resolveAdvertiseHost(command.advertiseHost);
     }
   } catch (error) {
-    log(error instanceof Error ? error.message : String(error));
+    log(describeError(error));
     return void exit(2);
   }
 
@@ -190,7 +191,7 @@ export default async function runBench(
       allowUnsafe: command.allowUnsafeTarget,
       explicitCliTarget: command.target != null,
       destinationTier,
-      suite: validated,
+      defaults: validated.defaults,
     });
   };
 
@@ -207,7 +208,7 @@ export default async function runBench(
       );
       return void exit(0);
     } catch (error) {
-      log(error instanceof Error ? error.message : String(error));
+      log(describeError(error));
       return void exit(2);
     }
   }
@@ -431,10 +432,6 @@ async function describeInboxDiscoveryPlan(
   return lines;
 }
 
-function describeError(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
 function describeWebFingerPlan(
   scenario: ResolvedScenario,
   target: URL,
@@ -472,7 +469,7 @@ interface PublicDestinationOverrideContext {
   readonly allowUnsafe: boolean;
   readonly explicitCliTarget: boolean;
   readonly destinationTier: TargetTier;
-  readonly suite: Suite;
+  readonly defaults?: SuiteDefaults;
 }
 
 function assertPublicDestinationOverrideAllowed(
@@ -493,7 +490,7 @@ function assertPublicDestinationOverrideAllowed(
     benchmarkMode: false,
     allowUnsafe: true,
     explicitCliTarget: context.explicitCliTarget,
-    scenarios: [unsafeOverrideScenario(scenario, context.suite)],
+    scenarios: [unsafeOverrideScenario(scenario, context.defaults)],
   });
 }
 
@@ -501,16 +498,16 @@ function unsafeOverrideScenarios(
   suite: Suite,
 ): Parameters<typeof assertUnsafeOverrideAllowed>[0]["scenarios"] {
   return suite.scenarios.map((scenario) =>
-    unsafeOverrideScenario(scenario, suite)
+    unsafeOverrideScenario(scenario, suite.defaults)
   );
 }
 
 function unsafeOverrideScenario(
   scenario: ResolvedScenario | Suite["scenarios"][number],
-  suite?: Suite,
+  defaults?: SuiteDefaults,
 ): Parameters<typeof assertUnsafeOverrideAllowed>[0]["scenarios"][number] {
-  const defaultDuration = suite?.defaults?.duration != null;
-  const defaultLoad = hasExplicitLoad(suite?.defaults?.load);
+  const defaultDuration = defaults?.duration != null;
+  const defaultLoad = hasExplicitLoad(defaults?.load);
   const raw = "raw" in scenario ? scenario.raw : scenario;
   return {
     name: scenario.name,

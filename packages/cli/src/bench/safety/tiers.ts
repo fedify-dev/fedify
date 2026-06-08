@@ -56,26 +56,21 @@ export async function classifyResolvedTarget(
   const host = normalizedHost(target);
   const direct = classifyTarget(target);
   if (direct !== "public" || isIpLiteral(host)) return direct;
-  let addresses: readonly string[];
   try {
     const resolved = await resolveAddresses(host);
-    addresses = Array.isArray(resolved) ? resolved : [];
+    if (!Array.isArray(resolved) || resolved.length < 1) return "public";
+    let aggregate: TargetTier = "loopback";
+    for (const address of resolved) {
+      const tier = classifyTarget(
+        new URL(`http://${hostForAddress(address)}/`),
+      );
+      if (tier === "public") return "public";
+      if (tier === "private") aggregate = "private";
+    }
+    return aggregate;
   } catch {
     return "public";
   }
-  if (addresses.length < 1) return "public";
-  let aggregate: TargetTier = "loopback";
-  for (const address of addresses) {
-    let tier: TargetTier;
-    try {
-      tier = classifyTarget(new URL(`http://${hostForAddress(address)}/`));
-    } catch {
-      return "public";
-    }
-    if (tier === "public") return "public";
-    if (tier === "private") aggregate = "private";
-  }
-  return aggregate;
 }
 
 /** Resolves a hostname with the platform DNS resolver. */
