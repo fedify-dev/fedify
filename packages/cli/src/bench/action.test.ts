@@ -3,7 +3,7 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { spawnBenchmarkTarget } from "../../../../test/bench/fixture.ts";
+import { spawnBenchmarkTarget } from "../../test/bench/fixture.ts";
 import runBench, { withUserAgent } from "./action.ts";
 import type { BenchCommand } from "./command.ts";
 
