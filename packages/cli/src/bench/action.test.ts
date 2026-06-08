@@ -169,6 +169,45 @@ test("runBench - dry run prints a plan and sends nothing", async () => {
   }
 });
 
+test("runBench - dry run reports inbox discovery failures and continues", async () => {
+  const target = await spawnBenchmarkTarget();
+  try {
+    const file = await writeSuite(`version: 1
+target: ${target.url.href}
+scenarios:
+  - name: inbox-shared
+    type: inbox
+    recipient:
+      - "${new URL("/users/missing", target.url).href}"
+      - "${new URL("/users/alice", target.url).href}"
+    inbox: shared
+    load: { concurrency: 2 }
+    duration: 250ms
+`);
+    let code = -1;
+    let output = "";
+    await runBench(command({ scenario: file, dryRun: true }), {
+      exit: (c) => {
+        code = c;
+      },
+      writeOutput: (c) => {
+        output = c;
+        return Promise.resolve();
+      },
+      log: () => {},
+    });
+    assert.strictEqual(code, 0);
+    assert.match(output, /\/users\/missing/);
+    assert.match(output, /discovery failed/);
+    assert.match(output, /\/users\/alice/);
+    assert.match(output, /\/inbox/);
+    assert.match(output, /No benchmark load was sent/);
+    assert.ok(!target.requests().some((r) => r.method === "POST"));
+  } finally {
+    await target.close();
+  }
+});
+
 test("runBench - unsafe override requires an explicit CLI target", async () => {
   const file = await writeSuite(`version: 1
 target: https://example.com

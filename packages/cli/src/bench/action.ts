@@ -4,7 +4,11 @@ import process from "node:process";
 import { getContextLoader, getDocumentLoader } from "../docloader.ts";
 import { buildFleet } from "./actor/fleet.ts";
 import type { BenchCommand } from "./command.ts";
-import { discoverInbox, selectInbox } from "./discovery/discover.ts";
+import {
+  type DiscoveredInbox,
+  discoverInbox,
+  selectInbox,
+} from "./discovery/discover.ts";
 import {
   buildReport,
   buildScenarioResult,
@@ -398,11 +402,19 @@ async function describeInboxDiscoveryPlan(
 ): Promise<string[]> {
   const lines: string[] = [];
   for (const recipient of scenario.recipients) {
-    const discovered = await discoverInbox(recipient, {
-      documentLoader: context.documentLoader,
-      contextLoader: context.contextLoader,
-      allowPrivateAddress: context.allowPrivateAddress,
-    });
+    let discovered: DiscoveredInbox;
+    try {
+      discovered = await discoverInbox(recipient, {
+        documentLoader: context.documentLoader,
+        contextLoader: context.contextLoader,
+        allowPrivateAddress: context.allowPrivateAddress,
+      });
+    } catch (error) {
+      lines.push(
+        `  recipient ${recipient}: discovery failed (${describeError(error)})`,
+      );
+      continue;
+    }
     const inbox = selectInbox(discovered, scenario.inbox);
     lines.push(
       `  recipient ${recipient}: actor ${discovered.actorUri.href}, ` +
@@ -417,6 +429,10 @@ async function describeInboxDiscoveryPlan(
     );
   }
   return lines;
+}
+
+function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function describeWebFingerPlan(
