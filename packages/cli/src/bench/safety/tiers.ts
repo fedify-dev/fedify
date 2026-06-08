@@ -58,7 +58,8 @@ export async function classifyResolvedTarget(
   if (direct !== "public" || isIpLiteral(host)) return direct;
   let addresses: readonly string[];
   try {
-    addresses = await resolveAddresses(host);
+    const resolved = await resolveAddresses(host);
+    addresses = Array.isArray(resolved) ? resolved : [];
   } catch {
     return "public";
   }

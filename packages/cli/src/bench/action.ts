@@ -505,6 +505,7 @@ function unsafeOverrideScenario(
 
 function hasExplicitLoad(load: LoadConfig | undefined): boolean {
   return load != null &&
+    typeof load === "object" &&
     (("rate" in load && load.rate != null) ||
       ("concurrency" in load && load.concurrency != null));
 }

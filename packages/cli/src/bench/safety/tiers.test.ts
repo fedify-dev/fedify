@@ -103,6 +103,14 @@ test("classifyResolvedTarget - treats resolution failure as public", async () =>
   assert.strictEqual(tier, "public");
 });
 
+test("classifyResolvedTarget - treats non-array resolver output as public", async () => {
+  const tier = await classifyResolvedTarget(
+    new URL("https://bench.example"),
+    () => Promise.resolve(null as unknown as readonly string[]),
+  );
+  assert.strictEqual(tier, "public");
+});
+
 test("classifyResolvedTarget - treats malformed resolver output as public", async () => {
   const tier = await classifyResolvedTarget(
     new URL("https://bench.example"),
