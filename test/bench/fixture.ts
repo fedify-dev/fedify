@@ -4,6 +4,7 @@ import {
   MemoryKvStore,
 } from "@fedify/fedify";
 import { Create, Endpoints, Person } from "@fedify/vocab";
+import { Buffer } from "node:buffer";
 import {
   createServer,
   type IncomingMessage,
@@ -80,13 +81,22 @@ export async function spawnBenchmarkTarget(): Promise<BenchmarkTargetFixture> {
       await writeFetchResponse(response, outgoing);
     },
   );
-  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      server.off("error", reject);
+      resolve();
+    });
+  });
   const address = server.address() as AddressInfo;
   return {
     url: new URL(`http://${address.address}:${address.port}/`),
     inboxUserAgent: () => inboxUserAgent,
     requests: () => requests.slice(),
-    close: () => new Promise<void>((resolve) => server.close(() => resolve())),
+    close: () =>
+      new Promise<void>((resolve, reject) => {
+        server.close((error) => error == null ? resolve() : reject(error));
+      }),
   };
 }
 
@@ -135,5 +145,5 @@ async function writeFetchResponse(
   response.headers.forEach((value, name) => {
     outgoing.setHeader(name, value);
   });
-  outgoing.end(new Uint8Array(await response.arrayBuffer()));
+  outgoing.end(Buffer.from(await response.arrayBuffer()));
 }
