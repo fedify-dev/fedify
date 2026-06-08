@@ -65,7 +65,12 @@ export async function classifyResolvedTarget(
   if (addresses.length < 1) return "public";
   let aggregate: TargetTier = "loopback";
   for (const address of addresses) {
-    const tier = classifyTarget(new URL(`http://${hostForAddress(address)}/`));
+    let tier: TargetTier;
+    try {
+      tier = classifyTarget(new URL(`http://${hostForAddress(address)}/`));
+    } catch {
+      return "public";
+    }
     if (tier === "public") return "public";
     if (tier === "private") aggregate = "private";
   }

@@ -102,3 +102,11 @@ test("classifyResolvedTarget - treats resolution failure as public", async () =>
   );
   assert.strictEqual(tier, "public");
 });
+
+test("classifyResolvedTarget - treats malformed resolver output as public", async () => {
+  const tier = await classifyResolvedTarget(
+    new URL("https://bench.example"),
+    () => Promise.resolve(["2001:db8:::1"]),
+  );
+  assert.strictEqual(tier, "public");
+});
