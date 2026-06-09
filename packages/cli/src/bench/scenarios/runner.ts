@@ -40,6 +40,18 @@ export interface RunContext {
    * that differ from it.  Optional so direct runner tests need not supply it.
    */
   readonly assertDestinationAllowed?: (url: URL) => void | Promise<void>;
+  /**
+   * Gates a resolved read-only destination before unauthenticated GET load is
+   * sent.  Unlike signed inbox delivery, these reads do not require a
+   * reachable synthetic actor server.
+   */
+  readonly assertReadDestinationAllowed?: (url: URL) => void | Promise<void>;
+}
+
+/** Context available during runner preflight validation. */
+export interface ValidateContext {
+  /** Every scenario in the resolved suite, for composite runners. */
+  readonly scenarios?: readonly ResolvedScenario[];
 }
 
 /** A runner for one scenario type. */
@@ -50,7 +62,7 @@ export interface ScenarioRunner {
    * probe or load.  Called during preflight; throwing here surfaces as a
    * configuration error (exit 2) with the thrown message.
    */
-  validate?(scenario: ResolvedScenario): void;
+  validate?(scenario: ResolvedScenario, context?: ValidateContext): void;
 }
 
 /** Performs one HTTP send and classifies the result as a send outcome. */

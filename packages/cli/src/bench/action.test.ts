@@ -351,6 +351,39 @@ scenarios:
   assert.strictEqual(JSON.parse(output).scenarios[0].requests.successRate, 1);
 });
 
+test("runBench - unauthenticated actor read needs no advertise host", async () => {
+  const file = await writeSuite(`version: 1
+target: http://10.10.0.5:8000
+scenarios:
+  - name: actor-read
+    type: actor
+    recipient: http://10.10.0.6/users/alice
+    load: { rate: 1/s }
+    duration: 1ms
+`);
+  let code = -1;
+  let output = "";
+  await runBench(command({ scenario: file }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: (c) => {
+      output = c;
+      return Promise.resolve();
+    },
+    log: () => {},
+    fetch: (input) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.pathname === "/.well-known/fedify/bench/stats") {
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      }
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    },
+  });
+  assert.strictEqual(code, 0);
+  assert.strictEqual(JSON.parse(output).scenarios[0].requests.successRate, 1);
+});
+
 test("runBench - refuses an inbox destination off the gated target (exit 2)", async () => {
   // A loopback target passes the gate, but an explicit public `inbox:` is the
   // actual load destination; it must be gated too, or production could be
@@ -592,6 +625,37 @@ scenarios:
   });
   assert.strictEqual(code, 2);
   assert.match(message, /expect|assertion/i);
+  assert.strictEqual(fetched, false);
+});
+
+test("runBench - invalid mixed child exits 2 before any probe", async () => {
+  const file = await writeSuite(`version: 1
+target: http://localhost:3000
+scenarios:
+  - name: mixed
+    type: mixed
+    mix:
+      - scenario: missing
+        weight: 1
+`);
+  let code = -1;
+  let message = "";
+  let fetched = false;
+  await runBench(command({ scenario: file }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: () => Promise.resolve(),
+    log: (m) => {
+      message = m;
+    },
+    fetch: () => {
+      fetched = true;
+      return Promise.reject(new Error("no request should be sent"));
+    },
+  });
+  assert.strictEqual(code, 2);
+  assert.match(message, /unknown mixed child/);
   assert.strictEqual(fetched, false);
 });
 

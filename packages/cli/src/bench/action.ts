@@ -113,7 +113,7 @@ export default async function runBench(
   try {
     runners = suite.scenarios.map((scenario) => {
       const runner = runnerFor(scenario.type);
-      runner.validate?.(scenario);
+      runner.validate?.(scenario, { scenarios: suite.scenarios });
       validateExpectBlock(scenario.expect);
       return runner;
     });
@@ -195,6 +195,34 @@ export default async function runBench(
       defaults: validated.defaults,
     });
   };
+  const assertReadDestinationAllowed = async (
+    url: URL,
+    scenario: ResolvedScenario,
+  ): Promise<void> => {
+    const sameOrigin = url.origin === suite.target.origin;
+    const destinationTier = sameOrigin
+      ? tier
+      : await classifyResolvedTarget(url, deps.resolveTargetAddresses);
+    const inheritsTargetGate = sameOrigin && probe.benchmarkMode;
+    if (
+      destinationTier === "public" && !inheritsTargetGate &&
+      !command.allowUnsafeTarget
+    ) {
+      throw new UnsafeTargetError(
+        `Refusing to send benchmark read load to ${url.href}: it is public ` +
+          "and not part of the benchmarked target.  Pass " +
+          "--allow-unsafe-target to override.",
+      );
+    }
+    assertPublicDestinationOverrideAllowed(url, scenario, {
+      targetOrigin: suite.target.origin,
+      targetBenchmarkMode: probe.benchmarkMode,
+      allowUnsafe: command.allowUnsafeTarget,
+      explicitCliTarget: command.target != null,
+      destinationTier,
+      defaults: validated.defaults,
+    });
+  };
 
   if (command.dryRun) {
     try {
@@ -204,6 +232,7 @@ export default async function runBench(
           contextLoader,
           allowPrivateAddress,
           assertDestinationAllowed,
+          assertReadDestinationAllowed,
         }),
         command.output,
       );
@@ -263,6 +292,8 @@ export default async function runBench(
         fetch: fetchImpl,
         assertDestinationAllowed: (url) =>
           assertDestinationAllowed(url, scenario),
+        assertReadDestinationAllowed: (url) =>
+          assertReadDestinationAllowed(url, scenario),
       });
       results.push(buildScenarioResult(scenario, measurement));
     }
@@ -355,6 +386,10 @@ interface DryRunPlanContext {
   readonly contextLoader: DocumentLoader;
   readonly allowPrivateAddress: boolean;
   readonly assertDestinationAllowed: (
+    url: URL,
+    scenario: ResolvedScenario,
+  ) => Promise<void>;
+  readonly assertReadDestinationAllowed: (
     url: URL,
     scenario: ResolvedScenario,
   ) => Promise<void>;
@@ -525,12 +560,16 @@ function describeMixedPlan(scenario: ResolvedScenario): string[] {
 }
 
 async function describeDestinationSafety(
-  inbox: URL,
+  url: URL,
   scenario: ResolvedScenario,
   context: DryRunPlanContext,
 ): Promise<string> {
   try {
-    await context.assertDestinationAllowed(inbox, scenario);
+    if (usesReadDestinationGate(scenario)) {
+      await context.assertReadDestinationAllowed(url, scenario);
+    } else {
+      await context.assertDestinationAllowed(url, scenario);
+    }
     return "allowed";
   } catch (error) {
     if (error instanceof UnsafeTargetError) {
@@ -538,6 +577,11 @@ async function describeDestinationSafety(
     }
     throw error;
   }
+}
+
+function usesReadDestinationGate(scenario: ResolvedScenario): boolean {
+  return (scenario.type === "actor" || scenario.type === "object") &&
+    !scenario.authenticated;
 }
 
 interface PublicDestinationOverrideContext {

@@ -45,10 +45,6 @@ export async function runReadLoad(
       `Scenario "${context.scenario.name}" did not resolve any URLs to fetch.`,
     );
   }
-  for (const url of options.urls) {
-    await context.assertDestinationAllowed?.(url);
-  }
-
   const fetchImpl = context.fetch ?? fetch;
   const actors = context.fleet?.actors ?? [];
   if (options.authenticated && actors.length < 1) {
@@ -56,6 +52,13 @@ export async function runReadLoad(
       `Scenario "${context.scenario.name}" requires the synthetic actor server ` +
         "for authenticated fetches.",
     );
+  }
+  for (const url of options.urls) {
+    if (options.authenticated) {
+      await context.assertDestinationAllowed?.(url);
+    } else {
+      await context.assertReadDestinationAllowed?.(url);
+    }
   }
 
   let index = 0;

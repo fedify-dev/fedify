@@ -88,6 +88,51 @@ test("mixedRunner - rejects unknown children", async () => {
   );
 });
 
+test("mixedRunner.validate - rejects unknown children with suite context", () => {
+  const scenarios = normalizeSuite({
+    version: 1,
+    target: "http://target.test/",
+    scenarios: [{
+      name: "mixed",
+      type: "mixed",
+      mix: [{ scenario: "missing", weight: 1 }],
+    }],
+  }).scenarios;
+
+  assert.throws(
+    () => mixedRunner.validate?.(scenarios[0], { scenarios }),
+    /unknown mixed child/,
+  );
+});
+
+test("mixedRunner.validate - rejects nested mixed children with suite context", () => {
+  const scenarios = normalizeSuite({
+    version: 1,
+    target: "http://target.test/",
+    scenarios: [
+      {
+        name: "outer",
+        type: "mixed",
+        mix: [{ scenario: "inner", weight: 1 }],
+      },
+      {
+        name: "inner",
+        type: "mixed",
+        mix: [{ scenario: "lookup", weight: 1 }],
+      },
+      {
+        name: "lookup",
+        type: "webfinger",
+      },
+    ],
+  }).scenarios;
+
+  assert.throws(
+    () => mixedRunner.validate?.(scenarios[0], { scenarios }),
+    /nested mixed/,
+  );
+});
+
 test("mixedRunner.validate - rejects too-small closed load", () => {
   const scenario = normalizeSuite({
     version: 1,

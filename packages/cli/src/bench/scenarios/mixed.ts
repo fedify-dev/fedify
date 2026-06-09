@@ -14,11 +14,11 @@ import type { LoadModel, ResolvedScenario } from "../scenario/normalize.ts";
 import type { ErrorBucket, LatencyMs } from "../result/model.ts";
 import type { ScenarioMeasurement } from "../result/build.ts";
 import type { ScenarioType } from "../scenario/types.ts";
-import type { RunContext, ScenarioRunner } from "./runner.ts";
+import type { RunContext, ScenarioRunner, ValidateContext } from "./runner.ts";
 
 /** The `mixed` scenario runner. */
 export const mixedRunner: ScenarioRunner = {
-  validate(scenario): void {
+  validate(scenario, context?: ValidateContext): void {
     if (scenario.raw.mix == null || scenario.raw.mix.length < 1) {
       throw new Error(
         `Scenario "${scenario.name}": mixed requires at least one mix entry.`,
@@ -41,17 +41,22 @@ export const mixedRunner: ScenarioRunner = {
           "one concurrency slot per mix entry.",
       );
     }
+    if (context?.scenarios != null) {
+      const children = childScenarios(scenario, context.scenarios);
+      for (const child of children) {
+        runnerForChild(child.type).validate?.(child, context);
+      }
+    }
   },
 
   async run(context: RunContext) {
-    this.validate?.(context.scenario);
+    this.validate?.(context.scenario, { scenarios: context.scenarios });
     if (context.scenarios == null) {
       throw new Error(
         "The mixed scenario requires the resolved scenario list.",
       );
     }
     const children = childScenarios(context.scenario, context.scenarios);
-    for (const child of children) runnerForChild(child.type).validate?.(child);
     const measurements = await Promise.all(
       children.map((child) =>
         runnerForChild(child.type).run({ ...context, scenario: child })
