@@ -2,6 +2,7 @@ import {
   Activity,
   Collection,
   CollectionPage,
+  Create,
   type Link,
   Object as APObject,
   OrderedCollection,
@@ -12,7 +13,12 @@ import type {
   BackfillContext,
   BackfillItem,
   BackfillOptions,
+  BackfillStrategy,
 } from "./types.ts";
+
+const defaultStrategies = [
+  "context-auto",
+] as const satisfies readonly BackfillStrategy[];
 
 /**
  * Thrown when backfill traversal exceeds the configured request budget.
@@ -42,6 +48,8 @@ export async function* backfill<
   options: BackfillOptions<TObject> = {},
 ): AsyncGenerator<BackfillItem<TObject>, void, void> {
   if (options.maxItems != null && options.maxItems <= 0) return;
+  const strategies = normalizeStrategies(options.strategies);
+  if (strategies.length < 1) return;
 
   const contextId = note.contextIds[0];
   if (contextId == null) return;
@@ -61,28 +69,85 @@ export async function* backfill<
     for await (
       const object of getCollectionItems(context, collection, options, budget)
     ) {
-      if (!isContextPostObject(object)) continue;
-      const id = object.id ?? undefined;
-      if (id != null) {
-        if (seenIds.has(id.href)) continue;
-        seenIds.add(id.href);
+      for await (
+        const item of getBackfillItems(
+          context,
+          object,
+          strategies,
+          options,
+          budget,
+        )
+      ) {
+        const id = item.object.id ?? undefined;
+        if (id != null) {
+          if (seenIds.has(id.href)) continue;
+          seenIds.add(id.href);
+        }
+
+        options.signal?.throwIfAborted();
+        yield {
+          object: item.object as TObject,
+          id,
+          strategy: item.strategy,
+          origin: "collection",
+          depth: 0,
+        };
+
+        yielded++;
+        if (options.maxItems != null && yielded >= options.maxItems) return;
       }
-
-      options.signal?.throwIfAborted();
-      yield {
-        object: object as TObject,
-        id,
-        strategy: "context-posts",
-        origin: "collection",
-        depth: 0,
-      };
-
-      yielded++;
-      if (options.maxItems != null && yielded >= options.maxItems) return;
     }
   } catch (error) {
     if (error instanceof MaxRequestsExceeded) return;
     throw error;
+  }
+}
+
+function normalizeStrategies(
+  strategies: readonly BackfillStrategy[] = defaultStrategies,
+): readonly BackfillStrategy[] {
+  if (strategies.includes("context-auto")) return ["context-auto"];
+  return Array.from(new Set(strategies));
+}
+
+async function* getBackfillItems(
+  context: BackfillContext,
+  object: APObject | Link,
+  strategies: readonly BackfillStrategy[],
+  options: BackfillOptions,
+  budget: RequestBudget,
+): AsyncIterable<{
+  readonly object: APObject;
+  readonly strategy: BackfillStrategy;
+}> {
+  for (const strategy of strategies) {
+    if (strategy === "context-objects" && isContextPostObject(object)) {
+      yield { object, strategy };
+    } else if (strategy === "context-activities") {
+      const activityObject = await getCreateActivityObject(
+        context,
+        object,
+        options,
+        budget,
+      );
+      if (activityObject != null && isContextPostObject(activityObject)) {
+        yield { object: activityObject, strategy };
+      }
+    } else if (strategy === "context-auto") {
+      if (object instanceof Activity) {
+        const activityObject = await getCreateActivityObject(
+          context,
+          object,
+          options,
+          budget,
+        );
+        if (activityObject != null && isContextPostObject(activityObject)) {
+          yield { object: activityObject, strategy };
+        }
+      } else if (isContextPostObject(object)) {
+        yield { object, strategy };
+      }
+    }
   }
 }
 
@@ -94,29 +159,59 @@ async function* getCollectionItems(
 ): AsyncIterable<APObject | Link> {
   yield* collection.getItems({
     documentLoader: async (url) => {
-      let object: APObject | null;
-      try {
-        object = await loadObject(
-          context,
-          new URL(url),
-          options,
-          budget,
-          true,
-        );
-      } catch (error) {
-        if (error instanceof MaxRequestsExceeded) throw error;
-        budget.signal?.throwIfAborted();
-        return skippedCollectionItemDocument(url);
-      }
-      if (object == null) return skippedCollectionItemDocument(url);
-      return {
-        contextUrl: null,
-        documentUrl: url,
-        document: await object.toJsonLd(),
-      };
+      return await loadCollectionItemDocument(context, url, options, budget);
     },
     crossOrigin: "trust",
   });
+}
+
+async function getCreateActivityObject(
+  context: BackfillContext,
+  object: APObject | Link,
+  options: BackfillOptions,
+  budget: RequestBudget,
+): Promise<APObject | null> {
+  if (!(object instanceof Create)) return null;
+  try {
+    return await object.getObject({
+      documentLoader: async (url) => {
+        return await loadCollectionItemDocument(context, url, options, budget);
+      },
+      crossOrigin: "trust",
+    });
+  } catch (error) {
+    if (error instanceof MaxRequestsExceeded) throw error;
+    budget.signal?.throwIfAborted();
+    return null;
+  }
+}
+
+async function loadCollectionItemDocument(
+  context: BackfillContext,
+  url: string,
+  options: BackfillOptions,
+  budget: RequestBudget,
+) {
+  let object: APObject | null;
+  try {
+    object = await loadObject(
+      context,
+      new URL(url),
+      options,
+      budget,
+      true,
+    );
+  } catch (error) {
+    if (error instanceof MaxRequestsExceeded) throw error;
+    budget.signal?.throwIfAborted();
+    return skippedCollectionItemDocument(url);
+  }
+  if (object == null) return skippedCollectionItemDocument(url);
+  return {
+    contextUrl: null,
+    documentUrl: url,
+    document: await object.toJsonLd(),
+  };
 }
 
 function skippedCollectionItemDocument(url: string) {

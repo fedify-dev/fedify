@@ -5,7 +5,10 @@ import type { Object as APObject } from "@fedify/vocab";
  *
  * @since 2.x.0
  */
-export type BackfillStrategy = "context-posts";
+export type BackfillStrategy =
+  | "context-objects"
+  | "context-activities"
+  | "context-auto";
 
 /**
  * Source relation that produced a backfilled object.
@@ -56,6 +59,15 @@ export interface BackfillContext {
 export interface BackfillOptions<
   TObject extends APObject = APObject,
 > {
+  /**
+   * Backfill strategies to run.
+   *
+   * Defaults to `["context-auto"]`.
+   *
+   * @since 2.x.0
+   */
+  readonly strategies?: readonly BackfillStrategy[];
+
   /**
    * Maximum number of items to yield.  Skipped duplicates do not count.
    */

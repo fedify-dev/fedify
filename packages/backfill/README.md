@@ -61,3 +61,23 @@ for await (
 
 The seed object itself is not yielded.  If it appears in the discovered
 collection, it is skipped by ID.
+
+By default, `backfill()` uses the `context-auto` strategy.  In this mode,
+collection items are treated as backfillable objects by default.  If an item is
+recognized as an Activity, `backfill()` extracts the activity's object instead.
+
+To read only FEP-f228 activity collections, enable the `context-activities`
+strategy:
+
+~~~~ typescript
+for await (
+  const item of backfill({ documentLoader }, note, {
+    strategies: ["context-activities"],
+  })
+) {
+  console.log(item.object);
+}
+~~~~
+
+The `context-activities` strategy currently supports `Create` activities and
+yields the activity's object, not the activity itself.
