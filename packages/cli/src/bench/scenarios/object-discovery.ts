@@ -1,0 +1,172 @@
+/**
+ * Discovery helpers for actor and object benchmark scenarios.
+ * @since 2.3.0
+ * @module
+ */
+
+import { convertUrlIfHandle } from "../../webfinger/lib.ts";
+import { asList } from "../scenario/coerce.ts";
+import type { ObjectSource } from "../scenario/types.ts";
+
+/** Options for resolving actor URLs. */
+export interface ActorUrlOptions {
+  readonly target: URL;
+  readonly fetch?: typeof fetch;
+}
+
+/** Options for resolving object URLs. */
+export interface ObjectUrlOptions extends ActorUrlOptions {
+  readonly source: ObjectSource | undefined;
+}
+
+/** Resolves scenario recipients into actor document URLs. */
+export async function actorUrlsFromRecipients(
+  recipients: readonly string[],
+  options: ActorUrlOptions,
+): Promise<URL[]> {
+  const urls: URL[] = [];
+  for (const recipient of recipients) {
+    urls.push(await actorUrlFromRecipient(recipient, options));
+  }
+  return urls;
+}
+
+/** Resolves object scenario sources into object URLs. */
+export async function objectUrlsFromSource(
+  options: ObjectUrlOptions,
+): Promise<URL[]> {
+  const { source } = options;
+  if (source == null) return [];
+  if (typeof source === "string" || Array.isArray(source)) {
+    return asList(source).map((url) => new URL(url));
+  }
+  const limit = source.limit ?? 100;
+  const types = new Set(asList(source.type));
+  const urls: URL[] = [];
+  for (const seed of asList(source.seed)) {
+    const actorUrl = await actorUrlFromRecipient(seed, options);
+    const actor = await fetchJson(actorUrl, options.fetch);
+    for (const collectionName of asList(source.collection ?? "outbox")) {
+      const collectionUrl = propertyUrl(actor, collectionName);
+      if (collectionUrl == null) continue;
+      for await (
+        const objectUrl of crawlCollection(collectionUrl, {
+          fetch: options.fetch,
+          types,
+          limit: limit - urls.length,
+        })
+      ) {
+        urls.push(objectUrl);
+        if (urls.length >= limit) return urls;
+      }
+    }
+  }
+  return urls;
+}
+
+async function actorUrlFromRecipient(
+  recipient: string,
+  options: ActorUrlOptions,
+): Promise<URL> {
+  const identifier = convertUrlIfHandle(recipient);
+  if (identifier.protocol !== "acct:") return identifier;
+  const url = new URL("/.well-known/webfinger", options.target);
+  url.searchParams.set("resource", identifier.href);
+  const jrd = await fetchJson(url, options.fetch);
+  const links = Array.isArray(jrd.links) ? jrd.links : [];
+  const self = links.find((link) =>
+    isRecord(link) && link.rel === "self" && typeof link.href === "string"
+  );
+  if (!isRecord(self) || typeof self.href !== "string") {
+    throw new Error(`WebFinger response for ${recipient} has no self link.`);
+  }
+  return new URL(self.href);
+}
+
+async function* crawlCollection(
+  start: URL,
+  options: {
+    readonly fetch?: typeof fetch;
+    readonly types: ReadonlySet<string>;
+    readonly limit: number;
+  },
+): AsyncGenerator<URL> {
+  let next: URL | null = start;
+  let remaining = options.limit;
+  const visited = new Set<string>();
+  while (next != null && remaining > 0) {
+    if (visited.has(next.href)) return;
+    visited.add(next.href);
+    const page = await fetchJson(next, options.fetch);
+    const items = arrayProperty(page, "orderedItems") ??
+      arrayProperty(page, "items") ?? [];
+    for (const item of items) {
+      const url = objectUrl(item, options.types);
+      if (url == null) continue;
+      yield url;
+      remaining--;
+      if (remaining <= 0) return;
+    }
+    const first = propertyUrl(page, "first");
+    const following = propertyUrl(page, "next");
+    next = following ?? (next.href === start.href ? first : null);
+  }
+}
+
+async function fetchJson(
+  url: URL,
+  fetchImpl: typeof fetch = fetch,
+): Promise<Record<string, unknown>> {
+  const response = await fetchImpl(new Request(url, { redirect: "manual" }));
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${url.href}: HTTP ${response.status}.`);
+  }
+  const json = await response.json();
+  if (!isRecord(json)) {
+    throw new Error(`Expected ${url.href} to return a JSON object.`);
+  }
+  return json;
+}
+
+function objectUrl(
+  item: unknown,
+  types: ReadonlySet<string>,
+): URL | null {
+  if (typeof item === "string") return new URL(item);
+  if (!isRecord(item)) return null;
+  if (types.size > 0 && !matchesType(item.type, types)) return null;
+  return propertyUrl(item, "id");
+}
+
+function matchesType(
+  type: unknown,
+  expected: ReadonlySet<string>,
+): boolean {
+  if (typeof type === "string") return expected.has(type);
+  return Array.isArray(type) &&
+    type.some((item) => typeof item === "string" && expected.has(item));
+}
+
+function propertyUrl(
+  object: Record<string, unknown>,
+  key: string,
+): URL | null {
+  const value = object[key];
+  if (typeof value === "string") return new URL(value);
+  if (isRecord(value) && typeof value.id === "string") {
+    return new URL(value.id);
+  }
+  return null;
+}
+
+function arrayProperty(
+  object: Record<string, unknown>,
+  key: string,
+): unknown[] | null {
+  const value = object[key];
+  return Array.isArray(value) ? value : null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value != null && typeof value === "object" && !Array.isArray(value);
+}

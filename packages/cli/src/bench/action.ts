@@ -11,6 +11,10 @@ import {
   selectInbox,
 } from "./discovery/discover.ts";
 import {
+  actorUrlsFromRecipients,
+  objectUrlsFromSource,
+} from "./scenarios/object-discovery.ts";
+import {
   buildReport,
   buildScenarioResult,
   configHash,
@@ -62,9 +66,6 @@ export interface RunBenchDeps {
   /** Hostname resolver used for target risk classification. */
   readonly resolveTargetAddresses?: ResolveTargetAddresses;
 }
-
-/** The scenario types that need the synthetic actor/key server. */
-const SIGNED_TYPES = new Set(["inbox"]);
 
 /**
  * Runs the `fedify bench` command: load and validate the suite, gate the
@@ -220,14 +221,14 @@ export default async function runBench(
   // rather than let every signed delivery fail key lookup.
   if (
     tier !== "loopback" && command.advertiseHost == null &&
-    suite.scenarios.some((s) => SIGNED_TYPES.has(s.type))
+    suite.scenarios.some(scenarioNeedsSyntheticServer)
   ) {
     log(
-      "Signed scenarios (inbox) need the benchmark's synthetic actor server to " +
-        "be reachable from the target.  A loopback target reaches it " +
+      "Signed scenarios need the benchmark's synthetic actor server to be " +
+        "reachable from the target.  A loopback target reaches it " +
         "automatically; for a non-loopback target, pass --advertise-host with " +
         "an address the target can reach (the synthetic server then binds all " +
-        "interfaces), or use a read scenario such as webfinger.",
+        "interfaces), or use an anonymous read scenario such as webfinger.",
     );
     return void exit(2);
   }
@@ -235,7 +236,7 @@ export default async function runBench(
   let fleet: SyntheticServer | undefined;
   const startedAt = new Date().toISOString();
   try {
-    if (suite.scenarios.some((s) => SIGNED_TYPES.has(s.type))) {
+    if (suite.scenarios.some(scenarioNeedsSyntheticServer)) {
       fleet = await spawnSyntheticServer(await buildFleet(suite.actors), {
         advertiseHost: command.advertiseHost,
       });
@@ -392,6 +393,10 @@ async function describeDiscoveryPlan(
       return await describeInboxDiscoveryPlan(scenario, context);
     case "webfinger":
       return describeWebFingerPlan(scenario, suite.target);
+    case "actor":
+      return await describeActorPlan(scenario, suite, context);
+    case "object":
+      return await describeObjectPlan(scenario, suite, context);
     default:
       return ["  discovery: not available for this scenario type"];
   }
@@ -445,6 +450,60 @@ function describeWebFingerPlan(
     url.searchParams.set("resource", resource);
     return `  webfinger ${resource}: GET ${url.href}`;
   });
+}
+
+async function describeActorPlan(
+  scenario: ResolvedScenario,
+  suite: ResolvedSuite,
+  context: DryRunPlanContext,
+): Promise<string[]> {
+  try {
+    const urls = await actorUrlsFromRecipients(scenario.recipients, {
+      target: suite.target,
+    });
+    const lines: string[] = [];
+    for (const url of urls) {
+      lines.push(`  actor: GET ${url.href}`);
+      lines.push(
+        `  destination safety: ${await describeDestinationSafety(
+          url,
+          scenario,
+          context,
+        )}`,
+      );
+    }
+    return lines;
+  } catch (error) {
+    return [`  actor discovery failed (${describeError(error)})`];
+  }
+}
+
+async function describeObjectPlan(
+  scenario: ResolvedScenario,
+  suite: ResolvedSuite,
+  context: DryRunPlanContext,
+): Promise<string[]> {
+  try {
+    const urls = await objectUrlsFromSource({
+      source: scenario.source,
+      target: suite.target,
+    });
+    const lines = [`  objects: ${urls.length} URL(s) resolved`];
+    for (const url of urls.slice(0, 10)) {
+      lines.push(`  object: GET ${url.href}`);
+      lines.push(
+        `  destination safety: ${await describeDestinationSafety(
+          url,
+          scenario,
+          context,
+        )}`,
+      );
+    }
+    if (urls.length > 10) lines.push(`  ... ${urls.length - 10} more`);
+    return lines;
+  } catch (error) {
+    return [`  object discovery failed (${describeError(error)})`];
+  }
 }
 
 async function describeDestinationSafety(
@@ -521,4 +580,10 @@ function hasExplicitLoad(load: LoadConfig | undefined): boolean {
     typeof load === "object" &&
     (("rate" in load && load.rate != null) ||
       ("concurrency" in load && load.concurrency != null));
+}
+
+function scenarioNeedsSyntheticServer(scenario: ResolvedScenario): boolean {
+  return scenario.type === "inbox" ||
+    (scenario.authenticated &&
+      (scenario.type === "actor" || scenario.type === "object"));
 }
