@@ -58,9 +58,17 @@ export const mixedRunner: ScenarioRunner = {
       );
     }
     const children = childScenarios(context.scenario, context.scenarios);
+    const fetchImpl = limitedFetch(
+      context.fetch ?? fetch,
+      context.scenario.load.maxInFlight,
+    );
     const measurements = await Promise.all(
       children.map((child) =>
-        runnerForChild(child.type).run({ ...context, scenario: child })
+        runnerForChild(child.type).run({
+          ...context,
+          scenario: child,
+          fetch: fetchImpl,
+        })
       ),
     );
     return mergeMeasurements(measurements);
@@ -130,16 +138,63 @@ function scaledLoad(
   totalWeight: number,
   closedConcurrency?: number,
 ): LoadModel {
+  // `maxInFlight` is a parent-wide safety cap for mixed scenarios; run()
+  // enforces it with a shared limiter instead of copying it to each child.
   if (load.kind === "open") {
     return {
-      ...load,
+      kind: "open",
       ratePerSec: load.ratePerSec * (weight / totalWeight),
+      arrival: load.arrival,
     };
   }
   return {
-    ...load,
+    kind: "closed",
     concurrency: closedConcurrency ??
       Math.max(1, Math.round(load.concurrency * weight / totalWeight)),
+  };
+}
+
+function limitedFetch(fetchImpl: typeof fetch, maxInFlight?: number) {
+  if (maxInFlight == null) return fetchImpl;
+  const limiter = createLimiter(maxInFlight);
+  const limited = async (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ): Promise<Response> => {
+    const release = await limiter.acquire();
+    try {
+      return await fetchImpl(input, init);
+    } finally {
+      release();
+    }
+  };
+  return limited as typeof fetch;
+}
+
+function createLimiter(maxInFlight: number): {
+  acquire(): Promise<() => void>;
+} {
+  if (!Number.isInteger(maxInFlight) || maxInFlight < 1) {
+    throw new RangeError(
+      `maxInFlight must be a positive integer; got ${maxInFlight}.`,
+    );
+  }
+  let active = 0;
+  const waiters: Array<() => void> = [];
+  function release(): void {
+    const next = waiters.shift();
+    if (next == null) active--;
+    else next();
+  }
+  return {
+    async acquire(): Promise<() => void> {
+      if (active < maxInFlight) {
+        active++;
+        return release;
+      }
+      await new Promise<void>((resolve) => waiters.push(resolve));
+      return release;
+    },
   };
 }
 

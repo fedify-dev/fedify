@@ -64,6 +64,67 @@ test("mixedRunner - runs weighted child scenarios together", async () => {
   assert.strictEqual(measurement.requests.successRate, 1);
 });
 
+test("mixedRunner - enforces parent maxInFlight across children", async () => {
+  const target = new URL("http://target.test/");
+  let activeLookups = 0;
+  let maxActiveLookups = 0;
+  const suite: Suite = {
+    version: 1,
+    target: target.href,
+    scenarios: [
+      {
+        name: "lookup-a",
+        type: "webfinger",
+        recipient: "acct:alice@target.test",
+      },
+      {
+        name: "lookup-b",
+        type: "webfinger",
+        recipient: "acct:bob@target.test",
+      },
+      {
+        name: "mixed",
+        type: "mixed",
+        load: { rate: 1000, maxInFlight: 2 },
+        duration: "60ms",
+        mix: [
+          { scenario: "lookup-a", weight: 1 },
+          { scenario: "lookup-b", weight: 1 },
+        ],
+      },
+    ],
+  };
+  const scenarios = normalizeSuite(suite).scenarios;
+  await mixedRunner.run({
+    scenario: scenarios[2],
+    scenarios,
+    target,
+    documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+    contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+    allowPrivateAddress: true,
+    fleet: null,
+    fetch: async (input) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.pathname === "/.well-known/webfinger") {
+        activeLookups++;
+        maxActiveLookups = Math.max(maxActiveLookups, activeLookups);
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        activeLookups--;
+        return json({
+          subject: url.searchParams.get("resource"),
+          links: [],
+        });
+      }
+      return new Response("not found", { status: 404 });
+    },
+  });
+
+  assert.ok(
+    maxActiveLookups <= 2,
+    `expected at most 2 in-flight lookups, got ${maxActiveLookups}`,
+  );
+});
+
 test("mixedRunner - rejects unknown children", async () => {
   const scenarios = normalizeSuite({
     version: 1,

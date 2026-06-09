@@ -137,7 +137,9 @@ function objectUrl(
   item: unknown,
   types: ReadonlySet<string>,
 ): URL | null {
-  if (typeof item === "string") return new URL(item);
+  if (typeof item === "string") {
+    return types.size < 1 ? new URL(item) : null;
+  }
   if (!isRecord(item)) return null;
   if (types.size > 0 && !matchesType(item.type, types)) return null;
   return propertyUrl(item, "id");
