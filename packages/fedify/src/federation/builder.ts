@@ -595,43 +595,6 @@ export class FederationBuilderImpl<TContextData>
 
   setObjectDispatcher<TObject extends Object, TParam extends string>(
     cls: ConstructorWithTypeId<TObject>,
-    path:
-      `${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}`,
-    dispatcher: ObjectDispatcher<TContextData, TObject, TParam>,
-  ): ObjectCallbackSetters<TContextData, TObject, TParam>;
-  setObjectDispatcher<TObject extends Object, TParam extends string>(
-    cls: ConstructorWithTypeId<TObject>,
-    path:
-      `${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}`,
-    dispatcher: ObjectDispatcher<TContextData, TObject, TParam>,
-  ): ObjectCallbackSetters<TContextData, TObject, TParam>;
-  setObjectDispatcher<TObject extends Object, TParam extends string>(
-    cls: ConstructorWithTypeId<TObject>,
-    path:
-      `${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}`,
-    dispatcher: ObjectDispatcher<TContextData, TObject, TParam>,
-  ): ObjectCallbackSetters<TContextData, TObject, TParam>;
-  setObjectDispatcher<TObject extends Object, TParam extends string>(
-    cls: ConstructorWithTypeId<TObject>,
-    path: `${string}${Rfc6570Expression<TParam>}${string}${Rfc6570Expression<
-      TParam
-    >}${string}${Rfc6570Expression<TParam>}${string}`,
-    dispatcher: ObjectDispatcher<TContextData, TObject, TParam>,
-  ): ObjectCallbackSetters<TContextData, TObject, TParam>;
-  setObjectDispatcher<TObject extends Object, TParam extends string>(
-    cls: ConstructorWithTypeId<TObject>,
-    path: `${string}${Rfc6570Expression<TParam>}${string}${Rfc6570Expression<
-      TParam
-    >}${string}`,
-    dispatcher: ObjectDispatcher<TContextData, TObject, TParam>,
-  ): ObjectCallbackSetters<TContextData, TObject, TParam>;
-  setObjectDispatcher<TObject extends Object, TParam extends string>(
-    cls: ConstructorWithTypeId<TObject>,
-    path: `${string}${Rfc6570Expression<TParam>}${string}`,
-    dispatcher: ObjectDispatcher<TContextData, TObject, TParam>,
-  ): ObjectCallbackSetters<TContextData, TObject, TParam>;
-  setObjectDispatcher<TObject extends Object, TParam extends string>(
-    cls: ConstructorWithTypeId<TObject>,
     path: string,
     dispatcher: ObjectDispatcher<TContextData, TObject, TParam>,
   ): ObjectCallbackSetters<TContextData, TObject, TParam> {
