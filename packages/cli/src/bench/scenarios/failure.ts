@@ -252,7 +252,7 @@ function missingActor(actor: SyntheticActor, target: URL): SyntheticActor {
 }
 
 function expectedFailure(outcome: SendOutcome): SendOutcome {
-  if (outcome.status != null && outcome.status >= 400) {
+  if (outcome.status != null && outcome.status >= 400 && outcome.status < 500) {
     return { ok: true, status: outcome.status };
   }
   return {

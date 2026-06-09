@@ -88,13 +88,21 @@ function childScenarios(
     )
     : undefined;
   return entries.map((entry, index) => {
-    const child = scenarios.find((candidate) =>
+    const children = scenarios.filter((candidate) =>
       candidate.name === entry.scenario
     );
+    const child = children[0];
     if (child == null) {
       throw new Error(
         `Scenario "${scenario.name}": unknown mixed child ` +
           `${JSON.stringify(entry.scenario)}.`,
+      );
+    }
+    if (children.length > 1) {
+      throw new Error(
+        `Scenario "${scenario.name}": ambiguous mixed child ` +
+          `${JSON.stringify(entry.scenario)} matches ${children.length} ` +
+          "scenarios.",
       );
     }
     if (child.type === "mixed") {

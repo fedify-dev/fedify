@@ -169,6 +169,34 @@ test("mixedRunner.validate - rejects unknown children with suite context", () =>
   );
 });
 
+test("mixedRunner.validate - rejects ambiguous child names", () => {
+  const scenarios = normalizeSuite({
+    version: 1,
+    target: "http://target.test/",
+    scenarios: [
+      {
+        name: "mixed",
+        type: "mixed",
+        mix: [{ scenario: "lookup", weight: 1 }],
+      },
+      {
+        name: "lookup",
+        type: "webfinger",
+      },
+      {
+        name: "lookup",
+        type: "actor",
+        recipient: "http://target.test/users/alice",
+      },
+    ],
+  }).scenarios;
+
+  assert.throws(
+    () => mixedRunner.validate?.(scenarios[0], { scenarios }),
+    /ambiguous mixed child/,
+  );
+});
+
 test("mixedRunner.validate - rejects nested mixed children with suite context", () => {
   const scenarios = normalizeSuite({
     version: 1,
