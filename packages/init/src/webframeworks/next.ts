@@ -9,8 +9,8 @@ const nextDescription: WebFrameworkDescription = {
   label: "Next.js",
   packageManagers: PACKAGE_MANAGER,
   defaultPort: 3000,
-  init: async ({ packageManager: pm }) => ({
-    command: getNextInitCommand(pm),
+  init: async ({ packageManager: pm, skipInstall }) => ({
+    command: getNextInitCommand(pm, skipInstall),
     dependencies: {
       "@fedify/next": PACKAGE_VERSION,
       ...(pm === "deno" ? defaultDenoDependencies : {}),
@@ -43,7 +43,13 @@ export default nextDescription;
  */
 const getNextInitCommand = (
   pm: PackageManager,
-): string[] => [...createNextAppCommand(pm), ".", "--yes"];
+  skipInstall: boolean,
+): string[] => [
+  ...createNextAppCommand(pm),
+  ".",
+  "--yes",
+  ...(skipInstall ? ["--skip-install"] : []),
+];
 
 const createNextAppCommand = (pm: PackageManager): string[] =>
   pm === "deno"

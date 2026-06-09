@@ -11,6 +11,7 @@ import {
   noticeHowToRun,
   noticeOptions,
   noticePrecommand,
+  noticeSkippedInstall,
 } from "./notice.ts";
 import {
   assertNoGeneratedFileConflicts,
@@ -23,6 +24,7 @@ import {
   hasCommand,
   installDependencies,
   isDry,
+  isSkipInstall,
   runPrecommand,
 } from "./utils.ts";
 
@@ -37,7 +39,9 @@ import {
  * 5. Converts `InitCommandOptions` into `InitCommandData` via `setData`.
  * 6. Branches based on `isDry`:
  *    - If dry run, executes `handleDryRun`.
- *    - Otherwise, executes `handleHydRun`.
+ *    - Otherwise, executes `handleHydRun`, which installs dependencies, or—when
+ *      `--skip-install` is set—prints how to install them manually via
+ *      `noticeSkippedInstall`.
  * 7. Recommends configuration environment via `recommendConfigEnv`.
  * 8. Shows how to run the project via `noticeHowToRun`.
  */
@@ -76,5 +80,6 @@ const handleHydRun = (data: InitCommandData) =>
     tap(assertNoGeneratedFileConflicts),
     tap(when(hasCommand, runPrecommand)),
     tap(patchFiles),
-    tap(installDependencies),
+    tap(unless(isSkipInstall, installDependencies)),
+    tap(when(isSkipInstall, noticeSkippedInstall)),
   );

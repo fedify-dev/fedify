@@ -74,6 +74,7 @@ function createInitData(
     messageQueue: "in-process",
     dryRun: false,
     allowNonEmpty,
+    skipInstall: false,
     testMode: false,
     dir,
     initializer: {

@@ -46,6 +46,7 @@ test(
       dir: packageDir,
       dryRun: true,
       allowNonEmpty: false,
+      skipInstall: false,
       kvStore: "in-memory",
       messageQueue: "in-process",
       packageManager: "bun",

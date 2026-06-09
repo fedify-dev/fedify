@@ -338,6 +338,23 @@ To be released.
  -  Added `SqliteMessageQueue.getDepth()` for reporting queued, ready, and
     delayed message counts.  [[#735], [#748]]
 
+### @fedify/cli
+
+ -  Added the `--skip-install` option to `fedify init`, following the
+    corresponding `@fedify/init` update, which skips automatic dependency
+    installation after scaffolding.  [[#720], [#776] by fru1tworld]
+
+[#720]: https://github.com/fedify-dev/fedify/issues/720
+[#776]: https://github.com/fedify-dev/fedify/pull/776
+
+### @fedify/init
+
+ -  Added a `--skip-install` option to `fedify init` that skips automatic
+    dependency installation after scaffolding.  This is useful for CI
+    environments, monorepo workspaces that install dependencies from the
+    root, or when you want to inspect the generated files before
+    installing.  [[#720], [#776] by fru1tworld]
+
 ### Claude Code plugin
 
  -  Added a Claude Code plugin at *claude-plugin/*, installable with:

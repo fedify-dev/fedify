@@ -372,6 +372,28 @@ the selected framework scaffolder accepts them.  Some scaffolders, such as
 own confirmation prompt, while a freshly initialized *.git* directory remains
 acceptable.
 
+### `--skip-install`: Skip installing dependencies
+
+*This option is available since Fedify 2.3.0.*
+
+By default, `fedify init` runs the selected package manager's install command
+right after scaffolding the project.  The `--skip-install` option scaffolds the
+files without running install, which is useful when:
+
+ -  installation is handled separately in a CI pipeline;
+ -  the new project lives inside a monorepo whose dependencies are installed
+    from the workspace root; or
+ -  you want to inspect the generated files before installing.
+
+~~~~ sh
+fedify init my-fedify-project --skip-install
+~~~~
+
+After scaffolding, `fedify init` prints the command to run to install
+dependencies later.  Other steps such as creating files, applying patches, and
+running the framework-specific scaffolder (e.g., *create-next-app*) still
+happen as usual; only the final install step is skipped.
+
 
 `fedify lookup`: Looking up an ActivityPub object
 -------------------------------------------------
