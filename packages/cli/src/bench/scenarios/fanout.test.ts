@@ -55,6 +55,13 @@ test("fanoutRunner - triggers benchmark hook and reports drain", async () => {
   assert.strictEqual(measurement.requests.successRate, 1);
   assert.ok(measurement.server?.queue?.drainMs?.p95 != null);
   assert.ok(measurement.throughputPerSec > 0);
+  assert.ok(measurement.deliveryThroughputPerSec != null);
+  assert.ok(
+    Math.abs(
+      measurement.deliveryThroughputPerSec -
+        measurement.throughputPerSec * triggerRecipients,
+    ) < 1e-9,
+  );
   assert.strictEqual(triggerRecipients, 5);
 });
 
@@ -167,7 +174,8 @@ test("fanoutRunner - counts failed queue tasks as delivery failures", async () =
 
   assert.ok(measurement.requests.total > 0);
   assert.strictEqual(measurement.requests.successRate, 0);
-  assert.strictEqual(measurement.throughputPerSec, 0);
+  assert.ok(measurement.throughputPerSec > 0);
+  assert.strictEqual(measurement.deliveryThroughputPerSec, 0);
 });
 
 function json(body: unknown, status = 200): Response {

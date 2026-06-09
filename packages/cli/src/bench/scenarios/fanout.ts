@@ -146,7 +146,6 @@ export const fanoutRunner: ScenarioRunner = {
         (Math.max(measuredWindowMs(context.scenario), 1) / 1000);
       return {
         ...measurement,
-        throughputPerSec: deliveryThroughputPerSec,
         deliveryThroughputPerSec,
         server,
       };
