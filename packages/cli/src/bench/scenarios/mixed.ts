@@ -10,6 +10,7 @@ import { fanoutRunner } from "./fanout.ts";
 import { inboxRunner } from "./inbox.ts";
 import { objectRunner } from "./object.ts";
 import { webfingerRunner } from "./webfinger.ts";
+import { LogLinearHistogram } from "../metrics/histogram.ts";
 import type { LoadModel, ResolvedScenario } from "../scenario/normalize.ts";
 import type { ErrorBucket, LatencyMs } from "../result/model.ts";
 import type { ScenarioMeasurement } from "../result/build.ts";
@@ -199,11 +200,12 @@ function runnerForChild(type: ScenarioType): ScenarioRunner {
   }
 }
 
-function mergeMeasurements(
+export function mergeMeasurements(
   measurements: readonly ScenarioMeasurement[],
 ): ScenarioMeasurement {
   const total = measurements.reduce((sum, m) => sum + m.requests.total, 0);
   const ok = measurements.reduce((sum, m) => sum + m.requests.ok, 0);
+  const histogram = mergeHistograms(measurements);
   return {
     requests: {
       total,
@@ -215,13 +217,43 @@ function mergeMeasurements(
       (sum, m) => sum + m.throughputPerSec,
       0,
     ),
-    client: { latencyMs: mergeLatency(measurements) },
+    client: {
+      latencyMs: histogram == null
+        ? mergeLatencyFallback(measurements)
+        : latencyFromHistogram(histogram),
+    },
     server: null,
     errors: mergeErrors(measurements),
+    ...(histogram == null ? {} : { histogram: histogram.toJSON() }),
   };
 }
 
-function mergeLatency(measurements: readonly ScenarioMeasurement[]): LatencyMs {
+function mergeHistograms(
+  measurements: readonly ScenarioMeasurement[],
+): LogLinearHistogram | null {
+  let merged: LogLinearHistogram | null = null;
+  for (const measurement of measurements) {
+    if (measurement.histogram == null) return null;
+    const histogram = LogLinearHistogram.fromJSON(measurement.histogram);
+    if (merged == null) merged = histogram;
+    else merged.merge(histogram);
+  }
+  return merged;
+}
+
+function latencyFromHistogram(histogram: LogLinearHistogram): LatencyMs {
+  return {
+    p50: histogram.percentile(50),
+    p95: histogram.percentile(95),
+    p99: histogram.percentile(99),
+    mean: histogram.mean,
+    max: histogram.max,
+  };
+}
+
+function mergeLatencyFallback(
+  measurements: readonly ScenarioMeasurement[],
+): LatencyMs {
   const total = measurements.reduce((sum, m) => sum + m.requests.total, 0);
   if (measurements.length < 1) {
     return { p50: 0, p95: 0, p99: 0, mean: 0, max: 0 };

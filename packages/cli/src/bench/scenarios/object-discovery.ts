@@ -12,6 +12,7 @@ import type { ObjectSource } from "../scenario/types.ts";
 export interface ActorUrlOptions {
   readonly target: URL;
   readonly fetch?: typeof fetch;
+  readonly assertReadDestinationAllowed?: (url: URL) => void | Promise<void>;
 }
 
 /** Options for resolving object URLs. */
@@ -45,6 +46,7 @@ export async function objectUrlsFromSource(
   const urls: URL[] = [];
   for (const seed of asList(source.seed)) {
     const actorUrl = await actorUrlFromRecipient(seed, options);
+    await options.assertReadDestinationAllowed?.(actorUrl);
     const actor = await fetchJson(actorUrl, options.fetch);
     for (const collectionName of asList(source.collection ?? "outbox")) {
       const collectionUrl = propertyUrl(actor, collectionName);
@@ -52,6 +54,7 @@ export async function objectUrlsFromSource(
       for await (
         const objectUrl of crawlCollection(collectionUrl, {
           fetch: options.fetch,
+          assertReadDestinationAllowed: options.assertReadDestinationAllowed,
           types,
           limit: limit - urls.length,
         })
@@ -87,6 +90,7 @@ async function* crawlCollection(
   start: URL,
   options: {
     readonly fetch?: typeof fetch;
+    readonly assertReadDestinationAllowed?: (url: URL) => void | Promise<void>;
     readonly types: ReadonlySet<string>;
     readonly limit: number;
   },
@@ -97,6 +101,7 @@ async function* crawlCollection(
   while (next != null && remaining > 0) {
     if (visited.has(next.href)) return;
     visited.add(next.href);
+    await options.assertReadDestinationAllowed?.(next);
     const page = await fetchJson(next, options.fetch);
     const items = arrayProperty(page, "orderedItems") ??
       arrayProperty(page, "items") ?? [];

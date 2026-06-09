@@ -62,7 +62,7 @@ export const fanoutRunner: ScenarioRunner = {
     const drainHistogram = new LogLinearHistogram();
     let delivered = 0;
     try {
-      const send = async (scheduledAtMs: number): Promise<SendOutcome> => {
+      const sendOne = async (scheduledAtMs: number): Promise<SendOutcome> => {
         const baseline = await fetchServerSnapshot(context.target, fetchImpl);
         const started = Date.now();
         const response = await fetchImpl(
@@ -115,6 +115,15 @@ export const fanoutRunner: ScenarioRunner = {
           delivered += sink.recipients.length;
         }
         return { ok: true, status: response.status };
+      };
+      let previous = Promise.resolve();
+      const send = (scheduledAtMs: number): Promise<SendOutcome> => {
+        const current = previous.then(() => sendOne(scheduledAtMs));
+        previous = current.then(
+          () => {},
+          () => {},
+        );
+        return current;
       };
       const result = await runLoad(
         loadPlanOf(context.scenario, context.rng),

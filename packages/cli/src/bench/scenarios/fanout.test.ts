@@ -72,6 +72,57 @@ test("fanoutRunner.validate - requires enough followers for fanout queue", () =>
   assert.throws(() => fanoutRunner.validate?.(scenario), /at least 5/);
 });
 
+test("fanoutRunner - serializes overlapping trigger drains", async () => {
+  const target = new URL("http://target.test/");
+  let statsCalls = 0;
+  let activeTriggers = 0;
+  let maxActiveTriggers = 0;
+  const suite: Suite = {
+    version: 1,
+    target: target.href,
+    scenarios: [{
+      name: "fanout",
+      type: "fanout",
+      sender: "alice",
+      followers: 5,
+      load: { concurrency: 3 },
+      duration: "40ms",
+      queueDrainTimeout: "1s",
+    }],
+  };
+  const scenario = normalizeSuite(suite).scenarios[0];
+  await fanoutRunner.run({
+    scenario,
+    target,
+    documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+    contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+    allowPrivateAddress: true,
+    fleet: null,
+    fetch: async (input) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.pathname === "/.well-known/fedify/bench/stats") {
+        statsCalls++;
+        const drained = statsCalls % 2 === 0;
+        return json(statsSnapshot({
+          enqueued: drained ? 6 : 0,
+          completed: drained ? 6 : 0,
+          failed: 0,
+        }));
+      }
+      if (url.pathname === "/.well-known/fedify/bench/trigger") {
+        activeTriggers++;
+        maxActiveTriggers = Math.max(maxActiveTriggers, activeTriggers);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        activeTriggers--;
+        return json({ version: 1 }, 202);
+      }
+      return new Response("unexpected", { status: 500 });
+    },
+  });
+
+  assert.strictEqual(maxActiveTriggers, 1);
+});
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,

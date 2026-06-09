@@ -133,6 +133,89 @@ test("objectRunner - crawls actor collections before fetching objects", async ()
   }
 });
 
+test("objectRunner - gates discovery URLs before fetching them", async () => {
+  const scenario = normalizeSuite({
+    version: 1,
+    target: "http://target.test/",
+    scenarios: [{
+      name: "object-crawl",
+      type: "object",
+      source: {
+        seed: "http://public.example/users/alice",
+        collection: "outbox",
+        limit: 1,
+      },
+      load: { concurrency: 1 },
+      duration: "25ms",
+    }],
+  }).scenarios[0];
+
+  await assert.rejects(
+    async () =>
+      objectRunner.run({
+        scenario,
+        target: new URL("http://target.test/"),
+        documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+        contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+        allowPrivateAddress: true,
+        fleet: null,
+        fetch: () => {
+          throw new Error("discovery fetch should be gated first");
+        },
+        assertReadDestinationAllowed: (url) => {
+          throw new Error(`refused ${url.href}`);
+        },
+      }),
+    /refused http:\/\/public\.example\/users\/alice/,
+  );
+});
+
+test("objectRunner - gates collection URLs before crawling them", async () => {
+  const scenario = normalizeSuite({
+    version: 1,
+    target: "http://target.test/",
+    scenarios: [{
+      name: "object-crawl",
+      type: "object",
+      source: {
+        seed: "http://target.test/users/alice",
+        collection: "outbox",
+        limit: 1,
+      },
+      load: { concurrency: 1 },
+      duration: "25ms",
+    }],
+  }).scenarios[0];
+
+  await assert.rejects(
+    async () =>
+      objectRunner.run({
+        scenario,
+        target: new URL("http://target.test/"),
+        documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+        contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+        allowPrivateAddress: true,
+        fleet: null,
+        fetch: (input) => {
+          const url = new URL(input instanceof Request ? input.url : input);
+          if (url.pathname === "/users/alice") {
+            return Promise.resolve(json({
+              id: url.href,
+              outbox: "http://public.example/outbox",
+            }));
+          }
+          throw new Error("collection fetch should be gated first");
+        },
+        assertReadDestinationAllowed: (url) => {
+          if (url.hostname === "public.example") {
+            throw new Error(`refused ${url.href}`);
+          }
+        },
+      }),
+    /refused http:\/\/public\.example\/outbox/,
+  );
+});
+
 function json(body: unknown): Response {
   return new Response(JSON.stringify(body), {
     headers: { "content-type": "application/activity+json" },

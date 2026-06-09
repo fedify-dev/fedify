@@ -15,6 +15,7 @@ export const objectRunner: ScenarioRunner = {
       source: context.scenario.source,
       target: context.target,
       fetch: context.fetch,
+      assertReadDestinationAllowed: context.assertReadDestinationAllowed,
     });
     return await runReadLoad(context, {
       urls,

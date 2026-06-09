@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { getContextLoader, getDocumentLoader } from "../../docloader.ts";
+import { LogLinearHistogram } from "../metrics/histogram.ts";
+import type { ScenarioMeasurement } from "../result/build.ts";
 import { normalizeSuite } from "../scenario/normalize.ts";
 import type { Suite } from "../scenario/types.ts";
-import { mixedRunner } from "./mixed.ts";
+import { mergeMeasurements, mixedRunner } from "./mixed.ts";
 
 test("mixedRunner - runs weighted child scenarios together", async () => {
   const target = new URL("http://target.test/");
@@ -150,6 +152,43 @@ test("mixedRunner.validate - rejects too-small closed load", () => {
 
   assert.throws(() => mixedRunner.validate?.(scenario), /concurrency/);
 });
+
+test("mergeMeasurements - merges latency histograms", () => {
+  const measurement = mergeMeasurements([
+    fakeMeasurement(Array.from({ length: 99 }, () => 1)),
+    fakeMeasurement([1000]),
+  ]);
+
+  assert.ok(measurement.client.latencyMs.p50 < 10);
+  assert.strictEqual(measurement.client.latencyMs.max, 1000);
+  assert.strictEqual(measurement.histogram?.count, 100);
+});
+
+function fakeMeasurement(samples: readonly number[]): ScenarioMeasurement {
+  const histogram = new LogLinearHistogram();
+  for (const sample of samples) histogram.record(sample);
+  return {
+    requests: {
+      total: samples.length,
+      ok: samples.length,
+      failed: 0,
+      successRate: 1,
+    },
+    throughputPerSec: samples.length,
+    client: {
+      latencyMs: {
+        p50: histogram.percentile(50),
+        p95: histogram.percentile(95),
+        p99: histogram.percentile(99),
+        mean: histogram.mean,
+        max: histogram.max,
+      },
+    },
+    server: null,
+    errors: [],
+    histogram: histogram.toJSON(),
+  };
+}
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
