@@ -449,6 +449,51 @@ scenarios:
   assert.strictEqual(JSON.parse(output).scenarios[0].requests.successRate, 1);
 });
 
+test("runBench - missing-actor failure needs no advertise host", async () => {
+  const recipientTarget = await spawnBenchmarkTarget();
+  try {
+    const file = await writeSuite(`version: 1
+target: http://10.10.0.5:8000
+scenarios:
+  - name: missing-actor
+    type: failure
+    fault: missing-actor
+    recipient: "${new URL("/users/alice", recipientTarget.url).href}"
+    load: { rate: 1/s }
+    duration: 1ms
+`);
+    let code = -1;
+    let message = "";
+    await runBench(command({ scenario: file }), {
+      exit: (c) => {
+        code = c;
+      },
+      writeOutput: () => Promise.resolve(),
+      log: (m) => {
+        message = m;
+      },
+      fetch: (input) => {
+        const url = new URL(input instanceof Request ? input.url : input);
+        if (url.pathname === "/.well-known/fedify/bench/stats") {
+          return Promise.resolve(new Response("not found", { status: 404 }));
+        }
+        if (
+          url.origin === recipientTarget.url.origin &&
+          url.pathname === "/inbox"
+        ) {
+          return Promise.resolve(
+            new Response("actor not found", { status: 401 }),
+          );
+        }
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      },
+    });
+    assert.strictEqual(code, 0, message);
+  } finally {
+    await recipientTarget.close();
+  }
+});
+
 test("runBench - unauthenticated actor read needs no advertise host", async () => {
   const file = await writeSuite(`version: 1
 target: http://10.10.0.5:8000

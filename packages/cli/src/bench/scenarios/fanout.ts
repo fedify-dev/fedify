@@ -110,6 +110,13 @@ export const fanoutRunner: ScenarioRunner = {
             reason: "queue_drain_timeout",
           };
         }
+        if (drain.failed > 0) {
+          return {
+            ok: false,
+            errorKind: "server",
+            reason: "queue_delivery_failed",
+          };
+        }
         if (scheduledAtMs >= context.scenario.warmupMs) {
           drainHistogram.record(Date.now() - started);
           delivered += sink.recipients.length;
@@ -234,6 +241,7 @@ function parseSinkBehavior(
 
 interface DrainResult {
   readonly timedOut: boolean;
+  readonly failed: number;
 }
 
 async function waitForDrain(options: {
@@ -248,14 +256,16 @@ async function waitForDrain(options: {
     const snapshot = await fetchServerSnapshot(options.target, options.fetch);
     if (snapshot == null) return null;
     const diff = diffSnapshots(options.baseline, snapshot);
+    const queueTasks = diff.queueTasks;
+    if (queueTasks == null) return null;
     const remaining = queueTaskRemaining(diff);
     if (remaining == null) return null;
     if (remaining === 0) {
-      return { timedOut: false };
+      return { timedOut: false, failed: queueTasks.failed };
     }
     await new Promise((resolve) => setTimeout(resolve, DRAIN_POLL_MS));
   } while (Date.now() < deadline);
-  return { timedOut: true };
+  return { timedOut: true, failed: 0 };
 }
 
 function addQueueDrain(

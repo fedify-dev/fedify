@@ -680,6 +680,9 @@ function scenarioNeedsReachableLocalServer(
   seen: ReadonlySet<string> = new Set(),
 ): boolean {
   if (scenario.type === "fanout") return true;
+  if (scenario.type === "failure") {
+    return scenario.faults.includes("invalid-signature");
+  }
   if (scenario.type === "mixed") {
     if (seen.has(scenario.name)) return false;
     const nextSeen = new Set(seen).add(scenario.name);

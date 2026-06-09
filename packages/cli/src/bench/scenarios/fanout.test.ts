@@ -123,6 +123,53 @@ test("fanoutRunner - serializes overlapping trigger drains", async () => {
   assert.strictEqual(maxActiveTriggers, 1);
 });
 
+test("fanoutRunner - counts failed queue tasks as delivery failures", async () => {
+  const target = new URL("http://target.test/");
+  let statsCalls = 0;
+  const suite: Suite = {
+    version: 1,
+    target: target.href,
+    scenarios: [{
+      name: "fanout",
+      type: "fanout",
+      sender: "alice",
+      followers: 5,
+      load: { concurrency: 1 },
+      duration: "40ms",
+      queueDrainTimeout: "1s",
+    }],
+  };
+  const scenario = normalizeSuite(suite).scenarios[0];
+  const measurement = await fanoutRunner.run({
+    scenario,
+    target,
+    documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+    contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+    allowPrivateAddress: true,
+    fleet: null,
+    fetch: (input) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.pathname === "/.well-known/fedify/bench/stats") {
+        statsCalls++;
+        const failedTasks = Math.floor(statsCalls / 2) * 6;
+        return Promise.resolve(json(statsSnapshot({
+          enqueued: failedTasks,
+          completed: 0,
+          failed: failedTasks,
+        })));
+      }
+      if (url.pathname === "/.well-known/fedify/bench/trigger") {
+        return Promise.resolve(json({ version: 1 }, 202));
+      }
+      return Promise.resolve(new Response("unexpected", { status: 500 }));
+    },
+  });
+
+  assert.ok(measurement.requests.total > 0);
+  assert.strictEqual(measurement.requests.successRate, 0);
+  assert.strictEqual(measurement.throughputPerSec, 0);
+});
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
