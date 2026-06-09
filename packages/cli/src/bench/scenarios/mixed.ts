@@ -261,6 +261,9 @@ export function mergeMeasurements(
   const total = measurements.reduce((sum, m) => sum + m.requests.total, 0);
   const ok = measurements.reduce((sum, m) => sum + m.requests.ok, 0);
   const histogram = mergeHistograms(measurements);
+  const deliveryThroughputs = measurements
+    .map((m) => m.deliveryThroughputPerSec)
+    .filter((value): value is number => value != null);
   return {
     requests: {
       total,
@@ -272,6 +275,12 @@ export function mergeMeasurements(
       (sum, m) => sum + m.throughputPerSec,
       0,
     ),
+    ...(deliveryThroughputs.length < 1 ? {} : {
+      deliveryThroughputPerSec: deliveryThroughputs.reduce(
+        (sum, value) => sum + value,
+        0,
+      ),
+    }),
     client: {
       latencyMs: histogram == null
         ? mergeLatencyFallback(measurements)

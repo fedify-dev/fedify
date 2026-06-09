@@ -142,10 +142,12 @@ export const fanoutRunner: ScenarioRunner = {
         includeHistogram: true,
       });
       const server = addQueueDrain(measurement.server, drainHistogram);
+      const deliveryThroughputPerSec = delivered /
+        (Math.max(measuredWindowMs(context.scenario), 1) / 1000);
       return {
         ...measurement,
-        throughputPerSec: delivered /
-          (Math.max(measuredWindowMs(context.scenario), 1) / 1000),
+        throughputPerSec: deliveryThroughputPerSec,
+        deliveryThroughputPerSec,
         server,
       };
     } finally {

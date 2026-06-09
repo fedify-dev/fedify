@@ -3,6 +3,7 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { serve } from "srvx";
 import { spawnBenchmarkTarget } from "../../test/bench/fixture.ts";
 import runBench, { withUserAgent } from "./action.ts";
 import type { BenchCommand } from "./command.ts";
@@ -491,6 +492,72 @@ scenarios:
     assert.strictEqual(code, 0, message);
   } finally {
     await recipientTarget.close();
+  }
+});
+
+test("runBench - missing-actor failure allows private inbox without advertise host", async () => {
+  const actorServer = serve({
+    port: 0,
+    hostname: "127.0.0.1",
+    silent: true,
+    fetch(request: Request): Response {
+      const url = new URL(request.url);
+      if (url.pathname === "/users/alice") {
+        return new Response(
+          JSON.stringify({
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Person",
+            id: url.href,
+            inbox: "http://10.0.0.8/inbox",
+          }),
+          { headers: { "content-type": "application/activity+json" } },
+        );
+      }
+      return new Response("not found", { status: 404 });
+    },
+  });
+  await actorServer.ready();
+  try {
+    const actorUrl = new URL("/users/alice", new URL(actorServer.url!));
+    const file = await writeSuite(`version: 1
+target: http://10.10.0.5:8000
+scenarios:
+  - name: missing-actor
+    type: failure
+    fault: missing-actor
+    recipient: "${actorUrl.href}"
+    load: { rate: 1/s }
+    duration: 1ms
+`);
+    let code = -1;
+    let message = "";
+    let inboxPosts = 0;
+    await runBench(command({ scenario: file }), {
+      exit: (c) => {
+        code = c;
+      },
+      writeOutput: () => Promise.resolve(),
+      log: (m) => {
+        message = m;
+      },
+      fetch: (input) => {
+        const url = new URL(input instanceof Request ? input.url : input);
+        if (url.pathname === "/.well-known/fedify/bench/stats") {
+          return Promise.resolve(new Response("not found", { status: 404 }));
+        }
+        if (url.href === "http://10.0.0.8/inbox") {
+          inboxPosts++;
+          return Promise.resolve(
+            new Response("actor not found", { status: 401 }),
+          );
+        }
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      },
+    });
+    assert.strictEqual(code, 0, message);
+    assert.ok(inboxPosts > 0);
+  } finally {
+    await actorServer.close(true);
   }
 });
 

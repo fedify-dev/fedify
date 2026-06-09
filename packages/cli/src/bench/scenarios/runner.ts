@@ -46,6 +46,13 @@ export interface RunContext {
    * reachable synthetic actor server.
    */
   readonly assertReadDestinationAllowed?: (url: URL) => void | Promise<void>;
+  /**
+   * Gates a destination for benchmark load that does not require remote
+   * dereferencing of benchmark-owned synthetic actors.
+   */
+  readonly assertActorlessDestinationAllowed?: (
+    url: URL,
+  ) => void | Promise<void>;
 }
 
 /** Context available during runner preflight validation. */

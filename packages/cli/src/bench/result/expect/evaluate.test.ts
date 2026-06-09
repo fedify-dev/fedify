@@ -87,11 +87,21 @@ test("evaluateExpect - missing server metric fails (actual null)", () => {
 test("evaluateExpect - reads delivery throughput", () => {
   const { passed, results } = evaluateExpect(
     { deliveryThroughput: ">= 1/s" },
-    metrics({ throughputPerSec: 12 }),
+    metrics({ deliveryThroughputPerSec: 12 }),
   );
   assert.strictEqual(passed, true);
   assert.strictEqual(results[0].actual, 12);
   assert.strictEqual(results[0].pass, true);
+});
+
+test("evaluateExpect - does not alias delivery throughput to request throughput", () => {
+  const { passed, results } = evaluateExpect(
+    { deliveryThroughput: ">= 1/s" },
+    metrics({ throughputPerSec: 12 }),
+  );
+  assert.strictEqual(passed, false);
+  assert.strictEqual(results[0].actual, null);
+  assert.strictEqual(results[0].pass, false);
 });
 
 test("evaluateExpect - tolerant equality matches float-normalized ratios", () => {

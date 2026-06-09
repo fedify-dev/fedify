@@ -195,9 +195,10 @@ export default async function runBench(
       defaults: validated.defaults,
     });
   };
-  const assertReadDestinationAllowed = async (
+  const assertDestinationWithoutSyntheticServerAllowed = async (
     url: URL,
     scenario: ResolvedScenario,
+    loadDescription: string,
   ): Promise<void> => {
     const sameOrigin = url.origin === suite.target.origin;
     const destinationTier = sameOrigin
@@ -209,7 +210,7 @@ export default async function runBench(
       !command.allowUnsafeTarget
     ) {
       throw new UnsafeTargetError(
-        `Refusing to send benchmark read load to ${url.href}: it is public ` +
+        `Refusing to send ${loadDescription} to ${url.href}: it is public ` +
           "and not part of the benchmarked target.  Pass " +
           "--allow-unsafe-target to override.",
       );
@@ -223,6 +224,24 @@ export default async function runBench(
       defaults: validated.defaults,
     });
   };
+  const assertReadDestinationAllowed = (
+    url: URL,
+    scenario: ResolvedScenario,
+  ): Promise<void> =>
+    assertDestinationWithoutSyntheticServerAllowed(
+      url,
+      scenario,
+      "benchmark read load",
+    );
+  const assertActorlessDestinationAllowed = (
+    url: URL,
+    scenario: ResolvedScenario,
+  ): Promise<void> =>
+    assertDestinationWithoutSyntheticServerAllowed(
+      url,
+      scenario,
+      "benchmark load",
+    );
 
   if (command.dryRun) {
     try {
@@ -295,6 +314,8 @@ export default async function runBench(
           assertDestinationAllowed(url, scenario),
         assertReadDestinationAllowed: (url) =>
           assertReadDestinationAllowed(url, scenario),
+        assertActorlessDestinationAllowed: (url) =>
+          assertActorlessDestinationAllowed(url, scenario),
       });
       results.push(buildScenarioResult(scenario, measurement));
     }

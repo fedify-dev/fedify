@@ -32,6 +32,7 @@ import type {
 export interface ScenarioMeasurement {
   readonly requests: RequestSummary;
   readonly throughputPerSec: number;
+  readonly deliveryThroughputPerSec?: number;
   readonly client: ClientMetrics;
   readonly server: ServerMetrics | null;
   readonly errors: ErrorBucket[];

@@ -3,6 +3,7 @@ import test from "node:test";
 import { getContextLoader, getDocumentLoader } from "../../docloader.ts";
 import { LogLinearHistogram } from "../metrics/histogram.ts";
 import type { ScenarioMeasurement } from "../result/build.ts";
+import { evaluateExpect } from "../result/expect/evaluate.ts";
 import { normalizeSuite } from "../scenario/normalize.ts";
 import type { Suite } from "../scenario/types.ts";
 import { mergeMeasurements, mixedRunner } from "./mixed.ts";
@@ -225,7 +226,29 @@ test("mergeMeasurements - merges latency histograms", () => {
   assert.strictEqual(measurement.histogram?.count, 100);
 });
 
-function fakeMeasurement(samples: readonly number[]): ScenarioMeasurement {
+test("mergeMeasurements - keeps delivery throughput separate from reads", () => {
+  const measurement = mergeMeasurements([
+    fakeMeasurement([1], { throughputPerSec: 100 }),
+    fakeMeasurement([1], {
+      throughputPerSec: 0,
+      deliveryThroughputPerSec: 0,
+    }),
+  ]);
+
+  assert.strictEqual(measurement.throughputPerSec, 100);
+  assert.strictEqual(measurement.deliveryThroughputPerSec, 0);
+  const { passed, results } = evaluateExpect(
+    { deliveryThroughput: ">= 1/s" },
+    measurement,
+  );
+  assert.strictEqual(passed, false);
+  assert.strictEqual(results[0].actual, 0);
+});
+
+function fakeMeasurement(
+  samples: readonly number[],
+  overrides: Partial<ScenarioMeasurement> = {},
+): ScenarioMeasurement {
   const histogram = new LogLinearHistogram();
   for (const sample of samples) histogram.record(sample);
   return {
@@ -248,6 +271,7 @@ function fakeMeasurement(samples: readonly number[]): ScenarioMeasurement {
     server: null,
     errors: [],
     histogram: histogram.toJSON(),
+    ...overrides,
   };
 }
 

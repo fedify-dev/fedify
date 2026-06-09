@@ -108,7 +108,11 @@ async function resolveFailureDeliveryTarget(
     allowPrivateAddress: context.allowPrivateAddress,
   });
   const inbox = selectInbox(discovered, scenario.inbox);
-  await context.assertDestinationAllowed?.(inbox);
+  if (faults.every((fault) => fault === "missing-actor")) {
+    await context.assertActorlessDestinationAllowed?.(inbox);
+  } else {
+    await context.assertDestinationAllowed?.(inbox);
+  }
   return { inbox, actorUri: discovered.actorUri };
 }
 
