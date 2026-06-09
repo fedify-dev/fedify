@@ -29,6 +29,8 @@ export interface RunContext {
   readonly rng?: Rng;
   /** Fetch implementation (overridable for tests). */
   readonly fetch?: typeof fetch;
+  /** Host advertised for local benchmark-owned servers. */
+  readonly advertiseHost?: string;
   /**
    * Gates a resolved load destination (a discovered or explicit inbox URL)
    * before any load is sent to it, throwing or rejecting if it is not allowed.

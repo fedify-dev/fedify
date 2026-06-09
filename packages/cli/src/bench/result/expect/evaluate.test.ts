@@ -84,13 +84,14 @@ test("evaluateExpect - missing server metric fails (actual null)", () => {
   assert.strictEqual(passed, false);
 });
 
-test("evaluateExpect - unmeasured metric yields null actual and fails", () => {
-  const { results } = evaluateExpect(
+test("evaluateExpect - reads delivery throughput", () => {
+  const { passed, results } = evaluateExpect(
     { deliveryThroughput: ">= 1/s" },
-    metrics(),
+    metrics({ throughputPerSec: 12 }),
   );
-  assert.strictEqual(results[0].actual, null);
-  assert.strictEqual(results[0].pass, false);
+  assert.strictEqual(passed, true);
+  assert.strictEqual(results[0].actual, 12);
+  assert.strictEqual(results[0].pass, true);
 });
 
 test("evaluateExpect - tolerant equality matches float-normalized ratios", () => {

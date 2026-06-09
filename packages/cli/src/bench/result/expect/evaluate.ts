@@ -133,8 +133,7 @@ function lookupValue(metrics: MetricView, metric: string): number | null {
     case "throughputPerSec":
       return metrics.throughputPerSec;
     case "deliveryThroughput":
-      // Recognized (fanout/mixed) but not measured by the runners yet.
-      return null;
+      return metrics.throughputPerSec;
     case "errors.total":
       return sumErrors(metrics.errors);
     case "errors.4xx":

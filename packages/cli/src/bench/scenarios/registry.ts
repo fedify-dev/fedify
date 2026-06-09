@@ -8,6 +8,7 @@
 
 import type { ScenarioType } from "../scenario/types.ts";
 import { actorRunner } from "./actor.ts";
+import { fanoutRunner } from "./fanout.ts";
 import { inboxRunner } from "./inbox.ts";
 import { objectRunner } from "./object.ts";
 import type { ScenarioRunner } from "./runner.ts";
@@ -19,6 +20,7 @@ export const IMPLEMENTED_SCENARIO_TYPES: readonly ScenarioType[] = [
   "webfinger",
   "actor",
   "object",
+  "fanout",
 ];
 
 /**
@@ -37,6 +39,8 @@ export function runnerFor(type: ScenarioType): ScenarioRunner {
       return actorRunner;
     case "object":
       return objectRunner;
+    case "fanout":
+      return fanoutRunner;
     default:
       throw new Error(
         `The "${type}" scenario type is not implemented in this version of ` +

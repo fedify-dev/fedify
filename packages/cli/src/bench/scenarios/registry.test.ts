@@ -8,11 +8,11 @@ test("runnerFor - returns implemented scenario runners", () => {
   assert.strictEqual(typeof runnerFor("webfinger").run, "function");
   assert.strictEqual(typeof runnerFor("actor").run, "function");
   assert.strictEqual(typeof runnerFor("object").run, "function");
+  assert.strictEqual(typeof runnerFor("fanout").run, "function");
 });
 
 test("runnerFor - throws for scenario types without a runner", () => {
   const unimplemented: ScenarioType[] = [
-    "fanout",
     "collection",
     "failure",
     "mixed",

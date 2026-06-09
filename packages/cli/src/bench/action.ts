@@ -221,14 +221,14 @@ export default async function runBench(
   // rather than let every signed delivery fail key lookup.
   if (
     tier !== "loopback" && command.advertiseHost == null &&
-    suite.scenarios.some(scenarioNeedsSyntheticServer)
+    suite.scenarios.some(scenarioNeedsReachableLocalServer)
   ) {
     log(
-      "Signed scenarios need the benchmark's synthetic actor server to be " +
-        "reachable from the target.  A loopback target reaches it " +
-        "automatically; for a non-loopback target, pass --advertise-host with " +
-        "an address the target can reach (the synthetic server then binds all " +
-        "interfaces), or use an anonymous read scenario such as webfinger.",
+      "Some scenarios need benchmark-owned local servers to be reachable from " +
+        "the target.  A loopback target reaches them automatically; for a " +
+        "non-loopback target, pass --advertise-host with an address the target " +
+        "can reach, or use a scenario that does not need local benchmark " +
+        "servers such as webfinger.",
     );
     return void exit(2);
   }
@@ -252,6 +252,7 @@ export default async function runBench(
         contextLoader,
         allowPrivateAddress,
         fleet: fleet ?? null,
+        advertiseHost: command.advertiseHost,
         fetch: fetchImpl,
         assertDestinationAllowed: (url) =>
           assertDestinationAllowed(url, scenario),
@@ -586,4 +587,10 @@ function scenarioNeedsSyntheticServer(scenario: ResolvedScenario): boolean {
   return scenario.type === "inbox" ||
     (scenario.authenticated &&
       (scenario.type === "actor" || scenario.type === "object"));
+}
+
+function scenarioNeedsReachableLocalServer(
+  scenario: ResolvedScenario,
+): boolean {
+  return scenarioNeedsSyntheticServer(scenario) || scenario.type === "fanout";
 }
