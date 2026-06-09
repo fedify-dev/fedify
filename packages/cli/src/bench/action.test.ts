@@ -208,6 +208,62 @@ scenarios:
   }
 });
 
+test("runBench - dry run resolves actor handles with configured fetch", async () => {
+  const file = await writeSuite(`version: 1
+target: http://127.0.0.1:3000
+scenarios:
+  - name: actor-read
+    type: actor
+    recipient: "acct:alice@example.test"
+    load: { concurrency: 1 }
+    duration: 1ms
+`);
+  let code = -1;
+  let output = "";
+  let webfingerFetched = false;
+  let webfingerUserAgent: string | null = null;
+  await runBench(command({ scenario: file, dryRun: true }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: (c) => {
+      output = c;
+      return Promise.resolve();
+    },
+    log: () => {},
+    fetch: (input, init) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      const headers = new Headers(
+        init?.headers ?? (input instanceof Request ? input.headers : undefined),
+      );
+      if (url.pathname === "/.well-known/webfinger") {
+        webfingerFetched = true;
+        webfingerUserAgent = headers.get("user-agent");
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              subject: url.searchParams.get("resource"),
+              links: [{
+                rel: "self",
+                href: "http://127.0.0.1:3000/users/alice",
+              }],
+            }),
+            {
+              headers: { "content-type": "application/jrd+json" },
+            },
+          ),
+        );
+      }
+      return Promise.resolve(new Response("not found", { status: 404 }));
+    },
+  });
+
+  assert.strictEqual(code, 0);
+  assert.strictEqual(webfingerFetched, true);
+  assert.strictEqual(webfingerUserAgent, "Fedify-bench-test/1.0");
+  assert.match(output, /\/users\/alice/);
+});
+
 test("runBench - dry run gates object discovery before fetching", async () => {
   const file = await writeSuite(`version: 1
 target: http://127.0.0.1:3000

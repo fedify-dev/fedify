@@ -507,6 +507,7 @@ async function describeActorPlan(
   try {
     const urls = await actorUrlsFromRecipients(scenario.recipients, {
       target: suite.target,
+      fetch: context.fetch,
     });
     const lines: string[] = [];
     for (const url of urls) {
