@@ -10,8 +10,15 @@
  * @module
  */
 
+import { lookup } from "node:dns/promises";
+
 /** The risk tier of a benchmark target. */
 export type TargetTier = "loopback" | "private" | "public";
+
+/** Resolves a hostname to IP addresses for target risk classification. */
+export type ResolveTargetAddresses = (
+  hostname: string,
+) => Promise<readonly string[]>;
 
 /**
  * Classifies a target URL into a risk tier from its host.
@@ -29,6 +36,64 @@ export function classifyTarget(target: URL): TargetTier {
   if (host.includes(":")) return classifyIpv6(host);
   // Not a known-local hostname and not an IP literal: treat as public.
   return "public";
+}
+
+/**
+ * Classifies a target URL, resolving DNS for public-looking hostnames.
+ *
+ * Literal addresses and known local hostname suffixes are classified directly.
+ * Other hostnames are resolved and classified from their addresses; any public
+ * address in the answer keeps the target public, and DNS failure is treated as
+ * public so the safety gate remains conservative.
+ * @param target The target URL.
+ * @param resolveAddresses Hostname resolver, overridable for tests.
+ * @returns The resolved target tier.
+ */
+export async function classifyResolvedTarget(
+  target: URL,
+  resolveAddresses: ResolveTargetAddresses = defaultResolveTargetAddresses,
+): Promise<TargetTier> {
+  const host = normalizedHost(target);
+  const direct = classifyTarget(target);
+  if (direct !== "public" || isIpLiteral(host)) return direct;
+  try {
+    const resolved = await resolveAddresses(host);
+    if (!Array.isArray(resolved) || resolved.length < 1) return "public";
+    let aggregate: TargetTier = "loopback";
+    for (const address of resolved) {
+      const tier = classifyTarget(
+        new URL(`http://${hostForAddress(address)}/`),
+      );
+      if (tier === "public") return "public";
+      if (tier === "private") aggregate = "private";
+    }
+    return aggregate;
+  } catch {
+    return "public";
+  }
+}
+
+/** Resolves a hostname with the platform DNS resolver. */
+export async function defaultResolveTargetAddresses(
+  hostname: string,
+): Promise<readonly string[]> {
+  const entries = await lookup(hostname, { all: true });
+  return entries.map((entry) => entry.address);
+}
+
+function normalizedHost(target: URL): string {
+  let host = target.hostname.replace(/^\[/, "").replace(/\]$/, "")
+    .toLowerCase();
+  if (host.endsWith(".")) host = host.slice(0, -1);
+  return host;
+}
+
+function isIpLiteral(host: string): boolean {
+  return isIpv4(host) || host.includes(":");
+}
+
+function hostForAddress(address: string): string {
+  return address.includes(":") ? `[${address}]` : address;
 }
 
 function isIpv4(host: string): boolean {

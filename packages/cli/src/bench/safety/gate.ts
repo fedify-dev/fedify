@@ -11,7 +11,7 @@
  * @module
  */
 
-import { classifyTarget, type TargetTier } from "./tiers.ts";
+import type { TargetTier } from "./tiers.ts";
 
 /** An error raised when a target is refused by the safety gate. */
 export class UnsafeTargetError extends Error {}
@@ -46,6 +46,73 @@ export function assertTargetAllowed(context: GateContext): void {
   );
 }
 
+/** Per-scenario metadata needed when an unsafe public target is overridden. */
+export interface UnsafeOverrideScenario {
+  /** The scenario name, used in diagnostics. */
+  readonly name: string;
+  /** Whether the scenario or suite explicitly set a duration. */
+  readonly explicitDuration: boolean;
+  /** Whether the scenario or suite explicitly selected a load model. */
+  readonly explicitLoad: boolean;
+}
+
+/** The inputs for validating an unsafe public-target override. */
+export interface UnsafeOverrideContext {
+  /** The target's risk tier. */
+  readonly tier: TargetTier;
+  /** Whether the target advertises benchmark mode. */
+  readonly benchmarkMode: boolean;
+  /** Whether `--allow-unsafe-target` was given. */
+  readonly allowUnsafe: boolean;
+  /** Whether the run supplied `--target` on the command line. */
+  readonly explicitCliTarget: boolean;
+  /** Scenario metadata for explicit-load checks. */
+  readonly scenarios: readonly UnsafeOverrideScenario[];
+}
+
+/**
+ * Asserts that an unsafe public-target override is specific and bounded.
+ *
+ * The override is only meaningful for a public target that does not advertise
+ * benchmark mode.  In that caution tier, the operator must name the target on
+ * the command line for this run and must explicitly set load and duration, so
+ * the built-in defaults cannot accidentally create a long public benchmark.
+ * @param context The unsafe override decision inputs.
+ * @throws {UnsafeTargetError} If the unsafe override is too broad.
+ */
+export function assertUnsafeOverrideAllowed(
+  context: UnsafeOverrideContext,
+): void {
+  if (
+    context.tier !== "public" || context.benchmarkMode ||
+    !context.allowUnsafe
+  ) {
+    return;
+  }
+  if (!context.explicitCliTarget) {
+    throw new UnsafeTargetError(
+      "The --allow-unsafe-target override must be paired with an explicit " +
+        "--target for this run.",
+    );
+  }
+  for (const scenario of context.scenarios) {
+    if (!scenario.explicitLoad) {
+      throw new UnsafeTargetError(
+        `Scenario "${scenario.name}" uses the built-in benchmark load ` +
+          "default.  Set rate or concurrency explicitly before using " +
+          "--allow-unsafe-target against a public target.",
+      );
+    }
+    if (!scenario.explicitDuration) {
+      throw new UnsafeTargetError(
+        `Scenario "${scenario.name}" uses the built-in benchmark duration ` +
+          "default.  Set duration explicitly before using " +
+          "--allow-unsafe-target against a public target.",
+      );
+    }
+  }
+}
+
 /** The inputs to gating a resolved inbox load destination. */
 export interface InboxDestinationGateContext {
   /**
@@ -55,6 +122,10 @@ export interface InboxDestinationGateContext {
    * (e.g. an `http://host` inbox does not inherit an `https://host` target).
    */
   readonly targetOrigin: string;
+  /** The resolved target tier used by the main safety gate. */
+  readonly targetTier: TargetTier;
+  /** The resolved tier for this inbox destination. */
+  readonly destinationTier: TargetTier;
   /** Whether the gated target advertises benchmark mode. */
   readonly targetBenchmarkMode: boolean;
   /** Whether `--allow-unsafe-target` was given. */
@@ -83,8 +154,9 @@ export function assertInboxDestinationAllowed(
   url: URL,
   context: InboxDestinationGateContext,
 ): void {
-  const tier = classifyTarget(url);
-  const inheritsTargetGate = url.origin === context.targetOrigin &&
+  const sameOrigin = url.origin === context.targetOrigin;
+  const tier = sameOrigin ? context.targetTier : context.destinationTier;
+  const inheritsTargetGate = sameOrigin &&
     context.targetBenchmarkMode;
   if (tier === "public" && !inheritsTargetGate && !context.allowUnsafe) {
     throw new UnsafeTargetError(

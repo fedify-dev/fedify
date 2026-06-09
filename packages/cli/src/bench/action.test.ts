@@ -1,69 +1,11 @@
-import {
-  createFederation,
-  generateCryptoKeyPair,
-  MemoryKvStore,
-} from "@fedify/fedify";
-import { Create, Endpoints, Person } from "@fedify/vocab";
 import assert from "node:assert/strict";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { serve } from "srvx";
+import { spawnBenchmarkTarget } from "../../test/bench/fixture.ts";
 import runBench, { withUserAgent } from "./action.ts";
 import type { BenchCommand } from "./command.ts";
-
-async function spawnTarget() {
-  const federation = createFederation<void>({
-    kv: new MemoryKvStore(),
-    benchmarkMode: true,
-  });
-  let keyPairs: CryptoKeyPair[] | undefined;
-  federation
-    .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
-      if (identifier !== "alice") return null;
-      const pairs = await ctx.getActorKeyPairs(identifier);
-      return new Person({
-        id: ctx.getActorUri(identifier),
-        preferredUsername: identifier,
-        inbox: ctx.getInboxUri(identifier),
-        endpoints: new Endpoints({ sharedInbox: ctx.getInboxUri() }),
-        publicKey: pairs[0]?.cryptographicKey,
-        assertionMethods: pairs.map((p) => p.multikey),
-      });
-    })
-    .mapHandle((_ctx, username) => (username === "alice" ? "alice" : null))
-    .setKeyPairsDispatcher(async (_ctx, identifier) => {
-      if (identifier !== "alice") return [];
-      keyPairs ??= [
-        await generateCryptoKeyPair("RSASSA-PKCS1-v1_5"),
-        await generateCryptoKeyPair("Ed25519"),
-      ];
-      return keyPairs;
-    });
-  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox").on(
-    Create,
-    () => {},
-  );
-  let inboxUserAgent: string | null = null;
-  const server = serve({
-    port: 0,
-    hostname: "127.0.0.1",
-    silent: true,
-    fetch: (request: Request) => {
-      if (request.method === "POST") {
-        inboxUserAgent = request.headers.get("user-agent");
-      }
-      return federation.fetch(request, { contextData: undefined });
-    },
-  });
-  await server.ready();
-  return {
-    url: new URL(server.url!),
-    inboxUserAgent: () => inboxUserAgent,
-    close: () => server.close(true),
-  };
-}
 
 function command(overrides: Partial<BenchCommand>): BenchCommand {
   return {
@@ -86,6 +28,10 @@ async function writeSuite(content: string): Promise<string> {
   return path;
 }
 
+function resolvePublicHost(_hostname: string): Promise<readonly string[]> {
+  return Promise.resolve(["93.184.216.34"]);
+}
+
 function inboxSuite(target: URL, expectLine: string): string {
   // Uses `${{ target.host }}` templating to form the actor URI (WebFinger is
   // https-only, so an acct: handle would not resolve over http loopback).
@@ -104,7 +50,7 @@ ${expectLine}
 }
 
 test("runBench - passing gate exits 0 and writes a valid report", async () => {
-  const target = await spawnTarget();
+  const target = await spawnBenchmarkTarget();
   try {
     const file = await writeSuite(
       inboxSuite(target.url, '      successRate: ">= 99%"'),
@@ -173,7 +119,7 @@ test("withUserAgent - does not override an explicit User-Agent", async () => {
 });
 
 test("runBench - failing gate exits 1", async () => {
-  const target = await spawnTarget();
+  const target = await spawnBenchmarkTarget();
   try {
     // An impossible latency threshold makes the gate fail.
     const file = await writeSuite(
@@ -194,7 +140,7 @@ test("runBench - failing gate exits 1", async () => {
 });
 
 test("runBench - dry run prints a plan and sends nothing", async () => {
-  const target = await spawnTarget();
+  const target = await spawnBenchmarkTarget();
   try {
     const file = await writeSuite(
       inboxSuite(target.url, '      successRate: ">= 99%"'),
@@ -213,10 +159,85 @@ test("runBench - dry run prints a plan and sends nothing", async () => {
     });
     assert.strictEqual(code, 0);
     assert.match(output, /dry run/i);
-    assert.match(output, /No requests were sent/);
+    assert.match(output, /\/inbox/);
+    assert.match(output, /No benchmark load was sent/);
+    const requests = target.requests();
+    assert.ok(requests.some((r) => r.method === "GET"));
+    assert.ok(!requests.some((r) => r.method === "POST"));
   } finally {
     await target.close();
   }
+});
+
+test("runBench - dry run reports inbox discovery failures and continues", async () => {
+  const target = await spawnBenchmarkTarget();
+  try {
+    const file = await writeSuite(`version: 1
+target: ${target.url.href}
+scenarios:
+  - name: inbox-shared
+    type: inbox
+    recipient:
+      - "${new URL("/users/missing", target.url).href}"
+      - "${new URL("/users/alice", target.url).href}"
+    inbox: shared
+    load: { concurrency: 2 }
+    duration: 250ms
+`);
+    let code = -1;
+    let output = "";
+    await runBench(command({ scenario: file, dryRun: true }), {
+      exit: (c) => {
+        code = c;
+      },
+      writeOutput: (c) => {
+        output = c;
+        return Promise.resolve();
+      },
+      log: () => {},
+    });
+    assert.strictEqual(code, 0);
+    assert.match(output, /\/users\/missing/);
+    assert.match(output, /discovery failed/);
+    assert.match(output, /\/users\/alice/);
+    assert.match(output, /\/inbox/);
+    assert.match(output, /No benchmark load was sent/);
+    assert.ok(!target.requests().some((r) => r.method === "POST"));
+  } finally {
+    await target.close();
+  }
+});
+
+test("runBench - unsafe override requires an explicit CLI target", async () => {
+  const file = await writeSuite(`version: 1
+target: https://example.com
+scenarios:
+  - name: wf
+    type: webfinger
+    recipient: "acct:alice@example.com"
+    load: { rate: 1/s }
+    duration: 1ms
+`);
+  let code = -1;
+  let message = "";
+  await runBench(command({ scenario: file, allowUnsafeTarget: true }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: () => Promise.resolve(),
+    log: (m) => {
+      message = m;
+    },
+    fetch: (input) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.pathname.includes("/bench/stats")) {
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      }
+      return Promise.resolve(new Response("ok"));
+    },
+  });
+  assert.strictEqual(code, 2);
+  assert.match(message, /--target/);
 });
 
 test("runBench - refuses an unsafe public target (exit 2)", async () => {
@@ -268,6 +289,7 @@ scenarios:
           { headers: { "content-type": "application/json" } },
         ),
       ),
+    resolveTargetAddresses: resolvePublicHost,
   });
   assert.strictEqual(code, 2);
   assert.match(message, /advertise-host/);
@@ -306,7 +328,7 @@ test("runBench - refuses an inbox destination off the gated target (exit 2)", as
   // A loopback target passes the gate, but an explicit public `inbox:` is the
   // actual load destination; it must be gated too, or production could be
   // benchmarked through the back door.
-  const target = await spawnTarget();
+  const target = await spawnBenchmarkTarget();
   try {
     const file = await writeSuite(`version: 1
 target: ${target.url.href}
@@ -328,9 +350,186 @@ scenarios:
       log: (m) => {
         message = m;
       },
+      resolveTargetAddresses: resolvePublicHost,
     });
     assert.strictEqual(code, 2);
     assert.match(message, /public inbox|allow-unsafe-target/);
+  } finally {
+    await target.close();
+  }
+});
+
+test("runBench - allows a DNS-resolved private inbox off the target", async () => {
+  const target = await spawnBenchmarkTarget();
+  try {
+    const file = await writeSuite(`version: 1
+target: ${target.url.href}
+scenarios:
+  - name: inbox-shared
+    type: inbox
+    recipient: "${new URL("/users/alice", target.url).href}"
+    inbox: "https://shared.staging.example/inbox"
+    load: { concurrency: 2 }
+    duration: 250ms
+`);
+    let code = -1;
+    let message = "";
+    const resolved: string[] = [];
+    await runBench(
+      command({
+        scenario: file,
+        advertiseHost: "127.0.0.1",
+      }),
+      {
+        exit: (c) => {
+          code = c;
+        },
+        writeOutput: () => Promise.resolve(),
+        log: (m) => {
+          message = m;
+        },
+        resolveTargetAddresses: (hostname) => {
+          resolved.push(hostname);
+          return Promise.resolve(
+            hostname === "shared.staging.example" ? ["10.0.0.8"] : [],
+          );
+        },
+        fetch: (input) => {
+          const url = new URL(input instanceof Request ? input.url : input);
+          if (url.hostname === "shared.staging.example") {
+            return Promise.resolve(new Response("accepted", { status: 202 }));
+          }
+          return fetch(input);
+        },
+      },
+    );
+    assert.strictEqual(code, 0, message);
+    assert.deepStrictEqual(resolved, ["shared.staging.example"]);
+  } finally {
+    await target.close();
+  }
+});
+
+test("runBench - unsafe public inbox destination needs an explicit CLI target", async () => {
+  const target = await spawnBenchmarkTarget();
+  try {
+    const file = await writeSuite(`version: 1
+target: ${target.url.href}
+scenarios:
+  - name: inbox-shared
+    type: inbox
+    recipient: "${new URL("/users/alice", target.url).href}"
+    inbox: "https://prod.example/inbox"
+    load: { rate: 1/s }
+    duration: 1ms
+`);
+    let code = -1;
+    let message = "";
+    await runBench(
+      command({
+        scenario: file,
+        allowUnsafeTarget: true,
+        advertiseHost: "127.0.0.1",
+      }),
+      {
+        exit: (c) => {
+          code = c;
+        },
+        writeOutput: () => Promise.resolve(),
+        log: (m) => {
+          message = m;
+        },
+        resolveTargetAddresses: resolvePublicHost,
+      },
+    );
+    assert.strictEqual(code, 2);
+    assert.match(message, /--target/);
+  } finally {
+    await target.close();
+  }
+});
+
+test("runBench - unsafe public inbox destination needs explicit load", async () => {
+  const target = await spawnBenchmarkTarget();
+  try {
+    const file = await writeSuite(`version: 1
+target: ${target.url.href}
+scenarios:
+  - name: inbox-shared
+    type: inbox
+    recipient: "${new URL("/users/alice", target.url).href}"
+    inbox: "https://prod.example/inbox"
+    duration: 1ms
+`);
+    let code = -1;
+    let message = "";
+    await runBench(
+      command({
+        scenario: file,
+        target: target.url.href,
+        allowUnsafeTarget: true,
+        advertiseHost: "127.0.0.1",
+      }),
+      {
+        exit: (c) => {
+          code = c;
+        },
+        writeOutput: () => Promise.resolve(),
+        log: (m) => {
+          message = m;
+        },
+        resolveTargetAddresses: resolvePublicHost,
+      },
+    );
+    assert.strictEqual(code, 2);
+    assert.match(message, /load/);
+  } finally {
+    await target.close();
+  }
+});
+
+test("runBench - unsafe public inbox destination honors suite defaults", async () => {
+  const target = await spawnBenchmarkTarget();
+  try {
+    const file = await writeSuite(`version: 1
+target: ${target.url.href}
+defaults:
+  duration: 1ms
+  load: { rate: 1/s }
+scenarios:
+  - name: inbox-shared
+    type: inbox
+    recipient: "${new URL("/users/alice", target.url).href}"
+    inbox: "https://prod.example/inbox"
+`);
+    let code = -1;
+    let message = "";
+    await runBench(
+      command({
+        scenario: file,
+        target: target.url.href,
+        allowUnsafeTarget: true,
+        advertiseHost: "127.0.0.1",
+      }),
+      {
+        exit: (c) => {
+          code = c;
+        },
+        writeOutput: () => Promise.resolve(),
+        log: (m) => {
+          message = m;
+        },
+        resolveTargetAddresses: resolvePublicHost,
+        fetch: (input) => {
+          const url = new URL(input instanceof Request ? input.url : input);
+          if (url.hostname === "prod.example") {
+            return Promise.resolve(new Response("accepted", { status: 202 }));
+          }
+          return fetch(input);
+        },
+      },
+    );
+    assert.strictEqual(code, 0, message);
   } finally {
     await target.close();
   }

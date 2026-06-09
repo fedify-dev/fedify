@@ -81,7 +81,7 @@ export const inboxRunner: ScenarioRunner = {
       const inbox = selectInbox(discovered, scenario.inbox);
       // Gate the actual load destination before sending anything to it: it can
       // differ from the gated target (a public recipient, or an explicit inbox).
-      context.assertDestinationAllowed?.(inbox);
+      await context.assertDestinationAllowed?.(inbox);
       targets.push({ inbox, actorUri: discovered.actorUri });
     }
 

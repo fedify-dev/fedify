@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { classifyTarget } from "./tiers.ts";
+import { classifyResolvedTarget, classifyTarget } from "./tiers.ts";
 
 test("classifyTarget - loopback", () => {
   for (
@@ -77,4 +77,44 @@ test("classifyTarget - IPv4-mapped IPv6 loopback/private", () => {
     classifyTarget(new URL("http://[::ffff:10.0.0.1]/")),
     "private",
   );
+});
+
+test("classifyResolvedTarget - classifies a public hostname by resolved private address", async () => {
+  const tier = await classifyResolvedTarget(
+    new URL("https://bench.example"),
+    () => Promise.resolve(["10.0.0.5"]),
+  );
+  assert.strictEqual(tier, "private");
+});
+
+test("classifyResolvedTarget - treats mixed public resolutions as public", async () => {
+  const tier = await classifyResolvedTarget(
+    new URL("https://bench.example"),
+    () => Promise.resolve(["10.0.0.5", "8.8.8.8"]),
+  );
+  assert.strictEqual(tier, "public");
+});
+
+test("classifyResolvedTarget - treats resolution failure as public", async () => {
+  const tier = await classifyResolvedTarget(
+    new URL("https://bench.example"),
+    () => Promise.reject(new Error("dns down")),
+  );
+  assert.strictEqual(tier, "public");
+});
+
+test("classifyResolvedTarget - treats non-array resolver output as public", async () => {
+  const tier = await classifyResolvedTarget(
+    new URL("https://bench.example"),
+    () => Promise.resolve(null as unknown as readonly string[]),
+  );
+  assert.strictEqual(tier, "public");
+});
+
+test("classifyResolvedTarget - treats malformed resolver output as public", async () => {
+  const tier = await classifyResolvedTarget(
+    new URL("https://bench.example"),
+    () => Promise.resolve(["2001:db8:::1"]),
+  );
+  assert.strictEqual(tier, "public");
 });

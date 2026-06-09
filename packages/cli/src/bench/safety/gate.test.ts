@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   assertInboxDestinationAllowed,
   assertTargetAllowed,
+  assertUnsafeOverrideAllowed,
   UnsafeTargetError,
 } from "./gate.ts";
 
@@ -60,6 +61,75 @@ test("assertTargetAllowed - the unsafe flag overrides the refusal", () => {
   );
 });
 
+test("assertUnsafeOverrideAllowed - unsafe flag needs an explicit CLI target", () => {
+  assert.throws(
+    () =>
+      assertUnsafeOverrideAllowed({
+        tier: "public",
+        benchmarkMode: false,
+        allowUnsafe: true,
+        explicitCliTarget: false,
+        scenarios: [{
+          name: "wf",
+          explicitDuration: true,
+          explicitLoad: true,
+        }],
+      }),
+    (error: unknown) =>
+      error instanceof UnsafeTargetError && /--target/.test(error.message),
+  );
+});
+
+test("assertUnsafeOverrideAllowed - unsafe public defaults need explicit load", () => {
+  assert.throws(
+    () =>
+      assertUnsafeOverrideAllowed({
+        tier: "public",
+        benchmarkMode: false,
+        allowUnsafe: true,
+        explicitCliTarget: true,
+        scenarios: [{
+          name: "wf",
+          explicitDuration: true,
+          explicitLoad: false,
+        }],
+      }),
+    (error: unknown) =>
+      error instanceof UnsafeTargetError && /load/.test(error.message),
+  );
+});
+
+test("assertUnsafeOverrideAllowed - unsafe public defaults need explicit duration", () => {
+  assert.throws(
+    () =>
+      assertUnsafeOverrideAllowed({
+        tier: "public",
+        benchmarkMode: false,
+        allowUnsafe: true,
+        explicitCliTarget: true,
+        scenarios: [{
+          name: "wf",
+          explicitDuration: false,
+          explicitLoad: true,
+        }],
+      }),
+    (error: unknown) =>
+      error instanceof UnsafeTargetError && /duration/.test(error.message),
+  );
+});
+
+test("assertUnsafeOverrideAllowed - safe targets do not need unsafe metadata", () => {
+  assert.doesNotThrow(() =>
+    assertUnsafeOverrideAllowed({
+      tier: "loopback",
+      benchmarkMode: false,
+      allowUnsafe: false,
+      explicitCliTarget: false,
+      scenarios: [],
+    })
+  );
+});
+
 test("assertTargetAllowed - dry-run bypasses the gate", () => {
   assert.doesNotThrow(() =>
     assertTargetAllowed({
@@ -76,6 +146,8 @@ function destContext(
 ) {
   return {
     targetOrigin: "http://127.0.0.1:3000",
+    targetTier: "loopback" as const,
+    destinationTier: "public" as const,
     targetBenchmarkMode: false,
     allowUnsafe: false,
     advertised: false,
@@ -129,6 +201,34 @@ test("assertInboxDestinationAllowed - an inbox on the target origin inherits its
   );
 });
 
+test("assertInboxDestinationAllowed - same-origin inbox uses the resolved target tier", () => {
+  // The target hostname may be syntactically public but DNS-resolved private.
+  // The discovered same-origin inbox should inherit that resolved tier instead
+  // of being reclassified from the hostname string.
+  assert.doesNotThrow(() =>
+    assertInboxDestinationAllowed(
+      new URL("https://staging.example/inbox"),
+      destContext({
+        targetOrigin: "https://staging.example",
+        targetTier: "private",
+        advertised: true,
+      }),
+    )
+  );
+});
+
+test("assertInboxDestinationAllowed - off-origin inbox uses destination tier", () => {
+  assert.doesNotThrow(() =>
+    assertInboxDestinationAllowed(
+      new URL("https://shared.staging.example/inbox"),
+      destContext({
+        destinationTier: "private",
+        advertised: true,
+      }),
+    )
+  );
+});
+
 test("assertInboxDestinationAllowed - same host, different scheme does not inherit", () => {
   // The target is https (its benchmark-mode probe covered port 443); an http
   // inbox on the same hostname is a different service (port 80), so it must not
@@ -155,7 +255,10 @@ test("assertInboxDestinationAllowed - a non-loopback inbox needs an advertised h
     () =>
       assertInboxDestinationAllowed(
         new URL("http://10.0.0.5:8000/inbox"),
-        destContext({ targetOrigin: "http://10.0.0.5:8000" }),
+        destContext({
+          targetOrigin: "http://10.0.0.5:8000",
+          targetTier: "private",
+        }),
       ),
     (error: unknown) =>
       error instanceof UnsafeTargetError &&
@@ -164,7 +267,11 @@ test("assertInboxDestinationAllowed - a non-loopback inbox needs an advertised h
   assert.doesNotThrow(() =>
     assertInboxDestinationAllowed(
       new URL("http://10.0.0.5:8000/inbox"),
-      destContext({ targetOrigin: "http://10.0.0.5:8000", advertised: true }),
+      destContext({
+        targetOrigin: "http://10.0.0.5:8000",
+        targetTier: "private",
+        advertised: true,
+      }),
     )
   );
 });

@@ -286,9 +286,13 @@ To be released.
     throughput, success rate, and errors, reading server-side metrics from the
     target's stats endpoint.  Benchmarks are described by a YAML or JSON
     scenario suite validated against a published JSON Schema, with an `expect`
-    block per scenario that gates a run for CI.  [[#744], [#783]]
+    block per scenario that gates a run for CI.  The command refuses public
+    non-`benchmarkMode` targets without an explicit unsafe override, supports
+    discovery-aware `--dry-run` planning, and ships with a local benchmark
+    fixture used by the scenario tests.  [[#744], [#783], [#784]]
 
 [#783]: https://github.com/fedify-dev/fedify/issues/783
+[#784]: https://github.com/fedify-dev/fedify/issues/784
 
 ### @fedify/fixture
 

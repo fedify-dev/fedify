@@ -81,6 +81,10 @@ export const isNotFoundError = (e: unknown): e is { code: "ENOENT" } =>
   "code" in e &&
   e.code === "ENOENT";
 
+export function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export class CommandError extends Error {
   public commandLine: string;
   constructor(
