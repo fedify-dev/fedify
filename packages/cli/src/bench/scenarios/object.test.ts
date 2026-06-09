@@ -267,6 +267,38 @@ test("objectRunner - gates collection URLs before crawling them", async () => {
   );
 });
 
+test("objectRunner.validate - rejects malformed object source URLs", () => {
+  const explicit = normalizeSuite({
+    version: 1,
+    target: "http://target.test/",
+    scenarios: [{
+      name: "object",
+      type: "object",
+      source: "objects/1",
+    }],
+  }).scenarios[0];
+  assert.throws(
+    () => objectRunner.validate?.(explicit),
+    /invalid object source URL/,
+  );
+
+  const crawl = normalizeSuite({
+    version: 1,
+    target: "http://target.test/",
+    scenarios: [{
+      name: "object-crawl",
+      type: "object",
+      source: {
+        seed: ["http://target.test/users/alice", "users/bob"],
+      },
+    }],
+  }).scenarios[0];
+  assert.throws(
+    () => objectRunner.validate?.(crawl),
+    /invalid object source seed URL/,
+  );
+});
+
 function json(body: unknown): Response {
   return new Response(JSON.stringify(body), {
     headers: { "content-type": "application/activity+json" },

@@ -231,6 +231,7 @@ export default async function runBench(
           documentLoader,
           contextLoader,
           allowPrivateAddress,
+          fetch: fetchImpl,
           assertDestinationAllowed,
           assertReadDestinationAllowed,
         }),
@@ -385,6 +386,7 @@ interface DryRunPlanContext {
   readonly documentLoader: DocumentLoader;
   readonly contextLoader: DocumentLoader;
   readonly allowPrivateAddress: boolean;
+  readonly fetch: typeof fetch;
   readonly assertDestinationAllowed: (
     url: URL,
     scenario: ResolvedScenario,
@@ -532,6 +534,9 @@ async function describeObjectPlan(
     const urls = await objectUrlsFromSource({
       source: scenario.source,
       target: suite.target,
+      fetch: context.fetch,
+      assertReadDestinationAllowed: (url) =>
+        context.assertReadDestinationAllowed(url, scenario),
     });
     const lines = [`  objects: ${urls.length} URL(s) resolved`];
     for (const url of urls.slice(0, 10)) {

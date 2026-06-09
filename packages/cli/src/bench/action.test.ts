@@ -208,6 +208,48 @@ scenarios:
   }
 });
 
+test("runBench - dry run gates object discovery before fetching", async () => {
+  const file = await writeSuite(`version: 1
+target: http://127.0.0.1:3000
+scenarios:
+  - name: object-crawl
+    type: object
+    source:
+      seed: "https://public.example/users/alice"
+      collection: outbox
+      limit: 1
+    load: { concurrency: 1 }
+    duration: 1ms
+`);
+  let code = -1;
+  let output = "";
+  let publicFetched = false;
+  await runBench(command({ scenario: file, dryRun: true }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: (c) => {
+      output = c;
+      return Promise.resolve();
+    },
+    log: () => {},
+    resolveTargetAddresses: resolvePublicHost,
+    fetch: (input) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.hostname === "public.example") {
+        publicFetched = true;
+        throw new Error("dry-run fetched an unsafe object source");
+      }
+      return Promise.resolve(new Response("not found", { status: 404 }));
+    },
+  });
+
+  assert.strictEqual(code, 0);
+  assert.strictEqual(publicFetched, false);
+  assert.match(output, /object discovery failed/);
+  assert.match(output, /Refusing to send benchmark read load/);
+});
+
 test("runBench - unsafe override requires an explicit CLI target", async () => {
   const file = await writeSuite(`version: 1
 target: https://example.com
@@ -656,6 +698,35 @@ scenarios:
   });
   assert.strictEqual(code, 2);
   assert.match(message, /unknown mixed child/);
+  assert.strictEqual(fetched, false);
+});
+
+test("runBench - invalid object source exits 2 before any probe", async () => {
+  const file = await writeSuite(`version: 1
+target: http://localhost:3000
+scenarios:
+  - name: object
+    type: object
+    source: objects/1
+`);
+  let code = -1;
+  let message = "";
+  let fetched = false;
+  await runBench(command({ scenario: file }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: () => Promise.resolve(),
+    log: (m) => {
+      message = m;
+    },
+    fetch: () => {
+      fetched = true;
+      return Promise.reject(new Error("no request should be sent"));
+    },
+  });
+  assert.strictEqual(code, 2);
+  assert.match(message, /invalid object source URL/);
   assert.strictEqual(fetched, false);
 });
 
