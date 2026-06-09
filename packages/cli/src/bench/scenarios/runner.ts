@@ -17,6 +17,8 @@ import type { SyntheticServer } from "../server/synthetic.ts";
 /** The context a scenario runner needs to execute. */
 export interface RunContext {
   readonly scenario: ResolvedScenario;
+  /** Every scenario in the resolved suite, for composite runners. */
+  readonly scenarios?: readonly ResolvedScenario[];
   readonly target: URL;
   readonly documentLoader: DocumentLoader;
   readonly contextLoader: DocumentLoader;

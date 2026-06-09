@@ -221,7 +221,9 @@ export default async function runBench(
   // rather than let every signed delivery fail key lookup.
   if (
     tier !== "loopback" && command.advertiseHost == null &&
-    suite.scenarios.some(scenarioNeedsReachableLocalServer)
+    suite.scenarios.some((scenario) =>
+      scenarioNeedsReachableLocalServer(scenario, suite.scenarios)
+    )
   ) {
     log(
       "Some scenarios need benchmark-owned local servers to be reachable from " +
@@ -236,7 +238,11 @@ export default async function runBench(
   let fleet: SyntheticServer | undefined;
   const startedAt = new Date().toISOString();
   try {
-    if (suite.scenarios.some(scenarioNeedsSyntheticServer)) {
+    if (
+      suite.scenarios.some((scenario) =>
+        scenarioNeedsSyntheticServer(scenario, suite.scenarios)
+      )
+    ) {
       fleet = await spawnSyntheticServer(await buildFleet(suite.actors), {
         advertiseHost: command.advertiseHost,
       });
@@ -247,6 +253,7 @@ export default async function runBench(
       log(`Running scenario "${scenario.name}" (${scenario.type})…`);
       const measurement = await runners[i].run({
         scenario,
+        scenarios: suite.scenarios,
         target: suite.target,
         documentLoader,
         contextLoader,
@@ -398,6 +405,8 @@ async function describeDiscoveryPlan(
       return await describeActorPlan(scenario, suite, context);
     case "object":
       return await describeObjectPlan(scenario, suite, context);
+    case "mixed":
+      return describeMixedPlan(scenario);
     default:
       return ["  discovery: not available for this scenario type"];
   }
@@ -507,6 +516,14 @@ async function describeObjectPlan(
   }
 }
 
+function describeMixedPlan(scenario: ResolvedScenario): string[] {
+  const entries = scenario.raw.mix ?? [];
+  if (entries.length < 1) return ["  mix: no child scenarios"];
+  return entries.map((entry) =>
+    `  mix: ${entry.scenario} weight ${entry.weight}`
+  );
+}
+
 async function describeDestinationSafety(
   inbox: URL,
   scenario: ResolvedScenario,
@@ -583,14 +600,58 @@ function hasExplicitLoad(load: LoadConfig | undefined): boolean {
       ("concurrency" in load && load.concurrency != null));
 }
 
-function scenarioNeedsSyntheticServer(scenario: ResolvedScenario): boolean {
-  return scenario.type === "inbox" ||
-    (scenario.authenticated &&
-      (scenario.type === "actor" || scenario.type === "object"));
+function scenarioNeedsSyntheticServer(
+  scenario: ResolvedScenario,
+  scenarios: readonly ResolvedScenario[],
+  seen: ReadonlySet<string> = new Set(),
+): boolean {
+  if (seen.has(scenario.name)) return false;
+  const nextSeen = new Set(seen).add(scenario.name);
+  switch (scenario.type) {
+    case "inbox":
+      return true;
+    case "actor":
+    case "object":
+      return scenario.authenticated;
+    case "failure":
+      return scenario.faults.some(isInboundFailureFault);
+    case "mixed":
+      return mixedChildrenOf(scenario, scenarios).some((child) =>
+        scenarioNeedsSyntheticServer(child, scenarios, nextSeen)
+      );
+    default:
+      return false;
+  }
 }
 
 function scenarioNeedsReachableLocalServer(
   scenario: ResolvedScenario,
+  scenarios: readonly ResolvedScenario[],
+  seen: ReadonlySet<string> = new Set(),
 ): boolean {
-  return scenarioNeedsSyntheticServer(scenario) || scenario.type === "fanout";
+  if (scenario.type === "fanout") return true;
+  if (scenario.type === "mixed") {
+    if (seen.has(scenario.name)) return false;
+    const nextSeen = new Set(seen).add(scenario.name);
+    return mixedChildrenOf(scenario, scenarios).some((child) =>
+      scenarioNeedsReachableLocalServer(child, scenarios, nextSeen)
+    );
+  }
+  return scenarioNeedsSyntheticServer(scenario, scenarios, seen);
+}
+
+function mixedChildrenOf(
+  scenario: ResolvedScenario,
+  scenarios: readonly ResolvedScenario[],
+): readonly ResolvedScenario[] {
+  return (scenario.raw.mix ?? []).flatMap((entry) => {
+    const child = scenarios.find((candidate) =>
+      candidate.name === entry.scenario
+    );
+    return child == null ? [] : [child];
+  });
+}
+
+function isInboundFailureFault(fault: string): boolean {
+  return fault === "invalid-signature" || fault === "missing-actor";
 }

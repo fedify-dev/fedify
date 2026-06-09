@@ -1,0 +1,251 @@
+/**
+ * The `mixed` scenario runner.
+ * @since 2.3.0
+ * @module
+ */
+
+import { actorRunner } from "./actor.ts";
+import { failureRunner } from "./failure.ts";
+import { fanoutRunner } from "./fanout.ts";
+import { inboxRunner } from "./inbox.ts";
+import { objectRunner } from "./object.ts";
+import { webfingerRunner } from "./webfinger.ts";
+import type { LoadModel, ResolvedScenario } from "../scenario/normalize.ts";
+import type { ErrorBucket, LatencyMs } from "../result/model.ts";
+import type { ScenarioMeasurement } from "../result/build.ts";
+import type { ScenarioType } from "../scenario/types.ts";
+import type { RunContext, ScenarioRunner } from "./runner.ts";
+
+/** The `mixed` scenario runner. */
+export const mixedRunner: ScenarioRunner = {
+  validate(scenario): void {
+    if (scenario.raw.mix == null || scenario.raw.mix.length < 1) {
+      throw new Error(
+        `Scenario "${scenario.name}": mixed requires at least one mix entry.`,
+      );
+    }
+    for (const entry of scenario.raw.mix) {
+      if (entry.weight <= 0) {
+        throw new Error(
+          `Scenario "${scenario.name}": mix entry ${entry.scenario} has a ` +
+            `non-positive weight.`,
+        );
+      }
+    }
+    if (
+      scenario.load.kind === "closed" &&
+      scenario.load.concurrency < scenario.raw.mix.length
+    ) {
+      throw new Error(
+        `Scenario "${scenario.name}": closed-loop mixed load needs at least ` +
+          "one concurrency slot per mix entry.",
+      );
+    }
+  },
+
+  async run(context: RunContext) {
+    this.validate?.(context.scenario);
+    if (context.scenarios == null) {
+      throw new Error(
+        "The mixed scenario requires the resolved scenario list.",
+      );
+    }
+    const children = childScenarios(context.scenario, context.scenarios);
+    for (const child of children) runnerForChild(child.type).validate?.(child);
+    const measurements = await Promise.all(
+      children.map((child) =>
+        runnerForChild(child.type).run({ ...context, scenario: child })
+      ),
+    );
+    return mergeMeasurements(measurements);
+  },
+};
+
+function childScenarios(
+  scenario: ResolvedScenario,
+  scenarios: readonly ResolvedScenario[],
+): ResolvedScenario[] {
+  const entries = scenario.raw.mix ?? [];
+  const totalWeight = entries.reduce((sum, entry) => sum + entry.weight, 0);
+  const closedLoads = scenario.load.kind === "closed"
+    ? scaledClosedConcurrencies(
+      scenario.load.concurrency,
+      entries.map((entry) => entry.weight),
+    )
+    : undefined;
+  return entries.map((entry, index) => {
+    const child = scenarios.find((candidate) =>
+      candidate.name === entry.scenario
+    );
+    if (child == null) {
+      throw new Error(
+        `Scenario "${scenario.name}": unknown mixed child ` +
+          `${JSON.stringify(entry.scenario)}.`,
+      );
+    }
+    if (child.type === "mixed") {
+      throw new Error(
+        `Scenario "${scenario.name}": nested mixed scenarios are not ` +
+          "supported.",
+      );
+    }
+    const load = scaledLoad(
+      scenario.load,
+      entry.weight,
+      totalWeight,
+      closedLoads?.[index],
+    );
+    return {
+      ...child,
+      name: `${scenario.name}/${child.name}`,
+      load,
+      durationMs: scenario.durationMs,
+      warmupMs: scenario.warmupMs,
+      signing: scenario.signing,
+      signatureTimeWindow: scenario.signatureTimeWindow,
+      expect: {},
+      raw: {
+        ...child.raw,
+        name: `${scenario.name}/${child.name}`,
+        load: rawLoad(load),
+        duration: `${scenario.durationMs}ms`,
+        warmup: `${scenario.warmupMs}ms`,
+        signing: scenario.signing,
+        signatureTimeWindow: scenario.signatureTimeWindow,
+        expect: {},
+      },
+    };
+  });
+}
+
+function scaledLoad(
+  load: LoadModel,
+  weight: number,
+  totalWeight: number,
+  closedConcurrency?: number,
+): LoadModel {
+  if (load.kind === "open") {
+    return {
+      ...load,
+      ratePerSec: load.ratePerSec * (weight / totalWeight),
+    };
+  }
+  return {
+    ...load,
+    concurrency: closedConcurrency ??
+      Math.max(1, Math.round(load.concurrency * weight / totalWeight)),
+  };
+}
+
+function scaledClosedConcurrencies(
+  concurrency: number,
+  weights: readonly number[],
+): number[] {
+  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+  const ideal = weights.map((weight) => concurrency * weight / totalWeight);
+  const allocations = weights.map(() => 1);
+  for (
+    let remaining = concurrency - weights.length;
+    remaining > 0;
+    remaining--
+  ) {
+    let best = 0;
+    for (let i = 1; i < allocations.length; i++) {
+      if (ideal[i] - allocations[i] > ideal[best] - allocations[best]) {
+        best = i;
+      }
+    }
+    allocations[best]++;
+  }
+  return allocations;
+}
+
+function rawLoad(
+  load: LoadModel,
+): NonNullable<ResolvedScenario["raw"]["load"]> {
+  if (load.kind === "open") {
+    return {
+      rate: load.ratePerSec,
+      arrival: load.arrival,
+      maxInFlight: load.maxInFlight,
+    };
+  }
+  return { concurrency: load.concurrency, maxInFlight: load.maxInFlight };
+}
+
+function runnerForChild(type: ScenarioType): ScenarioRunner {
+  switch (type) {
+    case "inbox":
+      return inboxRunner;
+    case "webfinger":
+      return webfingerRunner;
+    case "actor":
+      return actorRunner;
+    case "object":
+      return objectRunner;
+    case "fanout":
+      return fanoutRunner;
+    case "failure":
+      return failureRunner;
+    default:
+      throw new Error(
+        `The "${type}" scenario type cannot be used inside a mixed scenario.`,
+      );
+  }
+}
+
+function mergeMeasurements(
+  measurements: readonly ScenarioMeasurement[],
+): ScenarioMeasurement {
+  const total = measurements.reduce((sum, m) => sum + m.requests.total, 0);
+  const ok = measurements.reduce((sum, m) => sum + m.requests.ok, 0);
+  return {
+    requests: {
+      total,
+      ok,
+      failed: total - ok,
+      successRate: total === 0 ? 1 : ok / total,
+    },
+    throughputPerSec: measurements.reduce(
+      (sum, m) => sum + m.throughputPerSec,
+      0,
+    ),
+    client: { latencyMs: mergeLatency(measurements) },
+    server: null,
+    errors: mergeErrors(measurements),
+  };
+}
+
+function mergeLatency(measurements: readonly ScenarioMeasurement[]): LatencyMs {
+  const total = measurements.reduce((sum, m) => sum + m.requests.total, 0);
+  if (measurements.length < 1) {
+    return { p50: 0, p95: 0, p99: 0, mean: 0, max: 0 };
+  }
+  return {
+    p50: Math.max(...measurements.map((m) => m.client.latencyMs.p50)),
+    p95: Math.max(...measurements.map((m) => m.client.latencyMs.p95)),
+    p99: Math.max(...measurements.map((m) => m.client.latencyMs.p99)),
+    mean: total === 0 ? 0 : measurements.reduce(
+      (sum, m) => sum + m.client.latencyMs.mean * m.requests.total,
+      0,
+    ) / total,
+    max: Math.max(...measurements.map((m) => m.client.latencyMs.max)),
+  };
+}
+
+function mergeErrors(
+  measurements: readonly ScenarioMeasurement[],
+): ErrorBucket[] {
+  const buckets = new Map<string, ErrorBucket>();
+  for (const measurement of measurements) {
+    for (const error of measurement.errors) {
+      const key = `${error.kind}|${error.status ?? ""}|${error.reason}`;
+      const existing = buckets.get(key);
+      buckets.set(key, {
+        ...error,
+        count: (existing?.count ?? 0) + error.count,
+      });
+    }
+  }
+  return [...buckets.values()].sort((a, b) => b.count - a.count);
+}

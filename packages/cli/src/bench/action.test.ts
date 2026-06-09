@@ -324,6 +324,33 @@ scenarios:
   assert.match(message, /advertise-host/);
 });
 
+test("runBench - failure without inbound fault needs no advertise host", async () => {
+  const file = await writeSuite(`version: 1
+target: http://10.10.0.5:8000
+scenarios:
+  - name: remote-404
+    type: failure
+    fault: remote-404
+    load: { rate: 1/s }
+    duration: 1ms
+`);
+  let code = -1;
+  let output = "";
+  await runBench(command({ scenario: file }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: (c) => {
+      output = c;
+      return Promise.resolve();
+    },
+    log: () => {},
+    fetch: () => Promise.reject(new Error("offline")),
+  });
+  assert.strictEqual(code, 0);
+  assert.strictEqual(JSON.parse(output).scenarios[0].requests.successRate, 1);
+});
+
 test("runBench - refuses an inbox destination off the gated target (exit 2)", async () => {
   // A loopback target passes the gate, but an explicit public `inbox:` is the
   // actual load destination; it must be gated too, or production could be
