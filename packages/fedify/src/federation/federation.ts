@@ -13,7 +13,6 @@ import type {
 import type { MeterProvider, TracerProvider } from "@opentelemetry/api";
 import type { ActivityTransformer } from "../compat/types.ts";
 import type { HttpMessageSignaturesSpec } from "../sig/http.ts";
-import type { CircuitBreakerOptions } from "./circuit-breaker.ts";
 import type {
   ActorAliasMapper,
   ActorDispatcher,
@@ -39,6 +38,7 @@ import type {
   UnverifiedActivityHandler,
   WebFingerLinksDispatcher,
 } from "./callback.ts";
+import type { CircuitBreakerOptions } from "./circuit-breaker.ts";
 import type { Context, InboxContext, RequestContext } from "./context.ts";
 import type { KvStore } from "./kv.ts";
 import type {
@@ -512,75 +512,7 @@ export interface Federatable<TContextData> {
   setCollectionDispatcher<TObject extends Object, TParam extends string>(
     name: string | symbol,
     itemType: ConstructorWithTypeId<TObject>,
-    path: `${string}${Rfc6570Expression<
-      TParam
-    >}${string}${Rfc6570Expression<
-      TParam
-    >}${string}${Rfc6570Expression<
-      TParam
-    >}${string}`,
-    dispatcher: CustomCollectionDispatcher<
-      TObject,
-      TParam,
-      RequestContext<TContextData>,
-      TContextData
-    >,
-  ): CustomCollectionCallbackSetters<
-    TParam,
-    RequestContext<TContextData>,
-    TContextData
-  >;
-
-  /**
-   * Registers a collection of objects dispatcher.
-   *
-   * @template TContextData The context data to pass to the {@link Context}.
-   * @template TObject The type of objects to dispatch.
-   * @template TParam The parameter names of the requested URL.
-   * @param name A unique name for the collection dispatcher.
-   * @param itemType The Activity Vocabulary class of the object to dispatch.
-   * @param path The URI path pattern for the collection dispatcher.
-   *             The syntax is based on URI Template
-   *             ([RFC 6570](https://tools.ietf.org/html/rfc6570)).
-   *             The path must have one or more variables.
-   * @param dispatcher A collection dispatcher callback to register.
-   */
-  setCollectionDispatcher<TObject extends Object, TParam extends string>(
-    name: string | symbol,
-    itemType: ConstructorWithTypeId<TObject>,
-    path: `${string}${Rfc6570Expression<TParam>}${string}${Rfc6570Expression<
-      TParam
-    >}${string}`,
-    dispatcher: CustomCollectionDispatcher<
-      TObject,
-      TParam,
-      RequestContext<TContextData>,
-      TContextData
-    >,
-  ): CustomCollectionCallbackSetters<
-    TParam,
-    RequestContext<TContextData>,
-    TContextData
-  >;
-
-  /**
-   * Registers a collection of objects dispatcher.
-   *
-   * @template TContextData The context data to pass to the {@link Context}.
-   * @template TObject The type of objects to dispatch.
-   * @template TParam The parameter names of the requested URL.
-   * @param name A unique name for the collection dispatcher.
-   * @param itemType The Activity Vocabulary class of the object to dispatch.
-   * @param path The URI path pattern for the collection dispatcher.
-   *             The syntax is based on URI Template
-   *             ([RFC 6570](https://tools.ietf.org/html/rfc6570)).
-   *             The path must have one or more variables.
-   * @param dispatcher A collection dispatcher callback to register.
-   */
-  setCollectionDispatcher<TObject extends Object, TParam extends string>(
-    name: string | symbol,
-    itemType: ConstructorWithTypeId<TObject>,
-    path: `${string}${Rfc6570Expression<TParam>}${string}`,
+    path: string,
     dispatcher: CustomCollectionDispatcher<
       TObject,
       TParam,
@@ -613,77 +545,7 @@ export interface Federatable<TContextData> {
   >(
     name: string | symbol,
     itemType: ConstructorWithTypeId<TObject>,
-    path: `${string}${Rfc6570Expression<TParam>}${string}${Rfc6570Expression<
-      TParam
-    >}${string}${Rfc6570Expression<TParam>}${string}`,
-    dispatcher: CustomCollectionDispatcher<
-      TObject,
-      TParam,
-      RequestContext<TContextData>,
-      TContextData
-    >,
-  ): CustomCollectionCallbackSetters<
-    TParam,
-    RequestContext<TContextData>,
-    TContextData
-  >;
-
-  /**
-   * Registers an ordered collection of objects dispatcher.
-   *
-   * @template TContextData The context data to pass to the {@link Context}.
-   * @template TObject The type of objects to dispatch.
-   * @template TParam The parameter names of the requested URL.
-   * @param name A unique name for the collection dispatcher.
-   * @param itemType The Activity Vocabulary class of the object to dispatch.
-   * @param path The URI path pattern for the collection dispatcher.
-   *             The syntax is based on URI Template
-   *             ([RFC 6570](https://tools.ietf.org/html/rfc6570)).
-   *             The path must have one or more variables.
-   * @param dispatcher A collection dispatcher callback to register.
-   */
-  setOrderedCollectionDispatcher<
-    TObject extends Object,
-    TParam extends string,
-  >(
-    name: string | symbol,
-    itemType: ConstructorWithTypeId<TObject>,
-    path: `${string}${Rfc6570Expression<TParam>}${string}${Rfc6570Expression<
-      TParam
-    >}${string}`,
-    dispatcher: CustomCollectionDispatcher<
-      TObject,
-      TParam,
-      RequestContext<TContextData>,
-      TContextData
-    >,
-  ): CustomCollectionCallbackSetters<
-    TParam,
-    RequestContext<TContextData>,
-    TContextData
-  >;
-
-  /**
-   * Registers an ordered collection of objects dispatcher.
-   *
-   * @template TContextData The context data to pass to the {@link Context}.
-   * @template TObject The type of objects to dispatch.
-   * @template TParam The parameter names of the requested URL.
-   * @param name A unique name for the collection dispatcher.
-   * @param itemType The Activity Vocabulary class of the object to dispatch.
-   * @param path The URI path pattern for the collection dispatcher.
-   *             The syntax is based on URI Template
-   *             ([RFC 6570](https://tools.ietf.org/html/rfc6570)).
-   *             The path must have one or more variables.
-   * @param dispatcher A collection dispatcher callback to register.
-   */
-  setOrderedCollectionDispatcher<
-    TObject extends Object,
-    TParam extends string,
-  >(
-    name: string | symbol,
-    itemType: ConstructorWithTypeId<TObject>,
-    path: `${string}${Rfc6570Expression<TParam>}${string}`,
+    path: string,
     dispatcher: CustomCollectionDispatcher<
       TObject,
       TParam,
