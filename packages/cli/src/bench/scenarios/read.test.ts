@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { buildFleet } from "../actor/fleet.ts";
 import { getContextLoader, getDocumentLoader } from "../../docloader.ts";
 import { normalizeSuite } from "../scenario/normalize.ts";
+import { spawnSyntheticServer } from "../server/synthetic.ts";
 import { runReadLoad } from "./read.ts";
 
 test("runReadLoad - unauthenticated reads use the read destination gate", async () => {
@@ -45,4 +47,65 @@ test("runReadLoad - unauthenticated reads use the read destination gate", async 
   assert.strictEqual(readGateCalls, 1);
   assert.ok(measurement.requests.total > 0);
   assert.strictEqual(measurement.requests.successRate, 1);
+});
+
+test("runReadLoad - authenticated reads support presign mode", async () => {
+  let fleet: Awaited<ReturnType<typeof spawnSyntheticServer>> | undefined;
+  try {
+    fleet = await spawnSyntheticServer(
+      await buildFleet([{
+        count: 1,
+        signatureStandards: ["draft-cavage-http-signatures-12"],
+      }]),
+    );
+    const scenario = normalizeSuite({
+      version: 1,
+      target: "http://target.test/",
+      scenarios: [{
+        name: "read",
+        type: "actor",
+        authenticated: true,
+        signing: "presign",
+        load: { rate: "20/s" },
+        duration: "50ms",
+      }],
+    }).scenarios[0];
+    let signedGets = 0;
+
+    const measurement = await runReadLoad({
+      scenario,
+      target: new URL("http://target.test/"),
+      documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+      contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+      allowPrivateAddress: true,
+      fleet,
+      fetch: (input) => {
+        const request = input instanceof Request ? input : new Request(input);
+        const url = new URL(request.url);
+        if (url.pathname === "/.well-known/fedify/bench/stats") {
+          return Promise.resolve(new Response("not found", { status: 404 }));
+        }
+        if (
+          request.headers.has("authorization") ||
+          request.headers.has("signature")
+        ) {
+          signedGets++;
+        }
+        return Promise.resolve(new Response("{}", { status: 200 }));
+      },
+      assertDestinationAllowed: () => {},
+      assertReadDestinationAllowed: () => {
+        throw new Error("authenticated reads should use the signed gate");
+      },
+    }, {
+      urls: [new URL("http://remote.test/users/alice")],
+      authenticated: true,
+    });
+
+    assert.ok(measurement.requests.total > 0);
+    assert.strictEqual(measurement.requests.successRate, 1);
+    assert.ok(signedGets > 0);
+  } finally {
+    await fleet?.close();
+  }
 });

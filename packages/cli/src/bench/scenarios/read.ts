@@ -15,6 +15,11 @@ import {
 } from "../metrics/stats-client.ts";
 import type { SyntheticActor } from "../server/synthetic.ts";
 import {
+  createSigningPipeline,
+  type SigningPipeline,
+} from "../signing/pipeline.ts";
+import {
+  estimateTotal,
   loadPlanOf,
   measuredWindowMs,
   type RunContext,
@@ -61,16 +66,37 @@ export async function runReadLoad(
     }
   }
 
-  let index = 0;
-  const rawSend = async () => {
-    const i = index++;
-    const url = options.urls[i % options.urls.length];
-    let request = new Request(url, {
+  function unsignedRequest(index: number): Request {
+    const url = options.urls[index % options.urls.length];
+    return new Request(url, {
       headers: { accept: "application/activity+json, application/ld+json" },
       redirect: "manual",
     });
-    if (options.authenticated) {
-      request = await signGetRequest(request, actors[i % actors.length]);
+  }
+
+  let pipeline: SigningPipeline | null = null;
+  if (options.authenticated) {
+    let signIndex = 0;
+    pipeline = createSigningPipeline(context.scenario.signing, async () => {
+      const i = signIndex++;
+      return await signGetRequest(
+        unsignedRequest(i),
+        actors[i % actors.length],
+      );
+    }, { total: estimateTotal(context.scenario) });
+  }
+
+  let index = 0;
+  const rawSend = async () => {
+    let request: Request;
+    if (pipeline != null) {
+      try {
+        request = await pipeline.next();
+      } catch (error) {
+        return { ok: false, errorKind: "client", reason: String(error) };
+      }
+    } else {
+      request = unsignedRequest(index++);
     }
     return await sendRequest(request, fetchImpl);
   };
@@ -85,20 +111,25 @@ export async function runReadLoad(
     },
     rawSend,
   );
-  const result = await runLoad(
-    loadPlanOf(context.scenario, context.rng),
-    send,
-    context.clock,
-  );
-  const measurement = aggregateSamples(result.samples, {
-    measuredWindowMs: measuredWindowMs(context.scenario),
-    includeHistogram: true,
-  });
-  const end = await fetchServerSnapshot(context.target, fetchImpl);
-  const server = baselineTaken && baseline != null && end != null
-    ? snapshotToMetrics(diffSnapshots(baseline, end))
-    : null;
-  return { ...measurement, server };
+  try {
+    await pipeline?.prime();
+    const result = await runLoad(
+      loadPlanOf(context.scenario, context.rng),
+      send,
+      context.clock,
+    );
+    const measurement = aggregateSamples(result.samples, {
+      measuredWindowMs: measuredWindowMs(context.scenario),
+      includeHistogram: true,
+    });
+    const end = await fetchServerSnapshot(context.target, fetchImpl);
+    const server = baselineTaken && baseline != null && end != null
+      ? snapshotToMetrics(diffSnapshots(baseline, end))
+      : null;
+    return { ...measurement, server };
+  } finally {
+    await pipeline?.close();
+  }
 }
 
 async function signGetRequest(

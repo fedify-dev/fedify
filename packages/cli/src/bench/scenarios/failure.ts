@@ -30,6 +30,11 @@ const SUPPORTED_FAULTS = [
 
 type SupportedFault = typeof SUPPORTED_FAULTS[number];
 
+interface FailureDeliveryTarget {
+  readonly inbox: URL;
+  readonly actorUri: URL;
+}
+
 /** The `failure` scenario runner. */
 export const failureRunner: ScenarioRunner = {
   validate(scenario): void {
@@ -58,8 +63,10 @@ export const failureRunner: ScenarioRunner = {
   async run(context: RunContext) {
     this.validate?.(context.scenario);
     const faults = faultsOf(context);
+    const deliveryTarget = await resolveFailureDeliveryTarget(context, faults);
     let index = 0;
-    const send = () => sendForFault(context, faults[index++ % faults.length]);
+    const send = () =>
+      sendForFault(context, faults[index++ % faults.length], deliveryTarget);
     const result = await runLoad(
       loadPlanOf(context.scenario, context.rng),
       send,
@@ -89,15 +96,39 @@ function isSupportedFault(fault: string): fault is SupportedFault {
   return SUPPORTED_FAULTS.includes(fault as SupportedFault);
 }
 
+async function resolveFailureDeliveryTarget(
+  context: RunContext,
+  faults: readonly SupportedFault[],
+): Promise<FailureDeliveryTarget | null> {
+  if (!faults.some(isInboundFault)) return null;
+  const { scenario } = context;
+  const discovered = await discoverInbox(scenario.recipients[0], {
+    documentLoader: context.documentLoader,
+    contextLoader: context.contextLoader,
+    allowPrivateAddress: context.allowPrivateAddress,
+  });
+  const inbox = selectInbox(discovered, scenario.inbox);
+  await context.assertDestinationAllowed?.(inbox);
+  return { inbox, actorUri: discovered.actorUri };
+}
+
+function isInboundFault(fault: SupportedFault): boolean {
+  return fault === "invalid-signature" || fault === "missing-actor";
+}
+
 async function sendForFault(
   context: RunContext,
   fault: SupportedFault,
+  deliveryTarget: FailureDeliveryTarget | null,
 ): Promise<SendOutcome> {
   switch (fault) {
     case "invalid-signature":
-      return await sendInvalidSignature(context);
+      return await sendInvalidSignature(
+        context,
+        requiredTarget(deliveryTarget),
+      );
     case "missing-actor":
-      return await sendMissingActor(context);
+      return await sendMissingActor(context, requiredTarget(deliveryTarget));
     case "remote-404":
       return { ok: true, status: 404 };
     case "remote-410":
@@ -116,8 +147,13 @@ async function sendForFault(
 
 async function sendInvalidSignature(
   context: RunContext,
+  deliveryTarget: FailureDeliveryTarget,
 ): Promise<SendOutcome> {
-  const request = await signedFailureRequest(context, "invalid-signature");
+  const request = await signedFailureRequest(
+    context,
+    "invalid-signature",
+    deliveryTarget,
+  );
   const body = new Uint8Array(await request.arrayBuffer());
   const corrupted = new Uint8Array(body.length + 1);
   corrupted.set(body);
@@ -136,14 +172,22 @@ async function sendInvalidSignature(
   );
 }
 
-async function sendMissingActor(context: RunContext): Promise<SendOutcome> {
-  const request = await signedFailureRequest(context, "missing-actor");
+async function sendMissingActor(
+  context: RunContext,
+  deliveryTarget: FailureDeliveryTarget,
+): Promise<SendOutcome> {
+  const request = await signedFailureRequest(
+    context,
+    "missing-actor",
+    deliveryTarget,
+  );
   return expectedFailure(await sendRequest(request, context.fetch ?? fetch));
 }
 
 async function signedFailureRequest(
   context: RunContext,
   fault: "invalid-signature" | "missing-actor",
+  deliveryTarget: FailureDeliveryTarget,
 ): Promise<Request> {
   const { fleet, scenario } = context;
   if (fleet == null || fleet.actors.length < 1) {
@@ -159,32 +203,36 @@ async function signedFailureRequest(
   const actor = fault === "missing-actor"
     ? missingActor(fleet.actors[0], context.target)
     : fleet.actors[0];
-  const discovered = await discoverInbox(scenario.recipients[0], {
-    documentLoader: context.documentLoader,
-    contextLoader: context.contextLoader,
-    allowPrivateAddress: context.allowPrivateAddress,
-  });
-  const inbox = selectInbox(discovered, scenario.inbox);
-  await context.assertDestinationAllowed?.(inbox);
   const id = createActivityIdMinter(fleet.url).next();
   const note = new Note({
     id: new URL(`/objects/${crypto.randomUUID()}`, fleet.url),
     attribution: actor.id,
     content: "Benchmark failure activity.",
-    to: discovered.actorUri,
+    to: deliveryTarget.actorUri,
   });
   const activity = new Create({
     id,
     actor: actor.id,
     object: note,
-    to: discovered.actorUri,
+    to: deliveryTarget.actorUri,
   });
   return await signInboxDelivery({
     actor,
-    inbox,
+    inbox: deliveryTarget.inbox,
     activity,
     contextLoader: context.contextLoader,
   });
+}
+
+function requiredTarget(
+  target: FailureDeliveryTarget | null,
+): FailureDeliveryTarget {
+  if (target == null) {
+    throw new Error(
+      "The invalid-signature and missing-actor faults require discovery.",
+    );
+  }
+  return target;
 }
 
 function missingActor(actor: SyntheticActor, target: URL): SyntheticActor {
