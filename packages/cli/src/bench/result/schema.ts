@@ -2,20 +2,24 @@
  * The embedded JSON Schema (draft 2020-12) for benchmark report output.
  *
  * Like the scenario schema, this object is the runtime copy and is published,
- * byte-for-byte, as *schema/bench/report-v1.json*; a drift guard keeps the two
- * in sync.  The matching TypeScript types live in {@link ./model.ts}.
+ * byte-for-byte, as files under *schema/bench/*; a drift guard keeps the two in
+ * sync.  The matching TypeScript types live in {@link ./model.ts}.
  * @since 2.3.0
  * @module
  */
 
 /** The hosted URL that serves the report schema. */
 export const REPORT_SCHEMA_ID =
+  "https://json-schema.fedify.dev/bench/report-v2.json";
+
+/** The hosted URL for the original report schema. */
+export const REPORT_SCHEMA_V1_ID =
   "https://json-schema.fedify.dev/bench/report-v1.json";
 
 /** The benchmark report JSON Schema (draft 2020-12). */
 export const reportSchemaV1 = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
-  $id: REPORT_SCHEMA_ID,
+  $id: REPORT_SCHEMA_V1_ID,
   title: "Fedify benchmark report",
   type: "object",
   additionalProperties: false,
@@ -280,6 +284,26 @@ export const reportSchemaV1 = {
         sum: { type: "number" },
         indices: { type: "array", items: { type: "integer" } },
         counts: { type: "array", items: { type: "integer", minimum: 0 } },
+      },
+    },
+  },
+} as const;
+
+/** The benchmark report JSON Schema (draft 2020-12). */
+export const reportSchemaV2 = {
+  ...reportSchemaV1,
+  $id: REPORT_SCHEMA_ID,
+  properties: {
+    ...reportSchemaV1.properties,
+    schemaVersion: { const: 2 },
+  },
+  $defs: {
+    ...reportSchemaV1.$defs,
+    scenarioResult: {
+      ...reportSchemaV1.$defs.scenarioResult,
+      properties: {
+        ...reportSchemaV1.$defs.scenarioResult.properties,
+        deliveryThroughputPerSec: { type: "number" },
       },
     },
   },

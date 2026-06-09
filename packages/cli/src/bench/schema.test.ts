@@ -143,7 +143,11 @@ for (const { name, fileName } of PUBLISHED_SCHEMAS) {
       published = execFileSync(
         "git",
         ["show", `${baseCommit}:schema/bench/${fileName}`],
-        { cwd: REPO_ROOT, encoding: "utf-8" },
+        {
+          cwd: REPO_ROOT,
+          encoding: "utf-8",
+          stdio: ["ignore", "pipe", "ignore"],
+        },
       );
     } catch {
       // Not published at the base (a brand-new version file): nothing to guard.

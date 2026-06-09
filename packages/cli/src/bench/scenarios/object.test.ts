@@ -133,6 +133,65 @@ test("objectRunner - crawls actor collections before fetching objects", async ()
   }
 });
 
+test("objectRunner - sends ActivityPub Accept headers during object discovery", async () => {
+  const scenario = normalizeSuite({
+    version: 1,
+    target: "http://target.test/",
+    scenarios: [{
+      name: "object-crawl",
+      type: "object",
+      source: {
+        seed: "http://target.test/users/alice",
+        collection: "outbox",
+        limit: 1,
+      },
+      load: { concurrency: 1 },
+      duration: "25ms",
+    }],
+  }).scenarios[0];
+  const discoveryAccepts: string[] = [];
+
+  const measurement = await objectRunner.run({
+    scenario,
+    target: new URL("http://target.test/"),
+    documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+    contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+    allowPrivateAddress: true,
+    fleet: null,
+    fetch: (input) => {
+      const request = input instanceof Request ? input : new Request(input);
+      const url = new URL(request.url);
+      if (url.pathname === "/.well-known/fedify/bench/stats") {
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      }
+      if (url.pathname === "/users/alice") {
+        discoveryAccepts.push(request.headers.get("accept") ?? "");
+        return Promise.resolve(json({
+          id: url.href,
+          outbox: "http://target.test/users/alice/outbox",
+        }));
+      }
+      if (url.pathname === "/users/alice/outbox") {
+        discoveryAccepts.push(request.headers.get("accept") ?? "");
+        return Promise.resolve(json({
+          id: url.href,
+          orderedItems: ["http://target.test/objects/1"],
+        }));
+      }
+      if (url.pathname === "/objects/1") {
+        return Promise.resolve(json({ id: url.href, type: "Note" }));
+      }
+      return Promise.resolve(new Response("not found", { status: 404 }));
+    },
+  });
+
+  assert.ok(measurement.requests.total > 0);
+  assert.deepStrictEqual(discoveryAccepts, [
+    "application/activity+json, application/ld+json",
+    "application/activity+json, application/ld+json",
+  ]);
+});
+
 test("objectRunner - skips URL-only collection items for type filters", async () => {
   const scenario = normalizeSuite({
     version: 1,

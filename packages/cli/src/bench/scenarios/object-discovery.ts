@@ -8,6 +8,9 @@ import { convertUrlIfHandle } from "../../webfinger/lib.ts";
 import { asList } from "../scenario/coerce.ts";
 import type { ObjectSource } from "../scenario/types.ts";
 
+const ACTIVITY_JSON_ACCEPT = "application/activity+json, application/ld+json";
+const WEBFINGER_ACCEPT = "application/jrd+json, application/json";
+
 /** Options for resolving actor URLs. */
 export interface ActorUrlOptions {
   readonly target: URL;
@@ -75,7 +78,7 @@ async function actorUrlFromRecipient(
   if (identifier.protocol !== "acct:") return identifier;
   const url = new URL("/.well-known/webfinger", options.target);
   url.searchParams.set("resource", identifier.href);
-  const jrd = await fetchJson(url, options.fetch);
+  const jrd = await fetchJson(url, options.fetch, WEBFINGER_ACCEPT);
   const links = Array.isArray(jrd.links) ? jrd.links : [];
   const self = links.find((link) =>
     isRecord(link) && link.rel === "self" && typeof link.href === "string"
@@ -121,8 +124,14 @@ async function* crawlCollection(
 async function fetchJson(
   url: URL,
   fetchImpl: typeof fetch = fetch,
+  accept = ACTIVITY_JSON_ACCEPT,
 ): Promise<Record<string, unknown>> {
-  const response = await fetchImpl(new Request(url, { redirect: "manual" }));
+  const response = await fetchImpl(
+    new Request(url, {
+      headers: { accept },
+      redirect: "manual",
+    }),
+  );
   if (!response.ok) {
     throw new Error(`Failed to fetch ${url.href}: HTTP ${response.status}.`);
   }

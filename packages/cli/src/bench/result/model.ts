@@ -143,6 +143,7 @@ export interface ScenarioResult {
   readonly load: LoadSummary;
   readonly requests: RequestSummary;
   readonly throughputPerSec: number;
+  readonly deliveryThroughputPerSec?: number;
   readonly client: ClientMetrics;
   readonly server: ServerMetrics | null;
   readonly errors: ErrorBucket[];
@@ -156,7 +157,7 @@ export interface ScenarioResult {
 export interface BenchReport {
   /** The published report schema URL. */
   readonly $schema?: string;
-  readonly schemaVersion: 1;
+  readonly schemaVersion: 2;
   readonly tool: { readonly name: string; readonly version: string };
   readonly environment: Environment;
   readonly target: TargetInfo;

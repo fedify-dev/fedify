@@ -193,8 +193,8 @@ The runnable scenario types cover the main benchmark surfaces:
     `mixed` scenario's load by each entry's `weight`.  The referenced
     scenarios are named scenarios in the same suite and are still run as normal
     suite entries when listed.  The mixed result merges client-side request,
-    throughput, latency, and error measurements; server-side metric snapshots
-    are not merged across child runners.
+    throughput, delivery throughput, latency, and error measurements;
+    server-side metric snapshots are not merged across child runners.
 
 ### Actors
 
@@ -272,7 +272,7 @@ CI check.  Keep CI gates on robust signals such as success rate, error counts,
 and gross throughput or latency floors; precise latency-percentile regression
 belongs in a controlled environment, not a shared CI runner.
 
-[report schema]: https://json-schema.fedify.dev/bench/report-v1.json
+[report schema]: https://json-schema.fedify.dev/bench/report-v2.json
 
 ### Safety
 
