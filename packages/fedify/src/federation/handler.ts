@@ -132,7 +132,7 @@ function isInvalidJsonLdError(error: unknown): error is Error {
 
 function isValidationTypeError(error: unknown): error is TypeError {
   return error instanceof TypeError &&
-    (/^(Invalid JSON-LD:|Invalid type:|Unexpected type:)/
+    (/^(Invalid JSON-LD:|Invalid type:|Unexpected type:|Invalid @id:)/
       .test(error.message) ||
       isInvalidUrlTypeError(error));
 }

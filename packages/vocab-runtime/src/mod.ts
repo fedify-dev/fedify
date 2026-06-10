@@ -45,6 +45,11 @@ export {
   logRequest,
 } from "./request.ts";
 export {
+  type Json,
+  type PropertyPreprocessor,
+  type PropertyPreprocessorContext,
+} from "./preprocessor.ts";
+export {
   expandIPv6Address,
   isValidPublicIPv4Address,
   isValidPublicIPv6Address,

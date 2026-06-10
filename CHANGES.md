@@ -388,6 +388,42 @@ To be released.
 
 [#489]: https://github.com/fedify-dev/fedify/issues/489
 
+### @fedify/vocab-runtime
+
+ -  Added `PropertyPreprocessor`, `PropertyPreprocessorContext`, and `Json`
+    types for normalizing wire-level JSON-LD property values before the
+    generated range decoder runs.  [[#792]]
+
+[#792]: https://github.com/fedify-dev/fedify/issues/792
+
+### @fedify/vocab
+
+ -  Explicit ActivityStreams `Link` objects in `icon` and `image` properties
+    are now normalized to `Image` during decoding via the new exported
+    `normalizeLinkToImage()` preprocessor.  The public `Image`-oriented
+    TypeScript API is unchanged.  [[#790], [#792]]
+
+ -  The generated `fromJsonLd()` methods no longer resolve blank node
+    identifiers (`_:b0`) against `options.baseUrl`; blank nodes are left
+    as `null` in the resulting instance's `id` field.  [[#792]]
+
+[#790]: https://github.com/fedify-dev/fedify/issues/790
+
+### @fedify/vocab-tools
+
+ -  Property schemas now support a `preprocessors` field that lists
+    module/function pairs.  Generated decoders statically import and run
+    these preprocessors for each expanded JSON-LD property value before
+    falling back to the normal range decoder.  [[#792]]
+
+ -  The generated base class now stores the `baseUrl` from `fromJsonLd()`
+    as a protected `_baseUrl` field.  This URL is used to resolve
+    relative URIs when cached embedded property documents are re-parsed
+    lazily by accessors like `getIcon()`, so that callers do not need to
+    pass an explicit `baseUrl`.  The stored URL is defensively copied so
+    that mutation of the caller's original `URL` object does not affect
+    later resolution.  [[#792]]
+
 
 Version 2.2.5
 -------------

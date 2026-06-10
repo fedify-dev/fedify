@@ -26,9 +26,17 @@ async function* generateProperty(
   type: TypeSchema,
   property: PropertySchema,
   types: Record<string, TypeSchema>,
+  moduleVarNames: ReadonlyMap<string, string>,
 ): AsyncIterable<string> {
   const override = emitOverride(type.uri, types, property);
   const doc = `\n/** ${property.description.replaceAll("\n", "\n * ")}\n */\n`;
+  const cachedPropertyBaseUrl = `(options as { baseUrl?: URL }).baseUrl ??
+                this._baseUrl ??
+                (this.id != null &&
+                    (this.id.protocol === "http:" ||
+                      this.id.protocol === "https:")
+                  ? this.id
+                  : undefined)`;
   if (areAllScalarTypes(property.range, types)) {
     if (hasSingularAccessor(property)) {
       yield doc;
@@ -165,6 +173,49 @@ async function* generateProperty(
         this._tracerProvider ?? trace.getTracerProvider();
       const baseUrl = options.baseUrl;
     `;
+    if (
+      property.preprocessors != null &&
+      property.preprocessors.length > 0
+    ) {
+      yield `
+        if (jsonLd != null && typeof jsonLd === "object") {
+          const _expanded = await jsonld.expand(jsonLd, {
+            documentLoader: contextLoader,
+            keepFreeFloatingNodes: true,
+          });
+          for (const _pp_obj of _expanded) {
+      `;
+      for (const pp of property.preprocessors) {
+        const varName = moduleVarNames.get(pp.module);
+        if (varName == null) {
+          throw new Error(
+            `Preprocessor module "${pp.module}" is not registered ` +
+              `in the generated imports. Ensure all preprocessor ` +
+              `modules used in property schemas are available.`,
+          );
+        }
+        yield `
+            {
+              const _result = await ${varName}[${
+          JSON.stringify(pp.function)
+        }](_pp_obj, {
+                documentLoader,
+                contextLoader,
+                tracerProvider,
+                baseUrl,
+              });
+              if (_result instanceof Error) throw _result;
+              if (_result !== undefined) return _result as ${
+          getTypeNames(property.range, types)
+        };
+            }
+        `;
+      }
+      yield `
+          }
+        }
+      `;
+    }
     for (const range of property.range) {
       if (!(range in types)) continue;
       const rangeType = types[range];
@@ -251,7 +302,14 @@ async function* generateProperty(
             ${JSON.stringify(property.compactName)}];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#${property.singularName}_fromJsonLd(doc, options);
+      `;
+        yield `
+            v = await this.#${property.singularName}_fromJsonLd(doc, {
+              ...options,
+              baseUrl: ${cachedPropertyBaseUrl},
+            });
+      `;
+        yield `
           }
         }
         `;
@@ -350,7 +408,14 @@ async function* generateProperty(
               ${JSON.stringify(property.compactName)}];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#${property.singularName}_fromJsonLd(obj, options);
+      `;
+        yield `
+              v = await this.#${property.singularName}_fromJsonLd(obj, {
+                ...options,
+                baseUrl: ${cachedPropertyBaseUrl},
+              });
+      `;
+        yield `
             }
           }
         `;
@@ -389,9 +454,10 @@ async function* generateProperty(
 export async function* generateProperties(
   typeUri: string,
   types: Record<string, TypeSchema>,
+  moduleVarNames: ReadonlyMap<string, string>,
 ): AsyncIterable<string> {
   const type = types[typeUri];
   for (const property of type.properties) {
-    yield* generateProperty(type, property, types);
+    yield* generateProperty(type, property, types, moduleVarNames);
   }
 }

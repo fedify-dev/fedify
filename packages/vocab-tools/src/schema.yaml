@@ -113,6 +113,33 @@ $defs:
               Whether the embedded context should be the same as the context of
               the enclosing document.
             const: true
+      preprocessors:
+        description: >-
+          Preprocessors for this property.  Each preprocessor receives an
+          expanded JSON-LD property value and may return a vocabulary object
+          matching the property's declared range, `undefined` when it did not
+          handle the value, or an `Error` when it recognized the value but
+          failed while converting it.
+
+          `module` is resolved from the generated vocabulary source file
+          and imported statically at the top of the generated file.
+        type: array
+        items:
+          type: object
+          properties:
+            module:
+              description: >-
+                Module specifier resolved from the generated vocabulary
+                source file.
+              type: string
+              minLength: 1
+            function:
+              description: The name of the exported function in the module.
+              type: string
+              pattern: "^[a-zA-Z_$][a-zA-Z0-9_$]*$"
+          required:
+          - module
+          - function
     required:
     - singularName
     - uri
