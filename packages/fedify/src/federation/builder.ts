@@ -593,6 +593,12 @@ export class FederationBuilderImpl<TContextData>
     this.webFingerLinksDispatcher = dispatcher;
   }
 
+  /**
+   * The RFC 6570 template-literal `path` overloads were removed for
+   * type-checking efficiency, so the URI variable types can no longer be
+   * inferred from `path` (now typed as a plain `string`); to use them, specify
+   * the variable name through the `TParam` generic argument.
+   */
   setObjectDispatcher<TObject extends Object, TParam extends string>(
     cls: ConstructorWithTypeId<TObject>,
     path: string,
@@ -1216,6 +1222,12 @@ export class FederationBuilderImpl<TContextData>
     return setters;
   }
 
+  /**
+   * The RFC 6570 template-literal `path` overloads were removed for
+   * type-checking efficiency, so the URI variable types can no longer be
+   * inferred from `path` (now typed as a plain `string`); to use them, specify
+   * the variable name through the `TParam` generic argument.
+   */
   setCollectionDispatcher<
     TObject extends Object,
     TParam extends string,
@@ -1243,6 +1255,12 @@ export class FederationBuilderImpl<TContextData>
     );
   }
 
+  /**
+   * The RFC 6570 template-literal `path` overloads were removed for
+   * type-checking efficiency, so the URI variable types can no longer be
+   * inferred from `path` (now typed as a plain `string`); to use them, specify
+   * the variable name through the `TParam` generic argument.
+   */
   setOrderedCollectionDispatcher<
     TObject extends Object,
     TParam extends string,

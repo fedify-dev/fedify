@@ -255,7 +255,9 @@ To be released.
     template-literal variants, which dominated type-checking time; a full
     codebase type check now completes in roughly 13 seconds instead of around
     99 seconds.  The public dispatcher method signatures and runtime path
-    validation are unchanged.  [[#613], [#800] by ChanHaeng Lee]
+    validation are unchanged.  This is a partial fix for [#613] that targets
+    the dispatcher overload hot path; other contributors to `check-all` cost
+    may remain.  [[#613], [#800] by ChanHaeng Lee]
 
 [#316]: https://github.com/fedify-dev/fedify/issues/316
 [#418]: https://github.com/fedify-dev/fedify/issues/418
