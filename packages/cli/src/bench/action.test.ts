@@ -869,6 +869,42 @@ scenarios:
   assert.strictEqual(fetched, false);
 });
 
+test("runBench - mixed server expectation exits 2 before any probe", async () => {
+  const file = await writeSuite(`version: 1
+target: http://localhost:3000
+scenarios:
+  - name: lookup
+    type: webfinger
+    recipient: acct:alice@example.com
+  - name: mixed
+    type: mixed
+    mix:
+      - scenario: lookup
+        weight: 1
+    expect:
+      signatureVerification.p95: "< 10ms"
+`);
+  let code = -1;
+  let message = "";
+  let fetched = false;
+  await runBench(command({ scenario: file }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: () => Promise.resolve(),
+    log: (m) => {
+      message = m;
+    },
+    fetch: () => {
+      fetched = true;
+      return Promise.reject(new Error("no request should be sent"));
+    },
+  });
+  assert.strictEqual(code, 2);
+  assert.match(message, /server-side expectations/);
+  assert.strictEqual(fetched, false);
+});
+
 test("runBench - invalid object source exits 2 before any probe", async () => {
   const file = await writeSuite(`version: 1
 target: http://localhost:3000

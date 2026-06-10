@@ -42,6 +42,15 @@ export const mixedRunner: ScenarioRunner = {
           "one concurrency slot per mix entry.",
       );
     }
+    const serverExpectation = Object.keys(scenario.expect).find(
+      isServerExpectation,
+    );
+    if (serverExpectation != null) {
+      throw new Error(
+        `Scenario "${scenario.name}": mixed server-side expectations are ` +
+          `not supported (${JSON.stringify(serverExpectation)}).`,
+      );
+    }
     if (context?.scenarios != null) {
       const children = childScenarios(scenario, context.scenarios);
       for (const child of children) {
@@ -74,6 +83,11 @@ export const mixedRunner: ScenarioRunner = {
     return mergeMeasurements(measurements);
   },
 };
+
+function isServerExpectation(metric: string): boolean {
+  return metric.startsWith("signatureVerification.") ||
+    metric.startsWith("queueDrain.");
+}
 
 function childScenarios(
   scenario: ResolvedScenario,

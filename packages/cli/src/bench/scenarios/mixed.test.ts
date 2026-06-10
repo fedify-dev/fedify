@@ -243,6 +243,24 @@ test("mixedRunner.validate - rejects too-small closed load", () => {
   assert.throws(() => mixedRunner.validate?.(scenario), /concurrency/);
 });
 
+test("mixedRunner.validate - rejects server metric expectations", () => {
+  const scenario = normalizeSuite({
+    version: 1,
+    target: "http://target.test/",
+    scenarios: [{
+      name: "mixed",
+      type: "mixed",
+      mix: [{ scenario: "fanout", weight: 1 }],
+      expect: { "queueDrain.p95": "< 1s" },
+    }],
+  }).scenarios[0];
+
+  assert.throws(
+    () => mixedRunner.validate?.(scenario),
+    /server-side expectations/,
+  );
+});
+
 test("mergeMeasurements - merges latency histograms", () => {
   const measurement = mergeMeasurements([
     fakeMeasurement(Array.from({ length: 99 }, () => 1)),
