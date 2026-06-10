@@ -593,43 +593,12 @@ export class FederationBuilderImpl<TContextData>
     this.webFingerLinksDispatcher = dispatcher;
   }
 
-  setObjectDispatcher<TObject extends Object, TParam extends string>(
-    cls: ConstructorWithTypeId<TObject>,
-    path:
-      `${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}`,
-    dispatcher: ObjectDispatcher<TContextData, TObject, TParam>,
-  ): ObjectCallbackSetters<TContextData, TObject, TParam>;
-  setObjectDispatcher<TObject extends Object, TParam extends string>(
-    cls: ConstructorWithTypeId<TObject>,
-    path:
-      `${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}`,
-    dispatcher: ObjectDispatcher<TContextData, TObject, TParam>,
-  ): ObjectCallbackSetters<TContextData, TObject, TParam>;
-  setObjectDispatcher<TObject extends Object, TParam extends string>(
-    cls: ConstructorWithTypeId<TObject>,
-    path:
-      `${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}{${TParam}}${string}`,
-    dispatcher: ObjectDispatcher<TContextData, TObject, TParam>,
-  ): ObjectCallbackSetters<TContextData, TObject, TParam>;
-  setObjectDispatcher<TObject extends Object, TParam extends string>(
-    cls: ConstructorWithTypeId<TObject>,
-    path: `${string}${Rfc6570Expression<TParam>}${string}${Rfc6570Expression<
-      TParam
-    >}${string}${Rfc6570Expression<TParam>}${string}`,
-    dispatcher: ObjectDispatcher<TContextData, TObject, TParam>,
-  ): ObjectCallbackSetters<TContextData, TObject, TParam>;
-  setObjectDispatcher<TObject extends Object, TParam extends string>(
-    cls: ConstructorWithTypeId<TObject>,
-    path: `${string}${Rfc6570Expression<TParam>}${string}${Rfc6570Expression<
-      TParam
-    >}${string}`,
-    dispatcher: ObjectDispatcher<TContextData, TObject, TParam>,
-  ): ObjectCallbackSetters<TContextData, TObject, TParam>;
-  setObjectDispatcher<TObject extends Object, TParam extends string>(
-    cls: ConstructorWithTypeId<TObject>,
-    path: `${string}${Rfc6570Expression<TParam>}${string}`,
-    dispatcher: ObjectDispatcher<TContextData, TObject, TParam>,
-  ): ObjectCallbackSetters<TContextData, TObject, TParam>;
+  /**
+   * The RFC 6570 template-literal `path` overloads were removed for
+   * type-checking efficiency, so the URI variable types can no longer be
+   * inferred from `path` (now typed as a plain `string`); to use them, specify
+   * the variable name through the `TParam` generic argument.
+   */
   setObjectDispatcher<TObject extends Object, TParam extends string>(
     cls: ConstructorWithTypeId<TObject>,
     path: string,
@@ -1253,94 +1222,12 @@ export class FederationBuilderImpl<TContextData>
     return setters;
   }
 
-  setCollectionDispatcher<
-    TObject extends Object,
-    TParam extends string,
-  >(
-    name: string | symbol,
-    itemType: ConstructorWithTypeId<TObject>,
-    path: `${string}${Rfc6570Expression<
-      TParam
-    >}${string}${Rfc6570Expression<
-      TParam
-    >}${string}${Rfc6570Expression<
-      TParam
-    >}${string}${Rfc6570Expression<
-      TParam
-    >}${string}`,
-    dispatcher: CustomCollectionDispatcher<
-      TObject,
-      TParam,
-      RequestContext<TContextData>,
-      TContextData
-    >,
-  ): CustomCollectionCallbackSetters<
-    TParam,
-    RequestContext<TContextData>,
-    TContextData
-  >;
-  setCollectionDispatcher<
-    TObject extends Object,
-    TParam extends string,
-  >(
-    name: string | symbol,
-    itemType: ConstructorWithTypeId<TObject>,
-    path: `${string}${Rfc6570Expression<
-      TParam
-    >}${string}${Rfc6570Expression<
-      TParam
-    >}${string}${Rfc6570Expression<
-      TParam
-    >}${string}`,
-    dispatcher: CustomCollectionDispatcher<
-      TObject,
-      TParam,
-      RequestContext<TContextData>,
-      TContextData
-    >,
-  ): CustomCollectionCallbackSetters<
-    TParam,
-    RequestContext<TContextData>,
-    TContextData
-  >;
-  setCollectionDispatcher<
-    TObject extends Object,
-    TParam extends string,
-  >(
-    name: string | symbol,
-    itemType: ConstructorWithTypeId<TObject>,
-    path: `${string}${Rfc6570Expression<TParam>}${string}${Rfc6570Expression<
-      TParam
-    >}${string}`,
-    dispatcher: CustomCollectionDispatcher<
-      TObject,
-      TParam,
-      RequestContext<TContextData>,
-      TContextData
-    >,
-  ): CustomCollectionCallbackSetters<
-    TParam,
-    RequestContext<TContextData>,
-    TContextData
-  >;
-  setCollectionDispatcher<
-    TObject extends Object,
-    TParam extends string,
-  >(
-    name: string | symbol,
-    itemType: ConstructorWithTypeId<TObject>,
-    path: `${string}${Rfc6570Expression<TParam>}${string}`,
-    dispatcher: CustomCollectionDispatcher<
-      TObject,
-      TParam,
-      RequestContext<TContextData>,
-      TContextData
-    >,
-  ): CustomCollectionCallbackSetters<
-    TParam,
-    RequestContext<TContextData>,
-    TContextData
-  >;
+  /**
+   * The RFC 6570 template-literal `path` overloads were removed for
+   * type-checking efficiency, so the URI variable types can no longer be
+   * inferred from `path` (now typed as a plain `string`); to use them, specify
+   * the variable name through the `TParam` generic argument.
+   */
   setCollectionDispatcher<
     TObject extends Object,
     TParam extends string,
@@ -1368,64 +1255,12 @@ export class FederationBuilderImpl<TContextData>
     );
   }
 
-  setOrderedCollectionDispatcher<
-    TObject extends Object,
-    TParam extends string,
-  >(
-    name: string | symbol,
-    itemType: ConstructorWithTypeId<TObject>,
-    path: `${string}${Rfc6570Expression<TParam>}${string}${Rfc6570Expression<
-      TParam
-    >}${string}${Rfc6570Expression<TParam>}${string}`,
-    dispatcher: CustomCollectionDispatcher<
-      TObject,
-      TParam,
-      RequestContext<TContextData>,
-      TContextData
-    >,
-  ): CustomCollectionCallbackSetters<
-    TParam,
-    RequestContext<TContextData>,
-    TContextData
-  >;
-  setOrderedCollectionDispatcher<
-    TObject extends Object,
-    TParam extends string,
-  >(
-    name: string | symbol,
-    itemType: ConstructorWithTypeId<TObject>,
-    path: `${string}${Rfc6570Expression<TParam>}${string}${Rfc6570Expression<
-      TParam
-    >}${string}`,
-    dispatcher: CustomCollectionDispatcher<
-      TObject,
-      TParam,
-      RequestContext<TContextData>,
-      TContextData
-    >,
-  ): CustomCollectionCallbackSetters<
-    TParam,
-    RequestContext<TContextData>,
-    TContextData
-  >;
-  setOrderedCollectionDispatcher<
-    TObject extends Object,
-    TParam extends string,
-  >(
-    name: string | symbol,
-    itemType: ConstructorWithTypeId<TObject>,
-    path: `${string}${Rfc6570Expression<TParam>}${string}`,
-    dispatcher: CustomCollectionDispatcher<
-      TObject,
-      TParam,
-      RequestContext<TContextData>,
-      TContextData
-    >,
-  ): CustomCollectionCallbackSetters<
-    TParam,
-    RequestContext<TContextData>,
-    TContextData
-  >;
+  /**
+   * The RFC 6570 template-literal `path` overloads were removed for
+   * type-checking efficiency, so the URI variable types can no longer be
+   * inferred from `path` (now typed as a plain `string`); to use them, specify
+   * the variable name through the `TParam` generic argument.
+   */
   setOrderedCollectionDispatcher<
     TObject extends Object,
     TParam extends string,

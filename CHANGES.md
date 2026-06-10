@@ -248,8 +248,20 @@ To be released.
     matching.  The deprecated `Router` export from *@fedify/fedify* remains
     available for compatibility.  [[#418], [#758] by ChanHaeng Lee]
 
+ -  Significantly sped up TypeScript type-checking by simplifying the internal
+    `path` parameter types of the `setObjectDispatcher()`,
+    `setCollectionDispatcher()`, and `setOrderedCollectionDispatcher()` methods.
+    These methods previously expanded `path` into thousands of RFC 6570
+    template-literal variants, which dominated type-checking time; a full
+    codebase type check now completes in roughly 13 seconds instead of around
+    99 seconds.  The public dispatcher method signatures and runtime path
+    validation are unchanged.  This is a partial fix for [#613] that targets
+    the dispatcher overload hot path; other contributors to `check-all` cost
+    may remain.  [[#613], [#800] by ChanHaeng Lee]
+
 [#316]: https://github.com/fedify-dev/fedify/issues/316
 [#418]: https://github.com/fedify-dev/fedify/issues/418
+[#613]: https://github.com/fedify-dev/fedify/issues/613
 [#619]: https://github.com/fedify-dev/fedify/issues/619
 [#620]: https://github.com/fedify-dev/fedify/issues/620
 [#735]: https://github.com/fedify-dev/fedify/issues/735
@@ -276,6 +288,7 @@ To be released.
 [#778]: https://github.com/fedify-dev/fedify/pull/778
 [#782]: https://github.com/fedify-dev/fedify/issues/782
 [#787]: https://github.com/fedify-dev/fedify/pull/787
+[#800]: https://github.com/fedify-dev/fedify/pull/800
 
 ### @fedify/cli
 
