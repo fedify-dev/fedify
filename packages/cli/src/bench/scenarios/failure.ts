@@ -352,8 +352,14 @@ async function waitForRemoteFault(options: {
       if (queueTasks.completed > 0 && remaining === 0) {
         return { timedOut: false };
       }
-    } else if (queueTasks.failed > 0) {
-      return { timedOut: false };
+    } else if (options.fault === "network-error") {
+      const remaining = queueTaskRemaining(diff);
+      if (remaining == null) return null;
+      if (
+        queueTasks.failed > 0 || (queueTasks.completed > 0 && remaining > 0)
+      ) {
+        return { timedOut: false };
+      }
     }
     await new Promise((resolve) => setTimeout(resolve, DRAIN_POLL_MS));
   } while (Date.now() < deadline);

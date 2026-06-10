@@ -71,6 +71,54 @@ for (
   });
 }
 
+test("failureRunner - detects network-error retries", async () => {
+  const target = new URL("http://target.test/");
+  const scenario = normalizeSuite({
+    version: 1,
+    target: target.href,
+    scenarios: [{
+      name: "failure",
+      type: "failure",
+      fault: "network-error",
+      sender: "alice",
+      load: { concurrency: 1 },
+      duration: "25ms",
+      queueDrainTimeout: "50ms",
+    }],
+  }).scenarios[0];
+  let triggerCalls = 0;
+  const measurement = await failureRunner.run({
+    scenario,
+    target,
+    documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+    contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+    allowPrivateAddress: true,
+    fleet: null,
+    fetch: (input) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.pathname === "/.well-known/fedify/bench/stats") {
+        return Promise.resolve(statsJson(statsSnapshot({
+          enqueued: triggerCalls * 2,
+          completed: triggerCalls,
+          failed: 0,
+          permanentFailures: 0,
+        })));
+      }
+      if (url.pathname === "/.well-known/fedify/bench/trigger") {
+        triggerCalls++;
+        return Promise.resolve(statsJson({ version: 1 }, 202));
+      }
+      return Promise.resolve(new Response("unexpected", { status: 500 }));
+    },
+    assertDestinationAllowed: () => {},
+  });
+
+  assert.ok(measurement.requests.total > 0);
+  assert.strictEqual(measurement.requests.failed, 0);
+  assert.strictEqual(measurement.requests.successRate, 1);
+  assert.ok(triggerCalls > 0);
+});
+
 test("failureRunner.validate - requires sender for remote faults", () => {
   const scenario = normalizeSuite({
     version: 1,
