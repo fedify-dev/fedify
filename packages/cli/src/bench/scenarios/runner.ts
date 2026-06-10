@@ -149,6 +149,31 @@ export function assertBareHttpUrl(
   );
 }
 
+/** Validates an inbox selector or explicit inbox URL. */
+export function validateInboxSelector(
+  scenarioName: string,
+  inbox: string | undefined,
+): void {
+  if (inbox == null || inbox === "shared" || inbox === "personal") return;
+  let url: URL;
+  try {
+    url = new URL(inbox);
+  } catch {
+    throw new Error(
+      `Scenario "${scenarioName}": inbox must be "shared", "personal", or an ` +
+        `http(s) URL; got ${JSON.stringify(inbox)}.`,
+    );
+  }
+  try {
+    assertBareHttpUrl(scenarioName, "inbox URL", url);
+  } catch {
+    throw new Error(
+      `Scenario "${scenarioName}": inbox URL must be a bare http(s) URL with ` +
+        `a host and no credentials; got ${JSON.stringify(inbox)}.`,
+    );
+  }
+}
+
 /**
  * Wraps a send function so that `onMeasuredWindowStart` runs exactly once, at
  * the warm-up boundary, and *every* measured request waits for it to settle

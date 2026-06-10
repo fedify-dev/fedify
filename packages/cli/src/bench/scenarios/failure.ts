@@ -23,6 +23,7 @@ import {
   type RunContext,
   type ScenarioRunner,
   sendRequest,
+  validateInboxSelector,
 } from "./runner.ts";
 
 const SUPPORTED_FAULTS = [
@@ -69,11 +70,10 @@ export const failureRunner: ScenarioRunner = {
         );
       }
     }
-    if (
-      faults.some((fault) =>
-        fault === "invalid-signature" || fault === "missing-actor"
-      ) && scenario.recipients.length < 1
-    ) {
+    if (faults.some(isInboundFault)) {
+      validateInboxSelector(scenario.name, scenario.inbox);
+    }
+    if (faults.some(isInboundFault) && scenario.recipients.length < 1) {
       throw new Error(
         `Scenario "${scenario.name}": invalid-signature and missing-actor ` +
           "faults require a recipient.",
@@ -169,7 +169,9 @@ async function resolveFailureDeliveryTarget(
   return { inbox, actorUri: discovered.actorUri };
 }
 
-function isInboundFault(fault: SupportedFault): boolean {
+function isInboundFault(
+  fault: string,
+): fault is Extract<SupportedFault, "invalid-signature" | "missing-actor"> {
   return fault === "invalid-signature" || fault === "missing-actor";
 }
 

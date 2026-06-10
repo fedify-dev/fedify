@@ -178,6 +178,50 @@ test("fanoutRunner - counts failed queue tasks as delivery failures", async () =
   assert.strictEqual(measurement.deliveryThroughputPerSec, 0);
 });
 
+test("fanoutRunner - omits queue drain metrics without drain samples", async () => {
+  const target = new URL("http://target.test/");
+  const scenario = normalizeSuite({
+    version: 1,
+    target: target.href,
+    scenarios: [{
+      name: "fanout",
+      type: "fanout",
+      sender: "alice",
+      followers: 5,
+      load: { concurrency: 1 },
+      duration: "30ms",
+      queueDrainTimeout: "1s",
+    }],
+  }).scenarios[0];
+
+  const measurement = await fanoutRunner.run({
+    scenario,
+    target,
+    documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+    contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+    allowPrivateAddress: true,
+    fleet: null,
+    fetch: (input) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.pathname === "/.well-known/fedify/bench/stats") {
+        return Promise.resolve(json(statsSnapshot({
+          enqueued: 0,
+          completed: 0,
+          failed: 0,
+        })));
+      }
+      if (url.pathname === "/.well-known/fedify/bench/trigger") {
+        return Promise.resolve(json({ error: "unavailable" }, 503));
+      }
+      return Promise.resolve(new Response("unexpected", { status: 500 }));
+    },
+  });
+
+  assert.ok(measurement.requests.total > 0);
+  assert.strictEqual(measurement.requests.successRate, 0);
+  assert.strictEqual(measurement.server?.queue?.drainMs, undefined);
+});
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,

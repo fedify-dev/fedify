@@ -147,6 +147,25 @@ test("failureRunner.validate - rejects unsupported faults", () => {
   assert.throws(() => failureRunner.validate?.(scenario), /unsupported/);
 });
 
+test("failureRunner.validate - rejects invalid explicit inbound inboxes", () => {
+  const scenario = normalizeSuite({
+    version: 1,
+    target: "http://target.test/",
+    scenarios: [{
+      name: "failure",
+      type: "failure",
+      fault: "invalid-signature",
+      recipient: "http://target.test/users/alice",
+      inbox: "shraed",
+    }],
+  }).scenarios[0];
+
+  assert.throws(
+    () => failureRunner.validate?.(scenario),
+    /inbox must be "shared", "personal", or an http\(s\) URL/,
+  );
+});
+
 test("failureRunner - discovers inbound failure inboxes once", async () => {
   let actorGets = 0;
   const server = serve({

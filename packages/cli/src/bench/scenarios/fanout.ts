@@ -272,7 +272,8 @@ async function waitForDrain(options: {
 function addQueueDrain(
   server: ServerMetrics | null,
   histogram: LogLinearHistogram,
-): ServerMetrics {
+): ServerMetrics | null {
+  if (histogram.count < 1) return server;
   const queue = {
     ...(server?.queue ?? {}),
     drainMs: partialFromHistogram(histogram),
