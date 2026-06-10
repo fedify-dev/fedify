@@ -898,6 +898,35 @@ scenarios:
   assert.strictEqual(fetched, false);
 });
 
+test("runBench - invalid actor recipient exits 2 before any probe", async () => {
+  const file = await writeSuite(`version: 1
+target: http://localhost:3000
+scenarios:
+  - name: actor
+    type: actor
+    recipient: alice
+`);
+  let code = -1;
+  let message = "";
+  let fetched = false;
+  await runBench(command({ scenario: file }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: () => Promise.resolve(),
+    log: (m) => {
+      message = m;
+    },
+    fetch: () => {
+      fetched = true;
+      return Promise.reject(new Error("no request should be sent"));
+    },
+  });
+  assert.strictEqual(code, 2);
+  assert.match(message, /invalid actor recipient/);
+  assert.strictEqual(fetched, false);
+});
+
 test("runBench - invalid suite exits 2", async () => {
   const file = await writeSuite(`target: http://localhost:3000
 scenarios:

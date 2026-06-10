@@ -133,6 +133,134 @@ test("objectRunner - crawls actor collections before fetching objects", async ()
   }
 });
 
+test("objectRunner - unwraps activities while crawling object sources", async () => {
+  const scenario = normalizeSuite({
+    version: 1,
+    target: "http://target.test/",
+    scenarios: [{
+      name: "object-crawl",
+      type: "object",
+      source: {
+        seed: "http://target.test/users/alice",
+        collection: "outbox",
+        limit: 1,
+        type: "Note",
+      },
+      load: { concurrency: 1 },
+      duration: "25ms",
+    }],
+  }).scenarios[0];
+  let fetchedObjectUrl = "";
+
+  const measurement = await objectRunner.run({
+    scenario,
+    target: new URL("http://target.test/"),
+    documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+    contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+    allowPrivateAddress: true,
+    fleet: null,
+    fetch: (input) => {
+      const request = input instanceof Request ? input : new Request(input);
+      const url = new URL(request.url);
+      if (url.pathname === "/.well-known/fedify/bench/stats") {
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      }
+      if (url.pathname === "/users/alice") {
+        return Promise.resolve(json({
+          id: url.href,
+          outbox: "http://target.test/users/alice/outbox",
+        }));
+      }
+      if (url.pathname === "/users/alice/outbox") {
+        return Promise.resolve(json({
+          id: url.href,
+          orderedItems: [{
+            type: "Create",
+            id: "http://target.test/activities/create-1",
+            object: {
+              type: "Note",
+              id: "http://target.test/objects/1",
+            },
+          }],
+        }));
+      }
+      if (url.pathname === "/objects/1") {
+        fetchedObjectUrl = url.href;
+        return Promise.resolve(json({ id: url.href, type: "Note" }));
+      }
+      return Promise.resolve(new Response("not found", { status: 404 }));
+    },
+  });
+
+  assert.ok(measurement.requests.total > 0);
+  assert.strictEqual(fetchedObjectUrl, "http://target.test/objects/1");
+});
+
+test("objectRunner - prefers unwrapped object URLs without type filters", async () => {
+  const scenario = normalizeSuite({
+    version: 1,
+    target: "http://target.test/",
+    scenarios: [{
+      name: "object-crawl",
+      type: "object",
+      source: {
+        seed: "http://target.test/users/alice",
+        collection: "outbox",
+        limit: 1,
+      },
+      load: { concurrency: 1 },
+      duration: "25ms",
+    }],
+  }).scenarios[0];
+  let fetchedActivity = false;
+  let fetchedObject = false;
+
+  const measurement = await objectRunner.run({
+    scenario,
+    target: new URL("http://target.test/"),
+    documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+    contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+    allowPrivateAddress: true,
+    fleet: null,
+    fetch: (input) => {
+      const request = input instanceof Request ? input : new Request(input);
+      const url = new URL(request.url);
+      if (url.pathname === "/.well-known/fedify/bench/stats") {
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      }
+      if (url.pathname === "/users/alice") {
+        return Promise.resolve(json({
+          id: url.href,
+          outbox: "http://target.test/users/alice/outbox",
+        }));
+      }
+      if (url.pathname === "/users/alice/outbox") {
+        return Promise.resolve(json({
+          id: url.href,
+          orderedItems: [{
+            type: "Create",
+            id: "http://target.test/activities/create-1",
+            object: "http://target.test/objects/1",
+          }],
+        }));
+      }
+      if (url.pathname === "/activities/create-1") {
+        fetchedActivity = true;
+        return Promise.resolve(json({ id: url.href, type: "Create" }));
+      }
+      if (url.pathname === "/objects/1") {
+        fetchedObject = true;
+        return Promise.resolve(json({ id: url.href, type: "Note" }));
+      }
+      return Promise.resolve(new Response("not found", { status: 404 }));
+    },
+  });
+
+  assert.ok(measurement.requests.total > 0);
+  assert.strictEqual(fetchedObject, true);
+  assert.strictEqual(fetchedActivity, false);
+});
+
 test("objectRunner - sends ActivityPub Accept headers during object discovery", async () => {
   const scenario = normalizeSuite({
     version: 1,

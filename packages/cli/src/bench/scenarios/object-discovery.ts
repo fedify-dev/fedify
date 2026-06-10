@@ -10,6 +10,33 @@ import type { ObjectSource } from "../scenario/types.ts";
 
 const ACTIVITY_JSON_ACCEPT = "application/activity+json, application/ld+json";
 const WEBFINGER_ACCEPT = "application/jrd+json, application/json";
+const ACTIVITY_WRAPPER_TYPES = new Set([
+  "Accept",
+  "Add",
+  "Announce",
+  "Create",
+  "Delete",
+  "Dislike",
+  "Flag",
+  "Ignore",
+  "Invite",
+  "Join",
+  "Leave",
+  "Like",
+  "Listen",
+  "Move",
+  "Offer",
+  "Question",
+  "Read",
+  "Reject",
+  "Remove",
+  "TentativeAccept",
+  "TentativeReject",
+  "Travel",
+  "Undo",
+  "Update",
+  "View",
+]);
 
 /** Options for resolving actor URLs. */
 export interface ActorUrlOptions {
@@ -146,12 +173,22 @@ function objectUrl(
   item: unknown,
   types: ReadonlySet<string>,
 ): URL | null {
+  item = unwrapActivityObject(item);
   if (typeof item === "string") {
     return types.size < 1 ? new URL(item) : null;
   }
   if (!isRecord(item)) return null;
   if (types.size > 0 && !matchesType(item.type, types)) return null;
   return propertyUrl(item, "id");
+}
+
+function unwrapActivityObject(item: unknown): unknown {
+  if (!isRecord(item) || !matchesType(item.type, ACTIVITY_WRAPPER_TYPES)) {
+    return item;
+  }
+  const object = item.object;
+  if (Array.isArray(object)) return object.find((entry) => entry != null);
+  return object ?? item;
 }
 
 function matchesType(
