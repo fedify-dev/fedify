@@ -49,6 +49,56 @@ test("runReadLoad - unauthenticated reads use the read destination gate", async 
   assert.strictEqual(measurement.requests.successRate, 1);
 });
 
+test("runReadLoad - rejects invalid read URL schemes before load", async () => {
+  const scenario = normalizeSuite({
+    version: 1,
+    target: "http://target.test/",
+    scenarios: [{
+      name: "read",
+      type: "object",
+      load: { concurrency: 1 },
+      duration: "25ms",
+    }],
+  }).scenarios[0];
+  let fetchCalls = 0;
+  let gateCalls = 0;
+
+  for (
+    const url of [
+      new URL("ftp://remote.test/object"),
+      new URL("http://user:pass@remote.test/object"),
+    ]
+  ) {
+    await assert.rejects(
+      async () =>
+        await runReadLoad({
+          scenario,
+          target: new URL("http://target.test/"),
+          documentLoader: await getDocumentLoader({
+            allowPrivateAddress: true,
+          }),
+          contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+          allowPrivateAddress: true,
+          fleet: null,
+          fetch: () => {
+            fetchCalls++;
+            return Promise.resolve(new Response("{}", { status: 200 }));
+          },
+          assertReadDestinationAllowed: () => {
+            gateCalls++;
+          },
+        }, {
+          urls: [url],
+          authenticated: false,
+        }),
+      /read URL must be a bare http\(s\) URL/,
+    );
+  }
+
+  assert.strictEqual(fetchCalls, 0);
+  assert.strictEqual(gateCalls, 0);
+});
+
 test("runReadLoad - authenticated reads support presign mode", async () => {
   let fleet: Awaited<ReturnType<typeof spawnSyntheticServer>> | undefined;
   try {
