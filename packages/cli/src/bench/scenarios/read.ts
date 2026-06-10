@@ -19,6 +19,7 @@ import {
   type SigningPipeline,
 } from "../signing/pipeline.ts";
 import {
+  assertBareHttpUrl,
   estimateTotal,
   loadPlanOf,
   measuredWindowMs,
@@ -59,7 +60,7 @@ export async function runReadLoad(
     );
   }
   for (const url of options.urls) {
-    validateReadUrl(context.scenario.name, url);
+    assertBareHttpUrl(context.scenario.name, "read URL", url);
     if (options.authenticated) {
       await context.assertDestinationAllowed?.(url);
     } else {
@@ -148,16 +149,4 @@ async function signGetRequest(
     actor.rsaKeyId,
     { spec: actor.httpStandard },
   );
-}
-
-function validateReadUrl(scenarioName: string, url: URL): void {
-  if (
-    (url.protocol !== "http:" && url.protocol !== "https:") ||
-    url.hostname === "" || url.username !== "" || url.password !== ""
-  ) {
-    throw new Error(
-      `Scenario "${scenarioName}": read URL must be a bare http(s) URL with ` +
-        `a host and no credentials; got ${JSON.stringify(url.href)}.`,
-    );
-  }
 }

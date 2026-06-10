@@ -261,6 +261,71 @@ test("mixedRunner.validate - rejects server metric expectations", () => {
   );
 });
 
+test("mixedRunner.validate - rejects ambiguous target queue observation", () => {
+  const scenarios = normalizeSuite({
+    version: 1,
+    target: "http://target.test/",
+    scenarios: [
+      {
+        name: "delivery",
+        type: "inbox",
+        recipient: "http://target.test/users/alice",
+      },
+      {
+        name: "fanout",
+        type: "fanout",
+        sender: "alice",
+      },
+      {
+        name: "mixed",
+        type: "mixed",
+        mix: [
+          { scenario: "delivery", weight: 1 },
+          { scenario: "fanout", weight: 1 },
+        ],
+      },
+    ],
+  }).scenarios;
+
+  assert.throws(
+    () => mixedRunner.validate?.(scenarios[2], { scenarios }),
+    /target queue counters/,
+  );
+});
+
+test("mixedRunner.validate - rejects remote failure with queue producers", () => {
+  const scenarios = normalizeSuite({
+    version: 1,
+    target: "http://target.test/",
+    scenarios: [
+      {
+        name: "delivery",
+        type: "inbox",
+        recipient: "http://target.test/users/alice",
+      },
+      {
+        name: "remote-failure",
+        type: "failure",
+        sender: "alice",
+        fault: "remote-404",
+      },
+      {
+        name: "mixed",
+        type: "mixed",
+        mix: [
+          { scenario: "delivery", weight: 1 },
+          { scenario: "remote-failure", weight: 1 },
+        ],
+      },
+    ],
+  }).scenarios;
+
+  assert.throws(
+    () => mixedRunner.validate?.(scenarios[2], { scenarios }),
+    /target queue counters/,
+  );
+});
+
 test("mergeMeasurements - merges latency histograms", () => {
   const measurement = mergeMeasurements([
     fakeMeasurement(Array.from({ length: 99 }, () => 1)),

@@ -486,6 +486,30 @@ test("objectRunner.validate - rejects malformed object source URLs", () => {
   );
 });
 
+test("objectRunner.validate - rejects non-fetchable direct object source URLs", () => {
+  for (
+    const source of [
+      "ftp://target.test/objects/1",
+      "http://user:pass@target.test/objects/1",
+    ]
+  ) {
+    const scenario = normalizeSuite({
+      version: 1,
+      target: "http://target.test/",
+      scenarios: [{
+        name: "object",
+        type: "object",
+        source,
+      }],
+    }).scenarios[0];
+
+    assert.throws(
+      () => objectRunner.validate?.(scenario),
+      /object source URL must be a bare http\(s\) URL/,
+    );
+  }
+});
+
 function json(body: unknown): Response {
   return new Response(JSON.stringify(body), {
     headers: { "content-type": "application/activity+json" },

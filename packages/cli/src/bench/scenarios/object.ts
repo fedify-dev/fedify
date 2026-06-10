@@ -8,7 +8,12 @@ import { convertUrlIfHandle } from "../../webfinger/lib.ts";
 import { asList } from "../scenario/coerce.ts";
 import { objectUrlsFromSource } from "./object-discovery.ts";
 import { runReadLoad } from "./read.ts";
-import type { RunContext, ScenarioRunner } from "./runner.ts";
+import {
+  assertBareHttpUrl,
+  isBareHttpUrl,
+  type RunContext,
+  type ScenarioRunner,
+} from "./runner.ts";
 
 /** The `object` scenario runner. */
 export const objectRunner: ScenarioRunner = {
@@ -17,24 +22,34 @@ export const objectRunner: ScenarioRunner = {
     if (source == null) return;
     if (typeof source === "string" || Array.isArray(source)) {
       for (const url of asList(source)) {
+        let parsed: URL;
         try {
-          new URL(url);
+          parsed = new URL(url);
         } catch {
           throw new Error(
             `Scenario "${scenario.name}": invalid object source URL ` +
               `${JSON.stringify(url)}.`,
           );
         }
+        assertBareHttpUrl(scenario.name, "object source URL", parsed);
       }
       return;
     }
     for (const seed of asList(source.seed)) {
+      let url: URL;
       try {
-        convertUrlIfHandle(seed);
+        url = convertUrlIfHandle(seed);
       } catch {
         throw new Error(
           `Scenario "${scenario.name}": invalid object source seed URL ` +
             `${JSON.stringify(seed)}.`,
+        );
+      }
+      if (url.protocol !== "acct:" && !isBareHttpUrl(url)) {
+        throw new Error(
+          `Scenario "${scenario.name}": object source seed must be an acct: ` +
+            `handle or a bare http(s) URL with a host and no credentials; ` +
+            `got ${JSON.stringify(url.href)}.`,
         );
       }
     }

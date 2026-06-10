@@ -130,6 +130,25 @@ export function estimateTotal(scenario: ResolvedScenario): number | undefined {
   return Math.ceil(scenario.load.ratePerSec * (scenario.durationMs / 1000));
 }
 
+/** Returns whether a URL is fetchable by benchmark runners without surprises. */
+export function isBareHttpUrl(url: URL): boolean {
+  return (url.protocol === "http:" || url.protocol === "https:") &&
+    url.hostname !== "" && url.username === "" && url.password === "";
+}
+
+/** Rejects URLs that are not bare http(s) URLs with a host and no credentials. */
+export function assertBareHttpUrl(
+  scenarioName: string,
+  label: string,
+  url: URL,
+): void {
+  if (isBareHttpUrl(url)) return;
+  throw new Error(
+    `Scenario "${scenarioName}": ${label} must be a bare http(s) URL with ` +
+      `a host and no credentials; got ${JSON.stringify(url.href)}.`,
+  );
+}
+
 /**
  * Wraps a send function so that `onMeasuredWindowStart` runs exactly once, at
  * the warm-up boundary, and *every* measured request waits for it to settle

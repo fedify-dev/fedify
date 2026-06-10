@@ -135,3 +135,22 @@ test("actorRunner - signs authenticated actor fetches", async () => {
     }
   }
 });
+
+test("actorRunner.validate - rejects non-http actor recipient URLs", () => {
+  for (const recipient of ["ftp://target.test/users/alice", "mailto:alice"]) {
+    const scenario = normalizeSuite({
+      version: 1,
+      target: "http://target.test/",
+      scenarios: [{
+        name: "actor",
+        type: "actor",
+        recipient,
+      }],
+    }).scenarios[0];
+
+    assert.throws(
+      () => actorRunner.validate?.(scenario),
+      /actor recipient must be an acct: handle or a bare http\(s\) URL/,
+    );
+  }
+});

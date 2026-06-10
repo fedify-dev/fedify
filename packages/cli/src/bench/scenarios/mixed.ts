@@ -56,6 +56,7 @@ export const mixedRunner: ScenarioRunner = {
       for (const child of children) {
         runnerForChild(child.type).validate?.(child, context);
       }
+      validateTargetQueueObservation(scenario, children);
     }
   },
 
@@ -87,6 +88,41 @@ export const mixedRunner: ScenarioRunner = {
 function isServerExpectation(metric: string): boolean {
   return metric.startsWith("signatureVerification.") ||
     metric.startsWith("queueDrain.");
+}
+
+function validateTargetQueueObservation(
+  scenario: ResolvedScenario,
+  children: readonly ResolvedScenario[],
+): void {
+  const observers = children.filter(observesTargetQueue);
+  if (observers.length < 1) return;
+  const producers = children.filter(producesTargetQueue);
+  if (producers.length <= 1) return;
+  throw new Error(
+    `Scenario "${scenario.name}": mixed scenarios cannot run queue-observing ` +
+      `children (${observers.map((child) => child.name).join(", ")}) ` +
+      `concurrently with other target queue producers because target queue ` +
+      `counters are not scoped per child.`,
+  );
+}
+
+function observesTargetQueue(scenario: ResolvedScenario): boolean {
+  return scenario.type === "fanout" ||
+    (scenario.type === "failure" && faultsOf(scenario).some(isRemoteFault));
+}
+
+function producesTargetQueue(scenario: ResolvedScenario): boolean {
+  return scenario.type === "inbox" || scenario.type === "fanout" ||
+    (scenario.type === "failure" && faultsOf(scenario).some(isRemoteFault));
+}
+
+function faultsOf(scenario: ResolvedScenario): readonly string[] {
+  return scenario.faults.length < 1 ? ["remote-404"] : scenario.faults;
+}
+
+function isRemoteFault(fault: string): boolean {
+  return fault === "remote-404" || fault === "remote-410" ||
+    fault === "slow-inbox" || fault === "network-error";
 }
 
 function childScenarios(
