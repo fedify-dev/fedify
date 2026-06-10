@@ -59,6 +59,8 @@ export interface ServerSnapshot {
   readonly queueDepthMax: number | null;
   /** Queue task counters, or `null` if absent. */
   readonly queueTasks?: QueueTaskCounts | null;
+  /** Permanent outbound delivery failure count, or `null` if absent. */
+  readonly deliveryPermanentFailures?: number | null;
 }
 
 /** Queue task counts extracted from benchmark stats. */
@@ -96,11 +98,18 @@ export function parseServerSnapshot(snapshot: unknown): ServerSnapshot | null {
     }
 
     const queueTasks = parseQueueTasks(metrics);
+    const deliveryPermanentFailures = sumMetric(
+      metrics,
+      "activitypub.delivery.permanent_failure",
+    );
 
     return {
       signature,
       queueDepthMax,
       ...(queueTasks == null ? {} : { queueTasks }),
+      ...(deliveryPermanentFailures == null
+        ? {}
+        : { deliveryPermanentFailures }),
     };
   } catch {
     return null;
@@ -126,10 +135,15 @@ export function diffSnapshots(
     baseline.queueTasks ?? null,
     end.queueTasks ?? null,
   );
+  const deliveryPermanentFailures = diffCounter(
+    baseline.deliveryPermanentFailures ?? null,
+    end.deliveryPermanentFailures ?? null,
+  );
   return {
     signature: diffHistogram(baseline.signature, end.signature),
     queueDepthMax: end.queueDepthMax,
     ...(queueTasks == null ? {} : { queueTasks }),
+    ...(deliveryPermanentFailures == null ? {} : { deliveryPermanentFailures }),
   };
 }
 
@@ -327,6 +341,15 @@ function diffQueueTasks(
     completed: Math.max(0, end.completed - baseline.completed),
     failed: Math.max(0, end.failed - baseline.failed),
   };
+}
+
+function diffCounter(
+  baseline: number | null,
+  end: number | null,
+): number | null {
+  if (end == null) return null;
+  if (baseline == null) return end;
+  return Math.max(0, end - baseline);
 }
 
 function histogramsCompatible(

@@ -142,6 +142,19 @@ test("parseServerSnapshot - extracts raw histogram and queue depth", () => {
   assert.strictEqual(snap?.queueDepthMax, 7);
 });
 
+test("parseServerSnapshot - extracts permanent delivery failures", () => {
+  const snap = parseServerSnapshot({
+    scopeMetrics: [{
+      metrics: [{
+        name: "activitypub.delivery.permanent_failure",
+        dataPointType: "sum",
+        dataPoints: [{ value: 3 }, { value: 2 }],
+      }],
+    }],
+  });
+  assert.strictEqual(snap?.deliveryPermanentFailures, 5);
+});
+
 test("parseServerSnapshot - empty (non-null) when no relevant instruments", () => {
   // A parseable-but-empty snapshot yields an empty snapshot, not null, so a
   // successful baseline fetch is distinguishable from an unavailable one.
@@ -155,15 +168,18 @@ test("diffSnapshots - subtracts the baseline bucket counts", () => {
   const baseline: ServerSnapshot = {
     signature: { boundaries: [5, 10, 25], counts: [4, 6, 10, 0] },
     queueDepthMax: 2,
+    deliveryPermanentFailures: 2,
   };
   const end: ServerSnapshot = {
     signature: { boundaries: [5, 10, 25], counts: [10, 16, 30, 4] },
     queueDepthMax: 9,
+    deliveryPermanentFailures: 5,
   };
   const diff = diffSnapshots(baseline, end);
   assert.deepEqual(diff?.signature?.counts, [6, 10, 20, 4]);
   // The queue depth is a gauge, so the end value is kept (not subtracted).
   assert.strictEqual(diff?.queueDepthMax, 9);
+  assert.strictEqual(diff?.deliveryPermanentFailures, 3);
 });
 
 test("diffSnapshots - an empty baseline keeps the full end histogram", () => {

@@ -423,31 +423,31 @@ scenarios:
   assert.match(message, /advertise-host/);
 });
 
-test("runBench - failure without inbound fault needs no advertise host", async () => {
+test("runBench - remote failure needs advertised sink reachability", async () => {
   const file = await writeSuite(`version: 1
 target: http://10.10.0.5:8000
 scenarios:
   - name: remote-404
     type: failure
     fault: remote-404
+    sender: alice
     load: { rate: 1/s }
     duration: 1ms
 `);
   let code = -1;
-  let output = "";
+  let message = "";
   await runBench(command({ scenario: file }), {
     exit: (c) => {
       code = c;
     },
-    writeOutput: (c) => {
-      output = c;
-      return Promise.resolve();
+    writeOutput: () => Promise.resolve(),
+    log: (m) => {
+      message = m;
     },
-    log: () => {},
     fetch: () => Promise.reject(new Error("offline")),
   });
-  assert.strictEqual(code, 0);
-  assert.strictEqual(JSON.parse(output).scenarios[0].requests.successRate, 1);
+  assert.strictEqual(code, 2);
+  assert.match(message, /advertise-host/);
 });
 
 test("runBench - missing-actor failure needs no advertise host", async () => {

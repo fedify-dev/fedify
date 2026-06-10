@@ -177,7 +177,7 @@ function buildActivity(context: RunContext, id: URL): Record<string, unknown> {
   };
 }
 
-async function spawnSinkServer(options: {
+export async function spawnSinkServer(options: {
   readonly followers: number;
   readonly rawBehavior: unknown;
   readonly advertiseHost?: string;

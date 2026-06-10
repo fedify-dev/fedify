@@ -702,7 +702,8 @@ function scenarioNeedsReachableLocalServer(
 ): boolean {
   if (scenario.type === "fanout") return true;
   if (scenario.type === "failure") {
-    return scenario.faults.includes("invalid-signature");
+    return scenario.faults.includes("invalid-signature") ||
+      scenario.faults.some(isRemoteFailureFault);
   }
   if (scenario.type === "mixed") {
     if (seen.has(scenario.name)) return false;
@@ -728,4 +729,9 @@ function mixedChildrenOf(
 
 function isInboundFailureFault(fault: string): boolean {
   return fault === "invalid-signature" || fault === "missing-actor";
+}
+
+function isRemoteFailureFault(fault: string): boolean {
+  return fault === "remote-404" || fault === "remote-410" ||
+    fault === "slow-inbox" || fault === "network-error";
 }

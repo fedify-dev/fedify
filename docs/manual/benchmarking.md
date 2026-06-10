@@ -187,8 +187,11 @@ The runnable scenario types cover the main benchmark surfaces:
     scenario type, `successRate` means “the expected failure was observed,”
     not “the HTTP request succeeded.”  The `invalid-signature` and
     `missing-actor` faults send malformed signed deliveries to a recipient
-    inbox; `remote-404`, `remote-410`, `slow-inbox`, and `network-error` model
-    controlled remote failure outcomes.
+    inbox.  The `remote-404`, `remote-410`, `slow-inbox`, and `network-error`
+    faults post to the benchmark trigger endpoint with `sender`, so the target
+    uses its normal outbound delivery path against controlled benchmark-owned
+    sink inboxes.  Like `fanout`, these remote failure faults need
+    `--advertise-host` for a non-loopback target.
  -  `mixed`: runs referenced child scenarios concurrently, splitting the
     `mixed` scenario's load by each entry's `weight`.  The referenced
     scenarios are named scenarios in the same suite and are still run as normal
