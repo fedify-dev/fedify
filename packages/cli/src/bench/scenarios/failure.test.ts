@@ -3,6 +3,7 @@ import test from "node:test";
 import { serve } from "srvx";
 import { buildFleet } from "../actor/fleet.ts";
 import { getContextLoader, getDocumentLoader } from "../../docloader.ts";
+import type { Clock } from "../load/clock.ts";
 import { normalizeSuite } from "../scenario/normalize.ts";
 import type { Suite } from "../scenario/types.ts";
 import { spawnSyntheticServer } from "../server/synthetic.ts";
@@ -207,10 +208,18 @@ test("failureRunner - discovers inbound failure inboxes once", async () => {
         type: "failure",
         fault: "invalid-signature",
         recipient: new URL("/users/alice", target).href,
-        load: { concurrency: 1 },
-        duration: "80ms",
+        load: { rate: 100 },
+        duration: "30ms",
       }],
     }).scenarios[0];
+    let now = 0;
+    const clock: Clock = {
+      now: () => now,
+      sleepUntil: (timeMs) => {
+        now = Math.max(now, timeMs);
+        return Promise.resolve();
+      },
+    };
     const measurement = await failureRunner.run({
       scenario,
       target,
@@ -230,9 +239,10 @@ test("failureRunner - discovers inbound failure inboxes once", async () => {
         return Promise.resolve(new Response("not found", { status: 404 }));
       },
       assertDestinationAllowed: () => {},
+      clock,
     });
 
-    assert.ok(measurement.requests.total > 1);
+    assert.strictEqual(measurement.requests.total, 3);
     assert.strictEqual(measurement.requests.successRate, 1);
     assert.strictEqual(actorGets, 1);
   } finally {
