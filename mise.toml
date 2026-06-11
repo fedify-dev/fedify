@@ -14,14 +14,16 @@ linux-arm64 = "hongdown-*-aarch64-unknown-linux-musl.tar.bz2"
 # Installation and setup
 [tasks.install]
 description = "Install all dependencies and set up the development environment"
-depends = ["codegen", "install:deno", "install:pnpm"]
+depends = ["install:deno", "install:pnpm"]
 
 [tasks."install:deno"]
 description = "Install all dependencies and set up for Deno"
+depends = ["codegen"]
 run = "deno run --allow-read --allow-env --allow-run scripts/install.ts"
 
 [tasks."install:pnpm"]
-description = "Install all dependencies and set up for Deno"
+description = "Install all dependencies and set up for pnpm"
+depends = ["codegen"]
 run = "pnpm install"
 
 
