@@ -24,7 +24,7 @@ export const HTTP_SIGNATURE_STANDARDS: readonly SignatureStandard[] = [
   "rfc9421",
 ];
 
-/** A scenario type.  Only `inbox` and `webfinger` have runners so far. */
+/** A scenario type.  `collection` is reserved but not executable so far. */
 export type ScenarioType =
   | "inbox"
   | "webfinger"

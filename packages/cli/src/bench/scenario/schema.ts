@@ -7,8 +7,8 @@
  *
  * The schema expresses every scenario type discussed for `fedify bench`
  * (`inbox`, `webfinger`, `actor`, `object`, `fanout`, `collection`, `failure`,
- * `mixed`), even though only `inbox` and `webfinger` have runners in this
- * version.  Three cross-field rules are enforced here rather than in code:
+ * `mixed`).  All but `collection` have runners in this version.  Three
+ * cross-field rules are enforced here rather than in code:
  *
  *  -  exactly one HTTP request signature scheme per actor group
  *     (`contains` + `minContains`/`maxContains`);
