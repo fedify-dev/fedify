@@ -390,6 +390,9 @@
           "type": "integer",
           "minimum": 1
         },
+        "sinkBase": {
+          "type": "string"
+        },
         "trigger": {
           "type": "object"
         },

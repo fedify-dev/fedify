@@ -16,7 +16,7 @@ import {
 import type { SyntheticActor } from "../server/synthetic.ts";
 import { createActivityIdMinter } from "../signing/activity-id.ts";
 import { signInboxDelivery } from "../signing/signer.ts";
-import { spawnSinkServer } from "./fanout.ts";
+import { resolveSinkBase, spawnSinkServer } from "./fanout.ts";
 import {
   loadPlanOf,
   measuredWindowMs,
@@ -84,6 +84,9 @@ export const failureRunner: ScenarioRunner = {
         `Scenario "${scenario.name}": remote failure faults require a ` +
           "sender.",
       );
+    }
+    if (faults.some(isRemoteFault)) {
+      resolveSinkBase(scenario.name, scenario.raw.sinkBase);
     }
   },
 
@@ -191,6 +194,7 @@ async function resolveRemoteFailureTargets(
         followers: 1,
         rawBehavior: remoteSinkBehavior(fault),
         advertiseHost: context.advertiseHost,
+        sinkBase: context.scenario.raw.sinkBase,
       });
       const recipient = sink.recipients[0];
       if (fault === "network-error") {

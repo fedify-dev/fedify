@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { serve } from "srvx";
 import { getContextLoader, getDocumentLoader } from "../../docloader.ts";
 import { normalizeSuite } from "../scenario/normalize.ts";
 import type { Suite } from "../scenario/types.ts";
@@ -77,6 +78,34 @@ test("fanoutRunner.validate - requires enough followers for fanout queue", () =>
     }],
   }).scenarios[0];
   assert.throws(() => fanoutRunner.validate?.(scenario), /at least 5/);
+});
+
+test("fanoutRunner.validate - rejects invalid sinkBase URLs", () => {
+  for (
+    const sinkBase of [
+      "http://target.test/",
+      "https://target.test:8443/",
+      "http://user:pass@target.test:9090/",
+      "http://target.test:9090/sinks/",
+    ]
+  ) {
+    const scenario = normalizeSuite({
+      version: 1,
+      target: "http://target.test/",
+      scenarios: [{
+        name: "fanout",
+        type: "fanout",
+        sender: "alice",
+        followers: 5,
+        sinkBase,
+      }],
+    }).scenarios[0];
+
+    assert.throws(
+      () => fanoutRunner.validate?.(scenario),
+      /sinkBase must be an http URL/,
+    );
+  }
 });
 
 test("fanoutRunner - serializes overlapping trigger drains", async () => {
@@ -233,6 +262,62 @@ test("fanoutRunner - tolerates transient drain stats failures", async () => {
   assert.ok(statsCalls >= 3);
 });
 
+test("fanoutRunner - uses configured sink base for recipients", async () => {
+  const target = new URL("http://target.test/");
+  const sinkBase = `http://127.0.0.1:${await reservePort()}/`;
+  let statsCalls = 0;
+  let recipientInboxes: string[] = [];
+  const scenario = normalizeSuite({
+    version: 1,
+    target: target.href,
+    scenarios: [{
+      name: "fanout",
+      type: "fanout",
+      sender: "alice",
+      followers: 5,
+      sinkBase,
+      load: { concurrency: 1 },
+      duration: "40ms",
+      queueDrainTimeout: "1s",
+    }],
+  }).scenarios[0];
+
+  const measurement = await fanoutRunner.run({
+    scenario,
+    target,
+    documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+    contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+    allowPrivateAddress: true,
+    fleet: null,
+    fetch: (input, init) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.pathname === "/.well-known/fedify/bench/stats") {
+        statsCalls++;
+        const drained = statsCalls > 1;
+        return Promise.resolve(json(statsSnapshot({
+          enqueued: drained ? 6 : 0,
+          completed: drained ? 6 : 0,
+          failed: 0,
+        })));
+      }
+      if (url.pathname === "/.well-known/fedify/bench/trigger") {
+        const body = JSON.parse(String(init?.body));
+        recipientInboxes = body.recipients.map((
+          recipient: Record<string, unknown>,
+        ) => recipient.inbox);
+        return Promise.resolve(json({ version: 1 }, 202));
+      }
+      return Promise.resolve(new Response("unexpected", { status: 500 }));
+    },
+  });
+
+  assert.ok(measurement.requests.total > 0);
+  assert.deepStrictEqual(
+    recipientInboxes,
+    Array.from({ length: 5 }, (_, i) => new URL(`/inbox/${i}`, sinkBase).href),
+  );
+});
+
 test("fanoutRunner - omits queue drain metrics without drain samples", async () => {
   const target = new URL("http://target.test/");
   const scenario = normalizeSuite({
@@ -282,6 +367,19 @@ function json(body: unknown, status = 200): Response {
     status,
     headers: { "content-type": "application/json" },
   });
+}
+
+async function reservePort(): Promise<number> {
+  const server = serve({
+    port: 0,
+    hostname: "127.0.0.1",
+    silent: true,
+    fetch: () => new Response("reserved"),
+  });
+  await server.ready();
+  const port = Number(new URL(server.url!).port);
+  await server.close(true);
+  return port;
 }
 
 function statsSnapshot(counts: {

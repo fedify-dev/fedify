@@ -297,12 +297,16 @@ To be released.
     drive the benchmark trigger endpoint and wait for queue task drain; failure
     scenarios report expected fault outcomes as successes; and mixed scenarios
     run weighted child scenario blends.  The `collection` scenario type remains
-    reserved but not executable.  [[#744], [#785], [#801]]
+    reserved but not executable.  Fanout and remote failure scenarios can set
+    `sinkBase` to generate deterministic benchmark sink inbox URLs for targets
+    that keep `triggerSinks` allowlisting enabled.  [[#744], [#785], [#801],
+    [#802]]
 
 [#783]: https://github.com/fedify-dev/fedify/issues/783
 [#784]: https://github.com/fedify-dev/fedify/issues/784
 [#785]: https://github.com/fedify-dev/fedify/issues/785
 [#801]: https://github.com/fedify-dev/fedify/pull/801
+[#802]: https://github.com/fedify-dev/fedify/pull/802
 
 ### @fedify/fixture
 

@@ -29,6 +29,19 @@ async function writeSuite(content: string): Promise<string> {
   return path;
 }
 
+async function reservePort(): Promise<number> {
+  const server = serve({
+    port: 0,
+    hostname: "127.0.0.1",
+    silent: true,
+    fetch: () => new Response("reserved"),
+  });
+  await server.ready();
+  const port = Number(new URL(server.url!).port);
+  await server.close(true);
+  return port;
+}
+
 function resolvePublicHost(_hostname: string): Promise<readonly string[]> {
   return Promise.resolve(["93.184.216.34"]);
 }
@@ -448,6 +461,72 @@ scenarios:
   });
   assert.strictEqual(code, 2);
   assert.match(message, /advertise-host/);
+});
+
+test("runBench - remote failure with sinkBase needs no advertise host", async () => {
+  const sinkBase = `http://127.0.0.1:${await reservePort()}/`;
+  const file = await writeSuite(`version: 1
+target: http://10.10.0.5:8000
+scenarios:
+  - name: remote-404
+    type: failure
+    fault: remote-404
+    sender: alice
+    sinkBase: "${sinkBase}"
+    load: { concurrency: 1 }
+    duration: 25ms
+    queueDrainTimeout: 1s
+`);
+  let code = -1;
+  let message = "";
+  let triggerCalls = 0;
+  await runBench(command({ scenario: file }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: () => Promise.resolve(),
+    log: (m) => {
+      message = m;
+    },
+    fetch: (input) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.pathname === "/.well-known/fedify/bench/stats") {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              version: 1,
+              source: "server",
+              scopeMetrics: [{
+                metrics: [
+                  sumMetric("fedify.queue.task.enqueued", triggerCalls),
+                  sumMetric("fedify.queue.task.completed", triggerCalls),
+                  sumMetric("fedify.queue.task.failed", 0),
+                  sumMetric(
+                    "activitypub.delivery.permanent_failure",
+                    triggerCalls,
+                  ),
+                ],
+              }],
+            }),
+            { headers: { "content-type": "application/json" } },
+          ),
+        );
+      }
+      if (url.pathname === "/.well-known/fedify/bench/trigger") {
+        triggerCalls++;
+        return Promise.resolve(
+          new Response(JSON.stringify({ version: 1 }), {
+            status: 202,
+            headers: { "content-type": "application/json" },
+          }),
+        );
+      }
+      return Promise.resolve(new Response("unexpected", { status: 500 }));
+    },
+  });
+
+  assert.strictEqual(code, 0, message);
+  assert.ok(triggerCalls > 0);
 });
 
 test("runBench - missing-actor failure needs no advertise host", async () => {
@@ -984,3 +1063,11 @@ scenarios:
   assert.strictEqual(code, 2);
   assert.match(message, /Invalid/);
 });
+
+function sumMetric(name: string, value: number): Record<string, unknown> {
+  return {
+    name,
+    dataPointType: "sum",
+    dataPoints: [{ value }],
+  };
+}

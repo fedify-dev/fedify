@@ -132,6 +132,7 @@ export interface Scenario {
   // fanout
   readonly sender?: string;
   readonly followers?: number;
+  readonly sinkBase?: string;
   readonly trigger?: Record<string, unknown>;
   readonly sinkBehavior?: Record<string, unknown>;
   readonly queueDrainTimeout?: string;

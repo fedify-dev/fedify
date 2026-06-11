@@ -700,10 +700,11 @@ function scenarioNeedsReachableLocalServer(
   scenarios: readonly ResolvedScenario[],
   seen: ReadonlySet<string> = new Set(),
 ): boolean {
-  if (scenario.type === "fanout") return true;
+  if (scenario.type === "fanout") return scenario.raw.sinkBase == null;
   if (scenario.type === "failure") {
     return scenario.faults.includes("invalid-signature") ||
-      scenario.faults.some(isRemoteFailureFault);
+      (scenario.raw.sinkBase == null &&
+        scenario.faults.some(isRemoteFailureFault));
   }
   if (scenario.type === "mixed") {
     if (seen.has(scenario.name)) return false;

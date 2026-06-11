@@ -44,6 +44,7 @@ export const fanoutRunner: ScenarioRunner = {
           "exercise Fedify's fanout queue.",
       );
     }
+    resolveSinkBase(scenario.name, scenario.raw.sinkBase);
   },
 
   async run(context: RunContext) {
@@ -57,6 +58,7 @@ export const fanoutRunner: ScenarioRunner = {
       followers,
       rawBehavior: context.scenario.raw.sinkBehavior,
       advertiseHost: context.advertiseHost,
+      sinkBase: context.scenario.raw.sinkBase,
     });
     const minter = createActivityIdMinter(context.target);
     const drainHistogram = new LogLinearHistogram();
@@ -181,17 +183,19 @@ export async function spawnSinkServer(options: {
   readonly followers: number;
   readonly rawBehavior: unknown;
   readonly advertiseHost?: string;
+  readonly sinkBase?: string;
 }): Promise<{
   readonly recipients: readonly Record<string, unknown>[];
   readonly close: () => Promise<void>;
 }> {
+  const sinkBase = resolveSinkBase("benchmark sink", options.sinkBase);
   const advertised = options.advertiseHost == null
     ? null
     : resolveAdvertiseHost(options.advertiseHost);
   const behavior = parseSinkBehavior(options.rawBehavior);
   const server = serve({
-    port: 0,
-    hostname: advertised?.bindHost ?? "127.0.0.1",
+    port: sinkBase?.port ?? 0,
+    hostname: sinkBase?.bindHost ?? advertised?.bindHost ?? "127.0.0.1",
     silent: true,
     async fetch(request: Request): Promise<Response> {
       if (new URL(request.url).pathname.startsWith("/inbox/")) {
@@ -208,9 +212,10 @@ export async function spawnSinkServer(options: {
   });
   await server.ready();
   const bound = new URL(server.url!);
-  const base = advertised == null
-    ? bound
-    : new URL(`http://${advertised.urlHost}:${bound.port}/`);
+  const base = sinkBase?.base ??
+    (advertised == null
+      ? bound
+      : new URL(`http://${advertised.urlHost}:${bound.port}/`));
   const recipients = Array.from({ length: options.followers }, (_, i) => ({
     "@context": "https://www.w3.org/ns/activitystreams",
     type: "Service",
@@ -220,6 +225,53 @@ export async function spawnSinkServer(options: {
   return {
     recipients,
     close: () => server.close(true),
+  };
+}
+
+interface SinkBase {
+  readonly base: URL;
+  readonly bindHost: string;
+  readonly port: number;
+}
+
+export function resolveSinkBase(
+  scenarioName: string,
+  value: string | undefined,
+): SinkBase | null {
+  if (value == null) return null;
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error(
+      `Scenario "${scenarioName}": sinkBase must be an http URL with an ` +
+        `explicit port; got ${JSON.stringify(value)}.`,
+    );
+  }
+  const port = Number(url.port);
+  if (
+    url.protocol !== "http:" ||
+    url.hostname === "" ||
+    url.username !== "" ||
+    url.password !== "" ||
+    url.port === "" ||
+    !Number.isInteger(port) ||
+    port < 1 ||
+    url.pathname !== "/" ||
+    url.search !== "" ||
+    url.hash !== ""
+  ) {
+    throw new Error(
+      `Scenario "${scenarioName}": sinkBase must be an http URL with a ` +
+        "host, an explicit non-zero port, no credentials, and no path, " +
+        `query, or fragment; got ${JSON.stringify(value)}.`,
+    );
+  }
+  const advertised = resolveAdvertiseHost(url.hostname);
+  return {
+    base: new URL(`http://${advertised.urlHost}:${url.port}/`),
+    bindHost: advertised.bindHost,
+    port,
   };
 }
 

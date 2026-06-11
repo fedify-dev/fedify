@@ -288,6 +288,7 @@ export const scenarioSchemaV1 = {
         // fanout
         sender: { type: "string" },
         followers: { type: "integer", minimum: 1 },
+        sinkBase: { type: "string" },
         trigger: { type: "object" },
         sinkBehavior: { type: "object" },
         queueDrainTimeout: { $ref: "#/$defs/duration" },
