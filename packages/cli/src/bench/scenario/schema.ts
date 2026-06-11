@@ -402,6 +402,31 @@ export const scenarioSchemaV2 = {
               properties: condition.then.properties,
             },
           }
+          : condition.if.properties.type.const === "object"
+          ? {
+            if: condition.if,
+            then: {
+              required: condition.then.required,
+              allOf: [
+                {
+                  if: {
+                    required: ["authenticated"],
+                    properties: { authenticated: { const: true } },
+                  },
+                  then: {
+                    properties: {
+                      expect: { propertyNames: { enum: INBOX_METRICS } },
+                    },
+                  },
+                  else: {
+                    properties: {
+                      expect: { propertyNames: { enum: READ_METRICS } },
+                    },
+                  },
+                },
+              ],
+            },
+          }
           : condition
       ),
     },

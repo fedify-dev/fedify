@@ -528,24 +528,63 @@
             "required": [
               "source"
             ],
-            "properties": {
-              "expect": {
-                "propertyNames": {
-                  "enum": [
-                    "successRate",
-                    "throughputPerSec",
-                    "errors.total",
-                    "errors.4xx",
-                    "errors.5xx",
-                    "latency.p50",
-                    "latency.p95",
-                    "latency.p99",
-                    "latency.mean",
-                    "latency.max"
-                  ]
+            "allOf": [
+              {
+                "if": {
+                  "required": [
+                    "authenticated"
+                  ],
+                  "properties": {
+                    "authenticated": {
+                      "const": true
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "expect": {
+                      "propertyNames": {
+                        "enum": [
+                          "successRate",
+                          "throughputPerSec",
+                          "errors.total",
+                          "errors.4xx",
+                          "errors.5xx",
+                          "latency.p50",
+                          "latency.p95",
+                          "latency.p99",
+                          "latency.mean",
+                          "latency.max",
+                          "signatureVerification.p50",
+                          "signatureVerification.p95",
+                          "signatureVerification.p99"
+                        ]
+                      }
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "expect": {
+                      "propertyNames": {
+                        "enum": [
+                          "successRate",
+                          "throughputPerSec",
+                          "errors.total",
+                          "errors.4xx",
+                          "errors.5xx",
+                          "latency.p50",
+                          "latency.p95",
+                          "latency.p99",
+                          "latency.mean",
+                          "latency.max"
+                        ]
+                      }
+                    }
+                  }
                 }
               }
-            }
+            ]
           }
         },
         {

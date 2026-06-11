@@ -1,0 +1,9 @@
+# signatureVerification.* is only valid for authenticated object scenarios.
+version: 1
+target: http://localhost:3000
+scenarios:
+  - name: object-fetch
+    type: object
+    source: http://localhost:3000/objects/1
+    expect:
+      signatureVerification.p95: "< 10ms"
