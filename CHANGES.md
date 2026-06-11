@@ -370,7 +370,7 @@ Released on June 25, 2026.
         `Federation.startQueue()` now accepts `queue: "task"` to run
         a task-only worker.
 
-    [[#206], [#797] by ChanHaeng Lee]
+    [[#206], [#797], [#803] by ChanHaeng Lee]
 
 [Standard Schema]: https://standardschema.dev/
 [#206]: https://github.com/fedify-dev/fedify/issues/206
@@ -405,6 +405,7 @@ Released on June 25, 2026.
 [#787]: https://github.com/fedify-dev/fedify/pull/787
 [#797]: https://github.com/fedify-dev/fedify/issues/797
 [#800]: https://github.com/fedify-dev/fedify/pull/800
+[#803]: https://github.com/fedify-dev/fedify/pull/803
 
 ### @fedify/cli
 
