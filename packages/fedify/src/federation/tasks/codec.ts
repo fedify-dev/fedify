@@ -40,29 +40,31 @@ export default class TaskCodec {
 
   // The explicit return type breaks the inference cycle between #revive and
   // #classRevivers (whose `set` callbacks call back into #revive).
-  #revive = (seen: Seen): Revive => async (node: unknown): Promise<unknown> =>
-    node === null || typeof node !== "object"
-      ? node
-      : seen.has(node)
-      ? seen.get(node)
-      : (await Array.fromAsync(
-        this.#classRevivers.map(this.#reviveByClass(seen)),
-        (f) => f(node),
-      )).find(Boolean) ??
-        node; // Date / URL / RegExp and the like — devalue handled them
-
-  #reviveByClass =
-    (seen: Seen) =>
-    ([filter, init, set]: ClassReviver) =>
-    async (node: object): Promise<Revived | undefined> => {
-      if (!filter(node)) return;
-      // @ts-ignore tsc faults
-      const out: Revived = await init(node);
-      seen.set(node, out);
-      // @ts-ignore tsc faults
-      await set(this.#revive(seen), node, out);
-      return out;
-    };
+  //
+  // Every node walked here belongs to the throwaway tree that devalue's
+  // `parse` just built from the wire string, not to any caller-shared graph,
+  // so the revived containers are always fresh: there is nothing to clone
+  // lazily and no external identity to preserve.  A recursion-depth cap is
+  // likewise unnecessary: this pass recurses with `await`, which unwinds the
+  // synchronous stack at each level, and the binding limit on nesting is
+  // devalue's own synchronous, recursive `stringify`/`parse`, which would
+  // overflow long before this pass — capping depth here would add nothing.
+  #revive = (seen: Seen): Revive => async (node: unknown): Promise<unknown> => {
+    if (node === null || typeof node !== "object") return node;
+    if (seen.has(node)) return seen.get(node);
+    // The class filters are mutually exclusive, so find the single matching
+    // reviver instead of running all of them against every node.
+    const reviver = this.#classRevivers.find(([filter]) => filter(node));
+    // Date / URL / RegExp and the like — devalue already handled them.
+    if (reviver == null) return node;
+    const [, init, set] = reviver;
+    // @ts-ignore tsc faults
+    const out: Revived = await init(node);
+    seen.set(node, out);
+    // @ts-ignore tsc faults
+    await set(this.#revive(seen), node, out);
+    return out;
+  };
 
   #classRevivers = [
     [
