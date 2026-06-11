@@ -169,6 +169,33 @@ test("defineTask()", async (t) => {
     );
   });
 
+  await t.step("accepts names that collide with Object.prototype", () => {
+    const federation = createFederation<void>({
+      ...baseOptions,
+      queue: { task: new MockQueue() },
+    }) as FederationImpl<void>;
+    // These names exist on Object.prototype; a plain-object registry would
+    // mistake them for already-defined tasks (`name in {}`) and would return
+    // an inherited method on lookup.
+    for (const name of ["constructor", "toString", "hasOwnProperty"]) {
+      const task = federation.defineTask(name, {
+        schema: stringSchema,
+        handler: () => {},
+      });
+      strictEqual(task.name, name);
+      strictEqual(federation.taskDefinitions.get(name)?.name, name);
+    }
+    // A genuine duplicate still throws.
+    throws(
+      () =>
+        federation.defineTask("toString", {
+          schema: stringSchema,
+          handler: () => {},
+        }),
+      { name: "TypeError", message: /already defined/ },
+    );
+  });
+
   await t.step("build() clones the task registry", async () => {
     const builder = createFederationBuilder<void>();
     builder.defineTask("first", {
@@ -187,11 +214,11 @@ test("defineTask()", async (t) => {
       ...baseOptions,
       queue: { task: new MockQueue() },
     }) as FederationImpl<void>;
-    deepStrictEqual(Object.keys(f1.taskDefinitions), ["first"]);
-    deepStrictEqual(Object.keys(f2.taskDefinitions), ["first", "second"]);
+    deepStrictEqual([...f1.taskDefinitions.keys()], ["first"]);
+    deepStrictEqual([...f2.taskDefinitions.keys()], ["first", "second"]);
     // Defining on a built federation does not leak back into the builder:
     f1.defineTask("third", { schema: stringSchema, handler: () => {} });
-    deepStrictEqual(Object.keys(f2.taskDefinitions), ["first", "second"]);
+    deepStrictEqual([...f2.taskDefinitions.keys()], ["first", "second"]);
   });
 });
 

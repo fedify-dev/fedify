@@ -188,7 +188,7 @@ export class FederationBuilderImpl<TContextData>
       TContextData
     >
   >;
-  taskDefinitions: Record<string, TaskDefinitionInternal<TContextData>>;
+  taskDefinitions: Map<string, TaskDefinitionInternal<TContextData>>;
 
   /**
    * Symbol registry for unique identification of unnamed symbols.
@@ -201,7 +201,7 @@ export class FederationBuilderImpl<TContextData>
     this.objectTypeIds = {};
     this.collectionCallbacks = {};
     this.collectionTypeIds = {};
-    this.taskDefinitions = {};
+    this.taskDefinitions = new Map();
   }
 
   /**
@@ -267,7 +267,7 @@ export class FederationBuilderImpl<TContextData>
     f.unverifiedActivityHandler = this.unverifiedActivityHandler;
     f.outboxPermanentFailureHandler = this.outboxPermanentFailureHandler;
     f.idempotencyStrategy = this.idempotencyStrategy;
-    f.taskDefinitions = { ...this.taskDefinitions };
+    f.taskDefinitions = new Map(this.taskDefinitions);
     return f;
   }
 
@@ -607,10 +607,10 @@ export class FederationBuilderImpl<TContextData>
     name: string,
     options: TaskDefinitionOptions<TContextData, TSchema>,
   ): TaskDefinition<TContextData, StandardSchemaV1.InferOutput<TSchema>> {
-    if (name in this.taskDefinitions) {
+    if (this.taskDefinitions.has(name)) {
       throw new TypeError(`Task ${JSON.stringify(name)} is already defined.`);
     }
-    this.taskDefinitions[name] = {
+    this.taskDefinitions.set(name, {
       name,
       schema: options.schema,
       handler: options.handler as TaskHandler<TContextData, unknown>,
@@ -618,7 +618,7 @@ export class FederationBuilderImpl<TContextData>
         .onError as TaskDefinitionInternal<TContextData>["onError"],
       retryPolicy: options.retryPolicy,
       queue: options.queue,
-    };
+    });
     return { name, schema: options.schema };
   }
 
