@@ -10,6 +10,7 @@ import type { ObjectSource } from "../scenario/types.ts";
 
 const ACTIVITY_JSON_ACCEPT = "application/activity+json, application/ld+json";
 const WEBFINGER_ACCEPT = "application/jrd+json, application/json";
+const MAX_COLLECTION_CRAWL_PAGES = 100;
 const ACTIVITY_WRAPPER_TYPES = new Set([
   "Accept",
   "Add",
@@ -135,12 +136,14 @@ async function* crawlCollection(
 ): AsyncGenerator<URL> {
   let next: URL | null = start;
   let remaining = options.limit;
+  let pages = 0;
   const visited = new Set<string>();
-  while (next != null && remaining > 0) {
+  while (next != null && remaining > 0 && pages < MAX_COLLECTION_CRAWL_PAGES) {
     if (visited.has(next.href)) return;
     visited.add(next.href);
     await options.assertReadDestinationAllowed?.(next);
     const page = await fetchJson(next, options.fetch);
+    pages++;
     const items = arrayProperty(page, "orderedItems") ??
       arrayProperty(page, "items") ?? [];
     for (const item of items) {

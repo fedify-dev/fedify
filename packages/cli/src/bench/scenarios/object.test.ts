@@ -598,6 +598,64 @@ test("objectRunner - resolves relative URLs while crawling object sources", asyn
   );
 });
 
+test("objectRunner - caps object source crawl pages", async () => {
+  const scenario = normalizeSuite({
+    version: 1,
+    target: "http://target.test/",
+    scenarios: [{
+      name: "object-crawl",
+      type: "object",
+      source: {
+        seed: "http://target.test/users/alice",
+        collection: "outbox",
+        limit: 1,
+        type: "Note",
+      },
+      load: { concurrency: 1 },
+      duration: "25ms",
+    }],
+  }).scenarios[0];
+  let pageFetches = 0;
+
+  await assert.rejects(
+    async () =>
+      await objectRunner.run({
+        scenario,
+        target: new URL("http://target.test/"),
+        documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+        contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+        allowPrivateAddress: true,
+        fleet: null,
+        fetch: (input) => {
+          const request = input instanceof Request ? input : new Request(input);
+          const url = new URL(request.url);
+          if (url.pathname === "/users/alice") {
+            return Promise.resolve(json({
+              id: url.href,
+              outbox: "http://target.test/outbox?page=0",
+            }));
+          }
+          if (url.pathname === "/outbox") {
+            pageFetches++;
+            const page = Number(url.searchParams.get("page") ?? 0);
+            return Promise.resolve(json({
+              id: url.href,
+              orderedItems: [{
+                type: "Article",
+                id: `http://target.test/articles/${page}`,
+              }],
+              next: `?page=${page + 1}`,
+            }));
+          }
+          return Promise.resolve(new Response("not found", { status: 404 }));
+        },
+      }),
+    /did not resolve any URLs/,
+  );
+
+  assert.strictEqual(pageFetches, 100);
+});
+
 test("objectRunner.validate - rejects malformed object source URLs", () => {
   const explicit = normalizeSuite({
     version: 1,
