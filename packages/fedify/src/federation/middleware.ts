@@ -3663,6 +3663,16 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     items: readonly TData[],
     options: TaskEnqueueOptions,
   ): Promise<void> {
+    // Fail fast on a handle from another federation instance; without this
+    // check the message would enqueue fine and be dropped by the worker.
+    if (!this.federation.taskDefinitions.has(task.name)) {
+      throw new TypeError(
+        `Task ${
+          JSON.stringify(task.name)
+        } is not defined on this federation; ` +
+          "pass a handle returned by its defineTask().",
+      );
+    }
     const queue = this.federation.resolveTaskQueue(task.name);
     if (queue == null) {
       throw new TypeError(
