@@ -61,12 +61,14 @@ export async function runReadLoad(
   }
   for (const url of options.urls) {
     assertBareHttpUrl(context.scenario.name, "read URL", url);
+  }
+  await Promise.all(options.urls.map(async (url) => {
     if (options.authenticated) {
       await context.assertDestinationAllowed?.(url);
     } else {
       await context.assertReadDestinationAllowed?.(url);
     }
-  }
+  }));
 
   function unsignedRequest(index: number): Request {
     const url = options.urls[index % options.urls.length];
