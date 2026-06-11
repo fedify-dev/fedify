@@ -463,6 +463,32 @@ scenarios:
   assert.match(message, /advertise-host/);
 });
 
+test("runBench - default failure fault needs advertised sink reachability", async () => {
+  const file = await writeSuite(`version: 1
+target: http://10.10.0.5:8000
+scenarios:
+  - name: default-failure
+    type: failure
+    sender: alice
+    load: { rate: 1/s }
+    duration: 1ms
+`);
+  let code = -1;
+  let message = "";
+  await runBench(command({ scenario: file }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: () => Promise.resolve(),
+    log: (m) => {
+      message = m;
+    },
+    fetch: () => Promise.reject(new Error("offline")),
+  });
+  assert.strictEqual(code, 2);
+  assert.match(message, /advertise-host/);
+});
+
 test("runBench - remote failure with sinkBase needs no advertise host", async () => {
   const sinkBase = `http://127.0.0.1:${await reservePort()}/`;
   const file = await writeSuite(`version: 1

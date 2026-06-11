@@ -1,6 +1,0 @@
-# A failure scenario must declare at least one fault.
-version: 1
-target: http://localhost:3000
-scenarios:
-  - name: broken
-    type: failure

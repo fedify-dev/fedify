@@ -619,9 +619,6 @@
             }
           },
           "then": {
-            "required": [
-              "fault"
-            ],
             "properties": {
               "expect": {
                 "propertyNames": {

@@ -394,6 +394,16 @@ export const scenarioSchemaV2 = {
         ...scenarioSchemaV1.$defs.scenario.properties,
         sinkBase: { type: "string" },
       },
+      allOf: scenarioSchemaV1.$defs.scenario.allOf.map((condition) =>
+        condition.if.properties.type.const === "failure"
+          ? {
+            if: condition.if,
+            then: {
+              properties: condition.then.properties,
+            },
+          }
+          : condition
+      ),
     },
   },
 } as const;

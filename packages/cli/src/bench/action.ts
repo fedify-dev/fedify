@@ -685,7 +685,7 @@ function scenarioNeedsSyntheticServer(
     case "object":
       return scenario.authenticated;
     case "failure":
-      return scenario.faults.some(isInboundFailureFault);
+      return failureFaultsOf(scenario).some(isInboundFailureFault);
     case "mixed":
       return mixedChildrenOf(scenario, scenarios).some((child) =>
         scenarioNeedsSyntheticServer(child, scenarios, nextSeen)
@@ -702,9 +702,10 @@ function scenarioNeedsReachableLocalServer(
 ): boolean {
   if (scenario.type === "fanout") return scenario.raw.sinkBase == null;
   if (scenario.type === "failure") {
-    return scenario.faults.includes("invalid-signature") ||
+    const faults = failureFaultsOf(scenario);
+    return faults.includes("invalid-signature") ||
       (scenario.raw.sinkBase == null &&
-        scenario.faults.some(isRemoteFailureFault));
+        faults.some(isRemoteFailureFault));
   }
   if (scenario.type === "mixed") {
     if (seen.has(scenario.name)) return false;
@@ -714,6 +715,10 @@ function scenarioNeedsReachableLocalServer(
     );
   }
   return scenarioNeedsSyntheticServer(scenario, scenarios, seen);
+}
+
+function failureFaultsOf(scenario: ResolvedScenario): readonly string[] {
+  return scenario.faults.length < 1 ? ["remote-404"] : scenario.faults;
 }
 
 function mixedChildrenOf(
