@@ -4,7 +4,7 @@ import { serve } from "srvx";
 import { getContextLoader, getDocumentLoader } from "../../docloader.ts";
 import { normalizeSuite } from "../scenario/normalize.ts";
 import type { Suite } from "../scenario/types.ts";
-import { fanoutRunner } from "./fanout.ts";
+import { fanoutRunner, spawnSinkServer } from "./fanout.ts";
 
 test("fanoutRunner - triggers benchmark hook and reports drain", async () => {
   const target = new URL("http://target.test/");
@@ -365,6 +365,22 @@ test("fanoutRunner - uses configured sink base for recipients", async () => {
     recipientInboxes,
     Array.from({ length: 5 }, (_, i) => new URL(`/inbox/${i}`, sinkBase).href),
   );
+});
+
+test("spawnSinkServer - ignores invalid sink latency", async () => {
+  const sink = await spawnSinkServer({
+    followers: 1,
+    rawBehavior: { latency: "not-a-duration", status: 202 },
+  });
+  try {
+    const response = await fetch(String(sink.recipients[0].inbox), {
+      method: "POST",
+      body: "{}",
+    });
+    assert.strictEqual(response.status, 202);
+  } finally {
+    await sink.close();
+  }
 });
 
 test("fanoutRunner - omits queue drain metrics without drain samples", async () => {

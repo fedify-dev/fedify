@@ -294,8 +294,16 @@ function parseSinkBehavior(
   const record = raw as Record<string, unknown>;
   const latency = record.latency;
   const status = record.status;
+  let latencyMs = 0;
+  if (typeof latency === "string") {
+    try {
+      latencyMs = parseDuration(latency);
+    } catch {
+      latencyMs = 0;
+    }
+  }
   return {
-    latencyMs: typeof latency === "string" ? parseDuration(latency) : 0,
+    latencyMs,
     status: typeof status === "number" && Number.isInteger(status)
       ? status
       : 202,
