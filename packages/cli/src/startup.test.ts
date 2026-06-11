@@ -5,7 +5,10 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const packageDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-test("CLI build keeps the init command bridge", async () => {
+
+test("CLI build keeps the init command bridge", {
+  skip: "Deno" in globalThis,
+}, async () => {
   const entrypoint = resolve(packageDir, "dist/mod.js");
   const commandBridge = resolve(packageDir, "dist/commands.js");
   await access(entrypoint);
