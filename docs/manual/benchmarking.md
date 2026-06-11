@@ -182,7 +182,11 @@ The runnable scenario types cover the main benchmark surfaces:
     `allowUnsafeTriggerRecipients` in a controlled benchmark environment.
     `fedify bench` does not switch the target's queue backend; run the same
     suite against targets configured with the queue implementations you want to
-    compare.
+    compare.  Fanout triggers are serialized while the runner observes queue
+    drain, so client latency includes time spent waiting for earlier fanout
+    drains under high-rate or concurrent load.  Use `deliveryThroughput` and
+    `queueDrain` expectations for delivery performance, and keep request
+    latency expectations conservative for this scenario type.
  -  `failure`: records expected fault outcomes as successes.  For this
     scenario type, `successRate` means “the expected failure was observed,”
     not “the HTTP request succeeded.”  The `invalid-signature` and
@@ -191,7 +195,10 @@ The runnable scenario types cover the main benchmark surfaces:
     faults post to the benchmark trigger endpoint with `sender`, so the target
     uses its normal outbound delivery path against controlled benchmark-owned
     sink inboxes.  Like `fanout`, these remote failure faults need
-    `--advertise-host` for a non-loopback target.
+    `--advertise-host` for a non-loopback target.  Remote failure deliveries
+    are also serialized while the runner waits for the target's queue to
+    observe the expected failure or retry signal, so request latency can include
+    earlier wait time when the configured load is concurrent or high-rate.
  -  `mixed`: runs referenced child scenarios concurrently, splitting the
     `mixed` scenario's load by each entry's `weight`.  The referenced
     scenarios are named scenarios in the same suite and are still run as normal
