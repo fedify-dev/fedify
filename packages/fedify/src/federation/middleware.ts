@@ -957,7 +957,7 @@ export class FederationImpl<TContextData>
   }
 
   resolveTaskQueue(taskName: string): MessageQueue | undefined {
-    const def = this.taskDefinitions[taskName];
+    const def = this.taskDefinitions.get(taskName);
     const resolved = def?.queue ?? this.taskQueue;
     if (resolved != null) return resolved;
     return this.taskQueueResolution === "strict" ? undefined : this.outboxQueue;
@@ -2119,7 +2119,7 @@ export class FederationImpl<TContextData>
     message: TaskMessage,
   ): Promise<void> {
     const logger = getLogger(["fedify", "federation", "task"]);
-    const def = this.taskDefinitions[message.taskName];
+    const def = this.taskDefinitions.get(message.taskName);
     if (def == null) {
       // Unknown task: a handler won't appear by retrying.  Drop and log.
       logger.warn(
