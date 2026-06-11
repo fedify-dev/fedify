@@ -1,7 +1,8 @@
 import { Link, Object as APObject } from "@fedify/vocab";
+import type { DocumentLoader } from "@fedify/vocab-runtime";
+import type { TracerProvider } from "@opentelemetry/api";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { parse, stringifyAsync } from "devalue";
-import type { TaskCodecLoaders } from "./codec-fn.ts";
 
 export default class TaskCodec {
   constructor(readonly options: TaskCodecLoaders) {}
@@ -126,6 +127,18 @@ function assertSchema(
       `Task data failed schema validation: ${JSON.stringify(result.issues)}`,
     );
   }
+}
+
+/**
+ * The loaders a worker {@link Context} already exposes; both decode passes
+ * use them.
+ * @internal
+ */
+interface TaskCodecLoaders {
+  readonly contextLoader?: DocumentLoader;
+  readonly documentLoader?: DocumentLoader;
+  readonly tracerProvider?: TracerProvider;
+  readonly baseUrl?: URL;
 }
 
 /** Which `fromJsonLd` entry point rebuilds a given vocabulary object. */
