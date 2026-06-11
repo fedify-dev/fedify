@@ -507,6 +507,98 @@ test("startQueue() task worker", async (t) => {
     controller.abort();
     await listening;
   });
+
+  await t.step("starts a worker for a dedicated per-task queue", async () => {
+    const taskQueue = new MockQueue();
+    const dedicated = new MockQueue();
+    const federation = createFederation<void>({
+      ...baseOptions,
+      queue: { task: taskQueue },
+    });
+    federation.defineTask("dedicated", {
+      schema: stringSchema,
+      handler: () => {},
+      queue: dedicated,
+    });
+    const controller = new AbortController();
+    const listening = federation.startQueue(undefined, {
+      signal: controller.signal,
+    });
+    strictEqual(taskQueue.listenCount, 1);
+    strictEqual(dedicated.listenCount, 1);
+    controller.abort();
+    await listening;
+  });
+
+  await t.step(
+    "starts a per-task queue even without a federation queue",
+    async () => {
+      const dedicated = new MockQueue();
+      const federation = createFederation<void>({ ...baseOptions });
+      federation.defineTask("dedicated", {
+        schema: stringSchema,
+        handler: () => {},
+        queue: dedicated,
+      });
+      const controller = new AbortController();
+      const listening = federation.startQueue(undefined, {
+        signal: controller.signal,
+      });
+      strictEqual(dedicated.listenCount, 1);
+      controller.abort();
+      await listening;
+    },
+  );
+
+  await t.step(
+    "does not listen twice on a per-task queue shared with a standard queue",
+    async () => {
+      const shared = new MockQueue();
+      const federation = createFederation<void>({
+        ...baseOptions,
+        queue: { task: shared },
+      });
+      federation.defineTask("reuses-task-queue", {
+        schema: stringSchema,
+        handler: () => {},
+        queue: shared,
+      });
+      const controller = new AbortController();
+      const listening = federation.startQueue(undefined, {
+        signal: controller.signal,
+      });
+      strictEqual(shared.listenCount, 1);
+      controller.abort();
+      await listening;
+    },
+  );
+
+  await t.step(
+    "routes an enqueued task on a dedicated queue to its handler",
+    async () => {
+      const dedicated = new MockQueue();
+      const federation = createFederation<void>({ ...baseOptions });
+      let received: string | undefined;
+      const task = federation.defineTask("dedicated-end-to-end", {
+        schema: stringSchema,
+        handler: (_ctx, data) => {
+          received = data;
+        },
+        queue: dedicated,
+      });
+      const ctx = federation.createContext(
+        new URL("https://example.com/"),
+        undefined,
+      );
+      await ctx.enqueueTask(task, "payload");
+      strictEqual(dedicated.enqueued.length, 1);
+      await (federation as FederationImpl<void>).processQueuedTask(
+        undefined,
+        dedicated.enqueued[0].message,
+      );
+      strictEqual(received, "payload");
+    },
+  );
 });
 
 test("processQueuedTask() task dispatch", async (t) => {

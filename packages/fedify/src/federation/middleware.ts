@@ -596,6 +596,10 @@ export class FederationImpl<TContextData>
   outboxQueueStarted: boolean;
   fanoutQueueStarted: boolean;
   taskQueueStarted: boolean;
+  // Dedicated per-task queues (defineTask({ queue })) that already have a
+  // worker listening, so a later _startQueueInternal() call does not listen
+  // on the same instance twice.
+  startedTaskQueues: Set<MessageQueue>;
   manuallyStartQueue: boolean;
   origin?: FederationOrigin;
   documentLoaderFactory: DocumentLoaderFactory;
@@ -723,6 +727,7 @@ export class FederationImpl<TContextData>
     this.outboxQueueStarted = false;
     this.fanoutQueueStarted = false;
     this.taskQueueStarted = false;
+    this.startedTaskQueues = new Set();
     this.manuallyStartQueue = options.manuallyStartQueue ?? false;
     if (options.origin != null) {
       if (typeof options.origin === "string") {
@@ -968,9 +973,16 @@ export class FederationImpl<TContextData>
     signal?: AbortSignal,
     queue?: keyof FederationQueueOptions,
   ): Promise<void> {
+    // Tasks may route to a dedicated queue of their own (defineTask({ queue }))
+    // even when no federation-wide queue is configured, so a deployment with
+    // only per-task queues still has work to start.
+    const hasDedicatedTaskQueue = [...this.taskDefinitions.values()].some(
+      (def) => def.queue != null,
+    );
     if (
       this.inboxQueue == null && this.outboxQueue == null &&
-      this.fanoutQueue == null && this.taskQueue == null
+      this.fanoutQueue == null && this.taskQueue == null &&
+      !hasDedicatedTaskQueue
     ) {
       return;
     }
@@ -1036,6 +1048,33 @@ export class FederationImpl<TContextData>
           { signal },
         ),
       );
+    }
+    // Dedicated per-task queues belong to the "task" selector.  Each distinct
+    // instance needs its own worker; dedupe against the standard queues and
+    // against task queues already started on an earlier call so no instance is
+    // listened on twice.
+    if (queue == null || queue === "task") {
+      const standardQueues = new Set<MessageQueue>(
+        [this.inboxQueue, this.outboxQueue, this.fanoutQueue, this.taskQueue]
+          .filter((q): q is MessageQueue => q != null),
+      );
+      for (const def of this.taskDefinitions.values()) {
+        const taskQueue = def.queue;
+        if (
+          taskQueue == null || standardQueues.has(taskQueue) ||
+          this.startedTaskQueues.has(taskQueue)
+        ) {
+          continue;
+        }
+        logger.debug("Starting a worker for a dedicated per-task queue.");
+        this.startedTaskQueues.add(taskQueue);
+        promises.push(
+          taskQueue.listen(
+            (msg) => this.processQueuedTask(ctxData, msg),
+            { signal },
+          ),
+        );
+      }
     }
     await Promise.all(promises);
   }
