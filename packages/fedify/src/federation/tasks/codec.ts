@@ -39,65 +39,60 @@ export default class TaskCodec {
     jsonLd: await value.toJsonLd({ format: "expand", ...this.options }),
   });
 
-  #revive = (seen: Seen): Revive => async (node: unknown): Promise<unknown> => {
-    if (node === null || typeof node !== "object") return node;
-    if (seen.has(node)) return seen.get(node);
-    const reviver = this.#classRevivers.find(([filter]) => filter(node));
-    // devalue can handle non-container objects.
-    if (reviver == null) return node;
-    const [, init, set] = reviver;
-    // @ts-ignore tsc faults
-    const out: Revived = await init(node);
-    seen.set(node, out);
-    // @ts-ignore tsc faults
-    await set(this.#revive(seen), node, out);
-    return out;
+  #revive = (seen: Seen): Revive => {
+    const inner: Revive = async (node) => {
+      if (node === null || typeof node !== "object") return node;
+      if (seen.has(node)) return seen.get(node);
+      for (const reviver of this.#classRevivers) {
+        const out = reviver(seen, inner, node);
+        if (out !== undefined) return await out;
+      }
+      // devalue can handle non-container objects.
+      return node;
+    };
+    return inner;
   };
 
-  #classRevivers = [
-    [
+  #classRevivers: readonly ClassReviver[] = [
+    classReviver(
       isInstanceOf(VocabHolder),
-      ({ kind, jsonLd }: VocabWire): Promise<APObject | Link> =>
+      ({ kind, jsonLd }): Promise<APObject | Link> =>
         kind === "link"
           ? Link.fromJsonLd(jsonLd, this.options)
           : APObject.fromJsonLd(jsonLd, this.options),
-      () => Promise.resolve(),
-    ],
-    [
+      () => {},
+    ),
+    classReviver(
       isInstanceOf(Array),
       (): unknown[] => [],
-      async (revive: Revive, node: unknown[], arr: typeof node) => {
+      async (revive, node, arr) => {
         arr.push(...await Array.fromAsync(node, revive));
       },
-    ],
-    [
+    ),
+    classReviver(
       isInstanceOf(Map),
-      () => new Map(),
-      async (revive: Revive, node: Map<unknown, unknown>, map: typeof node) => {
+      () => new Map<unknown, unknown>(),
+      async (revive, node, map) => {
         for (const [k, v] of node) map.set(await revive(k), await revive(v));
       },
-    ],
-    [
+    ),
+    classReviver(
       isInstanceOf(Set),
-      () => new Set(),
-      async (revive: Revive, node: Set<unknown>, set: typeof node) => {
+      () => new Set<unknown>(),
+      async (revive, node, set) => {
         for (const v of await Array.fromAsync(node, revive)) set.add(v);
       },
-    ],
-    [
+    ),
+    classReviver(
       isPlainObject,
-      () => ({}),
-      async (
-        revive: Revive,
-        node: Record<string, unknown>,
-        obj: typeof node,
-      ) => {
+      (): Record<string, unknown> => ({}),
+      async (revive, node, obj) => {
         for (const [k, v] of globalThis.Object.entries(node)) {
           obj[k] = await revive(v);
         }
       },
-    ],
-  ] as const;
+    ),
+  ];
 }
 
 const isVocab = (value: unknown): value is APObject | Link =>
@@ -165,12 +160,32 @@ type Seen = Map<object, unknown>;
 /** Revives one node, sharing the per-decode {@link Seen} map via closure. */
 type Revive = (node: unknown) => Promise<unknown>;
 
-type Container =
-  | VocabHolder
-  | Map<unknown, unknown>
-  | Set<unknown>
-  | Array<unknown>
-  | Record<string, unknown>;
-type Revived = Exclude<Container, VocabHolder> | APObject | Link;
+/** Revives one matched container, or `undefined` when the node isn't its kind. */
+type ClassReviver = (
+  seen: Seen,
+  revive: Revive,
+  node: object,
+) => Promise<unknown> | undefined;
+
+/**
+ * Ties a container filter to its empty-shell `init` and child-filling `set`
+ * through one type parameter—a correlation the heterogeneous reviver list
+ * cannot carry, which previously forced `@ts-ignore` at the dispatch site.
+ */
+const classReviver = <TNode extends object, TOut>(
+  filter: (v: unknown) => v is TNode,
+  init: (node: TNode) => TOut | Promise<TOut>,
+  set: (revive: Revive, node: TNode, out: TOut) => void | Promise<void>,
+): ClassReviver =>
+(seen, revive, node) => {
+  if (!filter(node)) return undefined;
+  return (async () => {
+    const out = await init(node);
+    seen.set(node, out);
+    await set(revive, node, out);
+    return out;
+  })();
+};
+
 // deno-lint-ignore no-explicit-any
 type Constructor<T> = new (...arg: any[]) => T;
