@@ -91,6 +91,12 @@ that an older deployment enqueued.  A payload that fails dequeue-time
 validation (or cannot be decoded at all) is dropped with an error log rather
 than retried, because retrying cannot make it valid.
 
+Because the same schema validates on both sides of the queue, its validation
+must be *idempotent*: the validated output must itself be a valid input.
+Transforming schemas (e.g., Zod's `.transform()`) whose output differs in
+shape from their input are not supported—the payload type is inferred as the
+schema's *output*, so the call site already fails validation at enqueue time.
+
 [devalue]: https://github.com/sveltejs/devalue
 
 
