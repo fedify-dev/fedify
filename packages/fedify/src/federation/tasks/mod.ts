@@ -6,6 +6,5 @@
  *
  * @module
  */
-export * from "./codec-fn.ts";
 export { default as TaskCodec } from "./codec.ts";
 export * from "./task.ts";
