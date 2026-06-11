@@ -2161,9 +2161,24 @@ export class FederationImpl<TContextData>
       const queue = this.resolveTaskQueue(def.name);
       if (queue?.nativeRetrial) throw error; // the backend owns retries
       const retryPolicy = def.retryPolicy ?? this.taskRetryPolicy;
+      // A corrupted `started` must not throw here and abort the retry.
+      let elapsedTime = Temporal.Duration.from({ seconds: 0 });
+      try {
+        elapsedTime = Temporal.Instant.from(message.started)
+          .until(Temporal.Now.instant());
+      } catch (parseError) {
+        logger.error(
+          "Custom task {taskName} has an unparsable started time " +
+            "{started}; treating elapsedTime as zero:\n{error}",
+          {
+            taskName: message.taskName,
+            started: message.started,
+            error: parseError,
+          },
+        );
+      }
       const delay = retryPolicy({
-        elapsedTime: Temporal.Instant.from(message.started)
-          .until(Temporal.Now.instant()),
+        elapsedTime,
         attempts: message.attempt,
       });
       if (delay != null && queue != null) {
