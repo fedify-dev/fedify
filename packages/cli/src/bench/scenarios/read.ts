@@ -28,6 +28,8 @@ import {
   withMeasuredWindowStart,
 } from "./runner.ts";
 
+const READ_GATE_CONCURRENCY = 16;
+
 /** Options for {@link runReadLoad}. */
 export interface ReadLoadOptions {
   /** URLs to GET during the measured load. */
@@ -62,13 +64,13 @@ export async function runReadLoad(
   for (const url of options.urls) {
     assertBareHttpUrl(context.scenario.name, "read URL", url);
   }
-  await Promise.all(options.urls.map(async (url) => {
+  await mapWithConcurrency(options.urls, READ_GATE_CONCURRENCY, async (url) => {
     if (options.authenticated) {
       await context.assertDestinationAllowed?.(url);
     } else {
       await context.assertReadDestinationAllowed?.(url);
     }
-  }));
+  });
 
   function unsignedRequest(index: number): Request {
     const url = options.urls[index % options.urls.length];
@@ -134,6 +136,24 @@ export async function runReadLoad(
   } finally {
     await pipeline?.close();
   }
+}
+
+async function mapWithConcurrency<T>(
+  items: readonly T[],
+  concurrency: number,
+  callback: (item: T) => Promise<void>,
+): Promise<void> {
+  let next = 0;
+  const workers = Array.from(
+    { length: Math.min(concurrency, items.length) },
+    async () => {
+      while (next < items.length) {
+        const item = items[next++];
+        await callback(item);
+      }
+    },
+  );
+  await Promise.all(workers);
 }
 
 async function signGetRequest(

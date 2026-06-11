@@ -94,6 +94,51 @@ test("runReadLoad - gates resolved read URLs concurrently", async () => {
   assert.strictEqual(maxActiveGates, 2);
 });
 
+test("runReadLoad - limits resolved read URL gate concurrency", async () => {
+  const scenario = normalizeSuite({
+    version: 1,
+    target: "http://target.test/",
+    scenarios: [{
+      name: "read",
+      type: "actor",
+      load: { concurrency: 1 },
+      duration: "25ms",
+    }],
+  }).scenarios[0];
+  let activeGates = 0;
+  let maxActiveGates = 0;
+
+  await runReadLoad({
+    scenario,
+    target: new URL("http://target.test/"),
+    documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+    contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+    allowPrivateAddress: true,
+    fleet: null,
+    fetch: (input) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.pathname === "/.well-known/fedify/bench/stats") {
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      }
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    },
+    assertReadDestinationAllowed: async () => {
+      activeGates++;
+      maxActiveGates = Math.max(maxActiveGates, activeGates);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      activeGates--;
+    },
+  }, {
+    urls: Array.from(
+      { length: 32 },
+      (_, i) => new URL(`http://remote.test/users/${i}`),
+    ),
+    authenticated: false,
+  });
+
+  assert.strictEqual(maxActiveGates, 16);
+});
+
 test("runReadLoad - rejects invalid read URL schemes before load", async () => {
   const scenario = normalizeSuite({
     version: 1,
