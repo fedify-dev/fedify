@@ -6,7 +6,7 @@ import type { ScenarioMeasurement } from "../result/build.ts";
 import { evaluateExpect } from "../result/expect/evaluate.ts";
 import { normalizeSuite } from "../scenario/normalize.ts";
 import type { Suite } from "../scenario/types.ts";
-import { mergeMeasurements, mixedRunner } from "./mixed.ts";
+import { createLimiter, mergeMeasurements, mixedRunner } from "./mixed.ts";
 
 test("mixedRunner - runs weighted child scenarios together", async () => {
   const target = new URL("http://target.test/");
@@ -124,6 +124,36 @@ test("mixedRunner - enforces parent maxInFlight across children", async () => {
     maxActiveLookups <= 2,
     `expected at most 2 in-flight lookups, got ${maxActiveLookups}`,
   );
+});
+
+test("createLimiter - ignores duplicate releases", async () => {
+  const limiter = createLimiter(1);
+  const releaseFirst = await limiter.acquire();
+  let secondAcquired = false;
+  const second = limiter.acquire().then((release) => {
+    secondAcquired = true;
+    return release;
+  });
+
+  releaseFirst();
+  releaseFirst();
+  const releaseSecond = await second;
+  assert.strictEqual(secondAcquired, true);
+
+  let thirdAcquired = false;
+  const third = limiter.acquire().then((release) => {
+    thirdAcquired = true;
+    return release;
+  });
+  await Promise.resolve();
+  assert.strictEqual(thirdAcquired, false);
+
+  releaseSecond();
+  const releaseThird = await third;
+  assert.strictEqual(thirdAcquired, true);
+  releaseSecond();
+  releaseThird();
+  releaseThird();
 });
 
 test("mixedRunner - waits for siblings before propagating child errors", async () => {

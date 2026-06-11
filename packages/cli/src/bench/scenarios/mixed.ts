@@ -236,7 +236,7 @@ function limitedFetch(fetchImpl: typeof fetch, maxInFlight?: number) {
   return limited as typeof fetch;
 }
 
-function createLimiter(maxInFlight: number): {
+export function createLimiter(maxInFlight: number): {
   acquire(): Promise<() => void>;
 } {
   if (!Number.isInteger(maxInFlight) || maxInFlight < 1) {
@@ -246,19 +246,21 @@ function createLimiter(maxInFlight: number): {
   }
   let active = 0;
   const waiters: Array<() => void> = [];
-  function release(): void {
-    const next = waiters.shift();
-    if (next == null) active--;
-    else next();
-  }
   return {
     async acquire(): Promise<() => void> {
       if (active < maxInFlight) {
         active++;
-        return release;
+      } else {
+        await new Promise<void>((resolve) => waiters.push(resolve));
       }
-      await new Promise<void>((resolve) => waiters.push(resolve));
-      return release;
+      let released = false;
+      return () => {
+        if (released) return;
+        released = true;
+        const next = waiters.shift();
+        if (next == null) active--;
+        else next();
+      };
     },
   };
 }
