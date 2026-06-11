@@ -116,7 +116,10 @@ const isVocab = (value: unknown): value is APObject | Link =>
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   value === null || typeof value !== "object"
     ? false
-    : globalThis.Object.getPrototypeOf(value) === globalThis.Object.prototype;
+    : isObjectPrototype(globalThis.Object.getPrototypeOf(value));
+
+const isObjectPrototype = (proto: unknown): boolean =>
+  proto === null || proto === globalThis.Object.prototype;
 
 const isInstanceOf = <T>(cls: Constructor<T>) => (v: unknown): v is T =>
   v instanceof cls;

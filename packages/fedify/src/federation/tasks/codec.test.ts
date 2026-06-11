@@ -158,6 +158,20 @@ test("TaskCodec (fresh instance per operation)", async (t) => {
     strictEqual(member.set, decoded.set);
     strictEqual(decoded.map.get("entry")?.map, decoded.map);
   });
+
+  await t.step(
+    "revives a vocab object nested in a null-prototype object",
+    async () => {
+      const nullProto = Object.create(null) as Record<string, unknown>;
+      nullProto.note = note;
+      const encoded = await codec.serialize({ wrap: nullProto });
+      const decoded = await codec.deserialize(encoded) as {
+        wrap: Record<string, unknown>;
+      };
+      ok(decoded.wrap.note instanceof Note);
+      strictEqual(decoded.wrap.note.content?.toString(), "Hello, world!");
+    },
+  );
 });
 
 test("TaskCodec (one instance reused across decodes)", async (t) => {
