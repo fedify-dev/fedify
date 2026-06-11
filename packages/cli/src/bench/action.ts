@@ -310,12 +310,12 @@ export default async function runBench(
         fleet: fleet ?? null,
         advertiseHost: command.advertiseHost,
         fetch: fetchImpl,
-        assertDestinationAllowed: (url) =>
-          assertDestinationAllowed(url, scenario),
-        assertReadDestinationAllowed: (url) =>
-          assertReadDestinationAllowed(url, scenario),
-        assertActorlessDestinationAllowed: (url) =>
-          assertActorlessDestinationAllowed(url, scenario),
+        assertDestinationAllowed: (url, gateScenario) =>
+          assertDestinationAllowed(url, gateScenario ?? scenario),
+        assertReadDestinationAllowed: (url, gateScenario) =>
+          assertReadDestinationAllowed(url, gateScenario ?? scenario),
+        assertActorlessDestinationAllowed: (url, gateScenario) =>
+          assertActorlessDestinationAllowed(url, gateScenario ?? scenario),
       });
       results.push(buildScenarioResult(scenario, measurement));
     }

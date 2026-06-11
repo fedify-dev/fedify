@@ -78,6 +78,12 @@ export const mixedRunner: ScenarioRunner = {
           ...context,
           scenario: child,
           fetch: fetchImpl,
+          assertDestinationAllowed: (url, scenario) =>
+            context.assertDestinationAllowed?.(url, scenario ?? child),
+          assertReadDestinationAllowed: (url, scenario) =>
+            context.assertReadDestinationAllowed?.(url, scenario ?? child),
+          assertActorlessDestinationAllowed: (url, scenario) =>
+            context.assertActorlessDestinationAllowed?.(url, scenario ?? child),
         })
       ),
     );

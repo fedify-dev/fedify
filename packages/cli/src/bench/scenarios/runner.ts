@@ -39,19 +39,26 @@ export interface RunContext {
    * The suite `target` is gated by the orchestrator; this covers destinations
    * that differ from it.  Optional so direct runner tests need not supply it.
    */
-  readonly assertDestinationAllowed?: (url: URL) => void | Promise<void>;
+  readonly assertDestinationAllowed?: (
+    url: URL,
+    scenario?: ResolvedScenario,
+  ) => void | Promise<void>;
   /**
    * Gates a resolved read-only destination before unauthenticated GET load is
    * sent.  Unlike signed inbox delivery, these reads do not require a
    * reachable synthetic actor server.
    */
-  readonly assertReadDestinationAllowed?: (url: URL) => void | Promise<void>;
+  readonly assertReadDestinationAllowed?: (
+    url: URL,
+    scenario?: ResolvedScenario,
+  ) => void | Promise<void>;
   /**
    * Gates a destination for benchmark load that does not require remote
    * dereferencing of benchmark-owned synthetic actors.
    */
   readonly assertActorlessDestinationAllowed?: (
     url: URL,
+    scenario?: ResolvedScenario,
   ) => void | Promise<void>;
 }
 

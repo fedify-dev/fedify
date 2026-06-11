@@ -65,6 +65,54 @@ test("mixedRunner - runs weighted child scenarios together", async () => {
   assert.strictEqual(measurement.requests.successRate, 1);
 });
 
+test("mixedRunner - gates child destinations with child scenarios", async () => {
+  const target = new URL("http://target.test/");
+  const suite: Suite = {
+    version: 1,
+    target: target.href,
+    scenarios: [
+      {
+        name: "child-read",
+        type: "actor",
+        recipient: "http://remote.test/users/alice",
+        load: { concurrency: 1 },
+        duration: "25ms",
+      },
+      {
+        name: "mixed",
+        type: "mixed",
+        load: { concurrency: 1 },
+        duration: "25ms",
+        mix: [{ scenario: "child-read", weight: 1 }],
+      },
+    ],
+  };
+  const scenarios = normalizeSuite(suite).scenarios;
+  const gatedScenarioNames: string[] = [];
+
+  await mixedRunner.run({
+    scenario: scenarios[1],
+    scenarios,
+    target,
+    documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+    contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+    allowPrivateAddress: true,
+    fleet: null,
+    fetch: (input) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.pathname === "/.well-known/fedify/bench/stats") {
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      }
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    },
+    assertReadDestinationAllowed: (_url, scenario) => {
+      gatedScenarioNames.push(scenario?.name ?? "");
+    },
+  });
+
+  assert.deepStrictEqual(gatedScenarioNames, ["mixed/child-read"]);
+});
+
 test("mixedRunner - enforces parent maxInFlight across children", async () => {
   const target = new URL("http://target.test/");
   let activeLookups = 0;
