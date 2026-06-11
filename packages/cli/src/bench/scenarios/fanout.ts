@@ -182,6 +182,7 @@ function buildActivity(context: RunContext, id: URL): Record<string, unknown> {
 export async function spawnSinkServer(options: {
   readonly followers: number;
   readonly rawBehavior: unknown;
+  readonly rawBehaviors?: readonly unknown[];
   readonly advertiseHost?: string;
   readonly sinkBase?: string;
 }): Promise<{
@@ -192,13 +193,22 @@ export async function spawnSinkServer(options: {
   const advertised = options.advertiseHost == null
     ? null
     : resolveAdvertiseHost(options.advertiseHost);
-  const behavior = parseSinkBehavior(options.rawBehavior);
+  const behaviors = Array.from(
+    { length: options.followers },
+    (_, i) =>
+      parseSinkBehavior(options.rawBehaviors?.[i] ?? options.rawBehavior),
+  );
   const server = serve({
     port: sinkBase?.port ?? 0,
     hostname: sinkBase?.bindHost ?? advertised?.bindHost ?? "127.0.0.1",
     silent: true,
     async fetch(request: Request): Promise<Response> {
-      if (new URL(request.url).pathname.startsWith("/inbox/")) {
+      const match = /^\/inbox\/(\d+)(?:\/|$)/.exec(
+        new URL(request.url).pathname,
+      );
+      if (match != null) {
+        const behavior = behaviors[Number(match[1])] ??
+          parseSinkBehavior(options.rawBehavior);
         await request.arrayBuffer().catch(() => {});
         if (behavior.latencyMs > 0) {
           await new Promise((resolve) =>

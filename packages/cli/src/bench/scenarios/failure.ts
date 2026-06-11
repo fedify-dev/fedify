@@ -60,6 +60,7 @@ export const failureRunner: ScenarioRunner = {
     const faults = scenario.faults.length < 1
       ? ["remote-404"]
       : scenario.faults;
+    const remoteFaults = [...new Set(faults.filter(isRemoteFault))];
     for (const fault of faults) {
       if (!isSupportedFault(fault)) {
         throw new Error(
@@ -87,6 +88,17 @@ export const failureRunner: ScenarioRunner = {
     }
     if (faults.some(isRemoteFault)) {
       resolveSinkBase(scenario.name, scenario.raw.sinkBase);
+    }
+    if (
+      scenario.raw.sinkBase != null &&
+      remoteFaults.includes("network-error") &&
+      remoteFaults.some((fault) => fault !== "network-error")
+    ) {
+      throw new Error(
+        `Scenario "${scenario.name}": sinkBase cannot combine ` +
+          "network-error with other remote failure faults because the same " +
+          "port cannot be both open and unreachable.",
+      );
     }
   },
 
@@ -189,22 +201,40 @@ async function resolveRemoteFailureTargets(
 ): Promise<Map<RemoteFailureFault, RemoteFailureTarget>> {
   const targets = new Map<RemoteFailureFault, RemoteFailureTarget>();
   try {
-    for (const fault of new Set(faults.filter(isRemoteFault))) {
+    const remoteFaults = [...new Set(faults.filter(isRemoteFault))];
+    const liveFaults = remoteFaults.filter((fault) =>
+      fault !== "network-error"
+    );
+    if (liveFaults.length > 0) {
+      const sink = await spawnSinkServer({
+        followers: liveFaults.length,
+        rawBehavior: null,
+        rawBehaviors: liveFaults.map(remoteSinkBehavior),
+        advertiseHost: context.advertiseHost,
+        sinkBase: context.scenario.raw.sinkBase,
+      });
+      const close = once(sink.close);
+      for (const [index, fault] of liveFaults.entries()) {
+        targets.set(fault, { recipient: sink.recipients[index], close });
+      }
+    }
+    if (remoteFaults.includes("network-error")) {
       const sink = await spawnSinkServer({
         followers: 1,
-        rawBehavior: remoteSinkBehavior(fault),
+        rawBehavior: remoteSinkBehavior("network-error"),
         advertiseHost: context.advertiseHost,
         sinkBase: context.scenario.raw.sinkBase,
       });
       const recipient = sink.recipients[0];
-      if (fault === "network-error") {
+      try {
         await sink.close();
-        targets.set(fault, {
+        targets.set("network-error", {
           recipient,
           close: () => Promise.resolve(),
         });
-      } else {
-        targets.set(fault, { recipient, close: () => sink.close() });
+      } catch (error) {
+        await sink.close().catch(() => {});
+        throw error;
       }
     }
     return targets;
@@ -212,6 +242,14 @@ async function resolveRemoteFailureTargets(
     await Promise.all([...targets.values()].map((target) => target.close()));
     throw error;
   }
+}
+
+function once(close: () => Promise<void>): () => Promise<void> {
+  let closed: Promise<void> | null = null;
+  return () => {
+    closed ??= close();
+    return closed;
+  };
 }
 
 function remoteSinkBehavior(

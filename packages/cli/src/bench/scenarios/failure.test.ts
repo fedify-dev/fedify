@@ -124,6 +124,79 @@ test("failureRunner - uses configured sink base for remote faults", async () => 
   assert.strictEqual(recipientInbox, new URL("/inbox/0", sinkBase).href);
 });
 
+test("failureRunner - shares sink base across remote fault mix", async () => {
+  const target = new URL("http://target.test/");
+  const sinkBase = `http://127.0.0.1:${await reservePort()}/`;
+  const scenario = normalizeSuite({
+    version: 1,
+    target: target.href,
+    scenarios: [{
+      name: "failure",
+      type: "failure",
+      fault: ["remote-404", "remote-410"],
+      sender: "alice",
+      sinkBase,
+      load: { concurrency: 1 },
+      duration: "25ms",
+      queueDrainTimeout: "1s",
+    }],
+  }).scenarios[0];
+  let triggerCalls = 0;
+  const recipientInboxes: string[] = [];
+
+  const measurement = await failureRunner.run({
+    scenario,
+    target,
+    documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+    contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+    allowPrivateAddress: true,
+    fleet: null,
+    fetch: (input, init) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.pathname === "/.well-known/fedify/bench/stats") {
+        return Promise.resolve(statsJson(statsSnapshot({
+          enqueued: triggerCalls,
+          completed: triggerCalls,
+          failed: 0,
+          permanentFailures: triggerCalls,
+        })));
+      }
+      if (url.pathname === "/.well-known/fedify/bench/trigger") {
+        triggerCalls++;
+        const body = JSON.parse(String(init?.body));
+        recipientInboxes.push(body.recipients[0].inbox);
+        return Promise.resolve(statsJson({ version: 1 }, 202));
+      }
+      return Promise.resolve(new Response("unexpected", { status: 500 }));
+    },
+    assertDestinationAllowed: () => {},
+  });
+
+  assert.ok(measurement.requests.total > 1);
+  assert.strictEqual(measurement.requests.failed, 0);
+  assert.ok(recipientInboxes.includes(new URL("/inbox/0", sinkBase).href));
+  assert.ok(recipientInboxes.includes(new URL("/inbox/1", sinkBase).href));
+});
+
+test("failureRunner.validate - rejects sinkBase for mixed network faults", () => {
+  const scenario = normalizeSuite({
+    version: 1,
+    target: "http://target.test/",
+    scenarios: [{
+      name: "failure",
+      type: "failure",
+      fault: ["network-error", "remote-404"],
+      sender: "alice",
+      sinkBase: "http://127.0.0.1:29999/",
+    }],
+  }).scenarios[0];
+
+  assert.throws(
+    () => failureRunner.validate?.(scenario),
+    /cannot combine network-error with other remote failure faults/,
+  );
+});
+
 test("failureRunner - detects network-error retries", async () => {
   const target = new URL("http://target.test/");
   const scenario = normalizeSuite({
