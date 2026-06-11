@@ -309,7 +309,7 @@ function sumMetric(
   for (const metric of metrics) {
     if (metric.name !== name || !Array.isArray(metric.dataPoints)) continue;
     for (const point of metric.dataPoints) {
-      if (isFiniteNumber(point.value)) {
+      if (isRecord(point) && isFiniteNumber(point.value)) {
         total += point.value;
         found = true;
       }
@@ -365,6 +365,10 @@ function histogramsCompatible(
   return a.boundaries.length === b.boundaries.length &&
     a.counts.length === b.counts.length &&
     a.boundaries.every((boundary, i) => boundary === b.boundaries[i]);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value != null && typeof value === "object" && !Array.isArray(value);
 }
 
 function histogramPercentile(histogram: ServerHistogram, p: number): number {

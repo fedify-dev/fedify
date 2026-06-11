@@ -155,6 +155,30 @@ test("parseServerSnapshot - extracts permanent delivery failures", () => {
   assert.strictEqual(snap?.deliveryPermanentFailures, 5);
 });
 
+test("parseServerSnapshot - skips malformed sum data points", () => {
+  const snap = parseServerSnapshot({
+    scopeMetrics: [{
+      metrics: [
+        {
+          name: "fedify.queue.task.enqueued",
+          dataPointType: "sum",
+          dataPoints: [null, { value: 5 }],
+        },
+        {
+          name: "fedify.queue.task.completed",
+          dataPointType: "sum",
+          dataPoints: [{ value: 3 }],
+        },
+      ],
+    }],
+  });
+  assert.deepEqual(snap?.queueTasks, {
+    enqueued: 5,
+    completed: 3,
+    failed: 0,
+  });
+});
+
 test("parseServerSnapshot - empty (non-null) when no relevant instruments", () => {
   // A parseable-but-empty snapshot yields an empty snapshot, not null, so a
   // successful baseline fetch is distinguishable from an unavailable one.
