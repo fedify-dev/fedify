@@ -172,6 +172,31 @@ test("TaskCodec (fresh instance per operation)", async (t) => {
       strictEqual(decoded.wrap.note.content?.toString(), "Hello, world!");
     },
   );
+
+  await t.step(
+    "revives a payload nested far deeper than any fixed depth cap",
+    async () => {
+      // `#revive` suspends at an `await` on every level, so nesting depth
+      // consumes heap (promise chains) rather than native stack—deep
+      // payloads cannot overflow it, and a fixed depth cap would only
+      // reject legitimate data.  Pins a depth an order of magnitude above
+      // any such cap.
+      const depth = 1000;
+      let payload: unknown = new Note({ content: "deep" });
+      for (let i = 0; i < depth; i++) {
+        payload = i % 2 === 0 ? { inner: payload } : [payload];
+      }
+      const encoded = await codec.serialize(payload);
+      let decoded = await codec.deserialize(encoded);
+      for (let i = depth - 1; i >= 0; i--) {
+        decoded = i % 2 === 0
+          ? (decoded as { inner: unknown }).inner
+          : (decoded as unknown[])[0];
+      }
+      ok(decoded instanceof Note);
+      strictEqual(decoded.content?.toString(), "deep");
+    },
+  );
 });
 
 test("TaskCodec (one instance reused across decodes)", async (t) => {
