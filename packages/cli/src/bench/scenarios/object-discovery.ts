@@ -212,8 +212,9 @@ function objectCandidates(item: unknown): unknown[] {
     return [item];
   }
   const object = item.object;
+  if (object == null) return [];
   if (Array.isArray(object)) return object.filter((entry) => entry != null);
-  return [object ?? item];
+  return [object];
 }
 
 function matchesType(

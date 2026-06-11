@@ -325,6 +325,63 @@ test("objectRunner - prefers unwrapped object URLs without type filters", async 
   assert.strictEqual(fetchedActivity, false);
 });
 
+test("objectRunner - skips wrapper activities without objects", async () => {
+  const scenario = normalizeSuite({
+    version: 1,
+    target: "http://target.test/",
+    scenarios: [{
+      name: "object-crawl",
+      type: "object",
+      source: {
+        seed: "http://target.test/users/alice",
+        collection: "outbox",
+        limit: 1,
+      },
+      load: { concurrency: 1 },
+      duration: "25ms",
+    }],
+  }).scenarios[0];
+  let fetchedActivity = false;
+
+  await assert.rejects(
+    async () =>
+      objectRunner.run({
+        scenario,
+        target: new URL("http://target.test/"),
+        documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+        contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+        allowPrivateAddress: true,
+        fleet: null,
+        fetch: (input) => {
+          const request = input instanceof Request ? input : new Request(input);
+          const url = new URL(request.url);
+          if (url.pathname === "/users/alice") {
+            return Promise.resolve(json({
+              id: url.href,
+              outbox: "http://target.test/users/alice/outbox",
+            }));
+          }
+          if (url.pathname === "/users/alice/outbox") {
+            return Promise.resolve(json({
+              id: url.href,
+              orderedItems: [{
+                type: "Create",
+                id: "http://target.test/activities/create-1",
+              }],
+            }));
+          }
+          if (url.pathname === "/activities/create-1") {
+            fetchedActivity = true;
+            return Promise.resolve(json({ id: url.href, type: "Create" }));
+          }
+          return Promise.resolve(new Response("not found", { status: 404 }));
+        },
+      }),
+    /did not resolve any URLs/,
+  );
+  assert.strictEqual(fetchedActivity, false);
+});
+
 test("objectRunner - sends ActivityPub Accept headers during object discovery", async () => {
   const scenario = normalizeSuite({
     version: 1,
