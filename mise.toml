@@ -246,9 +246,9 @@ for pkg in ($env.usage_packages | split row " " | where ($it | is-not-empty)) {
 '''
 
 # Testing
+
 [tasks."test:deno"]
 description = "Run the test suite using Deno"
-depends = ["build"]
 run = "deno test --check --doc --allow-all --unstable-kv --trace-leaks --parallel"
 
 [tasks."test:node"]

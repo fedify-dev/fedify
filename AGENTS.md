@@ -145,11 +145,29 @@ Development workflow
     the editor/LSP after editing YAML.
  -  **Building Packages**: All packages are built automatically as part of
     setup.  Run `mise run build` to rebuild everything, or
-    `mise run prepare-each <pkg>` to rebuild just one (without the `@fedify/`
-    prefix).
- -  **Checking Code**: Run `mise run check` before committing.
- -  **Running Tests**: Use `mise run test:deno` for Deno tests or
-    `mise run test` for all environments.
+    `mise run prepare-each <pkgs>` to rebuild specific packages (without the
+    `@fedify/` prefix).
+ -  **Checking Code**: Run `mise run check` before committing, or run
+    `mise run check-each <pkgs>` to check specific packages. If any issues from
+    `check:fmt`, `check:lint` or `check:md`, are found, refers
+    **Formatting and Linting** section.
+ -  **Formatting and Linting**: Run `mise run fmt` to format all code and docs.
+ -  **Running Tests**:
+    While testing is certainly important, blindly running every test suite every
+    time is inefficient. Since Deno executes TS source code directly, it doesn't
+    waste resources on builds. Therefore, during development, run
+    `mise run test:deno {TEST_PATH} --filter <TEST_TITLE>` for most tests that
+    are independent of the runtime. If the test is dependent on a specific
+    runtime other than Deno, replace `test:deno` with `test:node` or `test:bun`.
+    Once development is complete, run `mise run test-each <pkgs>` to test the
+    modified packages (without the `@fedify/` prefix).
+    Finally, when ready for deployment, run `mise run test` to execute the
+    whole codebase-wide tests.
+     -  `mise run test`: Executes all the tests in every runtime.
+     -  `mise run test:<runtime:deno,node,bun>`:
+        Executes all the tests by the runtime.
+     -  `mise run test-each <pkgs>`: Executes tests in packages that include
+        `pkgs` in every runtime (without the `@fedify/` prefix).
 
 For detailed contribution guidelines, see *CONTRIBUTING.md*.
 
