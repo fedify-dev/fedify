@@ -340,27 +340,29 @@ async function waitForRemoteFault(options: {
   const deadline = Date.now() + options.timeoutMs;
   do {
     const snapshot = await fetchServerSnapshot(options.target, options.fetch);
-    if (snapshot == null) return null;
-    const diff = diffSnapshots(options.baseline, snapshot);
-    const queueTasks = diff.queueTasks;
-    if (queueTasks == null) return null;
-    if (options.fault === "remote-404" || options.fault === "remote-410") {
-      if ((diff.deliveryPermanentFailures ?? 0) > 0) {
-        return { timedOut: false };
-      }
-    } else if (options.fault === "slow-inbox") {
-      const remaining = queueTaskRemaining(diff);
-      if (remaining == null) return null;
-      if (queueTasks.completed > 0 && remaining === 0) {
-        return { timedOut: false };
-      }
-    } else if (options.fault === "network-error") {
-      const remaining = queueTaskRemaining(diff);
-      if (remaining == null) return null;
-      if (
-        queueTasks.failed > 0 || (queueTasks.completed > 0 && remaining > 0)
-      ) {
-        return { timedOut: false };
+    if (snapshot != null) {
+      const diff = diffSnapshots(options.baseline, snapshot);
+      const queueTasks = diff.queueTasks;
+      if (options.fault === "remote-404" || options.fault === "remote-410") {
+        if ((diff.deliveryPermanentFailures ?? 0) > 0) {
+          return { timedOut: false };
+        }
+      } else if (queueTasks != null) {
+        const remaining = queueTaskRemaining(diff);
+        if (remaining != null) {
+          if (options.fault === "slow-inbox") {
+            if (queueTasks.completed > 0 && remaining === 0) {
+              return { timedOut: false };
+            }
+          } else if (options.fault === "network-error") {
+            if (
+              queueTasks.failed > 0 ||
+              (queueTasks.completed > 0 && remaining > 0)
+            ) {
+              return { timedOut: false };
+            }
+          }
+        }
       }
     }
     await new Promise((resolve) => setTimeout(resolve, DRAIN_POLL_MS));

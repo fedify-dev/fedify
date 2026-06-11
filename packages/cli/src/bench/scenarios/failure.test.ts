@@ -120,6 +120,63 @@ test("failureRunner - detects network-error retries", async () => {
   assert.ok(triggerCalls > 0);
 });
 
+test("failureRunner - tolerates transient remote fault stats failures", async () => {
+  const target = new URL("http://target.test/");
+  const scenario = normalizeSuite({
+    version: 1,
+    target: target.href,
+    scenarios: [{
+      name: "failure",
+      type: "failure",
+      fault: "remote-404",
+      sender: "alice",
+      load: { concurrency: 1 },
+      duration: "25ms",
+      queueDrainTimeout: "1s",
+    }],
+  }).scenarios[0];
+  let statsCalls = 0;
+  let triggerCalls = 0;
+  const measurement = await failureRunner.run({
+    scenario,
+    target,
+    documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+    contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+    allowPrivateAddress: true,
+    fleet: null,
+    fetch: (input) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.pathname === "/.well-known/fedify/bench/stats") {
+        statsCalls++;
+        if (statsCalls === 2) {
+          return Promise.resolve(
+            new Response("temporarily unavailable", {
+              status: 503,
+            }),
+          );
+        }
+        return Promise.resolve(statsJson(statsSnapshot({
+          enqueued: triggerCalls,
+          completed: triggerCalls,
+          failed: 0,
+          permanentFailures: statsCalls > 1 ? triggerCalls : 0,
+        })));
+      }
+      if (url.pathname === "/.well-known/fedify/bench/trigger") {
+        triggerCalls++;
+        return Promise.resolve(statsJson({ version: 1 }, 202));
+      }
+      return Promise.resolve(new Response("unexpected", { status: 500 }));
+    },
+    assertDestinationAllowed: () => {},
+  });
+
+  assert.ok(measurement.requests.total > 0);
+  assert.strictEqual(measurement.requests.failed, 0);
+  assert.strictEqual(measurement.requests.successRate, 1);
+  assert.ok(statsCalls >= 3);
+});
+
 test("failureRunner.validate - requires sender for remote faults", () => {
   const scenario = normalizeSuite({
     version: 1,

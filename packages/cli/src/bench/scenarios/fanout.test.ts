@@ -178,6 +178,61 @@ test("fanoutRunner - counts failed queue tasks as delivery failures", async () =
   assert.strictEqual(measurement.deliveryThroughputPerSec, 0);
 });
 
+test("fanoutRunner - tolerates transient drain stats failures", async () => {
+  const target = new URL("http://target.test/");
+  let statsCalls = 0;
+  const scenario = normalizeSuite({
+    version: 1,
+    target: target.href,
+    scenarios: [{
+      name: "fanout",
+      type: "fanout",
+      sender: "alice",
+      followers: 5,
+      load: { concurrency: 1 },
+      duration: "40ms",
+      queueDrainTimeout: "1s",
+    }],
+  }).scenarios[0];
+
+  const measurement = await fanoutRunner.run({
+    scenario,
+    target,
+    documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+    contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+    allowPrivateAddress: true,
+    fleet: null,
+    fetch: (input) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.pathname === "/.well-known/fedify/bench/stats") {
+        statsCalls++;
+        if (statsCalls === 2) {
+          return Promise.resolve(
+            new Response("temporarily unavailable", {
+              status: 503,
+            }),
+          );
+        }
+        const drained = statsCalls > 2;
+        return Promise.resolve(json(statsSnapshot({
+          enqueued: drained ? 6 : 0,
+          completed: drained ? 6 : 0,
+          failed: 0,
+        })));
+      }
+      if (url.pathname === "/.well-known/fedify/bench/trigger") {
+        return Promise.resolve(json({ version: 1 }, 202));
+      }
+      return Promise.resolve(new Response("unexpected", { status: 500 }));
+    },
+  });
+
+  assert.ok(measurement.requests.total > 0);
+  assert.strictEqual(measurement.requests.failed, 0);
+  assert.strictEqual(measurement.requests.successRate, 1);
+  assert.ok(statsCalls >= 3);
+});
+
 test("fanoutRunner - omits queue drain metrics without drain samples", async () => {
   const target = new URL("http://target.test/");
   const scenario = normalizeSuite({

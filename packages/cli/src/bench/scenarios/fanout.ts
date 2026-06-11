@@ -255,14 +255,13 @@ async function waitForDrain(options: {
   const deadline = Date.now() + options.timeoutMs;
   do {
     const snapshot = await fetchServerSnapshot(options.target, options.fetch);
-    if (snapshot == null) return null;
-    const diff = diffSnapshots(options.baseline, snapshot);
-    const queueTasks = diff.queueTasks;
-    if (queueTasks == null) return null;
-    const remaining = queueTaskRemaining(diff);
-    if (remaining == null) return null;
-    if (remaining === 0) {
-      return { timedOut: false, failed: queueTasks.failed };
+    if (snapshot != null) {
+      const diff = diffSnapshots(options.baseline, snapshot);
+      const queueTasks = diff.queueTasks;
+      const remaining = queueTaskRemaining(diff);
+      if (queueTasks != null && remaining != null && remaining === 0) {
+        return { timedOut: false, failed: queueTasks.failed };
+      }
     }
     await new Promise((resolve) => setTimeout(resolve, DRAIN_POLL_MS));
   } while (Date.now() < deadline);
