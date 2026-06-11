@@ -446,7 +446,8 @@ export interface Context<TContextData> {
    * @param data The task payload.  It is validated against the task's
    *             schema before being enqueued.
    * @param options Options for enqueuing the task.
-   * @throws {TypeError} If no message queue is configured for tasks, or if
+   * @throws {TypeError} If the task is not defined on this federation,
+   *                     if no message queue is configured for tasks, or if
    *                     the payload fails schema validation.
    * @since 2.3.0
    */
@@ -466,7 +467,8 @@ export interface Context<TContextData> {
    * @param payloads The task payloads.  Each is validated against the
    *                 task's schema before being enqueued.
    * @param options Options for enqueuing the tasks.
-   * @throws {TypeError} If no message queue is configured for tasks, or if
+   * @throws {TypeError} If the task is not defined on this federation,
+   *                     if no message queue is configured for tasks, or if
    *                     a payload fails schema validation.
    * @since 2.3.0
    */

@@ -300,6 +300,34 @@ test("Context.enqueueTask() end-to-end", async (t) => {
     strictEqual(queue.enqueued.length, 0);
   });
 
+  await t.step(
+    "rejects a handle from another federation at enqueue",
+    async () => {
+      const queue = new MockQueue();
+      const federation = createFederation<void>({
+        ...baseOptions,
+        queue: { task: queue },
+      });
+      const other = createFederation<void>({
+        ...baseOptions,
+        queue: { task: new MockQueue() },
+      });
+      const foreignTask = other.defineTask("foreign", {
+        schema: stringSchema,
+        handler: () => {},
+      });
+      const ctx = federation.createContext(
+        new URL("https://example.com/"),
+        undefined,
+      );
+      await rejects(
+        () => ctx.enqueueTask(foreignTask, "data"),
+        { name: "TypeError", message: /is not defined on this federation/ },
+      );
+      strictEqual(queue.enqueued.length, 0);
+    },
+  );
+
   await t.step("passes delay and orderingKey through", async () => {
     const queue = new MockQueue();
     const federation = createFederation<void>({
