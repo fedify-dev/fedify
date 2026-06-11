@@ -38,14 +38,22 @@ const ACTIVITY_WRAPPER_TYPES = new Set([
   "View",
 ]);
 
-/** Options for resolving actor URLs. */
+/**
+ * Options for resolving actor URLs from recipients.
+ * @property target The benchmark target base URL.
+ * @property fetch Fetch implementation used for WebFinger discovery.
+ * @property assertReadDestinationAllowed Optional gate for discovered read URLs.
+ */
 export interface ActorUrlOptions {
   readonly target: URL;
   readonly fetch?: typeof fetch;
   readonly assertReadDestinationAllowed?: (url: URL) => void | Promise<void>;
 }
 
-/** Options for resolving object URLs. */
+/**
+ * Options for resolving object URLs from source definitions.
+ * @property source The explicit object URL list or crawl source to resolve.
+ */
 export interface ObjectUrlOptions extends ActorUrlOptions {
   readonly source: ObjectSource | undefined;
 }
@@ -79,7 +87,7 @@ export async function objectUrlsFromSource(
     await options.assertReadDestinationAllowed?.(actorUrl);
     const actor = await fetchJson(actorUrl, options.fetch);
     for (const collectionName of asList(source.collection ?? "outbox")) {
-      const collectionUrl = propertyUrl(actor, collectionName);
+      const collectionUrl = propertyUrl(actor, collectionName, actorUrl);
       if (collectionUrl == null) continue;
       for await (
         const objectUrl of crawlCollection(collectionUrl, {
@@ -136,14 +144,14 @@ async function* crawlCollection(
     const items = arrayProperty(page, "orderedItems") ??
       arrayProperty(page, "items") ?? [];
     for (const item of items) {
-      const url = objectUrl(item, options.types);
+      const url = objectUrl(item, options.types, next);
       if (url == null) continue;
       yield url;
       remaining--;
       if (remaining <= 0) return;
     }
-    const first = propertyUrl(page, "first");
-    const following = propertyUrl(page, "next");
+    const first = propertyUrl(page, "first", next);
+    const following = propertyUrl(page, "next", next);
     next = following ?? (next.href === start.href ? first : null);
   }
 }
@@ -172,15 +180,16 @@ async function fetchJson(
 function objectUrl(
   item: unknown,
   types: ReadonlySet<string>,
+  base: URL,
 ): URL | null {
   for (const candidate of objectCandidates(item)) {
     if (typeof candidate === "string") {
-      if (types.size < 1) return new URL(candidate);
+      if (types.size < 1) return new URL(candidate, base);
       continue;
     }
     if (!isRecord(candidate)) continue;
     if (types.size > 0 && !matchesType(candidate.type, types)) continue;
-    const url = propertyUrl(candidate, "id");
+    const url = propertyUrl(candidate, "id", base);
     if (url != null) return url;
   }
   return null;
@@ -207,11 +216,12 @@ function matchesType(
 function propertyUrl(
   object: Record<string, unknown>,
   key: string,
+  base?: URL,
 ): URL | null {
   const value = object[key];
-  if (typeof value === "string") return new URL(value);
+  if (typeof value === "string") return new URL(value, base);
   if (isRecord(value) && typeof value.id === "string") {
-    return new URL(value.id);
+    return new URL(value.id, base);
   }
   return null;
 }
