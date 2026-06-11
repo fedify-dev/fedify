@@ -259,6 +259,37 @@ To be released.
     the dispatcher overload hot path; other contributors to `check-all` cost
     may remain.  [[#613], [#800] by ChanHaeng Lee]
 
+ -  Added a custom background task API that generalizes Fedify's
+    enqueue-and-process-later pattern to arbitrary application-defined jobs:
+
+     -  `Federation` and `FederationBuilder` gained a `defineTask()` method
+        through the new `TaskRegistry` interface, which `Federatable` now
+        extends.
+     -  `Context` gained `enqueueTask()` and `enqueueTaskMany()` methods,
+        with `delay` and `orderingKey` options
+        (new `TaskEnqueueOptions` interface).
+     -  Every task requires a [Standard Schema]
+        (`schema` option) from which the payload type is inferred; payloads
+        are validated at enqueue time (fail fast) and again at dequeue time
+        (protection against schema drift across deployments).
+     -  Payloads are serialized by Fedify with devalue, so `Date`, `Map`,
+        `Set`, `URL`, `bigint`, circular references, and Activity Vocabulary
+        objects round-trip faithfully across every message queue backend.
+     -  Failed handlers are retried with exponential backoff by default;
+        tasks support per-task `retryPolicy` and `onError` options, the new
+        `FederationOptions.taskRetryPolicy` sets the federation-wide default,
+        and queues with `nativeRetrial` delegate retries to the backend.
+     -  Tasks can be isolated from activity delivery through the new
+        `FederationQueueOptions.task` slot or a per-task `queue` option;
+        without them, tasks fall back to the outbox queue unless the new
+        `FederationOptions.taskQueueResolution` option is set to `"strict"`.
+        `Federation.startQueue()` now accepts `queue: "task"` to run
+        a task-only worker.
+
+    [[#206], [#797] by ChanHaeng Lee]
+
+[Standard Schema]: https://standardschema.dev/
+[#206]: https://github.com/fedify-dev/fedify/issues/206
 [#316]: https://github.com/fedify-dev/fedify/issues/316
 [#418]: https://github.com/fedify-dev/fedify/issues/418
 [#613]: https://github.com/fedify-dev/fedify/issues/613
@@ -288,6 +319,7 @@ To be released.
 [#778]: https://github.com/fedify-dev/fedify/pull/778
 [#782]: https://github.com/fedify-dev/fedify/issues/782
 [#787]: https://github.com/fedify-dev/fedify/pull/787
+[#797]: https://github.com/fedify-dev/fedify/issues/797
 [#800]: https://github.com/fedify-dev/fedify/pull/800
 
 ### @fedify/cli

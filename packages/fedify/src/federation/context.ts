@@ -22,6 +22,7 @@ import type { JsonValue, NodeInfo } from "../nodeinfo/types.ts";
 import type { GetKeyOwnerOptions } from "../sig/owner.ts";
 import type { ConstructorWithTypeId, Federation } from "./federation.ts";
 import type { SenderKeyPair } from "./send.ts";
+import type { TaskDefinition, TaskEnqueueOptions } from "./tasks/mod.ts";
 
 /**
  * A context.
@@ -428,6 +429,52 @@ export interface Context<TContextData> {
     activity: Activity,
     options?: RouteActivityOptions,
   ): Promise<boolean>;
+
+  /**
+   * Enqueues a custom background task.  The payload is validated against
+   * the task's schema, serialized, and processed by the task's handler on
+   * a background worker.
+   *
+   * @example
+   * ``` typescript
+   * await ctx.enqueueTask(sendDigest, { userId: "alice" });
+   * ```
+   *
+   * @template TData The type of the task payload, inferred from the task's
+   *                 schema.
+   * @param task The handle returned by {@link TaskRegistry.defineTask}.
+   * @param data The task payload.  It is validated against the task's
+   *             schema before being enqueued.
+   * @param options Options for enqueuing the task.
+   * @throws {TypeError} If no message queue is configured for tasks, or if
+   *                     the payload fails schema validation.
+   * @since 2.3.0
+   */
+  enqueueTask<TData>(
+    task: TaskDefinition<TContextData, TData>,
+    data: TData,
+    options?: TaskEnqueueOptions,
+  ): Promise<void>;
+
+  /**
+   * Enqueues multiple payloads for a custom background task at once.
+   * Uses the queue's bulk enqueue operation when available, falling back
+   * to parallel single enqueues.
+   * @template TData The type of the task payload, inferred from the task's
+   *                 schema.
+   * @param task The handle returned by {@link TaskRegistry.defineTask}.
+   * @param payloads The task payloads.  Each is validated against the
+   *                 task's schema before being enqueued.
+   * @param options Options for enqueuing the tasks.
+   * @throws {TypeError} If no message queue is configured for tasks, or if
+   *                     a payload fails schema validation.
+   * @since 2.3.0
+   */
+  enqueueTaskMany<TData>(
+    task: TaskDefinition<TContextData, TData>,
+    payloads: readonly TData[],
+    options?: TaskEnqueueOptions,
+  ): Promise<void>;
 
   /**
    * Builds the URI of a collection of objects with the given name and values.

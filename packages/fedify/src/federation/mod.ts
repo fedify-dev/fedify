@@ -25,6 +25,13 @@ export * from "./mq.ts";
 export type { Message } from "./queue.ts";
 export * from "./retry.ts";
 export * from "./router.ts";
+export type {
+  TaskDefinition,
+  TaskDefinitionOptions,
+  TaskEnqueueOptions,
+  TaskHandler,
+  TaskRegistry,
+} from "./tasks/mod.ts";
 export { SendActivityError, type SenderKeyPair } from "./send.ts";
 export {
   handleWebFinger,
