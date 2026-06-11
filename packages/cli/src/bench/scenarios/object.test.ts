@@ -552,6 +552,38 @@ test("objectRunner - drains failed discovery responses", async () => {
   assert.strictEqual(failed.bodyUsed, true);
 });
 
+test("objectRunner - reports invalid discovery JSON with URL context", async () => {
+  const scenario = normalizeSuite({
+    version: 1,
+    target: "http://target.test/",
+    scenarios: [{
+      name: "object-crawl",
+      type: "object",
+      source: {
+        seed: "http://target.test/users/alice",
+        collection: "outbox",
+        limit: 1,
+      },
+      load: { concurrency: 1 },
+      duration: "25ms",
+    }],
+  }).scenarios[0];
+
+  await assert.rejects(
+    async () =>
+      await objectRunner.run({
+        scenario,
+        target: new URL("http://target.test/"),
+        documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+        contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+        allowPrivateAddress: true,
+        fleet: null,
+        fetch: () => Promise.resolve(new Response("not json", { status: 200 })),
+      }),
+    /Failed to parse JSON from http:\/\/target\.test\/users\/alice:/,
+  );
+});
+
 test("objectRunner - resolves relative URLs while crawling object sources", async () => {
   const scenario = normalizeSuite({
     version: 1,

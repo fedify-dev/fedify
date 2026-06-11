@@ -174,7 +174,12 @@ async function fetchJson(
     await response.arrayBuffer().catch(() => {});
     throw new Error(`Failed to fetch ${url.href}: HTTP ${response.status}.`);
   }
-  const json = await response.json();
+  let json: unknown;
+  try {
+    json = await response.json();
+  } catch (error) {
+    throw new Error(`Failed to parse JSON from ${url.href}: ${error}`);
+  }
   if (!isRecord(json)) {
     throw new Error(`Expected ${url.href} to return a JSON object.`);
   }
