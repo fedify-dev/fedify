@@ -3680,6 +3680,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           "createFederation() or to defineTask().",
       );
     }
+    if (items.length < 1) return;
     const delay = options.delay == null
       ? undefined
       : Temporal.Duration.from(options.delay);
@@ -3688,7 +3689,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     // `map` preserves order, and a rejected encode (validation failure) rejects
     // the whole batch before anything is enqueued, keeping fail-fast intact.
     const messages: TaskMessage[] = await Promise.all(
-      items.map(this.#enqueueSingular(task, options)),
+      items.map(this.#encodeTaskMessage(task, options)),
     );
     const enqueueOptions = { delay, orderingKey: options.orderingKey };
     if (messages.length === 1) {
@@ -3700,7 +3701,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     }
   }
 
-  #enqueueSingular = <TData>(
+  #encodeTaskMessage = <TData>(
     task: TaskDefinition<TContextData, TData>,
     options: TaskEnqueueOptions,
   ) =>
