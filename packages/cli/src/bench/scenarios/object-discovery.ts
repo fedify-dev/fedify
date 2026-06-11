@@ -187,7 +187,10 @@ function objectUrl(
 ): URL | null {
   for (const candidate of objectCandidates(item)) {
     if (typeof candidate === "string") {
-      if (types.size < 1) return safeUrl(candidate, base);
+      if (types.size < 1) {
+        const url = safeUrl(candidate, base);
+        if (url != null) return url;
+      }
       continue;
     }
     if (!isRecord(candidate)) continue;
