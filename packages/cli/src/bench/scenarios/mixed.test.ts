@@ -126,6 +126,84 @@ test("mixedRunner - enforces parent maxInFlight across children", async () => {
   );
 });
 
+test("mixedRunner - waits for siblings before propagating child errors", async () => {
+  const target = new URL("http://target.test/");
+  const suite: Suite = {
+    version: 1,
+    target: target.href,
+    scenarios: [
+      {
+        name: "lookup",
+        type: "webfinger",
+        recipient: "acct:alice@target.test",
+      },
+      {
+        name: "object",
+        type: "object",
+        source: {
+          seed: "http://target.test/users/missing",
+          collection: "outbox",
+          limit: 1,
+        },
+      },
+      {
+        name: "mixed",
+        type: "mixed",
+        load: { concurrency: 2 },
+        duration: "40ms",
+        mix: [
+          { scenario: "lookup", weight: 1 },
+          { scenario: "object", weight: 1 },
+        ],
+      },
+    ],
+  };
+  const scenarios = normalizeSuite(suite).scenarios;
+  let webfingerStarted = false;
+  let webfingerSettled = false;
+
+  await assert.rejects(
+    async () =>
+      await mixedRunner.run({
+        scenario: scenarios[2],
+        scenarios,
+        target,
+        documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+        contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+        allowPrivateAddress: true,
+        fleet: null,
+        fetch: async (input) => {
+          const request = input instanceof Request ? input : new Request(input);
+          const url = new URL(request.url);
+          if (url.pathname === "/.well-known/fedify/bench/stats") {
+            return new Response("not found", { status: 404 });
+          }
+          if (url.pathname === "/.well-known/webfinger") {
+            webfingerStarted = true;
+            await new Promise((resolve) => setTimeout(resolve, 30));
+            webfingerSettled = true;
+            return json({
+              subject: url.searchParams.get("resource"),
+              links: [],
+            });
+          }
+          if (url.pathname === "/users/missing") {
+            const deadline = Date.now() + 100;
+            while (!webfingerStarted && Date.now() < deadline) {
+              await new Promise((resolve) => setTimeout(resolve, 1));
+            }
+            await new Promise((resolve) => setTimeout(resolve, 5));
+            return new Response("not found", { status: 404 });
+          }
+          return new Response("unexpected", { status: 500 });
+        },
+      }),
+    /Failed to fetch http:\/\/target\.test\/users\/missing: HTTP 404/,
+  );
+
+  assert.strictEqual(webfingerSettled, true);
+});
+
 test("mixedRunner - rejects unknown children", async () => {
   const scenarios = normalizeSuite({
     version: 1,

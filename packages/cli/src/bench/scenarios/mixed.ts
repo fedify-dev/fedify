@@ -72,7 +72,7 @@ export const mixedRunner: ScenarioRunner = {
       context.fetch ?? fetch,
       context.scenario.load.maxInFlight,
     );
-    const measurements = await Promise.all(
+    const results = await Promise.allSettled(
       children.map((child) =>
         runnerForChild(child.type).run({
           ...context,
@@ -81,6 +81,13 @@ export const mixedRunner: ScenarioRunner = {
         })
       ),
     );
+    const rejected = results.find((result) => result.status === "rejected");
+    if (rejected != null) throw rejected.reason;
+    const measurements = results
+      .filter((result): result is PromiseFulfilledResult<ScenarioMeasurement> =>
+        result.status === "fulfilled"
+      )
+      .map((result) => result.value);
     return mergeMeasurements(measurements);
   },
 };

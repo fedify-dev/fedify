@@ -173,22 +173,26 @@ function objectUrl(
   item: unknown,
   types: ReadonlySet<string>,
 ): URL | null {
-  item = unwrapActivityObject(item);
-  if (typeof item === "string") {
-    return types.size < 1 ? new URL(item) : null;
+  for (const candidate of objectCandidates(item)) {
+    if (typeof candidate === "string") {
+      if (types.size < 1) return new URL(candidate);
+      continue;
+    }
+    if (!isRecord(candidate)) continue;
+    if (types.size > 0 && !matchesType(candidate.type, types)) continue;
+    const url = propertyUrl(candidate, "id");
+    if (url != null) return url;
   }
-  if (!isRecord(item)) return null;
-  if (types.size > 0 && !matchesType(item.type, types)) return null;
-  return propertyUrl(item, "id");
+  return null;
 }
 
-function unwrapActivityObject(item: unknown): unknown {
+function objectCandidates(item: unknown): unknown[] {
   if (!isRecord(item) || !matchesType(item.type, ACTIVITY_WRAPPER_TYPES)) {
-    return item;
+    return [item];
   }
   const object = item.object;
-  if (Array.isArray(object)) return object.find((entry) => entry != null);
-  return object ?? item;
+  if (Array.isArray(object)) return object.filter((entry) => entry != null);
+  return [object ?? item];
 }
 
 function matchesType(
