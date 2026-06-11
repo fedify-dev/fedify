@@ -625,6 +625,33 @@ test("processQueuedTask() task dispatch", async (t) => {
     },
   );
 
+  await t.step(
+    "still retries when message.started is malformed",
+    async () => {
+      const queue = new MockQueue();
+      const federation = createFederation<void>({
+        ...baseOptions,
+        queue: { task: queue },
+      }) as FederationImpl<void>;
+      federation.defineTask("bad-started", {
+        schema: stringSchema,
+        handler: () => {
+          throw new Error("boom");
+        },
+        retryPolicy: () => Temporal.Duration.from({ milliseconds: 1 }),
+      });
+      // A corrupted or drifted queue can hand back an invalid `started`;
+      // computing elapsedTime must not throw out of the error path and abort
+      // the retry.
+      const message = await makeTaskMessage("bad-started", "data", {
+        started: "not-an-instant",
+      });
+      await federation.processQueuedTask(undefined, message);
+      strictEqual(queue.enqueued.length, 1);
+      strictEqual(queue.enqueued[0].message.attempt, 1);
+    },
+  );
+
   await t.step("rethrows on a nativeRetrial queue", async () => {
     const queue = new MockQueue({ nativeRetrial: true });
     const federation = createFederation<void>({
