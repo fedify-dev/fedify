@@ -598,6 +598,85 @@ test("objectRunner - resolves relative URLs while crawling object sources", asyn
   );
 });
 
+test("objectRunner - resolves Link object href values while crawling", async () => {
+  const scenario = normalizeSuite({
+    version: 1,
+    target: "http://target.test/",
+    scenarios: [{
+      name: "object-crawl",
+      type: "object",
+      source: {
+        seed: "http://target.test/users/alice/",
+        collection: "outbox",
+        limit: 1,
+        type: "Note",
+      },
+      load: { concurrency: 1 },
+      duration: "25ms",
+    }],
+  }).scenarios[0];
+  const fetched: string[] = [];
+
+  const measurement = await objectRunner.run({
+    scenario,
+    target: new URL("http://target.test/"),
+    documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+    contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+    allowPrivateAddress: true,
+    fleet: null,
+    fetch: (input) => {
+      const request = input instanceof Request ? input : new Request(input);
+      const url = new URL(request.url);
+      fetched.push(url.href);
+      if (url.pathname === "/.well-known/fedify/bench/stats") {
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      }
+      if (url.pathname === "/users/alice/") {
+        return Promise.resolve(json({
+          id: url.href,
+          outbox: {
+            type: "Link",
+            href: "outbox",
+          },
+        }));
+      }
+      if (url.pathname === "/users/alice/outbox" && url.search === "?page=1") {
+        return Promise.resolve(json({
+          id: url.href,
+          orderedItems: [{
+            type: "Create",
+            object: {
+              type: "Note",
+              id: {
+                type: "Link",
+                href: "../objects/note",
+              },
+            },
+          }],
+        }));
+      }
+      if (url.pathname === "/users/alice/outbox") {
+        return Promise.resolve(json({
+          id: url.href,
+          first: {
+            type: "Link",
+            href: "?page=1",
+          },
+        }));
+      }
+      if (url.pathname === "/users/objects/note") {
+        return Promise.resolve(json({ id: url.href, type: "Note" }));
+      }
+      return Promise.resolve(new Response("not found", { status: 404 }));
+    },
+  });
+
+  assert.ok(measurement.requests.total > 0);
+  assert.ok(fetched.includes("http://target.test/users/alice/outbox"));
+  assert.ok(fetched.includes("http://target.test/users/alice/outbox?page=1"));
+  assert.ok(fetched.includes("http://target.test/users/objects/note"));
+});
+
 test("objectRunner - caps object source crawl pages", async () => {
   const scenario = normalizeSuite({
     version: 1,

@@ -223,8 +223,9 @@ function propertyUrl(
 ): URL | null {
   const value = object[key];
   if (typeof value === "string") return new URL(value, base);
-  if (isRecord(value) && typeof value.id === "string") {
-    return new URL(value.id, base);
+  if (isRecord(value)) {
+    if (typeof value.href === "string") return new URL(value.href, base);
+    if (typeof value.id === "string") return new URL(value.id, base);
   }
   return null;
 }
