@@ -151,6 +151,7 @@ const MANUAL = {
     { text: "Pragmatics", link: "/manual/pragmatics.md" },
     { text: "Key–value store", link: "/manual/kv.md" },
     { text: "Message queue", link: "/manual/mq.md" },
+    { text: "Background tasks", link: "/manual/tasks.md" },
     { text: "Circuit breaker", link: "/manual/circuit-breaker.md" },
     { text: "Integration", link: "/manual/integration.md" },
     { text: "Migration", link: "/manual/migrate.md" },

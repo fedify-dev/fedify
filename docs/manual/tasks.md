@@ -1,0 +1,247 @@
+Background tasks
+================
+
+*This API is available since Fedify 2.3.0.*
+
+Fedify already processes outgoing and incoming activities on background
+workers through its [message queue](./mq.md).  The custom background task API
+generalizes the same pattern—enqueue work, return immediately, process the
+payload on a separate worker—to arbitrary application-defined jobs: sending
+digest e-mails, rebuilding timelines, fetching link previews, and so on.
+
+A task is *defined* once on the `Federation` (or `FederationBuilder`) object
+with `~TaskRegistry.defineTask()`, and *dispatched* from any `Context` with
+`~Context.enqueueTask()`.  The payload is validated, serialized by Fedify,
+delivered through a message queue, and handed—decoded and re-validated—to the
+task's handler on a worker.
+
+
+Defining a task
+---------------
+
+`~TaskRegistry.defineTask()` registers a named task and returns a handle that
+`~Context.enqueueTask()` consumes.  Every task requires a `schema`, a
+[Standard Schema] (implemented by [Zod], [Valibot], [ArkType], and friends)
+that validates the payload; the payload type is inferred from it, so handlers
+and call sites are fully typed without manual type annotations:
+
+~~~~ typescript
+import { z } from "zod";
+
+const sendDigest = federation.defineTask("sendDigest", {
+  schema: z.object({
+    userId: z.string(),
+    since: z.date(),
+  }),
+  handler: async (ctx, data) => {
+    // data is typed as { userId: string; since: Date }
+    const digest = await buildDigest(data.userId, data.since);
+    await sendEmail(data.userId, digest);
+  },
+});
+~~~~
+
+Task names must be unique within a federation; defining the same name twice
+throws a `TypeError`.
+
+[Standard Schema]: https://standardschema.dev/
+[Zod]: https://zod.dev/
+[Valibot]: https://valibot.dev/
+[ArkType]: https://arktype.io/
+
+
+Payload handling
+----------------
+
+Task payloads cross a message queue, so they are serialized on enqueue and
+deserialized on dispatch.  Fedify owns this codec—applications never encode
+payloads themselves.  The codec is built on [devalue], which means payloads
+are not limited to JSON: `Date`, `Map`, `Set`, `URL`, `RegExp`, `bigint`,
+typed arrays, circular references, and repeated references all round-trip
+faithfully.
+
+Activity Vocabulary objects (`Note`, `Create`, `Person`, `Link`, and so on)
+are also supported as payload values.  Each vocabulary object is bridged
+through expanded JSON-LD on the wire and comes back as a real instance, so
+the handler can call its methods and getters as usual:
+
+~~~~ typescript
+import { Note } from "@fedify/fedify/vocab";
+import { z } from "zod";
+
+const indexNote = federation.defineTask("indexNote", {
+  schema: z.object({
+    note: z.instanceof(Note),  // an opaque instanceof leaf
+    indexedAt: z.date(),
+  }),
+  handler: async (ctx, data) => {
+    await searchIndex.add(data.note.id?.href, data.note.content?.toString());
+  },
+});
+~~~~
+
+The schema validates the *envelope* of the payload; vocabulary objects are
+opaque `instanceof` leaves (e.g., `z.instanceof(Note)`), so no enormous
+schema is needed.
+
+Validation runs twice: once at enqueue time, so a caller passing a wrong
+shape fails fast at the call site, and once at dequeue time, which protects
+against *schema drift*—a durable queue can hand a new deployment a payload
+that an older deployment enqueued.  A payload that fails dequeue-time
+validation (or cannot be decoded at all) is dropped with an error log rather
+than retried, because retrying cannot make it valid.
+
+[devalue]: https://github.com/sveltejs/devalue
+
+
+Dispatching tasks
+-----------------
+
+`~Context.enqueueTask()` validates the payload, serializes it, and enqueues
+it.  It returns as soon as the message is accepted by the queue:
+
+~~~~ typescript
+await ctx.enqueueTask(sendDigest, {
+  userId: "alice",
+  since: new Date("2026-06-01T00:00:00Z"),
+});
+~~~~
+
+Passing a payload that does not match the task's schema is a compile-time
+type error, and—for shapes the type system cannot catch—a runtime
+`TypeError` at the call site.
+
+`~Context.enqueueTaskMany()` enqueues multiple payloads at once, using the
+queue's bulk `~MessageQueue.enqueueMany()` operation when the backend
+supports it and falling back to parallel single enqueues otherwise:
+
+~~~~ typescript
+await ctx.enqueueTaskMany(sendDigest, users.map((u) => ({
+  userId: u.id,
+  since: u.lastDigestAt,
+})));
+~~~~
+
+Both methods accept options:
+
+`delay`
+:   A `Temporal.DurationLike` to postpone processing, e.g.,
+    `{ minutes: 30 }`.
+
+`orderingKey`
+:   Tasks with the same ordering key are processed sequentially (one at
+    a time), like the same option on the message queue layer.
+
+~~~~ typescript
+await ctx.enqueueTask(sendDigest, payload, {
+  delay: { minutes: 30 },
+  orderingKey: `digest:${payload.userId}`,
+});
+~~~~
+
+
+Retry and error handling
+------------------------
+
+When a handler throws, Fedify consults the retry policy and re-enqueues the
+message with an incremented attempt counter.  The policy is resolved in this
+order:
+
+1.  The task's own `retryPolicy` passed to `~TaskRegistry.defineTask()`.
+2.  The federation-wide `~FederationOptions.taskRetryPolicy`.
+3.  The default: exponential backoff with a maximum of 10 attempts.
+
+When the queue backend reports `~MessageQueue.nativeRetrial`, Fedify rethrows
+the error instead and lets the backend drive retries.
+
+A task can also register an `onError` callback, which is invoked with the
+error and the decoded payload before a retry is scheduled—useful for
+reporting or compensating actions:
+
+~~~~ typescript
+const sendDigest = federation.defineTask("sendDigest", {
+  schema: digestSchema,
+  handler: async (ctx, data) => {
+    await sendEmail(data.userId, await buildDigest(data.userId, data.since));
+  },
+  retryPolicy: createExponentialBackoffPolicy({ maxAttempts: 3 }),
+  onError: async (ctx, error, data) => {
+    await reportFailure("sendDigest", data.userId, error);
+  },
+});
+~~~~
+
+Two failure cases are *dropped without retry*, because retrying cannot help:
+a message whose `taskName` has no registered handler (logged as a warning),
+and a payload that cannot be decoded or fails dequeue-time validation
+(logged as an error).
+
+
+Queue routing and isolation
+---------------------------
+
+By default tasks share the outbox queue, so no extra configuration is needed
+beyond a `queue` on `createFederation()`.  For heavier workloads, tasks can
+be isolated at two levels.
+
+A dedicated task queue, separate from activity delivery, is configured with
+the `~FederationQueueOptions.task` slot:
+
+~~~~ typescript
+const federation = createFederation<void>({
+  // ...
+  queue: {
+    inbox: new PostgresMessageQueue(sql, { channel: "inbox" }),
+    outbox: new PostgresMessageQueue(sql, { channel: "outbox" }),
+    task: new PostgresMessageQueue(sql, { channel: "task" }),  // [!code highlight]
+  },
+});
+~~~~
+
+A single task can also carry its own queue, which takes precedence over
+everything else:
+
+~~~~ typescript
+const transcodeVideo = federation.defineTask("transcodeVideo", {
+  schema: transcodeSchema,
+  handler: transcodeHandler,
+  queue: new PostgresMessageQueue(sql, { channel: "transcode" }),
+});
+~~~~
+
+The queue for a task is resolved in order: the per-task `queue`, then the
+federation's `task` queue, then the outbox queue.  Deployments that must
+*not* silently share the outbox queue can opt out of the last step with
+`~FederationOptions.taskQueueResolution`:
+
+~~~~ typescript
+const federation = createFederation<void>({
+  // ...
+  taskQueueResolution: "strict",  // no outbox fallback  // [!code highlight]
+});
+~~~~
+
+Under `"strict"` resolution, enqueuing a task that has no queue throws
+a `TypeError` instead of falling back.
+
+On the worker side, `~Federation.startQueue()` accepts `"task"` in its
+`queue` option, so a dedicated worker process can consume only tasks:
+
+~~~~ typescript
+await federation.startQueue(contextData, { queue: "task" });
+~~~~
+
+A task that falls back to the outbox queue needs no dedicated worker; the
+outbox worker dispatches every message by its type regardless of which queue
+delivered it.
+
+
+Limitations
+-----------
+
+The current API intentionally ships without deduplication, task-specific
+OpenTelemetry spans and metrics, cron-style periodic scheduling, result
+backends, and per-task priority.  Some of these are planned as follow-ups;
+see the [tracking issue].
+
+[tracking issue]: https://github.com/fedify-dev/fedify/issues/206

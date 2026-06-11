@@ -263,7 +263,7 @@ type ActivityConstructor = new (...args: any[]) => Activity;
 class MockFederation<TContextData> implements Federation<TContextData> {
   public sentActivities: SentActivity[] = [];
   public queueStarted = false;
-  private activeQueues: Set<"inbox" | "outbox" | "fanout"> = new Set();
+  private activeQueues: Set<"inbox" | "outbox" | "fanout" | "task"> = new Set();
   public sentCounter = 0;
   private nodeInfoDispatcher?: any;
   // Note: Using `any` instead of WebFingerLinksDispatcher to avoid JSR hang.
@@ -285,6 +285,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   public sharedInboxPath?: string;
   public objectPaths: Map<string, string> = new Map();
   public objectDispatchers: Map<string, any> = new Map();
+  public taskDefinitions: Map<string, any> = new Map();
   private inboxDispatcher?: any;
   private outboxDispatcher?: any;
   private outboxAuthorizePredicate?: any;
@@ -315,6 +316,16 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   setNodeInfoDispatcher(path: string, dispatcher: any): void {
     this.nodeInfoDispatcher = dispatcher;
     this.nodeInfoPath = path;
+  }
+
+  // Note: Parameter and return types are `any` like the other mock methods;
+  // the structural shape follows TaskRegistry.defineTask().
+  defineTask(name: string, options: any): any {
+    if (this.taskDefinitions.has(name)) {
+      throw new TypeError(`Task ${JSON.stringify(name)} is already defined.`);
+    }
+    this.taskDefinitions.set(name, { name, ...options });
+    return { name, schema: options.schema };
   }
 
   // Note: Parameter type is `any` instead of WebFingerLinksDispatcher to avoid
@@ -504,10 +515,11 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     if (options?.queue) {
       this.activeQueues.add(options.queue);
     } else {
-      // If no specific queue, activate all three
+      // If no specific queue, activate all four
       this.activeQueues.add("inbox");
       this.activeQueues.add("outbox");
       this.activeQueues.add("fanout");
+      this.activeQueues.add("task");
     }
   }
 
@@ -953,6 +965,27 @@ class MockContext<TContextData> implements Context<TContextData> {
 
   getSignedKeyOwner(): Promise<any> {
     return Promise.resolve(null);
+  }
+
+  // No queue in mock type: the task handler is invoked immediately,
+  // mirroring how processQueuedTask() processes immediately.
+  async enqueueTask(task: any, data: any, _options?: any): Promise<void> {
+    if (!(this.federation instanceof MockFederation)) {
+      throw new TypeError("No task definitions are available.");
+    }
+    const def = this.federation.taskDefinitions.get(task.name);
+    if (def == null) {
+      throw new TypeError(`Task ${JSON.stringify(task.name)} is not defined.`);
+    }
+    await def.handler(this, data);
+  }
+
+  async enqueueTaskMany(
+    task: any,
+    payloads: readonly any[],
+    options?: any,
+  ): Promise<void> {
+    for (const data of payloads) await this.enqueueTask(task, data, options);
   }
 
   clone(data: TContextData): TestContext<TContextData> {
