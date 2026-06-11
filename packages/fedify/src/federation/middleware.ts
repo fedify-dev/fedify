@@ -596,9 +596,6 @@ export class FederationImpl<TContextData>
   outboxQueueStarted: boolean;
   fanoutQueueStarted: boolean;
   taskQueueStarted: boolean;
-  // Dedicated per-task queues (defineTask({ queue })) that already have a
-  // worker listening, so a later _startQueueInternal() call does not listen
-  // on the same instance twice.
   startedTaskQueues: Set<MessageQueue>;
   manuallyStartQueue: boolean;
   origin?: FederationOrigin;
