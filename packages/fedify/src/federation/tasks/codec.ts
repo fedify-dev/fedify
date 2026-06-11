@@ -38,24 +38,11 @@ export default class TaskCodec {
     jsonLd: await value.toJsonLd({ format: "expand", ...this.options }),
   });
 
-  // The explicit return type breaks the inference cycle between #revive and
-  // #classRevivers (whose `set` callbacks call back into #revive).
-  //
-  // Every node walked here belongs to the throwaway tree that devalue's
-  // `parse` just built from the wire string, not to any caller-shared graph,
-  // so the revived containers are always fresh: there is nothing to clone
-  // lazily and no external identity to preserve.  A recursion-depth cap is
-  // likewise unnecessary: this pass recurses with `await`, which unwinds the
-  // synchronous stack at each level, and the binding limit on nesting is
-  // devalue's own synchronous, recursive `stringify`/`parse`, which would
-  // overflow long before this pass — capping depth here would add nothing.
   #revive = (seen: Seen): Revive => async (node: unknown): Promise<unknown> => {
     if (node === null || typeof node !== "object") return node;
     if (seen.has(node)) return seen.get(node);
-    // The class filters are mutually exclusive, so find the single matching
-    // reviver instead of running all of them against every node.
     const reviver = this.#classRevivers.find(([filter]) => filter(node));
-    // Date / URL / RegExp and the like — devalue already handled them.
+    // devalue can handled non-container objects.
     if (reviver == null) return node;
     const [, init, set] = reviver;
     // @ts-ignore tsc faults
@@ -164,21 +151,6 @@ type Seen = Map<object, unknown>;
 
 /** Revives one node, sharing the per-decode {@link Seen} map via closure. */
 type Revive = (node: unknown) => Promise<unknown>;
-
-/**
- * One row of {@link TaskCodec.#classRevivers}: a type guard, a factory
- * that makes the empty revived container, and a filler that walks the source
- * into it using the supplied per-node {@link Revive}.  `#reviveByClass`
- * cannot annotate its parameter as `typeof this.#classRevivers[number]`
- * because a `typeof` query on a private field does not parse, so this loose
- * structural shape stands in; the `init` and `set` calls are reconciled with
- * `@ts-ignore` at the call site.
- */
-type ClassReviver = readonly [
-  (value: unknown) => boolean,
-  (node: never) => unknown,
-  (revive: Revive, node: never, out: never) => Promise<void>,
-];
 
 type Container =
   | VocabHolder
