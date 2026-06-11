@@ -215,6 +215,12 @@ const transcodeVideo = federation.defineTask("transcodeVideo", {
 });
 ~~~~
 
+Workers for dedicated per-task queues are registered when the queue
+machinery starts, so define every task before `~Federation.startQueue()`
+is called (or, without `~FederationOptions.manuallyStartQueue`, before the
+first request is handled); a per-task queue defined later never gets
+a worker.
+
 The queue for a task is resolved in order: the per-task `queue`, then the
 federation's `task` queue, then the outbox queue.  Deployments that must
 *not* silently share the outbox queue can opt out of the last step with

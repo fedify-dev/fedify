@@ -399,6 +399,28 @@ test("Context.enqueueTask() end-to-end", async (t) => {
       strictEqual(queue.enqueued.length, 2);
     },
   );
+
+  await t.step(
+    "enqueueTaskMany() with no payloads touches no queue",
+    async () => {
+      const queue = new MockQueue({ supportsEnqueueMany: true });
+      const federation = createFederation<void>({
+        ...baseOptions,
+        queue: { task: queue },
+      });
+      const task = federation.defineTask("bulk-empty", {
+        schema: stringSchema,
+        handler: () => {},
+      });
+      const ctx = federation.createContext(
+        new URL("https://example.com/"),
+        undefined,
+      );
+      await ctx.enqueueTaskMany(task, []);
+      strictEqual(queue.enqueued.length, 0);
+      strictEqual(queue.enqueuedMany.length, 0);
+    },
+  );
 });
 
 test("task queue routing", async (t) => {

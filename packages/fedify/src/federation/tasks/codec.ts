@@ -43,7 +43,7 @@ export default class TaskCodec {
     if (node === null || typeof node !== "object") return node;
     if (seen.has(node)) return seen.get(node);
     const reviver = this.#classRevivers.find(([filter]) => filter(node));
-    // devalue can handled non-container objects.
+    // devalue can handle non-container objects.
     if (reviver == null) return node;
     const [, init, set] = reviver;
     // @ts-ignore tsc faults
