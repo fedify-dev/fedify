@@ -171,6 +171,7 @@ async function fetchJson(
     }),
   );
   if (!response.ok) {
+    await response.arrayBuffer().catch(() => {});
     throw new Error(`Failed to fetch ${url.href}: HTTP ${response.status}.`);
   }
   const json = await response.json();

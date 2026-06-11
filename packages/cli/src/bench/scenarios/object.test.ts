@@ -518,6 +518,40 @@ test("objectRunner - gates collection URLs before crawling them", async () => {
   );
 });
 
+test("objectRunner - drains failed discovery responses", async () => {
+  const scenario = normalizeSuite({
+    version: 1,
+    target: "http://target.test/",
+    scenarios: [{
+      name: "object-crawl",
+      type: "object",
+      source: {
+        seed: "http://target.test/users/alice",
+        collection: "outbox",
+        limit: 1,
+      },
+      load: { concurrency: 1 },
+      duration: "25ms",
+    }],
+  }).scenarios[0];
+  const failed = new Response("forbidden", { status: 403 });
+
+  await assert.rejects(
+    async () =>
+      await objectRunner.run({
+        scenario,
+        target: new URL("http://target.test/"),
+        documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+        contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+        allowPrivateAddress: true,
+        fleet: null,
+        fetch: () => Promise.resolve(failed),
+      }),
+    /Failed to fetch http:\/\/target\.test\/users\/alice: HTTP 403/,
+  );
+  assert.strictEqual(failed.bodyUsed, true);
+});
+
 test("objectRunner - resolves relative URLs while crawling object sources", async () => {
   const scenario = normalizeSuite({
     version: 1,
