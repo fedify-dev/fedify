@@ -400,22 +400,29 @@ async function sendInvalidSignature(
     "invalid-signature",
     deliveryTarget,
   );
-  const body = new Uint8Array(await request.arrayBuffer());
-  const corrupted = new Uint8Array(body.length + 1);
-  corrupted.set(body);
-  corrupted[body.length] = 0x20;
+  const body = await request.arrayBuffer();
   const headers = new Headers(request.headers);
+  corruptSignatureHeaders(headers);
   return expectedFailure(
     await sendRequest(
       new Request(request.url, {
         method: request.method,
         headers,
-        body: corrupted,
+        body,
         redirect: "manual",
       }),
       context.fetch ?? fetch,
     ),
   );
+}
+
+function corruptSignatureHeaders(headers: Headers): void {
+  const signature = headers.get("signature");
+  if (signature != null) headers.set("signature", `${signature}0`);
+  const authorization = headers.get("authorization");
+  if (authorization != null) {
+    headers.set("authorization", `${authorization}0`);
+  }
 }
 
 async function sendMissingActor(

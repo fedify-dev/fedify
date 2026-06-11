@@ -329,6 +329,7 @@ test("failureRunner - discovers inbound failure inboxes once", async () => {
         return Promise.resolve();
       },
     };
+    let corruptedSignatureRequests = 0;
     const measurement = await failureRunner.run({
       scenario,
       target,
@@ -336,16 +337,24 @@ test("failureRunner - discovers inbound failure inboxes once", async () => {
       contextLoader: await getContextLoader({ allowPrivateAddress: true }),
       allowPrivateAddress: true,
       fleet,
-      fetch: (input) => {
-        const url = new URL(input instanceof Request ? input.url : input);
+      fetch: async (input) => {
+        const request = input instanceof Request ? input : new Request(input);
+        const url = new URL(request.url);
         if (url.pathname === "/inbox") {
-          return Promise.resolve(
-            new Response("bad signature", {
-              status: 401,
-            }),
-          );
+          await request.clone().json();
+          const signature = request.headers.get("signature");
+          const authorization = request.headers.get("authorization");
+          if (
+            signature?.endsWith("0") === true ||
+            authorization?.endsWith("0") === true
+          ) {
+            corruptedSignatureRequests++;
+          }
+          return new Response("bad signature", {
+            status: 401,
+          });
         }
-        return Promise.resolve(new Response("not found", { status: 404 }));
+        return new Response("not found", { status: 404 });
       },
       assertDestinationAllowed: () => {},
       clock,
@@ -353,6 +362,7 @@ test("failureRunner - discovers inbound failure inboxes once", async () => {
 
     assert.strictEqual(measurement.requests.total, 3);
     assert.strictEqual(measurement.requests.successRate, 1);
+    assert.strictEqual(corruptedSignatureRequests, 3);
     assert.strictEqual(actorGets, 1);
   } finally {
     try {
