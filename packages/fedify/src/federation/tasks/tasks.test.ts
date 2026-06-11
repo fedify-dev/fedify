@@ -235,6 +235,14 @@ test("task type-level guards", () => {
     // @ts-expect-error: a wrong-shaped payload must not type-check.
     return ctx.enqueueTask(task, { n: "not a number" });
   };
+  const _crossContextHandleIsACompileError = (
+    ctx: Context<void>,
+    task: TaskDefinition<{ tenant: string }, { n: number }>,
+  ) => {
+    // @ts-expect-error: a handle bound to different context data must not
+    // type-check.
+    return ctx.enqueueTask(task, { n: 1 });
+  };
 });
 
 test("Context.enqueueTask() end-to-end", async (t) => {

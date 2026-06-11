@@ -78,6 +78,13 @@ export interface TaskDefinitionOptions<
 }
 
 /**
+ * Phantom key binding a {@link TaskDefinition} to its federation's context
+ * data type.  Declared only—no value exists at runtime, and the symbol is
+ * not exported, so the marker stays out of user-facing completions.
+ */
+declare const contextDataBrand: unique symbol;
+
+/**
  * The handle returned by {@link TaskRegistry.defineTask}.  It carries the
  * task name and schema so that {@link Context.enqueueTask} can validate the
  * payload and infer its type at every call site.
@@ -101,7 +108,7 @@ export interface TaskDefinition<TContextData, TData> {
   /**
    * @internal Phantom marker binding the handle to its federation.
    */
-  readonly __contextData?: TContextData;
+  readonly [contextDataBrand]?: TContextData;
 }
 
 /**

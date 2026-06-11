@@ -7,4 +7,11 @@
  * @module
  */
 export { default as TaskCodec } from "./codec.ts";
-export * from "./task.ts";
+export type {
+  TaskDefinition,
+  TaskDefinitionInternal,
+  TaskDefinitionOptions,
+  TaskEnqueueOptions,
+  TaskHandler,
+  TaskRegistry,
+} from "./task.ts";
