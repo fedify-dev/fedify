@@ -115,7 +115,7 @@ is a superset).  The suite declares the `target`, shared `defaults`, the
 block of pass/fail thresholds:
 
 ~~~~ yaml
-# yaml-language-server: $schema=https://json-schema.fedify.dev/bench/scenario-v1.json
+# yaml-language-server: $schema=https://json-schema.fedify.dev/bench/scenario-v2.json
 version: 1
 target: http://localhost:3000
 defaults:
@@ -161,7 +161,7 @@ list, deliveries are rotated across the recipients (and across the synthetic
 `actors` signing them), modeling a server that receives from many peers into
 many local inboxes.
 
-[published schema]: https://json-schema.fedify.dev/bench/scenario-v1.json
+[published schema]: https://json-schema.fedify.dev/bench/scenario-v2.json
 
 ### Scenario types
 

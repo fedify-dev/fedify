@@ -2,7 +2,7 @@
  * Hand-written TypeScript types for the benchmark scenario suite format.
  *
  * These mirror the published JSON Schema in {@link ./schema.ts} and
- * *schema/bench/scenario-v1.json*.  Runtime validation is done with
+ * *schema/bench/scenario-v2.json*.  Runtime validation is done with
  * `@cfworker/json-schema`; after a value validates, it is narrowed to
  * {@link Suite} with an `as unknown as` cast (see {@link ./validate.ts}).
  * @since 2.3.0

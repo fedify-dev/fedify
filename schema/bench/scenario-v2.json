@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://json-schema.fedify.dev/bench/scenario-v1.json",
+  "$id": "https://json-schema.fedify.dev/bench/scenario-v2.json",
   "title": "Fedify benchmark scenario suite",
   "type": "object",
   "required": [
@@ -408,6 +408,9 @@
           "items": {
             "$ref": "#/$defs/mixEntry"
           }
+        },
+        "sinkBase": {
+          "type": "string"
         }
       },
       "allOf": [

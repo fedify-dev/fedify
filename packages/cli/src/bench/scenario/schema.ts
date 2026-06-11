@@ -1,9 +1,9 @@
 /**
  * The embedded JSON Schema (draft 2020-12) for benchmark scenario suite files.
  *
- * This object is the runtime copy used by the validator; it is published,
- * byte-for-byte, as *schema/bench/scenario-v1.json* and a drift guard keeps the
- * two in sync.  The matching TypeScript types live in {@link ./types.ts}.
+ * These objects are the runtime copies used by the validator; they are
+ * published, byte-for-byte, under *schema/bench/* and a drift guard keeps them
+ * in sync.  The matching TypeScript types live in {@link ./types.ts}.
  *
  * The schema expresses every scenario type discussed for `fedify bench`
  * (`inbox`, `webfinger`, `actor`, `object`, `fanout`, `collection`, `failure`,
@@ -19,8 +19,12 @@
  * @module
  */
 
-/** The hosted URL that serves the scenario schema. */
+/** The hosted URL that serves the current scenario schema. */
 export const SCENARIO_SCHEMA_ID =
+  "https://json-schema.fedify.dev/bench/scenario-v2.json";
+
+/** The hosted URL that serves the version 1 scenario schema. */
+export const SCENARIO_SCHEMA_ID_V1 =
   "https://json-schema.fedify.dev/bench/scenario-v1.json";
 
 const READ_METRICS = [
@@ -60,7 +64,7 @@ const MIXED_METRICS = [...new Set([...INBOX_METRICS, ...FANOUT_METRICS])];
 /** The benchmark scenario suite JSON Schema (draft 2020-12). */
 export const scenarioSchemaV1 = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
-  $id: SCENARIO_SCHEMA_ID,
+  $id: SCENARIO_SCHEMA_ID_V1,
   title: "Fedify benchmark scenario suite",
   type: "object",
   required: ["version", "scenarios"],
@@ -288,7 +292,6 @@ export const scenarioSchemaV1 = {
         // fanout
         sender: { type: "string" },
         followers: { type: "integer", minimum: 1 },
-        sinkBase: { type: "string" },
         trigger: { type: "object" },
         sinkBehavior: { type: "object" },
         queueDrainTimeout: { $ref: "#/$defs/duration" },
@@ -375,6 +378,22 @@ export const scenarioSchemaV1 = {
           },
         },
       ],
+    },
+  },
+} as const;
+
+/** The current benchmark scenario suite JSON Schema (draft 2020-12). */
+export const scenarioSchemaV2 = {
+  ...scenarioSchemaV1,
+  $id: SCENARIO_SCHEMA_ID,
+  $defs: {
+    ...scenarioSchemaV1.$defs,
+    scenario: {
+      ...scenarioSchemaV1.$defs.scenario,
+      properties: {
+        ...scenarioSchemaV1.$defs.scenario.properties,
+        sinkBase: { type: "string" },
+      },
     },
   },
 } as const;

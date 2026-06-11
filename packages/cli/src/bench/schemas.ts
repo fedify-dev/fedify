@@ -10,7 +10,7 @@
  */
 
 import { reportSchemaV1, reportSchemaV2 } from "./result/schema.ts";
-import { scenarioSchemaV1 } from "./scenario/schema.ts";
+import { scenarioSchemaV1, scenarioSchemaV2 } from "./scenario/schema.ts";
 
 /** A published JSON Schema and where it is hosted. */
 export interface PublishedSchema {
@@ -26,6 +26,11 @@ export interface PublishedSchema {
 export const PUBLISHED_SCHEMAS: readonly PublishedSchema[] = [
   {
     name: "scenario",
+    fileName: "scenario-v2.json",
+    schema: scenarioSchemaV2 as unknown as Record<string, unknown>,
+  },
+  {
+    name: "scenario-v1",
     fileName: "scenario-v1.json",
     schema: scenarioSchemaV1 as unknown as Record<string, unknown>,
   },

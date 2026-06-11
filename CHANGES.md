@@ -299,8 +299,8 @@ To be released.
     run weighted child scenario blends.  The `collection` scenario type remains
     reserved but not executable.  Fanout and remote failure scenarios can set
     `sinkBase` to generate deterministic benchmark sink inbox URLs for targets
-    that keep `triggerSinks` allowlisting enabled.  [[#744], [#785], [#801],
-    [#802]]
+    that keep `triggerSinks` allowlisting enabled.  This change is published
+    as benchmark scenario schema version 2.  [[#744], [#785], [#801], [#802]]
 
 [#783]: https://github.com/fedify-dev/fedify/issues/783
 [#784]: https://github.com/fedify-dev/fedify/issues/784
