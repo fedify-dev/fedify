@@ -140,7 +140,7 @@ async function signGetRequest(
   request: Request,
   actor: SyntheticActor,
 ): Promise<Request> {
-  if (actor.keys.rsa == null || actor.rsaKeyId == null) {
+  if (actor.keys?.rsa == null || actor.rsaKeyId == null) {
     throw new TypeError(
       "Actor is missing the RSA key required for authenticated fetch signing.",
     );

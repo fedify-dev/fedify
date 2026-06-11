@@ -204,3 +204,44 @@ test("runReadLoad - authenticated reads support presign mode", async () => {
     await fleet?.close();
   }
 });
+
+test("runReadLoad - reports missing authenticated read keys clearly", async () => {
+  const scenario = normalizeSuite({
+    version: 1,
+    target: "http://target.test/",
+    scenarios: [{
+      name: "read",
+      type: "actor",
+      authenticated: true,
+      signing: "pipeline",
+      load: { concurrency: 1 },
+      duration: "25ms",
+    }],
+  }).scenarios[0];
+
+  await assert.rejects(
+    async () =>
+      await runReadLoad({
+        scenario,
+        target: new URL("http://target.test/"),
+        documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+        contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+        allowPrivateAddress: true,
+        fleet: {
+          actors: [{
+            id: new URL("http://synthetic.test/actors/0"),
+            index: 0,
+            keys: undefined,
+          }],
+          url: new URL("http://synthetic.test/"),
+          close: async () => {},
+        } as unknown as Awaited<ReturnType<typeof spawnSyntheticServer>>,
+        fetch: () => Promise.resolve(new Response("{}", { status: 200 })),
+        assertDestinationAllowed: () => {},
+      }, {
+        urls: [new URL("http://remote.test/users/alice")],
+        authenticated: true,
+      }),
+    /Actor is missing the RSA key required for authenticated fetch signing/,
+  );
+});
