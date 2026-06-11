@@ -295,4 +295,27 @@ test("TaskCodec.encode() / decode()", async (t) => {
       );
     },
   );
+
+  await t.step(
+    "a non-idempotent (transforming) schema fails to round-trip",
+    async () => {
+      // Validation must be idempotent: the wire carries the validated
+      // output, which the same schema re-validates as input at dequeue.
+      const transforming: StandardSchemaV1<string, number> = {
+        "~standard": {
+          version: 1,
+          vendor: "fedify-test",
+          validate: (value: unknown) =>
+            typeof value === "string"
+              ? { value: value.length }
+              : { issues: [{ message: "Expected a string." }] },
+        },
+      };
+      const wire = await codec.encode(transforming, "hello");
+      await rejects(
+        () => codec.decode(transforming, wire),
+        { name: "TypeError", message: /Task data failed schema validation/ },
+      );
+    },
+  );
 });

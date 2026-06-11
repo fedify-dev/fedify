@@ -34,7 +34,10 @@ export interface TaskDefinitionOptions<
    *
    * The payload is validated twice: once at enqueue time (fail fast) and
    * once at dequeue time (drift protection against payloads enqueued by an
-   * older deployment).
+   * older deployment).  Because the same schema runs on both sides, its
+   * validation must be idempotent: the validated output must itself be
+   * a valid input.  Transforming schemas (e.g., Zod's `.transform()`) whose
+   * output differs in shape from their input are not supported.
    */
   readonly schema: TSchema;
 
