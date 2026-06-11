@@ -8,7 +8,7 @@ import { fanoutRunner } from "./fanout.ts";
 
 test("fanoutRunner - triggers benchmark hook and reports drain", async () => {
   const target = new URL("http://target.test/");
-  let statsCalls = 0;
+  let triggerCalls = 0;
   let triggerRecipients = 0;
   const suite: Suite = {
     version: 1,
@@ -35,15 +35,14 @@ test("fanoutRunner - triggers benchmark hook and reports drain", async () => {
     fetch: (input, init) => {
       const url = new URL(input instanceof Request ? input.url : input);
       if (url.pathname === "/.well-known/fedify/bench/stats") {
-        statsCalls++;
-        const drained = statsCalls > 1;
         return Promise.resolve(json(statsSnapshot({
-          enqueued: drained ? 6 : 0,
-          completed: drained ? 6 : 0,
+          enqueued: triggerCalls * 6,
+          completed: triggerCalls * 6,
           failed: 0,
         })));
       }
       if (url.pathname === "/.well-known/fedify/bench/trigger") {
+        triggerCalls++;
         const triggerBody = JSON.parse(String(init?.body));
         triggerRecipients = triggerBody.recipients.length;
         return Promise.resolve(json({ version: 1 }, 202));
@@ -207,9 +206,60 @@ test("fanoutRunner - counts failed queue tasks as delivery failures", async () =
   assert.strictEqual(measurement.deliveryThroughputPerSec, 0);
 });
 
+test("fanoutRunner - waits for observed queue work before drain", async () => {
+  const target = new URL("http://target.test/");
+  let statsCalls = 0;
+  let triggerCalls = 0;
+  const scenario = normalizeSuite({
+    version: 1,
+    target: target.href,
+    scenarios: [{
+      name: "fanout",
+      type: "fanout",
+      sender: "alice",
+      followers: 5,
+      load: { concurrency: 1 },
+      duration: "40ms",
+      queueDrainTimeout: "1s",
+    }],
+  }).scenarios[0];
+
+  const measurement = await fanoutRunner.run({
+    scenario,
+    target,
+    documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+    contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+    allowPrivateAddress: true,
+    fleet: null,
+    fetch: (input) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.pathname === "/.well-known/fedify/bench/stats") {
+        statsCalls++;
+        const observed = statsCalls > 2;
+        const queueTasks = observed ? triggerCalls * 6 : 0;
+        return Promise.resolve(json(statsSnapshot({
+          enqueued: queueTasks,
+          completed: queueTasks,
+          failed: 0,
+        })));
+      }
+      if (url.pathname === "/.well-known/fedify/bench/trigger") {
+        triggerCalls++;
+        return Promise.resolve(json({ version: 1 }, 202));
+      }
+      return Promise.resolve(new Response("unexpected", { status: 500 }));
+    },
+  });
+
+  assert.ok(measurement.requests.total > 0);
+  assert.strictEqual(measurement.requests.successRate, 1);
+  assert.ok(statsCalls > 2);
+});
+
 test("fanoutRunner - tolerates transient drain stats failures", async () => {
   const target = new URL("http://target.test/");
   let statsCalls = 0;
+  let triggerCalls = 0;
   const scenario = normalizeSuite({
     version: 1,
     target: target.href,
@@ -242,14 +292,14 @@ test("fanoutRunner - tolerates transient drain stats failures", async () => {
             }),
           );
         }
-        const drained = statsCalls > 2;
         return Promise.resolve(json(statsSnapshot({
-          enqueued: drained ? 6 : 0,
-          completed: drained ? 6 : 0,
+          enqueued: triggerCalls * 6,
+          completed: triggerCalls * 6,
           failed: 0,
         })));
       }
       if (url.pathname === "/.well-known/fedify/bench/trigger") {
+        triggerCalls++;
         return Promise.resolve(json({ version: 1 }, 202));
       }
       return Promise.resolve(new Response("unexpected", { status: 500 }));
@@ -265,7 +315,7 @@ test("fanoutRunner - tolerates transient drain stats failures", async () => {
 test("fanoutRunner - uses configured sink base for recipients", async () => {
   const target = new URL("http://target.test/");
   const sinkBase = `http://127.0.0.1:${await reservePort()}/`;
-  let statsCalls = 0;
+  let triggerCalls = 0;
   let recipientInboxes: string[] = [];
   const scenario = normalizeSuite({
     version: 1,
@@ -292,15 +342,14 @@ test("fanoutRunner - uses configured sink base for recipients", async () => {
     fetch: (input, init) => {
       const url = new URL(input instanceof Request ? input.url : input);
       if (url.pathname === "/.well-known/fedify/bench/stats") {
-        statsCalls++;
-        const drained = statsCalls > 1;
         return Promise.resolve(json(statsSnapshot({
-          enqueued: drained ? 6 : 0,
-          completed: drained ? 6 : 0,
+          enqueued: triggerCalls * 6,
+          completed: triggerCalls * 6,
           failed: 0,
         })));
       }
       if (url.pathname === "/.well-known/fedify/bench/trigger") {
+        triggerCalls++;
         const body = JSON.parse(String(init?.body));
         recipientInboxes = body.recipients.map((
           recipient: Record<string, unknown>,

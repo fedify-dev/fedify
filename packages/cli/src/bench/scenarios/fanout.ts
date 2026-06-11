@@ -321,7 +321,12 @@ async function waitForDrain(options: {
       const diff = diffSnapshots(options.baseline, snapshot);
       const queueTasks = diff.queueTasks;
       const remaining = queueTaskRemaining(diff);
-      if (queueTasks != null && remaining != null && remaining === 0) {
+      if (
+        queueTasks != null &&
+        queueTasks.enqueued > 0 &&
+        remaining != null &&
+        remaining === 0
+      ) {
         return { timedOut: false, failed: queueTasks.failed };
       }
     }
