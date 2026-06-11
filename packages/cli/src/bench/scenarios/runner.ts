@@ -164,14 +164,7 @@ export function validateInboxSelector(
         `http(s) URL; got ${JSON.stringify(inbox)}.`,
     );
   }
-  try {
-    assertBareHttpUrl(scenarioName, "inbox URL", url);
-  } catch {
-    throw new Error(
-      `Scenario "${scenarioName}": inbox URL must be a bare http(s) URL with ` +
-        `a host and no credentials; got ${JSON.stringify(inbox)}.`,
-    );
-  }
+  assertBareHttpUrl(scenarioName, "inbox URL", url);
 }
 
 /**

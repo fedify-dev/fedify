@@ -228,7 +228,13 @@ export async function fetchServerMetrics(
   return snapshotToMetrics(await fetchServerSnapshot(target, fetchImpl));
 }
 
-/** Returns the queue task backlog represented by a diffed snapshot. */
+/**
+ * Returns the remaining queue task backlog represented by a diffed snapshot.
+ * @param snapshot The server snapshot to inspect, usually already diffed
+ * against a baseline.
+ * @returns `Math.max(0, enqueued - completed - failed)`, or `null` when the
+ * snapshot has no queue task counters.
+ */
 export function queueTaskRemaining(
   snapshot: ServerSnapshot | null,
 ): number | null {
