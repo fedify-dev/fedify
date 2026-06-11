@@ -187,7 +187,7 @@ function objectUrl(
 ): URL | null {
   for (const candidate of objectCandidates(item)) {
     if (typeof candidate === "string") {
-      if (types.size < 1) return new URL(candidate, base);
+      if (types.size < 1) return safeUrl(candidate, base);
       continue;
     }
     if (!isRecord(candidate)) continue;
@@ -222,10 +222,10 @@ function propertyUrl(
   base?: URL,
 ): URL | null {
   const value = object[key];
-  if (typeof value === "string") return new URL(value, base);
+  if (typeof value === "string") return safeUrl(value, base);
   if (isRecord(value)) {
-    if (typeof value.href === "string") return new URL(value.href, base);
-    if (typeof value.id === "string") return new URL(value.id, base);
+    if (typeof value.href === "string") return safeUrl(value.href, base);
+    if (typeof value.id === "string") return safeUrl(value.id, base);
   }
   return null;
 }
@@ -240,4 +240,12 @@ function arrayProperty(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value != null && typeof value === "object" && !Array.isArray(value);
+}
+
+function safeUrl(value: string, base?: URL): URL | null {
+  try {
+    return new URL(value, base);
+  } catch {
+    return null;
+  }
 }
