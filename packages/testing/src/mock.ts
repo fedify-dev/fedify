@@ -324,8 +324,12 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     if (this.taskDefinitions.has(name)) {
       throw new TypeError(`Task ${JSON.stringify(name)} is already defined.`);
     }
-    this.taskDefinitions.set(name, { name, ...options });
-    return { name, schema: options.schema };
+    // Keep the returned handle with the definition: enqueue compares the
+    // handle by identity, as production does, so a same-named handle from
+    // another federation instance is rejected rather than looked up by name.
+    const handle = { name, schema: options.schema };
+    this.taskDefinitions.set(name, { name, ...options, handle });
+    return handle;
   }
 
   // Note: Parameter type is `any` instead of WebFingerLinksDispatcher to avoid
@@ -972,8 +976,13 @@ class MockContext<TContextData> implements Context<TContextData> {
       throw new TypeError("No task definitions are available.");
     }
     const def = this.federation.taskDefinitions.get(task.name);
-    if (def == null) {
-      throw new TypeError(`Task ${JSON.stringify(task.name)} is not defined.`);
+    if (def == null || def.handle !== task) {
+      throw new TypeError(
+        `Task ${
+          JSON.stringify(task.name)
+        } is not defined on this federation; ` +
+          "pass a handle returned by its defineTask().",
+      );
     }
     return def;
   }

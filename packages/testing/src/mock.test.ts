@@ -1799,3 +1799,32 @@ test("MockContext.enqueueTaskMany validates the whole batch before any handler r
   );
   assertEquals(seen, []);
 });
+
+test("MockContext.enqueueTask rejects a handle from another federation", async () => {
+  const federation = createFederation<void>();
+  const other = createFederation<void>();
+  let called = 0;
+  federation.defineTask("shared-name", {
+    schema: numberSchema,
+    handler: () => {
+      called++;
+    },
+  });
+  // Same task name on another federation: production compares the registered
+  // handle by identity and rejects the foreign one, so a name-only lookup in
+  // the mock would let tests pass with a handle the real federation refuses.
+  const foreign = other.defineTask("shared-name", {
+    schema: numberSchema,
+    handler: () => {},
+  });
+  const context = federation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+  await assertRejects(
+    () => context.enqueueTask(foreign, 1),
+    TypeError,
+    "is not defined on this federation",
+  );
+  assertEquals(called, 0);
+});
