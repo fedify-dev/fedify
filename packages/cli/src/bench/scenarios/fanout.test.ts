@@ -65,7 +65,7 @@ test("fanoutRunner - triggers benchmark hook and reports drain", async () => {
   assert.strictEqual(triggerRecipients, 5);
 });
 
-test("fanoutRunner.validate - requires enough followers for fanout queue", () => {
+test("fanoutRunner.validate - accepts schema-minimum follower count", () => {
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
@@ -73,10 +73,10 @@ test("fanoutRunner.validate - requires enough followers for fanout queue", () =>
       name: "fanout",
       type: "fanout",
       sender: "alice",
-      followers: 4,
+      followers: 1,
     }],
   }).scenarios[0];
-  assert.throws(() => fanoutRunner.validate?.(scenario), /at least 5/);
+  assert.doesNotThrow(() => fanoutRunner.validate?.(scenario));
 });
 
 test("fanoutRunner.validate - rejects invalid sinkBase URLs", () => {

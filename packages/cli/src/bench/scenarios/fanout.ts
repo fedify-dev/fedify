@@ -38,12 +38,6 @@ export const fanoutRunner: ScenarioRunner = {
           `trigger.kind: "benchmark-hook".`,
       );
     }
-    if ((scenario.followers ?? DEFAULT_FOLLOWERS) < 5) {
-      throw new Error(
-        `Scenario "${scenario.name}": fanout needs at least 5 followers to ` +
-          "exercise Fedify's fanout queue.",
-      );
-    }
     resolveSinkBase(scenario.name, scenario.raw.sinkBase);
   },
 
