@@ -79,7 +79,7 @@ export interface OutboxMessage {
  * A message that carries a custom background task.  Every field is
  * a string, number, or plain record so that the message survives both
  * JSON serialization and structured clone on every queue backend.
- * @since 2.3.0
+ * @since 2.x.x
  */
 export interface TaskMessage {
   readonly type: "task";

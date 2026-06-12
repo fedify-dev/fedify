@@ -1086,7 +1086,7 @@ export interface FederationOptions<TContextData> {
    * this uses an exponential backoff strategy with a maximum of 10 attempts
    * and a maximum delay of 12 hours.  A per-task retry policy
    * ({@link TaskDefinitionOptions.retryPolicy}) overrides this.
-   * @since 2.3.0
+   * @since 2.x.x
    */
   taskRetryPolicy?: RetryPolicy;
 
@@ -1099,7 +1099,7 @@ export interface FederationOptions<TContextData> {
    * - `"strict"`: no fallback; enqueuing the task throws instead of
    *   silently sharing the outbox queue.
    * @default `"fallback"`
-   * @since 2.3.0
+   * @since 2.x.x
    */
   taskQueueResolution?: "fallback" | "strict";
 
