@@ -610,16 +610,21 @@ export class FederationBuilderImpl<TContextData>
     if (this.taskDefinitions.has(name)) {
       throw new TypeError(`Task ${JSON.stringify(name)} is already defined.`);
     }
+    const handle: TaskDefinition<
+      TContextData,
+      StandardSchemaV1.InferOutput<TSchema>
+    > = { name, schema: options.schema };
     this.taskDefinitions.set(name, {
       name,
       schema: options.schema,
+      handle,
       handler: options.handler as TaskHandler<TContextData, unknown>,
       onError: options
         .onError as TaskDefinitionInternal<TContextData>["onError"],
       retryPolicy: options.retryPolicy,
       queue: options.queue,
     });
-    return { name, schema: options.schema };
+    return handle;
   }
 
   /**

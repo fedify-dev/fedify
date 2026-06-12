@@ -168,6 +168,13 @@ export interface TaskEnqueueOptions {
 export interface TaskDefinitionInternal<TContextData> {
   readonly name: string;
   readonly schema: StandardSchemaV1;
+  /**
+   * The exact handle object {@link TaskRegistry.defineTask} returned for
+   * this definition.  {@link Context.enqueueTask} compares it by identity:
+   * another federation instance may define the same task name with a
+   * different schema, so name lookup alone cannot tell its handle apart.
+   */
+  readonly handle: TaskDefinition<TContextData, unknown>;
   readonly handler: TaskHandler<TContextData, unknown>;
   readonly retryPolicy?: RetryPolicy;
   readonly onError?: (
