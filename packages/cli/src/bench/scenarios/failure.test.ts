@@ -124,6 +124,55 @@ test("failureRunner - uses configured sink base for remote faults", async () => 
   assert.strictEqual(recipientInbox, new URL("/inbox/0", sinkBase).href);
 });
 
+test("failureRunner - gates remote fault sinks before triggering", async () => {
+  const target = new URL("http://target.test/");
+  const sinkBase = `http://127.0.0.1:${await reservePort()}/`;
+  const scenario = normalizeSuite({
+    version: 1,
+    target: target.href,
+    scenarios: [{
+      name: "failure",
+      type: "failure",
+      fault: "remote-404",
+      sender: "alice",
+      sinkBase,
+      load: { concurrency: 1 },
+      duration: "25ms",
+      queueDrainTimeout: "1s",
+    }],
+  }).scenarios[0];
+  let gateCalls = 0;
+  let triggerCalls = 0;
+
+  await assert.rejects(
+    async () =>
+      failureRunner.run({
+        scenario,
+        target,
+        documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+        contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+        allowPrivateAddress: true,
+        fleet: null,
+        fetch: (input) => {
+          const url = new URL(input instanceof Request ? input.url : input);
+          if (url.pathname === "/.well-known/fedify/bench/trigger") {
+            triggerCalls++;
+          }
+          return Promise.resolve(new Response("unexpected", { status: 500 }));
+        },
+        assertActorlessDestinationAllowed: (url) => {
+          gateCalls++;
+          throw new Error(`refused ${url.href}`);
+        },
+        assertDestinationAllowed: () => {},
+      }),
+    /refused http:\/\/127\.0\.0\.1:/,
+  );
+
+  assert.strictEqual(gateCalls, 1);
+  assert.strictEqual(triggerCalls, 0);
+});
+
 test("failureRunner - shares sink base across remote fault mix", async () => {
   const target = new URL("http://target.test/");
   const sinkBase = `http://127.0.0.1:${await reservePort()}/`;

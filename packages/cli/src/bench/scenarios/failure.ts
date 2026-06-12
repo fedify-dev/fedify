@@ -16,7 +16,11 @@ import {
 import type { SyntheticActor } from "../server/synthetic.ts";
 import { createActivityIdMinter } from "../signing/activity-id.ts";
 import { signInboxDelivery } from "../signing/signer.ts";
-import { resolveSinkBase, spawnSinkServer } from "./fanout.ts";
+import {
+  assertSinkRecipientsAllowed,
+  resolveSinkBase,
+  spawnSinkServer,
+} from "./fanout.ts";
 import {
   loadPlanOf,
   measuredWindowMs,
@@ -109,6 +113,10 @@ export const failureRunner: ScenarioRunner = {
     const remoteTargets = await resolveRemoteFailureTargets(context, faults);
     const remoteActivityIds = createActivityIdMinter(context.target);
     try {
+      await assertSinkRecipientsAllowed(
+        [...remoteTargets.values()].map((target) => target.recipient),
+        context,
+      );
       let index = 0;
       const sendOne = () =>
         sendForFault(

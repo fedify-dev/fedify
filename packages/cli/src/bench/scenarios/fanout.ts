@@ -64,6 +64,7 @@ export const fanoutRunner: ScenarioRunner = {
     const drainHistogram = new LogLinearHistogram();
     let delivered = 0;
     try {
+      await assertSinkRecipientsAllowed(sink.recipients, context);
       const sendOne = async (scheduledAtMs: number): Promise<SendOutcome> => {
         const baseline = await fetchServerSnapshot(context.target, fetchImpl);
         const started = Date.now();
@@ -177,6 +178,19 @@ function buildActivity(context: RunContext, id: URL): Record<string, unknown> {
       content: "Benchmark fanout activity.",
     },
   };
+}
+
+export async function assertSinkRecipientsAllowed(
+  recipients: readonly Record<string, unknown>[],
+  context: RunContext,
+): Promise<void> {
+  for (const recipient of recipients) {
+    if (typeof recipient.inbox !== "string") continue;
+    await context.assertActorlessDestinationAllowed?.(
+      new URL(recipient.inbox),
+      context.scenario,
+    );
+  }
 }
 
 export async function spawnSinkServer(options: {

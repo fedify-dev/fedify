@@ -413,6 +413,53 @@ test("fanoutRunner - uses configured sink base for recipients", async () => {
   );
 });
 
+test("fanoutRunner - gates sink recipients before triggering", async () => {
+  const target = new URL("http://target.test/");
+  const scenario = normalizeSuite({
+    version: 1,
+    target: target.href,
+    scenarios: [{
+      name: "fanout",
+      type: "fanout",
+      sender: "alice",
+      followers: 5,
+      sinkBase: `http://127.0.0.1:${await reservePort()}/`,
+      load: { concurrency: 1 },
+      duration: "30ms",
+      queueDrainTimeout: "1s",
+    }],
+  }).scenarios[0];
+  let gateCalls = 0;
+  let triggerCalls = 0;
+
+  await assert.rejects(
+    async () =>
+      fanoutRunner.run({
+        scenario,
+        target,
+        documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+        contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+        allowPrivateAddress: true,
+        fleet: null,
+        fetch: (input) => {
+          const url = new URL(input instanceof Request ? input.url : input);
+          if (url.pathname === "/.well-known/fedify/bench/trigger") {
+            triggerCalls++;
+          }
+          return Promise.resolve(new Response("unexpected", { status: 500 }));
+        },
+        assertActorlessDestinationAllowed: (url) => {
+          gateCalls++;
+          throw new Error(`refused ${url.href}`);
+        },
+      }),
+    /refused http:\/\/127\.0\.0\.1:/,
+  );
+
+  assert.strictEqual(gateCalls, 1);
+  assert.strictEqual(triggerCalls, 0);
+});
+
 test("spawnSinkServer - ignores invalid sink latency", async () => {
   const sink = await spawnSinkServer({
     followers: 1,
