@@ -476,6 +476,22 @@ test("spawnSinkServer - ignores invalid sink latency", async () => {
   }
 });
 
+test("spawnSinkServer - ignores out-of-range sink status", async () => {
+  const sink = await spawnSinkServer({
+    followers: 1,
+    rawBehavior: { status: 999 },
+  });
+  try {
+    const response = await fetch(String(sink.recipients[0].inbox), {
+      method: "POST",
+      body: "{}",
+    });
+    assert.strictEqual(response.status, 202);
+  } finally {
+    await sink.close();
+  }
+});
+
 test("fanoutRunner - omits queue drain metrics without drain samples", async () => {
   const target = new URL("http://target.test/");
   const scenario = normalizeSuite({

@@ -148,7 +148,12 @@ async function* crawlCollection(
     const items = arrayProperty(page, "orderedItems") ??
       arrayProperty(page, "items") ?? [];
     for (const item of items) {
-      const url = objectUrl(item, options.types, next);
+      const url = await objectUrl(item, {
+        base: next,
+        fetch: options.fetch,
+        assertReadDestinationAllowed: options.assertReadDestinationAllowed,
+        types: options.types,
+      });
       if (url == null) continue;
       yield url;
       remaining--;
@@ -187,25 +192,54 @@ async function fetchJson(
   return json;
 }
 
-function objectUrl(
+async function objectUrl(
   item: unknown,
-  types: ReadonlySet<string>,
-  base: URL,
-): URL | null {
+  options: {
+    readonly base: URL;
+    readonly fetch?: typeof fetch;
+    readonly assertReadDestinationAllowed?: (url: URL) => void | Promise<void>;
+    readonly types: ReadonlySet<string>;
+  },
+): Promise<URL | null> {
   for (const candidate of objectCandidates(item)) {
     if (typeof candidate === "string") {
-      if (types.size < 1) {
-        const url = safeUrl(candidate, base);
-        if (url != null) return url;
-      }
+      const url = safeUrl(candidate, options.base);
+      if (url == null) continue;
+      if (options.types.size < 1) return url;
+      const typedUrl = await typedReferencedObjectUrl(url, options);
+      if (typedUrl != null) return typedUrl;
       continue;
     }
     if (!isRecord(candidate)) continue;
-    if (types.size > 0 && !matchesType(candidate.type, types)) continue;
-    const url = propertyUrl(candidate, "id", base);
+    if (
+      options.types.size > 0 &&
+      !matchesType(candidate.type, options.types)
+    ) {
+      continue;
+    }
+    const url = propertyUrl(candidate, "id", options.base);
     if (url != null) return url;
   }
   return null;
+}
+
+async function typedReferencedObjectUrl(
+  url: URL,
+  options: {
+    readonly fetch?: typeof fetch;
+    readonly assertReadDestinationAllowed?: (url: URL) => void | Promise<void>;
+    readonly types: ReadonlySet<string>;
+  },
+): Promise<URL | null> {
+  await options.assertReadDestinationAllowed?.(url);
+  let object: Record<string, unknown>;
+  try {
+    object = await fetchJson(url, options.fetch);
+  } catch {
+    return null;
+  }
+  if (!matchesType(object.type, options.types)) return null;
+  return propertyUrl(object, "id", url) ?? url;
 }
 
 function objectCandidates(

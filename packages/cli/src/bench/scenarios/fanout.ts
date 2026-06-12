@@ -318,7 +318,8 @@ function parseSinkBehavior(
   }
   return {
     latencyMs,
-    status: typeof status === "number" && Number.isInteger(status)
+    status: typeof status === "number" && Number.isInteger(status) &&
+        status >= 100 && status <= 599
       ? status
       : 202,
   };

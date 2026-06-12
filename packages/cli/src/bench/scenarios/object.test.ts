@@ -508,7 +508,7 @@ test("objectRunner - sends ActivityPub Accept headers during object discovery", 
   ]);
 });
 
-test("objectRunner - skips URL-only collection items for type filters", async () => {
+test("objectRunner - dereferences URL-only items for type filters", async () => {
   const scenario = normalizeSuite({
     version: 1,
     target: "http://target.test/",
@@ -525,38 +525,58 @@ test("objectRunner - skips URL-only collection items for type filters", async ()
       duration: "25ms",
     }],
   }).scenarios[0];
+  const fetched: string[] = [];
 
-  await assert.rejects(
-    async () =>
-      objectRunner.run({
-        scenario,
-        target: new URL("http://target.test/"),
-        documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
-        contextLoader: await getContextLoader({ allowPrivateAddress: true }),
-        allowPrivateAddress: true,
-        fleet: null,
-        fetch: (input) => {
-          const url = new URL(input instanceof Request ? input.url : input);
-          if (url.pathname === "/users/alice") {
-            return Promise.resolve(json({
-              id: url.href,
-              outbox: "http://target.test/users/alice/outbox",
-            }));
-          }
-          if (url.pathname === "/users/alice/outbox") {
-            return Promise.resolve(json({
-              id: url.href,
-              orderedItems: ["http://target.test/objects/article"],
-            }));
-          }
-          return Promise.resolve(json({
-            id: url.href,
-            type: "Article",
-          }));
-        },
-      }),
-    /did not resolve any URLs/,
-  );
+  const measurement = await objectRunner.run({
+    scenario,
+    target: new URL("http://target.test/"),
+    documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+    contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+    allowPrivateAddress: true,
+    fleet: null,
+    fetch: (input) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      fetched.push(url.href);
+      if (url.pathname === "/.well-known/fedify/bench/stats") {
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      }
+      if (url.pathname === "/users/alice") {
+        return Promise.resolve(json({
+          id: url.href,
+          outbox: "http://target.test/users/alice/outbox",
+        }));
+      }
+      if (url.pathname === "/users/alice/outbox") {
+        return Promise.resolve(json({
+          id: url.href,
+          orderedItems: [
+            "http://target.test/objects/article",
+            {
+              type: "Create",
+              object: "http://target.test/objects/note",
+            },
+          ],
+        }));
+      }
+      if (url.pathname === "/objects/article") {
+        return Promise.resolve(json({
+          id: url.href,
+          type: "Article",
+        }));
+      }
+      if (url.pathname === "/objects/note") {
+        return Promise.resolve(json({
+          id: url.href,
+          type: "Note",
+        }));
+      }
+      return Promise.resolve(new Response("not found", { status: 404 }));
+    },
+  });
+
+  assert.ok(measurement.requests.total > 0);
+  assert.ok(fetched.includes("http://target.test/objects/article"));
+  assert.ok(fetched.includes("http://target.test/objects/note"));
 });
 
 test("objectRunner - gates discovery URLs before fetching them", async () => {
