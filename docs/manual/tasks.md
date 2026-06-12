@@ -1,7 +1,7 @@
 Background tasks
 ================
 
-*This API is available since Fedify 2.3.0.*
+*This API is available since Fedify 2.x.x.*
 
 Fedify already processes outgoing and incoming activities on background
 workers through its [message queue](./mq.md).  The custom background task API
@@ -218,8 +218,8 @@ const transcodeVideo = federation.defineTask("transcodeVideo", {
 Workers for dedicated per-task queues are registered when the queue
 machinery starts, so define every task before `~Federation.startQueue()`
 is called (or, without `~FederationOptions.manuallyStartQueue`, before the
-first request is handled); a per-task queue defined later never gets
-a worker.
+first request is handled); a per-task queue defined later may not get
+a worker until the queue machinery is next started.
 
 The queue for a task is resolved in order: the per-task `queue`, then the
 federation's `task` queue, then the outbox queue.  Deployments that must
