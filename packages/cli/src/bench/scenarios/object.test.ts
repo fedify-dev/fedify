@@ -455,6 +455,81 @@ test("objectRunner - skips cyclic fetched activity references", async () => {
   assert.strictEqual(activityFetches, 1);
 });
 
+test("objectRunner - limits deep fetched activity reference chains", async () => {
+  const scenario = normalizeSuite({
+    version: 1,
+    target: "http://target.test/",
+    scenarios: [{
+      name: "object-crawl",
+      type: "object",
+      source: {
+        seed: "http://target.test/users/alice",
+        collection: "outbox",
+        limit: 1,
+        type: "Note",
+      },
+      load: { concurrency: 1 },
+      duration: "25ms",
+    }],
+  }).scenarios[0];
+  const fetchedActivities: number[] = [];
+
+  await assert.rejects(
+    async () =>
+      await objectRunner.run({
+        scenario,
+        target: new URL("http://target.test/"),
+        documentLoader: await getDocumentLoader({
+          allowPrivateAddress: true,
+        }),
+        contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+        allowPrivateAddress: true,
+        fleet: null,
+        fetch: (input) => {
+          const request = input instanceof Request ? input : new Request(input);
+          const url = new URL(request.url);
+          if (url.pathname === "/users/alice") {
+            return Promise.resolve(json({
+              id: url.href,
+              outbox: "http://target.test/users/alice/outbox",
+            }));
+          }
+          if (url.pathname === "/users/alice/outbox") {
+            return Promise.resolve(json({
+              id: url.href,
+              orderedItems: ["http://target.test/activities/0"],
+            }));
+          }
+          const match = /^\/activities\/(\d+)$/.exec(url.pathname);
+          if (match != null) {
+            const index = Number(match[1]);
+            fetchedActivities.push(index);
+            return Promise.resolve(json({
+              id: url.href,
+              type: "Create",
+              object: index < 12
+                ? `http://target.test/activities/${index + 1}`
+                : {
+                  type: "Note",
+                  id: "http://target.test/objects/deep",
+                },
+            }));
+          }
+          if (url.pathname === "/objects/deep") {
+            return Promise.resolve(json({ id: url.href, type: "Note" }));
+          }
+          return Promise.resolve(new Response("not found", { status: 404 }));
+        },
+      }),
+    /did not resolve any URLs/,
+  );
+
+  assert.deepStrictEqual(
+    fetchedActivities,
+    Array.from({ length: 11 }, (_, i) => i),
+  );
+});
+
 test("objectRunner - prefers unwrapped object URLs without type filters", async () => {
   const scenario = normalizeSuite({
     version: 1,

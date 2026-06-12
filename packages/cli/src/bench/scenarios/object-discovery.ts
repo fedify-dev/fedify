@@ -231,7 +231,9 @@ async function typedReferencedObjectUrl(
     readonly types: ReadonlySet<string>;
   },
   seen: Set<string> = new Set(),
+  depth = 0,
 ): Promise<URL | null> {
+  if (depth > MAX_ACTIVITY_UNWRAP_DEPTH) return null;
   if (seen.has(url.href)) return null;
   seen.add(url.href);
   await options.assertReadDestinationAllowed?.(url);
@@ -249,6 +251,7 @@ async function typedReferencedObjectUrl(
         candidateUrl,
         options,
         seen,
+        depth + 1,
       );
       if (typedUrl != null) return typedUrl;
       continue;
