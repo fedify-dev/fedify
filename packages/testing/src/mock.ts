@@ -977,7 +977,17 @@ class MockContext<TContextData> implements Context<TContextData> {
     if (def == null) {
       throw new TypeError(`Task ${JSON.stringify(task.name)} is not defined.`);
     }
-    await def.handler(this, data);
+    // Mirror production: validate against the schema and hand the *validated*
+    // output to the handler.  Without this, the mock would accept payloads
+    // that production rejects at enqueue, and a normalizing schema's output
+    // (defaults, coercions) would differ between tests and production.
+    const result = await def.schema["~standard"].validate(data);
+    if (result.issues != null && result.issues.length > 0) {
+      throw new TypeError(
+        `Task data failed schema validation: ${JSON.stringify(result.issues)}`,
+      );
+    }
+    await def.handler(this, result.value);
   }
 
   async enqueueTaskMany(
