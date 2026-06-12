@@ -449,7 +449,7 @@ async function sendInvalidSignature(
   );
   const body = await request.arrayBuffer();
   const headers = new Headers(request.headers);
-  corruptSignatureHeaders(headers);
+  invalidateSignedDate(headers);
   return expectedFailure(
     await sendRequest(
       new Request(request.url, {
@@ -464,13 +464,12 @@ async function sendInvalidSignature(
   );
 }
 
-function corruptSignatureHeaders(headers: Headers): void {
-  const signature = headers.get("signature");
-  if (signature != null) headers.set("signature", `${signature}0`);
-  const authorization = headers.get("authorization");
-  if (authorization != null) {
-    headers.set("authorization", `${authorization}0`);
-  }
+function invalidateSignedDate(headers: Headers): void {
+  const timestamp = Date.parse(headers.get("date") ?? "");
+  const shifted = Number.isNaN(timestamp)
+    ? new Date()
+    : new Date(timestamp + 1000);
+  headers.set("date", shifted.toUTCString());
 }
 
 async function sendMissingActor(

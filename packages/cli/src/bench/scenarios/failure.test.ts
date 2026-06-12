@@ -451,7 +451,8 @@ test("failureRunner - discovers inbound failure inboxes once", async () => {
         return Promise.resolve();
       },
     };
-    let corruptedSignatureRequests = 0;
+    let malformedSignatureRequests = 0;
+    let signedDateRequests = 0;
     const measurement = await failureRunner.run({
       scenario,
       target,
@@ -470,7 +471,10 @@ test("failureRunner - discovers inbound failure inboxes once", async () => {
             signature?.endsWith("0") === true ||
             authorization?.endsWith("0") === true
           ) {
-            corruptedSignatureRequests++;
+            malformedSignatureRequests++;
+          }
+          if (!Number.isNaN(Date.parse(request.headers.get("date") ?? ""))) {
+            signedDateRequests++;
           }
           return new Response("bad signature", {
             status: 401,
@@ -484,7 +488,8 @@ test("failureRunner - discovers inbound failure inboxes once", async () => {
 
     assert.strictEqual(measurement.requests.total, 3);
     assert.strictEqual(measurement.requests.successRate, 1);
-    assert.strictEqual(corruptedSignatureRequests, 3);
+    assert.strictEqual(malformedSignatureRequests, 0);
+    assert.strictEqual(signedDateRequests, 3);
     assert.strictEqual(actorGets, 1);
   } finally {
     try {
