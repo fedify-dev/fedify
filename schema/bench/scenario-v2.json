@@ -704,13 +704,7 @@
                     "latency.p99",
                     "latency.mean",
                     "latency.max",
-                    "signatureVerification.p50",
-                    "signatureVerification.p95",
-                    "signatureVerification.p99",
-                    "deliveryThroughput",
-                    "queueDrain.p50",
-                    "queueDrain.p95",
-                    "queueDrain.p99"
+                    "deliveryThroughput"
                   ]
                 }
               }

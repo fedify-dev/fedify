@@ -58,8 +58,12 @@ const FANOUT_METRICS = [
   "queueDrain.p99",
 ];
 
-// A `mixed` scenario blends others, so it may assert any of their metrics.
+// Schema v1 allowed mixed scenarios to assert child server metrics.  Keep this
+// list stable so the published v1 schema remains byte-for-byte immutable.
 const MIXED_METRICS = [...new Set([...INBOX_METRICS, ...FANOUT_METRICS])];
+// Schema v2 matches the runtime mixed runner, which merges only client-side
+// request metrics and delivery throughput.
+const MIXED_V2_METRICS = [...READ_METRICS, "deliveryThroughput"];
 
 /** The benchmark scenario suite JSON Schema (draft 2020-12). */
 export const scenarioSchemaV1 = {
@@ -425,6 +429,16 @@ export const scenarioSchemaV2 = {
                   },
                 },
               ],
+            },
+          }
+          : condition.if.properties.type.const === "mixed"
+          ? {
+            if: condition.if,
+            then: {
+              required: condition.then.required,
+              properties: {
+                expect: { propertyNames: { enum: MIXED_V2_METRICS } },
+              },
             },
           }
           : condition

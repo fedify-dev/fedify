@@ -100,6 +100,34 @@ test("validateSuite - enforces per-type expect metric allowlist", () => {
   assert.throws(() => validateSuite(bad), SuiteValidationError);
 });
 
+test("validateSuite - rejects mixed server-side expect metrics", () => {
+  const bad = {
+    version: 1,
+    target: "http://localhost:3000",
+    scenarios: [{
+      name: "blend",
+      type: "mixed",
+      mix: [{ scenario: "fanout", weight: 1 }],
+      expect: { "queueDrain.p95": "< 10ms" },
+    }],
+  };
+  assert.throws(() => validateSuite(bad), SuiteValidationError);
+});
+
+test("validateSuite - accepts mixed delivery throughput expectations", () => {
+  const suite = {
+    version: 1,
+    target: "http://localhost:3000",
+    scenarios: [{
+      name: "blend",
+      type: "mixed",
+      mix: [{ scenario: "fanout", weight: 1 }],
+      expect: { deliveryThroughput: ">= 1/s" },
+    }],
+  };
+  assert.doesNotThrow(() => validateSuite(suite));
+});
+
 test("validateSuite - error message names the failing location", () => {
   try {
     validateSuite({ target: "http://localhost:3000", scenarios: [] });
