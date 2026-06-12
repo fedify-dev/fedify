@@ -322,13 +322,14 @@ async function waitForDrain(options: {
   readonly timeoutMs: number;
 }): Promise<DrainResult | null> {
   if (options.baseline == null) return null;
+  const baselineRemaining = queueTaskRemaining(options.baseline) ?? 0;
   const deadline = Date.now() + options.timeoutMs;
   do {
     const snapshot = await fetchServerSnapshot(options.target, options.fetch);
     if (snapshot != null) {
       const diff = diffSnapshots(options.baseline, snapshot);
       const queueTasks = diff.queueTasks;
-      const remaining = queueTaskRemaining(diff);
+      const remaining = queueTaskRemaining(diff, baselineRemaining);
       if (
         queueTasks != null &&
         queueTasks.enqueued > 0 &&

@@ -232,15 +232,19 @@ export async function fetchServerMetrics(
  * Returns the remaining queue task backlog represented by a diffed snapshot.
  * @param snapshot The server snapshot to inspect, usually already diffed
  * against a baseline.
- * @returns `Math.max(0, enqueued - completed - failed)`, or `null` when the
- * snapshot has no queue task counters.
+ * @param baselineRemaining Queue tasks that were already outstanding when the
+ * diff baseline was taken.  These must drain before diffed completions can be
+ * attributed to newly enqueued tasks.
+ * @returns `Math.max(0, baselineRemaining + enqueued - completed - failed)`,
+ * or `null` when the snapshot has no queue task counters.
  */
 export function queueTaskRemaining(
   snapshot: ServerSnapshot | null,
+  baselineRemaining = 0,
 ): number | null {
   if (snapshot?.queueTasks == null) return null;
   const { enqueued, completed, failed } = snapshot.queueTasks;
-  return Math.max(0, enqueued - completed - failed);
+  return Math.max(0, baselineRemaining + enqueued - completed - failed);
 }
 
 function isFiniteNumber(value: unknown): value is number {

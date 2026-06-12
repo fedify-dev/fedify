@@ -6,6 +6,7 @@ import {
   fetchServerSnapshot,
   parseServerMetrics,
   parseServerSnapshot,
+  queueTaskRemaining,
   type ServerSnapshot,
   snapshotToMetrics,
 } from "./stats-client.ts";
@@ -217,6 +218,28 @@ test("diffSnapshots - an empty baseline keeps the full end histogram", () => {
   const diff = diffSnapshots(baseline, end);
   assert.deepEqual(diff.signature?.counts, [3, 1]);
   assert.strictEqual(diff.queueDepthMax, 4);
+});
+
+test("queueTaskRemaining - accounts for baseline backlog", () => {
+  const diff: ServerSnapshot = {
+    signature: null,
+    queueDepthMax: null,
+    queueTasks: {
+      enqueued: 1,
+      completed: 1,
+      failed: 0,
+    },
+  };
+
+  assert.strictEqual(queueTaskRemaining(diff), 0);
+  assert.strictEqual(queueTaskRemaining(diff, 1), 1);
+  assert.strictEqual(
+    queueTaskRemaining({
+      ...diff,
+      queueTasks: { enqueued: 1, completed: 2, failed: 0 },
+    }, 1),
+    0,
+  );
 });
 
 test("diffSnapshots - incompatible bucketing drops the signature histogram", () => {

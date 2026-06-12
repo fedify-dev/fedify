@@ -379,6 +379,7 @@ async function waitForRemoteFault(options: {
   readonly timeoutMs: number;
 }): Promise<RemoteFaultObservation | null> {
   if (options.baseline == null) return null;
+  const baselineRemaining = queueTaskRemaining(options.baseline) ?? 0;
   const deadline = Date.now() + options.timeoutMs;
   do {
     const snapshot = await fetchServerSnapshot(options.target, options.fetch);
@@ -390,7 +391,7 @@ async function waitForRemoteFault(options: {
           return { timedOut: false };
         }
       } else if (queueTasks != null) {
-        const remaining = queueTaskRemaining(diff);
+        const remaining = queueTaskRemaining(diff, baselineRemaining);
         if (remaining != null) {
           if (options.fault === "slow-inbox") {
             if (queueTasks.completed > 0 && remaining === 0) {

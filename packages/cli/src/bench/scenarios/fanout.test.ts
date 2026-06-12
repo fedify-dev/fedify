@@ -256,6 +256,52 @@ test("fanoutRunner - waits for observed queue work before drain", async () => {
   assert.ok(statsCalls > 2);
 });
 
+test("fanoutRunner - ignores baseline backlog completions while draining", async () => {
+  const target = new URL("http://target.test/");
+  let triggerCalls = 0;
+  const scenario = normalizeSuite({
+    version: 1,
+    target: target.href,
+    scenarios: [{
+      name: "fanout",
+      type: "fanout",
+      sender: "alice",
+      followers: 5,
+      load: { concurrency: 1 },
+      duration: "1ms",
+      queueDrainTimeout: "30ms",
+    }],
+  }).scenarios[0];
+
+  const measurement = await fanoutRunner.run({
+    scenario,
+    target,
+    documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+    contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+    allowPrivateAddress: true,
+    fleet: null,
+    fetch: (input) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.pathname === "/.well-known/fedify/bench/stats") {
+        return Promise.resolve(json(statsSnapshot({
+          enqueued: 6 + triggerCalls * 6,
+          completed: triggerCalls > 0 ? 6 : 0,
+          failed: 0,
+        })));
+      }
+      if (url.pathname === "/.well-known/fedify/bench/trigger") {
+        triggerCalls++;
+        return Promise.resolve(json({ version: 1 }, 202));
+      }
+      return Promise.resolve(new Response("unexpected", { status: 500 }));
+    },
+  });
+
+  assert.ok(measurement.requests.total > 0);
+  assert.strictEqual(measurement.requests.successRate, 0);
+  assert.ok(triggerCalls > 0);
+});
+
 test("fanoutRunner - tolerates transient drain stats failures", async () => {
   const target = new URL("http://target.test/");
   let statsCalls = 0;
