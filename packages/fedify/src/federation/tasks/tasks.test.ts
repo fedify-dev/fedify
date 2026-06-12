@@ -336,6 +336,51 @@ test("Context.enqueueTask() end-to-end", async (t) => {
     },
   );
 
+  await t.step(
+    "rejects a same-named handle from another federation",
+    async () => {
+      // Name lookup alone cannot tell a foreign handle apart once both
+      // instances define the same task name: the local context would
+      // encode under the *schema carried by the foreign handle*, so a
+      // payload the local schema rejects would enqueue anyway, only to be
+      // dropped by the worker decoding under the local schema.  Both
+      // instances share TContextData = void, so the phantom-brand check
+      // cannot reject this at compile time; the handle-identity guard is
+      // the only defense.
+      const queue = new MockQueue();
+      const federation = createFederation<void>({
+        ...baseOptions,
+        queue: { task: queue },
+      });
+      let called = 0;
+      federation.defineTask("rename", {
+        schema: numberSchema, // the local "rename" takes a number…
+        handler: () => {
+          called++;
+        },
+      });
+      const other = createFederation<void>({
+        ...baseOptions,
+        queue: { task: new MockQueue() },
+      });
+      // …while the other instance's "rename" takes a string:
+      const foreignTask = other.defineTask("rename", {
+        schema: stringSchema,
+        handler: () => {},
+      });
+      const ctx = federation.createContext(
+        new URL("https://example.com/"),
+        undefined,
+      );
+      await rejects(
+        () => ctx.enqueueTask(foreignTask, "not a number"),
+        { name: "TypeError", message: /is not defined on this federation/ },
+      );
+      strictEqual(queue.enqueued.length, 0);
+      strictEqual(called, 0);
+    },
+  );
+
   await t.step("passes delay and orderingKey through", async () => {
     const queue = new MockQueue();
     const federation = createFederation<void>({

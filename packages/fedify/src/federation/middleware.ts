@@ -3710,7 +3710,12 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   ): Promise<void> {
     // Fail fast on a handle from another federation instance; without this
     // check the message would enqueue fine and be dropped by the worker.
-    if (!this.federation.taskDefinitions.has(task.name)) {
+    // Compare the registered handle by identity, not just the name: another
+    // instance may define the same task name with a different schema, and
+    // its handle would otherwise encode under that foreign schema here
+    // while the worker decodes under the local one.
+    const def = this.federation.taskDefinitions.get(task.name);
+    if (def == null || def.handle !== task) {
       throw new TypeError(
         `Task ${
           JSON.stringify(task.name)
