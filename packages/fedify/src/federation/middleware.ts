@@ -3741,6 +3741,9 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     const messages: TaskMessage[] = await Promise.all(
       items.map(this.#encodeTaskMessage(task, options)),
     );
+    if (!this.federation.manuallyStartQueue) {
+      this.federation._startQueueInternal(this.data);
+    }
     const enqueueOptions = { delay, orderingKey: options.orderingKey };
     if (messages.length === 1) {
       await queue.enqueue(messages[0], enqueueOptions);
