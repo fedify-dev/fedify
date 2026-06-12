@@ -1776,7 +1776,7 @@ test("MockContext.enqueueTask passes the schema's validated output to the handle
   assertEquals(received, "HI");
 });
 
-test("MockContext.enqueueTaskMany validates every payload", async () => {
+test("MockContext.enqueueTaskMany validates the whole batch before any handler runs", async () => {
   const federation = createFederation<void>();
   const seen: number[] = [];
   const task = federation.defineTask("count-many", {
@@ -1789,12 +1789,13 @@ test("MockContext.enqueueTaskMany validates every payload", async () => {
     new URL("https://example.com"),
     undefined,
   );
-  // The second item is invalid: the batch rejects and the first item, which
-  // ran before it, is the only one the handler saw.
+  // The second item is invalid: production validates every payload before
+  // enqueuing anything, so the whole batch rejects with no effect.  The
+  // mock must not let the first handler run before the batch is vetted.
   await assertRejects(
     () => context.enqueueTaskMany(task, [1, "two" as unknown as number]),
     TypeError,
     "Task data failed schema validation",
   );
-  assertEquals(seen, [1]);
+  assertEquals(seen, []);
 });

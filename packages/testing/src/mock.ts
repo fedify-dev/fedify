@@ -967,9 +967,7 @@ class MockContext<TContextData> implements Context<TContextData> {
     return Promise.resolve(null);
   }
 
-  // No queue in mock type: the task handler is invoked immediately,
-  // mirroring how processQueuedTask() processes immediately.
-  async enqueueTask(task: any, data: any, _options?: any): Promise<void> {
+  #resolveTaskDefinition(task: any): any {
     if (!(this.federation instanceof MockFederation)) {
       throw new TypeError("No task definitions are available.");
     }
@@ -977,25 +975,42 @@ class MockContext<TContextData> implements Context<TContextData> {
     if (def == null) {
       throw new TypeError(`Task ${JSON.stringify(task.name)} is not defined.`);
     }
-    // Mirror production: validate against the schema and hand the *validated*
-    // output to the handler.  Without this, the mock would accept payloads
-    // that production rejects at enqueue, and a normalizing schema's output
-    // (defaults, coercions) would differ between tests and production.
+    return def;
+  }
+
+  // Mirror production: validate against the schema and hand the *validated*
+  // output to the handler.  Without this, the mock would accept payloads
+  // that production rejects at enqueue, and a normalizing schema's output
+  // (defaults, coercions) would differ between tests and production.
+  async #validateTaskPayload(def: any, data: any): Promise<any> {
     const result = await def.schema["~standard"].validate(data);
     if (result.issues != null && result.issues.length > 0) {
       throw new TypeError(
         `Task data failed schema validation: ${JSON.stringify(result.issues)}`,
       );
     }
-    await def.handler(this, result.value);
+    return result.value;
+  }
+
+  // No queue in mock type: the task handler is invoked immediately,
+  // mirroring how processQueuedTask() processes immediately.
+  async enqueueTask(task: any, data: any, _options?: any): Promise<void> {
+    const def = this.#resolveTaskDefinition(task);
+    await def.handler(this, await this.#validateTaskPayload(def, data));
   }
 
   async enqueueTaskMany(
     task: any,
     payloads: readonly any[],
-    options?: any,
+    _options?: any,
   ): Promise<void> {
-    for (const data of payloads) await this.enqueueTask(task, data, options);
+    const def = this.#resolveTaskDefinition(task);
+    // Mirror production: the whole batch validates before anything runs, so
+    // a failing payload rejects the batch with no partial processing.
+    const values = await Promise.all(
+      payloads.map((data) => this.#validateTaskPayload(def, data)),
+    );
+    for (const value of values) await def.handler(this, value);
   }
 
   clone(data: TContextData): TestContext<TContextData> {
