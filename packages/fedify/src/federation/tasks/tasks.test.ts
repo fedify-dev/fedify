@@ -309,6 +309,35 @@ test("Context.enqueueTask() end-to-end", async (t) => {
   });
 
   await t.step(
+    "starts the task worker on first enqueue without startQueue()",
+    async () => {
+      const queue = new MockQueue();
+      const federation = createFederation<void>({
+        ...baseOptions,
+        manuallyStartQueue: false,
+        queue: { task: queue },
+      });
+      const task = federation.defineTask("auto-start", {
+        schema: stringSchema,
+        handler: () => {},
+      });
+      const ctx = federation.createContext(
+        new URL("https://example.com/"),
+        undefined,
+      );
+      // An app that only uses the custom task API never sends an activity,
+      // so enqueueTask() itself must start the worker like the other
+      // enqueue paths do; otherwise tasks pile up unprocessed forever.
+      await ctx.enqueueTask(task, "first");
+      strictEqual(queue.listenCount, 1);
+      // The started flag keeps a second enqueue from re-listening.
+      await ctx.enqueueTask(task, "second");
+      strictEqual(queue.listenCount, 1);
+      strictEqual(queue.enqueued.length, 2);
+    },
+  );
+
+  await t.step(
     "rejects a handle from another federation at enqueue",
     async () => {
       const queue = new MockQueue();
