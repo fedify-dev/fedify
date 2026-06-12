@@ -1674,6 +1674,9 @@ importers:
       '@js-temporal/polyfill':
         specifier: 'catalog:'
         version: 0.5.1
+      '@standard-schema/spec':
+        specifier: 'catalog:'
+        version: 1.1.0
       '@std/assert':
         specifier: 'catalog:'
         version: '@jsr/std__assert@1.0.13'
