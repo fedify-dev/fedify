@@ -230,7 +230,10 @@ async function typedReferencedObjectUrl(
     readonly assertReadDestinationAllowed?: (url: URL) => void | Promise<void>;
     readonly types: ReadonlySet<string>;
   },
+  seen: Set<string> = new Set(),
 ): Promise<URL | null> {
+  if (seen.has(url.href)) return null;
+  seen.add(url.href);
   await options.assertReadDestinationAllowed?.(url);
   let object: Record<string, unknown>;
   try {
@@ -238,8 +241,23 @@ async function typedReferencedObjectUrl(
   } catch {
     return null;
   }
-  if (!matchesType(object.type, options.types)) return null;
-  return propertyUrl(object, "id", url) ?? url;
+  for (const candidate of objectCandidates(object)) {
+    if (typeof candidate === "string") {
+      const candidateUrl = safeUrl(candidate, url);
+      if (candidateUrl == null) continue;
+      const typedUrl = await typedReferencedObjectUrl(
+        candidateUrl,
+        options,
+        seen,
+      );
+      if (typedUrl != null) return typedUrl;
+      continue;
+    }
+    if (!isRecord(candidate)) continue;
+    if (!matchesType(candidate.type, options.types)) continue;
+    return propertyUrl(candidate, "id", url) ?? url;
+  }
+  return null;
 }
 
 function objectCandidates(

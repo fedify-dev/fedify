@@ -144,22 +144,26 @@ async function mapWithConcurrency<T>(
   callback: (item: T) => Promise<void>,
 ): Promise<void> {
   let next = 0;
-  let failed = false;
+  let firstError: unknown;
+  let hasError = false;
   const workers = Array.from(
     { length: Math.min(concurrency, items.length) },
     async () => {
-      while (next < items.length && !failed) {
+      while (next < items.length && !hasError) {
         const item = items[next++];
         try {
           await callback(item);
         } catch (error) {
-          failed = true;
-          throw error;
+          if (!hasError) {
+            hasError = true;
+            firstError = error;
+          }
         }
       }
     },
   );
   await Promise.all(workers);
+  if (hasError) throw firstError;
 }
 
 async function signGetRequest(
