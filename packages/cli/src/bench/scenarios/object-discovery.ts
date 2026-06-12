@@ -11,6 +11,7 @@ import type { ObjectSource } from "../scenario/types.ts";
 const ACTIVITY_JSON_ACCEPT = "application/activity+json, application/ld+json";
 const WEBFINGER_ACCEPT = "application/jrd+json, application/json";
 const MAX_COLLECTION_CRAWL_PAGES = 100;
+const MAX_ACTIVITY_UNWRAP_DEPTH = 10;
 const ACTIVITY_WRAPPER_TYPES = new Set([
   "Accept",
   "Add",
@@ -207,14 +208,25 @@ function objectUrl(
   return null;
 }
 
-function objectCandidates(item: unknown): unknown[] {
+function objectCandidates(
+  item: unknown,
+  depth = 0,
+  seen: WeakSet<object> = new WeakSet(),
+): unknown[] {
+  if (depth > MAX_ACTIVITY_UNWRAP_DEPTH) return [];
   if (!isRecord(item) || !matchesType(item.type, ACTIVITY_WRAPPER_TYPES)) {
     return [item];
   }
+  if (seen.has(item)) return [];
+  seen.add(item);
   const object = item.object;
   if (object == null) return [];
-  if (Array.isArray(object)) return object.filter((entry) => entry != null);
-  return [object];
+  if (Array.isArray(object)) {
+    return object.flatMap((entry) =>
+      entry == null ? [] : objectCandidates(entry, depth + 1, seen)
+    );
+  }
+  return objectCandidates(object, depth + 1, seen);
 }
 
 function matchesType(
