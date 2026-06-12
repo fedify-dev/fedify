@@ -9463,7 +9463,6 @@
       },
       "packages/fedify": {
         "dependencies": [
-          "jsr:@standard-schema/spec@^1.1.0",
           "jsr:@std/assert@0.226",
           "jsr:@std/url@~0.225.1",
           "npm:@multiformats/base-x@^4.0.1",
