@@ -566,6 +566,77 @@ test("failureRunner - treats inbound 5xx as target failures", async () => {
   }
 });
 
+test("failureRunner - treats unexpected inbound 4xx as target failures", async () => {
+  const server = serve({
+    port: 0,
+    hostname: "127.0.0.1",
+    silent: true,
+    fetch(request: Request): Response {
+      const url = new URL(request.url);
+      if (url.pathname === "/users/alice") {
+        return json({
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Person",
+          id: url.href,
+          inbox: new URL("/missing-inbox", url).href,
+        });
+      }
+      return new Response("not found", { status: 404 });
+    },
+  });
+  await server.ready();
+  let fleet: Awaited<ReturnType<typeof spawnSyntheticServer>> | undefined;
+  try {
+    const target = new URL(server.url!);
+    fleet = await spawnSyntheticServer(
+      await buildFleet([{
+        count: 1,
+        signatureStandards: ["draft-cavage-http-signatures-12"],
+      }]),
+    );
+    const scenario = normalizeSuite({
+      version: 1,
+      target: target.href,
+      scenarios: [{
+        name: "bad-signature",
+        type: "failure",
+        fault: "invalid-signature",
+        recipient: new URL("/users/alice", target).href,
+        load: { concurrency: 1 },
+        duration: "50ms",
+      }],
+    }).scenarios[0];
+    const measurement = await failureRunner.run({
+      scenario,
+      target,
+      documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+      contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+      allowPrivateAddress: true,
+      fleet,
+      fetch: (input) => {
+        const url = new URL(input instanceof Request ? input.url : input);
+        if (url.pathname === "/missing-inbox") {
+          return Promise.resolve(
+            new Response("not found", { status: 404 }),
+          );
+        }
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      },
+      assertDestinationAllowed: () => {},
+    });
+
+    assert.ok(measurement.requests.total > 0);
+    assert.strictEqual(measurement.requests.successRate, 0);
+    assert.ok(measurement.errors.some((e) => e.status === 404));
+  } finally {
+    try {
+      await fleet?.close();
+    } finally {
+      await server.close(true);
+    }
+  }
+});
+
 function json(body: unknown): Response {
   return new Response(JSON.stringify(body), {
     headers: { "content-type": "application/activity+json" },

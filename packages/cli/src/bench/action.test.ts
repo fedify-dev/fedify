@@ -29,19 +29,6 @@ async function writeSuite(content: string): Promise<string> {
   return path;
 }
 
-async function reservePort(): Promise<number> {
-  const server = serve({
-    port: 0,
-    hostname: "127.0.0.1",
-    silent: true,
-    fetch: () => new Response("reserved"),
-  });
-  await server.ready();
-  const port = Number(new URL(server.url!).port);
-  await server.close(true);
-  return port;
-}
-
 function resolvePublicHost(_hostname: string): Promise<readonly string[]> {
   return Promise.resolve(["93.184.216.34"]);
 }
@@ -489,8 +476,7 @@ scenarios:
   assert.match(message, /advertise-host/);
 });
 
-test("runBench - remote failure with sinkBase needs no advertise host", async () => {
-  const sinkBase = `http://127.0.0.1:${await reservePort()}/`;
+test("runBench - remote failure uses advertised sink reachability", async () => {
   const file = await writeSuite(`version: 1
 target: http://10.10.0.5:8000
 scenarios:
@@ -498,7 +484,6 @@ scenarios:
     type: failure
     fault: remote-404
     sender: alice
-    sinkBase: "${sinkBase}"
     load: { concurrency: 1 }
     duration: 25ms
     queueDrainTimeout: 1s
@@ -506,7 +491,7 @@ scenarios:
   let code = -1;
   let message = "";
   let triggerCalls = 0;
-  await runBench(command({ scenario: file }), {
+  await runBench(command({ scenario: file, advertiseHost: "127.0.0.1" }), {
     exit: (c) => {
       code = c;
     },
@@ -987,7 +972,7 @@ scenarios:
       - scenario: lookup
         weight: 1
     expect:
-      signatureVerification.p95: "< 10ms"
+      queueDrain.p95: "< 10ms"
 `);
   let code = -1;
   let message = "";
@@ -1006,7 +991,7 @@ scenarios:
     },
   });
   assert.strictEqual(code, 2);
-  assert.match(message, /server-side expectations/);
+  assert.match(message, /queueDrain\.p95/);
   assert.strictEqual(fetched, false);
 });
 

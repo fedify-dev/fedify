@@ -460,6 +460,7 @@ async function sendInvalidSignature(
       }),
       context.fetch ?? fetch,
     ),
+    401,
   );
 }
 
@@ -481,7 +482,10 @@ async function sendMissingActor(
     "missing-actor",
     deliveryTarget,
   );
-  return expectedFailure(await sendRequest(request, context.fetch ?? fetch));
+  return expectedFailure(
+    await sendRequest(request, context.fetch ?? fetch),
+    401,
+  );
 }
 
 async function signedFailureRequest(
@@ -566,8 +570,11 @@ function missingActor(actor: SyntheticActor, target: URL): SyntheticActor {
   };
 }
 
-function expectedFailure(outcome: SendOutcome): SendOutcome {
-  if (outcome.status != null && outcome.status >= 400 && outcome.status < 500) {
+function expectedFailure(
+  outcome: SendOutcome,
+  expectedStatus: number,
+): SendOutcome {
+  if (outcome.status === expectedStatus) {
     return { ok: true, status: outcome.status };
   }
   return {
