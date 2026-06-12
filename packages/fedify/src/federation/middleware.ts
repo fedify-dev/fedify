@@ -495,7 +495,7 @@ export interface FederationQueueOptions {
    * The message queue for custom background tasks.  If not provided,
    * tasks are routed to the outbox queue (unless
    * {@link FederationOptions.taskQueueResolution} is `"strict"`).
-   * @since 2.3.0
+   * @since 2.x.x
    */
   readonly task?: MessageQueue;
 }

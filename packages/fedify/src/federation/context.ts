@@ -449,7 +449,7 @@ export interface Context<TContextData> {
    * @throws {TypeError} If the task is not defined on this federation,
    *                     if no message queue is configured for tasks, or if
    *                     the payload fails schema validation.
-   * @since 2.3.0
+   * @since 2.x.x
    */
   enqueueTask<TData>(
     task: TaskDefinition<TContextData, TData>,
@@ -470,7 +470,7 @@ export interface Context<TContextData> {
    * @throws {TypeError} If the task is not defined on this federation,
    *                     if no message queue is configured for tasks, or if
    *                     a payload fails schema validation.
-   * @since 2.3.0
+   * @since 2.x.x
    */
   enqueueTaskMany<TData>(
     task: TaskDefinition<TContextData, TData>,
