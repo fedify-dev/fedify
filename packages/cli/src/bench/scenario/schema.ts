@@ -406,7 +406,8 @@ export const scenarioSchemaV2 = {
               properties: condition.then.properties,
             },
           }
-          : condition.if.properties.type.const === "object"
+          : condition.if.properties.type.const === "actor" ||
+              condition.if.properties.type.const === "object"
           ? {
             if: condition.if,
             then: {

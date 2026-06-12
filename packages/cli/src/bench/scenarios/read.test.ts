@@ -139,6 +139,49 @@ test("runReadLoad - limits resolved read URL gate concurrency", async () => {
   assert.strictEqual(maxActiveGates, 16);
 });
 
+test("runReadLoad - stops read URL gates after a gate failure", async () => {
+  const scenario = normalizeSuite({
+    version: 1,
+    target: "http://target.test/",
+    scenarios: [{
+      name: "read",
+      type: "actor",
+      load: { concurrency: 1 },
+      duration: "25ms",
+    }],
+  }).scenarios[0];
+  const urls = Array.from(
+    { length: 64 },
+    (_, i) => new URL(`http://remote.test/users/${i}`),
+  );
+  let gateCalls = 0;
+
+  await assert.rejects(
+    async () =>
+      await runReadLoad({
+        scenario,
+        target: new URL("http://target.test/"),
+        documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+        contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+        allowPrivateAddress: true,
+        fleet: null,
+        fetch: () => Promise.resolve(new Response("{}", { status: 200 })),
+        assertReadDestinationAllowed: async () => {
+          gateCalls++;
+          if (gateCalls === 1) throw new Error("gate failed");
+          await new Promise((resolve) => setTimeout(resolve, 1));
+        },
+      }, {
+        urls,
+        authenticated: false,
+      }),
+    /gate failed/,
+  );
+  await new Promise((resolve) => setTimeout(resolve, 30));
+
+  assert.ok(gateCalls < urls.length);
+});
+
 test("runReadLoad - rejects invalid read URL schemes before load", async () => {
   const scenario = normalizeSuite({
     version: 1,

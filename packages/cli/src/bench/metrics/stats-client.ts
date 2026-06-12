@@ -313,8 +313,8 @@ function sumMetric(
   for (const metric of metrics) {
     if (metric.name !== name || !Array.isArray(metric.dataPoints)) continue;
     for (const point of metric.dataPoints) {
-      if (isRecord(point) && isFiniteNumber(point.value)) {
-        total += point.value;
+      if (isRecord(point) && isFiniteNumber(point["value"])) {
+        total += point["value"];
         found = true;
       }
     }

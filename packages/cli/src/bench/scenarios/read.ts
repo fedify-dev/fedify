@@ -144,12 +144,18 @@ async function mapWithConcurrency<T>(
   callback: (item: T) => Promise<void>,
 ): Promise<void> {
   let next = 0;
+  let failed = false;
   const workers = Array.from(
     { length: Math.min(concurrency, items.length) },
     async () => {
-      while (next < items.length) {
+      while (next < items.length && !failed) {
         const item = items[next++];
-        await callback(item);
+        try {
+          await callback(item);
+        } catch (error) {
+          failed = true;
+          throw error;
+        }
       }
     },
   );
