@@ -27,7 +27,7 @@ function makeSchema<T>(
   };
 }
 
-test("TaskCodec (fresh instance per operation)", async (t) => {
+test("TaskCodec.serialize() / deserialize()", async (t) => {
   const note = new Note({
     id: new URL("https://example.com/notes/1"),
     content: "Hello, world!",
@@ -200,9 +200,9 @@ test("TaskCodec (fresh instance per operation)", async (t) => {
 });
 
 test("TaskCodec (one instance reused across decodes)", async (t) => {
-  // The instance carries the cycle-tracking `#seen` map across decodes, but
-  // each decode parses a fresh object graph with distinct identities, so a
-  // reused instance still decodes every payload independently.
+  // Each deserialize() call builds its own per-decode `seen` map, so no
+  // cycle-tracking state crosses calls and a reused instance decodes every
+  // payload independently.
   await t.step("two sequential decodes stay independent", async () => {
     const codec = new TaskCodec(loaders);
     const first = await codec.serialize({

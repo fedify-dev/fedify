@@ -161,9 +161,9 @@ Common tasks
 ### **BE WELL-ACQUAINTED WITH `mise tasks`**
 
 *mise.toml* has useful tasks. **Acquaint all of them** and use them in the right
-place at the right time. If it has too many information, use `mise tasks`. This
-command show the summary of the tasks and descriptions. If `mise tasks` didn't
-not make it sure, use `mise tasks <task>` to check the details for the task.
+place at the right time. If it has too much information, use `mise tasks`. This
+command shows the summary of the tasks and descriptions. If `mise tasks` does
+not make it clear, use `mise tasks <task>` to check the details for the task.
 
 ### Adding ActivityPub vocabulary types
 
