@@ -67,8 +67,11 @@ if (ignore) {
     `Skipping oxlint plugin integration test — missing: ${
       missing.join(", ")
     }.\n` +
-      "To enable it, run `mise run install` (or `pnpm install && pnpm --filter @fedify/lint build`) " +
-      "from the repository root so both the loader and the oxlint binary are available.",
+      "To enable it, run `mise run install && mise run prepare-each lint` " +
+      "from the repository root so both the loader and the oxlint binary " +
+      "are available. Prefer `mise run test` (full suite) or " +
+      "`mise run test-each lint` (this package) to run tests — those tasks " +
+      "build the prerequisites for you.",
   );
 }
 

@@ -10,7 +10,13 @@ import { map, pipe, prop, toArray } from "@fxts/core";
 import * as parser from "@typescript-eslint/parser";
 import { Linter } from "eslint";
 import { equal, ok } from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import process from "node:process";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 import { plugin as eslintPlugin } from "../index.ts";
 import { replace } from "../lib/utils.ts";
 import denoPlugin from "../mod.ts";
@@ -24,9 +30,16 @@ type Diagnostic = {
 
 /**
  * Run all lint rules on the given code and return diagnostics.
+ *
+ * The in-process linter for the current runtime (Deno Lint or ESLint) always
+ * runs.  When the built oxlint loader and the oxlint binary are available,
+ * the same code additionally goes through oxlint, so every rule is exercised
+ * end-to-end through the oxlint JS plugin adapter as well.
  */
-const lintTest = (code: string): Diagnostic[] =>
-  "Deno" in globalThis ? testDenoLint(code) : testEslint(code);
+const lintTest = (code: string): Diagnostic[] => [
+  ...("Deno" in globalThis ? testDenoLint(code) : testEslint(code)),
+  ...(oxlintBin == null ? [] : testOxlint(code)),
+];
 
 const testDenoLint = (code: string) =>
   Deno.lint.runPlugin(
@@ -56,6 +69,86 @@ function testEslint(code: string) {
     id: msg.ruleId ?? "unknown",
     message: msg.message,
   }));
+}
+
+// oxlint is a Rust binary, so it is exercised as a subprocess against a real
+// config file — the same approach as oxlint.test.ts.  When the built loader
+// or the binary is missing, the oxlint lane is skipped with a warning.
+
+const here = dirname(fileURLToPath(import.meta.url));
+const oxlintPluginPath = resolve(here, "../../dist/oxlint.js");
+
+function findOxlint(): string | null {
+  const candidates = [
+    resolve(here, "../../node_modules/.bin/oxlint"),
+    resolve(here, "../../../../node_modules/.bin/oxlint"),
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+  const where = spawnSync(
+    process.platform === "win32" ? "where" : "which",
+    ["oxlint"],
+    { encoding: "utf8" },
+  );
+  if (where.status === 0 && where.stdout) {
+    return where.stdout.trim().split(/\r?\n/)[0];
+  }
+  return null;
+}
+
+const oxlintBin = existsSync(oxlintPluginPath) ? findOxlint() : null;
+
+if (oxlintBin == null) {
+  console.warn(
+    "Skipping the oxlint lane of the integration tests — the built loader " +
+      `at ${oxlintPluginPath} or the oxlint binary is missing. ` +
+      "Run `mise run install && mise run prepare-each lint` to enable it.",
+  );
+}
+
+function testOxlint(code: string): Diagnostic[] {
+  const dir = mkdtempSync(join(tmpdir(), "fedify-lint-integration-"));
+  try {
+    writeFileSync(
+      join(dir, ".oxlintrc.json"),
+      JSON.stringify({
+        jsPlugins: [oxlintPluginPath],
+        // Turn off oxlint's built-in rules so that only the diagnostics of
+        // this plugin surface.
+        categories: { correctness: "off" },
+        rules: eslintPlugin.configs.recommended.rules,
+      }),
+    );
+    writeFileSync(join(dir, "code.ts"), code);
+
+    const result = spawnSync(oxlintBin!, ["--format=json", "code.ts"], {
+      cwd: dir,
+      encoding: "utf8",
+    });
+
+    let payload: { diagnostics?: { code?: string; message?: string }[] };
+    try {
+      payload = JSON.parse(result.stdout);
+    } catch (err) {
+      throw new Error(
+        `Failed to parse oxlint JSON output: ${(err as Error).message}\n` +
+          `stdout: ${result.stdout}\nstderr: ${result.stderr}`,
+      );
+    }
+
+    return (payload.diagnostics ?? []).map((d) => ({
+      // Normalize oxlint's "@fedify/lint(rule-name)" code into the same
+      // "<plugin>/rule-name" shape the other lanes report.
+      id: (d.code ?? "").replace(
+        /^@fedify\/lint\((.+)\)$/,
+        `${PLUGIN_NAME}/$1`,
+      ),
+      message: d.message ?? "",
+    }));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 /**
