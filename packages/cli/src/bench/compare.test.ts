@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
 import type { ChildProcess, SpawnOptions } from "node:child_process";
 import { EventEmitter } from "node:events";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import type { BenchCompareCommand } from "./command.ts";
 import {
@@ -12,6 +15,7 @@ import {
   startBenchmarkTarget,
   stopTargetProcess,
   waitReadyUrl,
+  windowsTaskkillArgs,
 } from "./compare.ts";
 import type { BenchReport, ScenarioResult } from "./result/model.ts";
 
@@ -123,6 +127,13 @@ function command(overrides: Partial<BenchCompareCommand>): BenchCompareCommand {
   };
 }
 
+async function writeSuite(content: string): Promise<string> {
+  const dir = await mkdtemp(join(tmpdir(), "fedify-bench-compare-"));
+  const path = join(dir, "suite.yaml");
+  await writeFile(path, content, { encoding: "utf-8" });
+  return path;
+}
+
 function fakeChildProcess(pid = 1234): FakeChildProcess {
   const child = new EventEmitter() as FakeChildProcess;
   Object.defineProperties(child, {
@@ -204,6 +215,47 @@ test("buildCompareReport - fails regressions outside tolerance and noise", () =>
   assert.ok(throughput);
   assert.strictEqual(throughput.pass, false);
   assert.strictEqual(compare.passed, false);
+});
+
+test("buildCompareReport - treats positive throughput after zero as passing", () => {
+  const throughputExpectation = (actual: number) =>
+    ({
+      metric: "throughputPerSec",
+      op: "gte",
+      threshold: 0,
+      unit: "/s",
+      actual,
+      severity: "fail",
+      pass: true,
+    }) as const;
+  const base = report([
+    scenario({
+      throughputPerSec: 0,
+      expectations: [throughputExpectation(0)],
+      runs: [runResult(100, 0), runResult(100, 0), runResult(100, 0)],
+    }),
+  ]);
+  const head = report([
+    scenario({
+      throughputPerSec: 10,
+      expectations: [throughputExpectation(10)],
+      runs: [runResult(100, 10), runResult(100, 10), runResult(100, 10)],
+    }),
+  ]);
+  const compare = buildCompareReport({
+    baseRef: "origin/main",
+    headRef: "HEAD",
+    baseReport: base,
+    headReport: head,
+    maxRegression: 0,
+    startedAt: "2026-06-13T00:00:00.000Z",
+    finishedAt: "2026-06-13T00:00:01.000Z",
+  });
+  assert.strictEqual(compare.comparisons.length, 1);
+  assert.strictEqual(compare.comparisons[0].metric, "throughputPerSec");
+  assert.strictEqual(compare.comparisons[0].regression, 0);
+  assert.strictEqual(compare.comparisons[0].pass, true);
+  assert.strictEqual(compare.passed, true);
 });
 
 test("buildCompareReport - matches duplicate scenario names by occurrence", () => {
@@ -433,6 +485,20 @@ test("stopTargetProcess - kills the Windows process tree", async () => {
   assert.deepEqual(kills, [[4321, "SIGTERM"]]);
 });
 
+test("windowsTaskkillArgs - only force kills on SIGKILL", () => {
+  assert.deepEqual(windowsTaskkillArgs(4321, "SIGTERM"), [
+    "/pid",
+    "4321",
+    "/T",
+  ]);
+  assert.deepEqual(windowsTaskkillArgs(4321, "SIGKILL"), [
+    "/pid",
+    "4321",
+    "/T",
+    "/F",
+  ]);
+});
+
 test("stopTargetProcess - rejects when forced kill does not exit", async () => {
   const child = fakeChildProcess(4321);
   child.kill = () => true;
@@ -601,4 +667,45 @@ test("runBenchCompare - orchestrates worktrees and cleans up", async () => {
     "remove:/tmp/head",
     "remove:/tmp/base",
   ]);
+});
+
+test("runBenchCompare - does not treat derived target as explicit", async () => {
+  const file = await writeSuite(`version: 1
+target: https://example.com
+defaults:
+  load: { rate: 1/s }
+  duration: 1ms
+scenarios:
+  - name: wf
+    type: webfinger
+    recipient: "acct:alice@example.com"
+`);
+  const events: string[] = [];
+  let code = -1;
+  await runBenchCompare(
+    command({
+      file,
+      readyUrl: "https://example.com/health",
+      allowUnsafeTarget: true,
+    }),
+    {
+      exit: (c) => {
+        code = c;
+      },
+      writeOutput: () => Promise.resolve(),
+      log: (message) => events.push(`compare:${message}`),
+      createWorktree: (_ref, label) => Promise.resolve(`/tmp/${label}`),
+      removeWorktree: () => Promise.resolve(),
+      startTarget: () => Promise.resolve({ stop: () => Promise.resolve() }),
+      waitReady: () => Promise.resolve(),
+      benchDeps: {
+        log: (message) => events.push(`bench:${message}`),
+        fetch: () =>
+          Promise.resolve(new Response("not found", { status: 404 })),
+        resolveTargetAddresses: () => Promise.resolve(["93.184.216.34"]),
+      },
+    },
+  );
+  assert.strictEqual(code, 2);
+  assert.match(events.join("\n"), /--target/);
 });

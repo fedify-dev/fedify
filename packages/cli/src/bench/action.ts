@@ -51,6 +51,10 @@ import {
 } from "./server/synthetic.ts";
 import { convertUrlIfHandle } from "../webfinger/lib.ts";
 
+type BenchRunRuntimeCommand = BenchRunCommand & {
+  readonly explicitCliTarget?: boolean;
+};
+
 /** Injectable dependencies for {@link runBench}, overridable in tests. */
 export interface RunBenchDeps {
   /** Terminates the process with an exit code. */
@@ -77,7 +81,7 @@ export interface RunBenchDeps {
  * @param deps Injectable dependencies for testing.
  */
 export default async function runBench(
-  command: BenchRunCommand,
+  command: BenchRunRuntimeCommand,
   deps: RunBenchDeps = {},
 ): Promise<void> {
   // Set the exit code rather than terminating, so cleanup (closing the fleet)
@@ -92,6 +96,7 @@ export default async function runBench(
   // stats reads, and the runners' inbox/WebFinger requests — not just the
   // document loader, so a target that inspects the UA sees it on every request.
   const fetchImpl = withUserAgent(deps.fetch ?? fetch, command.userAgent);
+  const explicitCliTarget = command.explicitCliTarget ?? command.target != null;
 
   // Loading, validation, and normalization failures are all user-facing
   // configuration errors.
@@ -137,7 +142,7 @@ export default async function runBench(
         tier,
         benchmarkMode: probe.benchmarkMode,
         allowUnsafe: command.allowUnsafeTarget,
-        explicitCliTarget: command.target != null,
+        explicitCliTarget,
         scenarios: unsafeOverrideScenarios(validated),
       });
     }
@@ -191,7 +196,7 @@ export default async function runBench(
       targetOrigin: suite.target.origin,
       targetBenchmarkMode: probe.benchmarkMode,
       allowUnsafe: command.allowUnsafeTarget,
-      explicitCliTarget: command.target != null,
+      explicitCliTarget,
       destinationTier,
       defaults: validated.defaults,
     });
@@ -220,7 +225,7 @@ export default async function runBench(
       targetOrigin: suite.target.origin,
       targetBenchmarkMode: probe.benchmarkMode,
       allowUnsafe: command.allowUnsafeTarget,
-      explicitCliTarget: command.target != null,
+      explicitCliTarget,
       destinationTier,
       defaults: validated.defaults,
     });

@@ -101,6 +101,10 @@ type SpawnTarget = (
   options: SpawnOptions,
 ) => ChildProcess;
 
+type BenchRunCompareCommand = BenchRunCommand & {
+  readonly explicitCliTarget: boolean;
+};
+
 /** Options for starting a benchmark target. */
 export interface StartBenchmarkTargetOptions {
   readonly platform?: NodeJS.Platform;
@@ -445,8 +449,15 @@ function regressionRatio(
   head: number,
   direction: ComparisonResult["direction"],
 ): number | null {
-  if (!Number.isFinite(base) || !Number.isFinite(head) || base <= 0) {
+  if (!Number.isFinite(base) || !Number.isFinite(head)) {
+    return null;
+  }
+  if (base < 0) {
     return base === head ? 0 : null;
+  }
+  if (base === 0) {
+    if (base === head) return 0;
+    return direction === "higher-is-better" && head > base ? 0 : null;
   }
   return direction === "higher-is-better"
     ? (base - head) / base
@@ -561,7 +572,7 @@ async function defaultRunBenchInWorktree(
 ): Promise<BenchReport> {
   let output = "";
   let exitCode = 0;
-  const runCommand: BenchRunCommand = {
+  const runCommand: BenchRunCompareCommand = {
     command: "bench",
     mode: "run",
     scenario: input.command.file,
@@ -572,6 +583,7 @@ async function defaultRunBenchInWorktree(
     advertiseHost: input.command.advertiseHost,
     allowUnsafeTarget: input.command.allowUnsafeTarget,
     userAgent: input.command.userAgent,
+    explicitCliTarget: input.command.target != null,
   };
   await runBench(runCommand, {
     ...benchDeps,
@@ -755,13 +767,22 @@ function killTargetProcess(
 
 function defaultKillWindowsProcessTree(
   pid: number,
-  _signal: NodeJS.Signals,
+  signal: NodeJS.Signals,
 ): void {
-  const child = spawn("taskkill", ["/pid", String(pid), "/T", "/F"], {
+  const child = spawn("taskkill", windowsTaskkillArgs(pid, signal), {
     stdio: "ignore",
     windowsHide: true,
   });
   child.on("error", () => {});
+}
+
+export function windowsTaskkillArgs(
+  pid: number,
+  signal: NodeJS.Signals,
+): string[] {
+  const args = ["/pid", String(pid), "/T"];
+  if (signal === "SIGKILL") args.push("/F");
+  return args;
 }
 
 async function defaultWaitReady(url: URL, timeoutMs: number): Promise<void> {
