@@ -37,6 +37,7 @@ packages:
 - examples/elysia
 - examples/express
 - examples/koa
+- examples/lint/oxlint
 - examples/next-integration
 - examples/fastify
 - examples/next14-app-router
@@ -107,6 +108,7 @@ catalog:
   pkijs: ^3.3.3
   mysql2: ^3.22.3
   nuxt: ^4.4.2
+  oxlint: ^1.66.0
   postgres: ^3.4.7
   tsdown: ^0.22.0
   typescript: ^6.0.0
