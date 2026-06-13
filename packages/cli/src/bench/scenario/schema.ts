@@ -1,14 +1,14 @@
 /**
  * The embedded JSON Schema (draft 2020-12) for benchmark scenario suite files.
  *
- * This object is the runtime copy used by the validator; it is published,
- * byte-for-byte, as *schema/bench/scenario-v1.json* and a drift guard keeps the
- * two in sync.  The matching TypeScript types live in {@link ./types.ts}.
+ * These objects are the runtime copies used by the validator; they are
+ * published, byte-for-byte, under *schema/bench/* and a drift guard keeps them
+ * in sync.  The matching TypeScript types live in {@link ./types.ts}.
  *
  * The schema expresses every scenario type discussed for `fedify bench`
  * (`inbox`, `webfinger`, `actor`, `object`, `fanout`, `collection`, `failure`,
- * `mixed`), even though only `inbox` and `webfinger` have runners in this
- * version.  Three cross-field rules are enforced here rather than in code:
+ * `mixed`).  All but `collection` have runners in this version.  Three
+ * cross-field rules are enforced here rather than in code:
  *
  *  -  exactly one HTTP request signature scheme per actor group
  *     (`contains` + `minContains`/`maxContains`);
@@ -19,8 +19,12 @@
  * @module
  */
 
-/** The hosted URL that serves the scenario schema. */
+/** The hosted URL that serves the current scenario schema. */
 export const SCENARIO_SCHEMA_ID =
+  "https://json-schema.fedify.dev/bench/scenario-v2.json";
+
+/** The hosted URL that serves the version 1 scenario schema. */
+export const SCENARIO_SCHEMA_ID_V1 =
   "https://json-schema.fedify.dev/bench/scenario-v1.json";
 
 const READ_METRICS = [
@@ -54,13 +58,17 @@ const FANOUT_METRICS = [
   "queueDrain.p99",
 ];
 
-// A `mixed` scenario blends others, so it may assert any of their metrics.
+// Schema v1 allowed mixed scenarios to assert child server metrics.  Keep this
+// list stable so the published v1 schema remains byte-for-byte immutable.
 const MIXED_METRICS = [...new Set([...INBOX_METRICS, ...FANOUT_METRICS])];
+// Schema v2 matches the runtime mixed runner, which merges only client-side
+// request metrics and delivery throughput.
+const MIXED_V2_METRICS = [...READ_METRICS, "deliveryThroughput"];
 
 /** The benchmark scenario suite JSON Schema (draft 2020-12). */
 export const scenarioSchemaV1 = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
-  $id: SCENARIO_SCHEMA_ID,
+  $id: SCENARIO_SCHEMA_ID_V1,
   title: "Fedify benchmark scenario suite",
   type: "object",
   required: ["version", "scenarios"],
@@ -374,6 +382,68 @@ export const scenarioSchemaV1 = {
           },
         },
       ],
+    },
+  },
+} as const;
+
+/** The current benchmark scenario suite JSON Schema (draft 2020-12). */
+export const scenarioSchemaV2 = {
+  ...scenarioSchemaV1,
+  $id: SCENARIO_SCHEMA_ID,
+  $defs: {
+    ...scenarioSchemaV1.$defs,
+    scenario: {
+      ...scenarioSchemaV1.$defs.scenario,
+      properties: {
+        ...scenarioSchemaV1.$defs.scenario.properties,
+        sinkBase: { type: "string" },
+      },
+      allOf: scenarioSchemaV1.$defs.scenario.allOf.map((condition) =>
+        condition.if.properties.type.const === "failure"
+          ? {
+            if: condition.if,
+            then: {
+              properties: condition.then.properties,
+            },
+          }
+          : condition.if.properties.type.const === "actor" ||
+              condition.if.properties.type.const === "object"
+          ? {
+            if: condition.if,
+            then: {
+              required: condition.then.required,
+              allOf: [
+                {
+                  if: {
+                    required: ["authenticated"],
+                    properties: { authenticated: { const: true } },
+                  },
+                  then: {
+                    properties: {
+                      expect: { propertyNames: { enum: INBOX_METRICS } },
+                    },
+                  },
+                  else: {
+                    properties: {
+                      expect: { propertyNames: { enum: READ_METRICS } },
+                    },
+                  },
+                },
+              ],
+            },
+          }
+          : condition.if.properties.type.const === "mixed"
+          ? {
+            if: condition.if,
+            then: {
+              required: condition.then.required,
+              properties: {
+                expect: { propertyNames: { enum: MIXED_V2_METRICS } },
+              },
+            },
+          }
+          : condition
+      ),
     },
   },
 } as const;

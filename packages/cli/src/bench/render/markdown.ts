@@ -54,6 +54,13 @@ function renderScenario(scenario: ScenarioResult): string[] {
   lines.push(`| Requests | ${formatNumber(r.total)} |`);
   lines.push(`| Success rate | ${formatPercent(r.successRate)} |`);
   lines.push(`| Throughput | ${formatNumber(scenario.throughputPerSec)}/s |`);
+  if (scenario.deliveryThroughputPerSec != null) {
+    lines.push(
+      `| Delivery throughput | ${
+        formatNumber(scenario.deliveryThroughputPerSec)
+      }/s |`,
+    );
+  }
   const l = scenario.client.latencyMs;
   lines.push(`| Latency p50 | ${formatNumber(l.p50)}ms |`);
   lines.push(`| Latency p95 | ${formatNumber(l.p95)}ms |`);

@@ -9,7 +9,7 @@ import {
   detectEnvironment,
   type ScenarioMeasurement,
 } from "./build.ts";
-import { reportSchemaV1 } from "./schema.ts";
+import { reportSchemaV2 } from "./schema.ts";
 
 function resolvedInbox() {
   return normalizeSuite({
@@ -62,6 +62,14 @@ test("buildScenarioResult - a run that measured nothing never passes", () => {
   assert.strictEqual(result.passed, false);
 });
 
+test("buildScenarioResult - preserves delivery throughput", () => {
+  const result = buildScenarioResult(resolvedInbox(), {
+    ...measurement(),
+    deliveryThroughputPerSec: 42,
+  });
+  assert.strictEqual(result.deliveryThroughputPerSec, 42);
+});
+
 test("buildReport - gate passes only when all scenarios pass", () => {
   const ok = buildScenarioResult(resolvedInbox(), measurement());
   const bad = buildScenarioResult(resolvedInbox(), {
@@ -93,7 +101,7 @@ test("buildReport - output validates against the report schema", () => {
     suite: { name: "suite", configHash: configHash({ a: 1 }) },
   });
   const validator = new Validator(
-    reportSchemaV1 as unknown as Schema,
+    reportSchemaV2 as unknown as Schema,
     "2020-12",
   );
   const result = validator.validate(JSON.parse(JSON.stringify(report)));

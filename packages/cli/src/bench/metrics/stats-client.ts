@@ -57,6 +57,17 @@ export interface ServerSnapshot {
   readonly signature: ServerHistogram | null;
   /** The maximum observed queue depth, or `null` if absent. */
   readonly queueDepthMax: number | null;
+  /** Queue task counters, or `null` if absent. */
+  readonly queueTasks?: QueueTaskCounts | null;
+  /** Permanent outbound delivery failure count, or `null` if absent. */
+  readonly deliveryPermanentFailures?: number | null;
+}
+
+/** Queue task counts extracted from benchmark stats. */
+export interface QueueTaskCounts {
+  readonly enqueued: number;
+  readonly completed: number;
+  readonly failed: number;
 }
 
 /**
@@ -86,7 +97,20 @@ export function parseServerSnapshot(snapshot: unknown): ServerSnapshot | null {
       if (values.length > 0) queueDepthMax = Math.max(...values);
     }
 
-    return { signature, queueDepthMax };
+    const queueTasks = parseQueueTasks(metrics);
+    const deliveryPermanentFailures = sumMetric(
+      metrics,
+      "activitypub.delivery.permanent_failure",
+    );
+
+    return {
+      signature,
+      queueDepthMax,
+      ...(queueTasks == null ? {} : { queueTasks }),
+      ...(deliveryPermanentFailures == null
+        ? {}
+        : { deliveryPermanentFailures }),
+    };
   } catch {
     return null;
   }
@@ -107,9 +131,19 @@ export function diffSnapshots(
   baseline: ServerSnapshot,
   end: ServerSnapshot,
 ): ServerSnapshot {
+  const queueTasks = diffQueueTasks(
+    baseline.queueTasks ?? null,
+    end.queueTasks ?? null,
+  );
+  const deliveryPermanentFailures = diffCounter(
+    baseline.deliveryPermanentFailures ?? null,
+    end.deliveryPermanentFailures ?? null,
+  );
   return {
     signature: diffHistogram(baseline.signature, end.signature),
     queueDepthMax: end.queueDepthMax,
+    ...(queueTasks == null ? {} : { queueTasks }),
+    ...(deliveryPermanentFailures == null ? {} : { deliveryPermanentFailures }),
   };
 }
 
@@ -194,6 +228,25 @@ export async function fetchServerMetrics(
   return snapshotToMetrics(await fetchServerSnapshot(target, fetchImpl));
 }
 
+/**
+ * Returns the remaining queue task backlog represented by a diffed snapshot.
+ * @param snapshot The server snapshot to inspect, usually already diffed
+ * against a baseline.
+ * @param baselineRemaining Queue tasks that were already outstanding when the
+ * diff baseline was taken.  These must drain before diffed completions can be
+ * attributed to newly enqueued tasks.
+ * @returns `Math.max(0, baselineRemaining + enqueued - completed - failed)`,
+ * or `null` when the snapshot has no queue task counters.
+ */
+export function queueTaskRemaining(
+  snapshot: ServerSnapshot | null,
+  baselineRemaining = 0,
+): number | null {
+  if (snapshot?.queueTasks == null) return null;
+  const { enqueued, completed, failed } = snapshot.queueTasks;
+  return Math.max(0, baselineRemaining + enqueued - completed - failed);
+}
+
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
@@ -238,6 +291,37 @@ function mergeHistogram(
   return boundaries != null && counts != null ? { boundaries, counts } : null;
 }
 
+function parseQueueTasks(
+  metrics: readonly SnapshotMetric[],
+): QueueTaskCounts | null {
+  const enqueued = sumMetric(metrics, "fedify.queue.task.enqueued");
+  const completed = sumMetric(metrics, "fedify.queue.task.completed");
+  const failed = sumMetric(metrics, "fedify.queue.task.failed");
+  return enqueued == null && completed == null && failed == null ? null : {
+    enqueued: enqueued ?? 0,
+    completed: completed ?? 0,
+    failed: failed ?? 0,
+  };
+}
+
+function sumMetric(
+  metrics: readonly SnapshotMetric[],
+  name: string,
+): number | null {
+  let total = 0;
+  let found = false;
+  for (const metric of metrics) {
+    if (metric.name !== name || !Array.isArray(metric.dataPoints)) continue;
+    for (const point of metric.dataPoints) {
+      if (isRecord(point) && isFiniteNumber(point["value"])) {
+        total += point["value"];
+        found = true;
+      }
+    }
+  }
+  return found ? total : null;
+}
+
 function diffHistogram(
   baseline: ServerHistogram | null,
   end: ServerHistogram | null,
@@ -256,6 +340,28 @@ function diffHistogram(
   return { boundaries: end.boundaries, counts };
 }
 
+function diffQueueTasks(
+  baseline: QueueTaskCounts | null,
+  end: QueueTaskCounts | null,
+): QueueTaskCounts | null {
+  if (end == null) return null;
+  if (baseline == null) return end;
+  return {
+    enqueued: Math.max(0, end.enqueued - baseline.enqueued),
+    completed: Math.max(0, end.completed - baseline.completed),
+    failed: Math.max(0, end.failed - baseline.failed),
+  };
+}
+
+function diffCounter(
+  baseline: number | null,
+  end: number | null,
+): number | null {
+  if (end == null) return null;
+  if (baseline == null) return end;
+  return Math.max(0, end - baseline);
+}
+
 function histogramsCompatible(
   a: ServerHistogram,
   b: ServerHistogram,
@@ -263,6 +369,10 @@ function histogramsCompatible(
   return a.boundaries.length === b.boundaries.length &&
     a.counts.length === b.counts.length &&
     a.boundaries.every((boundary, i) => boundary === b.boundaries[i]);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value != null && typeof value === "object" && !Array.isArray(value);
 }
 
 function histogramPercentile(histogram: ServerHistogram, p: number): number {

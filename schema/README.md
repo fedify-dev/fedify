@@ -6,13 +6,19 @@ Fedify JSON schemas
 This directory holds the published JSON Schemas (draft 2020-12) for Fedify file
 formats.  It is deployed to <https://json-schema.fedify.dev/> by Netlify on
 every push to the *main* branch; the directory layout maps onto the URL, so
-*schema/bench/scenario-v1.json* is served at
-<https://json-schema.fedify.dev/bench/scenario-v1.json>.
+*schema/bench/scenario-v2.json* is served at
+<https://json-schema.fedify.dev/bench/scenario-v2.json>.
 
 Current schemas:
 
- -  *bench/scenario-v1.json* — the `fedify bench` scenario suite format (input).
- -  *bench/report-v1.json* — the `fedify bench` report format (output).
+ -  *bench/scenario-v2.json* — the current `fedify bench` scenario suite
+    format (input).
+ -  *bench/scenario-v1.json* — the version 1 `fedify bench` scenario suite
+    format (input).
+ -  *bench/report-v2.json* — the current `fedify bench` report format
+    (output).
+ -  *bench/report-v1.json* — the version 1 `fedify bench` report format
+    (output).
 
 
 Versioning: append-only and immutable
@@ -82,7 +88,7 @@ Editor support
 Add a schema reference to a scenario file for autocomplete and validation:
 
 ~~~~ yaml
-# yaml-language-server: $schema=https://json-schema.fedify.dev/bench/scenario-v1.json
+# yaml-language-server: $schema=https://json-schema.fedify.dev/bench/scenario-v2.json
 version: 1
 target: http://localhost:3000
 ~~~~

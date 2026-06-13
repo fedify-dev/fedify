@@ -1,15 +1,18 @@
 /**
  * The scenario-runner registry.
  *
- * Only `inbox` and `webfinger` have runners in this version; the other scenario
- * types are expressible in the format but not yet executable, so requesting one
- * fails with a clear message.
+ * Only `collection` is still reserved but not executable in this version.
  * @since 2.3.0
  * @module
  */
 
 import type { ScenarioType } from "../scenario/types.ts";
+import { actorRunner } from "./actor.ts";
+import { failureRunner } from "./failure.ts";
+import { fanoutRunner } from "./fanout.ts";
 import { inboxRunner } from "./inbox.ts";
+import { mixedRunner } from "./mixed.ts";
+import { objectRunner } from "./object.ts";
 import type { ScenarioRunner } from "./runner.ts";
 import { webfingerRunner } from "./webfinger.ts";
 
@@ -17,6 +20,11 @@ import { webfingerRunner } from "./webfinger.ts";
 export const IMPLEMENTED_SCENARIO_TYPES: readonly ScenarioType[] = [
   "inbox",
   "webfinger",
+  "actor",
+  "object",
+  "fanout",
+  "failure",
+  "mixed",
 ];
 
 /**
@@ -31,6 +39,16 @@ export function runnerFor(type: ScenarioType): ScenarioRunner {
       return inboxRunner;
     case "webfinger":
       return webfingerRunner;
+    case "actor":
+      return actorRunner;
+    case "object":
+      return objectRunner;
+    case "fanout":
+      return fanoutRunner;
+    case "failure":
+      return failureRunner;
+    case "mixed":
+      return mixedRunner;
     default:
       throw new Error(
         `The "${type}" scenario type is not implemented in this version of ` +

@@ -50,10 +50,14 @@ export function validateExpectBlock(expect: ExpectBlock): void {
 }
 
 /** The subset of a scenario result that `expect` metrics are looked up from. */
-export type MetricView = Pick<
-  ScenarioResult,
-  "requests" | "throughputPerSec" | "client" | "server" | "errors"
->;
+export interface MetricView {
+  readonly requests: ScenarioResult["requests"];
+  readonly throughputPerSec: ScenarioResult["throughputPerSec"];
+  readonly deliveryThroughputPerSec?: number;
+  readonly client: ScenarioResult["client"];
+  readonly server: ScenarioResult["server"];
+  readonly errors: ScenarioResult["errors"];
+}
 
 /** The outcome of evaluating an `expect` block. */
 export interface ExpectEvaluation {
@@ -133,8 +137,7 @@ function lookupValue(metrics: MetricView, metric: string): number | null {
     case "throughputPerSec":
       return metrics.throughputPerSec;
     case "deliveryThroughput":
-      // Recognized (fanout/mixed) but not measured by the runners yet.
-      return null;
+      return metrics.deliveryThroughputPerSec ?? null;
     case "errors.total":
       return sumErrors(metrics.errors);
     case "errors.4xx":

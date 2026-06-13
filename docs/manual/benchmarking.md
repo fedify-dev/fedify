@@ -94,9 +94,9 @@ delivery with the same `@fedify/fedify` signer a real peer uses, so the measured
 crypto cost is real.
 
 > [!NOTE]
-> This version runs the `inbox` and `webfinger` scenario types.  The scenario
-> format can express the others (`actor`, `object`, `fanout`, `collection`,
-> `failure`, and `mixed`), but they are not executed yet.  Within the runnable
+> This version runs the `inbox`, `webfinger`, `actor`, `object`, `fanout`,
+> `failure`, and `mixed` scenario types.  The `collection` scenario type is
+> reserved by the suite format but is not executed yet.  Within the runnable
 > types, a few options the format accepts are also not implemented yet and are
 > rejected up front with a clear message:
 >
@@ -115,7 +115,7 @@ is a superset).  The suite declares the `target`, shared `defaults`, the
 block of pass/fail thresholds:
 
 ~~~~ yaml
-# yaml-language-server: $schema=https://json-schema.fedify.dev/bench/scenario-v1.json
+# yaml-language-server: $schema=https://json-schema.fedify.dev/bench/scenario-v2.json
 version: 1
 target: http://localhost:3000
 defaults:
@@ -161,7 +161,56 @@ list, deliveries are rotated across the recipients (and across the synthetic
 `actors` signing them), modeling a server that receives from many peers into
 many local inboxes.
 
-[published schema]: https://json-schema.fedify.dev/bench/scenario-v1.json
+[published schema]: https://json-schema.fedify.dev/bench/scenario-v2.json
+
+### Scenario types
+
+The runnable scenario types cover the main benchmark surfaces:
+
+ -  `inbox`: discovers recipient inboxes and sends signed `Create(Note)`
+    deliveries through the target's inbound ActivityPub path.
+ -  `webfinger`: drives direct `/.well-known/webfinger` lookups on the target.
+ -  `actor`: resolves actor URLs from the scenario recipients and fetches actor
+    documents.  Set `authenticated: true` to sign those GET requests.
+ -  `object`: fetches object URLs from `source`.  Set `authenticated: true` to
+    sign those GET requests.
+ -  `fanout`: posts to `/.well-known/fedify/bench/trigger` so the target calls
+    `sendActivity()` and drains its fanout/outbox queue to benchmark-owned sink
+    inboxes.  The command starts those sink inboxes locally.  A non-loopback
+    target therefore needs `--advertise-host` unless the scenario sets
+    `sinkBase` to a reachable `http://host:port/` URL.  The target must either
+    allow the generated sink inboxes through `triggerSinks` or run with
+    `allowUnsafeTriggerRecipients` in a controlled benchmark environment.  Use
+    `sinkBase` when you want those inboxes to be deterministic, for example
+    `http://127.0.0.1:9090/inbox/0` through
+    `http://127.0.0.1:9090/inbox/4` for `followers: 5`.
+    `fedify bench` does not switch the target's queue backend; run the same
+    suite against targets configured with the queue implementations you want to
+    compare.  Fanout triggers are serialized while the runner observes queue
+    drain, so client latency includes time spent waiting for earlier fanout
+    drains under high-rate or concurrent load.  Use `deliveryThroughput` and
+    `queueDrain` expectations for delivery performance, and keep request
+    latency expectations conservative for this scenario type.
+ -  `failure`: records expected fault outcomes as successes.  For this
+    scenario type, `successRate` means “the expected failure was observed,”
+    not “the HTTP request succeeded.”  The `invalid-signature` and
+    `missing-actor` faults send malformed signed deliveries to a recipient
+    inbox.  The `remote-404`, `remote-410`, `slow-inbox`, and `network-error`
+    faults post to the benchmark trigger endpoint with `sender`, so the target
+    uses its normal outbound delivery path against controlled benchmark-owned
+    sink inboxes.  Like `fanout`, these remote failure faults need
+    `--advertise-host` for a non-loopback target unless `sinkBase` gives a
+    reachable, fixed sink base URL that the target's `triggerSinks` can
+    preconfigure.  Remote failure deliveries are also serialized while the
+    runner waits for the target's queue to
+    observe the expected failure or retry signal, so request latency can include
+    earlier wait time when the configured load is concurrent or high-rate.
+ -  `mixed`: runs referenced child scenarios concurrently, splitting the
+    `mixed` scenario's load by each entry's `weight`.  The referenced
+    scenarios are named scenarios in the same suite and are still run as normal
+    suite entries when listed.  The mixed result merges client-side request,
+    throughput, delivery throughput, latency, and error measurements;
+    server-side metric snapshots are not merged across child runners.
 
 ### Actors
 
@@ -239,7 +288,7 @@ CI check.  Keep CI gates on robust signals such as success rate, error counts,
 and gross throughput or latency floors; precise latency-percentile regression
 belongs in a controlled environment, not a shared CI runner.
 
-[report schema]: https://json-schema.fedify.dev/bench/report-v1.json
+[report schema]: https://json-schema.fedify.dev/bench/report-v2.json
 
 ### Safety
 
@@ -346,6 +395,11 @@ pointed at benchmark sink inboxes and prevents callers from choosing their own
 allowlist.  To bypass this guard for a controlled run, set
 `~FederationBenchmarkOptions.allowUnsafeTriggerRecipients` to `true` in the
 application configuration.
+
+For `fanout` and remote `failure` scenarios, set a `sinkBase` value such as
+`http://host:port/` in the scenario when the target keeps the safe default and
+you need stable sink URLs for `triggerSinks`.  With `followers: 5`, the runner
+generates `/inbox/0` through `/inbox/4` under that base.
 
 A successful trigger returns `202 Accepted`:
 

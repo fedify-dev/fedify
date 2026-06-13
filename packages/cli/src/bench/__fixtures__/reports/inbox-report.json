@@ -1,6 +1,6 @@
 {
-  "$schema": "https://json-schema.fedify.dev/bench/report-v1.json",
-  "schemaVersion": 1,
+  "$schema": "https://json-schema.fedify.dev/bench/report-v2.json",
+  "schemaVersion": 2,
   "tool": { "name": "@fedify/cli", "version": "2.3.0" },
   "environment": {
     "runtime": "deno",

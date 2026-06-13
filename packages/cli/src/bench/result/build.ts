@@ -32,6 +32,7 @@ import type {
 export interface ScenarioMeasurement {
   readonly requests: RequestSummary;
   readonly throughputPerSec: number;
+  readonly deliveryThroughputPerSec?: number;
   readonly client: ClientMetrics;
   readonly server: ServerMetrics | null;
   readonly errors: ErrorBucket[];
@@ -60,6 +61,9 @@ export function buildScenarioResult(
     load: loadSummary(scenario),
     requests: measurement.requests,
     throughputPerSec: measurement.throughputPerSec,
+    ...(measurement.deliveryThroughputPerSec == null ? {} : {
+      deliveryThroughputPerSec: measurement.deliveryThroughputPerSec,
+    }),
     client: measurement.client,
     server: measurement.server,
     errors: measurement.errors,
@@ -88,7 +92,7 @@ export interface ReportInput {
 export function buildReport(input: ReportInput): BenchReport {
   return {
     $schema: REPORT_SCHEMA_ID,
-    schemaVersion: 1,
+    schemaVersion: 2,
     tool: { name: "@fedify/cli", version: metadata.version },
     environment: input.environment,
     target: input.target,

@@ -3,6 +3,7 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { serve } from "srvx";
 import { spawnBenchmarkTarget } from "../../test/bench/fixture.ts";
 import runBench, { withUserAgent } from "./action.ts";
 import type { BenchCommand } from "./command.ts";
@@ -208,6 +209,104 @@ scenarios:
   }
 });
 
+test("runBench - dry run resolves actor handles with configured fetch", async () => {
+  const file = await writeSuite(`version: 1
+target: http://127.0.0.1:3000
+scenarios:
+  - name: actor-read
+    type: actor
+    recipient: "acct:alice@example.test"
+    load: { concurrency: 1 }
+    duration: 1ms
+`);
+  let code = -1;
+  let output = "";
+  let webfingerFetched = false;
+  let webfingerUserAgent: string | null = null;
+  await runBench(command({ scenario: file, dryRun: true }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: (c) => {
+      output = c;
+      return Promise.resolve();
+    },
+    log: () => {},
+    fetch: (input, init) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      const headers = new Headers(
+        init?.headers ?? (input instanceof Request ? input.headers : undefined),
+      );
+      if (url.pathname === "/.well-known/webfinger") {
+        webfingerFetched = true;
+        webfingerUserAgent = headers.get("user-agent");
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              subject: url.searchParams.get("resource"),
+              links: [{
+                rel: "self",
+                href: "http://127.0.0.1:3000/users/alice",
+              }],
+            }),
+            {
+              headers: { "content-type": "application/jrd+json" },
+            },
+          ),
+        );
+      }
+      return Promise.resolve(new Response("not found", { status: 404 }));
+    },
+  });
+
+  assert.strictEqual(code, 0);
+  assert.strictEqual(webfingerFetched, true);
+  assert.strictEqual(webfingerUserAgent, "Fedify-bench-test/1.0");
+  assert.match(output, /\/users\/alice/);
+});
+
+test("runBench - dry run gates object discovery before fetching", async () => {
+  const file = await writeSuite(`version: 1
+target: http://127.0.0.1:3000
+scenarios:
+  - name: object-crawl
+    type: object
+    source:
+      seed: "https://public.example/users/alice"
+      collection: outbox
+      limit: 1
+    load: { concurrency: 1 }
+    duration: 1ms
+`);
+  let code = -1;
+  let output = "";
+  let publicFetched = false;
+  await runBench(command({ scenario: file, dryRun: true }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: (c) => {
+      output = c;
+      return Promise.resolve();
+    },
+    log: () => {},
+    resolveTargetAddresses: resolvePublicHost,
+    fetch: (input) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.hostname === "public.example") {
+        publicFetched = true;
+        throw new Error("dry-run fetched an unsafe object source");
+      }
+      return Promise.resolve(new Response("not found", { status: 404 }));
+    },
+  });
+
+  assert.strictEqual(code, 0);
+  assert.strictEqual(publicFetched, false);
+  assert.match(output, /object discovery failed/);
+  assert.match(output, /Refusing to send benchmark read load/);
+});
+
 test("runBench - unsafe override requires an explicit CLI target", async () => {
   const file = await writeSuite(`version: 1
 target: https://example.com
@@ -322,6 +421,267 @@ scenarios:
   });
   assert.strictEqual(code, 2);
   assert.match(message, /advertise-host/);
+});
+
+test("runBench - remote failure needs advertised sink reachability", async () => {
+  const file = await writeSuite(`version: 1
+target: http://10.10.0.5:8000
+scenarios:
+  - name: remote-404
+    type: failure
+    fault: remote-404
+    sender: alice
+    load: { rate: 1/s }
+    duration: 1ms
+`);
+  let code = -1;
+  let message = "";
+  await runBench(command({ scenario: file }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: () => Promise.resolve(),
+    log: (m) => {
+      message = m;
+    },
+    fetch: () => Promise.reject(new Error("offline")),
+  });
+  assert.strictEqual(code, 2);
+  assert.match(message, /advertise-host/);
+});
+
+test("runBench - default failure fault needs advertised sink reachability", async () => {
+  const file = await writeSuite(`version: 1
+target: http://10.10.0.5:8000
+scenarios:
+  - name: default-failure
+    type: failure
+    sender: alice
+    load: { rate: 1/s }
+    duration: 1ms
+`);
+  let code = -1;
+  let message = "";
+  await runBench(command({ scenario: file }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: () => Promise.resolve(),
+    log: (m) => {
+      message = m;
+    },
+    fetch: () => Promise.reject(new Error("offline")),
+  });
+  assert.strictEqual(code, 2);
+  assert.match(message, /advertise-host/);
+});
+
+test("runBench - remote failure uses advertised sink reachability", async () => {
+  const file = await writeSuite(`version: 1
+target: http://10.10.0.5:8000
+scenarios:
+  - name: remote-404
+    type: failure
+    fault: remote-404
+    sender: alice
+    load: { concurrency: 1 }
+    duration: 25ms
+    queueDrainTimeout: 1s
+`);
+  let code = -1;
+  let message = "";
+  let triggerCalls = 0;
+  await runBench(command({ scenario: file, advertiseHost: "127.0.0.1" }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: () => Promise.resolve(),
+    log: (m) => {
+      message = m;
+    },
+    fetch: (input) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.pathname === "/.well-known/fedify/bench/stats") {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              version: 1,
+              source: "server",
+              scopeMetrics: [{
+                metrics: [
+                  sumMetric("fedify.queue.task.enqueued", triggerCalls),
+                  sumMetric("fedify.queue.task.completed", triggerCalls),
+                  sumMetric("fedify.queue.task.failed", 0),
+                  sumMetric(
+                    "activitypub.delivery.permanent_failure",
+                    triggerCalls,
+                  ),
+                ],
+              }],
+            }),
+            { headers: { "content-type": "application/json" } },
+          ),
+        );
+      }
+      if (url.pathname === "/.well-known/fedify/bench/trigger") {
+        triggerCalls++;
+        return Promise.resolve(
+          new Response(JSON.stringify({ version: 1 }), {
+            status: 202,
+            headers: { "content-type": "application/json" },
+          }),
+        );
+      }
+      return Promise.resolve(new Response("unexpected", { status: 500 }));
+    },
+  });
+
+  assert.strictEqual(code, 0, message);
+  assert.ok(triggerCalls > 0);
+});
+
+test("runBench - missing-actor failure needs no advertise host", async () => {
+  const recipientTarget = await spawnBenchmarkTarget();
+  try {
+    const file = await writeSuite(`version: 1
+target: http://10.10.0.5:8000
+scenarios:
+  - name: missing-actor
+    type: failure
+    fault: missing-actor
+    recipient: "${new URL("/users/alice", recipientTarget.url).href}"
+    load: { rate: 1/s }
+    duration: 1ms
+`);
+    let code = -1;
+    let message = "";
+    await runBench(command({ scenario: file }), {
+      exit: (c) => {
+        code = c;
+      },
+      writeOutput: () => Promise.resolve(),
+      log: (m) => {
+        message = m;
+      },
+      fetch: (input) => {
+        const url = new URL(input instanceof Request ? input.url : input);
+        if (url.pathname === "/.well-known/fedify/bench/stats") {
+          return Promise.resolve(new Response("not found", { status: 404 }));
+        }
+        if (
+          url.origin === recipientTarget.url.origin &&
+          url.pathname === "/inbox"
+        ) {
+          return Promise.resolve(
+            new Response("actor not found", { status: 401 }),
+          );
+        }
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      },
+    });
+    assert.strictEqual(code, 0, message);
+  } finally {
+    await recipientTarget.close();
+  }
+});
+
+test("runBench - missing-actor failure allows private inbox without advertise host", async () => {
+  const actorServer = serve({
+    port: 0,
+    hostname: "127.0.0.1",
+    silent: true,
+    fetch(request: Request): Response {
+      const url = new URL(request.url);
+      if (url.pathname === "/users/alice") {
+        return new Response(
+          JSON.stringify({
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Person",
+            id: url.href,
+            inbox: "http://10.0.0.8/inbox",
+          }),
+          { headers: { "content-type": "application/activity+json" } },
+        );
+      }
+      return new Response("not found", { status: 404 });
+    },
+  });
+  await actorServer.ready();
+  try {
+    const actorUrl = new URL("/users/alice", new URL(actorServer.url!));
+    const file = await writeSuite(`version: 1
+target: http://10.10.0.5:8000
+scenarios:
+  - name: missing-actor
+    type: failure
+    fault: missing-actor
+    recipient: "${actorUrl.href}"
+    load: { rate: 1/s }
+    duration: 1ms
+`);
+    let code = -1;
+    let message = "";
+    let inboxPosts = 0;
+    await runBench(command({ scenario: file }), {
+      exit: (c) => {
+        code = c;
+      },
+      writeOutput: () => Promise.resolve(),
+      log: (m) => {
+        message = m;
+      },
+      fetch: (input) => {
+        const url = new URL(input instanceof Request ? input.url : input);
+        if (url.pathname === "/.well-known/fedify/bench/stats") {
+          return Promise.resolve(new Response("not found", { status: 404 }));
+        }
+        if (url.href === "http://10.0.0.8/inbox") {
+          inboxPosts++;
+          return Promise.resolve(
+            new Response("actor not found", { status: 401 }),
+          );
+        }
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      },
+    });
+    assert.strictEqual(code, 0, message);
+    assert.ok(inboxPosts > 0);
+  } finally {
+    await actorServer.close(true);
+  }
+});
+
+test("runBench - unauthenticated actor read needs no advertise host", async () => {
+  const file = await writeSuite(`version: 1
+target: http://10.10.0.5:8000
+scenarios:
+  - name: actor-read
+    type: actor
+    recipient: http://10.10.0.6/users/alice
+    load: { rate: 1/s }
+    duration: 1ms
+`);
+  let code = -1;
+  let output = "";
+  await runBench(command({ scenario: file }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: (c) => {
+      output = c;
+      return Promise.resolve();
+    },
+    log: () => {},
+    fetch: (input) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.pathname === "/.well-known/fedify/bench/stats") {
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      }
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    },
+  });
+  assert.strictEqual(code, 0);
+  assert.strictEqual(JSON.parse(output).scenarios[0].requests.successRate, 1);
 });
 
 test("runBench - refuses an inbox destination off the gated target (exit 2)", async () => {
@@ -568,6 +928,131 @@ scenarios:
   assert.strictEqual(fetched, false);
 });
 
+test("runBench - invalid mixed child exits 2 before any probe", async () => {
+  const file = await writeSuite(`version: 1
+target: http://localhost:3000
+scenarios:
+  - name: mixed
+    type: mixed
+    mix:
+      - scenario: missing
+        weight: 1
+`);
+  let code = -1;
+  let message = "";
+  let fetched = false;
+  await runBench(command({ scenario: file }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: () => Promise.resolve(),
+    log: (m) => {
+      message = m;
+    },
+    fetch: () => {
+      fetched = true;
+      return Promise.reject(new Error("no request should be sent"));
+    },
+  });
+  assert.strictEqual(code, 2);
+  assert.match(message, /unknown mixed child/);
+  assert.strictEqual(fetched, false);
+});
+
+test("runBench - mixed server expectation exits 2 before any probe", async () => {
+  const file = await writeSuite(`version: 1
+target: http://localhost:3000
+scenarios:
+  - name: lookup
+    type: webfinger
+    recipient: acct:alice@example.com
+  - name: mixed
+    type: mixed
+    mix:
+      - scenario: lookup
+        weight: 1
+    expect:
+      queueDrain.p95: "< 10ms"
+`);
+  let code = -1;
+  let message = "";
+  let fetched = false;
+  await runBench(command({ scenario: file }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: () => Promise.resolve(),
+    log: (m) => {
+      message = m;
+    },
+    fetch: () => {
+      fetched = true;
+      return Promise.reject(new Error("no request should be sent"));
+    },
+  });
+  assert.strictEqual(code, 2);
+  assert.match(message, /queueDrain\.p95/);
+  assert.strictEqual(fetched, false);
+});
+
+test("runBench - invalid object source exits 2 before any probe", async () => {
+  const file = await writeSuite(`version: 1
+target: http://localhost:3000
+scenarios:
+  - name: object
+    type: object
+    source: objects/1
+`);
+  let code = -1;
+  let message = "";
+  let fetched = false;
+  await runBench(command({ scenario: file }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: () => Promise.resolve(),
+    log: (m) => {
+      message = m;
+    },
+    fetch: () => {
+      fetched = true;
+      return Promise.reject(new Error("no request should be sent"));
+    },
+  });
+  assert.strictEqual(code, 2);
+  assert.match(message, /invalid object source URL/);
+  assert.strictEqual(fetched, false);
+});
+
+test("runBench - invalid actor recipient exits 2 before any probe", async () => {
+  const file = await writeSuite(`version: 1
+target: http://localhost:3000
+scenarios:
+  - name: actor
+    type: actor
+    recipient: alice
+`);
+  let code = -1;
+  let message = "";
+  let fetched = false;
+  await runBench(command({ scenario: file }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: () => Promise.resolve(),
+    log: (m) => {
+      message = m;
+    },
+    fetch: () => {
+      fetched = true;
+      return Promise.reject(new Error("no request should be sent"));
+    },
+  });
+  assert.strictEqual(code, 2);
+  assert.match(message, /invalid actor recipient/);
+  assert.strictEqual(fetched, false);
+});
+
 test("runBench - invalid suite exits 2", async () => {
   const file = await writeSuite(`target: http://localhost:3000
 scenarios:
@@ -589,3 +1074,11 @@ scenarios:
   assert.strictEqual(code, 2);
   assert.match(message, /Invalid/);
 });
+
+function sumMetric(name: string, value: number): Record<string, unknown> {
+  return {
+    name,
+    dataPointType: "sum",
+    dataPoints: [{ value }],
+  };
+}

@@ -2,7 +2,7 @@
  * Hand-written TypeScript types for the benchmark scenario suite format.
  *
  * These mirror the published JSON Schema in {@link ./schema.ts} and
- * *schema/bench/scenario-v1.json*.  Runtime validation is done with
+ * *schema/bench/scenario-v2.json*.  Runtime validation is done with
  * `@cfworker/json-schema`; after a value validates, it is narrowed to
  * {@link Suite} with an `as unknown as` cast (see {@link ./validate.ts}).
  * @since 2.3.0
@@ -24,7 +24,7 @@ export const HTTP_SIGNATURE_STANDARDS: readonly SignatureStandard[] = [
   "rfc9421",
 ];
 
-/** A scenario type.  Only `inbox` and `webfinger` have runners so far. */
+/** A scenario type.  `collection` is reserved but not executable so far. */
 export type ScenarioType =
   | "inbox"
   | "webfinger"
@@ -132,6 +132,7 @@ export interface Scenario {
   // fanout
   readonly sender?: string;
   readonly followers?: number;
+  readonly sinkBase?: string;
   readonly trigger?: Record<string, unknown>;
   readonly sinkBehavior?: Record<string, unknown>;
   readonly queueDrainTimeout?: string;

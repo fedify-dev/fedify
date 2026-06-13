@@ -304,8 +304,22 @@ To be released.
     discovery-aware `--dry-run` planning, and ships with a local benchmark
     fixture used by the scenario tests.  [[#744], [#783], [#784]]
 
+ -  Added `actor`, `object`, `fanout`, `failure`, and `mixed` scenario runners
+    to `fedify bench`.  Read scenarios can now benchmark actor and object
+    document fetches, including authenticated GET requests; fanout scenarios
+    drive the benchmark trigger endpoint and wait for queue task drain; failure
+    scenarios report expected fault outcomes as successes; and mixed scenarios
+    run weighted child scenario blends.  The `collection` scenario type remains
+    reserved but not executable.  Fanout and remote failure scenarios can set
+    `sinkBase` to generate deterministic benchmark sink inbox URLs for targets
+    that keep `triggerSinks` allowlisting enabled.  This change is published
+    as benchmark scenario schema version 2.  [[#744], [#785], [#801], [#802]]
+
 [#783]: https://github.com/fedify-dev/fedify/issues/783
 [#784]: https://github.com/fedify-dev/fedify/issues/784
+[#785]: https://github.com/fedify-dev/fedify/issues/785
+[#801]: https://github.com/fedify-dev/fedify/pull/801
+[#802]: https://github.com/fedify-dev/fedify/pull/802
 
 ### @fedify/fixture
 

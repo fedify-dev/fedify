@@ -11,6 +11,10 @@ import {
   selectInbox,
 } from "./discovery/discover.ts";
 import {
+  actorUrlsFromRecipients,
+  objectUrlsFromSource,
+} from "./scenarios/object-discovery.ts";
+import {
   buildReport,
   buildScenarioResult,
   configHash,
@@ -63,9 +67,6 @@ export interface RunBenchDeps {
   readonly resolveTargetAddresses?: ResolveTargetAddresses;
 }
 
-/** The scenario types that need the synthetic actor/key server. */
-const SIGNED_TYPES = new Set(["inbox"]);
-
 /**
  * Runs the `fedify bench` command: load and validate the suite, gate the
  * target, run each scenario, and render the report.  The process exits 0 when
@@ -112,7 +113,7 @@ export default async function runBench(
   try {
     runners = suite.scenarios.map((scenario) => {
       const runner = runnerFor(scenario.type);
-      runner.validate?.(scenario);
+      runner.validate?.(scenario, { scenarios: suite.scenarios });
       validateExpectBlock(scenario.expect);
       return runner;
     });
@@ -194,6 +195,53 @@ export default async function runBench(
       defaults: validated.defaults,
     });
   };
+  const assertDestinationWithoutSyntheticServerAllowed = async (
+    url: URL,
+    scenario: ResolvedScenario,
+    loadDescription: string,
+  ): Promise<void> => {
+    const sameOrigin = url.origin === suite.target.origin;
+    const destinationTier = sameOrigin
+      ? tier
+      : await classifyResolvedTarget(url, deps.resolveTargetAddresses);
+    const inheritsTargetGate = sameOrigin && probe.benchmarkMode;
+    if (
+      destinationTier === "public" && !inheritsTargetGate &&
+      !command.allowUnsafeTarget
+    ) {
+      throw new UnsafeTargetError(
+        `Refusing to send ${loadDescription} to ${url.href}: it is public ` +
+          "and not part of the benchmarked target.  Pass " +
+          "--allow-unsafe-target to override.",
+      );
+    }
+    assertPublicDestinationOverrideAllowed(url, scenario, {
+      targetOrigin: suite.target.origin,
+      targetBenchmarkMode: probe.benchmarkMode,
+      allowUnsafe: command.allowUnsafeTarget,
+      explicitCliTarget: command.target != null,
+      destinationTier,
+      defaults: validated.defaults,
+    });
+  };
+  const assertReadDestinationAllowed = (
+    url: URL,
+    scenario: ResolvedScenario,
+  ): Promise<void> =>
+    assertDestinationWithoutSyntheticServerAllowed(
+      url,
+      scenario,
+      "benchmark read load",
+    );
+  const assertActorlessDestinationAllowed = (
+    url: URL,
+    scenario: ResolvedScenario,
+  ): Promise<void> =>
+    assertDestinationWithoutSyntheticServerAllowed(
+      url,
+      scenario,
+      "benchmark load",
+    );
 
   if (command.dryRun) {
     try {
@@ -202,7 +250,9 @@ export default async function runBench(
           documentLoader,
           contextLoader,
           allowPrivateAddress,
+          fetch: fetchImpl,
           assertDestinationAllowed,
+          assertReadDestinationAllowed,
         }),
         command.output,
       );
@@ -220,14 +270,16 @@ export default async function runBench(
   // rather than let every signed delivery fail key lookup.
   if (
     tier !== "loopback" && command.advertiseHost == null &&
-    suite.scenarios.some((s) => SIGNED_TYPES.has(s.type))
+    suite.scenarios.some((scenario) =>
+      scenarioNeedsReachableLocalServer(scenario, suite.scenarios)
+    )
   ) {
     log(
-      "Signed scenarios (inbox) need the benchmark's synthetic actor server to " +
-        "be reachable from the target.  A loopback target reaches it " +
-        "automatically; for a non-loopback target, pass --advertise-host with " +
-        "an address the target can reach (the synthetic server then binds all " +
-        "interfaces), or use a read scenario such as webfinger.",
+      "Some scenarios need benchmark-owned local servers to be reachable from " +
+        "the target.  A loopback target reaches them automatically; for a " +
+        "non-loopback target, pass --advertise-host with an address the target " +
+        "can reach, or use a scenario that does not need local benchmark " +
+        "servers such as webfinger.",
     );
     return void exit(2);
   }
@@ -235,7 +287,11 @@ export default async function runBench(
   let fleet: SyntheticServer | undefined;
   const startedAt = new Date().toISOString();
   try {
-    if (suite.scenarios.some((s) => SIGNED_TYPES.has(s.type))) {
+    if (
+      suite.scenarios.some((scenario) =>
+        scenarioNeedsSyntheticServer(scenario, suite.scenarios)
+      )
+    ) {
       fleet = await spawnSyntheticServer(await buildFleet(suite.actors), {
         advertiseHost: command.advertiseHost,
       });
@@ -246,14 +302,20 @@ export default async function runBench(
       log(`Running scenario "${scenario.name}" (${scenario.type})…`);
       const measurement = await runners[i].run({
         scenario,
+        scenarios: suite.scenarios,
         target: suite.target,
         documentLoader,
         contextLoader,
         allowPrivateAddress,
         fleet: fleet ?? null,
+        advertiseHost: command.advertiseHost,
         fetch: fetchImpl,
-        assertDestinationAllowed: (url) =>
-          assertDestinationAllowed(url, scenario),
+        assertDestinationAllowed: (url, gateScenario) =>
+          assertDestinationAllowed(url, gateScenario ?? scenario),
+        assertReadDestinationAllowed: (url, gateScenario) =>
+          assertReadDestinationAllowed(url, gateScenario ?? scenario),
+        assertActorlessDestinationAllowed: (url, gateScenario) =>
+          assertActorlessDestinationAllowed(url, gateScenario ?? scenario),
       });
       results.push(buildScenarioResult(scenario, measurement));
     }
@@ -345,7 +407,12 @@ interface DryRunPlanContext {
   readonly documentLoader: DocumentLoader;
   readonly contextLoader: DocumentLoader;
   readonly allowPrivateAddress: boolean;
+  readonly fetch: typeof fetch;
   readonly assertDestinationAllowed: (
+    url: URL,
+    scenario: ResolvedScenario,
+  ) => Promise<void>;
+  readonly assertReadDestinationAllowed: (
     url: URL,
     scenario: ResolvedScenario,
   ) => Promise<void>;
@@ -392,6 +459,12 @@ async function describeDiscoveryPlan(
       return await describeInboxDiscoveryPlan(scenario, context);
     case "webfinger":
       return describeWebFingerPlan(scenario, suite.target);
+    case "actor":
+      return await describeActorPlan(scenario, suite, context);
+    case "object":
+      return await describeObjectPlan(scenario, suite, context);
+    case "mixed":
+      return describeMixedPlan(scenario);
     default:
       return ["  discovery: not available for this scenario type"];
   }
@@ -447,13 +520,83 @@ function describeWebFingerPlan(
   });
 }
 
+async function describeActorPlan(
+  scenario: ResolvedScenario,
+  suite: ResolvedSuite,
+  context: DryRunPlanContext,
+): Promise<string[]> {
+  try {
+    const urls = await actorUrlsFromRecipients(scenario.recipients, {
+      target: suite.target,
+      fetch: context.fetch,
+    });
+    const lines: string[] = [];
+    for (const url of urls) {
+      lines.push(`  actor: GET ${url.href}`);
+      lines.push(
+        `  destination safety: ${await describeDestinationSafety(
+          url,
+          scenario,
+          context,
+        )}`,
+      );
+    }
+    return lines;
+  } catch (error) {
+    return [`  actor discovery failed (${describeError(error)})`];
+  }
+}
+
+async function describeObjectPlan(
+  scenario: ResolvedScenario,
+  suite: ResolvedSuite,
+  context: DryRunPlanContext,
+): Promise<string[]> {
+  try {
+    const urls = await objectUrlsFromSource({
+      source: scenario.source,
+      target: suite.target,
+      fetch: context.fetch,
+      assertReadDestinationAllowed: (url) =>
+        context.assertReadDestinationAllowed(url, scenario),
+    });
+    const lines = [`  objects: ${urls.length} URL(s) resolved`];
+    for (const url of urls.slice(0, 10)) {
+      lines.push(`  object: GET ${url.href}`);
+      lines.push(
+        `  destination safety: ${await describeDestinationSafety(
+          url,
+          scenario,
+          context,
+        )}`,
+      );
+    }
+    if (urls.length > 10) lines.push(`  ... ${urls.length - 10} more`);
+    return lines;
+  } catch (error) {
+    return [`  object discovery failed (${describeError(error)})`];
+  }
+}
+
+function describeMixedPlan(scenario: ResolvedScenario): string[] {
+  const entries = scenario.raw.mix ?? [];
+  if (entries.length < 1) return ["  mix: no child scenarios"];
+  return entries.map((entry) =>
+    `  mix: ${entry.scenario} weight ${entry.weight}`
+  );
+}
+
 async function describeDestinationSafety(
-  inbox: URL,
+  url: URL,
   scenario: ResolvedScenario,
   context: DryRunPlanContext,
 ): Promise<string> {
   try {
-    await context.assertDestinationAllowed(inbox, scenario);
+    if (usesReadDestinationGate(scenario)) {
+      await context.assertReadDestinationAllowed(url, scenario);
+    } else {
+      await context.assertDestinationAllowed(url, scenario);
+    }
     return "allowed";
   } catch (error) {
     if (error instanceof UnsafeTargetError) {
@@ -461,6 +604,11 @@ async function describeDestinationSafety(
     }
     throw error;
   }
+}
+
+function usesReadDestinationGate(scenario: ResolvedScenario): boolean {
+  return (scenario.type === "actor" || scenario.type === "object") &&
+    !scenario.authenticated;
 }
 
 interface PublicDestinationOverrideContext {
@@ -521,4 +669,75 @@ function hasExplicitLoad(load: LoadConfig | undefined): boolean {
     typeof load === "object" &&
     (("rate" in load && load.rate != null) ||
       ("concurrency" in load && load.concurrency != null));
+}
+
+function scenarioNeedsSyntheticServer(
+  scenario: ResolvedScenario,
+  scenarios: readonly ResolvedScenario[],
+  seen: ReadonlySet<string> = new Set(),
+): boolean {
+  if (seen.has(scenario.name)) return false;
+  const nextSeen = new Set(seen).add(scenario.name);
+  switch (scenario.type) {
+    case "inbox":
+      return true;
+    case "actor":
+    case "object":
+      return scenario.authenticated;
+    case "failure":
+      return failureFaultsOf(scenario).some(isInboundFailureFault);
+    case "mixed":
+      return mixedChildrenOf(scenario, scenarios).some((child) =>
+        scenarioNeedsSyntheticServer(child, scenarios, nextSeen)
+      );
+    default:
+      return false;
+  }
+}
+
+function scenarioNeedsReachableLocalServer(
+  scenario: ResolvedScenario,
+  scenarios: readonly ResolvedScenario[],
+  seen: ReadonlySet<string> = new Set(),
+): boolean {
+  if (scenario.type === "fanout") return scenario.raw.sinkBase == null;
+  if (scenario.type === "failure") {
+    const faults = failureFaultsOf(scenario);
+    return faults.includes("invalid-signature") ||
+      (scenario.raw.sinkBase == null &&
+        faults.some(isRemoteFailureFault));
+  }
+  if (scenario.type === "mixed") {
+    if (seen.has(scenario.name)) return false;
+    const nextSeen = new Set(seen).add(scenario.name);
+    return mixedChildrenOf(scenario, scenarios).some((child) =>
+      scenarioNeedsReachableLocalServer(child, scenarios, nextSeen)
+    );
+  }
+  return scenarioNeedsSyntheticServer(scenario, scenarios, seen);
+}
+
+function failureFaultsOf(scenario: ResolvedScenario): readonly string[] {
+  return scenario.faults.length < 1 ? ["remote-404"] : scenario.faults;
+}
+
+function mixedChildrenOf(
+  scenario: ResolvedScenario,
+  scenarios: readonly ResolvedScenario[],
+): readonly ResolvedScenario[] {
+  return (scenario.raw.mix ?? []).flatMap((entry) => {
+    const child = scenarios.find((candidate) =>
+      candidate.name === entry.scenario
+    );
+    return child == null ? [] : [child];
+  });
+}
+
+function isInboundFailureFault(fault: string): boolean {
+  return fault === "invalid-signature" || fault === "missing-actor";
+}
+
+function isRemoteFailureFault(fault: string): boolean {
+  return fault === "remote-404" || fault === "remote-410" ||
+    fault === "slow-inbox" || fault === "network-error";
 }

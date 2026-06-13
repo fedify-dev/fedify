@@ -98,9 +98,10 @@ host in the actor and key URLs the target dereferences.`,
     description: message`Run an ActivityPub-specific load benchmark against a \
 cooperative Fedify target running in benchmark mode.
 
-The suite file declares the target, actors, and scenarios.  Only the \`inbox\` \
-and \`webfinger\` scenario types are executed in this version; the format \
-itself can express every scenario type.`,
+The suite file declares the target, actors, and scenarios.  This version \
+executes the \`inbox\`, \`webfinger\`, \`actor\`, \`object\`, \`fanout\`, \
+\`failure\`, and \`mixed\` scenario types; \`collection\` remains reserved by \
+the suite format.`,
   },
 );
 
