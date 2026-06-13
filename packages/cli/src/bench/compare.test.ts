@@ -617,6 +617,24 @@ test("stopTargetProcess - rejects when forced kill does not exit", async () => {
   );
 });
 
+test("stopTargetProcess - rejects when forced kill throws", async () => {
+  const child = fakeChildProcess(4321);
+  child.kill = () => true;
+  await assert.rejects(
+    stopTargetProcess(child, {
+      platform: "win32",
+      forceTimeoutMs: 1,
+      forceKillTimeoutMs: 10,
+      killWindowsProcessTree: (_pid, signal) => {
+        if (signal === "SIGKILL") {
+          throw new Error("forced kill failed");
+        }
+      },
+    }),
+    /forced kill failed/,
+  );
+});
+
 test("stopTargetProcess - resolves immediately without a pid", async () => {
   const child = fakeChildProcess();
   Object.defineProperty(child, "pid", { value: undefined });
@@ -786,6 +804,100 @@ test("runBenchCompare - orchestrates worktrees and cleans up", async () => {
     "bench:/tmp/head:http://127.0.0.1:3000",
     "stop:/tmp/head",
     "remove:/tmp/head",
+    "remove:/tmp/base",
+  ]);
+});
+
+test("runBenchCompare - stops target and removes worktree on interrupt", async () => {
+  const signals = new EventEmitter();
+  const events: string[] = [];
+  let code = -1;
+  await runBenchCompare(command({}), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: () => {
+      events.push("write");
+      return Promise.resolve();
+    },
+    log: (message) => events.push(`log:${message}`),
+    createWorktree: (_ref, label) => Promise.resolve(`/tmp/${label}`),
+    removeWorktree: (path) => {
+      events.push(`remove:${path}`);
+      return Promise.resolve();
+    },
+    startTarget: (cwd) => {
+      events.push(`start:${cwd}`);
+      queueMicrotask(() => signals.emit("SIGINT", "SIGINT"));
+      return Promise.resolve({
+        stop: () => {
+          events.push(`stop:${cwd}`);
+          return Promise.resolve();
+        },
+      });
+    },
+    waitReady: () => new Promise(() => {}),
+    runBenchInWorktree: () => {
+      events.push("bench");
+      return Promise.resolve(report([scenario()]));
+    },
+    signalTarget: signals,
+  });
+  assert.strictEqual(code, 130);
+  assert.deepEqual(events, [
+    "log:Checking out base benchmark ref origin/main…",
+    "start:/tmp/base",
+    "stop:/tmp/base",
+    "remove:/tmp/base",
+  ]);
+  assert.strictEqual(signals.listenerCount("SIGINT"), 0);
+  assert.strictEqual(signals.listenerCount("SIGTERM"), 0);
+});
+
+test("runBenchCompare - fails when target exits before readiness", async () => {
+  const events: string[] = [];
+  let code = -1;
+  await runBenchCompare(command({}), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: () => {
+      events.push("write");
+      return Promise.resolve();
+    },
+    log: (message) => events.push(`log:${message}`),
+    createWorktree: (_ref, label) => Promise.resolve(`/tmp/${label}`),
+    removeWorktree: (path) => {
+      events.push(`remove:${path}`);
+      return Promise.resolve();
+    },
+    startTarget: (cwd) => {
+      events.push(`start:${cwd}`);
+      return Promise.resolve({
+        exited: Promise.reject(new Error("target exited early")),
+        stop: () => {
+          events.push(`stop:${cwd}`);
+          return Promise.resolve();
+        },
+      });
+    },
+    waitReady: () => {
+      events.push("ready");
+      return Promise.resolve();
+    },
+    runBenchInWorktree: () => {
+      events.push("bench");
+      return Promise.resolve(report([scenario()]));
+    },
+  });
+  assert.strictEqual(code, 2);
+  assert.match(events.join("\n"), /target exited early/);
+  assert.deepEqual(events, [
+    "log:Checking out base benchmark ref origin/main…",
+    "start:/tmp/base",
+    "ready",
+    "stop:/tmp/base",
+    "log:target exited early",
     "remove:/tmp/base",
   ]);
 });

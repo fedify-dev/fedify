@@ -79,10 +79,12 @@ export interface RunBenchCompareDeps {
     input: RunBenchInWorktreeInput,
   ) => Promise<BenchReport>;
   readonly benchDeps?: RunBenchDeps;
+  readonly signalTarget?: SignalTarget;
 }
 
 /** A started target process. */
 export interface StartedTarget {
+  readonly exited?: Promise<never>;
   stop(): Promise<void>;
 }
 
@@ -105,6 +107,14 @@ type SpawnTarget = (
 type BenchRunCompareCommand = BenchRunCommand & {
   readonly explicitCliTarget: boolean;
 };
+
+type BenchmarkSignal = "SIGINT" | "SIGTERM";
+type SignalListener = (signal: BenchmarkSignal) => void;
+
+interface SignalTarget {
+  on(signal: BenchmarkSignal, listener: SignalListener): unknown;
+  off(signal: BenchmarkSignal, listener: SignalListener): unknown;
+}
 
 /** Options for starting a benchmark target. */
 export interface StartBenchmarkTargetOptions {
@@ -162,6 +172,7 @@ export async function runBenchCompare(
   const waitReady = deps.waitReady ?? defaultWaitReady;
   const runBenchInWorktree = deps.runBenchInWorktree ??
     ((input) => defaultRunBenchInWorktree(input, deps.benchDeps));
+  const signalTarget = deps.signalTarget ?? process;
 
   let readyUrl: URL;
   let readyTimeoutMs: number;
@@ -177,9 +188,27 @@ export async function runBenchCompare(
   const target = command.target ?? new URL("/", readyUrl).origin;
   const worktrees: string[] = [];
   const startedAt = new Date().toISOString();
+  let activeTarget: StartedTarget | undefined;
+  let interruptError: BenchmarkInterrupted | undefined;
+  let rejectInterrupt!: (error: BenchmarkInterrupted) => void;
+  const interruptPromise = new Promise<never>((_resolve, reject) => {
+    rejectInterrupt = reject;
+  });
+  void interruptPromise.catch(() => {});
+  let interrupted = false;
+  const onSignal: SignalListener = (signal) => {
+    if (interrupted) return;
+    interrupted = true;
+    interruptError = new BenchmarkInterrupted(signal);
+    rejectInterrupt(interruptError);
+  };
+  signalTarget.on("SIGINT", onSignal);
+  signalTarget.on("SIGTERM", onSignal);
   try {
     const baseReport = await runSide("base", command.base);
+    throwIfInterrupted();
     const headReport = await runSide("head", command.head);
+    throwIfInterrupted();
     const report = buildCompareReport({
       baseRef: command.base,
       headRef: command.head,
@@ -189,15 +218,29 @@ export async function runBenchCompare(
       startedAt,
       finishedAt: new Date().toISOString(),
     });
-    await writeOutput(
+    throwIfInterrupted();
+    await withInterrupt(writeOutput(
       renderCompareReport(report, command.format),
       command.output,
-    );
+    ));
+    throwIfInterrupted();
     return void exit(report.passed ? 0 : 1);
   } catch (error) {
+    if (error instanceof BenchmarkInterrupted) {
+      return void exit(error.exitCode);
+    }
     log(describeError(error));
     return void exit(2);
   } finally {
+    if (activeTarget != null) {
+      try {
+        await activeTarget.stop();
+      } catch (error) {
+        log(`Failed to stop benchmark target: ${describeError(error)}`);
+      } finally {
+        activeTarget = undefined;
+      }
+    }
     for (let i = worktrees.length - 1; i >= 0; i--) {
       const path = worktrees[i];
       try {
@@ -210,6 +253,8 @@ export async function runBenchCompare(
         );
       }
     }
+    signalTarget.off("SIGINT", onSignal);
+    signalTarget.off("SIGTERM", onSignal);
   }
 
   async function runSide(
@@ -219,14 +264,53 @@ export async function runBenchCompare(
     log(`Checking out ${label} benchmark ref ${ref}…`);
     const cwd = await createWorktree(ref, label);
     worktrees.push(cwd);
+    throwIfInterrupted();
     const targetProcess = await startTarget(cwd, command.startCommand);
+    activeTarget = targetProcess;
     try {
-      await waitReady(readyUrl, readyTimeoutMs);
-      return await runBenchInWorktree({ cwd, command, target });
+      throwIfInterrupted();
+      await withInterrupt(
+        Promise.race([
+          targetProcessExited(targetProcess),
+          waitReady(readyUrl, readyTimeoutMs),
+        ]),
+      );
+      return await withInterrupt(
+        Promise.race([
+          targetProcessExited(targetProcess),
+          runBenchInWorktree({ cwd, command, target }),
+        ]),
+      );
     } finally {
-      await targetProcess.stop();
+      try {
+        await targetProcess.stop();
+      } finally {
+        if (activeTarget === targetProcess) activeTarget = undefined;
+      }
     }
   }
+
+  function withInterrupt<T>(promise: Promise<T>): Promise<T> {
+    return Promise.race([interruptPromise, promise]);
+  }
+
+  function throwIfInterrupted(): void {
+    if (interruptError != null) throw interruptError;
+  }
+}
+
+class BenchmarkInterrupted extends Error {
+  constructor(readonly signal: BenchmarkSignal) {
+    super(`Interrupted by ${signal}.`);
+  }
+
+  get exitCode(): number {
+    return this.signal === "SIGINT" ? 130 : 143;
+  }
+}
+
+function targetProcessExited(target: StartedTarget): Promise<never> {
+  return target.exited ?? new Promise<never>(() => {});
 }
 
 /** Parses `--max-regression`, accepting ratios or percentages. */
@@ -683,7 +767,12 @@ export function startBenchmarkTarget(
     env: process.env,
   });
   forwardTargetOutput(child, stderr);
-  return { stop: () => stopTargetProcess(child, { platform }) };
+  const exited = createTargetExitPromise(child);
+  void exited.catch(() => {});
+  return {
+    exited,
+    stop: () => stopTargetProcess(child, { platform }),
+  };
 }
 
 function forwardTargetOutput(child: ChildProcess, stderr: ProcessOutput): void {
@@ -692,6 +781,29 @@ function forwardTargetOutput(child: ChildProcess, stderr: ProcessOutput): void {
   });
   child.stderr?.on("data", (chunk: string | Uint8Array) => {
     stderr.write(chunk);
+  });
+}
+
+function createTargetExitPromise(child: ChildProcess): Promise<never> {
+  return new Promise<never>((_resolve, reject) => {
+    const onError = (error: Error) => {
+      child.removeListener("exit", onExit);
+      reject(error);
+    };
+    const onExit = (code: number | null, signal: NodeJS.Signals | null) => {
+      child.removeListener("error", onError);
+      const suffix = signal == null
+        ? ` with code ${code ?? "<unknown>"}`
+        : ` from ${signal}`;
+      reject(
+        new Error(
+          `Benchmark target process ${child.pid ?? "<unknown>"} exited` +
+            `${suffix} before benchmark completion.`,
+        ),
+      );
+    };
+    child.once("error", onError);
+    child.once("exit", onExit);
   });
 }
 
@@ -714,24 +826,38 @@ export function stopTargetProcess(
       resolve();
       return;
     }
+    let settled = false;
     let forceKillTimer: ReturnType<typeof setTimeout> | undefined;
     const clearTimers = () => {
       clearTimeout(forceTimer);
       if (forceKillTimer != null) clearTimeout(forceKillTimer);
     };
     const onExit = () => {
+      if (settled) return;
+      settled = true;
       clearTimers();
       resolve();
     };
+    const rejectStop = (error: unknown) => {
+      if (settled) return;
+      settled = true;
+      clearTimers();
+      child.removeListener("exit", onExit);
+      reject(error);
+    };
     const forceTimer = setTimeout(() => {
-      killTargetProcess(child, "SIGKILL", {
-        platform,
-        killWindowsProcessTree,
-        killProcessGroup,
-      });
+      try {
+        killTargetProcess(child, "SIGKILL", {
+          platform,
+          killWindowsProcessTree,
+          killProcessGroup,
+        });
+      } catch (error) {
+        rejectStop(error);
+        return;
+      }
       forceKillTimer = setTimeout(() => {
-        child.removeListener("exit", onExit);
-        reject(
+        rejectStop(
           new Error(
             `Benchmark target process ${child.pid ?? "<unknown>"} ` +
               "did not exit after SIGKILL.",
@@ -740,11 +866,15 @@ export function stopTargetProcess(
       }, forceKillTimeoutMs);
     }, forceTimeoutMs);
     child.once("exit", onExit);
-    killTargetProcess(child, "SIGTERM", {
-      platform,
-      killWindowsProcessTree,
-      killProcessGroup,
-    });
+    try {
+      killTargetProcess(child, "SIGTERM", {
+        platform,
+        killWindowsProcessTree,
+        killProcessGroup,
+      });
+    } catch (error) {
+      rejectStop(error);
+    }
   });
 }
 
