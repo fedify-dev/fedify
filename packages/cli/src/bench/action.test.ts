@@ -6,11 +6,12 @@ import test from "node:test";
 import { serve } from "srvx";
 import { spawnBenchmarkTarget } from "../../test/bench/fixture.ts";
 import runBench, { withUserAgent } from "./action.ts";
-import type { BenchCommand } from "./command.ts";
+import type { BenchRunCommand } from "./command.ts";
 
-function command(overrides: Partial<BenchCommand>): BenchCommand {
+function command(overrides: Partial<BenchRunCommand>): BenchRunCommand {
   return {
     command: "bench",
+    mode: "run",
     scenario: "",
     target: undefined,
     format: "json",
@@ -19,7 +20,7 @@ function command(overrides: Partial<BenchCommand>): BenchCommand {
     allowUnsafeTarget: false,
     userAgent: "Fedify-bench-test/1.0",
     ...overrides,
-  } as BenchCommand;
+  } as BenchRunCommand;
 }
 
 async function writeSuite(content: string): Promise<string> {
@@ -168,6 +169,49 @@ test("runBench - dry run prints a plan and sends nothing", async () => {
   } finally {
     await target.close();
   }
+});
+
+test("runBench - repeats a scenario according to runs", async () => {
+  const file = await writeSuite(`version: 1
+target: http://127.0.0.1:3000
+scenarios:
+  - name: wf
+    type: webfinger
+    recipient: "acct:alice@example.com"
+    runs: 2
+    load: { concurrency: 1 }
+    duration: 5ms
+`);
+  let code = -1;
+  let output = "";
+  await runBench(command({ scenario: file }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: (c) => {
+      output = c;
+      return Promise.resolve();
+    },
+    log: () => {},
+    fetch: (input) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.pathname === "/.well-known/fedify/bench/stats") {
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      }
+      if (url.pathname === "/.well-known/webfinger") {
+        return Promise.resolve(
+          new Response(JSON.stringify({ subject: "acct:alice@example.com" }), {
+            headers: { "content-type": "application/jrd+json" },
+          }),
+        );
+      }
+      return Promise.resolve(new Response("not found", { status: 404 }));
+    },
+  });
+  const report = JSON.parse(output);
+  assert.strictEqual(code, 0);
+  assert.strictEqual(report.scenarios[0].runCount, 2);
+  assert.strictEqual(report.scenarios[0].runs.length, 2);
 });
 
 test("runBench - dry run reports inbox discovery failures and continues", async () => {
@@ -729,6 +773,7 @@ scenarios:
     type: inbox
     recipient: "${new URL("/users/alice", target.url).href}"
     inbox: "https://shared.staging.example/inbox"
+    runs: 1
     load: { concurrency: 2 }
     duration: 250ms
 `);

@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import type { BenchReport } from "../result/model.ts";
-import { reportSchemaV2 } from "../result/schema.ts";
+import { reportSchemaV3 } from "../result/schema.ts";
 import { renderReport } from "./index.ts";
 
 // `import.meta.dirname` needs Node >= 20.11; derive it from the URL instead.
@@ -21,7 +21,7 @@ test("renderReport json - valid JSON that validates against the schema", () => {
   const json = renderReport(report, "json");
   const parsed = JSON.parse(json);
   const validator = new Validator(
-    reportSchemaV2 as unknown as Schema,
+    reportSchemaV3 as unknown as Schema,
     "2020-12",
   );
   assert.ok(validator.validate(parsed).valid);

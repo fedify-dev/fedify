@@ -4,7 +4,7 @@ import process from "node:process";
 import { getContextLoader, getDocumentLoader } from "../docloader.ts";
 import { describeError } from "../utils.ts";
 import { buildFleet } from "./actor/fleet.ts";
-import type { BenchCommand } from "./command.ts";
+import type { BenchRunCommand } from "./command.ts";
 import {
   type DiscoveredInbox,
   discoverInbox,
@@ -19,6 +19,7 @@ import {
   buildScenarioResult,
   configHash,
   detectEnvironment,
+  type ScenarioMeasurement,
 } from "./result/build.ts";
 import { probeBenchmarkMode } from "./discovery/probe.ts";
 import { renderReport, type ReportFormat } from "./render/index.ts";
@@ -76,7 +77,7 @@ export interface RunBenchDeps {
  * @param deps Injectable dependencies for testing.
  */
 export default async function runBench(
-  command: BenchCommand,
+  command: BenchRunCommand,
   deps: RunBenchDeps = {},
 ): Promise<void> {
   // Set the exit code rather than terminating, so cleanup (closing the fleet)
@@ -299,25 +300,33 @@ export default async function runBench(
     const results = [];
     for (let i = 0; i < suite.scenarios.length; i++) {
       const scenario = suite.scenarios[i];
-      log(`Running scenario "${scenario.name}" (${scenario.type})…`);
-      const measurement = await runners[i].run({
-        scenario,
-        scenarios: suite.scenarios,
-        target: suite.target,
-        documentLoader,
-        contextLoader,
-        allowPrivateAddress,
-        fleet: fleet ?? null,
-        advertiseHost: command.advertiseHost,
-        fetch: fetchImpl,
-        assertDestinationAllowed: (url, gateScenario) =>
-          assertDestinationAllowed(url, gateScenario ?? scenario),
-        assertReadDestinationAllowed: (url, gateScenario) =>
-          assertReadDestinationAllowed(url, gateScenario ?? scenario),
-        assertActorlessDestinationAllowed: (url, gateScenario) =>
-          assertActorlessDestinationAllowed(url, gateScenario ?? scenario),
-      });
-      results.push(buildScenarioResult(scenario, measurement));
+      const measurements: ScenarioMeasurement[] = [];
+      for (let run = 1; run <= scenario.runs; run++) {
+        const suffix = scenario.runs === 1
+          ? ""
+          : ` run ${run}/${scenario.runs}`;
+        log(`Running scenario "${scenario.name}" (${scenario.type})${suffix}…`);
+        measurements.push(
+          await runners[i].run({
+            scenario,
+            scenarios: suite.scenarios,
+            target: suite.target,
+            documentLoader,
+            contextLoader,
+            allowPrivateAddress,
+            fleet: fleet ?? null,
+            advertiseHost: command.advertiseHost,
+            fetch: fetchImpl,
+            assertDestinationAllowed: (url, gateScenario) =>
+              assertDestinationAllowed(url, gateScenario ?? scenario),
+            assertReadDestinationAllowed: (url, gateScenario) =>
+              assertReadDestinationAllowed(url, gateScenario ?? scenario),
+            assertActorlessDestinationAllowed: (url, gateScenario) =>
+              assertActorlessDestinationAllowed(url, gateScenario ?? scenario),
+          }),
+        );
+      }
+      results.push(buildScenarioResult(scenario, measurements));
     }
     const report = buildReport({
       scenarios: results,

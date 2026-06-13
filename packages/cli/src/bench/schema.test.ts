@@ -69,6 +69,7 @@ const FIXTURE_GROUPS: readonly FixtureGroup[] = [
   { dir: "scenarios", schema: "scenario", valid: true },
   { dir: "invalid", schema: "scenario", valid: false },
   { dir: "reports", schema: "report", valid: true },
+  { dir: "compare-reports", schema: "compare-report", valid: true },
 ];
 
 function fixtureFiles(dir: string): string[] {
