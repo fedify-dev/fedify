@@ -932,6 +932,46 @@ scenarios:
   }
 });
 
+test("runBench - unsafe public inbox destination needs explicit runs", async () => {
+  const target = await spawnBenchmarkTarget();
+  try {
+    const file = await writeSuite(`version: 1
+target: ${target.url.href}
+scenarios:
+  - name: inbox-shared
+    type: inbox
+    recipient: "${new URL("/users/alice", target.url).href}"
+    inbox: "https://prod.example/inbox"
+    load: { rate: 1/s }
+    duration: 1ms
+`);
+    let code = -1;
+    let message = "";
+    await runBench(
+      command({
+        scenario: file,
+        target: target.url.href,
+        allowUnsafeTarget: true,
+        advertiseHost: "127.0.0.1",
+      }),
+      {
+        exit: (c) => {
+          code = c;
+        },
+        writeOutput: () => Promise.resolve(),
+        log: (m) => {
+          message = m;
+        },
+        resolveTargetAddresses: resolvePublicHost,
+      },
+    );
+    assert.strictEqual(code, 2);
+    assert.match(message, /runs/);
+  } finally {
+    await target.close();
+  }
+});
+
 test("runBench - unsafe public inbox destination honors suite defaults", async () => {
   const target = await spawnBenchmarkTarget();
   try {
@@ -939,6 +979,7 @@ test("runBench - unsafe public inbox destination honors suite defaults", async (
 target: ${target.url.href}
 defaults:
   duration: 1ms
+  runs: 1
   load: { rate: 1/s }
 scenarios:
   - name: inbox-shared

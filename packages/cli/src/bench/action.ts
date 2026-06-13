@@ -694,11 +694,13 @@ function unsafeOverrideScenario(
 ): Parameters<typeof assertUnsafeOverrideAllowed>[0]["scenarios"][number] {
   const defaultDuration = defaults?.duration != null;
   const defaultLoad = hasExplicitLoad(defaults?.load);
+  const defaultRuns = defaults?.runs != null;
   const raw = "raw" in scenario ? scenario.raw : scenario;
   return {
     name: scenario.name,
     explicitDuration: raw.duration != null || defaultDuration,
     explicitLoad: hasExplicitLoad(raw.load) || defaultLoad,
+    explicitRuns: raw.runs != null || defaultRuns,
   };
 }
 

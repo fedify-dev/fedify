@@ -54,6 +54,8 @@ export interface UnsafeOverrideScenario {
   readonly explicitDuration: boolean;
   /** Whether the scenario or suite explicitly selected a load model. */
   readonly explicitLoad: boolean;
+  /** Whether the scenario or suite explicitly set the run count. */
+  readonly explicitRuns: boolean;
 }
 
 /** The inputs for validating an unsafe public-target override. */
@@ -75,8 +77,9 @@ export interface UnsafeOverrideContext {
  *
  * The override is only meaningful for a public target that does not advertise
  * benchmark mode.  In that caution tier, the operator must name the target on
- * the command line for this run and must explicitly set load and duration, so
- * the built-in defaults cannot accidentally create a long public benchmark.
+ * the command line for this run and must explicitly set load, duration, and
+ * runs, so the built-in defaults cannot accidentally create a long public
+ * benchmark.
  * @param context The unsafe override decision inputs.
  * @throws {UnsafeTargetError} If the unsafe override is too broad.
  */
@@ -108,6 +111,13 @@ export function assertUnsafeOverrideAllowed(
         `Scenario "${scenario.name}" uses the built-in benchmark duration ` +
           "default.  Set duration explicitly before using " +
           "--allow-unsafe-target against a public target.",
+      );
+    }
+    if (!scenario.explicitRuns) {
+      throw new UnsafeTargetError(
+        `Scenario "${scenario.name}" uses the built-in benchmark runs ` +
+          "default.  Set runs explicitly before using --allow-unsafe-target " +
+          "against a public target.",
       );
     }
   }
