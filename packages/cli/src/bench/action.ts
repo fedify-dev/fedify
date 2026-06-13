@@ -70,6 +70,8 @@ export interface RunBenchDeps {
   readonly fetch?: typeof fetch;
   /** Hostname resolver used for target risk classification. */
   readonly resolveTargetAddresses?: ResolveTargetAddresses;
+  /** Aborts in-flight benchmark work. */
+  readonly signal?: AbortSignal;
 }
 
 /**
@@ -95,8 +97,13 @@ export default async function runBench(
   // Apply the configured User-Agent to all benchmark traffic — the probe, the
   // stats reads, and the runners' inbox/WebFinger requests — not just the
   // document loader, so a target that inspects the UA sees it on every request.
-  const fetchImpl = withUserAgent(deps.fetch ?? fetch, command.userAgent);
+  const signal = deps.signal;
+  const fetchImpl = withUserAgent(
+    withAbortSignal(deps.fetch ?? fetch, signal),
+    command.userAgent,
+  );
   const explicitCliTarget = command.explicitCliTarget ?? command.target != null;
+  throwIfAborted(signal);
 
   // Loading, validation, and normalization failures are all user-facing
   // configuration errors.
@@ -111,6 +118,7 @@ export default async function runBench(
     log(describeError(error));
     return void exit(2);
   }
+  throwIfAborted(signal);
 
   // Preflight every runner so an unsupported scenario type, an option the
   // runner cannot honor, or a malformed `expect` assertion fails fast, before
@@ -130,12 +138,15 @@ export default async function runBench(
     log(describeError(error));
     return void exit(2);
   }
+  throwIfAborted(signal);
 
   const tier = await classifyResolvedTarget(
     suite.target,
     deps.resolveTargetAddresses,
   );
+  throwIfAborted(signal);
   const probe = await probeBenchmarkMode(suite.target, fetchImpl);
+  throwIfAborted(signal);
   try {
     if (!command.dryRun) {
       assertUnsafeOverrideAllowed({
@@ -293,6 +304,7 @@ export default async function runBench(
   let fleet: SyntheticServer | undefined;
   const startedAt = new Date().toISOString();
   try {
+    throwIfAborted(signal);
     if (
       suite.scenarios.some((scenario) =>
         scenarioNeedsSyntheticServer(scenario, suite.scenarios)
@@ -307,6 +319,7 @@ export default async function runBench(
       const scenario = suite.scenarios[i];
       const measurements: ScenarioMeasurement[] = [];
       for (let run = 1; run <= scenario.runs; run++) {
+        throwIfAborted(signal);
         const suffix = scenario.runs === 1
           ? ""
           : ` run ${run}/${scenario.runs}`;
@@ -328,8 +341,10 @@ export default async function runBench(
               assertReadDestinationAllowed(url, gateScenario ?? scenario),
             assertActorlessDestinationAllowed: (url, gateScenario) =>
               assertActorlessDestinationAllowed(url, gateScenario ?? scenario),
+            signal,
           }),
         );
+        throwIfAborted(signal);
       }
       results.push(buildScenarioResult(scenario, measurements));
     }
@@ -404,6 +419,25 @@ export function withUserAgent(
     if (!headers.has("user-agent")) headers.set("user-agent", userAgent);
     return fetchImpl(input, { ...init, headers });
   }) as typeof fetch;
+}
+
+function withAbortSignal(
+  fetchImpl: typeof fetch,
+  signal: AbortSignal | undefined,
+): typeof fetch {
+  if (signal == null) return fetchImpl;
+  return ((input: URL | RequestInfo, init?: RequestInit) => {
+    if (signal.aborted) return Promise.reject(abortReason(signal));
+    return fetchImpl(input, { ...init, signal });
+  }) as typeof fetch;
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) throw abortReason(signal);
+}
+
+function abortReason(signal: AbortSignal): unknown {
+  return signal.reason ?? new Error("Benchmark run aborted.");
 }
 
 async function defaultWriteOutput(

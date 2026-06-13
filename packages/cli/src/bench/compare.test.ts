@@ -828,7 +828,6 @@ test("runBenchCompare - stops target and removes worktree on interrupt", async (
     },
     startTarget: (cwd) => {
       events.push(`start:${cwd}`);
-      queueMicrotask(() => signals.emit("SIGINT", "SIGINT"));
       return Promise.resolve({
         stop: () => {
           events.push(`stop:${cwd}`);
@@ -836,7 +835,16 @@ test("runBenchCompare - stops target and removes worktree on interrupt", async (
         },
       });
     },
-    waitReady: () => new Promise(() => {}),
+    waitReady: (_url, _timeoutMs, signal) => {
+      assert.ok(signal);
+      return new Promise((_resolve, reject) => {
+        signal.addEventListener("abort", () => {
+          events.push("ready-abort");
+          reject(signal.reason);
+        }, { once: true });
+        queueMicrotask(() => signals.emit("SIGINT", "SIGINT"));
+      });
+    },
     runBenchInWorktree: () => {
       events.push("bench");
       return Promise.resolve(report([scenario()]));
@@ -847,11 +855,123 @@ test("runBenchCompare - stops target and removes worktree on interrupt", async (
   assert.deepEqual(events, [
     "log:Checking out base benchmark ref origin/main…",
     "start:/tmp/base",
+    "ready-abort",
     "stop:/tmp/base",
     "remove:/tmp/base",
   ]);
   assert.strictEqual(signals.listenerCount("SIGINT"), 0);
   assert.strictEqual(signals.listenerCount("SIGTERM"), 0);
+});
+
+test("runBenchCompare - aborts raced benchmark work on interrupt", async () => {
+  const signals = new EventEmitter();
+  const events: string[] = [];
+  let code = -1;
+  await runBenchCompare(command({}), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: () => {
+      events.push("write");
+      return Promise.resolve();
+    },
+    log: (message) => events.push(`log:${message}`),
+    createWorktree: (_ref, label) => Promise.resolve(`/tmp/${label}`),
+    removeWorktree: (path) => {
+      events.push(`remove:${path}`);
+      return Promise.resolve();
+    },
+    startTarget: (cwd) => {
+      events.push(`start:${cwd}`);
+      return Promise.resolve({
+        stop: () => {
+          events.push(`stop:${cwd}`);
+          return Promise.resolve();
+        },
+      });
+    },
+    waitReady: () => {
+      events.push("ready");
+      return Promise.resolve();
+    },
+    runBenchInWorktree: ({ signal }) => {
+      assert.ok(signal);
+      queueMicrotask(() => signals.emit("SIGTERM", "SIGTERM"));
+      return new Promise((_resolve, reject) => {
+        signal.addEventListener("abort", () => {
+          events.push("bench-abort");
+          reject(signal.reason);
+        }, { once: true });
+      });
+    },
+    signalTarget: signals,
+  });
+  assert.strictEqual(code, 143);
+  assert.deepEqual(events, [
+    "log:Checking out base benchmark ref origin/main…",
+    "start:/tmp/base",
+    "ready",
+    "bench-abort",
+    "stop:/tmp/base",
+    "remove:/tmp/base",
+  ]);
+});
+
+test("runBenchCompare - aborts benchmark work when target exits", async () => {
+  const events: string[] = [];
+  let rejectExit!: (error: Error) => void;
+  let code = -1;
+  await runBenchCompare(command({}), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: () => {
+      events.push("write");
+      return Promise.resolve();
+    },
+    log: (message) => events.push(`log:${message}`),
+    createWorktree: (_ref, label) => Promise.resolve(`/tmp/${label}`),
+    removeWorktree: (path) => {
+      events.push(`remove:${path}`);
+      return Promise.resolve();
+    },
+    startTarget: (cwd) => {
+      events.push(`start:${cwd}`);
+      return Promise.resolve({
+        exited: new Promise<never>((_resolve, reject) => {
+          rejectExit = reject;
+        }),
+        stop: () => {
+          events.push(`stop:${cwd}`);
+          return Promise.resolve();
+        },
+      });
+    },
+    waitReady: () => {
+      events.push("ready");
+      return Promise.resolve();
+    },
+    runBenchInWorktree: ({ signal }) => {
+      assert.ok(signal);
+      queueMicrotask(() => rejectExit(new Error("target exited")));
+      return new Promise((_resolve, reject) => {
+        signal.addEventListener("abort", () => {
+          events.push("bench-abort");
+          reject(signal.reason);
+        }, { once: true });
+      });
+    },
+  });
+  assert.strictEqual(code, 2);
+  assert.deepEqual(events, [
+    "log:Checking out base benchmark ref origin/main…",
+    "start:/tmp/base",
+    "ready",
+    "bench-abort",
+    "stop:/tmp/base",
+    "log:target exited",
+    "remove:/tmp/base",
+  ]);
 });
 
 test("runBenchCompare - fails when target exits before readiness", async () => {

@@ -123,6 +123,7 @@ export async function runReadLoad(
       loadPlanOf(context.scenario, context.rng),
       send,
       context.clock,
+      context.signal,
     );
     const measurement = aggregateSamples(result.samples, {
       measuredWindowMs: measuredWindowMs(context.scenario),

@@ -254,7 +254,10 @@ function partialField(
       : { [key]: median(present) } as Record<typeof key, number>;
   }
   return fieldValues.every(isNumber)
-    ? { [key]: median(fieldValues) } as Record<typeof key, number>
+    ? { [key]: median(fieldValues as readonly number[]) } as Record<
+      typeof key,
+      number
+    >
     : {};
 }
 

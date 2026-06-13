@@ -74,7 +74,11 @@ export interface RunBenchCompareDeps {
     cwd: string,
     startCommand: string,
   ) => Promise<StartedTarget>;
-  readonly waitReady?: (url: URL, timeoutMs: number) => Promise<void>;
+  readonly waitReady?: (
+    url: URL,
+    timeoutMs: number,
+    signal?: AbortSignal,
+  ) => Promise<void>;
   readonly runBenchInWorktree?: (
     input: RunBenchInWorktreeInput,
   ) => Promise<BenchReport>;
@@ -93,6 +97,7 @@ export interface RunBenchInWorktreeInput {
   readonly cwd: string;
   readonly command: BenchCompareCommand;
   readonly target: string;
+  readonly signal?: AbortSignal;
 }
 
 type ProcessOutput = {
@@ -138,7 +143,8 @@ export interface StopTargetProcessOptions {
 /** Dependencies for waiting until a benchmark target is ready. */
 export interface WaitReadyUrlDeps {
   readonly fetch?: typeof fetch;
-  readonly sleep?: (ms: number) => Promise<void>;
+  readonly sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
+  readonly signal?: AbortSignal;
 }
 
 type CreateTempDir = (prefix: string) => Promise<string>;
@@ -190,6 +196,8 @@ export async function runBenchCompare(
   const startedAt = new Date().toISOString();
   let activeTarget: StartedTarget | undefined;
   let interruptError: BenchmarkInterrupted | undefined;
+  const interruptController = new AbortController();
+  const interruptSignal = interruptController.signal;
   let rejectInterrupt!: (error: BenchmarkInterrupted) => void;
   const interruptPromise = new Promise<never>((_resolve, reject) => {
     rejectInterrupt = reject;
@@ -200,6 +208,7 @@ export async function runBenchCompare(
     if (interrupted) return;
     interrupted = true;
     interruptError = new BenchmarkInterrupted(signal);
+    interruptController.abort(interruptError);
     rejectInterrupt(interruptError);
   };
   signalTarget.on("SIGINT", onSignal);
@@ -267,22 +276,42 @@ export async function runBenchCompare(
     throwIfInterrupted();
     const targetProcess = await startTarget(cwd, command.startCommand);
     activeTarget = targetProcess;
+    let stoppingTarget = false;
+    let targetExitError: unknown;
+    const targetExit = targetProcessExited(targetProcess).catch((error) => {
+      targetExitError = error;
+      if (!stoppingTarget && !interruptSignal.aborted) {
+        interruptController.abort(error);
+      }
+      throw error;
+    });
+    const throwIfTargetExited = () => {
+      if (targetExitError != null) throw targetExitError;
+    };
     try {
       throwIfInterrupted();
       await withInterrupt(
         Promise.race([
-          targetProcessExited(targetProcess),
-          waitReady(readyUrl, readyTimeoutMs),
+          targetExit,
+          waitReady(readyUrl, readyTimeoutMs, interruptSignal),
         ]),
       );
+      await Promise.resolve();
+      throwIfTargetExited();
       return await withInterrupt(
         Promise.race([
-          targetProcessExited(targetProcess),
-          runBenchInWorktree({ cwd, command, target }),
+          targetExit,
+          runBenchInWorktree({
+            cwd,
+            command,
+            target,
+            signal: interruptSignal,
+          }),
         ]),
       );
     } finally {
       try {
+        stoppingTarget = true;
         await targetProcess.stop();
       } finally {
         if (activeTarget === targetProcess) activeTarget = undefined;
@@ -679,6 +708,7 @@ async function defaultRunBenchInWorktree(
   };
   await runBench(runCommand, {
     ...benchDeps,
+    signal: input.signal,
     exit: (code) => {
       exitCode = code;
     },
@@ -928,8 +958,12 @@ export function windowsTaskkillArgs(
   return args;
 }
 
-async function defaultWaitReady(url: URL, timeoutMs: number): Promise<void> {
-  return await waitReadyUrl(url, timeoutMs);
+async function defaultWaitReady(
+  url: URL,
+  timeoutMs: number,
+  signal?: AbortSignal,
+): Promise<void> {
+  return await waitReadyUrl(url, timeoutMs, { signal });
 }
 
 /** Waits until a benchmark target readiness URL responds successfully. */
@@ -940,13 +974,19 @@ export async function waitReadyUrl(
 ): Promise<void> {
   const fetchReady = deps.fetch ?? fetch;
   const sleep = deps.sleep ??
-    ((ms) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+    ((ms, signal) => abortableSleep(ms, signal));
+  const signal = deps.signal;
   const deadline = Date.now() + timeoutMs;
   let lastError: unknown;
   while (Date.now() <= deadline) {
+    throwIfAborted(signal);
     const remainingMs = deadline - Date.now();
     if (remainingMs <= 0) break;
     const controller = new AbortController();
+    const onAbort = () => {
+      controller.abort(abortReason(signal!));
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
     const timer = setTimeout(() => {
       controller.abort(new Error(`ready URL timed out after ${timeoutMs}ms`));
     }, remainingMs);
@@ -956,20 +996,50 @@ export async function waitReadyUrl(
       if (response.status >= 200 && response.status < 400) return;
       lastError = new Error(`ready URL returned ${response.status}`);
     } catch (error) {
+      if (signal?.aborted) throw abortReason(signal);
       if (controller.signal.aborted) {
         lastError = controller.signal.reason ?? error;
         break;
       }
       lastError = error;
     } finally {
+      signal?.removeEventListener("abort", onAbort);
       clearTimeout(timer);
     }
     const delayMs = Math.min(250, deadline - Date.now());
-    if (delayMs > 0) await sleep(delayMs);
+    if (delayMs > 0) await sleep(delayMs, signal);
   }
   throw new Error(
     `Timed out waiting for ${url.href}: ${describeError(lastError)}.`,
   );
+}
+
+function abortableSleep(ms: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) return Promise.reject(abortReason(signal));
+  if (ms <= 0) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      cleanup();
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      cleanup();
+      reject(abortReason(signal!));
+    };
+    const cleanup = () => {
+      signal?.removeEventListener("abort", onAbort);
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) throw abortReason(signal);
+}
+
+function abortReason(signal: AbortSignal): unknown {
+  return signal.reason ?? new Error("Benchmark comparison aborted.");
 }
 
 async function defaultWriteOutput(

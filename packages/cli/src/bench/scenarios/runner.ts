@@ -31,6 +31,8 @@ export interface RunContext {
   readonly rng?: Rng;
   /** Fetch implementation (overridable for tests). */
   readonly fetch?: typeof fetch;
+  /** Aborts in-flight benchmark work when the orchestrator is interrupted. */
+  readonly signal?: AbortSignal;
   /** Host advertised for local benchmark-owned servers. */
   readonly advertiseHost?: string;
   /**
