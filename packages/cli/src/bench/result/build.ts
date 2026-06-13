@@ -175,7 +175,7 @@ function aggregateServer(
   servers: readonly (ServerMetrics | null)[],
 ): ServerMetrics | null {
   const present = servers.filter((s): s is ServerMetrics => s != null);
-  if (present.length < 1) return null;
+  if (present.length !== servers.length) return null;
   const signature = aggregateSignatureVerification(present);
   const queue = aggregateQueue(present);
   return {
@@ -192,7 +192,7 @@ function aggregateSignatureVerification(
     .filter((s): s is NonNullable<ServerMetrics["signatureVerificationMs"]> =>
       s != null
     );
-  if (values.length < 1) return null;
+  if (values.length !== servers.length) return null;
   const standards = new Set<string>();
   for (const value of values) {
     for (const key of Object.keys(value.byStandard ?? {})) standards.add(key);
@@ -215,12 +215,12 @@ function aggregateQueue(
   const values = servers
     .map((s) => s.queue)
     .filter((q): q is NonNullable<ServerMetrics["queue"]> => q != null);
-  if (values.length < 1) return null;
+  if (values.length !== servers.length) return null;
   const drainMs = aggregatePartial(values.map((v) => v.drainMs));
-  const depths = values.map((v) => v.depthMax).filter(isNumber);
+  const depths = values.map((v) => v.depthMax);
   return {
     ...(hasPartial(drainMs) ? { drainMs } : {}),
-    ...(depths.length < 1 ? {} : { depthMax: Math.max(...depths) }),
+    ...(depths.every(isNumber) ? { depthMax: Math.max(...depths) } : {}),
   };
 }
 
@@ -243,10 +243,10 @@ function partialField(
     readonly ({ readonly [key: string]: number | undefined } | undefined)[],
   key: "p50" | "p95" | "p99",
 ): Record<typeof key, number> | Record<string, never> {
-  const fieldValues = values.map((v) => v?.[key]).filter(isNumber);
-  return fieldValues.length < 1
-    ? {}
-    : { [key]: median(fieldValues) } as Record<typeof key, number>;
+  const fieldValues = values.map((v) => v?.[key]);
+  return fieldValues.every(isNumber)
+    ? { [key]: median(fieldValues) } as Record<typeof key, number>
+    : {};
 }
 
 function hasPartial(value: {
