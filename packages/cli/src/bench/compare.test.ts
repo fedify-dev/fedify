@@ -6,6 +6,7 @@ import test from "node:test";
 import type { BenchCompareCommand } from "./command.ts";
 import {
   buildCompareReport,
+  createBenchmarkWorktree,
   parseRegressionTolerance,
   runBenchCompare,
   startBenchmarkTarget,
@@ -205,7 +206,7 @@ test("buildCompareReport - fails regressions outside tolerance and noise", () =>
   assert.strictEqual(compare.passed, false);
 });
 
-test("buildCompareReport - matches duplicate scenario names by position", () => {
+test("buildCompareReport - matches duplicate scenario names by occurrence", () => {
   const base = report([
     scenario({
       name: "duplicate",
@@ -267,6 +268,69 @@ test("buildCompareReport - matches duplicate scenario names by position", () => 
   assert.deepEqual(compare.comparisons.map((c) => c.head), [230, 110]);
   assert.ok(compare.comparisons.every((c) => c.pass));
   assert.strictEqual(compare.passed, true);
+});
+
+test("buildCompareReport - matches reordered scenarios by name and type", () => {
+  const base = report([
+    scenario({
+      name: "first",
+      client: {
+        latencyMs: { p50: 50, p95: 100, p99: 110, mean: 60, max: 120 },
+      },
+      runs: [
+        runResult(100, 100),
+        runResult(100, 100),
+        runResult(100, 100),
+      ],
+    }),
+    scenario({
+      name: "second",
+      client: {
+        latencyMs: { p50: 100, p95: 200, p99: 210, mean: 120, max: 220 },
+      },
+      runs: [
+        runResult(200, 100),
+        runResult(200, 100),
+        runResult(200, 100),
+      ],
+    }),
+  ]);
+  const head = report([
+    scenario({
+      name: "second",
+      client: {
+        latencyMs: { p50: 105, p95: 210, p99: 220, mean: 130, max: 230 },
+      },
+      runs: [
+        runResult(210, 100),
+        runResult(210, 100),
+        runResult(210, 100),
+      ],
+    }),
+    scenario({
+      name: "first",
+      client: {
+        latencyMs: { p50: 55, p95: 110, p99: 120, mean: 70, max: 130 },
+      },
+      runs: [
+        runResult(110, 100),
+        runResult(110, 100),
+        runResult(110, 100),
+      ],
+    }),
+  ]);
+  const compare = buildCompareReport({
+    baseRef: "origin/main",
+    headRef: "HEAD",
+    baseReport: base,
+    headReport: head,
+    maxRegression: 0.2,
+    startedAt: "2026-06-13T00:00:00.000Z",
+    finishedAt: "2026-06-13T00:00:01.000Z",
+  });
+  assert.deepEqual(compare.comparisons.map((c) => c.base), [200, 100]);
+  assert.deepEqual(compare.comparisons.map((c) => c.head), [210, 110]);
+  assert.ok(compare.comparisons.every((c) => c.pass));
 });
 
 test("buildCompareReport - keeps zero-median noise finite", () => {
@@ -379,6 +443,49 @@ test("stopTargetProcess - rejects when forced kill does not exit", async () => {
     }),
     /did not exit/,
   );
+});
+
+test("stopTargetProcess - resolves immediately without a pid", async () => {
+  const child = fakeChildProcess();
+  Object.defineProperty(child, "pid", { value: undefined });
+  let killed = false;
+  child.kill = () => {
+    killed = true;
+    return true;
+  };
+  await stopTargetProcess(child, {
+    forceTimeoutMs: 1,
+    forceKillTimeoutMs: 1,
+  });
+  assert.strictEqual(killed, false);
+});
+
+test("createBenchmarkWorktree - cleans partial registrations", async () => {
+  const calls: string[][] = [];
+  await assert.rejects(
+    createBenchmarkWorktree("missing-ref", "base", {
+      createTempDir: () => Promise.resolve("/tmp/fedify-bench-base-test"),
+      removePath: () => Promise.resolve(),
+      runGit: (args) => {
+        calls.push([...args]);
+        if (args[1] === "add") {
+          return Promise.reject(new Error("checkout failed"));
+        }
+        return Promise.resolve();
+      },
+    }),
+    /checkout failed/,
+  );
+  assert.deepEqual(calls, [
+    [
+      "worktree",
+      "add",
+      "--detach",
+      "/tmp/fedify-bench-base-test",
+      "missing-ref",
+    ],
+    ["worktree", "remove", "--force", "/tmp/fedify-bench-base-test"],
+  ]);
 });
 
 test("waitReadyUrl - does not wait for streaming response bodies", async () => {

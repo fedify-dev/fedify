@@ -126,6 +126,20 @@ export interface WaitReadyUrlDeps {
   readonly sleep?: (ms: number) => Promise<void>;
 }
 
+type CreateTempDir = (prefix: string) => Promise<string>;
+type RemovePath = (
+  path: string,
+  options: { readonly recursive: boolean; readonly force: boolean },
+) => Promise<void>;
+type RunGit = (args: readonly string[]) => Promise<void>;
+
+/** Dependencies for creating benchmark comparison worktrees. */
+export interface CreateBenchmarkWorktreeDeps {
+  readonly createTempDir?: CreateTempDir;
+  readonly removePath?: RemovePath;
+  readonly runGit?: RunGit;
+}
+
 /** Runs `fedify bench compare`. */
 export async function runBenchCompare(
   command: BenchCompareCommand,
@@ -259,13 +273,23 @@ function compareReports(
   maxRegression: number,
 ): ComparisonResult[] {
   const results: ComparisonResult[] = [];
-  for (let index = 0; index < head.scenarios.length; index++) {
-    const headScenario = head.scenarios[index];
-    const baseScenario = base.scenarios[index];
-    if (
-      baseScenario == null || baseScenario.name !== headScenario.name ||
-      baseScenario.type !== headScenario.type
-    ) {
+  const baseByScenario = new Map<string, ScenarioResult[]>();
+  for (const baseScenario of base.scenarios) {
+    const key = comparisonScenarioKey(baseScenario);
+    const scenarios = baseByScenario.get(key);
+    if (scenarios == null) {
+      baseByScenario.set(key, [baseScenario]);
+    } else {
+      scenarios.push(baseScenario);
+    }
+  }
+  const headCounts = new Map<string, number>();
+  for (const headScenario of head.scenarios) {
+    const key = comparisonScenarioKey(headScenario);
+    const occurrence = headCounts.get(key) ?? 0;
+    headCounts.set(key, occurrence + 1);
+    const baseScenario = baseByScenario.get(key)?.[occurrence];
+    if (baseScenario == null) {
       results.push(missingScenario(headScenario.name, maxRegression));
       continue;
     }
@@ -276,6 +300,10 @@ function compareReports(
     }
   }
   return results;
+}
+
+function comparisonScenarioKey(scenario: ScenarioResult): string {
+  return `${scenario.name}\0${scenario.type}`;
 }
 
 function comparisonMetrics(scenario: ScenarioResult): string[] {
@@ -561,13 +589,34 @@ async function defaultRunBenchInWorktree(
   return JSON.parse(output) as BenchReport;
 }
 
-async function defaultCreateWorktree(
+function defaultCreateWorktree(
   ref: string,
   label: "base" | "head",
 ): Promise<string> {
-  const path = await mkdtemp(join(tmpdir(), `fedify-bench-${label}-`));
-  await rm(path, { recursive: true, force: true });
-  await runGit(["worktree", "add", "--detach", path, ref]);
+  return createBenchmarkWorktree(ref, label);
+}
+
+/** Creates a detached Git worktree for one side of a benchmark comparison. */
+export async function createBenchmarkWorktree(
+  ref: string,
+  label: "base" | "head",
+  deps: CreateBenchmarkWorktreeDeps = {},
+): Promise<string> {
+  const createTempDir = deps.createTempDir ?? mkdtemp;
+  const removePath = deps.removePath ?? rm;
+  const run = deps.runGit ?? runGit;
+  const path = await createTempDir(join(tmpdir(), `fedify-bench-${label}-`));
+  await removePath(path, { recursive: true, force: true });
+  try {
+    await run(["worktree", "add", "--detach", path, ref]);
+  } catch (error) {
+    try {
+      await run(["worktree", "remove", "--force", path]);
+    } catch {
+      // Preserve the original checkout failure.
+    }
+    throw error;
+  }
   return path;
 }
 
@@ -635,7 +684,9 @@ export function stopTargetProcess(
   const forceTimeoutMs = options.forceTimeoutMs ?? 5000;
   const forceKillTimeoutMs = options.forceKillTimeoutMs ?? forceTimeoutMs;
   return new Promise((resolve, reject) => {
-    if (child.exitCode != null || child.signalCode != null) {
+    if (
+      child.pid == null || child.exitCode != null || child.signalCode != null
+    ) {
       resolve();
       return;
     }
