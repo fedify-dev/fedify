@@ -161,8 +161,47 @@ test("runBench - dry run prints a plan and sends nothing", async () => {
     });
     assert.strictEqual(code, 0);
     assert.match(output, /dry run/i);
+    assert.match(output, /runs 3/);
+    assert.match(output, /total duration 750ms/);
     assert.match(output, /\/inbox/);
     assert.match(output, /No benchmark load was sent/);
+    const requests = target.requests();
+    assert.ok(requests.some((r) => r.method === "GET"));
+    assert.ok(!requests.some((r) => r.method === "POST"));
+  } finally {
+    await target.close();
+  }
+});
+
+test("runBench - dry run includes repeated open-loop request volume", async () => {
+  const target = await spawnBenchmarkTarget();
+  try {
+    const file = await writeSuite(`version: 1
+target: ${target.url.href}
+scenarios:
+  - name: inbox-open
+    type: inbox
+    recipient: "http://\${{ target.host }}/users/alice"
+    inbox: shared
+    load: { rate: 2/s }
+    duration: 500ms
+`);
+    let code = -1;
+    let output = "";
+    await runBench(command({ scenario: file, dryRun: true }), {
+      exit: (c) => {
+        code = c;
+      },
+      writeOutput: (c) => {
+        output = c;
+        return Promise.resolve();
+      },
+      log: () => {},
+    });
+    assert.strictEqual(code, 0);
+    assert.match(output, /runs 3/);
+    assert.match(output, /total duration 1500ms/);
+    assert.match(output, /estimated scheduled requests 3/);
     const requests = target.requests();
     assert.ok(requests.some((r) => r.method === "GET"));
     assert.ok(!requests.some((r) => r.method === "POST"));

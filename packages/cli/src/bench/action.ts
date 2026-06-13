@@ -455,7 +455,31 @@ function describePlan(scenario: ResolvedScenario): string {
   const load = scenario.load.kind === "open"
     ? `open-loop ${scenario.load.ratePerSec}/s ${scenario.load.arrival}`
     : `closed-loop concurrency ${scenario.load.concurrency}`;
-  return `${load}, duration ${scenario.durationMs}ms, signing ${scenario.signing}`;
+  const totalDurationMs = scenario.durationMs * scenario.runs;
+  const volume = describePlannedRequestVolume(scenario);
+  return [
+    load,
+    `duration ${scenario.durationMs}ms`,
+    `runs ${scenario.runs}`,
+    `total duration ${totalDurationMs}ms`,
+    ...(volume == null ? [] : [volume]),
+    `signing ${scenario.signing}`,
+  ].join(", ");
+}
+
+function describePlannedRequestVolume(
+  scenario: ResolvedScenario,
+): string | null {
+  if (scenario.load.kind !== "open") return null;
+  const estimatedRequests = scenario.load.ratePerSec *
+    (scenario.durationMs / 1000) * scenario.runs;
+  return `estimated scheduled requests ${formatPlanNumber(estimatedRequests)}`;
+}
+
+function formatPlanNumber(value: number): string {
+  if (Number.isInteger(value)) return String(value);
+  const formatted = value.toFixed(2).replace(/\.?0+$/, "");
+  return formatted === "" ? "0" : formatted;
 }
 
 async function describeDiscoveryPlan(

@@ -205,6 +205,70 @@ test("buildCompareReport - fails regressions outside tolerance and noise", () =>
   assert.strictEqual(compare.passed, false);
 });
 
+test("buildCompareReport - matches duplicate scenario names by position", () => {
+  const base = report([
+    scenario({
+      name: "duplicate",
+      client: {
+        latencyMs: { p50: 100, p95: 200, p99: 210, mean: 120, max: 220 },
+      },
+      runs: [
+        runResult(200, 100),
+        runResult(200, 100),
+        runResult(200, 100),
+      ],
+    }),
+    scenario({
+      name: "duplicate",
+      client: {
+        latencyMs: { p50: 50, p95: 100, p99: 110, mean: 60, max: 120 },
+      },
+      runs: [
+        runResult(100, 100),
+        runResult(100, 100),
+        runResult(100, 100),
+      ],
+    }),
+  ]);
+  const head = report([
+    scenario({
+      name: "duplicate",
+      client: {
+        latencyMs: { p50: 115, p95: 230, p99: 240, mean: 130, max: 250 },
+      },
+      runs: [
+        runResult(230, 100),
+        runResult(230, 100),
+        runResult(230, 100),
+      ],
+    }),
+    scenario({
+      name: "duplicate",
+      client: {
+        latencyMs: { p50: 55, p95: 110, p99: 120, mean: 70, max: 130 },
+      },
+      runs: [
+        runResult(110, 100),
+        runResult(110, 100),
+        runResult(110, 100),
+      ],
+    }),
+  ]);
+  const compare = buildCompareReport({
+    baseRef: "origin/main",
+    headRef: "HEAD",
+    baseReport: base,
+    headReport: head,
+    maxRegression: 0.2,
+    startedAt: "2026-06-13T00:00:00.000Z",
+    finishedAt: "2026-06-13T00:00:01.000Z",
+  });
+  assert.deepEqual(compare.comparisons.map((c) => c.base), [200, 100]);
+  assert.deepEqual(compare.comparisons.map((c) => c.head), [230, 110]);
+  assert.ok(compare.comparisons.every((c) => c.pass));
+  assert.strictEqual(compare.passed, true);
+});
+
 test("buildCompareReport - keeps zero-median noise finite", () => {
   const base = report([
     scenario({

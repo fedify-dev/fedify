@@ -257,11 +257,14 @@ function compareReports(
   head: BenchReport,
   maxRegression: number,
 ): ComparisonResult[] {
-  const baseScenarios = new Map(base.scenarios.map((s) => [s.name, s]));
   const results: ComparisonResult[] = [];
-  for (const headScenario of head.scenarios) {
-    const baseScenario = baseScenarios.get(headScenario.name);
-    if (baseScenario == null || baseScenario.type !== headScenario.type) {
+  for (let index = 0; index < head.scenarios.length; index++) {
+    const headScenario = head.scenarios[index];
+    const baseScenario = base.scenarios[index];
+    if (
+      baseScenario == null || baseScenario.name !== headScenario.name ||
+      baseScenario.type !== headScenario.type
+    ) {
       results.push(missingScenario(headScenario.name, maxRegression));
       continue;
     }
