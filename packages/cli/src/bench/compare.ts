@@ -1,4 +1,8 @@
-import { type ChildProcess, spawn } from "node:child_process";
+import {
+  type ChildProcess,
+  spawn,
+  type SpawnOptions,
+} from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -86,6 +90,39 @@ export interface RunBenchInWorktreeInput {
   readonly cwd: string;
   readonly command: BenchCompareCommand;
   readonly target: string;
+}
+
+type ProcessOutput = {
+  write(chunk: string | Uint8Array): unknown;
+};
+
+type SpawnTarget = (
+  command: string,
+  options: SpawnOptions,
+) => ChildProcess;
+
+/** Options for starting a benchmark target. */
+export interface StartBenchmarkTargetOptions {
+  readonly platform?: NodeJS.Platform;
+  readonly spawn?: SpawnTarget;
+  readonly stderr?: ProcessOutput;
+}
+
+/** Options for stopping a benchmark target process. */
+export interface StopTargetProcessOptions {
+  readonly platform?: NodeJS.Platform;
+  readonly killWindowsProcessTree?: (
+    pid: number,
+    signal: NodeJS.Signals,
+  ) => void;
+  readonly killProcessGroup?: (pid: number, signal: NodeJS.Signals) => void;
+  readonly forceTimeoutMs?: number;
+}
+
+/** Dependencies for waiting until a benchmark target is ready. */
+export interface WaitReadyUrlDeps {
+  readonly fetch?: typeof fetch;
+  readonly sleep?: (ms: number) => Promise<void>;
 }
 
 /** Runs `fedify bench compare`. */
@@ -392,7 +429,7 @@ function relativeNoise(scenario: ScenarioResult, metric: string): number {
   if (values.length < 2) return 0;
   const medianValue = median(values);
   if (medianValue <= 0) {
-    return Math.max(...values) === Math.min(...values) ? 0 : Infinity;
+    return 0;
   }
   return (Math.max(...values) - Math.min(...values)) / (2 * medianValue);
 }
@@ -548,63 +585,147 @@ function defaultStartTarget(
   cwd: string,
   startCommand: string,
 ): Promise<StartedTarget> {
-  const child = spawn(startCommand, {
+  return Promise.resolve(startBenchmarkTarget(cwd, startCommand));
+}
+
+/** Starts a benchmark target process. */
+export function startBenchmarkTarget(
+  cwd: string,
+  startCommand: string,
+  options: StartBenchmarkTargetOptions = {},
+): StartedTarget {
+  const platform = options.platform ?? process.platform;
+  const spawnTarget = options.spawn ?? spawn;
+  const stderr = options.stderr ?? process.stderr;
+  const child = spawnTarget(startCommand, {
     cwd,
-    detached: process.platform !== "win32",
+    detached: platform !== "win32",
     shell: true,
-    stdio: "inherit",
+    stdio: ["ignore", "pipe", "pipe"],
     env: process.env,
   });
-  return Promise.resolve({
-    stop: () => stopProcess(child),
+  forwardTargetOutput(child, stderr);
+  return { stop: () => stopTargetProcess(child, { platform }) };
+}
+
+function forwardTargetOutput(child: ChildProcess, stderr: ProcessOutput): void {
+  child.stdout?.on("data", (chunk: string | Uint8Array) => {
+    stderr.write(chunk);
+  });
+  child.stderr?.on("data", (chunk: string | Uint8Array) => {
+    stderr.write(chunk);
   });
 }
 
-function stopProcess(child: ChildProcess): Promise<void> {
+/** Stops a benchmark target process. */
+export function stopTargetProcess(
+  child: ChildProcess,
+  options: StopTargetProcessOptions = {},
+): Promise<void> {
+  const platform = options.platform ?? process.platform;
+  const killWindowsProcessTree = options.killWindowsProcessTree ??
+    defaultKillWindowsProcessTree;
+  const killProcessGroup = options.killProcessGroup ??
+    ((pid, signal) => process.kill(pid, signal));
+  const forceTimeoutMs = options.forceTimeoutMs ?? 5000;
   return new Promise((resolve) => {
     if (child.exitCode != null || child.signalCode != null) {
       resolve();
       return;
     }
     const timer = setTimeout(() => {
-      killTargetProcess(child, "SIGKILL");
-    }, 5000);
+      killTargetProcess(child, "SIGKILL", {
+        platform,
+        killWindowsProcessTree,
+        killProcessGroup,
+      });
+    }, forceTimeoutMs);
     child.once("exit", () => {
       clearTimeout(timer);
       resolve();
     });
-    killTargetProcess(child, "SIGTERM");
+    killTargetProcess(child, "SIGTERM", {
+      platform,
+      killWindowsProcessTree,
+      killProcessGroup,
+    });
   });
+}
+
+interface KillTargetProcessOptions {
+  readonly platform: NodeJS.Platform;
+  readonly killWindowsProcessTree: (
+    pid: number,
+    signal: NodeJS.Signals,
+  ) => void;
+  readonly killProcessGroup: (pid: number, signal: NodeJS.Signals) => void;
 }
 
 function killTargetProcess(
   child: ChildProcess,
   signal: NodeJS.Signals,
+  options: KillTargetProcessOptions,
 ): void {
-  if (child.pid == null || process.platform === "win32") {
+  if (child.pid == null) {
     child.kill(signal);
     return;
   }
+  if (options.platform === "win32") {
+    options.killWindowsProcessTree(child.pid, signal);
+    return;
+  }
   try {
-    process.kill(-child.pid, signal);
+    options.killProcessGroup(-child.pid, signal);
   } catch {
     child.kill(signal);
   }
 }
 
+function defaultKillWindowsProcessTree(
+  pid: number,
+  _signal: NodeJS.Signals,
+): void {
+  const child = spawn("taskkill", ["/pid", String(pid), "/T", "/F"], {
+    stdio: "ignore",
+    windowsHide: true,
+  });
+  child.on("error", () => {});
+}
+
 async function defaultWaitReady(url: URL, timeoutMs: number): Promise<void> {
+  return await waitReadyUrl(url, timeoutMs);
+}
+
+/** Waits until a benchmark target readiness URL responds successfully. */
+export async function waitReadyUrl(
+  url: URL,
+  timeoutMs: number,
+  deps: WaitReadyUrlDeps = {},
+): Promise<void> {
+  const fetchReady = deps.fetch ?? fetch;
+  const sleep = deps.sleep ??
+    ((ms) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const deadline = Date.now() + timeoutMs;
   let lastError: unknown;
   while (Date.now() <= deadline) {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) break;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      controller.abort(new Error(`ready URL timed out after ${timeoutMs}ms`));
+    }, remainingMs);
     try {
-      const response = await fetch(url);
-      await response.arrayBuffer().catch(() => {});
+      const response = await fetchReady(url, { signal: controller.signal });
+      void response.body?.cancel().catch(() => {});
       if (response.status >= 200 && response.status < 400) return;
       lastError = new Error(`ready URL returned ${response.status}`);
     } catch (error) {
       lastError = error;
+    } finally {
+      clearTimeout(timer);
     }
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    const delayMs = Math.min(250, deadline - Date.now());
+    if (delayMs > 0) await sleep(delayMs);
   }
   throw new Error(
     `Timed out waiting for ${url.href}: ${describeError(lastError)}.`,

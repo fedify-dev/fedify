@@ -1,12 +1,26 @@
 import assert from "node:assert/strict";
+import { Buffer } from "node:buffer";
+import type { ChildProcess, SpawnOptions } from "node:child_process";
+import { EventEmitter } from "node:events";
 import test from "node:test";
 import type { BenchCompareCommand } from "./command.ts";
 import {
   buildCompareReport,
   parseRegressionTolerance,
   runBenchCompare,
+  startBenchmarkTarget,
+  stopTargetProcess,
+  waitReadyUrl,
 } from "./compare.ts";
 import type { BenchReport, ScenarioResult } from "./result/model.ts";
+
+type FakeChildProcess = ChildProcess & {
+  readonly stdout: EventEmitter;
+  readonly stderr: EventEmitter;
+  readonly exitCode: number | null;
+  readonly signalCode: NodeJS.Signals | null;
+  kill(signal?: NodeJS.Signals | number): boolean;
+};
 
 function scenario(
   overrides: Partial<ScenarioResult> & { name?: string } = {},
@@ -108,6 +122,22 @@ function command(overrides: Partial<BenchCompareCommand>): BenchCompareCommand {
   };
 }
 
+function fakeChildProcess(pid = 1234): FakeChildProcess {
+  const child = new EventEmitter() as FakeChildProcess;
+  Object.defineProperties(child, {
+    pid: { value: pid, configurable: true },
+    stdout: { value: new EventEmitter(), configurable: true },
+    stderr: { value: new EventEmitter(), configurable: true },
+    exitCode: { value: null, configurable: true },
+    signalCode: { value: null, configurable: true },
+  });
+  child.kill = (signal?: NodeJS.Signals | number) => {
+    child.emit("exit", null, signal);
+    return true;
+  };
+  return child;
+}
+
 test("parseRegressionTolerance - parses percentages", () => {
   assert.strictEqual(parseRegressionTolerance("15%"), 0.15);
   assert.strictEqual(parseRegressionTolerance("0.2"), 0.2);
@@ -173,6 +203,128 @@ test("buildCompareReport - fails regressions outside tolerance and noise", () =>
   assert.ok(throughput);
   assert.strictEqual(throughput.pass, false);
   assert.strictEqual(compare.passed, false);
+});
+
+test("buildCompareReport - keeps zero-median noise finite", () => {
+  const base = report([
+    scenario({
+      client: {
+        latencyMs: { p50: 0, p95: 100, p99: 100, mean: 50, max: 100 },
+      },
+      runs: [
+        runResult(0, 100),
+        runResult(0, 100),
+        runResult(100, 100),
+      ],
+    }),
+  ]);
+  const head = report([
+    scenario({
+      client: {
+        latencyMs: { p50: 0, p95: 120, p99: 120, mean: 60, max: 120 },
+      },
+      runs: [
+        runResult(0, 100),
+        runResult(0, 100),
+        runResult(120, 100),
+      ],
+    }),
+  ]);
+  const compare = buildCompareReport({
+    baseRef: "origin/main",
+    headRef: "HEAD",
+    baseReport: base,
+    headReport: head,
+    maxRegression: 0.1,
+    startedAt: "2026-06-13T00:00:00.000Z",
+    finishedAt: "2026-06-13T00:00:01.000Z",
+  });
+  const latency = compare.comparisons.find((c) => c.metric === "latency.p95");
+  assert.ok(latency);
+  assert.strictEqual(latency.noiseBand, 0);
+  assert.strictEqual(latency.allowedRegression, 0.1);
+  assert.strictEqual(latency.pass, false);
+  assert.strictEqual(
+    JSON.parse(JSON.stringify(compare)).comparisons[0].noiseBand,
+    0,
+  );
+});
+
+test("startBenchmarkTarget - keeps target stdout off stdout", async () => {
+  let options: SpawnOptions | undefined;
+  const child = fakeChildProcess();
+  let stderr = "";
+  const target = startBenchmarkTarget("/tmp/base", "pnpm dev", {
+    platform: "linux",
+    stderr: {
+      write: (chunk) => {
+        stderr += Buffer.isBuffer(chunk) ? chunk.toString("utf-8") : chunk;
+        return true;
+      },
+    },
+    spawn: (command, spawnOptions) => {
+      assert.strictEqual(command, "pnpm dev");
+      options = spawnOptions;
+      return child;
+    },
+  });
+  assert.deepEqual(options?.stdio, ["ignore", "pipe", "pipe"]);
+  child.stdout.emit("data", Buffer.from("stdout log\n"));
+  child.stderr.emit("data", "stderr log\n");
+  assert.strictEqual(stderr, "stdout log\nstderr log\n");
+  await target.stop();
+});
+
+test("stopTargetProcess - kills the Windows process tree", async () => {
+  const child = fakeChildProcess(4321);
+  const kills: Array<[number, NodeJS.Signals]> = [];
+  await stopTargetProcess(child, {
+    platform: "win32",
+    killWindowsProcessTree: (pid, signal) => {
+      kills.push([pid, signal]);
+      child.emit("exit", null, signal);
+    },
+  });
+  assert.deepEqual(kills, [[4321, "SIGTERM"]]);
+});
+
+test("waitReadyUrl - does not wait for streaming response bodies", async () => {
+  let calls = 0;
+  await waitReadyUrl(new URL("http://ready.test/health"), 100, {
+    fetch: () => {
+      calls++;
+      return Promise.resolve(
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(new Uint8Array([1]));
+            },
+          }),
+          { status: 200 },
+        ),
+      );
+    },
+  });
+  assert.strictEqual(calls, 1);
+});
+
+test("waitReadyUrl - aborts a hanging fetch at the timeout", async () => {
+  const startedAt = Date.now();
+  await assert.rejects(
+    waitReadyUrl(new URL("http://ready.test/health"), 20, {
+      fetch: (_input, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener(
+            "abort",
+            () => reject(new Error("aborted")),
+            { once: true },
+          );
+        }),
+      sleep: () => Promise.resolve(),
+    }),
+    /Timed out waiting/,
+  );
+  assert.ok(Date.now() - startedAt < 1000);
 });
 
 test("runBenchCompare - orchestrates worktrees and cleans up", async () => {
