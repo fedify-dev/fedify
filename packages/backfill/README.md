@@ -64,7 +64,8 @@ collection, it is skipped by ID.
 
 By default, `backfill()` uses the `context-auto` strategy.  In this mode,
 collection items are treated as backfillable objects by default.  If an item is
-recognized as an Activity, `backfill()` extracts the activity's object instead.
+recognized as a supported `Create` activity, `backfill()` extracts the
+activity's object instead.
 
 To read only FEP-f228 activity collections, enable the `context-activities`
 strategy:
