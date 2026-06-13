@@ -315,9 +315,19 @@ To be released.
     that keep `triggerSinks` allowlisting enabled.  This change is published
     as benchmark scenario schema version 2.  [[#744], [#785], [#801], [#802]]
 
+ -  Added `fedify bench compare` for CI-friendly performance regression gates.
+    The command checks out base and head refs into temporary worktrees, starts
+    the benchmark target for each ref, runs the same suite, and fails when the
+    head regresses beyond `--max-regression` plus the measured per-run noise
+    band.  Benchmark scenarios now run three times by default and aggregate
+    repeated runs with median latency/throughput and pessimistic correctness
+    results.  This change is published as benchmark report schema version 3
+    and comparison report schema version 1.  [[#744], [#786]]
+
 [#783]: https://github.com/fedify-dev/fedify/issues/783
 [#784]: https://github.com/fedify-dev/fedify/issues/784
 [#785]: https://github.com/fedify-dev/fedify/issues/785
+[#786]: https://github.com/fedify-dev/fedify/issues/786
 [#801]: https://github.com/fedify-dev/fedify/pull/801
 [#802]: https://github.com/fedify-dev/fedify/pull/802
 
