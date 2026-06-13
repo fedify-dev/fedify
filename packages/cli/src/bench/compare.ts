@@ -198,7 +198,8 @@ export async function runBenchCompare(
     log(describeError(error));
     return void exit(2);
   } finally {
-    for (const path of worktrees.toReversed()) {
+    for (let i = worktrees.length - 1; i >= 0; i--) {
+      const path = worktrees[i];
       try {
         await removeWorktree(path);
       } catch (error) {
@@ -354,7 +355,8 @@ function compareMetric(
     regression,
     noiseBand,
     allowedRegression,
-    pass: regression != null && regression <= allowedRegression,
+    pass: (base == null && head != null) ||
+      (regression != null && regression <= allowedRegression),
   };
 }
 
@@ -624,7 +626,6 @@ export async function createBenchmarkWorktree(
   const removePath = deps.removePath ?? rm;
   const run = deps.runGit ?? runGit;
   const path = await createTempDir(join(tmpdir(), `fedify-bench-${label}-`));
-  await removePath(path, { recursive: true, force: true });
   try {
     await run(["worktree", "add", "--detach", path, ref]);
   } catch (error) {

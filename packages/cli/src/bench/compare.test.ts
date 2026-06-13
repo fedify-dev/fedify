@@ -518,6 +518,41 @@ test("buildCompareReport - missing client metrics fail comparisons", () => {
   assert.strictEqual(compare.passed, false);
 });
 
+test("buildCompareReport - missing baseline metrics pass comparisons", () => {
+  const signatureExpectation = (actual: number) =>
+    ({
+      metric: "signatureVerification.p95",
+      op: "lt",
+      threshold: 20,
+      unit: "ms",
+      actual,
+      severity: "fail",
+      pass: true,
+    }) as const;
+  const compare = buildCompareReport({
+    baseRef: "origin/main",
+    headRef: "HEAD",
+    baseReport: report([scenario({ server: null })]),
+    headReport: report([
+      scenario({
+        expectations: [signatureExpectation(12)],
+        server: {
+          signatureVerificationMs: {
+            overall: { p50: 6, p95: 12, p99: 28 },
+          },
+        },
+      }),
+    ]),
+    maxRegression: 0.1,
+    startedAt: "2026-06-13T00:00:00.000Z",
+    finishedAt: "2026-06-13T00:00:01.000Z",
+  });
+  assert.strictEqual(compare.comparisons[0].base, null);
+  assert.strictEqual(compare.comparisons[0].head, 12);
+  assert.strictEqual(compare.comparisons[0].pass, true);
+  assert.strictEqual(compare.passed, true);
+});
+
 test("startBenchmarkTarget - keeps target stdout off stdout", async () => {
   let options: SpawnOptions | undefined;
   const child = fakeChildProcess();
@@ -627,10 +662,7 @@ test("createBenchmarkWorktree - cleans partial registrations", async () => {
     ],
     ["worktree", "remove", "--force", "/tmp/fedify-bench-base-test"],
   ]);
-  assert.deepEqual(removals, [
-    "/tmp/fedify-bench-base-test",
-    "/tmp/fedify-bench-base-test",
-  ]);
+  assert.deepEqual(removals, ["/tmp/fedify-bench-base-test"]);
 });
 
 test("waitReadyUrl - does not wait for streaming response bodies", async () => {
