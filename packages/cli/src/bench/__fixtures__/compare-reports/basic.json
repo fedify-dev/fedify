@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.fedify.dev/bench/compare-report-v1.json",
+  "schemaVersion": 1,
+  "tool": { "name": "@fedify/cli", "version": "2.3.0" },
+  "environment": {
+    "runtime": "deno",
+    "runtimeVersion": "2.5.0",
+    "os": "linux",
+    "cpuCount": 16
+  },
+  "startedAt": "2026-06-04T12:00:00.000Z",
+  "finishedAt": "2026-06-04T12:03:00.000Z",
+  "suite": { "name": "Inbox regression suite", "configHash": "sha256:abc123" },
+  "maxRegression": 0.15,
+  "base": {
+    "ref": "origin/main",
+    "report": {
+      "$schema": "https://json-schema.fedify.dev/bench/report-v3.json",
+      "schemaVersion": 3,
+      "tool": { "name": "@fedify/cli", "version": "2.3.0" },
+      "environment": {
+        "runtime": "deno",
+        "runtimeVersion": "2.5.0",
+        "os": "linux",
+        "cpuCount": 16
+      },
+      "target": {
+        "url": "http://localhost:3000",
+        "fedifyVersion": "2.3.0",
+        "statsAvailable": true
+      },
+      "startedAt": "2026-06-04T12:00:00.000Z",
+      "finishedAt": "2026-06-04T12:01:00.000Z",
+      "suite": {
+        "name": "Inbox regression suite",
+        "configHash": "sha256:abc123"
+      },
+      "passed": true,
+      "scenarios": []
+    }
+  },
+  "head": {
+    "ref": "HEAD",
+    "report": {
+      "$schema": "https://json-schema.fedify.dev/bench/report-v3.json",
+      "schemaVersion": 3,
+      "tool": { "name": "@fedify/cli", "version": "2.3.0" },
+      "environment": {
+        "runtime": "deno",
+        "runtimeVersion": "2.5.0",
+        "os": "linux",
+        "cpuCount": 16
+      },
+      "target": {
+        "url": "http://localhost:3000",
+        "fedifyVersion": "2.3.0",
+        "statsAvailable": true
+      },
+      "startedAt": "2026-06-04T12:02:00.000Z",
+      "finishedAt": "2026-06-04T12:03:00.000Z",
+      "suite": {
+        "name": "Inbox regression suite",
+        "configHash": "sha256:abc123"
+      },
+      "passed": true,
+      "scenarios": []
+    }
+  },
+  "comparisons": [
+    {
+      "scenario": "inbox-shared",
+      "metric": "latency.p95",
+      "direction": "lower-is-better",
+      "base": 91,
+      "head": 94,
+      "regression": 0.03296703296703297,
+      "noiseBand": 0.02,
+      "allowedRegression": 0.16999999999999998,
+      "pass": true
+    }
+  ],
+  "passed": true
+}

@@ -6,11 +6,12 @@ import test from "node:test";
 import { serve } from "srvx";
 import { spawnBenchmarkTarget } from "../../test/bench/fixture.ts";
 import runBench, { withUserAgent } from "./action.ts";
-import type { BenchCommand } from "./command.ts";
+import type { BenchRunCommand } from "./command.ts";
 
-function command(overrides: Partial<BenchCommand>): BenchCommand {
+function command(overrides: Partial<BenchRunCommand>): BenchRunCommand {
   return {
     command: "bench",
+    mode: "run",
     scenario: "",
     target: undefined,
     format: "json",
@@ -19,7 +20,7 @@ function command(overrides: Partial<BenchCommand>): BenchCommand {
     allowUnsafeTarget: false,
     userAgent: "Fedify-bench-test/1.0",
     ...overrides,
-  } as BenchCommand;
+  } as BenchRunCommand;
 }
 
 async function writeSuite(content: string): Promise<string> {
@@ -160,6 +161,8 @@ test("runBench - dry run prints a plan and sends nothing", async () => {
     });
     assert.strictEqual(code, 0);
     assert.match(output, /dry run/i);
+    assert.match(output, /runs 3/);
+    assert.match(output, /total duration 750ms/);
     assert.match(output, /\/inbox/);
     assert.match(output, /No benchmark load was sent/);
     const requests = target.requests();
@@ -168,6 +171,86 @@ test("runBench - dry run prints a plan and sends nothing", async () => {
   } finally {
     await target.close();
   }
+});
+
+test("runBench - dry run includes repeated open-loop request volume", async () => {
+  const target = await spawnBenchmarkTarget();
+  try {
+    const file = await writeSuite(`version: 1
+target: ${target.url.href}
+scenarios:
+  - name: inbox-open
+    type: inbox
+    recipient: "http://\${{ target.host }}/users/alice"
+    inbox: shared
+    load: { rate: 2/s }
+    duration: 500ms
+`);
+    let code = -1;
+    let output = "";
+    await runBench(command({ scenario: file, dryRun: true }), {
+      exit: (c) => {
+        code = c;
+      },
+      writeOutput: (c) => {
+        output = c;
+        return Promise.resolve();
+      },
+      log: () => {},
+    });
+    assert.strictEqual(code, 0);
+    assert.match(output, /runs 3/);
+    assert.match(output, /total duration 1500ms/);
+    assert.match(output, /estimated scheduled requests 3/);
+    const requests = target.requests();
+    assert.ok(requests.some((r) => r.method === "GET"));
+    assert.ok(!requests.some((r) => r.method === "POST"));
+  } finally {
+    await target.close();
+  }
+});
+
+test("runBench - repeats a scenario according to runs", async () => {
+  const file = await writeSuite(`version: 1
+target: http://127.0.0.1:3000
+scenarios:
+  - name: wf
+    type: webfinger
+    recipient: "acct:alice@example.com"
+    runs: 2
+    load: { concurrency: 1 }
+    duration: 5ms
+`);
+  let code = -1;
+  let output = "";
+  await runBench(command({ scenario: file }), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: (c) => {
+      output = c;
+      return Promise.resolve();
+    },
+    log: () => {},
+    fetch: (input) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.pathname === "/.well-known/fedify/bench/stats") {
+        return Promise.resolve(new Response("not found", { status: 404 }));
+      }
+      if (url.pathname === "/.well-known/webfinger") {
+        return Promise.resolve(
+          new Response(JSON.stringify({ subject: "acct:alice@example.com" }), {
+            headers: { "content-type": "application/jrd+json" },
+          }),
+        );
+      }
+      return Promise.resolve(new Response("not found", { status: 404 }));
+    },
+  });
+  const report = JSON.parse(output);
+  assert.strictEqual(code, 0);
+  assert.strictEqual(report.scenarios[0].runCount, 2);
+  assert.strictEqual(report.scenarios[0].runs.length, 2);
 });
 
 test("runBench - dry run reports inbox discovery failures and continues", async () => {
@@ -729,6 +812,7 @@ scenarios:
     type: inbox
     recipient: "${new URL("/users/alice", target.url).href}"
     inbox: "https://shared.staging.example/inbox"
+    runs: 1
     load: { concurrency: 2 }
     duration: 250ms
 `);
@@ -848,6 +932,46 @@ scenarios:
   }
 });
 
+test("runBench - unsafe public inbox destination needs explicit runs", async () => {
+  const target = await spawnBenchmarkTarget();
+  try {
+    const file = await writeSuite(`version: 1
+target: ${target.url.href}
+scenarios:
+  - name: inbox-shared
+    type: inbox
+    recipient: "${new URL("/users/alice", target.url).href}"
+    inbox: "https://prod.example/inbox"
+    load: { rate: 1/s }
+    duration: 1ms
+`);
+    let code = -1;
+    let message = "";
+    await runBench(
+      command({
+        scenario: file,
+        target: target.url.href,
+        allowUnsafeTarget: true,
+        advertiseHost: "127.0.0.1",
+      }),
+      {
+        exit: (c) => {
+          code = c;
+        },
+        writeOutput: () => Promise.resolve(),
+        log: (m) => {
+          message = m;
+        },
+        resolveTargetAddresses: resolvePublicHost,
+      },
+    );
+    assert.strictEqual(code, 2);
+    assert.match(message, /runs/);
+  } finally {
+    await target.close();
+  }
+});
+
 test("runBench - unsafe public inbox destination honors suite defaults", async () => {
   const target = await spawnBenchmarkTarget();
   try {
@@ -855,6 +979,7 @@ test("runBench - unsafe public inbox destination honors suite defaults", async (
 target: ${target.url.href}
 defaults:
   duration: 1ms
+  runs: 1
   load: { rate: 1/s }
 scenarios:
   - name: inbox-shared

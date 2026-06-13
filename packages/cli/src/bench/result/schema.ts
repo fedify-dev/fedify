@@ -10,6 +10,10 @@
 
 /** The hosted URL that serves the report schema. */
 export const REPORT_SCHEMA_ID =
+  "https://json-schema.fedify.dev/bench/report-v3.json";
+
+/** The hosted URL for the version 2 report schema. */
+export const REPORT_SCHEMA_V2_ID =
   "https://json-schema.fedify.dev/bench/report-v2.json";
 
 /** The hosted URL for the original report schema. */
@@ -292,7 +296,7 @@ export const reportSchemaV1 = {
 /** The benchmark report JSON Schema (draft 2020-12). */
 export const reportSchemaV2 = {
   ...reportSchemaV1,
-  $id: REPORT_SCHEMA_ID,
+  $id: REPORT_SCHEMA_V2_ID,
   properties: {
     ...reportSchemaV1.properties,
     schemaVersion: { const: 2 },
@@ -305,6 +309,69 @@ export const reportSchemaV2 = {
         ...reportSchemaV1.$defs.scenarioResult.properties,
         deliveryThroughputPerSec: { type: "number" },
       },
+    },
+  },
+} as const;
+
+/** The current benchmark report JSON Schema (draft 2020-12). */
+export const reportSchemaV3 = {
+  ...reportSchemaV2,
+  $id: REPORT_SCHEMA_ID,
+  properties: {
+    ...reportSchemaV2.properties,
+    schemaVersion: { const: 3 },
+  },
+  $defs: {
+    ...reportSchemaV2.$defs,
+    scenarioRunResult: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "run",
+        "requests",
+        "throughputPerSec",
+        "client",
+        "server",
+        "errors",
+      ],
+      properties: {
+        run: { type: "integer", minimum: 1 },
+        requests: { $ref: "#/$defs/requestSummary" },
+        throughputPerSec: { type: "number" },
+        deliveryThroughputPerSec: { type: "number" },
+        client: { $ref: "#/$defs/clientMetrics" },
+        server: {
+          anyOf: [{ $ref: "#/$defs/serverMetrics" }, { type: "null" }],
+        },
+        errors: {
+          type: "array",
+          items: { $ref: "#/$defs/errorBucket" },
+        },
+        histogram: { $ref: "#/$defs/serializedHistogram" },
+      },
+    },
+    scenarioResult: {
+      ...reportSchemaV2.$defs.scenarioResult,
+      required: [
+        ...reportSchemaV2.$defs.scenarioResult.required,
+        "runCount",
+      ],
+      properties: {
+        ...reportSchemaV2.$defs.scenarioResult.properties,
+        runCount: { type: "integer", minimum: 1 },
+        runs: {
+          type: "array",
+          minItems: 2,
+          items: { $ref: "#/$defs/scenarioRunResult" },
+        },
+      },
+      allOf: [{
+        if: {
+          required: ["runCount"],
+          properties: { runCount: { minimum: 2 } },
+        },
+        then: { required: ["runs"] },
+      }],
     },
   },
 } as const;

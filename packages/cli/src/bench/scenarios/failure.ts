@@ -142,6 +142,7 @@ export const failureRunner: ScenarioRunner = {
         loadPlanOf(context.scenario, context.rng),
         send,
         context.clock,
+        context.signal,
       );
       return aggregateSamples(result.samples, {
         measuredWindowMs: measuredWindowMs(context.scenario),
