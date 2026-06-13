@@ -258,6 +258,32 @@ test("buildCompareReport - treats positive throughput after zero as passing", ()
   assert.strictEqual(compare.passed, true);
 });
 
+test("buildCompareReport - passes new head scenarios without a baseline", () => {
+  const base = report([scenario({ name: "existing" })]);
+  const head = report([
+    scenario({ name: "existing" }),
+    scenario({ name: "new-scenario" }),
+  ]);
+  const compare = buildCompareReport({
+    baseRef: "origin/main",
+    headRef: "HEAD",
+    baseReport: base,
+    headReport: head,
+    maxRegression: 0.1,
+    startedAt: "2026-06-13T00:00:00.000Z",
+    finishedAt: "2026-06-13T00:00:01.000Z",
+  });
+  const newScenario = compare.comparisons.find((comparison) =>
+    comparison.scenario === "new-scenario"
+  );
+  assert.ok(newScenario);
+  assert.strictEqual(newScenario.metric, "scenario");
+  assert.strictEqual(newScenario.base, null);
+  assert.strictEqual(newScenario.head, null);
+  assert.strictEqual(newScenario.pass, true);
+  assert.strictEqual(compare.passed, true);
+});
+
 test("buildCompareReport - matches duplicate scenario names by occurrence", () => {
   const base = report([
     scenario({
@@ -528,10 +554,14 @@ test("stopTargetProcess - resolves immediately without a pid", async () => {
 
 test("createBenchmarkWorktree - cleans partial registrations", async () => {
   const calls: string[][] = [];
+  const removals: string[] = [];
   await assert.rejects(
     createBenchmarkWorktree("missing-ref", "base", {
       createTempDir: () => Promise.resolve("/tmp/fedify-bench-base-test"),
-      removePath: () => Promise.resolve(),
+      removePath: (path) => {
+        removals.push(path);
+        return Promise.resolve();
+      },
       runGit: (args) => {
         calls.push([...args]);
         if (args[1] === "add") {
@@ -551,6 +581,10 @@ test("createBenchmarkWorktree - cleans partial registrations", async () => {
       "missing-ref",
     ],
     ["worktree", "remove", "--force", "/tmp/fedify-bench-base-test"],
+  ]);
+  assert.deepEqual(removals, [
+    "/tmp/fedify-bench-base-test",
+    "/tmp/fedify-bench-base-test",
   ]);
 });
 

@@ -294,7 +294,7 @@ function compareReports(
     headCounts.set(key, occurrence + 1);
     const baseScenario = baseByScenario.get(key)?.[occurrence];
     if (baseScenario == null) {
-      results.push(missingScenario(headScenario.name, maxRegression));
+      results.push(newScenario(headScenario.name, maxRegression));
       continue;
     }
     for (const metric of comparisonMetrics(headScenario)) {
@@ -358,7 +358,7 @@ function compareMetric(
   };
 }
 
-function missingScenario(
+function newScenario(
   scenario: string,
   maxRegression: number,
 ): ComparisonResult {
@@ -371,7 +371,7 @@ function missingScenario(
     regression: null,
     noiseBand: 0,
     allowedRegression: maxRegression,
-    pass: false,
+    pass: true,
   };
 }
 
@@ -624,6 +624,11 @@ export async function createBenchmarkWorktree(
   } catch (error) {
     try {
       await run(["worktree", "remove", "--force", path]);
+    } catch {
+      // Preserve the original checkout failure.
+    }
+    try {
+      await removePath(path, { recursive: true, force: true });
     } catch {
       // Preserve the original checkout failure.
     }
