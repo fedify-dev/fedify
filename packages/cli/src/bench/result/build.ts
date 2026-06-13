@@ -13,7 +13,6 @@ import { cpus } from "node:os";
 import process from "node:process";
 import metadata from "../../../deno.json" with { type: "json" };
 import type { ResolvedScenario } from "../scenario/normalize.ts";
-import { LogLinearHistogram } from "../metrics/histogram.ts";
 import type { SerializedHistogram } from "../metrics/histogram.ts";
 import { evaluateExpect } from "./expect/evaluate.ts";
 import { REPORT_SCHEMA_ID } from "./schema.ts";
@@ -149,7 +148,6 @@ function aggregateMeasurements(
     },
     server: aggregateServer(measurements.map((m) => m.server)),
     errors,
-    ...aggregateHistogram(measurements),
   };
 }
 
@@ -201,6 +199,7 @@ function aggregateSignatureVerification(
   for (const standard of standards) {
     byStandard[standard] = aggregatePartial(
       values.map((v) => v.byStandard?.[standard]),
+      "present",
     );
   }
   return {
@@ -230,11 +229,14 @@ type PartialMetric = {
   readonly p99?: number;
 };
 
-function aggregatePartial(values: readonly (PartialMetric | undefined)[]) {
+function aggregatePartial(
+  values: readonly (PartialMetric | undefined)[],
+  mode: "complete" | "present" = "complete",
+) {
   return {
-    ...partialField(values, "p50"),
-    ...partialField(values, "p95"),
-    ...partialField(values, "p99"),
+    ...partialField(values, "p50", mode),
+    ...partialField(values, "p95", mode),
+    ...partialField(values, "p99", mode),
   };
 }
 
@@ -242,8 +244,15 @@ function partialField(
   values:
     readonly ({ readonly [key: string]: number | undefined } | undefined)[],
   key: "p50" | "p95" | "p99",
+  mode: "complete" | "present",
 ): Record<typeof key, number> | Record<string, never> {
   const fieldValues = values.map((v) => v?.[key]);
+  if (mode === "present") {
+    const present = fieldValues.filter(isNumber);
+    return present.length < 1
+      ? {}
+      : { [key]: median(present) } as Record<typeof key, number>;
+  }
   return fieldValues.every(isNumber)
     ? { [key]: median(fieldValues) } as Record<typeof key, number>
     : {};
@@ -255,19 +264,6 @@ function hasPartial(value: {
   readonly p99?: number;
 }): boolean {
   return value.p50 != null || value.p95 != null || value.p99 != null;
-}
-
-function aggregateHistogram(
-  measurements: readonly ScenarioMeasurement[],
-): { readonly histogram?: SerializedHistogram } {
-  const histograms = measurements.map((m) => m.histogram);
-  if (histograms.some((h) => h == null)) return {};
-  const [first, ...rest] = histograms as SerializedHistogram[];
-  const merged = LogLinearHistogram.fromJSON(first);
-  for (const histogram of rest) {
-    merged.merge(LogLinearHistogram.fromJSON(histogram));
-  }
-  return { histogram: merged.toJSON() };
 }
 
 function sumErrorBuckets(errors: readonly ErrorBucket[]): ErrorBucket[] {

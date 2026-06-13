@@ -258,6 +258,51 @@ test("buildCompareReport - treats positive throughput after zero as passing", ()
   assert.strictEqual(compare.passed, true);
 });
 
+test("buildCompareReport - tolerates tiny latency after zero baseline", () => {
+  const latencyExpectation = (actual: number) =>
+    ({
+      metric: "latency.p95",
+      op: "lt",
+      threshold: 10,
+      unit: "ms",
+      actual,
+      severity: "fail",
+      pass: true,
+    }) as const;
+  const base = report([
+    scenario({
+      client: {
+        latencyMs: { p50: 0, p95: 0, p99: 0, mean: 0, max: 0 },
+      },
+      expectations: [latencyExpectation(0)],
+      runs: [runResult(0, 100), runResult(0, 100), runResult(0, 100)],
+    }),
+  ]);
+  const head = report([
+    scenario({
+      client: {
+        latencyMs: { p50: 1, p95: 1, p99: 1, mean: 1, max: 1 },
+      },
+      expectations: [latencyExpectation(1)],
+      runs: [runResult(1, 100), runResult(1, 100), runResult(1, 100)],
+    }),
+  ]);
+  const compare = buildCompareReport({
+    baseRef: "origin/main",
+    headRef: "HEAD",
+    baseReport: base,
+    headReport: head,
+    maxRegression: 0,
+    startedAt: "2026-06-13T00:00:00.000Z",
+    finishedAt: "2026-06-13T00:00:01.000Z",
+  });
+  assert.strictEqual(compare.comparisons.length, 1);
+  assert.strictEqual(compare.comparisons[0].metric, "latency.p95");
+  assert.strictEqual(compare.comparisons[0].regression, 0);
+  assert.strictEqual(compare.comparisons[0].pass, true);
+  assert.strictEqual(compare.passed, true);
+});
+
 test("buildCompareReport - passes new head scenarios without a baseline", () => {
   const base = report([scenario({ name: "existing" })]);
   const head = report([

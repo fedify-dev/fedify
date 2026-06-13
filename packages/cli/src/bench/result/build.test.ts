@@ -9,6 +9,7 @@ import {
   detectEnvironment,
   type ScenarioMeasurement,
 } from "./build.ts";
+import { LogLinearHistogram } from "../metrics/histogram.ts";
 import { reportSchemaV3 } from "./schema.ts";
 
 function resolvedInbox() {
@@ -155,6 +156,61 @@ test("buildScenarioResult - fails repeated server gates with missing stats", () 
   assert.strictEqual(result.expectations[0].actual, null);
   assert.strictEqual(result.expectations[0].pass, false);
   assert.strictEqual(result.passed, false);
+});
+
+test("buildScenarioResult - keeps present by-standard repeated metrics", () => {
+  const first = measurement();
+  const missingStandard = measurement();
+  const third = measurement();
+  const result = buildScenarioResult(resolvedInbox(), [
+    {
+      ...first,
+      server: {
+        signatureVerificationMs: {
+          overall: first.server!.signatureVerificationMs!.overall,
+          byStandard: {
+            "rfc9421": { p50: 1, p95: 10, p99: 100 },
+          },
+        },
+      },
+    },
+    {
+      ...missingStandard,
+      server: {
+        signatureVerificationMs: {
+          overall: missingStandard.server!.signatureVerificationMs!.overall,
+        },
+      },
+    },
+    {
+      ...third,
+      server: {
+        signatureVerificationMs: {
+          overall: third.server!.signatureVerificationMs!.overall,
+          byStandard: {
+            "rfc9421": { p50: 3, p95: 30, p99: 300 },
+          },
+        },
+      },
+    },
+  ]);
+  assert.deepEqual(
+    result.server?.signatureVerificationMs?.byStandard?.["rfc9421"],
+    { p50: 2, p95: 20, p99: 200 },
+  );
+});
+
+test("buildScenarioResult - omits aggregate repeated-run histogram", () => {
+  const first = new LogLinearHistogram();
+  first.record(10);
+  const second = new LogLinearHistogram();
+  second.record(100);
+  const result = buildScenarioResult(resolvedInbox(), [
+    { ...measurement(), histogram: first.toJSON() },
+    { ...measurement(), histogram: second.toJSON() },
+  ]);
+  assert.strictEqual(result.histogram, undefined);
+  assert.ok(result.runs?.every((run) => run.histogram != null));
 });
 
 test("buildReport - gate passes only when all scenarios pass", () => {

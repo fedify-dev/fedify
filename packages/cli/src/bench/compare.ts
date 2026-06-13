@@ -20,6 +20,8 @@ import type {
 import { metricUnit } from "./result/expect/metrics.ts";
 import { describeError } from "../utils.ts";
 
+const ZERO_BASE_LATENCY_ALLOWANCE_MS = 1;
+
 /** A benchmark comparison report. */
 export interface BenchCompareReport {
   readonly $schema: string;
@@ -331,9 +333,8 @@ function compareMetric(
   metric: string,
   maxRegression: number,
 ): ComparisonResult {
-  const direction = metricUnit(metric) === "rate"
-    ? "higher-is-better"
-    : "lower-is-better";
+  const unit = metricUnit(metric);
+  const direction = unit === "rate" ? "higher-is-better" : "lower-is-better";
   const base = metricValue(baseScenario, metric);
   const head = metricValue(headScenario, metric);
   const noiseBand = Math.max(
@@ -342,7 +343,7 @@ function compareMetric(
   );
   const regression = base == null || head == null
     ? null
-    : regressionRatio(base, head, direction);
+    : regressionRatio(base, head, direction, unit);
   const allowedRegression = maxRegression + noiseBand;
   return {
     scenario: headScenario.name,
@@ -447,6 +448,7 @@ function regressionRatio(
   base: number,
   head: number,
   direction: ComparisonResult["direction"],
+  unit: ReturnType<typeof metricUnit>,
 ): number | null {
   if (!Number.isFinite(base) || !Number.isFinite(head)) {
     return null;
@@ -456,6 +458,11 @@ function regressionRatio(
   }
   if (base === 0) {
     if (base === head) return 0;
+    if (
+      direction === "lower-is-better" &&
+      unit === "ms" &&
+      head <= ZERO_BASE_LATENCY_ALLOWANCE_MS
+    ) return 0;
     return direction === "higher-is-better" && head > base ? 0 : null;
   }
   return direction === "higher-is-better"
