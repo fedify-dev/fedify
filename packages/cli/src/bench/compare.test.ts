@@ -608,6 +608,16 @@ test("waitReadyUrl - does not wait for streaming response bodies", async () => {
   assert.strictEqual(calls, 1);
 });
 
+test("waitReadyUrl - tolerates response bodies without cancel", async () => {
+  await waitReadyUrl(new URL("http://ready.test/health"), 100, {
+    fetch: () =>
+      Promise.resolve({
+        status: 200,
+        body: {},
+      } as Response),
+  });
+});
+
 test("waitReadyUrl - aborts a hanging fetch at the timeout", async () => {
   const startedAt = Date.now();
   await assert.rejects(

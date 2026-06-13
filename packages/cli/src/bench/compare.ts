@@ -3,8 +3,7 @@ import {
   spawn,
   type SpawnOptions,
 } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
-import { writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import process from "node:process";
@@ -781,6 +780,7 @@ function defaultKillWindowsProcessTree(
   child.on("error", () => {});
 }
 
+/** Builds the Windows `taskkill` arguments used for target cleanup. */
 export function windowsTaskkillArgs(
   pid: number,
   signal: NodeJS.Signals,
@@ -814,7 +814,7 @@ export async function waitReadyUrl(
     }, remainingMs);
     try {
       const response = await fetchReady(url, { signal: controller.signal });
-      void response.body?.cancel().catch(() => {});
+      void response.body?.cancel?.().catch(() => {});
       if (response.status >= 200 && response.status < 400) return;
       lastError = new Error(`ready URL returned ${response.status}`);
     } catch (error) {
