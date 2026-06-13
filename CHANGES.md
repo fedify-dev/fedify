@@ -322,7 +322,7 @@ To be released.
     band.  Benchmark scenarios now run three times by default and aggregate
     repeated runs with median latency/throughput and pessimistic correctness
     results.  This change is published as benchmark report schema version 3
-    and comparison report schema version 1.  [[#744], [#786]]
+    and comparison report schema version 1.  [[#744], [#786], [#804]]
 
 [#783]: https://github.com/fedify-dev/fedify/issues/783
 [#784]: https://github.com/fedify-dev/fedify/issues/784
@@ -330,6 +330,7 @@ To be released.
 [#786]: https://github.com/fedify-dev/fedify/issues/786
 [#801]: https://github.com/fedify-dev/fedify/pull/801
 [#802]: https://github.com/fedify-dev/fedify/pull/802
+[#804]: https://github.com/fedify-dev/fedify/pull/804
 
 ### @fedify/fixture
 
