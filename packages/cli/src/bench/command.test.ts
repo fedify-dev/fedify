@@ -119,6 +119,11 @@ test("benchCommand - compare mode requires refs", () => {
   assert.ok(!result.success);
 });
 
+test("benchCommand - bare compare subcommand fails", () => {
+  const result = parse(benchCommand, [COMMAND, "compare"]);
+  assert.ok(!result.success);
+});
+
 test("benchCommand - invalid format value fails", () => {
   const result = parse(benchCommand, [COMMAND, FILE, "--format", "xml"]);
   assert.ok(!result.success);

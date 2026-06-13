@@ -475,7 +475,26 @@
             "$ref": "#/$defs/scenarioRunResult"
           }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "runCount"
+            ],
+            "properties": {
+              "runCount": {
+                "minimum": 2
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "runs"
+            ]
+          }
+        }
+      ]
     },
     "serializedHistogram": {
       "type": "object",

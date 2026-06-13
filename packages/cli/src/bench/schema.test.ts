@@ -99,6 +99,27 @@ for (const group of FIXTURE_GROUPS) {
   }
 }
 
+test("schema guard - report v3 requires runs for repeated scenarios", () => {
+  const file = join(FIXTURES, "reports", "inbox-report.json");
+  const report = parseSuiteText(readFileSync(file, "utf-8")) as {
+    scenarios: Array<Record<string, unknown>>;
+  };
+  report.scenarios[0].runCount = 2;
+  delete report.scenarios[0].runs;
+  const result = validators.get("report")!.validate(report);
+  assert.strictEqual(result.valid, false);
+});
+
+test("schema guard - compare report types embedded targets", () => {
+  const file = join(FIXTURES, "compare-reports", "basic.json");
+  const report = parseSuiteText(readFileSync(file, "utf-8")) as {
+    base: { report: Record<string, unknown> };
+  };
+  report.base.report.target = null;
+  const result = validators.get("compare-report")!.validate(report);
+  assert.strictEqual(result.valid, false);
+});
+
 // Guard 3: drift between embedded schema and the published file.
 for (const { name, fileName, schema } of PUBLISHED_SCHEMAS) {
   test(`schema guard - ${name} embedded schema matches published file`, () => {

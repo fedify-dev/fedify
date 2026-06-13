@@ -100,9 +100,20 @@ export const compareReportSchemaV1 = {
         schemaVersion: { const: 3 },
         tool: { $ref: "#/$defs/tool" },
         environment: { $ref: "#/$defs/environment" },
+        target: { $ref: "#/$defs/target" },
         suite: { $ref: "#/$defs/suite" },
         passed: { type: "boolean" },
         scenarios: { type: "array" },
+      },
+    },
+    target: {
+      type: "object",
+      additionalProperties: false,
+      required: ["url", "statsAvailable"],
+      properties: {
+        url: { type: "string" },
+        fedifyVersion: { type: ["string", "null"] },
+        statsAvailable: { type: "boolean" },
       },
     },
     compareSide: {

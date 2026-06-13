@@ -314,6 +314,23 @@ test("buildCompareReport - keeps zero-median noise finite", () => {
   );
 });
 
+test("buildCompareReport - missing client metrics fail comparisons", () => {
+  const malformed = scenario() as unknown as Record<string, unknown>;
+  delete malformed.client;
+  const compare = buildCompareReport({
+    baseRef: "origin/main",
+    headRef: "HEAD",
+    baseReport: report([scenario()]),
+    headReport: report([malformed as unknown as ScenarioResult]),
+    maxRegression: 0.1,
+    startedAt: "2026-06-13T00:00:00.000Z",
+    finishedAt: "2026-06-13T00:00:01.000Z",
+  });
+  assert.strictEqual(compare.comparisons[0].head, null);
+  assert.strictEqual(compare.comparisons[0].pass, false);
+  assert.strictEqual(compare.passed, false);
+});
+
 test("startBenchmarkTarget - keeps target stdout off stdout", async () => {
   let options: SpawnOptions | undefined;
   const child = fakeChildProcess();
@@ -350,6 +367,18 @@ test("stopTargetProcess - kills the Windows process tree", async () => {
     },
   });
   assert.deepEqual(kills, [[4321, "SIGTERM"]]);
+});
+
+test("stopTargetProcess - rejects when forced kill does not exit", async () => {
+  const child = fakeChildProcess(4321);
+  child.kill = () => true;
+  await assert.rejects(
+    stopTargetProcess(child, {
+      forceTimeoutMs: 1,
+      forceKillTimeoutMs: 1,
+    }),
+    /did not exit/,
+  );
 });
 
 test("waitReadyUrl - does not wait for streaming response bodies", async () => {
@@ -389,6 +418,23 @@ test("waitReadyUrl - aborts a hanging fetch at the timeout", async () => {
     /Timed out waiting/,
   );
   assert.ok(Date.now() - startedAt < 1000);
+});
+
+test("waitReadyUrl - prefers abort reason over transport errors", async () => {
+  await assert.rejects(
+    waitReadyUrl(new URL("http://ready.test/health"), 20, {
+      fetch: (_input, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener(
+            "abort",
+            () => reject(new TypeError("transport failure")),
+            { once: true },
+          );
+        }),
+      sleep: () => Promise.resolve(),
+    }),
+    /ready URL timed out after 20ms/,
+  );
 });
 
 test("runBenchCompare - orchestrates worktrees and cleans up", async () => {

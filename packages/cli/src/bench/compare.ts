@@ -117,6 +117,7 @@ export interface StopTargetProcessOptions {
   ) => void;
   readonly killProcessGroup?: (pid: number, signal: NodeJS.Signals) => void;
   readonly forceTimeoutMs?: number;
+  readonly forceKillTimeoutMs?: number;
 }
 
 /** Dependencies for waiting until a benchmark target is ready. */
@@ -353,7 +354,8 @@ function metricValue(
       return scenario.deliveryThroughputPerSec ?? null;
   }
   if (metric.startsWith("latency.")) {
-    return latencyValue(scenario.client.latencyMs, metric.slice(8));
+    const latency = scenario.client?.latencyMs;
+    return latency == null ? null : latencyValue(latency, metric.slice(8));
   }
   if (metric.startsWith("signatureVerification.")) {
     return partialValue(
@@ -631,22 +633,38 @@ export function stopTargetProcess(
   const killProcessGroup = options.killProcessGroup ??
     ((pid, signal) => process.kill(pid, signal));
   const forceTimeoutMs = options.forceTimeoutMs ?? 5000;
-  return new Promise((resolve) => {
+  const forceKillTimeoutMs = options.forceKillTimeoutMs ?? forceTimeoutMs;
+  return new Promise((resolve, reject) => {
     if (child.exitCode != null || child.signalCode != null) {
       resolve();
       return;
     }
-    const timer = setTimeout(() => {
+    let forceKillTimer: ReturnType<typeof setTimeout> | undefined;
+    const clearTimers = () => {
+      clearTimeout(forceTimer);
+      if (forceKillTimer != null) clearTimeout(forceKillTimer);
+    };
+    const onExit = () => {
+      clearTimers();
+      resolve();
+    };
+    const forceTimer = setTimeout(() => {
       killTargetProcess(child, "SIGKILL", {
         platform,
         killWindowsProcessTree,
         killProcessGroup,
       });
+      forceKillTimer = setTimeout(() => {
+        child.removeListener("exit", onExit);
+        reject(
+          new Error(
+            `Benchmark target process ${child.pid ?? "<unknown>"} ` +
+              "did not exit after SIGKILL.",
+          ),
+        );
+      }, forceKillTimeoutMs);
     }, forceTimeoutMs);
-    child.once("exit", () => {
-      clearTimeout(timer);
-      resolve();
-    });
+    child.once("exit", onExit);
     killTargetProcess(child, "SIGTERM", {
       platform,
       killWindowsProcessTree,
@@ -723,6 +741,10 @@ export async function waitReadyUrl(
       if (response.status >= 200 && response.status < 400) return;
       lastError = new Error(`ready URL returned ${response.status}`);
     } catch (error) {
+      if (controller.signal.aborted) {
+        lastError = controller.signal.reason ?? error;
+        break;
+      }
       lastError = error;
     } finally {
       clearTimeout(timer);

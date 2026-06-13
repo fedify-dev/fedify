@@ -365,6 +365,13 @@ export const reportSchemaV3 = {
           items: { $ref: "#/$defs/scenarioRunResult" },
         },
       },
+      allOf: [{
+        if: {
+          required: ["runCount"],
+          properties: { runCount: { minimum: 2 } },
+        },
+        then: { required: ["runs"] },
+      }],
     },
   },
 } as const;

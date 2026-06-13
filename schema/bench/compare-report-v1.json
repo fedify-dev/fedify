@@ -142,6 +142,9 @@
         "environment": {
           "$ref": "#/$defs/environment"
         },
+        "target": {
+          "$ref": "#/$defs/target"
+        },
         "suite": {
           "$ref": "#/$defs/suite"
         },
@@ -150,6 +153,28 @@
         },
         "scenarios": {
           "type": "array"
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "url",
+        "statsAvailable"
+      ],
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "fedifyVersion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "statsAvailable": {
+          "type": "boolean"
         }
       }
     },
