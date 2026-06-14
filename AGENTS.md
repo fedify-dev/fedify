@@ -127,11 +127,18 @@ Development workflow
  -  **Code Generation**: Run `mise run codegen` whenever vocabulary YAML files
     or code generation scripts change.
  -  **Building Packages**: After installation, all packages are automatically
-    built. To rebuild a specific package and its dependencies, run `pnpm build`
-    in that package's directory.
- -  **Checking Code**: Run `mise run check` before committing.
- -  **Running Tests**: Use `mise run test:deno` for Deno tests or
-    `mise run test` for all environments.
+    built. To rebuild a specific package and its dependencies, run
+    `mise run prepare`, or run `mise run prepare-each <pkgs>` to build
+    specific packages.
+ -  **Checking Code**: Run `mise run check` before committing, or run
+    `mise run check-each <pkgs>` to check specific packages.
+ -  **Running Tests**:
+     -  `mise run test`: Executes all the tests in every runtime.
+     -  `mise run test:<runtime:deno,node,bun>`: Executes all the tests by the
+        runtime. If some specific tests are needed, execute
+        `mise run test:<runtime> <test-file-path-from-the-root>`.
+     -  `mise run test-each <pkgs>`: Executes tests in packages that include
+        `pkgs` in every runtime.
 
 For detailed contribution guidelines, see *CONTRIBUTING.md*.
 
@@ -150,6 +157,13 @@ When working with federation code:
 
 Common tasks
 ------------
+
+### **BE WELL-ACQUAINTED WITH `mise tasks`**
+
+*mise.toml* has useful tasks. **Acquaint all of them** and use them in the right
+place at the right time. If it has too much information, use `mise tasks`. This
+command shows the summary of the tasks and descriptions. If `mise tasks` does
+not make it clear, use `mise tasks <task>` to check the details for the task.
 
 ### Adding ActivityPub vocabulary types
 

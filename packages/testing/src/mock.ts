@@ -263,7 +263,7 @@ type ActivityConstructor = new (...args: any[]) => Activity;
 class MockFederation<TContextData> implements Federation<TContextData> {
   public sentActivities: SentActivity[] = [];
   public queueStarted = false;
-  private activeQueues: Set<"inbox" | "outbox" | "fanout"> = new Set();
+  private activeQueues: Set<"inbox" | "outbox" | "fanout" | "task"> = new Set();
   public sentCounter = 0;
   private nodeInfoDispatcher?: any;
   // Note: Using `any` instead of WebFingerLinksDispatcher to avoid JSR hang.
@@ -285,6 +285,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   public sharedInboxPath?: string;
   public objectPaths: Map<string, string> = new Map();
   public objectDispatchers: Map<string, any> = new Map();
+  public taskDefinitions: Map<string, any> = new Map();
   private inboxDispatcher?: any;
   private outboxDispatcher?: any;
   private outboxAuthorizePredicate?: any;
@@ -315,6 +316,20 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   setNodeInfoDispatcher(path: string, dispatcher: any): void {
     this.nodeInfoDispatcher = dispatcher;
     this.nodeInfoPath = path;
+  }
+
+  // Note: Parameter and return types are `any` like the other mock methods;
+  // the structural shape follows TaskRegistry.defineTask().
+  defineTask(name: string, options: any): any {
+    if (this.taskDefinitions.has(name)) {
+      throw new TypeError(`Task ${JSON.stringify(name)} is already defined.`);
+    }
+    // Keep the returned handle with the definition: enqueue compares the
+    // handle by identity, as production does, so a same-named handle from
+    // another federation instance is rejected rather than looked up by name.
+    const handle = { name, schema: options.schema };
+    this.taskDefinitions.set(name, { name, ...options, handle });
+    return handle;
   }
 
   // Note: Parameter type is `any` instead of WebFingerLinksDispatcher to avoid
@@ -504,10 +519,11 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     if (options?.queue) {
       this.activeQueues.add(options.queue);
     } else {
-      // If no specific queue, activate all three
+      // If no specific queue, activate all four
       this.activeQueues.add("inbox");
       this.activeQueues.add("outbox");
       this.activeQueues.add("fanout");
+      this.activeQueues.add("task");
     }
   }
 
@@ -953,6 +969,57 @@ class MockContext<TContextData> implements Context<TContextData> {
 
   getSignedKeyOwner(): Promise<any> {
     return Promise.resolve(null);
+  }
+
+  #resolveTaskDefinition(task: any): any {
+    if (!(this.federation instanceof MockFederation)) {
+      throw new TypeError("No task definitions are available.");
+    }
+    const def = this.federation.taskDefinitions.get(task.name);
+    if (def == null || def.handle !== task) {
+      throw new TypeError(
+        `Task ${
+          JSON.stringify(task.name)
+        } is not defined on this federation; ` +
+          "pass a handle returned by its defineTask().",
+      );
+    }
+    return def;
+  }
+
+  // Mirror production: validate against the schema and hand the *validated*
+  // output to the handler.  Without this, the mock would accept payloads
+  // that production rejects at enqueue, and a normalizing schema's output
+  // (defaults, coercions) would differ between tests and production.
+  async #validateTaskPayload(def: any, data: any): Promise<any> {
+    const result = await def.schema["~standard"].validate(data);
+    if (result.issues != null && result.issues.length > 0) {
+      throw new TypeError(
+        `Task data failed schema validation: ${JSON.stringify(result.issues)}`,
+      );
+    }
+    return result.value;
+  }
+
+  // No queue in mock type: the task handler is invoked immediately,
+  // mirroring how processQueuedTask() processes immediately.
+  async enqueueTask(task: any, data: any, _options?: any): Promise<void> {
+    const def = this.#resolveTaskDefinition(task);
+    await def.handler(this, await this.#validateTaskPayload(def, data));
+  }
+
+  async enqueueTaskMany(
+    task: any,
+    payloads: readonly any[],
+    _options?: any,
+  ): Promise<void> {
+    const def = this.#resolveTaskDefinition(task);
+    // Mirror production: the whole batch validates before anything runs, so
+    // a failing payload rejects the batch with no partial processing.
+    const values = await Promise.all(
+      payloads.map((data) => this.#validateTaskPayload(def, data)),
+    );
+    for (const value of values) await def.handler(this, value);
   }
 
   clone(data: TContextData): TestContext<TContextData> {

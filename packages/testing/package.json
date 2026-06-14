@@ -58,6 +58,7 @@
   "devDependencies": {
     "@fedify/fixture": "workspace:^",
     "@js-temporal/polyfill": "catalog:",
+    "@standard-schema/spec": "catalog:",
     "@std/assert": "catalog:",
     "@std/async": "catalog:",
     "tsdown": "catalog:",
