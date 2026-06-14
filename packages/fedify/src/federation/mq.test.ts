@@ -34,6 +34,10 @@ test("InProcessMessageQueue", async (t) => {
     assertFalse(mq.nativeRetrial);
   });
 
+  await t.step("nativeDeduplication property", () => {
+    assertFalse(mq.nativeDeduplication);
+  });
+
   await t.step("getDepth() [empty]", async () => {
     assertEquals(await mq.getDepth(), {
       queued: 0,
@@ -419,6 +423,21 @@ test("MessageQueue.nativeRetrial", async (t) => {
   });
 });
 
+test("ParallelMessageQueue inherits nativeDeduplication", () => {
+  class NativeDeduplicationQueue implements MessageQueue {
+    readonly nativeDeduplication = true;
+    enqueue(): Promise<void> {
+      return Promise.resolve();
+    }
+    listen(): Promise<void> {
+      return Promise.resolve();
+    }
+  }
+
+  const workers = new ParallelMessageQueue(new NativeDeduplicationQueue(), 5);
+  assert(workers.nativeDeduplication);
+});
+
 const queues: Record<string, () => Promise<MessageQueue>> = {
   InProcessMessageQueue: () => Promise.resolve(new InProcessMessageQueue()),
 };
@@ -448,6 +467,10 @@ for (const mqName in queues) {
 
       await t.step("nativeRetrial property inheritance", () => {
         assertEquals(workers.nativeRetrial, mq.nativeRetrial);
+      });
+
+      await t.step("nativeDeduplication property inheritance", () => {
+        assertEquals(workers.nativeDeduplication, mq.nativeDeduplication);
       });
 
       await t.step("getDepth() delegation", async () => {

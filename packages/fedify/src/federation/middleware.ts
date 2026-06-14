@@ -512,6 +512,15 @@ export interface FederationKvPrefixes {
    * @since 2.3.0
    */
   readonly circuitBreaker: KvKey;
+
+  /**
+   * The key prefix used for storing custom background task deduplication
+   * markers.  Kept separate from {@link activityIdempotence} so the two key
+   * spaces never collide.
+   * @default `["_fedify", "taskDeduplication"]`
+   * @since 2.x.x
+   */
+  readonly taskDeduplication: KvKey;
 }
 
 /**
@@ -577,6 +586,8 @@ export class FederationImpl<TContextData>
   inboxRetryPolicy: RetryPolicy;
   taskRetryPolicy: RetryPolicy;
   taskQueueResolution: "fallback" | "strict";
+  taskDeduplicationTtl: Temporal.Duration;
+  taskDeduplicationFallback: "open" | "closed";
   circuitBreaker?: CircuitBreaker;
   activityTransformers: readonly ActivityTransformer<TContextData>[];
   _tracerProvider: TracerProvider | undefined;
@@ -638,6 +649,7 @@ export class FederationImpl<TContextData>
         httpMessageSignaturesSpec: ["_fedify", "httpMessageSignaturesSpec"],
         acceptSignatureNonce: ["_fedify", "acceptSignatureNonce"],
         circuitBreaker: ["_fedify", "circuit"],
+        taskDeduplication: ["_fedify", "taskDeduplication"],
       } satisfies FederationKvPrefixes),
       ...(options.kvPrefixes ?? {}),
     };
@@ -871,6 +883,11 @@ export class FederationImpl<TContextData>
     this.taskRetryPolicy = options.taskRetryPolicy ??
       createExponentialBackoffPolicy();
     this.taskQueueResolution = options.taskQueueResolution ?? "fallback";
+    this.taskDeduplicationTtl = Temporal.Duration.from(
+      options.taskDeduplicationTtl ?? { hours: 1 },
+    );
+    this.taskDeduplicationFallback = options.taskDeduplicationFallback ??
+      "open";
     this.activityTransformers = options.activityTransformers ??
       getDefaultActivityTransformers<TContextData>();
     this._tracerProvider = options.tracerProvider;
@@ -3689,6 +3706,46 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     const delay = options.delay == null
       ? undefined
       : Temporal.Duration.from(options.delay);
+    type DedupPlan =
+      | { kind: "none" }
+      | { kind: "native"; key: string }
+      | { kind: "cas"; key: string; cas: NonNullable<KvStore["cas"]> }
+      | { kind: "open"; key: string };
+    let dedupPlan: DedupPlan = { kind: "none" };
+    if (options.deduplicationKey != null) {
+      const key = options.deduplicationKey;
+      if (queue.nativeDeduplication === true) {
+        if (items.length > 1 && queue.enqueueMany == null) {
+          throw new TypeError(
+            `Task ${
+              JSON.stringify(task.name)
+            } was enqueued as a batch with a deduplicationKey, but its ` +
+              "message queue declares nativeDeduplication without " +
+              "implementing enqueueMany; a per-message key cannot deduplicate " +
+              "a whole batch.  Implement enqueueMany on the queue, or enqueue " +
+              "the tasks individually with enqueueTask().",
+          );
+        }
+        dedupPlan = { kind: "native", key };
+      } else if (this.federation.kv.cas != null) {
+        dedupPlan = {
+          kind: "cas",
+          key,
+          cas: this.federation.kv.cas.bind(this.federation.kv),
+        };
+      } else if (this.federation.taskDeduplicationFallback === "closed") {
+        // No conditional write, closed: fail fast before any side effect.
+        throw new TypeError(
+          "deduplicationKey was set but the message queue does not declare " +
+            "nativeDeduplication and the key-value store exposes no " +
+            'conditional write (cas); set taskDeduplicationFallback to "open" ' +
+            "to proceed without deduplication, or use a backend that " +
+            "supports it.",
+        );
+      } else {
+        dedupPlan = { kind: "open", key };
+      }
+    }
     // Encode in parallel: `enqueueTaskMany` is the bulk path, and the enqueue
     // below already parallelizes, so serial encoding would be the bottleneck.
     // `map` preserves order, and a rejected encode (validation failure) rejects
@@ -3696,16 +3753,44 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     const messages: TaskMessage[] = await Promise.all(
       items.map(this.#encodeTaskMessage(task, options)),
     );
+    let forwardedDeduplicationKey: string | undefined;
+    if (dedupPlan.kind === "native") {
+      forwardedDeduplicationKey = dedupPlan.key;
+    } else if (dedupPlan.kind === "cas") {
+      const cacheKey = [
+        ...this.federation.kvPrefixes.taskDeduplication,
+        dedupPlan.key,
+      ] satisfies KvKey;
+      const won = await dedupPlan.cas(cacheKey, undefined, true, {
+        ttl: this.federation.taskDeduplicationTtl,
+      });
+      if (!won) return;
+    } else if (dedupPlan.kind === "open") {
+      getLogger(["fedify", "federation", "task"]).debug(
+        "deduplicationKey {deduplicationKey} for task {taskName} ignored: " +
+          "the message queue declares no nativeDeduplication and the " +
+          "key-value store has no cas; proceeding (taskDeduplicationFallback " +
+          'is "open").',
+        { deduplicationKey: dedupPlan.key, taskName: task.name },
+      );
+    }
     if (!this.federation.manuallyStartQueue) {
       this.federation._startQueueInternal(this.data);
     }
-    const enqueueOptions = { delay, orderingKey: options.orderingKey };
+    const enqueueOptions = {
+      delay,
+      orderingKey: options.orderingKey,
+      deduplicationKey: forwardedDeduplicationKey,
+    };
     if (messages.length === 1) {
       await queue.enqueue(messages[0], enqueueOptions);
     } else if (queue.enqueueMany != null) {
       await queue.enqueueMany(messages, enqueueOptions);
     } else {
-      await Promise.all(messages.map((m) => queue.enqueue(m, enqueueOptions)));
+      const fanoutOptions = { delay, orderingKey: options.orderingKey };
+      await Promise.all(
+        messages.map((m) => queue.enqueue(m, fanoutOptions)),
+      );
     }
   }
 

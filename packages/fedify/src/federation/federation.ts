@@ -1104,6 +1104,32 @@ export interface FederationOptions<TContextData> {
   taskQueueResolution?: "fallback" | "strict";
 
   /**
+   * The time-to-live for a {@link TaskEnqueueOptions.deduplicationKey} marker
+   * stored in the key–value deduplication fallback.  A second enqueue with the
+   * same key within this window is skipped; once it expires, the key may
+   * enqueue again.  Ignored when the task's queue declares
+   * {@link MessageQueue.nativeDeduplication} (the backend owns the window).
+   * @default `{ hours: 1 }`
+   * @since 2.x.x
+   */
+  taskDeduplicationTtl?: Temporal.DurationLike;
+
+  /**
+   * The behavior when a {@link TaskEnqueueOptions.deduplicationKey} is supplied
+   * but the task's queue does not declare
+   * {@link MessageQueue.nativeDeduplication} *and* the configured
+   * {@link KvStore} exposes no `cas` (compare-and-swap) primitive:
+   *
+   * - `"open"` (the default): proceeds without deduplication after logging at
+   *   debug level.
+   * - `"closed"`: rejects with a `TypeError` before enqueuing.
+   *
+   * @default `"open"`
+   * @since 2.x.x
+   */
+  taskDeduplicationFallback?: "open" | "closed";
+
+  /**
    * Activity transformers that are applied to outgoing activities.  It is
    * useful for adjusting outgoing activities to satisfy some ActivityPub
    * implementations.
