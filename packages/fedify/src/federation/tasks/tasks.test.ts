@@ -1,6 +1,5 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
 import { Note } from "@fedify/vocab";
-import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { delay } from "es-toolkit";
 import {
   deepStrictEqual,
@@ -14,92 +13,19 @@ import type { Context } from "../context.ts";
 import type { Federatable, FederationOptions } from "../federation.ts";
 import { MemoryKvStore } from "../kv.ts";
 import { createFederation, type FederationImpl } from "../middleware.ts";
-import {
-  InProcessMessageQueue,
-  type MessageQueue,
-  type MessageQueueEnqueueOptions,
-  type MessageQueueListenOptions,
-} from "../mq.ts";
+import { InProcessMessageQueue } from "../mq.ts";
 import type { TaskMessage } from "../queue.ts";
 import TaskCodec from "./codec.ts";
 import type { TaskDefinition, TaskRegistry } from "./task.ts";
+import {
+  type Envelope,
+  envelopeSchema,
+  MockQueue,
+  numberSchema,
+  stringSchema,
+} from "../../testing/mod.ts";
 
 type Assert<T extends true> = T;
-
-const makeSchema = <T>(
-  check: (data: unknown) => data is T,
-): StandardSchemaV1<unknown, T> => ({
-  "~standard": {
-    version: 1,
-    vendor: "fedify-test",
-    validate: (value: unknown) =>
-      check(value)
-        ? { value }
-        : { issues: [{ message: "Invalid task data." }] },
-  },
-});
-
-interface Envelope {
-  note: Note;
-  title: string;
-}
-
-const envelopeSchema = makeSchema(
-  (data): data is Envelope =>
-    typeof data === "object" && data != null &&
-    (data as Envelope).note instanceof Note &&
-    typeof (data as Envelope).title === "string",
-);
-
-const stringSchema = makeSchema((d): d is string => typeof d === "string");
-const numberSchema = makeSchema((d): d is number => typeof d === "number");
-
-class MockQueue implements MessageQueue {
-  readonly nativeRetrial: boolean;
-  readonly enqueued: {
-    message: TaskMessage;
-    options?: MessageQueueEnqueueOptions;
-  }[] = [];
-  readonly enqueuedMany: {
-    messages: readonly TaskMessage[];
-    options?: MessageQueueEnqueueOptions;
-  }[] = [];
-  listenCount = 0;
-  enqueueMany?: (
-    messages: readonly TaskMessage[],
-    options?: MessageQueueEnqueueOptions,
-  ) => Promise<void>;
-
-  constructor(
-    options: { nativeRetrial?: boolean; supportsEnqueueMany?: boolean } = {},
-  ) {
-    this.nativeRetrial = options.nativeRetrial ?? false;
-    if (options.supportsEnqueueMany) {
-      this.enqueueMany = (messages, opts) => {
-        this.enqueuedMany.push({ messages, options: opts });
-        return Promise.resolve();
-      };
-    }
-  }
-
-  enqueue(
-    message: TaskMessage,
-    options?: MessageQueueEnqueueOptions,
-  ): Promise<void> {
-    this.enqueued.push({ message, options });
-    return Promise.resolve();
-  }
-
-  listen(
-    _handler: (message: TaskMessage) => Promise<void> | void,
-    options?: MessageQueueListenOptions,
-  ): Promise<void> {
-    this.listenCount++;
-    return new Promise((resolve) => {
-      options?.signal?.addEventListener("abort", () => resolve());
-    });
-  }
-}
 
 const baseOptions: Omit<FederationOptions<void>, "queue"> = {
   kv: new MemoryKvStore(),
