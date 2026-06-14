@@ -159,6 +159,22 @@ export interface TaskEnqueueOptions {
    * processed sequentially (one at a time).
    */
   readonly orderingKey?: string;
+
+  /**
+   * An optional key requesting at-most-once enqueue for tasks that share it.
+   *
+   * A queue with {@link MessageQueue.nativeDeduplication} `true` enforces it
+   * strictly; otherwise deduplication is best-effort via {@link KvStore.cas},
+   * and {@link FederationOptions.taskDeduplicationFallback} decides whether a
+   * missing `cas` proceeds without deduplication or throws.
+   *
+   * For {@link Context.enqueueTaskMany}, one key governs the whole batch; a
+   * native queue must implement {@link MessageQueue.enqueueMany} for a
+   * multi-item batch, or the call throws a `TypeError`.
+   *
+   * @since 2.x.x
+   */
+  readonly deduplicationKey?: string;
 }
 
 /**

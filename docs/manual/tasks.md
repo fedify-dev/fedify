@@ -139,6 +139,10 @@ Both methods accept options:
 :   Tasks with the same ordering key are processed sequentially (one at
     a time), like the same option on the message queue layer.
 
+`deduplicationKey`
+:   Requests at-most-once enqueue for tasks that share the key; see
+    [Deduplication](#deduplication) below.
+
 ~~~~ typescript
 await ctx.enqueueTask(sendDigest, payload, {
   delay: { minutes: 30 },
@@ -257,12 +261,84 @@ delivered it.
 > queue and set `taskQueueResolution: "strict"`.
 
 
+Deduplication
+-------------
+
+A task often needs *at-most-once-per-key* enqueue: a digest mailer must not
+send twice when a request is retried, and a cleanup job should coalesce
+duplicate triggers.  Passing a `deduplicationKey` requests this—a second
+enqueue with the same key is dropped while the first is still within the
+deduplication window:
+
+~~~~ typescript
+await ctx.enqueueTask(sendDigest, payload, {
+  deduplicationKey: `digest:${payload.userId}`,  // [!code highlight]
+});
+~~~~
+
+How the key is resolved depends on the queue and the key–value store:
+
+1.  **Native backend.**  When the task's queue declares
+    `~MessageQueue.nativeDeduplication`, Fedify forwards the key in the
+    message queue's `~MessageQueueEnqueueOptions.deduplicationKey` and the
+    backend owns the check.  Fedify does not touch the key–value store.
+
+2.  **Key–value fallback.**  Otherwise, if the configured `~KvStore` exposes
+    the optional compare-and-swap (`~KvStore.cas`) primitive, Fedify records
+    the key under a dedicated `taskDeduplication` prefix with a TTL and skips
+    the enqueue while a marker is present.  The TTL defaults to one hour and is
+    configurable with `~FederationOptions.taskDeduplicationTtl`:
+
+    ~~~~ typescript
+    const federation = createFederation<void>({
+      // ...
+      taskDeduplicationTtl: { minutes: 10 },  // [!code highlight]
+    });
+    ~~~~
+
+3.  **No conditional write.**  When neither applies—no native deduplication and
+    a key–value store without `~KvStore.cas`—the behavior is governed by
+    `~FederationOptions.taskDeduplicationFallback`.  `"open"` (the default)
+    lets the enqueue proceed without deduplication after a debug-level log;
+    `"closed"` throws a `TypeError` before enqueuing:
+
+    ~~~~ typescript
+    const federation = createFederation<void>({
+      // ...
+      taskDeduplicationFallback: "closed",  // [!code highlight]
+    });
+    ~~~~
+
+Among the first-party adapters, the in-memory, Deno KV, SQLite, and MySQL
+key–value stores implement `~KvStore.cas`; PostgreSQL and Redis do not yet, so
+those deployments take the `taskDeduplicationFallback` branch until per-adapter
+follow-ups add it.
+
+For `~Context.enqueueTaskMany()`, a single `deduplicationKey` applies to the
+whole batch: the batch enqueues as a unit or is skipped as a unit, never
+partially.  Per-item deduplication means calling `~Context.enqueueTask()` in
+a loop, each with its own key.  A queue that declares
+`~MessageQueue.nativeDeduplication` must also implement
+`~MessageQueue.enqueueMany()` to carry a multi-item batch's key as one unit;
+fanning the key out across separate `~MessageQueue.enqueue()` calls cannot drop
+a whole batch, so Fedify rejects that combination instead of silently leaking
+duplicates.
+
+> [!WARNING]
+> The key–value fallback is **best-effort, not transactional**.  The marker
+> write and the enqueue are separate operations, so a crash between them, the
+> `"open"` fallback under concurrency, a non-atomic third-party `~KvStore.cas`,
+> or reuse of a key within its TTL window can still admit a duplicate or
+> suppress a task.  Cleanup is by TTL expiry, not active deletion on handler
+> success.  Deployments needing strict guarantees use a queue with
+> `nativeDeduplication: true`, where the backend owns an atomic check.
+
+
 Limitations
 -----------
 
-The current API intentionally ships without deduplication, task-specific
-OpenTelemetry spans and metrics, cron-style periodic scheduling, result
-backends, and per-task priority.  Some of these are planned as follow-ups;
-see the [tracking issue].
+The current API intentionally ships without task-specific OpenTelemetry spans
+and metrics, cron-style periodic scheduling, result backends, and per-task
+priority.  Some of these are planned as follow-ups; see the [tracking issue].
 
 [tracking issue]: https://github.com/fedify-dev/fedify/issues/206
