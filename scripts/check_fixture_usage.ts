@@ -10,6 +10,7 @@
  * Reviewers must NOT treat a passing run as proof of safety; code
  * review and the published package contents remain the source of truth.
  */
+import { expandGlobSync } from "@std/fs/expand-glob";
 import { walk } from "@std/fs/walk";
 import {
   dirname,
@@ -20,6 +21,15 @@ import {
   SEPARATOR,
 } from "@std/path";
 
+const projectRoot = resolve(dirname(fromFileUrl(import.meta.url)), "..");
+const packagesDir = resolve(projectRoot, "packages");
+
+const expandGlobPattern = (pattern: string) =>
+  Array.from(
+    expandGlobSync(pattern, { root: projectRoot, includeDirs: false }),
+    (file) => relative(projectRoot, file.path),
+  );
+
 /**
  * Files exempt from the "@fedify/fixture imports must live in *.test.ts"
  * rule.  Every entry MUST be accompanied by an inline comment explaining
@@ -27,23 +37,13 @@ import {
  * necessary or not.
  */
 const ALLOWLIST: readonly string[] = [
-  // cfworkers test harness re-exports `mockDocumentLoader`; bundled in via
-  // tsdown `noExternal` so consumers never resolve `@fedify/fixture` at
-  // runtime.
-  "packages/fedify/src/testing/context.ts",
-  // cfworkers test harness re-exports `testDefinitions`; bundled in via
-  // tsdown `noExternal` so consumers never resolve `@fedify/fixture` at
-  // runtime.
-  "packages/fedify/src/testing/mod.ts",
-  // Test utils for custom tasks
-  "packages/fedify/src/testing/tasks.ts",
+  // Utils for tests.
+  "packages/fedify/src/testing/*",
   // JSDoc `@example` block mentions `import { test } from "@fedify/fixture"`
   // as documentation; not a real runtime import.
   "packages/testing/src/mq-tester.ts",
-].map((path) => join(...path.split("/") as [string, ...string[]]));
-
-const projectRoot = resolve(dirname(fromFileUrl(import.meta.url)), "..");
-const packagesDir = resolve(projectRoot, "packages");
+].map((path) => join(...path.split("/") as [string, ...string[]]))
+  .flatMap((path) => path.includes("*") ? expandGlobPattern(path) : path);
 
 /**
  * Statement-level pattern for any `import` or `export ... from`

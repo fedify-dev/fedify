@@ -168,6 +168,7 @@ import {
   type SenderKeyPair,
 } from "./send.ts";
 import {
+  enqueueTasks,
   TaskCodec,
   type TaskDefinition,
   type TaskEnqueueOptions,
@@ -3123,6 +3124,10 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     return this.#codec ??= new TaskCodec(this);
   }
 
+  get #enqueueTasks(): ReturnType<typeof enqueueTasks> {
+    return enqueueTasks(this) as ReturnType<typeof enqueueTasks>;
+  }
+
   clone(data: TContextData): Context<TContextData> {
     return new ContextImpl<TContextData>({
       url: this.url,
@@ -3674,146 +3679,6 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   ): Promise<void> {
     await this.#enqueueTasks(task, payloads, options);
   }
-
-  async #enqueueTasks<TData>(
-    task: TaskDefinition<TContextData, TData>,
-    items: readonly TData[],
-    options: TaskEnqueueOptions,
-  ): Promise<void> {
-    // Fail fast on a handle from another federation instance; without this
-    // check the message would enqueue fine and be dropped by the worker.
-    // Compare the registered handle by identity, not just the name: another
-    // instance may define the same task name with a different schema, and
-    // its handle would otherwise encode under that foreign schema here
-    // while the worker decodes under the local one.
-    const def = this.federation.taskDefinitions.get(task.name);
-    if (def == null || def.handle !== task) {
-      throw new TypeError(
-        `Task ${
-          JSON.stringify(task.name)
-        } is not defined on this federation; ` +
-          "pass a handle returned by its defineTask().",
-      );
-    }
-    const queue = this.federation.resolveTaskQueue(task.name);
-    if (queue == null) {
-      throw new TypeError(
-        "No message queue is configured for tasks; pass `queue` to " +
-          "createFederation() or to defineTask().",
-      );
-    }
-    if (items.length < 1) return;
-    const delay = options.delay == null
-      ? undefined
-      : Temporal.Duration.from(options.delay);
-    type DedupPlan =
-      | { kind: "none" }
-      | { kind: "native"; key: string }
-      | { kind: "cas"; key: string; cas: NonNullable<KvStore["cas"]> }
-      | { kind: "open"; key: string };
-    let dedupPlan: DedupPlan = { kind: "none" };
-    if (options.deduplicationKey != null) {
-      const key = options.deduplicationKey;
-      if (queue.nativeDeduplication === true) {
-        if (items.length > 1 && queue.enqueueMany == null) {
-          throw new TypeError(
-            `Task ${
-              JSON.stringify(task.name)
-            } was enqueued as a batch with a deduplicationKey, but its ` +
-              "message queue declares nativeDeduplication without " +
-              "implementing enqueueMany; a per-message key cannot deduplicate " +
-              "a whole batch.  Implement enqueueMany on the queue, or enqueue " +
-              "the tasks individually with enqueueTask().",
-          );
-        }
-        dedupPlan = { kind: "native", key };
-      } else if (this.federation.kv.cas != null) {
-        dedupPlan = {
-          kind: "cas",
-          key,
-          cas: this.federation.kv.cas.bind(this.federation.kv),
-        };
-      } else if (this.federation.taskDeduplicationFallback === "closed") {
-        // No conditional write, closed: fail fast before any side effect.
-        throw new TypeError(
-          "deduplicationKey was set but the message queue does not declare " +
-            "nativeDeduplication and the key-value store exposes no " +
-            'conditional write (cas); set taskDeduplicationFallback to "open" ' +
-            "to proceed without deduplication, or use a backend that " +
-            "supports it.",
-        );
-      } else {
-        dedupPlan = { kind: "open", key };
-      }
-    }
-    // Encode in parallel: `enqueueTaskMany` is the bulk path, and the enqueue
-    // below already parallelizes, so serial encoding would be the bottleneck.
-    // `map` preserves order, and a rejected encode (validation failure) rejects
-    // the whole batch before anything is enqueued, keeping fail-fast intact.
-    const messages: TaskMessage[] = await Promise.all(
-      items.map(this.#encodeTaskMessage(task, options)),
-    );
-    let forwardedDeduplicationKey: string | undefined;
-    if (dedupPlan.kind === "native") {
-      forwardedDeduplicationKey = dedupPlan.key;
-    } else if (dedupPlan.kind === "cas") {
-      const cacheKey = [
-        ...this.federation.kvPrefixes.taskDeduplication,
-        dedupPlan.key,
-      ] satisfies KvKey;
-      const won = await dedupPlan.cas(cacheKey, undefined, true, {
-        ttl: this.federation.taskDeduplicationTtl,
-      });
-      if (!won) return;
-    } else if (dedupPlan.kind === "open") {
-      getLogger(["fedify", "federation", "task"]).debug(
-        "deduplicationKey {deduplicationKey} for task {taskName} ignored: " +
-          "the message queue declares no nativeDeduplication and the " +
-          "key-value store has no cas; proceeding (taskDeduplicationFallback " +
-          'is "open").',
-        { deduplicationKey: dedupPlan.key, taskName: task.name },
-      );
-    }
-    if (!this.federation.manuallyStartQueue) {
-      this.federation._startQueueInternal(this.data);
-    }
-    const enqueueOptions = {
-      delay,
-      orderingKey: options.orderingKey,
-      deduplicationKey: forwardedDeduplicationKey,
-    };
-    if (messages.length === 1) {
-      await queue.enqueue(messages[0], enqueueOptions);
-    } else if (queue.enqueueMany != null) {
-      await queue.enqueueMany(messages, enqueueOptions);
-    } else {
-      const fanoutOptions = { delay, orderingKey: options.orderingKey };
-      await Promise.all(
-        messages.map((m) => queue.enqueue(m, fanoutOptions)),
-      );
-    }
-  }
-
-  #encodeTaskMessage = <TData>(
-    task: TaskDefinition<TContextData, TData>,
-    options: TaskEnqueueOptions,
-  ) =>
-  async (data: TData): Promise<TaskMessage> => {
-    const encoded = await this.codec.encode(task.schema, data);
-    const carrier: Record<string, string> = {};
-    propagation.inject(context.active(), carrier);
-    return {
-      type: "task",
-      id: crypto.randomUUID(),
-      baseUrl: this.origin,
-      taskName: task.name,
-      data: encoded,
-      started: Temporal.Now.instant().toString(),
-      attempt: 0,
-      orderingKey: options.orderingKey,
-      traceContext: carrier,
-    };
-  };
 
   sendActivity(
     sender:

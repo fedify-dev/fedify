@@ -7,6 +7,7 @@
  * @module
  */
 export { default as TaskCodec } from "./codec.ts";
+export { default as enqueueTasks } from "./enqueue.ts";
 export type {
   TaskDefinition,
   TaskDefinitionInternal,
