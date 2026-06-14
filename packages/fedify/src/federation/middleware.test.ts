@@ -5,9 +5,23 @@ import {
   test,
 } from "@fedify/fixture";
 import { RouterError } from "@fedify/uri-template";
-import { configure, type LogRecord, reset } from "@logtape/logtape";
 import * as vocab from "@fedify/vocab";
-import { Create, getTypeId, lookupObject, Offer, Person } from "@fedify/vocab";
+import {
+  Create,
+  getTypeId,
+  lookupObject,
+  Note,
+  Offer,
+  Person,
+} from "@fedify/vocab";
+import { FetchError, getDocumentLoader } from "@fedify/vocab-runtime";
+import { configure, type LogRecord, reset } from "@logtape/logtape";
+import { metrics, SpanStatusCode } from "@opentelemetry/api";
+import {
+  DataPointType,
+  MeterProvider,
+  MetricReader,
+} from "@opentelemetry/sdk-metrics";
 import {
   assert,
   assertEquals,
@@ -21,6 +35,7 @@ import {
 } from "@std/assert";
 import fetchMock from "fetch-mock";
 import serialize from "json-canon";
+import { deepStrictEqual, ok, rejects, strictEqual } from "node:assert/strict";
 import createFixture from "../../../fixture/src/fixtures/example.com/create.json" with {
   type: "json",
 };
@@ -49,20 +64,12 @@ import {
   rsaPublicKey2,
   rsaPublicKey3,
 } from "../testing/keys.ts";
-import { FetchError, getDocumentLoader } from "@fedify/vocab-runtime";
-import { metrics, SpanStatusCode } from "@opentelemetry/api";
-import {
-  DataPointType,
-  MeterProvider,
-  MetricReader,
-} from "@opentelemetry/sdk-metrics";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
-import { CircuitBreaker } from "./circuit-breaker.ts";
 import { handleBenchmarkTrigger } from "./bench.ts";
-
-const documentLoader = getDocumentLoader();
+import { CircuitBreaker } from "./circuit-breaker.ts";
 import type { Context, GetActorOptions } from "./context.ts";
 import { MemoryKvStore } from "./kv.ts";
+import { recordInboxActivity } from "./metrics.ts";
 import {
   ContextImpl,
   createFederation,
@@ -70,9 +77,26 @@ import {
   InboxContextImpl,
   KvSpecDeterminer,
 } from "./middleware.ts";
-import { recordInboxActivity } from "./metrics.ts";
-import type { MessageQueue } from "./mq.ts";
-import type { InboxMessage, Message, OutboxMessage } from "./queue.ts";
+import type {
+  MessageQueue,
+  MessageQueueEnqueueOptions,
+  MessageQueueListenOptions,
+} from "./mq.ts";
+import type {
+  InboxMessage,
+  Message,
+  OutboxMessage,
+  TaskMessage,
+} from "./queue.ts";
+import TaskCodec from "./tasks/codec.ts";
+import {
+  type Envelope,
+  envelopeSchema,
+  MockQueue,
+  numberSchema,
+} from "../testing/mod.ts";
+
+const documentLoader = getDocumentLoader();
 
 type IsEqual<A, B> = (<T>() => T extends A ? 1 : 2) extends
   (<T>() => T extends B ? 1 : 2) ? true : false;
@@ -10479,4 +10503,236 @@ test("createFederation() omits instrumentation when no meterProvider is set", ()
   );
   assertStrictEquals(ctx.documentLoader, mockDocumentLoader);
   assertStrictEquals(ctx.contextLoader, mockDocumentLoader);
+});
+
+const taskCodec = new TaskCodec({ contextLoader: mockDocumentLoader });
+const decodeEnvelope = (message: TaskMessage): Promise<Envelope> =>
+  taskCodec.decode(envelopeSchema, message.data);
+const envelope = (title: string): Envelope => ({
+  note: new Note({ content: title }),
+  title,
+});
+
+class RendezvousQueue implements MessageQueue {
+  readonly enqueued: {
+    message: TaskMessage;
+    options?: MessageQueueEnqueueOptions;
+  }[] = [];
+  #count = 0;
+  #markDispatched!: () => void;
+  #openGate!: () => void;
+  readonly dispatched: Promise<void>;
+  readonly #gate: Promise<void>;
+
+  constructor(readonly expected: number) {
+    this.dispatched = new Promise<void>((resolve) => {
+      this.#markDispatched = resolve;
+    });
+    this.#gate = new Promise<void>((resolve) => {
+      this.#openGate = resolve;
+    });
+  }
+
+  release(): void {
+    this.#openGate();
+  }
+
+  // deno-lint-ignore no-explicit-any
+  enqueue(message: any, options?: MessageQueueEnqueueOptions): Promise<void> {
+    this.enqueued.push({ message, options });
+    if (++this.#count >= this.expected) this.#markDispatched();
+    return this.#gate;
+  }
+
+  listen(
+    // deno-lint-ignore no-explicit-any
+    _handler: (message: any) => Promise<void> | void,
+    _options?: MessageQueueListenOptions,
+  ): Promise<void> {
+    return new Promise<never>(() => {});
+  }
+}
+
+const withTimeout = <T>(
+  promise: Promise<T>,
+  ms: number,
+  message: string,
+): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+};
+
+const taskFederationOptions = {
+  kv: new MemoryKvStore(),
+  documentLoaderFactory: () => mockDocumentLoader,
+  contextLoaderFactory: () => mockDocumentLoader,
+  manuallyStartQueue: true,
+};
+
+test("ContextImpl.enqueueTask()", async (t) => {
+  await t.step(
+    "builds the task message envelope and round-trips a vocab payload",
+    async () => {
+      const queue = new MockQueue({ supportsEnqueueMany: true });
+      const federation = createFederation<void>({
+        ...taskFederationOptions,
+        queue: { task: queue },
+      });
+      const task = federation.defineTask("greet", {
+        schema: envelopeSchema,
+        handler: () => {},
+      });
+      const ctx = federation.createContext(
+        new URL("https://example.com/"),
+        undefined,
+      );
+      ok(ctx instanceof ContextImpl);
+      await ctx.enqueueTask(task, envelope("greeting"));
+      strictEqual(queue.enqueuedMany.length, 0);
+      strictEqual(queue.enqueued.length, 1);
+      const { message } = queue.enqueued[0];
+      strictEqual(message.type, "task");
+      strictEqual(message.taskName, "greet");
+      strictEqual(message.baseUrl, "https://example.com");
+      strictEqual(message.attempt, 0);
+      ok(/^[0-9a-f-]{36}$/i.test(message.id));
+      // `started` must be a parseable instant; Temporal.Instant.from throws
+      // otherwise.
+      ok(Temporal.Instant.from(message.started) instanceof Temporal.Instant);
+      strictEqual(typeof message.traceContext, "object");
+      ok(message.traceContext != null);
+      // A vocab object must survive the producer-side encode as JSON-LD.
+      const decoded = await decodeEnvelope(message);
+      ok(decoded.note instanceof Note);
+      strictEqual(decoded.note.content?.toString(), "greeting");
+      strictEqual(decoded.title, "greeting");
+    },
+  );
+});
+
+test("ContextImpl.enqueueTaskMany()", async (t) => {
+  await t.step(
+    "round-trips every payload through enqueueMany in order, forwarding options",
+    async () => {
+      const queue = new MockQueue({ supportsEnqueueMany: true });
+      const federation = createFederation<void>({
+        ...taskFederationOptions,
+        queue: { task: queue },
+      });
+      const task = federation.defineTask("bulk", {
+        schema: envelopeSchema,
+        handler: () => {},
+      });
+      const ctx = federation.createContext(
+        new URL("https://example.com/"),
+        undefined,
+      );
+      const payloads = [envelope("a"), envelope("b"), envelope("c")];
+      await ctx.enqueueTaskMany(task, payloads, {
+        delay: { seconds: 30 },
+        orderingKey: "batch",
+      });
+      strictEqual(queue.enqueued.length, 0);
+      strictEqual(queue.enqueuedMany.length, 1);
+      const { messages, options } = queue.enqueuedMany[0];
+      ok(options?.delay instanceof Temporal.Duration);
+      strictEqual(options.delay.total("second"), 30);
+      strictEqual(options.orderingKey, "batch");
+      const decoded = await Promise.all(messages.map(decodeEnvelope));
+      deepStrictEqual(decoded.map((d) => d.title), ["a", "b", "c"]);
+      for (const message of messages) strictEqual(message.orderingKey, "batch");
+    },
+  );
+
+  await t.step(
+    "with a single payload uses enqueue() instead of enqueueMany",
+    async () => {
+      const queue = new MockQueue({ supportsEnqueueMany: true });
+      const federation = createFederation<void>({
+        ...taskFederationOptions,
+        queue: { task: queue },
+      });
+      const task = federation.defineTask("bulk-single", {
+        schema: envelopeSchema,
+        handler: () => {},
+      });
+      const ctx = federation.createContext(
+        new URL("https://example.com/"),
+        undefined,
+      );
+      await ctx.enqueueTaskMany(task, [envelope("solo")]);
+      strictEqual(queue.enqueuedMany.length, 0);
+      strictEqual(queue.enqueued.length, 1);
+    },
+  );
+
+  await t.step(
+    "falls back to concurrent single enqueues, preserving order and options",
+    async () => {
+      const queue = new RendezvousQueue(2);
+      const federation = createFederation<void>({
+        ...taskFederationOptions,
+        queue: { task: queue },
+      });
+      const task = federation.defineTask("bulk-fallback", {
+        schema: envelopeSchema,
+        handler: () => {},
+      });
+      const ctx = federation.createContext(
+        new URL("https://example.com/"),
+        undefined,
+      );
+      const payloads = [envelope("x"), envelope("y")];
+      const pending = ctx.enqueueTaskMany(task, payloads, {
+        orderingKey: "batch",
+      });
+      try {
+        await withTimeout(
+          queue.dispatched,
+          2000,
+          "fallback did not dispatch enqueues concurrently",
+        );
+        strictEqual(queue.enqueued.length, 2);
+      } finally {
+        queue.release();
+        await pending;
+      }
+      const decoded = await Promise.all(
+        queue.enqueued.map(({ message }) => decodeEnvelope(message)),
+      );
+      deepStrictEqual(decoded.map((d) => d.title), ["x", "y"]);
+      for (const { message, options } of queue.enqueued) {
+        strictEqual(message.orderingKey, "batch");
+        strictEqual(options?.orderingKey, "batch");
+      }
+    },
+  );
+
+  await t.step(
+    "fallback path aborts the whole batch when one payload is invalid",
+    async () => {
+      const queue = new MockQueue();
+      const federation = createFederation<void>({
+        ...taskFederationOptions,
+        queue: { task: queue },
+      });
+      const task = federation.defineTask("bulk-typed", {
+        schema: numberSchema,
+        handler: () => {},
+      });
+      const ctx = federation.createContext(
+        new URL("https://example.com/"),
+        undefined,
+      );
+      await rejects(
+        // deno-lint-ignore no-explicit-any
+        () => ctx.enqueueTaskMany(task, [1, "two", 3] as any),
+        { name: "TypeError", message: /Task data failed schema validation/ },
+      );
+      strictEqual(queue.enqueued.length, 0);
+    },
+  );
 });

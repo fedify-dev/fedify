@@ -35,6 +35,8 @@ const ALLOWLIST: readonly string[] = [
   // tsdown `noExternal` so consumers never resolve `@fedify/fixture` at
   // runtime.
   "packages/fedify/src/testing/mod.ts",
+  // Test utils for custom tasks
+  "packages/fedify/src/testing/tasks.ts",
   // JSDoc `@example` block mentions `import { test } from "@fedify/fixture"`
   // as documentation; not a real runtime import.
   "packages/testing/src/mq-tester.ts",
