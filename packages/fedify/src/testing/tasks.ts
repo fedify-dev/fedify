@@ -1,11 +1,33 @@
+/**
+ * Test-only utilities shared by the task suites the schema factory and stock
+ * schemas, the base federation options, and the recording {@link MockQueue}.
+ *
+ * These helpers live beside the suites that use them rather than in a shared
+ * package because {@link MockQueue} needs the package-internal
+ * {@link TaskMessage} type, and *deno.json*'s `publish.exclude` keeps this
+ * module out of the published sources.
+ *
+ * @module
+ */
+import { mockDocumentLoader } from "@fedify/fixture";
 import { Note } from "@fedify/vocab";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
+import type { FederationOptions } from "../federation/federation.ts";
+import { MemoryKvStore } from "../federation/kv.ts";
 import type {
   MessageQueue,
   MessageQueueEnqueueOptions,
   MessageQueueListenOptions,
 } from "../federation/mq.ts";
 import type { TaskMessage } from "../federation/queue.ts";
+
+/** Federation options (sans `queue`) shared by the task suites. */
+export const baseOptions: Omit<FederationOptions<void>, "queue"> = {
+  kv: new MemoryKvStore(),
+  documentLoaderFactory: () => mockDocumentLoader,
+  contextLoaderFactory: () => mockDocumentLoader,
+  manuallyStartQueue: true,
+};
 
 /**
  * Builds a minimal [Standard Schema](https://standardschema.dev/) from a type
@@ -45,19 +67,30 @@ export const envelopeSchema = makeSchema(
     typeof (data as Envelope).title === "string",
 );
 
-/** Options for {@link MockQueue}. */
+/**
+ * Options for the {@link MockQueue} constructor.
+ */
 export interface MockQueueOptions {
+  /** Sets {@link MessageQueue.nativeRetrial}.  Defaults to `false`. */
   readonly nativeRetrial?: boolean;
+  /** Sets {@link MessageQueue.nativeDeduplication}.  Defaults to `false`. */
+  readonly nativeDeduplication?: boolean;
+  /**
+   * When `true`, the queue exposes {@link MockQueue.enqueueMany} and records
+   * bulk enqueues; when omitted, the method is absent so callers exercise the
+   * per-message fan-out path.
+   */
   readonly supportsEnqueueMany?: boolean;
 }
 
 /**
- * A {@link MessageQueue} that records what it was asked to enqueue and resolves
- * its `listen()` when the abort signal fires, so tests can inspect dispatch
- * without a real backend.
+ * An in-memory {@link MessageQueue} that records task enqueues for assertions
+ * instead of delivering anything.  Its {@link listen} resolves only when the
+ * abort signal fires.
  */
 export class MockQueue implements MessageQueue {
   readonly nativeRetrial: boolean;
+  readonly nativeDeduplication: boolean;
   readonly enqueued: {
     message: TaskMessage;
     options?: MessageQueueEnqueueOptions;
@@ -74,6 +107,7 @@ export class MockQueue implements MessageQueue {
 
   constructor(options: MockQueueOptions = {}) {
     this.nativeRetrial = options.nativeRetrial ?? false;
+    this.nativeDeduplication = options.nativeDeduplication ?? false;
     if (options.supportsEnqueueMany) {
       this.enqueueMany = (messages, opts) => {
         this.enqueuedMany.push({ messages, options: opts });
@@ -82,15 +116,16 @@ export class MockQueue implements MessageQueue {
     }
   }
 
-  // deno-lint-ignore no-explicit-any
-  enqueue(message: any, options?: MessageQueueEnqueueOptions): Promise<void> {
+  enqueue(
+    message: TaskMessage,
+    options?: MessageQueueEnqueueOptions,
+  ): Promise<void> {
     this.enqueued.push({ message, options });
     return Promise.resolve();
   }
 
   listen(
-    // deno-lint-ignore no-explicit-any
-    _handler: (message: any) => Promise<void> | void,
+    _handler: (message: TaskMessage) => Promise<void> | void,
     options?: MessageQueueListenOptions,
   ): Promise<void> {
     this.listenCount++;
