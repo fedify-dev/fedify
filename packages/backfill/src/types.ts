@@ -68,7 +68,7 @@ export interface BackfillContext {
 }
 
 /**
- * Controls direct context collection backfill traversal.
+ * Controls backfill traversal.
  *
  * @since 2.x.0
  */
@@ -77,6 +77,10 @@ export interface BackfillOptions<
 > {
   /**
    * Backfill strategies to run.
+   *
+   * Strategies run in order and share request, item, abort, and deduplication
+   * state.  If multiple strategies discover the same object ID, the first
+   * strategy keeps its {@link BackfillItem} metadata.
    *
    * Defaults to `["context-auto"]`.
    * If `"context-auto"` is included, it absorbs other context collection
@@ -104,8 +108,8 @@ export interface BackfillOptions<
    * Maximum number of calls to {@link BackfillContext.documentLoader}.
    *
    * Dereferencing the note context, collection item IRIs, reply target IRIs,
-   * replies collection IRIs, and future page IRIs all count as requests.
-   * Embedded objects and collections do not count.
+   * replies collection IRIs, and future page IRIs all count as requests across
+   * all strategies.  Embedded objects and collections do not count.
    */
   readonly maxRequests?: number;
 

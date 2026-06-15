@@ -13,7 +13,9 @@ This package provides ActivityPub conversation backfill support for the
 [Fedify] ecosystem.  It can retrieve post-like objects from a seed object's
 context collection, following the direct FEP-f228-style path where the
 context dereferences to a `Collection`, `OrderedCollection`, `CollectionPage`,
-or `OrderedCollectionPage`.
+or `OrderedCollectionPage`.  It can also use an opt-in reply-tree strategy to
+walk `inReplyTo` ancestors and `replies` descendants when context collections
+are unavailable or incomplete.
 
 [JSR badge]: https://jsr.io/badges/@fedify/backfill
 [JSR]: https://jsr.io/@fedify/backfill
@@ -62,6 +64,10 @@ for await (
 The seed object itself is not yielded.  If it appears in the discovered
 collection, it is skipped by ID.
 
+Configured strategies run in order.  They share `maxItems`, `maxRequests`,
+abort state, and object ID deduplication; if two strategies discover the same
+object, the first strategy keeps its `BackfillItem` metadata.
+
 By default, `backfill()` uses the `context-auto` strategy.  In this mode,
 collection items are treated as backfillable objects by default.  If an item is
 recognized as a supported `Create` activity, `backfill()` extracts the
@@ -99,4 +105,5 @@ for await (
 
 The `reply-tree` strategy walks `inReplyTo` ancestors and `replies`
 descendants.  It yields discovered post-like objects only; it does not extract
-objects from Activity wrappers.
+objects from Activity wrappers.  Immediate parents and direct replies have
+depth 1, their next-level parents or replies have depth 2, and so on.
