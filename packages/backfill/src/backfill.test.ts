@@ -666,6 +666,48 @@ describe("backfill", () => {
     strictEqual(items[1].strategy, "context-activities");
   });
 
+  test("combined context strategies share context collection loading", async () => {
+    const contextId = new URL("https://example.com/contexts/1");
+    const post = new Note({
+      id: new URL("https://example.com/notes/2"),
+      content: "hello",
+    });
+    const activityObject = new Note({
+      id: new URL("https://example.com/notes/3"),
+      content: "activity object",
+    });
+    const activity = new Create({
+      id: new URL("https://example.com/activities/1"),
+      object: activityObject,
+    });
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      contexts: [contextId],
+    });
+    let requests = 0;
+    const context: BackfillContext = {
+      documentLoader: (iri) => {
+        requests++;
+        strictEqual(iri.href, contextId.href);
+        return Promise.resolve(
+          new Collection({
+            id: contextId,
+            items: [post, activity],
+          }),
+        );
+      },
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["context-objects", "context-activities"],
+    });
+
+    strictEqual(requests, 1);
+    strictEqual(items.length, 2);
+    strictEqual(items[0].object, post);
+    strictEqual(items[1].object, activityObject);
+  });
+
   test("context activity collection dereferences activity object URL", async () => {
     const contextId = new URL("https://example.com/contexts/1");
     const itemId = new URL("https://example.com/notes/2");

@@ -33,6 +33,13 @@ interface RequestBudget {
   requestCount: number;
 }
 
+type StrategyItem = {
+  readonly object: APObject;
+  readonly strategy: BackfillStrategy;
+  readonly origin: BackfillOrigin;
+  readonly depth: number;
+};
+
 /**
  * Backfills post-like objects related to a seed object.
  *
@@ -61,16 +68,37 @@ export async function* backfill<
 
   let yielded = 0;
   try {
-    for (const strategy of strategies) {
-      for await (
-        const item of getStrategyItems(
+    for (let i = 0; i < strategies.length; i++) {
+      const strategy = strategies[i];
+      let items: AsyncIterable<StrategyItem>;
+      if (isContextStrategy(strategy)) {
+        const contextStrategies: Exclude<BackfillStrategy, "reply-tree">[] = [
+          strategy,
+        ];
+        while (true) {
+          const nextStrategy = strategies[i + 1];
+          if (nextStrategy == null || !isContextStrategy(nextStrategy)) break;
+          contextStrategies.push(nextStrategy);
+          i++;
+        }
+        items = getContextStrategyItems(
+          context,
+          note,
+          contextStrategies,
+          options,
+          budget,
+        );
+      } else {
+        items = getStrategyItems(
           context,
           note,
           strategy,
           options,
           budget,
-        )
-      ) {
+        );
+      }
+
+      for await (const item of items) {
         const id = item.object.id ?? undefined;
         if (id != null) {
           if (seenIds.has(id.href)) continue;
@@ -129,26 +157,26 @@ function isContextStrategy(
     strategy === "context-auto";
 }
 
-async function* getStrategyItems(
+async function* getContextStrategyItems(
   context: BackfillContext,
   note: APObject,
-  strategy: BackfillStrategy,
+  strategies: readonly Exclude<BackfillStrategy, "reply-tree">[],
   options: BackfillOptions,
   budget: RequestBudget,
 ): AsyncIterable<{
   readonly object: APObject;
-  readonly strategy: BackfillStrategy;
-  readonly origin: BackfillOrigin;
-  readonly depth: number;
+  readonly strategy: Exclude<BackfillStrategy, "reply-tree">;
+  readonly origin: "collection";
+  readonly depth: 0;
 }> {
-  if (isContextStrategy(strategy)) {
-    const contextId = note.contextIds[0];
-    if (contextId == null) return;
-    const collection = await loadObject(context, contextId, options, budget);
-    if (!isCollection(collection)) return;
-    for await (
-      const object of getCollectionItems(context, collection, options, budget)
-    ) {
+  const contextId = note.contextIds[0];
+  if (contextId == null) return;
+  const collection = await loadObject(context, contextId, options, budget);
+  if (!isCollection(collection)) return;
+  for await (
+    const object of getCollectionItems(context, collection, options, budget)
+  ) {
+    for (const strategy of strategies) {
       for await (
         const item of getContextBackfillItems(
           context,
@@ -166,6 +194,23 @@ async function* getStrategyItems(
         };
       }
     }
+  }
+}
+
+async function* getStrategyItems(
+  context: BackfillContext,
+  note: APObject,
+  strategy: BackfillStrategy,
+  options: BackfillOptions,
+  budget: RequestBudget,
+): AsyncIterable<{
+  readonly object: APObject;
+  readonly strategy: BackfillStrategy;
+  readonly origin: BackfillOrigin;
+  readonly depth: number;
+}> {
+  if (isContextStrategy(strategy)) {
+    yield* getContextStrategyItems(context, note, [strategy], options, budget);
   } else if (strategy === "reply-tree") {
     yield* getReplyTreeItems(context, note, options, budget);
   }
