@@ -201,7 +201,24 @@ describe("backfill", () => {
     deepStrictEqual(await collect(context, note, { strategies: [] }), []);
   });
 
-  test("context auto overrides overlapping strategies", async () => {
+  test("reply tree strategy does not require context collection", async () => {
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      contexts: [new URL("https://example.com/contexts/1")],
+    });
+    const context: BackfillContext = {
+      documentLoader: () => {
+        throw new Error("documentLoader should not be called");
+      },
+    };
+
+    deepStrictEqual(
+      await collect(context, note, { strategies: ["reply-tree"] }),
+      [],
+    );
+  });
+
+  test("context auto overrides overlapping context strategies", async () => {
     const contextId = new URL("https://example.com/contexts/1");
     const item = new Note({ content: "anonymous" });
     const note = new Note({
@@ -219,7 +236,7 @@ describe("backfill", () => {
     };
 
     const items = await collect(context, note, {
-      strategies: ["context-auto", "context-objects"],
+      strategies: ["context-objects", "context-auto", "reply-tree"],
     });
 
     strictEqual(items.length, 1);

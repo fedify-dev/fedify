@@ -13,6 +13,7 @@ import type {
   BackfillContext,
   BackfillItem,
   BackfillOptions,
+  BackfillOrigin,
   BackfillStrategy,
 } from "./types.ts";
 
@@ -51,9 +52,6 @@ export async function* backfill<
   const strategies = normalizeStrategies(options.strategies);
   if (strategies.length < 1) return;
 
-  const contextId = note.contextIds[0];
-  if (contextId == null) return;
-
   const budget: RequestBudget = {
     signal: options.signal,
     requestCount: 0,
@@ -61,19 +59,14 @@ export async function* backfill<
   const seenIds = new Set<string>();
   if (note.id != null) seenIds.add(note.id.href);
 
-  const collection = await loadObject(context, contextId, options, budget);
-  if (!isCollection(collection)) return;
-
   let yielded = 0;
   try {
-    for await (
-      const object of getCollectionItems(context, collection, options, budget)
-    ) {
+    for (const strategy of strategies) {
       for await (
-        const item of getBackfillItems(
+        const item of getStrategyItems(
           context,
-          object,
-          strategies,
+          note,
+          strategy,
           options,
           budget,
         )
@@ -89,8 +82,8 @@ export async function* backfill<
           object: item.object as TObject,
           id,
           strategy: item.strategy,
-          origin: "collection",
-          depth: 0,
+          origin: item.origin,
+          depth: item.depth,
         };
 
         yielded++;
@@ -106,24 +99,102 @@ export async function* backfill<
 function normalizeStrategies(
   strategies: readonly BackfillStrategy[] = defaultStrategies,
 ): readonly BackfillStrategy[] {
-  if (strategies.includes("context-auto")) return ["context-auto"];
-  return Array.from(new Set(strategies));
+  const normalized: BackfillStrategy[] = [];
+  for (const strategy of strategies) {
+    if (strategy === "context-auto") {
+      for (let i = normalized.length - 1; i >= 0; i--) {
+        if (isContextStrategy(normalized[i])) normalized.splice(i, 1);
+      }
+      if (!normalized.includes(strategy)) normalized.push(strategy);
+    } else if (isContextStrategy(strategy)) {
+      if (
+        !normalized.includes("context-auto") && !normalized.includes(
+          strategy,
+        )
+      ) {
+        normalized.push(strategy);
+      }
+    } else if (!normalized.includes(strategy)) {
+      normalized.push(strategy);
+    }
+  }
+  return normalized;
 }
 
-async function* getBackfillItems(
+function isContextStrategy(
+  strategy: BackfillStrategy,
+): strategy is Exclude<BackfillStrategy, "reply-tree"> {
+  return strategy === "context-objects" ||
+    strategy === "context-activities" ||
+    strategy === "context-auto";
+}
+
+async function* getStrategyItems(
   context: BackfillContext,
-  object: APObject | Link,
-  strategies: readonly BackfillStrategy[],
+  note: APObject,
+  strategy: BackfillStrategy,
   options: BackfillOptions,
   budget: RequestBudget,
 ): AsyncIterable<{
   readonly object: APObject;
   readonly strategy: BackfillStrategy;
+  readonly origin: BackfillOrigin;
+  readonly depth: number;
 }> {
-  for (const strategy of strategies) {
-    if (strategy === "context-objects" && isContextPostObject(object)) {
-      yield { object, strategy };
-    } else if (strategy === "context-activities") {
+  if (isContextStrategy(strategy)) {
+    const contextId = note.contextIds[0];
+    if (contextId == null) return;
+    const collection = await loadObject(context, contextId, options, budget);
+    if (!isCollection(collection)) return;
+    for await (
+      const object of getCollectionItems(context, collection, options, budget)
+    ) {
+      for await (
+        const item of getContextBackfillItems(
+          context,
+          object,
+          strategy,
+          options,
+          budget,
+        )
+      ) {
+        yield {
+          object: item.object,
+          strategy: item.strategy,
+          origin: "collection",
+          depth: 0,
+        };
+      }
+    }
+  } else if (strategy === "reply-tree") {
+    return;
+  }
+}
+
+async function* getContextBackfillItems(
+  context: BackfillContext,
+  object: APObject | Link,
+  strategy: Exclude<BackfillStrategy, "reply-tree">,
+  options: BackfillOptions,
+  budget: RequestBudget,
+): AsyncIterable<{
+  readonly object: APObject;
+  readonly strategy: Exclude<BackfillStrategy, "reply-tree">;
+}> {
+  if (strategy === "context-objects" && isContextPostObject(object)) {
+    yield { object, strategy };
+  } else if (strategy === "context-activities") {
+    const activityObject = await getCreateActivityObject(
+      context,
+      object,
+      options,
+      budget,
+    );
+    if (activityObject != null && isContextPostObject(activityObject)) {
+      yield { object: activityObject, strategy };
+    }
+  } else if (strategy === "context-auto") {
+    if (object instanceof Activity) {
       const activityObject = await getCreateActivityObject(
         context,
         object,
@@ -133,20 +204,8 @@ async function* getBackfillItems(
       if (activityObject != null && isContextPostObject(activityObject)) {
         yield { object: activityObject, strategy };
       }
-    } else if (strategy === "context-auto") {
-      if (object instanceof Activity) {
-        const activityObject = await getCreateActivityObject(
-          context,
-          object,
-          options,
-          budget,
-        );
-        if (activityObject != null && isContextPostObject(activityObject)) {
-          yield { object: activityObject, strategy };
-        }
-      } else if (isContextPostObject(object)) {
-        yield { object, strategy };
-      }
+    } else if (isContextPostObject(object)) {
+      yield { object, strategy };
     }
   }
 }
