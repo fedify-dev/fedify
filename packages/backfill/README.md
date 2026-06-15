@@ -82,3 +82,21 @@ for await (
 
 The `context-activities` strategy currently supports `Create` activities and
 yields the activity's object, not the activity itself.
+
+To combine the FEP-f228 context collection path with traditional reply-tree
+crawling, add the `reply-tree` strategy after `context-auto`:
+
+~~~~ typescript
+for await (
+  const item of backfill({ documentLoader }, note, {
+    strategies: ["context-auto", "reply-tree"],
+    maxDepth: 4,
+  })
+) {
+  console.log(item.origin, item.depth, item.object);
+}
+~~~~
+
+The `reply-tree` strategy walks `inReplyTo` ancestors and `replies`
+descendants.  It yields discovered post-like objects only; it does not extract
+objects from Activity wrappers.

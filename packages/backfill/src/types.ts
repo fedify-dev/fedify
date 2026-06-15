@@ -11,7 +11,7 @@ import type { Object as APObject } from "@fedify/vocab";
  *    handling direct post-like objects and supported `Create` activities.
  *    If included, it absorbs other context collection strategies.
  * -  `"reply-tree"` walks the reply graph through `inReplyTo` ancestors and
- *    `replies` descendants.
+ *    `replies` descendants, yielding discovered post-like objects.
  *
  * @since 2.x.0
  */
