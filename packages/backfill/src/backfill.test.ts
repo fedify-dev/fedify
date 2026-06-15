@@ -388,6 +388,43 @@ describe("backfill", () => {
     strictEqual(items[0].strategy, "context-auto");
   });
 
+  test("strategy order controls deduplicated item metadata", async () => {
+    const contextId = new URL("https://example.com/contexts/1");
+    const parentId = new URL("https://example.com/notes/1");
+    const parent = new Note({
+      id: parentId,
+      content: "parent",
+    });
+    const note = new Note({
+      id: new URL("https://example.com/notes/2"),
+      contexts: [contextId],
+      replyTarget: parentId,
+    });
+    const context: BackfillContext = {
+      documentLoader: (iri) => {
+        if (iri.href === parentId.href) return Promise.resolve(parent);
+        if (iri.href === contextId.href) {
+          return Promise.resolve(
+            new Collection({
+              id: contextId,
+              items: [parent],
+            }),
+          );
+        }
+        return Promise.resolve(null);
+      },
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["reply-tree", "context-auto"],
+    });
+
+    strictEqual(items.length, 1);
+    strictEqual(items[0].object.id?.href, parentId.href);
+    strictEqual(items[0].strategy, "reply-tree");
+    strictEqual(items[0].origin, "in-reply-to");
+  });
+
   test("reply tree yields embedded descendants", async () => {
     const reply = new Note({
       id: new URL("https://example.com/notes/2"),
