@@ -9,21 +9,28 @@ import type { Object as APObject } from "@fedify/vocab";
  *    activities in the context collection.
  * -  `"context-auto"` classifies context collection items automatically,
  *    handling direct post-like objects and supported `Create` activities.
- *    If included, it absorbs all other strategies.
+ *    If included, it absorbs other context collection strategies.
+ * -  `"reply-tree"` walks the reply graph through `inReplyTo` ancestors and
+ *    `replies` descendants.
  *
  * @since 2.x.0
  */
 export type BackfillStrategy =
   | "context-objects"
   | "context-activities"
-  | "context-auto";
+  | "context-auto"
+  | "reply-tree";
 
 /**
  * Source relation that produced a backfilled object.
  *
  * @since 2.x.0
  */
-export type BackfillOrigin = "context" | "collection";
+export type BackfillOrigin =
+  | "context"
+  | "collection"
+  | "in-reply-to"
+  | "replies";
 
 /**
  * Options passed to {@link BackfillDocumentLoader}.
@@ -71,7 +78,8 @@ export interface BackfillOptions<
    * Backfill strategies to run.
    *
    * Defaults to `["context-auto"]`.
-   * If `"context-auto"` is included, it absorbs all other strategies.
+   * If `"context-auto"` is included, it absorbs other context collection
+   * strategies.
    *
    * @since 2.x.0
    */
