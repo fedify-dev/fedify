@@ -5,11 +5,13 @@ import {
   assertFalse,
   assertGreater,
   assertGreaterOrEqual,
+  assertRejects,
 } from "@std/assert";
 import { delay } from "es-toolkit";
 import {
   InProcessMessageQueue,
   type MessageQueue,
+  type MessageQueueEnqueueOptions,
   ParallelMessageQueue,
 } from "./mq.ts";
 
@@ -437,6 +439,92 @@ test("ParallelMessageQueue inherits nativeDeduplication", () => {
   const workers = new ParallelMessageQueue(new NativeDeduplicationQueue(), 5);
   assert(workers.nativeDeduplication);
 });
+
+test(
+  "ParallelMessageQueue forwards deduplicationKey to the wrapped queue",
+  async () => {
+    class RecordingQueue implements MessageQueue {
+      readonly nativeDeduplication = true;
+      readonly singles: (MessageQueueEnqueueOptions | undefined)[] = [];
+      readonly batches: (MessageQueueEnqueueOptions | undefined)[] = [];
+      enqueue(
+        _message: unknown,
+        options?: MessageQueueEnqueueOptions,
+      ): Promise<void> {
+        this.singles.push(options);
+        return Promise.resolve();
+      }
+      enqueueMany(
+        _messages: readonly unknown[],
+        options?: MessageQueueEnqueueOptions,
+      ): Promise<void> {
+        this.batches.push(options);
+        return Promise.resolve();
+      }
+      listen(): Promise<void> {
+        return Promise.resolve();
+      }
+    }
+
+    const inner = new RecordingQueue();
+    const workers = new ParallelMessageQueue(inner, 5);
+    await workers.enqueue({ x: 1 }, { deduplicationKey: "k1" });
+    await workers.enqueueMany([{ x: 1 }, { x: 2 }], { deduplicationKey: "k2" });
+    assertEquals(inner.singles[0]?.deduplicationKey, "k1");
+    assertEquals(inner.batches[0]?.deduplicationKey, "k2");
+  },
+);
+
+test(
+  "ParallelMessageQueue rejects a deduplicated batch when the wrapped queue " +
+    "lacks enqueueMany",
+  async () => {
+    class NoBulkQueue implements MessageQueue {
+      readonly nativeDeduplication = true;
+      readonly enqueued: unknown[] = [];
+      enqueue(message: unknown): Promise<void> {
+        this.enqueued.push(message);
+        return Promise.resolve();
+      }
+      listen(): Promise<void> {
+        return Promise.resolve();
+      }
+    }
+
+    const inner = new NoBulkQueue();
+    const workers = new ParallelMessageQueue(inner, 5);
+    await assertRejects(
+      () =>
+        workers.enqueueMany([{ x: 1 }, { x: 2 }], { deduplicationKey: "k" }),
+      TypeError,
+      "enqueueMany",
+    );
+    // It threw before enqueuing anything.
+    assertEquals(inner.enqueued.length, 0);
+  },
+);
+
+test(
+  "ParallelMessageQueue still fans out a non-deduplicated batch when the " +
+    "wrapped queue lacks enqueueMany",
+  async () => {
+    class NoBulkQueue implements MessageQueue {
+      readonly enqueued: unknown[] = [];
+      enqueue(message: unknown): Promise<void> {
+        this.enqueued.push(message);
+        return Promise.resolve();
+      }
+      listen(): Promise<void> {
+        return Promise.resolve();
+      }
+    }
+
+    const inner = new NoBulkQueue();
+    const workers = new ParallelMessageQueue(inner, 5);
+    await workers.enqueueMany([{ x: 1 }, { x: 2 }, { x: 3 }]);
+    assertEquals(inner.enqueued.length, 3);
+  },
+);
 
 const queues: Record<string, () => Promise<MessageQueue>> = {
   InProcessMessageQueue: () => Promise.resolve(new InProcessMessageQueue()),

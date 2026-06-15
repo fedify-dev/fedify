@@ -94,11 +94,27 @@ const enqueueTasks = <TContextData>(
     if (!ctx.federation.manuallyStartQueue) {
       ctx.federation._startQueueInternal(ctx.data);
     }
-    await dispatch(queue, messages, {
-      delay: getDurationIfDefined(options.delay),
-      orderingKey: options.orderingKey,
-      deduplicationKey: claim.forwardedDeduplicationKey,
-    });
+    try {
+      await dispatch(queue, messages, {
+        delay: getDurationIfDefined(options.delay),
+        orderingKey: options.orderingKey,
+        deduplicationKey: claim.forwardedDeduplicationKey,
+      });
+    } catch (error) {
+      if (claim.rollback != null) {
+        try {
+          await claim.rollback();
+        } catch (rollbackError) {
+          logger.warn(
+            "Failed to roll back the deduplication marker for task " +
+              "{taskName} after a failed enqueue; it will expire by TTL. " +
+              "{rollbackError}",
+            { taskName: task.name, rollbackError },
+          );
+        }
+      }
+      throw error;
+    }
   };
 
 export default enqueueTasks;
@@ -131,21 +147,20 @@ function planDeduplication<TContextData>(
 ): DedupPlan {
   if (options.deduplicationKey == null) return { kind: "none" };
   const key = options.deduplicationKey;
-  if (queue.nativeDeduplication === true) {
-    if (itemCount > 1 && queue.enqueueMany == null) {
-      throw new TypeError(
-        `Task ${
-          JSON.stringify(taskName)
-        } was enqueued as a batch with a deduplicationKey, but its ` +
-          "message queue declares nativeDeduplication without " +
-          "implementing enqueueMany; a per-message key cannot deduplicate " +
-          "a whole batch.  Implement enqueueMany on the queue, or enqueue " +
-          "the tasks individually with enqueueTask().",
-      );
-    }
-    return { kind: "native", key };
+  const native = queue.nativeDeduplication === true;
+  const canCas = ctx.federation.kv.cas != null;
+  if (itemCount > 1 && queue.enqueueMany == null && (native || canCas)) {
+    throw new TypeError(
+      `Task ${
+        JSON.stringify(taskName)
+      } was enqueued as a batch with a deduplicationKey, but its message ` +
+        "queue does not implement enqueueMany; a multi-item batch cannot be " +
+        "deduplicated atomically without it.  Implement enqueueMany on the " +
+        "queue, or enqueue the tasks individually with enqueueTask().",
+    );
   }
-  if (ctx.federation.kv.cas != null) return { kind: "cas", key };
+  if (native) return { kind: "native", key };
+  if (canCas) return { kind: "cas", key };
   if (ctx.federation.taskDeduplicationFallback === "closed") {
     // No conditional write, closed: fail fast before any side effect.
     throw new TypeError(
@@ -169,7 +184,16 @@ async function claimDeduplication<TContextData>(
   ctx: EnqueueTasksContext<TContextData>,
   plan: DedupPlan,
   taskName: string,
-): Promise<{ proceed: boolean; forwardedDeduplicationKey?: string }> {
+): Promise<{
+  proceed: boolean;
+  forwardedDeduplicationKey?: string;
+  /**
+   * Undoes a reserved marker when dispatch fails.  Present only for a `cas`
+   * plan that won its claim; a failed enqueue calls it so the retry is not
+   * deduplicated against a task that never reached the queue.
+   */
+  rollback?: () => Promise<void>;
+}> {
   switch (plan.kind) {
     case "native":
       return { proceed: true, forwardedDeduplicationKey: plan.key };
@@ -178,23 +202,37 @@ async function claimDeduplication<TContextData>(
         ...ctx.federation.kvPrefixes.taskDeduplication,
         plan.key,
       ] satisfies KvKey;
-      // planDeduplication only picks "cas" when `ctx.federation.kv.cas` exists.
-      const won = await ctx.federation.kv.cas!(cacheKey, undefined, true, {
+      const token = crypto.randomUUID();
+      const won = await ctx.federation.kv.cas!(cacheKey, undefined, token, {
         ttl: ctx.federation.taskDeduplicationTtl,
       });
-      return { proceed: won };
+      if (!won) return { proceed: false };
+      return {
+        proceed: true,
+        // Conditional clear: cas succeeds only while the stored value is still
+        // our token, so we never delete a marker another enqueue now owns.
+        rollback: async () => {
+          await ctx.federation.kv.cas!(cacheKey, token, undefined);
+        },
+      };
     }
-    case "open": {
-      getLogger(["fedify", "federation", "task"]).debug(
+    case "open":
+      logger.debug(
         "deduplicationKey {deduplicationKey} for task {taskName} ignored: " +
           "the message queue declares no nativeDeduplication and the " +
           "key-value store has no cas; proceeding (taskDeduplicationFallback " +
           'is "open").',
         { deduplicationKey: plan.key, taskName },
+      ); /* falls through */
+    case "none":
+      return { proceed: true };
+    default: {
+      const _exhaustive: never = plan;
+      throw new TypeError(
+        `Unknown deduplication plan: ${JSON.stringify(_exhaustive)}`,
       );
     }
   }
-  return { proceed: true };
 }
 
 /**
@@ -252,3 +290,5 @@ async (data: TData): Promise<TaskMessage> => {
     traceContext: carrier,
   };
 };
+
+const logger = getLogger(["fedify", "federation", "task"]);

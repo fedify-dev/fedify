@@ -1,5 +1,5 @@
 /**
- * Test-only utilities shared by the task suites the schema factory and stock
+ * Test-only utilities shared by the task suites: the schema factory and stock
  * schemas, the base federation options, and the recording {@link MockQueue}.
  *
  * These helpers live beside the suites that use them rather than in a shared

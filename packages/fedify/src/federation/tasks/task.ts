@@ -168,9 +168,13 @@ export interface TaskEnqueueOptions {
    * and {@link FederationOptions.taskDeduplicationFallback} decides whether a
    * missing `cas` proceeds without deduplication or throws.
    *
-   * For {@link Context.enqueueTaskMany}, one key governs the whole batch; a
-   * native queue must implement {@link MessageQueue.enqueueMany} for a
-   * multi-item batch, or the call throws a `TypeError`.
+   * For {@link Context.enqueueTaskMany}, one key governs the whole batch.  When
+   * deduplication is actually applied—a native queue, or the key–value
+   * fallback through {@link KvStore.cas}—a multi-item batch with a
+   * `deduplicationKey` requires the queue to implement
+   * {@link MessageQueue.enqueueMany} so it enqueues atomically, or the call
+   * throws a `TypeError`.  Under the `"open"` fallback with no `cas`, no marker
+   * is taken, so such a batch instead fans out without deduplication.
    *
    * @since 2.x.x
    */
