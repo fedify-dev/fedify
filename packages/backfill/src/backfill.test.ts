@@ -1,7 +1,7 @@
 import { deepStrictEqual, ok, rejects, strictEqual } from "node:assert/strict";
 import test, { describe } from "node:test";
 import { backfill, type BackfillContext, MaxRequestsExceeded } from "./mod.ts";
-import { Collection, Create, Note } from "@fedify/vocab";
+import { Announce, Collection, Create, Note } from "@fedify/vocab";
 
 async function collect(
   context: BackfillContext,
@@ -73,8 +73,37 @@ describe("backfill", () => {
     strictEqual(items.length, 1);
     strictEqual(items[0].object, item);
     deepStrictEqual(items[0].id, item.id);
-    strictEqual(items[0].strategy, "context-posts");
+    strictEqual(items[0].strategy, "context-auto");
     strictEqual(items[0].origin, "collection");
+  });
+
+  test("context object strategy yields embedded objects", async () => {
+    const contextId = new URL("https://example.com/contexts/1");
+    const item = new Note({
+      id: new URL("https://example.com/notes/2"),
+      content: "hello",
+    });
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      contexts: [contextId],
+    });
+    const context: BackfillContext = {
+      documentLoader: () =>
+        Promise.resolve(
+          new Collection({
+            id: contextId,
+            items: [item],
+          }),
+        ),
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["context-objects"],
+    });
+
+    strictEqual(items.length, 1);
+    strictEqual(items[0].object, item);
+    strictEqual(items[0].strategy, "context-objects");
   });
 
   test("embedded object without id is yielded without id", async () => {
@@ -101,7 +130,7 @@ describe("backfill", () => {
     strictEqual(items[0].id, undefined);
   });
 
-  test("activity objects in collection are skipped", async () => {
+  test("context object strategy skips activity objects", async () => {
     const contextId = new URL("https://example.com/contexts/1");
     const activity = new Create({
       id: new URL("https://example.com/activities/1"),
@@ -121,7 +150,429 @@ describe("backfill", () => {
         ),
     };
 
-    deepStrictEqual(await collect(context, note), []);
+    deepStrictEqual(
+      await collect(context, note, { strategies: ["context-objects"] }),
+      [],
+    );
+  });
+
+  test("context auto strategy yields object from embedded Create", async () => {
+    const contextId = new URL("https://example.com/contexts/1");
+    const item = new Note({
+      id: new URL("https://example.com/notes/2"),
+      content: "hello",
+    });
+    const activity = new Create({
+      id: new URL("https://example.com/activities/1"),
+      object: item,
+    });
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      contexts: [contextId],
+    });
+    const context: BackfillContext = {
+      documentLoader: () =>
+        Promise.resolve(
+          new Collection({
+            id: contextId,
+            items: [activity],
+          }),
+        ),
+    };
+
+    const items = await collect(context, note);
+
+    strictEqual(items.length, 1);
+    strictEqual(items[0].object, item);
+    strictEqual(items[0].strategy, "context-auto");
+  });
+
+  test("empty strategies yield nothing without dereferencing context", async () => {
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      contexts: [new URL("https://example.com/contexts/1")],
+    });
+    const context: BackfillContext = {
+      documentLoader: () => {
+        throw new Error("documentLoader should not be called");
+      },
+    };
+
+    deepStrictEqual(await collect(context, note, { strategies: [] }), []);
+  });
+
+  test("context auto overrides overlapping strategies", async () => {
+    const contextId = new URL("https://example.com/contexts/1");
+    const item = new Note({ content: "anonymous" });
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      contexts: [contextId],
+    });
+    const context: BackfillContext = {
+      documentLoader: () =>
+        Promise.resolve(
+          new Collection({
+            id: contextId,
+            items: [item],
+          }),
+        ),
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["context-auto", "context-objects"],
+    });
+
+    strictEqual(items.length, 1);
+    strictEqual(items[0].object, item);
+    strictEqual(items[0].strategy, "context-auto");
+  });
+
+  test("duplicate strategies are ignored", async () => {
+    const contextId = new URL("https://example.com/contexts/1");
+    const item = new Note({ content: "anonymous" });
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      contexts: [contextId],
+    });
+    const context: BackfillContext = {
+      documentLoader: () =>
+        Promise.resolve(
+          new Collection({
+            id: contextId,
+            items: [item],
+          }),
+        ),
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["context-objects", "context-objects"],
+    });
+
+    strictEqual(items.length, 1);
+    strictEqual(items[0].object, item);
+    strictEqual(items[0].strategy, "context-objects");
+  });
+
+  test("context activity collection yields object from embedded Create", async () => {
+    const contextId = new URL("https://example.com/contexts/1");
+    const item = new Note({
+      id: new URL("https://example.com/notes/2"),
+      content: "hello",
+    });
+    const activity = new Create({
+      id: new URL("https://example.com/activities/1"),
+      object: item,
+    });
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      contexts: [contextId],
+    });
+    const context: BackfillContext = {
+      documentLoader: () =>
+        Promise.resolve(
+          new Collection({
+            id: contextId,
+            items: [activity],
+          }),
+        ),
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["context-activities"],
+    });
+
+    strictEqual(items.length, 1);
+    strictEqual(items[0].object, item);
+    strictEqual(items[0].id?.href, item.id?.href);
+    strictEqual(items[0].strategy, "context-activities");
+    strictEqual(items[0].origin, "collection");
+  });
+
+  test("combined context strategies yield posts and activity objects", async () => {
+    const contextId = new URL("https://example.com/contexts/1");
+    const post = new Note({
+      id: new URL("https://example.com/notes/2"),
+    });
+    const activityObject = new Note({
+      id: new URL("https://example.com/notes/3"),
+    });
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      contexts: [contextId],
+    });
+    const context: BackfillContext = {
+      documentLoader: () =>
+        Promise.resolve(
+          new Collection({
+            id: contextId,
+            items: [
+              post,
+              new Create({
+                id: new URL("https://example.com/activities/1"),
+                object: activityObject,
+              }),
+            ],
+          }),
+        ),
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["context-objects", "context-activities"],
+    });
+
+    strictEqual(items.length, 2);
+    strictEqual(items[0].object, post);
+    strictEqual(items[0].strategy, "context-objects");
+    strictEqual(items[1].object, activityObject);
+    strictEqual(items[1].strategy, "context-activities");
+  });
+
+  test("context activity collection dereferences activity object URL", async () => {
+    const contextId = new URL("https://example.com/contexts/1");
+    const itemId = new URL("https://example.com/notes/2");
+    const item = new Note({ id: itemId, content: "hello" });
+    const activity = new Create({
+      id: new URL("https://example.com/activities/1"),
+      object: itemId,
+    });
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      contexts: [contextId],
+    });
+    const requests: URL[] = [];
+    const context: BackfillContext = {
+      documentLoader: (iri) => {
+        requests.push(iri);
+        if (iri.href === contextId.href) {
+          return Promise.resolve(
+            new Collection({
+              id: contextId,
+              items: [activity],
+            }),
+          );
+        }
+        if (iri.href === itemId.href) return Promise.resolve(item);
+        return Promise.resolve(null);
+      },
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["context-activities"],
+    });
+
+    strictEqual(items.length, 1);
+    strictEqual(items[0].object.id?.href, item.id?.href);
+    deepStrictEqual(requests.map((url) => url.href), [
+      contextId.href,
+      itemId.href,
+    ]);
+  });
+
+  test("context activity collection dereferences activity URL", async () => {
+    const contextId = new URL("https://example.com/contexts/1");
+    const activityId = new URL("https://example.com/activities/1");
+    const item = new Note({
+      id: new URL("https://example.com/notes/2"),
+      content: "hello",
+    });
+    const activity = new Create({ id: activityId, object: item });
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      contexts: [contextId],
+    });
+    const requests: URL[] = [];
+    const context: BackfillContext = {
+      documentLoader: (iri) => {
+        requests.push(iri);
+        if (iri.href === contextId.href) {
+          return Promise.resolve(
+            new Collection({
+              id: contextId,
+              items: [activityId],
+            }),
+          );
+        }
+        if (iri.href === activityId.href) return Promise.resolve(activity);
+        return Promise.resolve(null);
+      },
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["context-activities"],
+    });
+
+    strictEqual(items.length, 1);
+    strictEqual(items[0].object.id?.href, item.id?.href);
+    deepStrictEqual(requests.map((url) => url.href), [
+      contextId.href,
+      activityId.href,
+    ]);
+  });
+
+  test("context activity collection deduplicates by extracted object ID", async () => {
+    const contextId = new URL("https://example.com/contexts/1");
+    const itemId = new URL("https://example.com/notes/2");
+    const first = new Create({
+      id: new URL("https://example.com/activities/1"),
+      object: new Note({ id: itemId, content: "first" }),
+    });
+    const second = new Create({
+      id: new URL("https://example.com/activities/2"),
+      object: new Note({ id: itemId, content: "second" }),
+    });
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      contexts: [contextId],
+    });
+    const context: BackfillContext = {
+      documentLoader: () =>
+        Promise.resolve(
+          new Collection({
+            id: contextId,
+            items: [first, second],
+          }),
+        ),
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["context-activities"],
+    });
+
+    strictEqual(items.length, 1);
+    strictEqual(items[0].id?.href, itemId.href);
+  });
+
+  test("context activity collection skips missing object", async () => {
+    const contextId = new URL("https://example.com/contexts/1");
+    const activity = new Create({
+      id: new URL("https://example.com/activities/1"),
+    });
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      contexts: [contextId],
+    });
+    const context: BackfillContext = {
+      documentLoader: () =>
+        Promise.resolve(
+          new Collection({
+            id: contextId,
+            items: [activity],
+          }),
+        ),
+    };
+
+    deepStrictEqual(
+      await collect(context, note, { strategies: ["context-activities"] }),
+      [],
+    );
+  });
+
+  test("context activity collection skips unsupported activity type", async () => {
+    const contextId = new URL("https://example.com/contexts/1");
+    const item = new Note({ id: new URL("https://example.com/notes/2") });
+    const activity = new Announce({
+      id: new URL("https://example.com/activities/1"),
+      object: item,
+    });
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      contexts: [contextId],
+    });
+    const context: BackfillContext = {
+      documentLoader: () =>
+        Promise.resolve(
+          new Collection({
+            id: contextId,
+            items: [activity],
+          }),
+        ),
+    };
+
+    deepStrictEqual(
+      await collect(context, note, { strategies: ["context-activities"] }),
+      [],
+    );
+  });
+
+  test("maxRequests limits activity object dereferencing", async () => {
+    const contextId = new URL("https://example.com/contexts/1");
+    const activityId = new URL("https://example.com/activities/1");
+    const itemId = new URL("https://example.com/notes/2");
+    const activity = new Create({ id: activityId, object: itemId });
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      contexts: [contextId],
+    });
+    const requests: URL[] = [];
+    const context: BackfillContext = {
+      documentLoader: (iri) => {
+        requests.push(iri);
+        if (iri.href === contextId.href) {
+          return Promise.resolve(
+            new Collection({
+              id: contextId,
+              items: [activityId],
+            }),
+          );
+        }
+        if (iri.href === activityId.href) return Promise.resolve(activity);
+        if (iri.href === itemId.href) {
+          return Promise.resolve(
+            new Note({
+              id: itemId,
+            }),
+          );
+        }
+        return Promise.resolve(null);
+      },
+    };
+
+    const items = await collect(context, note, {
+      maxRequests: 2,
+      strategies: ["context-activities"],
+    });
+
+    deepStrictEqual(items, []);
+    deepStrictEqual(requests.map((url) => url.href), [
+      contextId.href,
+      activityId.href,
+    ]);
+  });
+
+  test("maxItems limits context activity items", async () => {
+    const contextId = new URL("https://example.com/contexts/1");
+    const first = new Note({ id: new URL("https://example.com/notes/2") });
+    const second = new Note({ id: new URL("https://example.com/notes/3") });
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      contexts: [contextId],
+    });
+    const context: BackfillContext = {
+      documentLoader: () =>
+        Promise.resolve(
+          new Collection({
+            id: contextId,
+            items: [
+              new Create({
+                id: new URL("https://example.com/activities/1"),
+                object: first,
+              }),
+              new Create({
+                id: new URL("https://example.com/activities/2"),
+                object: second,
+              }),
+            ],
+          }),
+        ),
+    };
+
+    const items = await collect(context, note, {
+      maxItems: 1,
+      strategies: ["context-activities"],
+    });
+
+    strictEqual(items.length, 1);
+    strictEqual(items[0].id?.href, first.id?.href);
   });
 
   test("context collection with URL items loads and yields objects", async () => {

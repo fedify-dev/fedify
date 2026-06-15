@@ -3,9 +3,20 @@ import type { Object as APObject } from "@fedify/vocab";
 /**
  * Backfill traversal strategy used to discover the returned object.
  *
+ * -  `"context-objects"` yields post-like objects directly from the context
+ *    collection.
+ * -  `"context-activities"` yields objects extracted from supported `Create`
+ *    activities in the context collection.
+ * -  `"context-auto"` classifies context collection items automatically,
+ *    handling direct post-like objects and supported `Create` activities.
+ *    If included, it absorbs all other strategies.
+ *
  * @since 2.x.0
  */
-export type BackfillStrategy = "context-posts";
+export type BackfillStrategy =
+  | "context-objects"
+  | "context-activities"
+  | "context-auto";
 
 /**
  * Source relation that produced a backfilled object.
@@ -56,6 +67,16 @@ export interface BackfillContext {
 export interface BackfillOptions<
   TObject extends APObject = APObject,
 > {
+  /**
+   * Backfill strategies to run.
+   *
+   * Defaults to `["context-auto"]`.
+   * If `"context-auto"` is included, it absorbs all other strategies.
+   *
+   * @since 2.x.0
+   */
+  readonly strategies?: readonly BackfillStrategy[];
+
   /**
    * Maximum number of items to yield.  Skipped duplicates do not count.
    */
