@@ -317,21 +317,33 @@ follow-ups add it.
 For `~Context.enqueueTaskMany()`, a single `deduplicationKey` applies to the
 whole batch: the batch enqueues as a unit or is skipped as a unit, never
 partially.  Per-item deduplication means calling `~Context.enqueueTask()` in
-a loop, each with its own key.  A queue that declares
-`~MessageQueue.nativeDeduplication` must also implement
-`~MessageQueue.enqueueMany()` to carry a multi-item batch's key as one unit;
-fanning the key out across separate `~MessageQueue.enqueue()` calls cannot drop
-a whole batch, so Fedify rejects that combination instead of silently leaking
-duplicates.
+a loop, each with its own key.  Deduplicating a multi-item batch requires the
+queue to implement `~MessageQueue.enqueueMany()` so the batch enqueues
+atomically—whether the check is native or the key–value fallback.  Fanning the
+key out across separate `~MessageQueue.enqueue()` calls cannot enqueue a whole
+batch as one unit: a native per-message key cannot cover it, and a key–value
+marker could not be rolled back cleanly if only some of the fanned-out enqueues
+failed.  So when deduplication is actually applied—a native queue, or a
+key–value store with `~KvStore.cas`—Fedify rejects a multi-item batch with a
+`deduplicationKey` on a queue without `~MessageQueue.enqueueMany()` instead of
+risking duplicates.  Under the `"open"` fallback (no native deduplication and no
+`cas`), no marker is taken, so the batch simply fans out without deduplication.
+
+This applies through `~ParallelMessageQueue` as well: wrapping a queue that
+lacks `~MessageQueue.enqueueMany()` does not make batch enqueue atomic, so a
+deduplicated multi-item batch on such a wrapper is likewise rejected rather than
+collapsed onto one message.
 
 > [!WARNING]
 > The key–value fallback is **best-effort, not transactional**.  The marker
-> write and the enqueue are separate operations, so a crash between them, the
-> `"open"` fallback under concurrency, a non-atomic third-party `~KvStore.cas`,
-> or reuse of a key within its TTL window can still admit a duplicate or
-> suppress a task.  Cleanup is by TTL expiry, not active deletion on handler
-> success.  Deployments needing strict guarantees use a queue with
-> `nativeDeduplication: true`, where the backend owns an atomic check.
+> write and the enqueue are separate operations.  Fedify rolls the marker back
+> when an enqueue fails, so a transient failure does not suppress the retry, but
+> a crash before that rollback, the `"open"` fallback under concurrency, a
+> non-atomic third-party `~KvStore.cas`, or reuse of a key within its TTL window
+> can still admit a duplicate or suppress a task.  Cleanup is otherwise by TTL
+> expiry, not active deletion on handler success.  Deployments needing strict
+> guarantees use a queue with `nativeDeduplication: true`, where the backend
+> owns an atomic check.
 
 
 Limitations

@@ -1,4 +1,5 @@
 import { test } from "@fedify/fixture";
+import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { delay } from "es-toolkit";
 import { deepStrictEqual, ok, rejects, strictEqual } from "node:assert/strict";
 import {
@@ -16,7 +17,11 @@ import {
   MemoryKvStore,
 } from "../kv.ts";
 import { createFederation } from "../middleware.ts";
-import type { MessageQueue, MessageQueueEnqueueOptions } from "../mq.ts";
+import {
+  type MessageQueue,
+  type MessageQueueEnqueueOptions,
+  ParallelMessageQueue,
+} from "../mq.ts";
 import type { TaskMessage } from "../queue.ts";
 
 /**
@@ -777,5 +782,591 @@ test(
     strictEqual(queue.enqueued.length, 0);
     strictEqual(queue.enqueuedMany.length, 0);
     deepStrictEqual(await collectKeys(kv, TASK_DEDUP_PREFIX), []);
+  },
+);
+
+/**
+ * A {@link MessageQueue} that fails its first enqueue—single or batch—with a
+ * transient error, then records every later enqueue.  One class covers both the
+ * `enqueue()` and `enqueueMany()` rollback paths; each test instantiates its own
+ * copy, so the one-shot `#failNext` flag never leaks between them.
+ */
+class FlakyQueue implements MessageQueue {
+  readonly nativeDeduplication = false;
+  #failNext = true;
+  readonly enqueued: TaskMessage[] = [];
+  readonly enqueuedMany: TaskMessage[][] = [];
+
+  #failOnce(): boolean {
+    if (!this.#failNext) return false;
+    this.#failNext = false;
+    return true;
+  }
+
+  enqueue(message: TaskMessage): Promise<void> {
+    if (this.#failOnce()) {
+      return Promise.reject(new Error("transient backend failure"));
+    }
+    this.enqueued.push(message);
+    return Promise.resolve();
+  }
+
+  enqueueMany(messages: readonly TaskMessage[]): Promise<void> {
+    if (this.#failOnce()) {
+      return Promise.reject(new Error("transient backend failure"));
+    }
+    this.enqueuedMany.push([...messages]);
+    return Promise.resolve();
+  }
+
+  listen(): Promise<void> {
+    return Promise.resolve();
+  }
+}
+
+test(
+  "a failed enqueue rolls back its dedup marker so the retry is not dropped",
+  async () => {
+    const queue = new FlakyQueue();
+    const kv = new MemoryKvStore();
+    const federation = createFederation<void>({
+      ...baseOptions,
+      kv,
+      queue: { task: queue },
+    });
+    const task = federation.defineTask("flaky-enqueue", {
+      schema: stringSchema,
+      handler: () => {},
+    });
+    const ctx = federation.createContext(
+      new URL("https://example.com/"),
+      undefined,
+    );
+    const markerKey: KvKey = [...TASK_DEDUP_PREFIX, "k"];
+
+    // First enqueue: the marker is claimed, then dispatch rejects.
+    await rejects(
+      () => ctx.enqueueTask(task, "first", { deduplicationKey: "k" }),
+      { message: /transient backend failure/ },
+    );
+    strictEqual(queue.enqueued.length, 0);
+    strictEqual(await kv.get(markerKey), undefined);
+
+    // The retry (queue healthy again) must enqueue the task, not be dropped.
+    await ctx.enqueueTask(task, "first-retry", { deduplicationKey: "k" });
+    strictEqual(queue.enqueued.length, 1);
+
+    // A successful retry must keep its marker so later duplicates are dropped.
+    ok(await kv.get(markerKey) != null);
+    await ctx.enqueueTask(task, "duplicate", { deduplicationKey: "k" });
+    strictEqual(queue.enqueued.length, 1);
+  },
+);
+
+test(
+  "a failed batch enqueue rolls back its dedup marker so the retry is not " +
+    "dropped",
+  async () => {
+    const queue = new FlakyQueue();
+    const kv = new MemoryKvStore();
+    const federation = createFederation<void>({
+      ...baseOptions,
+      kv,
+      queue: { task: queue },
+    });
+    const task = federation.defineTask("flaky-batch-enqueue", {
+      schema: stringSchema,
+      handler: () => {},
+    });
+    const ctx = federation.createContext(
+      new URL("https://example.com/"),
+      undefined,
+    );
+    const markerKey: KvKey = [...TASK_DEDUP_PREFIX, "batch"];
+
+    await rejects(
+      () =>
+        ctx.enqueueTaskMany(task, ["first", "second"], {
+          deduplicationKey: "batch",
+        }),
+      { message: /transient backend failure/ },
+    );
+    strictEqual(queue.enqueuedMany.length, 0);
+    // Asserted via get() for the same reason as the single-item rollback test
+    // above (MemoryKvStore.cas leaves a `value: undefined` entry).
+    strictEqual(await kv.get(markerKey), undefined);
+
+    await ctx.enqueueTaskMany(task, ["first-retry", "second-retry"], {
+      deduplicationKey: "batch",
+    });
+    strictEqual(queue.enqueuedMany.length, 1);
+    strictEqual(queue.enqueuedMany[0].length, 2);
+    ok(await kv.get(markerKey) != null);
+
+    await ctx.enqueueTaskMany(task, ["duplicate-first", "duplicate-second"], {
+      deduplicationKey: "batch",
+    });
+    strictEqual(queue.enqueuedMany.length, 1);
+  },
+);
+
+test(
+  "a stale rollback does not clear a marker another enqueue re-claimed",
+  async () => {
+    const kv = new MemoryKvStore();
+    const markerKey: KvKey = [...TASK_DEDUP_PREFIX, "k"];
+    let signalFirstEntered!: () => void;
+    const firstEntered = new Promise<void>((resolve) => {
+      signalFirstEntered = resolve;
+    });
+    let releaseFirst!: () => void;
+    const firstReleased = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    class BlockingThenFailingQueue implements MessageQueue {
+      readonly nativeDeduplication = false;
+      #calls = 0;
+      async enqueue(): Promise<void> {
+        this.#calls++;
+        if (this.#calls === 1) {
+          signalFirstEntered();
+          await firstReleased;
+          throw new Error("transient backend failure");
+        }
+      }
+      listen(): Promise<void> {
+        return Promise.resolve();
+      }
+    }
+    const queue = new BlockingThenFailingQueue();
+    const federation = createFederation<void>({
+      ...baseOptions,
+      kv,
+      queue: { task: queue },
+      taskDeduplicationTtl: { milliseconds: 1 },
+    });
+    const task = federation.defineTask("stale-rollback", {
+      schema: stringSchema,
+      handler: () => {},
+    });
+    const ctx = federation.createContext(
+      new URL("https://example.com/"),
+      undefined,
+    );
+
+    const first = ctx.enqueueTask(task, "first", { deduplicationKey: "k" });
+    await firstEntered;
+    await delay(20);
+    await ctx.enqueueTask(task, "second", { deduplicationKey: "k" });
+    const secondToken = await kv.get(markerKey);
+    ok(secondToken != null);
+    releaseFirst();
+    await rejects(() => first, { message: /transient backend failure/ });
+    strictEqual(await kv.get(markerKey), secondToken);
+  },
+);
+
+test(
+  "a multi-item batch dedup without enqueueMany is rejected on the cas path",
+  async () => {
+    const queue = new MockQueue();
+    const kv = new MemoryKvStore();
+    const federation = createFederation<void>({
+      ...baseOptions,
+      kv,
+      queue: { task: queue },
+    });
+    const task = federation.defineTask("cas-batch-without-enqueue-many", {
+      schema: stringSchema,
+      handler: () => {},
+    });
+    const ctx = federation.createContext(
+      new URL("https://example.com/"),
+      undefined,
+    );
+
+    await rejects(
+      () =>
+        ctx.enqueueTaskMany(task, ["a", "b", "c"], {
+          deduplicationKey: "batch",
+        }),
+      { name: "TypeError", message: /enqueueMany/ },
+    );
+    strictEqual(queue.enqueued.length, 0);
+    strictEqual(queue.enqueuedMany.length, 0);
+    deepStrictEqual(await collectKeys(kv, TASK_DEDUP_PREFIX), []);
+
+    await ctx.enqueueTaskMany(task, ["single"], { deduplicationKey: "single" });
+    strictEqual(queue.enqueued.length, 1);
+  },
+);
+
+test(
+  "a failed rollback is swallowed; the original enqueue error reaches the caller",
+  async () => {
+    class ClearFailingKvStore implements KvStore {
+      readonly inner = new MemoryKvStore();
+      clearAttempts = 0;
+      get<T = unknown>(key: KvKey): Promise<T | undefined> {
+        return this.inner.get<T>(key);
+      }
+      set(
+        key: KvKey,
+        value: unknown,
+        options?: KvStoreSetOptions,
+      ): Promise<void> {
+        return this.inner.set(key, value, options);
+      }
+      delete(key: KvKey): Promise<void> {
+        return this.inner.delete(key);
+      }
+      list(prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
+        return this.inner.list(prefix);
+      }
+      cas(
+        key: KvKey,
+        expectedValue: unknown,
+        newValue: unknown,
+        options?: KvStoreSetOptions,
+      ): Promise<boolean> {
+        if (newValue === undefined) {
+          this.clearAttempts++;
+          return Promise.reject(new Error("kv cas clear failed"));
+        }
+        return this.inner.cas(key, expectedValue, newValue, options);
+      }
+    }
+
+    const queue = new FlakyQueue();
+    const kv = new ClearFailingKvStore();
+    const federation = createFederation<void>({
+      ...baseOptions,
+      kv,
+      queue: { task: queue },
+    });
+    const task = federation.defineTask("rollback-failure", {
+      schema: stringSchema,
+      handler: () => {},
+    });
+    const ctx = federation.createContext(
+      new URL("https://example.com/"),
+      undefined,
+    );
+
+    await rejects(
+      () => ctx.enqueueTask(task, "first", { deduplicationKey: "k" }),
+      { message: /transient backend failure/ },
+    );
+    strictEqual(queue.enqueued.length, 0);
+    strictEqual(kv.clearAttempts, 1);
+  },
+);
+
+/**
+ * A native-deduplication backend that drops repeat-key single enqueues and
+ * does **not** implement `enqueueMany`.  Wrapping it in
+ * {@link ParallelMessageQueue} used to fan a batch out to one `enqueue()` per
+ * message, all carrying the same `deduplicationKey`, so the backend collapsed
+ * the whole batch onto its first message.
+ */
+class NativeDedupNoBulkQueue implements MessageQueue {
+  readonly nativeDeduplication = true;
+  readonly #seen = new Set<string>();
+  readonly enqueued: {
+    message: TaskMessage;
+    options?: MessageQueueEnqueueOptions;
+  }[] = [];
+
+  enqueue(
+    message: TaskMessage,
+    options?: MessageQueueEnqueueOptions,
+  ): Promise<void> {
+    const key = options?.deduplicationKey;
+    if (key != null) {
+      if (this.#seen.has(key)) return Promise.resolve();
+      this.#seen.add(key);
+    }
+    this.enqueued.push({ message, options });
+    return Promise.resolve();
+  }
+
+  listen(): Promise<void> {
+    return Promise.resolve();
+  }
+}
+
+test(
+  "a deduplicated batch over a ParallelMessageQueue wrapping a native, " +
+    "no-enqueueMany backend is rejected, not collapsed",
+  async () => {
+    const backend = new NativeDedupNoBulkQueue();
+    const queue = new ParallelMessageQueue(backend, 5);
+    const kv = new MemoryKvStore();
+    const federation = createFederation<void>({
+      ...baseOptions,
+      kv,
+      queue: { task: queue },
+    });
+    const task = federation.defineTask("parallel-native-no-bulk", {
+      schema: stringSchema,
+      handler: () => {},
+    });
+    const ctx = federation.createContext(
+      new URL("https://example.com/"),
+      undefined,
+    );
+
+    // The wrapper cannot enqueue the batch atomically under one key, so the
+    // multi-item batch must be rejected rather than silently collapsed to one.
+    await rejects(
+      () =>
+        ctx.enqueueTaskMany(task, ["a", "b", "c"], {
+          deduplicationKey: "batch",
+        }),
+      { name: "TypeError", message: /enqueueMany/ },
+    );
+    strictEqual(backend.enqueued.length, 0);
+    // A native plan never touches KV, even when it rejects.
+    deepStrictEqual(await collectKeys(kv, TASK_DEDUP_PREFIX), []);
+
+    // A single-item batch needs no bulk path, so the key is still forwarded.
+    await ctx.enqueueTaskMany(task, ["solo"], { deduplicationKey: "solo" });
+    strictEqual(backend.enqueued.length, 1);
+    strictEqual(backend.enqueued[0].options?.deduplicationKey, "solo");
+  },
+);
+
+test(
+  "a deduplicated batch over a ParallelMessageQueue wrapping a native " +
+    "enqueueMany backend forwards the key atomically",
+  async () => {
+    class NativeBatchQueue implements MessageQueue {
+      readonly nativeDeduplication = true;
+      readonly #seen = new Set<string>();
+      readonly batches: {
+        messages: readonly TaskMessage[];
+        options?: MessageQueueEnqueueOptions;
+      }[] = [];
+
+      enqueue(): Promise<void> {
+        throw new Error("A multi-item native batch must use enqueueMany().");
+      }
+
+      enqueueMany(
+        messages: readonly TaskMessage[],
+        options?: MessageQueueEnqueueOptions,
+      ): Promise<void> {
+        const key = options?.deduplicationKey;
+        if (key != null && this.#seen.has(key)) return Promise.resolve();
+        if (key != null) this.#seen.add(key);
+        this.batches.push({ messages, options });
+        return Promise.resolve();
+      }
+
+      listen(): Promise<void> {
+        return Promise.resolve();
+      }
+    }
+
+    const backend = new NativeBatchQueue();
+    const queue = new ParallelMessageQueue(backend, 5);
+    const kv = new MemoryKvStore();
+    const federation = createFederation<void>({
+      ...baseOptions,
+      kv,
+      queue: { task: queue },
+    });
+    const task = federation.defineTask("parallel-native-bulk", {
+      schema: stringSchema,
+      handler: () => {},
+    });
+    const ctx = federation.createContext(
+      new URL("https://example.com/"),
+      undefined,
+    );
+
+    await ctx.enqueueTaskMany(task, ["a", "b", "c"], {
+      deduplicationKey: "batch",
+    });
+    // The duplicate batch is dropped by the backend's native check.
+    await ctx.enqueueTaskMany(task, ["x", "y", "z"], {
+      deduplicationKey: "batch",
+    });
+
+    strictEqual(backend.batches.length, 1);
+    strictEqual(backend.batches[0].messages.length, 3);
+    strictEqual(backend.batches[0].options?.deduplicationKey, "batch");
+    // The native path never writes KV, even through the wrapper.
+    deepStrictEqual(await collectKeys(kv, TASK_DEDUP_PREFIX), []);
+  },
+);
+
+test(
+  'an "open" fallback fans out a multi-item batch without enqueueMany ' +
+    "instead of rejecting it",
+  async () => {
+    const queue = new MockQueue(); // no enqueueMany, not native
+    const kv = new CaslessKvStore(); // no cas
+    const federation = createFederation<void>({
+      ...baseOptions,
+      kv,
+      queue: { task: queue },
+      taskDeduplicationFallback: "open",
+    });
+    const task = federation.defineTask("open-batch-fanout", {
+      schema: stringSchema,
+      handler: () => {},
+    });
+    const ctx = federation.createContext(
+      new URL("https://example.com/"),
+      undefined,
+    );
+
+    // With neither native dedup nor cas under "open", the batch proceeds by
+    // fanning out every item; it must not throw the enqueueMany requirement.
+    await ctx.enqueueTaskMany(task, ["a", "b", "c"], {
+      deduplicationKey: "batch",
+    });
+    strictEqual(queue.enqueued.length, 3);
+    for (const { options } of queue.enqueued) {
+      strictEqual(options?.deduplicationKey, undefined);
+    }
+    // The open path records nothing in the key–value store.
+    deepStrictEqual(await collectKeys(kv.inner, TASK_DEDUP_PREFIX), []);
+  },
+);
+
+test(
+  'an "open" fallback logs a debug record when it ignores the key',
+  async () => {
+    const records: LogRecord[] = [];
+    await reset();
+    try {
+      await configure({
+        sinks: {
+          buffer(record: LogRecord): void {
+            records.push(record);
+          },
+        },
+        filters: {},
+        loggers: [
+          { category: [], lowestLevel: "debug", sinks: ["buffer"] },
+        ],
+      });
+
+      const queue = new MockQueue();
+      const federation = createFederation<void>({
+        ...baseOptions,
+        kv: new CaslessKvStore(),
+        queue: { task: queue },
+        taskDeduplicationFallback: "open",
+      });
+      const task = federation.defineTask("open-debug-log", {
+        schema: stringSchema,
+        handler: () => {},
+      });
+      const ctx = federation.createContext(
+        new URL("https://example.com/"),
+        undefined,
+      );
+      await ctx.enqueueTask(task, "payload", { deduplicationKey: "k" });
+
+      const matched = records.filter((record) =>
+        record.level === "debug" &&
+        record.properties.deduplicationKey === "k" &&
+        record.properties.taskName === "open-debug-log"
+      );
+      strictEqual(matched.length, 1);
+    } finally {
+      await reset();
+    }
+  },
+);
+
+test(
+  "two concurrent enqueues sharing a key: exactly one wins the cas claim",
+  async () => {
+    let signalEntered!: () => void;
+    const entered = new Promise<void>((resolve) => {
+      signalEntered = resolve;
+    });
+    let release!: () => void;
+    const released = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    class BlockingQueue implements MessageQueue {
+      readonly nativeDeduplication = false;
+      readonly enqueued: TaskMessage[] = [];
+      #first = true;
+      async enqueue(message: TaskMessage): Promise<void> {
+        if (this.#first) {
+          this.#first = false;
+          signalEntered();
+          await released;
+        }
+        this.enqueued.push(message);
+      }
+      listen(): Promise<void> {
+        return Promise.resolve();
+      }
+    }
+    const queue = new BlockingQueue();
+    const kv = new MemoryKvStore();
+    const federation = createFederation<void>({
+      ...baseOptions,
+      kv,
+      queue: { task: queue },
+    });
+    const task = federation.defineTask("concurrent-claim", {
+      schema: stringSchema,
+      handler: () => {},
+    });
+    const ctx = federation.createContext(
+      new URL("https://example.com/"),
+      undefined,
+    );
+
+    // The first enqueue claims the marker, then blocks inside the queue.
+    const first = ctx.enqueueTask(task, "first", { deduplicationKey: "k" });
+    await entered;
+    // With the first still in flight, the second must lose the cas claim and
+    // skip the queue entirely.
+    await ctx.enqueueTask(task, "second", { deduplicationKey: "k" });
+    release();
+    await first;
+    strictEqual(queue.enqueued.length, 1);
+
+    // The winner kept its marker, so a later duplicate is still dropped.
+    await ctx.enqueueTask(task, "third", { deduplicationKey: "k" });
+    strictEqual(queue.enqueued.length, 1);
+  },
+);
+
+test(
+  "a native enqueue forwards orderingKey and deduplicationKey together",
+  async () => {
+    const queue = new MockQueue({ nativeDeduplication: true });
+    const federation = createFederation<void>({
+      ...baseOptions,
+      kv: new MemoryKvStore(),
+      queue: { task: queue },
+    });
+    const task = federation.defineTask("native-both-keys", {
+      schema: stringSchema,
+      handler: () => {},
+    });
+    const ctx = federation.createContext(
+      new URL("https://example.com/"),
+      undefined,
+    );
+    await ctx.enqueueTask(task, "payload", {
+      orderingKey: "user:alice",
+      deduplicationKey: "dedup:alice",
+    });
+    strictEqual(queue.enqueued.length, 1);
+    const { message, options } = queue.enqueued[0];
+    strictEqual(message.orderingKey, "user:alice");
+    strictEqual(options?.orderingKey, "user:alice");
+    strictEqual(options?.deduplicationKey, "dedup:alice");
   },
 );

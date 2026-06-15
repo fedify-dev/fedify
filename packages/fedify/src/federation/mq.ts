@@ -451,6 +451,15 @@ export class ParallelMessageQueue implements MessageQueue {
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
     if (this.queue.enqueueMany == null) {
+      if (options?.deduplicationKey != null) {
+        throw new TypeError(
+          "Cannot enqueue a batch with a deduplicationKey: the wrapped queue " +
+            "does not implement enqueueMany, so ParallelMessageQueue would " +
+            "have to fan out to individual enqueue() calls that cannot share " +
+            "one deduplicationKey atomically.  Wrap a queue that implements " +
+            "enqueueMany instead.",
+        );
+      }
       const results = await Promise.allSettled(
         messages.map((message) => this.queue.enqueue(message, options)),
       );

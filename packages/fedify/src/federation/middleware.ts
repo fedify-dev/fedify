@@ -3124,8 +3124,8 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     return this.#codec ??= new TaskCodec(this);
   }
 
-  get #enqueueTasks(): ReturnType<typeof enqueueTasks> {
-    return enqueueTasks(this) as ReturnType<typeof enqueueTasks>;
+  get #enqueueTasks() {
+    return enqueueTasks(this);
   }
 
   clone(data: TContextData): Context<TContextData> {
