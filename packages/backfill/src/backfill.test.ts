@@ -1142,6 +1142,44 @@ describe("backfill", () => {
     strictEqual(items[0].id?.href, "https://example.com/notes/2");
   });
 
+  test("maxItems is shared across context and reply tree", async () => {
+    const contextId = new URL("https://example.com/contexts/1");
+    const reply = new Note({
+      id: new URL("https://example.com/notes/3"),
+      content: "reply",
+    });
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      contexts: [contextId],
+      replies: new Collection({
+        id: new URL("https://example.com/notes/1/replies"),
+        items: [reply],
+      }),
+    });
+    const contextItem = new Note({
+      id: new URL("https://example.com/notes/2"),
+      content: "context item",
+    });
+    const context: BackfillContext = {
+      documentLoader: () =>
+        Promise.resolve(
+          new Collection({
+            id: contextId,
+            items: [contextItem],
+          }),
+        ),
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["context-auto", "reply-tree"],
+      maxItems: 1,
+    });
+
+    strictEqual(items.length, 1);
+    strictEqual(items[0].object, contextItem);
+    strictEqual(items[0].strategy, "context-auto");
+  });
+
   test("maxRequests limits dereferencing", async () => {
     const contextId = new URL("https://example.com/contexts/1");
     const itemId = new URL("https://example.com/notes/2");
@@ -1166,6 +1204,41 @@ describe("backfill", () => {
     deepStrictEqual(await collect(context, note, { maxRequests: 1 }), []);
   });
 
+  test("maxRequests is shared across context and reply tree", async () => {
+    const contextId = new URL("https://example.com/contexts/1");
+    const parentId = new URL("https://example.com/notes/0");
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      contexts: [contextId],
+      replyTarget: parentId,
+    });
+    const contextItem = new Note({
+      id: new URL("https://example.com/notes/2"),
+      content: "context item",
+    });
+    const context: BackfillContext = {
+      documentLoader: (iri) => {
+        if (iri.href === contextId.href) {
+          return Promise.resolve(
+            new Collection({
+              id: contextId,
+              items: [contextItem],
+            }),
+          );
+        }
+        throw new Error("reply-tree request should be budgeted out");
+      },
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["context-auto", "reply-tree"],
+      maxRequests: 1,
+    });
+
+    strictEqual(items.length, 1);
+    strictEqual(items[0].object, contextItem);
+  });
+
   test("AbortSignal stops traversal", async () => {
     const contextId = new URL("https://example.com/contexts/1");
     const note = new Note({
@@ -1188,6 +1261,56 @@ describe("backfill", () => {
       collect(context, note, { signal: controller.signal }),
       { name: "AbortError" },
     );
+  });
+
+  test("AbortSignal stops traversal across strategies", async () => {
+    const contextId = new URL("https://example.com/contexts/1");
+    const parentId = new URL("https://example.com/notes/0");
+    const controller = new AbortController();
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      contexts: [contextId],
+      replyTarget: parentId,
+    });
+    const contextItem = new Note({
+      id: new URL("https://example.com/notes/2"),
+      content: "context item",
+    });
+    let requests = 0;
+    const context: BackfillContext = {
+      documentLoader: (iri) => {
+        requests++;
+        if (iri.href === contextId.href) {
+          return Promise.resolve(
+            new Collection({
+              id: contextId,
+              items: [contextItem],
+            }),
+          );
+        }
+        throw new Error("reply-tree request should not be started");
+      },
+    };
+
+    const items: Awaited<ReturnType<typeof collect>> = [];
+    await rejects(
+      async () => {
+        for await (
+          const item of backfill(context, note, {
+            strategies: ["context-auto", "reply-tree"],
+            signal: controller.signal,
+          })
+        ) {
+          items.push(item);
+          controller.abort();
+        }
+      },
+      { name: "AbortError" },
+    );
+
+    strictEqual(requests, 1);
+    strictEqual(items.length, 1);
+    strictEqual(items[0].object, contextItem);
   });
 
   test("documentLoader receives AbortSignal", async () => {
