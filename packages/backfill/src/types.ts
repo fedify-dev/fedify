@@ -61,7 +61,8 @@ export type BackfillDocumentLoader = (
  */
 export interface BackfillContext {
   /**
-   * Dereferences context collections and collection item IRIs.
+   * Dereferences context collections, collection item IRIs, reply targets,
+   * and replies collections.
    */
   readonly documentLoader: BackfillDocumentLoader;
 }
@@ -91,15 +92,20 @@ export interface BackfillOptions<
   readonly maxItems?: number;
 
   /**
-   * Maximum traversal depth.  This is reserved for future reply-tree traversal;
+   * Maximum reply-tree traversal depth.
+   *
+   * Immediate `inReplyTo` targets and direct `replies` collection items have
+   * depth 1.  Their parents or replies have depth 2, and so on.  Context
+   * collection items are depth 0 and are not limited by this option.
    */
   readonly maxDepth?: number;
 
   /**
    * Maximum number of calls to {@link BackfillContext.documentLoader}.
    *
-   * Dereferencing the note context, collection item IRIs, and future page IRIs
-   * all count as requests.  Embedded collection items do not count.
+   * Dereferencing the note context, collection item IRIs, reply target IRIs,
+   * replies collection IRIs, and future page IRIs all count as requests.
+   * Embedded objects and collections do not count.
    */
   readonly maxRequests?: number;
 
@@ -148,8 +154,11 @@ export interface BackfillItem<
   readonly origin: BackfillOrigin;
 
   /**
-   * Traversal depth.  Direct context collection items are depth 0; deeper
-   * values are reserved for future reply-tree traversal.
+   * Traversal depth.
+   *
+   * Direct context collection items are depth 0.  Reply-tree items use depth
+   * 1 for immediate `inReplyTo` targets and direct `replies` collection items,
+   * depth 2 for the next level, and so on.
    */
   readonly depth?: number;
 }
