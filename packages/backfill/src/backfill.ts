@@ -40,6 +40,14 @@ type StrategyItem = {
   readonly depth: number;
 };
 
+type ReplyTreeTraversal = {
+  readonly depth: number;
+  readonly visitedObjectIds: Set<string>;
+  readonly visitedObjects: WeakSet<APObject>;
+  readonly visitedCollectionIds: Set<string>;
+  readonly visitedCollections: WeakSet<BackfillCollection>;
+};
+
 /**
  * Backfills post-like objects related to a seed object.
  *
@@ -227,19 +235,25 @@ async function* getReplyTreeItems(
   readonly origin: "in-reply-to" | "replies";
   readonly depth: number;
 }> {
-  const visitedIds = new Set<string>();
+  const visitedObjectIds = new Set<string>();
   const visitedObjects = new WeakSet<APObject>();
-  if (note.id != null) visitedIds.add(note.id.href);
+  const visitedCollectionIds = new Set<string>();
+  const visitedCollections = new WeakSet<BackfillCollection>();
+  if (note.id != null) visitedObjectIds.add(note.id.href);
   visitedObjects.add(note);
   yield* getReplyAncestors(context, note, options, budget, {
     depth: 1,
-    visitedIds,
+    visitedObjectIds,
     visitedObjects,
+    visitedCollectionIds,
+    visitedCollections,
   });
   yield* getReplyDescendants(context, note, options, budget, {
     depth: 1,
-    visitedIds,
+    visitedObjectIds,
     visitedObjects,
+    visitedCollectionIds,
+    visitedCollections,
   });
 }
 
@@ -248,11 +262,7 @@ async function* getReplyAncestors(
   object: APObject,
   options: BackfillOptions,
   budget: RequestBudget,
-  traversal: {
-    readonly depth: number;
-    readonly visitedIds: Set<string>;
-    readonly visitedObjects: WeakSet<APObject>;
-  },
+  traversal: ReplyTreeTraversal,
 ): AsyncIterable<{
   readonly object: APObject;
   readonly strategy: "reply-tree";
@@ -273,8 +283,10 @@ async function* getReplyAncestors(
     };
     yield* getReplyAncestors(context, target, options, budget, {
       depth: traversal.depth + 1,
-      visitedIds: traversal.visitedIds,
+      visitedObjectIds: traversal.visitedObjectIds,
       visitedObjects: traversal.visitedObjects,
+      visitedCollectionIds: traversal.visitedCollectionIds,
+      visitedCollections: traversal.visitedCollections,
     });
   }
 }
@@ -284,11 +296,7 @@ async function* getReplyDescendants(
   object: APObject,
   options: BackfillOptions,
   budget: RequestBudget,
-  traversal: {
-    readonly depth: number;
-    readonly visitedIds: Set<string>;
-    readonly visitedObjects: WeakSet<APObject>;
-  },
+  traversal: ReplyTreeTraversal,
 ): AsyncIterable<{
   readonly object: APObject;
   readonly strategy: "reply-tree";
@@ -296,8 +304,19 @@ async function* getReplyDescendants(
   readonly depth: number;
 }> {
   if (options.maxDepth != null && traversal.depth > options.maxDepth) return;
+  const repliesId = object.repliesId;
+  let repliesIdVisited = false;
+  if (repliesId != null && !visitReplyTreeCollectionId(repliesId, traversal)) {
+    return;
+  }
+  repliesIdVisited = repliesId != null;
   const replies = await getRepliesCollection(context, object, options, budget);
   if (replies == null) return;
+  if (repliesIdVisited) {
+    traversal.visitedCollections.add(replies);
+  } else if (!visitReplyTreeCollection(replies, traversal)) {
+    return;
+  }
   for await (
     const reply of getCollectionItems(context, replies, options, budget)
   ) {
@@ -311,8 +330,10 @@ async function* getReplyDescendants(
     };
     yield* getReplyDescendants(context, reply, options, budget, {
       depth: traversal.depth + 1,
-      visitedIds: traversal.visitedIds,
+      visitedObjectIds: traversal.visitedObjectIds,
       visitedObjects: traversal.visitedObjects,
+      visitedCollectionIds: traversal.visitedCollectionIds,
+      visitedCollections: traversal.visitedCollections,
     });
   }
 }
@@ -358,18 +379,37 @@ async function getRepliesCollection(
 
 function visitReplyTreeObject(
   object: APObject,
-  traversal: {
-    readonly visitedIds: Set<string>;
-    readonly visitedObjects: WeakSet<APObject>;
-  },
+  traversal: ReplyTreeTraversal,
 ): boolean {
   if (object.id != null) {
-    if (traversal.visitedIds.has(object.id.href)) return false;
-    traversal.visitedIds.add(object.id.href);
+    if (traversal.visitedObjectIds.has(object.id.href)) return false;
+    traversal.visitedObjectIds.add(object.id.href);
   } else {
     if (traversal.visitedObjects.has(object)) return false;
   }
   traversal.visitedObjects.add(object);
+  return true;
+}
+
+function visitReplyTreeCollection(
+  collection: BackfillCollection,
+  traversal: ReplyTreeTraversal,
+): boolean {
+  if (collection.id != null) {
+    return visitReplyTreeCollectionId(collection.id, traversal);
+  } else {
+    if (traversal.visitedCollections.has(collection)) return false;
+  }
+  traversal.visitedCollections.add(collection);
+  return true;
+}
+
+function visitReplyTreeCollectionId(
+  id: URL,
+  traversal: ReplyTreeTraversal,
+): boolean {
+  if (traversal.visitedCollectionIds.has(id.href)) return false;
+  traversal.visitedCollectionIds.add(id.href);
   return true;
 }
 

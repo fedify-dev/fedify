@@ -507,6 +507,40 @@ describe("backfill", () => {
     );
   });
 
+  test("reply tree does not reload visited replies collection URL", async () => {
+    const repliesId = new URL("https://example.com/notes/1/replies");
+    const reply = new Note({
+      id: new URL("https://example.com/notes/2"),
+      content: "reply",
+      replies: repliesId,
+    });
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      replies: repliesId,
+    });
+    let requests = 0;
+    const context: BackfillContext = {
+      documentLoader: (iri) => {
+        requests++;
+        strictEqual(iri.href, repliesId.href);
+        return Promise.resolve(
+          new Collection({
+            id: repliesId,
+            items: [reply],
+          }),
+        );
+      },
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["reply-tree"],
+    });
+
+    strictEqual(requests, 1);
+    strictEqual(items.length, 1);
+    strictEqual(items[0].object.id?.href, reply.id?.href);
+  });
+
   test("reply tree avoids descendant cycles", async () => {
     const seedId = new URL("https://example.com/notes/1");
     const replyId = new URL("https://example.com/notes/2");
