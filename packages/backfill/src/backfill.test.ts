@@ -388,6 +388,158 @@ describe("backfill", () => {
     strictEqual(items[0].strategy, "context-auto");
   });
 
+  test("reply tree yields embedded descendants", async () => {
+    const reply = new Note({
+      id: new URL("https://example.com/notes/2"),
+      content: "reply",
+    });
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      replies: new Collection({
+        id: new URL("https://example.com/notes/1/replies"),
+        items: [reply],
+      }),
+    });
+    const context: BackfillContext = {
+      documentLoader: () => {
+        throw new Error("documentLoader should not be called");
+      },
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["reply-tree"],
+    });
+
+    strictEqual(items.length, 1);
+    strictEqual(items[0].object, reply);
+    deepStrictEqual(items[0].id, reply.id);
+    strictEqual(items[0].strategy, "reply-tree");
+    strictEqual(items[0].origin, "replies");
+    strictEqual(items[0].depth, 1);
+  });
+
+  test("reply tree dereferences replies collection URL", async () => {
+    const repliesId = new URL("https://example.com/notes/1/replies");
+    const reply = new Note({
+      id: new URL("https://example.com/notes/2"),
+      content: "reply",
+    });
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      replies: repliesId,
+    });
+    const context: BackfillContext = {
+      documentLoader: (iri) =>
+        Promise.resolve(
+          iri.href === repliesId.href
+            ? new Collection({
+              id: repliesId,
+              items: [reply],
+            })
+            : null,
+        ),
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["reply-tree"],
+    });
+
+    strictEqual(items.length, 1);
+    deepStrictEqual(items[0].object.id, reply.id);
+    strictEqual(items[0].origin, "replies");
+    strictEqual(items[0].depth, 1);
+  });
+
+  test("reply tree maxDepth limits descendants", async () => {
+    const grandchild = new Note({
+      id: new URL("https://example.com/notes/3"),
+      content: "grandchild",
+    });
+    const reply = new Note({
+      id: new URL("https://example.com/notes/2"),
+      content: "reply",
+      replies: new Collection({
+        id: new URL("https://example.com/notes/2/replies"),
+        items: [grandchild],
+      }),
+    });
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      replies: new Collection({
+        id: new URL("https://example.com/notes/1/replies"),
+        items: [reply],
+      }),
+    });
+    const context: BackfillContext = {
+      documentLoader: () => {
+        throw new Error("documentLoader should not be called");
+      },
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["reply-tree"],
+      maxDepth: 1,
+    });
+
+    strictEqual(items.length, 1);
+    strictEqual(items[0].object, reply);
+    strictEqual(items[0].depth, 1);
+  });
+
+  test("maxRequests limits reply tree replies dereferencing", async () => {
+    const repliesId = new URL("https://example.com/notes/1/replies");
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      replies: repliesId,
+    });
+    const context: BackfillContext = {
+      documentLoader: () => {
+        throw new Error("documentLoader should not be called");
+      },
+    };
+
+    deepStrictEqual(
+      await collect(context, note, {
+        strategies: ["reply-tree"],
+        maxRequests: 0,
+      }),
+      [],
+    );
+  });
+
+  test("reply tree avoids descendant cycles", async () => {
+    const seedId = new URL("https://example.com/notes/1");
+    const replyId = new URL("https://example.com/notes/2");
+    const note = new Note({
+      id: seedId,
+    });
+    const reply = new Note({
+      id: replyId,
+      replies: new Collection({
+        id: new URL("https://example.com/notes/2/replies"),
+        items: [note],
+      }),
+    });
+    const seed = note.clone({
+      replies: new Collection({
+        id: new URL("https://example.com/notes/1/replies"),
+        items: [reply],
+      }),
+    });
+    const context: BackfillContext = {
+      documentLoader: () => {
+        throw new Error("documentLoader should not be called");
+      },
+    };
+
+    const items = await collect(context, seed, {
+      strategies: ["reply-tree"],
+    });
+
+    strictEqual(items.length, 1);
+    strictEqual(items[0].object, reply);
+  });
+
   test("context auto overrides overlapping context strategies", async () => {
     const contextId = new URL("https://example.com/contexts/1");
     const item = new Note({ content: "anonymous" });

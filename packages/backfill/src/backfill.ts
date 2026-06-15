@@ -179,7 +179,7 @@ async function* getReplyTreeItems(
 ): AsyncIterable<{
   readonly object: APObject;
   readonly strategy: "reply-tree";
-  readonly origin: "in-reply-to";
+  readonly origin: "in-reply-to" | "replies";
   readonly depth: number;
 }> {
   const visitedIds = new Set<string>();
@@ -187,6 +187,11 @@ async function* getReplyTreeItems(
   if (note.id != null) visitedIds.add(note.id.href);
   visitedObjects.add(note);
   yield* getReplyAncestors(context, note, options, budget, {
+    depth: 1,
+    visitedIds,
+    visitedObjects,
+  });
+  yield* getReplyDescendants(context, note, options, budget, {
     depth: 1,
     visitedIds,
     visitedObjects,
@@ -229,6 +234,44 @@ async function* getReplyAncestors(
   }
 }
 
+async function* getReplyDescendants(
+  context: BackfillContext,
+  object: APObject,
+  options: BackfillOptions,
+  budget: RequestBudget,
+  traversal: {
+    readonly depth: number;
+    readonly visitedIds: Set<string>;
+    readonly visitedObjects: WeakSet<APObject>;
+  },
+): AsyncIterable<{
+  readonly object: APObject;
+  readonly strategy: "reply-tree";
+  readonly origin: "replies";
+  readonly depth: number;
+}> {
+  if (options.maxDepth != null && traversal.depth > options.maxDepth) return;
+  const replies = await getRepliesCollection(context, object, options, budget);
+  if (replies == null) return;
+  for await (
+    const reply of getCollectionItems(context, replies, options, budget)
+  ) {
+    if (!isContextPostObject(reply)) continue;
+    if (!visitReplyTreeObject(reply, traversal)) continue;
+    yield {
+      object: reply,
+      strategy: "reply-tree",
+      origin: "replies",
+      depth: traversal.depth,
+    };
+    yield* getReplyDescendants(context, reply, options, budget, {
+      depth: traversal.depth + 1,
+      visitedIds: traversal.visitedIds,
+      visitedObjects: traversal.visitedObjects,
+    });
+  }
+}
+
 async function* getReplyTargets(
   context: BackfillContext,
   object: APObject,
@@ -245,6 +288,26 @@ async function* getReplyTargets(
   } catch (error) {
     if (error instanceof MaxRequestsExceeded) throw error;
     budget.signal?.throwIfAborted();
+  }
+}
+
+async function getRepliesCollection(
+  context: BackfillContext,
+  object: APObject,
+  options: BackfillOptions,
+  budget: RequestBudget,
+): Promise<Collection | null> {
+  try {
+    return await object.getReplies({
+      documentLoader: async (url) => {
+        return await loadCollectionItemDocument(context, url, options, budget);
+      },
+      crossOrigin: "trust",
+    });
+  } catch (error) {
+    if (error instanceof MaxRequestsExceeded) throw error;
+    budget.signal?.throwIfAborted();
+    return null;
   }
 }
 
