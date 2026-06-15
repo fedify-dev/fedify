@@ -218,6 +218,176 @@ describe("backfill", () => {
     );
   });
 
+  test("reply tree yields embedded ancestor", async () => {
+    const parent = new Note({
+      id: new URL("https://example.com/notes/1"),
+      content: "parent",
+    });
+    const note = new Note({
+      id: new URL("https://example.com/notes/2"),
+      replyTarget: parent,
+    });
+    const context: BackfillContext = {
+      documentLoader: () => {
+        throw new Error("documentLoader should not be called");
+      },
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["reply-tree"],
+    });
+
+    strictEqual(items.length, 1);
+    strictEqual(items[0].object, parent);
+    deepStrictEqual(items[0].id, parent.id);
+    strictEqual(items[0].strategy, "reply-tree");
+    strictEqual(items[0].origin, "in-reply-to");
+    strictEqual(items[0].depth, 1);
+  });
+
+  test("reply tree dereferences ancestor URL", async () => {
+    const parentId = new URL("https://example.com/notes/1");
+    const parent = new Note({
+      id: parentId,
+      content: "parent",
+    });
+    const note = new Note({
+      id: new URL("https://example.com/notes/2"),
+      replyTarget: parentId,
+    });
+    const context: BackfillContext = {
+      documentLoader: (iri) =>
+        Promise.resolve(iri.href === parentId.href ? parent : null),
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["reply-tree"],
+    });
+
+    strictEqual(items.length, 1);
+    deepStrictEqual(items[0].object.id, parent.id);
+    strictEqual(items[0].origin, "in-reply-to");
+    strictEqual(items[0].depth, 1);
+  });
+
+  test("reply tree maxDepth limits ancestors", async () => {
+    const rootId = new URL("https://example.com/notes/1");
+    const parentId = new URL("https://example.com/notes/2");
+    const root = new Note({
+      id: rootId,
+      content: "root",
+    });
+    const parent = new Note({
+      id: parentId,
+      content: "parent",
+      replyTarget: rootId,
+    });
+    const note = new Note({
+      id: new URL("https://example.com/notes/3"),
+      replyTarget: parentId,
+    });
+    const context: BackfillContext = {
+      documentLoader: (iri) => {
+        if (iri.href === parentId.href) return Promise.resolve(parent);
+        if (iri.href === rootId.href) return Promise.resolve(root);
+        return Promise.resolve(null);
+      },
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["reply-tree"],
+      maxDepth: 1,
+    });
+
+    strictEqual(items.length, 1);
+    deepStrictEqual(items[0].object.id, parent.id);
+    strictEqual(items[0].depth, 1);
+  });
+
+  test("maxRequests limits reply tree ancestor dereferencing", async () => {
+    const parentId = new URL("https://example.com/notes/1");
+    const note = new Note({
+      id: new URL("https://example.com/notes/2"),
+      replyTarget: parentId,
+    });
+    const context: BackfillContext = {
+      documentLoader: () => {
+        throw new Error("documentLoader should not be called");
+      },
+    };
+
+    deepStrictEqual(
+      await collect(context, note, {
+        strategies: ["reply-tree"],
+        maxRequests: 0,
+      }),
+      [],
+    );
+  });
+
+  test("reply tree avoids ancestor cycles", async () => {
+    const seedId = new URL("https://example.com/notes/1");
+    const parentId = new URL("https://example.com/notes/2");
+    const note = new Note({
+      id: seedId,
+      replyTarget: parentId,
+    });
+    const parent = new Note({
+      id: parentId,
+      replyTarget: seedId,
+    });
+    const context: BackfillContext = {
+      documentLoader: (iri) => {
+        if (iri.href === seedId.href) return Promise.resolve(note);
+        if (iri.href === parentId.href) return Promise.resolve(parent);
+        return Promise.resolve(null);
+      },
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["reply-tree"],
+    });
+
+    strictEqual(items.length, 1);
+    deepStrictEqual(items[0].object.id, parent.id);
+  });
+
+  test("reply tree deduplicates ancestors from context collection", async () => {
+    const contextId = new URL("https://example.com/contexts/1");
+    const parentId = new URL("https://example.com/notes/1");
+    const parent = new Note({
+      id: parentId,
+      content: "parent",
+    });
+    const note = new Note({
+      id: new URL("https://example.com/notes/2"),
+      contexts: [contextId],
+      replyTarget: parentId,
+    });
+    const context: BackfillContext = {
+      documentLoader: (iri) => {
+        if (iri.href === contextId.href) {
+          return Promise.resolve(
+            new Collection({
+              id: contextId,
+              items: [parent],
+            }),
+          );
+        }
+        if (iri.href === parentId.href) return Promise.resolve(parent);
+        return Promise.resolve(null);
+      },
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["context-auto", "reply-tree"],
+    });
+
+    strictEqual(items.length, 1);
+    strictEqual(items[0].object, parent);
+    strictEqual(items[0].strategy, "context-auto");
+  });
+
   test("context auto overrides overlapping context strategies", async () => {
     const contextId = new URL("https://example.com/contexts/1");
     const item = new Note({ content: "anonymous" });

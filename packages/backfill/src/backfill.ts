@@ -167,8 +167,102 @@ async function* getStrategyItems(
       }
     }
   } else if (strategy === "reply-tree") {
-    return;
+    yield* getReplyTreeItems(context, note, options, budget);
   }
+}
+
+async function* getReplyTreeItems(
+  context: BackfillContext,
+  note: APObject,
+  options: BackfillOptions,
+  budget: RequestBudget,
+): AsyncIterable<{
+  readonly object: APObject;
+  readonly strategy: "reply-tree";
+  readonly origin: "in-reply-to";
+  readonly depth: number;
+}> {
+  const visitedIds = new Set<string>();
+  const visitedObjects = new WeakSet<APObject>();
+  if (note.id != null) visitedIds.add(note.id.href);
+  visitedObjects.add(note);
+  yield* getReplyAncestors(context, note, options, budget, {
+    depth: 1,
+    visitedIds,
+    visitedObjects,
+  });
+}
+
+async function* getReplyAncestors(
+  context: BackfillContext,
+  object: APObject,
+  options: BackfillOptions,
+  budget: RequestBudget,
+  traversal: {
+    readonly depth: number;
+    readonly visitedIds: Set<string>;
+    readonly visitedObjects: WeakSet<APObject>;
+  },
+): AsyncIterable<{
+  readonly object: APObject;
+  readonly strategy: "reply-tree";
+  readonly origin: "in-reply-to";
+  readonly depth: number;
+}> {
+  if (options.maxDepth != null && traversal.depth > options.maxDepth) return;
+  for await (
+    const target of getReplyTargets(context, object, options, budget)
+  ) {
+    if (!isContextPostObject(target)) continue;
+    if (!visitReplyTreeObject(target, traversal)) continue;
+    yield {
+      object: target,
+      strategy: "reply-tree",
+      origin: "in-reply-to",
+      depth: traversal.depth,
+    };
+    yield* getReplyAncestors(context, target, options, budget, {
+      depth: traversal.depth + 1,
+      visitedIds: traversal.visitedIds,
+      visitedObjects: traversal.visitedObjects,
+    });
+  }
+}
+
+async function* getReplyTargets(
+  context: BackfillContext,
+  object: APObject,
+  options: BackfillOptions,
+  budget: RequestBudget,
+): AsyncIterable<APObject | Link> {
+  try {
+    yield* object.getReplyTargets({
+      documentLoader: async (url) => {
+        return await loadCollectionItemDocument(context, url, options, budget);
+      },
+      crossOrigin: "trust",
+    });
+  } catch (error) {
+    if (error instanceof MaxRequestsExceeded) throw error;
+    budget.signal?.throwIfAborted();
+  }
+}
+
+function visitReplyTreeObject(
+  object: APObject,
+  traversal: {
+    readonly visitedIds: Set<string>;
+    readonly visitedObjects: WeakSet<APObject>;
+  },
+): boolean {
+  if (object.id != null) {
+    if (traversal.visitedIds.has(object.id.href)) return false;
+    traversal.visitedIds.add(object.id.href);
+  } else {
+    if (traversal.visitedObjects.has(object)) return false;
+  }
+  traversal.visitedObjects.add(object);
+  return true;
 }
 
 async function* getContextBackfillItems(
