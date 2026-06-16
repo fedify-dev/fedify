@@ -1103,6 +1103,45 @@ describe("backfill", () => {
     ]);
   });
 
+  test("seen context collection URL items are not loaded", async () => {
+    const contextId = new URL("https://example.com/contexts/1");
+    const seedId = new URL("https://example.com/notes/1");
+    const itemId = new URL("https://example.com/notes/2");
+    const item = new Note({
+      id: itemId,
+      content: "hello",
+    });
+    const note = new Note({
+      id: seedId,
+      contexts: [contextId],
+    });
+    const requests: URL[] = [];
+    const context: BackfillContext = {
+      documentLoader: (iri) => {
+        requests.push(iri);
+        if (iri.href === contextId.href) {
+          return Promise.resolve(
+            new Collection({
+              id: contextId,
+              items: [seedId, itemId],
+            }),
+          );
+        }
+        if (iri.href === itemId.href) return Promise.resolve(item);
+        throw new Error("seen collection item should not be loaded");
+      },
+    };
+
+    const items = await collect(context, note);
+
+    strictEqual(items.length, 1);
+    strictEqual(items[0].id?.href, itemId.href);
+    deepStrictEqual(requests.map((url) => url.href), [
+      contextId.href,
+      itemId.href,
+    ]);
+  });
+
   test("failed URL collection items are skipped", async () => {
     const contextId = new URL("https://example.com/contexts/1");
     const missingItemId = new URL("https://example.com/notes/missing");

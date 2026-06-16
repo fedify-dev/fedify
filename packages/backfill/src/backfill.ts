@@ -95,6 +95,7 @@ export async function* backfill<
           contextStrategies,
           options,
           budget,
+          seenIds,
         );
       } else {
         items = getStrategyItems(
@@ -103,6 +104,7 @@ export async function* backfill<
           strategy,
           options,
           budget,
+          seenIds,
         );
       }
 
@@ -185,6 +187,7 @@ async function* getContextStrategyItems(
   strategies: readonly Exclude<BackfillStrategy, "reply-tree">[],
   options: BackfillOptions,
   budget: RequestBudget,
+  seenIds: ReadonlySet<string>,
 ): AsyncIterable<{
   readonly object: APObject;
   readonly strategy: Exclude<BackfillStrategy, "reply-tree">;
@@ -196,7 +199,13 @@ async function* getContextStrategyItems(
   const collection = await loadObject(context, contextId, options, budget);
   if (!isCollection(collection)) return;
   for await (
-    const object of getCollectionItems(context, collection, options, budget)
+    const object of getCollectionItems(
+      context,
+      collection,
+      options,
+      budget,
+      seenIds,
+    )
   ) {
     for (const strategy of strategies) {
       for await (
@@ -225,6 +234,7 @@ async function* getStrategyItems(
   strategy: BackfillStrategy,
   options: BackfillOptions,
   budget: RequestBudget,
+  seenIds: ReadonlySet<string>,
 ): AsyncIterable<{
   readonly object: APObject;
   readonly strategy: BackfillStrategy;
@@ -232,7 +242,14 @@ async function* getStrategyItems(
   readonly depth: number;
 }> {
   if (isContextStrategy(strategy)) {
-    yield* getContextStrategyItems(context, note, [strategy], options, budget);
+    yield* getContextStrategyItems(
+      context,
+      note,
+      [strategy],
+      options,
+      budget,
+      seenIds,
+    );
   } else if (strategy === "reply-tree") {
     yield* getReplyTreeItems(context, note, options, budget);
   }
@@ -471,10 +488,17 @@ async function* getCollectionItems(
   collection: BackfillCollection,
   options: BackfillOptions,
   budget: RequestBudget,
+  skipIds?: ReadonlySet<string>,
 ): AsyncIterable<APObject | Link> {
   yield* collection.getItems({
     documentLoader: async (url) => {
-      return await loadCollectionItemDocument(context, url, options, budget);
+      return await loadCollectionItemDocument(
+        context,
+        url,
+        options,
+        budget,
+        skipIds,
+      );
     },
     crossOrigin: "trust",
   });
@@ -506,12 +530,15 @@ async function loadCollectionItemDocument(
   url: string,
   options: BackfillOptions,
   budget: RequestBudget,
+  skipIds?: ReadonlySet<string>,
 ) {
   let object: APObject | null;
   try {
+    const iri = new URL(url);
+    if (skipIds?.has(iri.href)) return skippedCollectionItemDocument(url);
     object = await loadObject(
       context,
-      new URL(url),
+      iri,
       options,
       budget,
       true,
