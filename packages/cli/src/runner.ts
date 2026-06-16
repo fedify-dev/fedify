@@ -16,6 +16,8 @@ import process from "node:process";
 import { parse as parseToml } from "smol-toml";
 import {
   activityPubCommands,
+  type CliCommand,
+  type CliCommandValue,
   type CliStaticCommand,
   generatingCommands,
   networkCommands,
@@ -57,28 +59,44 @@ function getUserConfigPath(): string {
 }
 
 const selectedCommand = "__fedifyCliSelectedCommand";
+const selectedRun = "__fedifyCliRunCommand";
 
-type CommandInvocation = Record<string, unknown> & {
-  [selectedCommand]: CliStaticCommand;
-};
+type CommandRunner = (
+  globalOptions: GlobalOptions,
+) => unknown | Promise<unknown>;
 
-type RunnableCommandValue = CommandInvocation & GlobalOptions;
+type CommandInvocation<TCommand extends CliCommand = CliCommand> =
+  TCommand extends CliCommand ? CliCommandValue<TCommand> & {
+      [selectedCommand]: TCommand;
+      [selectedRun]: CommandRunner;
+    }
+    : never;
+
+type RunnableCommandValue<TCommand extends CliCommand = CliCommand> =
+  & CommandInvocation<TCommand>
+  & GlobalOptions;
+
+type PublicCommandValue = Record<string, unknown> & GlobalOptions;
 
 export type CliProgram = {
-  command: CliStaticCommand;
-  value: Record<string, unknown> & GlobalOptions;
+  command: CliCommand;
+  value: PublicCommandValue;
+  run: () => unknown | Promise<unknown>;
 };
 
-function staticCommandParser(
-  staticCommand: CliStaticCommand,
-): Parser<"sync", CommandInvocation, unknown> {
+function staticCommandParser<
+  TValue extends object,
+  TCommand extends CliStaticCommand<TValue> & CliCommand,
+>(
+  staticCommand: TCommand,
+): Parser<"sync", CommandInvocation<TCommand>, unknown> {
   if (staticCommand.path.length < 1) {
     throw new TypeError("Static command path must not be empty.");
   }
 
   let parser = staticCommand.parser as Parser<
     "sync",
-    Record<string, unknown>,
+    TValue,
     unknown
   >;
   for (let i = staticCommand.path.length - 1; i >= 0; i--) {
@@ -90,18 +108,21 @@ function staticCommandParser(
       name,
       parser,
       i === staticCommand.path.length - 1 ? staticCommand.metadata : undefined,
-    ) as Parser<"sync", Record<string, unknown>, unknown>;
+    ) as Parser<"sync", TValue, unknown>;
   }
 
+  const runCommand = staticCommand.run;
   return map(parser, (value) => ({
     ...value,
     [selectedCommand]: staticCommand,
-  })) as Parser<"sync", CommandInvocation, unknown>;
+    [selectedRun]: (globalOptions: GlobalOptions) =>
+      runCommand({ ...value, ...globalOptions }),
+  })) as Parser<"sync", CommandInvocation<TCommand>, unknown>;
 }
 
-function staticCommandsParser(
-  commands: readonly CliStaticCommand[],
-): Parser<"sync", CommandInvocation, unknown> {
+function staticCommandsParser<TCommand extends CliCommand>(
+  commands: readonly TCommand[],
+): Parser<"sync", CommandInvocation<TCommand>, unknown> {
   const parsers = commands.map(staticCommandParser);
   if (parsers.length < 1) {
     throw new TypeError("Static command group must not be empty.");
@@ -129,7 +150,13 @@ const runnableCommand = merge(
 
 export const command = map(
   runnableCommand,
-  ({ [selectedCommand]: _selectedCommand, ...value }) => value,
+  (
+    {
+      [selectedCommand]: _selectedCommand,
+      [selectedRun]: _selectedRun,
+      ...value
+    },
+  ) => value as PublicCommandValue,
 );
 
 type ConfigOptions = {
@@ -213,10 +240,25 @@ export function runCli(args: string[]) {
   return run(command, getRunOptions(args));
 }
 
+function toCliProgram<TCommand extends CliCommand>(
+  parsed: RunnableCommandValue<TCommand>,
+): CliProgram {
+  const {
+    [selectedCommand]: command,
+    [selectedRun]: run,
+    ...value
+  } = parsed;
+  return {
+    command,
+    value: value as PublicCommandValue,
+    run: () => run(parsed),
+  };
+}
+
 export async function parseCliProgram(args: string[]): Promise<CliProgram> {
-  const { [selectedCommand]: command, ...value } = await run(
+  const parsed = await run(
     runnableCommand,
     getRunOptions(args),
   );
-  return { command, value };
+  return toCliProgram(parsed);
 }

@@ -29,7 +29,6 @@ import {
   constant,
   flag,
   float,
-  type InferValue,
   integer,
   map,
   merge,
@@ -56,6 +55,7 @@ import { configureLogging } from "./log.ts";
 import {
   createTunnelServiceOption,
   type GlobalOptions,
+  type TunnelService,
   userAgentOption,
 } from "./options.ts";
 import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
@@ -339,6 +339,28 @@ export class RecursiveLookupError extends Error {
     this.target = target;
   }
 }
+
+type LookupCommand = GlobalOptions & {
+  readonly command: "lookup";
+  readonly traverse: boolean;
+  readonly recurse: RecurseProperty | undefined;
+  readonly recurseDepth: number | undefined;
+  readonly suppressErrors: boolean;
+  readonly authorizedFetch: boolean | undefined;
+  readonly firstKnock:
+    | "draft-cavage-http-signatures-12"
+    | "rfc9421"
+    | undefined;
+  readonly tunnelService: TunnelService | undefined;
+  readonly userAgent: string;
+  readonly allowPrivateAddress: boolean;
+  readonly timeout: number | undefined;
+  readonly urls: readonly string[];
+  readonly reverse: boolean;
+  readonly format: string | undefined;
+  readonly separator: string;
+  readonly output: string | undefined;
+};
 
 function writeToStream(
   stream: NodeJS.WritableStream,
@@ -785,7 +807,7 @@ export async function collectRecursiveObjects(
 }
 
 export async function runLookup(
-  command: InferValue<typeof lookupCommand> & GlobalOptions,
+  command: LookupCommand,
   deps: Partial<{
     lookupObject: typeof lookupObject;
     traverseCollection: typeof traverseCollection;
@@ -901,6 +923,8 @@ export async function runLookup(
   };
 
   if (command.authorizedFetch) {
+    const firstKnock = command.firstKnock ??
+      "draft-cavage-http-signatures-12";
     spinner.text = "Generating a one-time key pair...";
     const key = await generateCryptoKeyPair();
     spinner.text = "Spinning up a temporary ActivityPub server...";
@@ -949,7 +973,7 @@ export async function runLookup(
         userAgent: command.userAgent,
         specDeterminer: {
           determineSpec() {
-            return command.firstKnock;
+            return firstKnock;
           },
           rememberSpec() {
           },
@@ -967,7 +991,7 @@ export async function runLookup(
         userAgent: command.userAgent,
         specDeterminer: {
           determineSpec() {
-            return command.firstKnock;
+            return firstKnock;
           },
           rememberSpec() {
           },

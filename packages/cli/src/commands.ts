@@ -1,19 +1,75 @@
-import { initOptions } from "@fedify/init";
-import { type AnyStaticCommand, defineCommand } from "@optique/discover";
-import { constant, merge, message, object, optionNames } from "@optique/core";
+import { initOptions, runInit } from "@fedify/init";
+import {
+  constant,
+  merge,
+  message,
+  object,
+  optionNames,
+  type Parser,
+} from "@optique/core";
+import {
+  type CommandMetadata,
+  type CommandPath,
+  defineCommand,
+  type StaticCommand,
+} from "@optique/discover";
+import runBench from "./bench/action.ts";
 import { benchMetadata, benchOptions } from "./bench/command.ts";
+import runGenerateVocab from "./generate-vocab/action.ts";
 import {
   generateVocabMetadata,
   generateVocabOptions,
 } from "./generate-vocab/command.ts";
+import { runInbox } from "./inbox.tsx";
 import { inboxMetadata, inboxOptions } from "./inbox/command.ts";
-import { lookupMetadata, lookupOptions } from "./lookup.ts";
-import { nodeInfoMetadata, nodeInfoOptions } from "./nodeinfo.ts";
+import { lookupMetadata, lookupOptions, runLookup } from "./lookup.ts";
+import { nodeInfoMetadata, nodeInfoOptions, runNodeInfo } from "./nodeinfo.ts";
+import type { GlobalOptions } from "./options.ts";
+import { runRelay } from "./relay.ts";
 import { relayMetadata, relayOptions } from "./relay/command.ts";
-import { tunnelMetadata, tunnelOptions } from "./tunnel.ts";
+import { runTunnel, tunnelMetadata, tunnelOptions } from "./tunnel.ts";
+import runWebFinger from "./webfinger/action.ts";
 import { webFingerMetadata, webFingerOptions } from "./webfinger/command.ts";
 
-export type CliStaticCommand = AnyStaticCommand;
+type CliCommandHandler<TValue extends object> = (
+  value: TValue & GlobalOptions,
+) => unknown | Promise<unknown>;
+
+export type CliStaticCommand<TValue extends object> =
+  & Omit<StaticCommand<"sync", TValue>, "handler">
+  & {
+    readonly handler: (value: never) => unknown | Promise<unknown>;
+    readonly run: CliCommandHandler<TValue>;
+  };
+
+export type AnyCliStaticCommand =
+  & Omit<StaticCommand<"sync", never>, "handler" | "parser">
+  & {
+    readonly parser: Parser<"sync", unknown, unknown>;
+    readonly handler: (value: never) => unknown | Promise<unknown>;
+    readonly run: (value: never) => unknown | Promise<unknown>;
+  };
+
+export type CliCommandValue<TCommand extends AnyCliStaticCommand> =
+  TCommand extends CliStaticCommand<infer TValue> ? TValue : never;
+
+function defineCliCommand<const TValue extends object>(
+  command: {
+    readonly path: CommandPath;
+    readonly parser: Parser<"sync", TValue, unknown>;
+    readonly metadata?: CommandMetadata;
+    readonly run: CliCommandHandler<NoInfer<TValue>>;
+  },
+): CliStaticCommand<TValue> {
+  const { run, ...definition } = command;
+  return {
+    ...defineCommand({
+      ...definition,
+      handler: (_value: TValue) => {},
+    }),
+    run,
+  };
+}
 
 const initParser = merge(
   initOptions,
@@ -34,64 +90,72 @@ Unless you specify all options (${optionNames(["-w", "--web-framework"])}, ${
 };
 
 export const generatingCommands = [
-  defineCommand({
+  defineCliCommand({
     path: ["init"],
     parser: initParser,
     metadata: initMetadata,
-    handler: () => {},
+    run: runInit,
   }),
-  defineCommand({
+  defineCliCommand({
     path: ["generate-vocab"],
     parser: generateVocabOptions,
     metadata: generateVocabMetadata,
-    handler: () => {},
+    run: runGenerateVocab,
   }),
-] satisfies readonly CliStaticCommand[];
+] satisfies readonly AnyCliStaticCommand[];
 
 export const activityPubCommands = [
-  defineCommand({
+  defineCliCommand({
     path: ["webfinger"],
     parser: webFingerOptions,
     metadata: webFingerMetadata,
-    handler: () => {},
+    run: runWebFinger,
   }),
-  defineCommand({
+  defineCliCommand({
     path: ["lookup"],
     parser: lookupOptions,
     metadata: lookupMetadata,
-    handler: () => {},
+    run: runLookup,
   }),
-  defineCommand({
+  defineCliCommand({
     path: ["inbox"],
     parser: inboxOptions,
     metadata: inboxMetadata,
-    handler: () => {},
+    run: runInbox,
   }),
-  defineCommand({
+  defineCliCommand({
     path: ["nodeinfo"],
     parser: nodeInfoOptions,
     metadata: nodeInfoMetadata,
-    handler: () => {},
+    run: runNodeInfo,
   }),
-  defineCommand({
+  defineCliCommand({
     path: ["relay"],
     parser: relayOptions,
     metadata: relayMetadata,
-    handler: () => {},
+    run: runRelay,
   }),
-  defineCommand({
+  defineCliCommand({
     path: ["bench"],
     parser: benchOptions,
     metadata: benchMetadata,
-    handler: () => {},
+    run: runBench,
   }),
-] satisfies readonly CliStaticCommand[];
+] satisfies readonly AnyCliStaticCommand[];
 
 export const networkCommands = [
-  defineCommand({
+  defineCliCommand({
     path: ["tunnel"],
     parser: tunnelOptions,
     metadata: tunnelMetadata,
-    handler: () => {},
+    run: runTunnel,
   }),
-] satisfies readonly CliStaticCommand[];
+] satisfies readonly AnyCliStaticCommand[];
+
+export const cliCommands = [
+  ...generatingCommands,
+  ...activityPubCommands,
+  ...networkCommands,
+] as const satisfies readonly AnyCliStaticCommand[];
+
+export type CliCommand = typeof cliCommands[number];
