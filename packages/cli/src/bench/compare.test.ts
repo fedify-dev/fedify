@@ -980,6 +980,65 @@ test("runBenchCompare - aborts benchmark work when target exits", async () => {
   ]);
 });
 
+test("runBenchCompare - ignores target exit while stopping normally", async () => {
+  const events: string[] = [];
+  let rejectExit!: (error: Error) => void;
+  let code = -1;
+  await runBenchCompare(command({}), {
+    exit: (c) => {
+      code = c;
+    },
+    writeOutput: () => {
+      events.push("write");
+      return Promise.resolve();
+    },
+    log: (message) => events.push(`log:${message}`),
+    createWorktree: (_ref, label) => Promise.resolve(`/tmp/${label}`),
+    removeWorktree: (path) => {
+      events.push(`remove:${path}`);
+      return Promise.resolve();
+    },
+    startTarget: (cwd) => {
+      events.push(`start:${cwd}`);
+      return Promise.resolve({
+        exited: new Promise<never>((_resolve, reject) => {
+          rejectExit = reject;
+        }),
+        stop: () => {
+          events.push(`stop:${cwd}`);
+          rejectExit(new Error("target stopped"));
+          return Promise.resolve();
+        },
+      });
+    },
+    waitReady: () => {
+      events.push("ready");
+      return Promise.resolve();
+    },
+    runBenchInWorktree: () => {
+      events.push("bench");
+      return Promise.resolve(report([scenario()]));
+    },
+  });
+  await Promise.resolve();
+  assert.strictEqual(code, 0);
+  assert.deepEqual(events, [
+    "log:Checking out base benchmark ref origin/main…",
+    "start:/tmp/base",
+    "ready",
+    "bench",
+    "stop:/tmp/base",
+    "log:Checking out head benchmark ref HEAD…",
+    "start:/tmp/head",
+    "ready",
+    "bench",
+    "stop:/tmp/head",
+    "write",
+    "remove:/tmp/head",
+    "remove:/tmp/base",
+  ]);
+});
+
 test("runBenchCompare - fails when target exits before readiness", async () => {
   const events: string[] = [];
   let code = -1;

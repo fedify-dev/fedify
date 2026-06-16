@@ -282,8 +282,9 @@ export async function runBenchCompare(
       targetExitError = error;
       if (!stoppingTarget && !interruptSignal.aborted) {
         interruptController.abort(error);
+        throw error;
       }
-      throw error;
+      return new Promise<never>(() => {});
     });
     const throwIfTargetExited = () => {
       if (targetExitError != null) throw targetExitError;
