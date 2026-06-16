@@ -352,6 +352,12 @@ export function parseRegressionTolerance(value: string): number {
       `Invalid --max-regression value: ${JSON.stringify(value)}.`,
     );
   }
+  if (match?.[2] == null && numeric > 1) {
+    throw new RangeError(
+      `Invalid --max-regression value: ${JSON.stringify(value)}; ` +
+        "use a ratio between 0 and 1 or an explicit percentage.",
+    );
+  }
   return match?.[2] === "%" ? numeric / 100 : numeric;
 }
 

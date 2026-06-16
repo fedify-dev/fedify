@@ -153,12 +153,18 @@ function fakeChildProcess(pid = 1234): FakeChildProcess {
 test("parseRegressionTolerance - parses percentages", () => {
   assert.strictEqual(parseRegressionTolerance("15%"), 0.15);
   assert.strictEqual(parseRegressionTolerance("0.2"), 0.2);
+  assert.strictEqual(parseRegressionTolerance("1"), 1);
 });
 
 test("parseRegressionTolerance - rejects malformed values", () => {
   assert.throws(() => parseRegressionTolerance("15ms"), RangeError);
   assert.throws(() => parseRegressionTolerance("-1%"), RangeError);
   assert.throws(() => parseRegressionTolerance(""), RangeError);
+});
+
+test("parseRegressionTolerance - rejects ambiguous whole-number ratios", () => {
+  assert.throws(() => parseRegressionTolerance("15"), RangeError);
+  assert.throws(() => parseRegressionTolerance("1.01"), RangeError);
 });
 
 test("buildCompareReport - applies the measured noise band", () => {

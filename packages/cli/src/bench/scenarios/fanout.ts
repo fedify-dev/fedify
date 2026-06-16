@@ -6,6 +6,7 @@
 
 import { serve } from "srvx";
 import { runLoad, type SendOutcome } from "../load/generator.ts";
+import { type Clock, systemClock } from "../load/clock.ts";
 import { aggregateSamples } from "../metrics/aggregate.ts";
 import { LogLinearHistogram } from "../metrics/histogram.ts";
 import {
@@ -46,6 +47,7 @@ export const fanoutRunner: ScenarioRunner = {
       throw new Error("The fanout scenario requires a sender.");
     }
     this.validate?.(context.scenario);
+    const clock = context.clock ?? systemClock();
     const fetchImpl = context.fetch ?? fetch;
     const followers = context.scenario.followers ?? DEFAULT_FOLLOWERS;
     const sink = await spawnSinkServer({
@@ -90,6 +92,8 @@ export const fanoutRunner: ScenarioRunner = {
           target: context.target,
           fetch: fetchImpl,
           baseline,
+          clock,
+          signal: context.signal,
           timeoutMs: context.scenario.queueDrainTimeoutMs ??
             DEFAULT_DRAIN_TIMEOUT_MS,
         });
@@ -132,7 +136,7 @@ export const fanoutRunner: ScenarioRunner = {
       const result = await runLoad(
         loadPlanOf(context.scenario, context.rng),
         send,
-        context.clock,
+        clock,
         context.signal,
       );
       const measurement = aggregateSamples(result.samples, {
@@ -329,13 +333,17 @@ async function waitForDrain(options: {
   readonly target: URL;
   readonly fetch: typeof fetch;
   readonly baseline: Awaited<ReturnType<typeof fetchServerSnapshot>>;
+  readonly clock: Clock;
+  readonly signal?: AbortSignal;
   readonly timeoutMs: number;
 }): Promise<DrainResult | null> {
   if (options.baseline == null) return null;
   const baselineRemaining = queueTaskRemaining(options.baseline) ?? 0;
-  const deadline = Date.now() + options.timeoutMs;
+  const deadline = options.clock.now() + options.timeoutMs;
   do {
+    throwIfAborted(options.signal);
     const snapshot = await fetchServerSnapshot(options.target, options.fetch);
+    throwIfAborted(options.signal);
     if (snapshot != null) {
       const diff = diffSnapshots(options.baseline, snapshot);
       const queueTasks = diff.queueTasks;
@@ -349,9 +357,22 @@ async function waitForDrain(options: {
         return { timedOut: false, failed: queueTasks.failed };
       }
     }
-    await new Promise((resolve) => setTimeout(resolve, DRAIN_POLL_MS));
-  } while (Date.now() < deadline);
+    const now = options.clock.now();
+    if (now >= deadline) break;
+    await options.clock.sleepUntil(
+      Math.min(deadline, now + DRAIN_POLL_MS),
+      options.signal,
+    );
+  } while (options.clock.now() < deadline);
   return { timedOut: true, failed: 0 };
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) throw abortReason(signal);
+}
+
+function abortReason(signal: AbortSignal): unknown {
+  return signal.reason ?? new Error("Operation aborted.");
 }
 
 function addQueueDrain(

@@ -351,6 +351,65 @@ test("failureRunner - tolerates transient remote fault stats failures", async ()
   assert.ok(statsCalls >= 3);
 });
 
+test("failureRunner - uses abortable remote fault poll sleeps", async () => {
+  const target = new URL("http://target.test/");
+  const signal = new AbortController().signal;
+  const sleepSignals: (AbortSignal | undefined)[] = [];
+  let now = 0;
+  const clock: Clock = {
+    now: () => now,
+    sleepUntil: (timeMs, signal) => {
+      now = Math.max(now, timeMs);
+      sleepSignals.push(signal);
+      return Promise.resolve();
+    },
+  };
+  const scenario = normalizeSuite({
+    version: 1,
+    target: target.href,
+    scenarios: [{
+      name: "failure",
+      type: "failure",
+      fault: "remote-404",
+      sender: "alice",
+      load: { rate: "1000/s" },
+      duration: "1ms",
+      queueDrainTimeout: "1ms",
+    }],
+  }).scenarios[0];
+  let triggerCalls = 0;
+
+  await failureRunner.run({
+    scenario,
+    target,
+    documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+    contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+    allowPrivateAddress: true,
+    fleet: null,
+    fetch: (input) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.pathname === "/.well-known/fedify/bench/stats") {
+        return Promise.resolve(statsJson(statsSnapshot({
+          enqueued: triggerCalls,
+          completed: triggerCalls,
+          failed: 0,
+          permanentFailures: 0,
+        })));
+      }
+      if (url.pathname === "/.well-known/fedify/bench/trigger") {
+        triggerCalls++;
+        return Promise.resolve(statsJson({ version: 1 }, 202));
+      }
+      return Promise.resolve(new Response("unexpected", { status: 500 }));
+    },
+    assertDestinationAllowed: () => {},
+    clock,
+    signal,
+  });
+
+  assert.deepStrictEqual(sleepSignals, [signal, signal]);
+});
+
 test("failureRunner.validate - requires sender for remote faults", () => {
   const scenario = normalizeSuite({
     version: 1,
