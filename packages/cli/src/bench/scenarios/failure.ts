@@ -7,6 +7,7 @@
 import { Create, Note } from "@fedify/vocab";
 import { discoverInbox, selectInbox } from "../discovery/discover.ts";
 import { runLoad, type SendOutcome } from "../load/generator.ts";
+import { type Clock, systemClock } from "../load/clock.ts";
 import { aggregateSamples } from "../metrics/aggregate.ts";
 import {
   diffSnapshots,
@@ -108,6 +109,7 @@ export const failureRunner: ScenarioRunner = {
 
   async run(context: RunContext) {
     this.validate?.(context.scenario);
+    const clock = context.clock ?? systemClock();
     const faults = faultsOf(context);
     const deliveryTarget = await resolveFailureDeliveryTarget(context, faults);
     const remoteTargets = await resolveRemoteFailureTargets(context, faults);
@@ -141,7 +143,8 @@ export const failureRunner: ScenarioRunner = {
       const result = await runLoad(
         loadPlanOf(context.scenario, context.rng),
         send,
-        context.clock,
+        clock,
+        context.signal,
       );
       return aggregateSamples(result.samples, {
         measuredWindowMs: measuredWindowMs(context.scenario),
@@ -337,6 +340,8 @@ async function sendRemoteFailure(
     fetch: fetchImpl,
     baseline,
     fault,
+    clock: context.clock ?? systemClock(),
+    signal: context.signal,
     timeoutMs: context.scenario.queueDrainTimeoutMs ??
       DEFAULT_DRAIN_TIMEOUT_MS,
   });
@@ -384,13 +389,17 @@ async function waitForRemoteFault(options: {
   readonly fetch: typeof fetch;
   readonly baseline: Awaited<ReturnType<typeof fetchServerSnapshot>>;
   readonly fault: RemoteFailureFault;
+  readonly clock: Clock;
+  readonly signal?: AbortSignal;
   readonly timeoutMs: number;
 }): Promise<RemoteFaultObservation | null> {
   if (options.baseline == null) return null;
   const baselineRemaining = queueTaskRemaining(options.baseline) ?? 0;
-  const deadline = Date.now() + options.timeoutMs;
+  const deadline = options.clock.now() + options.timeoutMs;
   do {
+    throwIfAborted(options.signal);
     const snapshot = await fetchServerSnapshot(options.target, options.fetch);
+    throwIfAborted(options.signal);
     if (snapshot != null) {
       const diff = diffSnapshots(options.baseline, snapshot);
       const queueTasks = diff.queueTasks;
@@ -416,9 +425,22 @@ async function waitForRemoteFault(options: {
         }
       }
     }
-    await new Promise((resolve) => setTimeout(resolve, DRAIN_POLL_MS));
-  } while (Date.now() < deadline);
+    const now = options.clock.now();
+    if (now >= deadline) break;
+    await options.clock.sleepUntil(
+      Math.min(deadline, now + DRAIN_POLL_MS),
+      options.signal,
+    );
+  } while (options.clock.now() < deadline);
   return { timedOut: true };
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) throw abortReason(signal);
+}
+
+function abortReason(signal: AbortSignal): unknown {
+  return signal.reason ?? new Error("Operation aborted.");
 }
 
 function expectedRemoteFailure(fault: RemoteFailureFault): SendOutcome {

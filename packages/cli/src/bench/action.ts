@@ -4,7 +4,7 @@ import process from "node:process";
 import { getContextLoader, getDocumentLoader } from "../docloader.ts";
 import { describeError } from "../utils.ts";
 import { buildFleet } from "./actor/fleet.ts";
-import type { BenchCommand } from "./command.ts";
+import type { BenchRunCommand } from "./command.ts";
 import {
   type DiscoveredInbox,
   discoverInbox,
@@ -19,6 +19,7 @@ import {
   buildScenarioResult,
   configHash,
   detectEnvironment,
+  type ScenarioMeasurement,
 } from "./result/build.ts";
 import { probeBenchmarkMode } from "./discovery/probe.ts";
 import { renderReport, type ReportFormat } from "./render/index.ts";
@@ -50,6 +51,10 @@ import {
 } from "./server/synthetic.ts";
 import { convertUrlIfHandle } from "../webfinger/lib.ts";
 
+type BenchRunRuntimeCommand = BenchRunCommand & {
+  readonly explicitCliTarget?: boolean;
+};
+
 /** Injectable dependencies for {@link runBench}, overridable in tests. */
 export interface RunBenchDeps {
   /** Terminates the process with an exit code. */
@@ -65,6 +70,8 @@ export interface RunBenchDeps {
   readonly fetch?: typeof fetch;
   /** Hostname resolver used for target risk classification. */
   readonly resolveTargetAddresses?: ResolveTargetAddresses;
+  /** Aborts in-flight benchmark work. */
+  readonly signal?: AbortSignal;
 }
 
 /**
@@ -76,7 +83,7 @@ export interface RunBenchDeps {
  * @param deps Injectable dependencies for testing.
  */
 export default async function runBench(
-  command: BenchCommand,
+  command: BenchRunRuntimeCommand,
   deps: RunBenchDeps = {},
 ): Promise<void> {
   // Set the exit code rather than terminating, so cleanup (closing the fleet)
@@ -90,7 +97,13 @@ export default async function runBench(
   // Apply the configured User-Agent to all benchmark traffic — the probe, the
   // stats reads, and the runners' inbox/WebFinger requests — not just the
   // document loader, so a target that inspects the UA sees it on every request.
-  const fetchImpl = withUserAgent(deps.fetch ?? fetch, command.userAgent);
+  const signal = deps.signal;
+  const fetchImpl = withUserAgent(
+    withAbortSignal(deps.fetch ?? fetch, signal),
+    command.userAgent,
+  );
+  const explicitCliTarget = command.explicitCliTarget ?? command.target != null;
+  throwIfAborted(signal);
 
   // Loading, validation, and normalization failures are all user-facing
   // configuration errors.
@@ -105,6 +118,7 @@ export default async function runBench(
     log(describeError(error));
     return void exit(2);
   }
+  throwIfAborted(signal);
 
   // Preflight every runner so an unsupported scenario type, an option the
   // runner cannot honor, or a malformed `expect` assertion fails fast, before
@@ -124,19 +138,22 @@ export default async function runBench(
     log(describeError(error));
     return void exit(2);
   }
+  throwIfAborted(signal);
 
   const tier = await classifyResolvedTarget(
     suite.target,
     deps.resolveTargetAddresses,
   );
+  throwIfAborted(signal);
   const probe = await probeBenchmarkMode(suite.target, fetchImpl);
+  throwIfAborted(signal);
   try {
     if (!command.dryRun) {
       assertUnsafeOverrideAllowed({
         tier,
         benchmarkMode: probe.benchmarkMode,
         allowUnsafe: command.allowUnsafeTarget,
-        explicitCliTarget: command.target != null,
+        explicitCliTarget,
         scenarios: unsafeOverrideScenarios(validated),
       });
     }
@@ -190,7 +207,7 @@ export default async function runBench(
       targetOrigin: suite.target.origin,
       targetBenchmarkMode: probe.benchmarkMode,
       allowUnsafe: command.allowUnsafeTarget,
-      explicitCliTarget: command.target != null,
+      explicitCliTarget,
       destinationTier,
       defaults: validated.defaults,
     });
@@ -219,7 +236,7 @@ export default async function runBench(
       targetOrigin: suite.target.origin,
       targetBenchmarkMode: probe.benchmarkMode,
       allowUnsafe: command.allowUnsafeTarget,
-      explicitCliTarget: command.target != null,
+      explicitCliTarget,
       destinationTier,
       defaults: validated.defaults,
     });
@@ -287,6 +304,7 @@ export default async function runBench(
   let fleet: SyntheticServer | undefined;
   const startedAt = new Date().toISOString();
   try {
+    throwIfAborted(signal);
     if (
       suite.scenarios.some((scenario) =>
         scenarioNeedsSyntheticServer(scenario, suite.scenarios)
@@ -299,25 +317,36 @@ export default async function runBench(
     const results = [];
     for (let i = 0; i < suite.scenarios.length; i++) {
       const scenario = suite.scenarios[i];
-      log(`Running scenario "${scenario.name}" (${scenario.type})…`);
-      const measurement = await runners[i].run({
-        scenario,
-        scenarios: suite.scenarios,
-        target: suite.target,
-        documentLoader,
-        contextLoader,
-        allowPrivateAddress,
-        fleet: fleet ?? null,
-        advertiseHost: command.advertiseHost,
-        fetch: fetchImpl,
-        assertDestinationAllowed: (url, gateScenario) =>
-          assertDestinationAllowed(url, gateScenario ?? scenario),
-        assertReadDestinationAllowed: (url, gateScenario) =>
-          assertReadDestinationAllowed(url, gateScenario ?? scenario),
-        assertActorlessDestinationAllowed: (url, gateScenario) =>
-          assertActorlessDestinationAllowed(url, gateScenario ?? scenario),
-      });
-      results.push(buildScenarioResult(scenario, measurement));
+      const measurements: ScenarioMeasurement[] = [];
+      for (let run = 1; run <= scenario.runs; run++) {
+        throwIfAborted(signal);
+        const suffix = scenario.runs === 1
+          ? ""
+          : ` run ${run}/${scenario.runs}`;
+        log(`Running scenario "${scenario.name}" (${scenario.type})${suffix}…`);
+        measurements.push(
+          await runners[i].run({
+            scenario,
+            scenarios: suite.scenarios,
+            target: suite.target,
+            documentLoader,
+            contextLoader,
+            allowPrivateAddress,
+            fleet: fleet ?? null,
+            advertiseHost: command.advertiseHost,
+            fetch: fetchImpl,
+            assertDestinationAllowed: (url, gateScenario) =>
+              assertDestinationAllowed(url, gateScenario ?? scenario),
+            assertReadDestinationAllowed: (url, gateScenario) =>
+              assertReadDestinationAllowed(url, gateScenario ?? scenario),
+            assertActorlessDestinationAllowed: (url, gateScenario) =>
+              assertActorlessDestinationAllowed(url, gateScenario ?? scenario),
+            signal,
+          }),
+        );
+        throwIfAborted(signal);
+      }
+      results.push(buildScenarioResult(scenario, measurements));
     }
     const report = buildReport({
       scenarios: results,
@@ -392,6 +421,25 @@ export function withUserAgent(
   }) as typeof fetch;
 }
 
+function withAbortSignal(
+  fetchImpl: typeof fetch,
+  signal: AbortSignal | undefined,
+): typeof fetch {
+  if (signal == null) return fetchImpl;
+  return ((input: URL | RequestInfo, init?: RequestInit) => {
+    if (signal.aborted) return Promise.reject(abortReason(signal));
+    return fetchImpl(input, { ...init, signal });
+  }) as typeof fetch;
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) throw abortReason(signal);
+}
+
+function abortReason(signal: AbortSignal): unknown {
+  return signal.reason ?? new Error("Benchmark run aborted.");
+}
+
 async function defaultWriteOutput(
   content: string,
   outputPath: string | undefined,
@@ -446,7 +494,31 @@ function describePlan(scenario: ResolvedScenario): string {
   const load = scenario.load.kind === "open"
     ? `open-loop ${scenario.load.ratePerSec}/s ${scenario.load.arrival}`
     : `closed-loop concurrency ${scenario.load.concurrency}`;
-  return `${load}, duration ${scenario.durationMs}ms, signing ${scenario.signing}`;
+  const totalDurationMs = scenario.durationMs * scenario.runs;
+  const volume = describePlannedRequestVolume(scenario);
+  return [
+    load,
+    `duration ${scenario.durationMs}ms`,
+    `runs ${scenario.runs}`,
+    `total duration ${totalDurationMs}ms`,
+    ...(volume == null ? [] : [volume]),
+    `signing ${scenario.signing}`,
+  ].join(", ");
+}
+
+function describePlannedRequestVolume(
+  scenario: ResolvedScenario,
+): string | null {
+  if (scenario.load.kind !== "open") return null;
+  const estimatedRequests = scenario.load.ratePerSec *
+    (scenario.durationMs / 1000) * scenario.runs;
+  return `estimated scheduled requests ${formatPlanNumber(estimatedRequests)}`;
+}
+
+function formatPlanNumber(value: number): string {
+  if (Number.isInteger(value)) return String(value);
+  const formatted = value.toFixed(2).replace(/\.?0+$/, "");
+  return formatted === "" ? "0" : formatted;
 }
 
 async function describeDiscoveryPlan(
@@ -656,11 +728,13 @@ function unsafeOverrideScenario(
 ): Parameters<typeof assertUnsafeOverrideAllowed>[0]["scenarios"][number] {
   const defaultDuration = defaults?.duration != null;
   const defaultLoad = hasExplicitLoad(defaults?.load);
+  const defaultRuns = defaults?.runs != null;
   const raw = "raw" in scenario ? scenario.raw : scenario;
   return {
     name: scenario.name,
     explicitDuration: raw.duration != null || defaultDuration,
     explicitLoad: hasExplicitLoad(raw.load) || defaultLoad,
+    explicitRuns: raw.runs != null || defaultRuns,
   };
 }
 

@@ -15,9 +15,13 @@ Current schemas:
     format (input).
  -  *bench/scenario-v1.json* — the version 1 `fedify bench` scenario suite
     format (input).
- -  *bench/report-v2.json* — the current `fedify bench` report format
+ -  *bench/report-v3.json* — the current `fedify bench` report format
+    (output).
+ -  *bench/report-v2.json* — the version 2 `fedify bench` report format
     (output).
  -  *bench/report-v1.json* — the version 1 `fedify bench` report format
+    (output).
+ -  *bench/compare-report-v1.json* — the `fedify bench compare` report format
     (output).
 
 
@@ -41,6 +45,7 @@ binary self-contained):
 
  -  *packages/cli/src/bench/scenario/schema.ts*
  -  *packages/cli/src/bench/result/schema.ts*
+ -  *packages/cli/src/bench/compare/schema.ts*
 
 The *.json* files here are generated from those objects.  After editing an
 embedded schema, regenerate the published copies:
@@ -50,8 +55,9 @@ deno task -f @fedify/cli generate-bench-schema
 ~~~~
 
 The matching TypeScript types live next to each schema
-(*packages/cli/src/bench/scenario/types.ts* and
-*packages/cli/src/bench/result/model.ts*); keep them in sync with the schema.
+(*packages/cli/src/bench/scenario/types.ts*,
+*packages/cli/src/bench/result/model.ts*, and
+*packages/cli/src/bench/compare.ts*); keep them in sync with the schema.
 
 
 Guards

@@ -153,3 +153,21 @@ test("runLoad - records send exceptions as failed samples", async () => {
   assert.ok(result.samples.every((s) => !s.outcome.ok));
   assert.ok(result.samples.every((s) => s.outcome.errorKind === "exception"));
 });
+
+test("runLoad - aborts scheduled sleeps", async () => {
+  const controller = new AbortController();
+  const startedAt = Date.now();
+  const load = runLoad(
+    {
+      load: { kind: "open", ratePerSec: 1, arrival: "constant" },
+      durationMs: 10_000,
+      warmupMs: 0,
+    },
+    () => Promise.resolve(ok),
+    undefined,
+    controller.signal,
+  );
+  setTimeout(() => controller.abort(new Error("cancelled")), 10);
+  await assert.rejects(load, /cancelled/);
+  assert.ok(Date.now() - startedAt < 1000);
+});

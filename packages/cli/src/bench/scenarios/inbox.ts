@@ -137,6 +137,7 @@ export const inboxRunner: ScenarioRunner = {
         loadPlanOf(scenario, context.rng),
         send,
         context.clock,
+        context.signal,
       );
       const measurement = aggregateSamples(result.samples, {
         measuredWindowMs: measuredWindowMs(scenario),

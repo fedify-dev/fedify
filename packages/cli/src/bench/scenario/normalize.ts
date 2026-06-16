@@ -30,7 +30,7 @@ const DEFAULT_DURATION_MS = 60_000;
 const DEFAULT_WARMUP_MS = 0;
 const DEFAULT_RATE_PER_SEC = 50;
 const DEFAULT_SIGNING: SigningMode = "pipeline";
-const DEFAULT_RUNS = 1;
+const DEFAULT_RUNS = 3;
 
 /** The resolved load model for a scenario. */
 export type LoadModel =
@@ -170,12 +170,6 @@ function resolveScenario(scenario: Scenario, suite: Suite): ResolvedScenario {
     );
   }
   const runs = scenario.runs ?? defaults.runs ?? DEFAULT_RUNS;
-  if (runs > 1) {
-    throw new SuiteNormalizeError(
-      `Scenario "${scenario.name}": multiple runs (runs > 1) are not yet ` +
-        "implemented in fedify bench; set runs to 1.",
-    );
-  }
   return {
     name: scenario.name,
     type: scenario.type,

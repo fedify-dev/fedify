@@ -149,7 +149,23 @@ export interface ScenarioResult {
   readonly errors: ErrorBucket[];
   readonly expectations: ExpectResult[];
   readonly passed: boolean;
+  /** The number of runs aggregated into this scenario result. */
+  readonly runCount: number;
+  /** Per-run measurements, present when a scenario was repeated. */
+  readonly runs?: ScenarioRunResult[];
   /** An optional serialized client latency histogram for re-aggregation. */
+  readonly histogram?: SerializedHistogram;
+}
+
+/** The measured result of one repeated scenario run. */
+export interface ScenarioRunResult {
+  readonly run: number;
+  readonly requests: RequestSummary;
+  readonly throughputPerSec: number;
+  readonly deliveryThroughputPerSec?: number;
+  readonly client: ClientMetrics;
+  readonly server: ServerMetrics | null;
+  readonly errors: ErrorBucket[];
   readonly histogram?: SerializedHistogram;
 }
 
@@ -157,7 +173,7 @@ export interface ScenarioResult {
 export interface BenchReport {
   /** The published report schema URL. */
   readonly $schema?: string;
-  readonly schemaVersion: 2;
+  readonly schemaVersion: 3;
   readonly tool: { readonly name: string; readonly version: string };
   readonly environment: Environment;
   readonly target: TargetInfo;

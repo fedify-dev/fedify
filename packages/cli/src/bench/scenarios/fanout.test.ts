@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { serve } from "srvx";
 import { getContextLoader, getDocumentLoader } from "../../docloader.ts";
+import type { Clock } from "../load/clock.ts";
 import { normalizeSuite } from "../scenario/normalize.ts";
 import type { Suite } from "../scenario/types.ts";
 import { fanoutRunner, spawnSinkServer } from "./fanout.ts";
@@ -356,6 +357,63 @@ test("fanoutRunner - tolerates transient drain stats failures", async () => {
   assert.strictEqual(measurement.requests.failed, 0);
   assert.strictEqual(measurement.requests.successRate, 1);
   assert.ok(statsCalls >= 3);
+});
+
+test("fanoutRunner - uses abortable drain poll sleeps", async () => {
+  const target = new URL("http://target.test/");
+  const signal = new AbortController().signal;
+  const sleepSignals: (AbortSignal | undefined)[] = [];
+  let now = 0;
+  const clock: Clock = {
+    now: () => now,
+    sleepUntil: (timeMs, signal) => {
+      now = Math.max(now, timeMs);
+      sleepSignals.push(signal);
+      return Promise.resolve();
+    },
+  };
+  const scenario = normalizeSuite({
+    version: 1,
+    target: target.href,
+    scenarios: [{
+      name: "fanout",
+      type: "fanout",
+      sender: "alice",
+      followers: 5,
+      load: { rate: "1000/s" },
+      duration: "1ms",
+      queueDrainTimeout: "1ms",
+    }],
+  }).scenarios[0];
+  let triggerCalls = 0;
+
+  await fanoutRunner.run({
+    scenario,
+    target,
+    documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+    contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+    allowPrivateAddress: true,
+    fleet: null,
+    fetch: (input) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.pathname === "/.well-known/fedify/bench/stats") {
+        return Promise.resolve(json(statsSnapshot({
+          enqueued: triggerCalls * 6,
+          completed: 0,
+          failed: 0,
+        })));
+      }
+      if (url.pathname === "/.well-known/fedify/bench/trigger") {
+        triggerCalls++;
+        return Promise.resolve(json({ version: 1 }, 202));
+      }
+      return Promise.resolve(new Response("unexpected", { status: 500 }));
+    },
+    clock,
+    signal,
+  });
+
+  assert.deepStrictEqual(sleepSignals, [signal, signal]);
 });
 
 test("fanoutRunner - uses configured sink base for recipients", async () => {

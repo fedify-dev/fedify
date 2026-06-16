@@ -100,7 +100,6 @@ crypto cost is real.
 > types, a few options the format accepts are also not implemented yet and are
 > rejected up front with a clear message:
 >
->  -  `runs` greater than `1` (repeated runs).
 >  -  An `inbox` `activity` that is not a `Create` carrying an embedded `Note`;
 >     that is, a non-`Create` `type`, a non-`Note` `object.type`, or
 >     `embedObject: false`.
@@ -262,6 +261,29 @@ Signing is kept off the send critical path, set per scenario with `signing`:
     (open-loop only; Poisson arrivals may still sign a few extra during the
     run).
 
+### Repeated runs
+
+Each scenario runs three times by default.  Set `runs` in `defaults` to change
+the whole suite, or set `runs` on one scenario to override the default for that
+scenario:
+
+~~~~ yaml
+defaults:
+  runs: 5
+scenarios:
+- name: ci-smoke
+  type: webfinger
+  runs: 1
+  recipient: acct:alice@localhost
+~~~~
+
+Repeated runs are aggregated for stable CI gates.  Latency and throughput
+metrics use the median run, request totals and error buckets are summed, queue
+depth uses the worst observed maximum, and `successRate` uses the worst run so
+one bad run is not hidden by clean neighbors.  The JSON report records
+`runCount` for every scenario and includes per-run measurements in `runs` when
+the scenario ran more than once.
+
 ### Output
 
 Choose the format with `--format text` (default), `json`, or `markdown`;
@@ -288,7 +310,80 @@ CI check.  Keep CI gates on robust signals such as success rate, error counts,
 and gross throughput or latency floors; precise latency-percentile regression
 belongs in a controlled environment, not a shared CI runner.
 
-[report schema]: https://json-schema.fedify.dev/bench/report-v2.json
+[report schema]: https://json-schema.fedify.dev/bench/report-v3.json
+
+### Comparing two revisions
+
+Use `fedify bench compare` when a CI job should compare a change against a base
+revision on the same runner instead of relying on an absolute threshold:
+
+~~~~ sh
+fedify bench compare \
+  --base origin/main \
+  --head HEAD \
+  --file scenario.yaml \
+  --start-command "pnpm dev" \
+  --ready-url http://127.0.0.1:3000/health \
+  --max-regression 15%
+~~~~
+
+The command creates temporary detached worktrees for the base and head refs,
+starts the target command inside each worktree, waits for `--ready-url`, then
+runs the same suite from the current checkout against that target.  The two
+targets run sequentially, so they can use the same port.  Dependencies are not
+installed automatically; either prepare both refs in the job before comparing
+or make `--start-command` perform the needed build/start steps.
+
+If `--target` is omitted, the benchmark target defaults to the origin of
+`--ready-url`.  Pass `--target` when readiness and benchmark traffic use
+different URLs.  The comparison report can be written as text, JSON, or
+Markdown with the same `--format` and `--output` options; JSON validates
+against the [comparison report schema].
+
+`--max-regression` accepts either a ratio such as `0.15` or a percentage such
+as `15%`.  For each scenario, `fedify bench compare` compares performance
+metrics from the scenario's `expect` block when they are latency or rate
+metrics; if no such metric is present, it compares `latency.p95` and
+`throughputPerSec`.  A head result passes when the measured regression is
+within `--max-regression` plus the observed per-run noise band.  The command
+exits with status 1 when the head run fails its own `expect` gate or a
+comparison exceeds that allowance; configuration and orchestration failures
+exit with status 2.
+
+Use short, broad suites in shared CI:
+
+~~~~ yaml
+defaults:
+  runs: 3
+  duration: 20s
+  warmup: 5s
+scenarios:
+- name: inbox-ci
+  type: inbox
+  # ...
+  expect:
+    successRate: ">= 99%"
+    latency.p95: "< 500ms"
+~~~~
+
+Use a controlled performance runner for narrower regression checks:
+
+~~~~ yaml
+defaults:
+  runs: 7
+  duration: 2m
+  warmup: 20s
+scenarios:
+- name: inbox-lab
+  type: inbox
+  # ...
+  expect:
+    successRate: ">= 99.9%"
+    latency.p95: "< 120ms"
+    throughputPerSec: "> 250/s"
+~~~~
+
+[comparison report schema]: https://json-schema.fedify.dev/bench/compare-report-v1.json
 
 ### Safety
 
