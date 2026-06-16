@@ -84,6 +84,7 @@
     "@fxts/core": "catalog:",
     "@optique/config": "catalog:",
     "@optique/core": "catalog:",
+    "@optique/discover": "catalog:",
     "@optique/run": "catalog:",
     "@standard-schema/spec": "catalog:",
     "@hongminhee/localtunnel": "^0.3.0",

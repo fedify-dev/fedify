@@ -206,115 +206,118 @@ const lookupModeOption = withDefault(
   } as const,
 );
 
-export const lookupCommand = command(
-  "lookup",
+export const lookupOptions = merge(
+  object({ command: constant("lookup") }),
+  lookupModeOption,
+  authorizedFetchOption,
   merge(
-    object({ command: constant("lookup") }),
-    lookupModeOption,
-    authorizedFetchOption,
-    merge(
-      "Network options",
-      userAgentOption,
-      object({
-        allowPrivateAddress: allowPrivateAddressOption,
-        timeout: optional(
-          bindConfig(
-            option(
-              "-T",
-              "--timeout",
-              float({ min: 0, metavar: "SECONDS" }),
-              {
-                description:
-                  message`Set timeout for network requests in seconds.`,
-              },
-            ),
+    "Network options",
+    userAgentOption,
+    object({
+      allowPrivateAddress: allowPrivateAddressOption,
+      timeout: optional(
+        bindConfig(
+          option(
+            "-T",
+            "--timeout",
+            float({ min: 0, metavar: "SECONDS" }),
             {
-              context: configContext,
-              key: (config) => config.lookup?.timeout,
+              description:
+                message`Set timeout for network requests in seconds.`,
             },
           ),
+          {
+            context: configContext,
+            key: (config) => config.lookup?.timeout,
+          },
         ),
-      }),
-    ),
-    object("Arguments", {
-      urls: multiple(
-        argument(string({ metavar: "URL_OR_HANDLE" }), {
-          description: message`One or more URLs or handles to look up.`,
-        }),
-        { min: 1 },
       ),
-    }),
-    object("Output options", {
-      reverse: bindConfig(
-        flag("--reverse", {
-          description:
-            message`Reverse the output order of fetched objects or items.`,
-        }),
-        {
-          context: configContext,
-          key: (config) => config.lookup?.reverse ?? false,
-          default: false,
-        },
-      ),
-      format: bindConfig(
-        optional(
-          or(
-            map(
-              flag("-r", "--raw", {
-                description: message`Print the fetched JSON-LD document as is.`,
-              }),
-              () => "raw" as const,
-            ),
-            map(
-              flag("-C", "--compact", {
-                description: message`Compact the fetched JSON-LD document.`,
-              }),
-              () => "compact" as const,
-            ),
-            map(
-              flag("-e", "--expand", {
-                description: message`Expand the fetched JSON-LD document.`,
-              }),
-              () => "expand" as const,
-            ),
-          ),
-        ),
-        {
-          context: configContext,
-          key: (config) => config.lookup?.defaultFormat ?? "default",
-          default: "default",
-        },
-      ),
-      separator: bindConfig(
-        option("-s", "--separator", string({ metavar: "SEPARATOR" }), {
-          description:
-            message`Specify the separator between adjacent output objects or collection items.`,
-        }),
-        {
-          context: configContext,
-          key: (config) => config.lookup?.separator ?? "----",
-          default: "----",
-        },
-      ),
-      output: optional(option(
-        "-o",
-        "--output",
-        path({
-          metavar: "OUTPUT_PATH",
-          type: "file",
-          allowCreate: true,
-        }),
-        { description: message`Specify the output file path.` },
-      )),
     }),
   ),
-  {
-    brief: message`Look up Activity Streams objects.`,
-    description:
-      message`Look up Activity Streams objects by URL or actor handle.
+  object("Arguments", {
+    urls: multiple(
+      argument(string({ metavar: "URL_OR_HANDLE" }), {
+        description: message`One or more URLs or handles to look up.`,
+      }),
+      { min: 1 },
+    ),
+  }),
+  object("Output options", {
+    reverse: bindConfig(
+      flag("--reverse", {
+        description:
+          message`Reverse the output order of fetched objects or items.`,
+      }),
+      {
+        context: configContext,
+        key: (config) => config.lookup?.reverse ?? false,
+        default: false,
+      },
+    ),
+    format: bindConfig(
+      optional(
+        or(
+          map(
+            flag("-r", "--raw", {
+              description: message`Print the fetched JSON-LD document as is.`,
+            }),
+            () => "raw" as const,
+          ),
+          map(
+            flag("-C", "--compact", {
+              description: message`Compact the fetched JSON-LD document.`,
+            }),
+            () => "compact" as const,
+          ),
+          map(
+            flag("-e", "--expand", {
+              description: message`Expand the fetched JSON-LD document.`,
+            }),
+            () => "expand" as const,
+          ),
+        ),
+      ),
+      {
+        context: configContext,
+        key: (config) => config.lookup?.defaultFormat ?? "default",
+        default: "default",
+      },
+    ),
+    separator: bindConfig(
+      option("-s", "--separator", string({ metavar: "SEPARATOR" }), {
+        description:
+          message`Specify the separator between adjacent output objects or collection items.`,
+      }),
+      {
+        context: configContext,
+        key: (config) => config.lookup?.separator ?? "----",
+        default: "----",
+      },
+    ),
+    output: optional(option(
+      "-o",
+      "--output",
+      path({
+        metavar: "OUTPUT_PATH",
+        type: "file",
+        allowCreate: true,
+      }),
+      { description: message`Specify the output file path.` },
+    )),
+  }),
+);
+
+export const lookupMetadata = {
+  brief: message`Look up Activity Streams objects.`,
+  description: message`Look up Activity Streams objects by URL or actor handle.
 
 The arguments can be either URLs or actor handles (e.g., ${"@username@domain"}), and they can be multiple.`,
-  },
+};
+
+export const lookupCommand = command(
+  "lookup",
+  lookupOptions,
+  lookupMetadata,
 );
 
 export class TimeoutError extends Error {

@@ -68,9 +68,10 @@ catalog:
   "@opentelemetry/sdk-metrics": 2.7.1
   "@opentelemetry/sdk-trace-base": ^2.7.1
   "@opentelemetry/semantic-conventions": ^1.40.0
-  "@optique/config": ^1.0.2
-  "@optique/core": ^1.0.2
-  "@optique/run": ^1.0.2
+  "@optique/config": ^1.1.0
+  "@optique/core": ^1.1.0
+  "@optique/discover": ^1.1.0
+  "@optique/run": ^1.1.0
   "@standard-schema/spec": ^1.1.0
   "@std/assert": "jsr:^1.0.13"
   "@std/async": "jsr:^1.0.13"

@@ -1,39 +1,52 @@
 #!/usr/bin/env -S node --disable-warning=ExperimentalWarning
+import { runInit } from "@fedify/init";
+import process from "node:process";
 import { runBench } from "./bench/mod.ts";
 import { runGenerateVocab } from "./generate-vocab/mod.ts";
 import { runInbox } from "./inbox.tsx";
-import { runInit } from "./init/mod.ts";
 import { runLookup } from "./lookup.ts";
 import { runNodeInfo } from "./nodeinfo.ts";
-import process from "node:process";
 import { runRelay } from "./relay.ts";
-import { runCli } from "./runner.ts";
+import { parseCliProgram } from "./runner.ts";
 import { runTunnel } from "./tunnel.ts";
 import { runWebFinger } from "./webfinger/mod.ts";
 
 async function main() {
-  const result = await runCli(process.argv.slice(2));
-  if (result.command === "init") {
-    await runInit(result);
-  } else if (result.command === "lookup") {
-    await runLookup(result);
-  } else if (result.command === "webfinger") {
-    await runWebFinger(result);
-  } else if (result.command === "inbox") {
-    await runInbox(result);
-  } else if (result.command === "nodeinfo") {
-    await runNodeInfo(result);
-  } else if (result.command === "tunnel") {
-    await runTunnel(result);
-  } else if (result.command === "generate-vocab") {
-    await runGenerateVocab(result);
-  } else if (result.command === "relay") {
-    await runRelay(result);
-  } else if (result.command === "bench") {
-    await runBench(result);
-  } else {
-    // Make this branch exhaustive for type safety, even though it should never happen:
-    const _exhaustiveCheck: never = result;
+  const { command, value } = await parseCliProgram(process.argv.slice(2));
+  switch (command.path.join(" ")) {
+    case "init":
+      await runInit(value as unknown as Parameters<typeof runInit>[0]);
+      break;
+    case "generate-vocab":
+      await runGenerateVocab(
+        value as unknown as Parameters<typeof runGenerateVocab>[0],
+      );
+      break;
+    case "webfinger":
+      await runWebFinger(
+        value as unknown as Parameters<typeof runWebFinger>[0],
+      );
+      break;
+    case "lookup":
+      await runLookup(value as unknown as Parameters<typeof runLookup>[0]);
+      break;
+    case "inbox":
+      await runInbox(value as unknown as Parameters<typeof runInbox>[0]);
+      break;
+    case "nodeinfo":
+      await runNodeInfo(value as unknown as Parameters<typeof runNodeInfo>[0]);
+      break;
+    case "relay":
+      await runRelay(value as unknown as Parameters<typeof runRelay>[0]);
+      break;
+    case "bench":
+      await runBench(value as unknown as Parameters<typeof runBench>[0]);
+      break;
+    case "tunnel":
+      await runTunnel(value as unknown as Parameters<typeof runTunnel>[0]);
+      break;
+    default:
+      throw new TypeError(`Unknown command: ${command.path.join(" ")}`);
   }
 }
 

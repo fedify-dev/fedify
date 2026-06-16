@@ -15,31 +15,35 @@ import ora from "ora";
 import { configureLogging } from "./log.ts";
 import { createTunnelServiceOption, type GlobalOptions } from "./options.ts";
 
-export const tunnelCommand = command(
-  "tunnel",
-  merge(
-    "Tunnel options",
-    object({
-      command: constant("tunnel"),
+export const tunnelOptions = merge(
+  "Tunnel options",
+  object({
+    command: constant("tunnel"),
+  }),
+  object({
+    port: argument(integer({ metavar: "PORT", min: 0, max: 65535 }), {
+      description: message`The local port number to expose.`,
     }),
-    object({
-      port: argument(integer({ metavar: "PORT", min: 0, max: 65535 }), {
-        description: message`The local port number to expose.`,
-      }),
-      service: createTunnelServiceOption([
-        "-s",
-        "--service",
-      ]),
-    }),
-  ),
-  {
-    brief:
-      message`Expose a local HTTP server to the public internet using a secure tunnel.`,
-    description:
-      message`Expose a local HTTP server to the public internet using a secure tunnel.
+    service: createTunnelServiceOption([
+      "-s",
+      "--service",
+    ]),
+  }),
+);
+
+export const tunnelMetadata = {
+  brief:
+    message`Expose a local HTTP server to the public internet using a secure tunnel.`,
+  description:
+    message`Expose a local HTTP server to the public internet using a secure tunnel.
 
 Note that the HTTP requests through the tunnel have X-Forwarded-* headers.`,
-  },
+};
+
+export const tunnelCommand = command(
+  "tunnel",
+  tunnelOptions,
+  tunnelMetadata,
 );
 
 export async function runTunnel(
