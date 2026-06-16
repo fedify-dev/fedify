@@ -138,15 +138,18 @@ function normalizeStrategies(
   const normalized: BackfillStrategy[] = [];
   for (const strategy of strategies) {
     if (strategy === "context-auto") {
-      for (let i = normalized.length - 1; i >= 0; i--) {
-        if (isContextStrategy(normalized[i])) normalized.splice(i, 1);
+      for (
+        let i = normalized.length - 1;
+        i >= 0 && isContextStrategy(normalized[i]);
+        i--
+      ) {
+        normalized.splice(i, 1);
       }
       if (!normalized.includes(strategy)) normalized.push(strategy);
     } else if (isContextStrategy(strategy)) {
       if (
-        !normalized.includes("context-auto") && !normalized.includes(
-          strategy,
-        )
+        !currentContextGroupHasAuto(normalized) &&
+        !normalized.includes(strategy)
       ) {
         normalized.push(strategy);
       }
@@ -163,6 +166,17 @@ function isContextStrategy(
   return strategy === "context-objects" ||
     strategy === "context-activities" ||
     strategy === "context-auto";
+}
+
+function currentContextGroupHasAuto(
+  strategies: readonly BackfillStrategy[],
+): boolean {
+  for (let i = strategies.length - 1; i >= 0; i--) {
+    const strategy = strategies[i];
+    if (!isContextStrategy(strategy)) return false;
+    if (strategy === "context-auto") return true;
+  }
+  return false;
 }
 
 async function* getContextStrategyItems(
