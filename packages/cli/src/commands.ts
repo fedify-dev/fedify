@@ -13,22 +13,17 @@ import {
   defineCommand,
   type StaticCommand,
 } from "@optique/discover";
-import runBench from "./bench/action.ts";
 import { benchMetadata, benchOptions } from "./bench/command.ts";
-import runGenerateVocab from "./generate-vocab/action.ts";
 import {
   generateVocabMetadata,
   generateVocabOptions,
 } from "./generate-vocab/command.ts";
-import { runInbox } from "./inbox.tsx";
 import { inboxMetadata, inboxOptions } from "./inbox/command.ts";
-import { lookupMetadata, lookupOptions, runLookup } from "./lookup.ts";
+import { lookupMetadata, lookupOptions } from "./lookup/command.ts";
 import { nodeInfoMetadata, nodeInfoOptions, runNodeInfo } from "./nodeinfo.ts";
 import type { GlobalOptions } from "./options.ts";
-import { runRelay } from "./relay.ts";
 import { relayMetadata, relayOptions } from "./relay/command.ts";
 import { runTunnel, tunnelMetadata, tunnelOptions } from "./tunnel.ts";
-import runWebFinger from "./webfinger/action.ts";
 import { webFingerMetadata, webFingerOptions } from "./webfinger/command.ts";
 
 type CliCommandHandler<TValue extends object> = (
@@ -100,7 +95,12 @@ export const generatingCommands = [
     path: ["generate-vocab"],
     parser: generateVocabOptions,
     metadata: generateVocabMetadata,
-    run: runGenerateVocab,
+    run: async (value) => {
+      const { default: runGenerateVocab } = await import(
+        "./generate-vocab/action.ts"
+      );
+      return await runGenerateVocab(value);
+    },
   }),
 ] satisfies readonly AnyCliStaticCommand[];
 
@@ -109,19 +109,28 @@ export const activityPubCommands = [
     path: ["webfinger"],
     parser: webFingerOptions,
     metadata: webFingerMetadata,
-    run: runWebFinger,
+    run: async (value) => {
+      const { default: runWebFinger } = await import("./webfinger/action.ts");
+      return await runWebFinger(value);
+    },
   }),
   defineCliCommand({
     path: ["lookup"],
     parser: lookupOptions,
     metadata: lookupMetadata,
-    run: runLookup,
+    run: async (value) => {
+      const { runLookup } = await import("./lookup.ts");
+      return await runLookup(value);
+    },
   }),
   defineCliCommand({
     path: ["inbox"],
     parser: inboxOptions,
     metadata: inboxMetadata,
-    run: runInbox,
+    run: async (value) => {
+      const { runInbox } = await import("./inbox.tsx");
+      return await runInbox(value);
+    },
   }),
   defineCliCommand({
     path: ["nodeinfo"],
@@ -133,13 +142,19 @@ export const activityPubCommands = [
     path: ["relay"],
     parser: relayOptions,
     metadata: relayMetadata,
-    run: runRelay,
+    run: async (value) => {
+      const { runRelay } = await import("./relay.ts");
+      return await runRelay(value);
+    },
   }),
   defineCliCommand({
     path: ["bench"],
     parser: benchOptions,
     metadata: benchMetadata,
-    run: runBench,
+    run: async (value) => {
+      const { default: runBench } = await import("./bench/action.ts");
+      return await runBench(value);
+    },
   }),
 ] satisfies readonly AnyCliStaticCommand[];
 
