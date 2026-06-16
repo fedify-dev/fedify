@@ -388,6 +388,47 @@ describe("backfill", () => {
     strictEqual(items[0].strategy, "context-auto");
   });
 
+  test("document cache avoids duplicate dereferences across strategies", async () => {
+    const contextId = new URL("https://example.com/contexts/1");
+    const parentId = new URL("https://example.com/notes/1");
+    const parent = new Note({
+      id: parentId,
+      content: "parent",
+    });
+    const note = new Note({
+      id: new URL("https://example.com/notes/2"),
+      contexts: [contextId],
+      replyTarget: parentId,
+    });
+    const requests: URL[] = [];
+    const context: BackfillContext = {
+      documentLoader: (iri) => {
+        requests.push(iri);
+        if (iri.href === contextId.href) {
+          return Promise.resolve(
+            new Collection({
+              id: contextId,
+              items: [parentId],
+            }),
+          );
+        }
+        if (iri.href === parentId.href) return Promise.resolve(parent);
+        return Promise.resolve(null);
+      },
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["context-auto", "reply-tree"],
+    });
+
+    strictEqual(items.length, 1);
+    strictEqual(items[0].object.id?.href, parentId.href);
+    deepStrictEqual(requests.map((url) => url.href), [
+      contextId.href,
+      parentId.href,
+    ]);
+  });
+
   test("strategy order controls deduplicated item metadata", async () => {
     const contextId = new URL("https://example.com/contexts/1");
     const parentId = new URL("https://example.com/notes/1");

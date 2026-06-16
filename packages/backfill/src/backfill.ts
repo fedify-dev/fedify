@@ -31,6 +31,7 @@ export class MaxRequestsExceeded extends Error {}
 interface RequestBudget {
   readonly signal?: AbortSignal;
   requestCount: number;
+  readonly documents: Map<string, Promise<APObject | null>>;
 }
 
 type StrategyItem = {
@@ -70,6 +71,7 @@ export async function* backfill<
   const budget: RequestBudget = {
     signal: options.signal,
     requestCount: 0,
+    documents: new Map(),
   };
   const seenIds = new Set<string>();
   if (note.id != null) seenIds.add(note.id.href);
@@ -575,6 +577,10 @@ async function loadObject(
   throwOnBudgetExceeded = false,
 ): Promise<APObject | null> {
   budget.signal?.throwIfAborted();
+  const cacheKey = iri.href;
+  const cached = budget.documents.get(cacheKey);
+  if (cached != null) return await cached;
+
   if (
     options.maxRequests != null &&
     budget.requestCount >= options.maxRequests
@@ -587,7 +593,16 @@ async function loadObject(
   budget.signal?.throwIfAborted();
 
   budget.requestCount++;
-  return await context.documentLoader(iri, { signal: budget.signal });
+  const document = context.documentLoader(iri, { signal: budget.signal });
+  budget.documents.set(cacheKey, document);
+  try {
+    return await document;
+  } catch (error) {
+    if (budget.documents.get(cacheKey) === document) {
+      budget.documents.delete(cacheKey);
+    }
+    throw error;
+  }
 }
 
 async function waitForInterval(
