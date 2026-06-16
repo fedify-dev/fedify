@@ -274,13 +274,28 @@ async function* getReplyTreeItems(
   const visitedCollections = new WeakSet<BackfillCollection>();
   if (note.id != null) visitedObjectIds.add(note.id.href);
   visitedObjects.add(note);
-  yield* getReplyAncestors(context, note, options, budget, {
-    depth: 1,
-    visitedObjectIds,
-    visitedObjects,
-    visitedCollectionIds,
-    visitedCollections,
-  });
+  const ancestors: APObject[] = [];
+  for await (
+    const item of getReplyAncestors(context, note, options, budget, {
+      depth: 1,
+      visitedObjectIds,
+      visitedObjects,
+      visitedCollectionIds,
+      visitedCollections,
+    })
+  ) {
+    ancestors.push(item.object);
+    yield item;
+  }
+  for (const object of ancestors.toReversed()) {
+    yield* getReplyDescendants(context, object, options, budget, {
+      depth: 1,
+      visitedObjectIds,
+      visitedObjects,
+      visitedCollectionIds,
+      visitedCollections,
+    });
+  }
   yield* getReplyDescendants(context, note, options, budget, {
     depth: 1,
     visitedObjectIds,
@@ -351,7 +366,13 @@ async function* getReplyDescendants(
     return;
   }
   for await (
-    const reply of getCollectionItems(context, replies, options, budget)
+    const reply of getCollectionItems(
+      context,
+      replies,
+      options,
+      budget,
+      traversal.visitedObjectIds,
+    )
   ) {
     if (!isContextPostObject(reply)) continue;
     if (!visitReplyTreeObject(reply, traversal)) continue;
