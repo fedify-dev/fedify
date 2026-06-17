@@ -5,84 +5,17 @@
 import { computed, ref, type Component } from "vue";
 import {
   BadgeCheck,
-  Blocks,
   Braces,
-  FileSignature,
+  FilePen,
   Link2,
   Server,
+  Signature,
   UserSearch,
 } from "lucide-vue-next";
-
-interface Feature {
-  title: string;
-  desc: string;
-  link?: string;
-  icon?: Component; // Lucide icon component
-  logo?: string; // inline brand mark (trusted SVG)
-}
 
 // Official ActivityPub logo (Simple Icons, CC0).
 const activityPubLogo =
   '<svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" aria-hidden="true"><path d="M10.91 4.442 0 10.74v2.52l8.727-5.04v10.077l2.182 1.26zM6.545 12l-4.364 2.52 4.364 2.518zm6.545-2.52L17.455 12l-4.364 2.52zm0-5.038L24 10.74v2.52l-10.91 6.298v-2.52L21.819 12l-8.728-5.04z"/></svg>';
-
-const features: Feature[] = [
-  {
-    title: "ActivityPub",
-    desc:
-      "A complete ActivityPub server and client, wired together so you can focus on your app.",
-    link: "/manual/federation",
-    logo: activityPubLogo,
-  },
-  {
-    title: "Type-safe vocabulary",
-    desc:
-      "The Activity Vocabulary as fully typed objects, including popular vendor extensions.",
-    link: "/manual/vocab",
-    icon: Braces,
-  },
-  {
-    title: "HTTP Signatures",
-    desc:
-      "Sign and verify HTTP Signatures and RFC 9421 HTTP Message Signatures out of the box.",
-    link: "/manual/send#http-signatures",
-    icon: FileSignature,
-  },
-  {
-    title: "Object Integrity Proofs",
-    desc:
-      "Create and verify FEP-8b32 proofs for tamper-evident, forwardable activities.",
-    link: "/manual/send#object-integrity-proofs",
-    icon: BadgeCheck,
-  },
-  {
-    title: "WebFinger",
-    desc:
-      "A built-in WebFinger client and server so actors can be discovered across the network.",
-    link: "/manual/webfinger",
-    icon: UserSearch,
-  },
-  {
-    title: "NodeInfo",
-    desc:
-      "Publish and read NodeInfo so the rest of the fediverse knows what your server runs.",
-    link: "/manual/nodeinfo",
-    icon: Server,
-  },
-  {
-    title: "Linked Data Signatures",
-    desc:
-      "Legacy LD Signatures too, for interoperability with older fediverse software.",
-    link: "/manual/send#linked-data-signatures",
-    icon: Link2,
-  },
-  {
-    title: "Framework integration",
-    desc:
-      "Drop Fedify into Hono, Express, Nest, Next.js, SvelteKit, and more with thin adapters.",
-    link: "/manual/integration",
-    icon: Blocks,
-  },
-];
 
 // Install commands per package manager (kept on one axis; runtimes are shown
 // separately below).  npm is the default since most users are on Node.js.
@@ -132,15 +65,48 @@ const runtimes: { name: string; logo: string }[] = [
   },
 ];
 
-// The specs Fedify implements, shown as a "stack" in the why section.
-const stack = [
-  "ActivityPub",
-  "HTTP Signatures",
-  "HTTP Message Signatures",
-  "WebFinger",
-  "NodeInfo",
-  "Object Integrity Proofs",
-  "Linked Data Signatures",
+// The specs Fedify implements, shown as a "stack" in the why section.  Each
+// links to the most specific manual page that documents it; `spec` carries the
+// formal designation where one exists, and `icon`/`logo` the related artwork.
+const stack: {
+  name: string;
+  spec?: string;
+  link?: string;
+  icon?: Component;
+  logo?: string;
+}[] = [
+  { name: "ActivityPub", link: "/manual/federation", logo: activityPubLogo },
+  { name: "Activity Streams 2.0", link: "/manual/vocab", icon: Braces },
+  {
+    name: "HTTP Signatures",
+    spec: "draft-cavage-http-signatures-12",
+    link: "/manual/send#http-signatures",
+    icon: FilePen,
+  },
+  {
+    name: "HTTP Message Signatures",
+    spec: "RFC 9421",
+    link: "/manual/send#http-message-signatures",
+    icon: Signature,
+  },
+  {
+    name: "WebFinger",
+    spec: "RFC 7033",
+    link: "/manual/webfinger",
+    icon: UserSearch,
+  },
+  { name: "NodeInfo", link: "/manual/nodeinfo", icon: Server },
+  {
+    name: "Object Integrity Proofs",
+    spec: "FEP-8b32",
+    link: "/manual/send#object-integrity-proofs",
+    icon: BadgeCheck,
+  },
+  {
+    name: "Linked Data Signatures",
+    link: "/manual/send#linked-data-signatures",
+    icon: Link2,
+  },
 ];
 
 // Fediverse software Fedify-built apps can talk to.
@@ -308,49 +274,27 @@ federation.<span class="c-fn">setActorDispatcher</span>(
           <a class="lp-textlink" href="/why">See the full rationale →</a>
         </div>
         <ul class="lp-stack" aria-label="Standards implemented by Fedify">
-          <li v-for="(s, i) in stack" :key="s" :style="{ '--i': i }">
-            <span class="lp-stack-check" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                <path d="m5 12.5 4.5 4.5L19 6.5" />
-              </svg>
+          <li
+            v-for="(s, i) in stack"
+            :key="s.name"
+            :style="{ '--i': i }"
+            :class="{ 'has-link': s.link }"
+          >
+            <span class="lp-stack-icon" aria-hidden="true">
+              <span v-if="s.logo" class="lp-stack-logo" v-html="s.logo" />
+              <component v-else :is="s.icon" :size="20" :stroke-width="1.9" />
             </span>
-            {{ s }}
+            <a v-if="s.link" :href="s.link" class="lp-stack-name">{{ s.name }}</a>
+            <span v-else class="lp-stack-name">{{ s.name }}</span>
+            <span v-if="s.spec" class="lp-stack-spec">{{ s.spec }}</span>
+            <span v-if="s.link" class="lp-stack-go" aria-hidden="true">→</span>
           </li>
         </ul>
       </div>
     </section>
 
-    <!-- ========================= FEATURES =========================== -->
-    <section class="lp-section">
-      <div class="wrap">
-        <div class="lp-section-head">
-          <p class="lp-kicker">Batteries included</p>
-          <h2 class="lp-h2">Everything you need to federate</h2>
-        </div>
-        <div class="lp-features">
-          <component
-            :is="f.link ? 'a' : 'div'"
-            v-for="f in features"
-            :key="f.title"
-            :href="f.link"
-            class="lp-feat"
-            :class="{ 'is-link': f.link }"
-          >
-            <span class="feat-icon">
-              <span v-if="f.logo" class="feat-logo" v-html="f.logo" />
-              <component v-else :is="f.icon" :size="26" :stroke-width="1.75" />
-            </span>
-            <h3 class="feat-title">{{ f.title }}</h3>
-            <p class="feat-desc">{{ f.desc }}</p>
-            <span v-if="f.link" class="feat-go" aria-hidden="true">→</span>
-          </component>
-        </div>
-      </div>
-    </section>
-
     <!-- ======================= CODE SHOWCASE ======================== -->
-    <section class="lp-section lp-section-alt">
+    <section class="lp-section">
       <div class="wrap lp-code-grid">
         <div class="lp-code-copy">
           <p class="lp-kicker">Looks like this</p>
@@ -373,7 +317,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ========================= INTEROP ============================ -->
-    <section class="lp-section">
+    <section class="lp-section lp-section-alt">
       <div class="wrap lp-interop">
         <p class="lp-kicker">Plays well with others</p>
         <h2 class="lp-h2">Interoperates with the software people already use</h2>
@@ -789,11 +733,6 @@ federation.<span class="c-fn">setActorDispatcher</span>(
 .lp-textlink:hover {
   color: var(--vp-c-brand-2);
 }
-.lp-section-head {
-  text-align: center;
-  max-width: 640px;
-  margin: 0 auto 3rem;
-}
 
 /* ----------------------------- Why ----------------------------- */
 .lp-why {
@@ -810,6 +749,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
   gap: 0.6rem;
 }
 .lp-stack li {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.8rem;
@@ -819,112 +759,67 @@ federation.<span class="c-fn">setActorDispatcher</span>(
   border: 1px solid var(--vp-c-divider);
   font-weight: 600;
   color: var(--vp-c-text-1);
-}
-.lp-stack-check {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  flex: none;
-  border-radius: 8px;
-  color: #fff;
-  background: linear-gradient(135deg, #0ea5e9, #0369a1);
-}
-.lp-stack-check svg {
-  width: 16px;
-  height: 16px;
-}
-
-/* --------------------------- Features -------------------------- */
-.lp-features {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
-}
-.lp-feat {
-  position: relative;
-  display: block;
-  padding: 1.6rem;
-  border-radius: 16px;
-  background: var(--vp-c-bg-soft);
-  border: 1px solid var(--vp-c-divider);
-  overflow: clip;
   transition:
-    transform 0.25s ease,
-    border-color 0.25s ease,
-    box-shadow 0.25s ease;
+    border-color 0.2s ease,
+    color 0.2s ease;
 }
-.lp-feat::after {
+.lp-stack-name {
+  color: inherit;
+  text-decoration: none;
+}
+.lp-stack-spec {
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--vp-c-text-3, var(--vp-c-text-2));
+  white-space: nowrap;
+}
+/* Make the whole row clickable for linked specs. */
+a.lp-stack-name::after {
   content: "";
   position: absolute;
-  top: -40%;
-  right: -25%;
-  width: 70%;
-  height: 80%;
-  background: radial-gradient(circle, rgba(2, 132, 199, 0.16), transparent 70%);
+  inset: 0;
+}
+.lp-stack-go {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--vp-c-brand-1);
   opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
+  transform: translateX(-4px);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
 }
-.lp-feat.is-link:hover {
-  transform: translateY(-4px);
+.lp-stack li.has-link:hover {
   border-color: var(--vp-c-brand-1);
-  box-shadow: 0 16px 36px -18px rgba(2, 132, 199, 0.5);
+  color: var(--vp-c-brand-1);
 }
-.lp-feat.is-link:hover::after {
+.lp-stack li.has-link:hover .lp-stack-go {
   opacity: 1;
+  transform: translateX(0);
 }
-.feat-icon {
+/* Topical icon chip on the left of each spec (sky-tinted, brand-colored). */
+.lp-stack-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 13px;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 10px;
   color: var(--vp-c-brand-1);
   background: linear-gradient(135deg, var(--vp-c-brand-soft), transparent);
   border: 1px solid rgba(2, 132, 199, 0.18);
 }
-.dark .feat-icon {
+.dark .lp-stack-icon {
   border-color: rgba(56, 189, 248, 0.22);
 }
-.feat-logo {
+.lp-stack-logo {
   display: inline-flex;
 }
-.feat-icon :deep(svg) {
-  width: 26px;
-  height: 26px;
-}
-.feat-title {
-  font-family: var(--vp-font-family-display);
-  font-size: 1.12rem;
-  font-weight: 700;
-  margin: 1.1rem 0 0.5rem;
-  color: var(--vp-c-text-1);
-  letter-spacing: -0.01em;
-}
-.feat-desc {
-  margin: 0;
-  font-size: 0.92rem;
-  line-height: 1.6;
-  color: var(--vp-c-text-2);
-}
-.feat-go {
-  position: absolute;
-  top: 1.6rem;
-  right: 1.6rem;
-  font-weight: 700;
-  color: var(--vp-c-brand-1);
-  opacity: 0;
-  transform: translateX(-6px);
-  transition:
-    opacity 0.25s ease,
-    transform 0.25s ease;
-}
-.lp-feat.is-link:hover .feat-go {
-  opacity: 1;
-  transform: translateX(0);
+.lp-stack-icon :deep(svg) {
+  width: 20px;
+  height: 20px;
 }
 
 /* ------------------------- Code showcase ----------------------- */
@@ -1134,18 +1029,35 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     width: min(360px, 80%);
     margin-bottom: 1rem;
   }
-  .lp-features {
-    grid-template-columns: repeat(2, 1fr);
-  }
   .lp-section { padding: 4rem 0; }
 }
 
 @media (max-width: 520px) {
-  .lp-features {
-    grid-template-columns: 1fr;
-  }
   .lp-hero {
     padding-top: calc(var(--vp-nav-height) + 2rem);
+  }
+  /* Keep each spec name on one line; let the formal id stay inline and wrap to
+     a second line only when it genuinely doesn't fit.  Tighten the chip, gaps,
+     and row-gap so single-line rows stay compact and any wrapped row doesn't
+     look bulky. */
+  .lp-stack li {
+    flex-wrap: wrap;
+    gap: 0.2rem 0.6rem;
+    padding: 0.65rem 0.85rem;
+  }
+  .lp-stack-name {
+    white-space: nowrap;
+  }
+  .lp-stack-icon {
+    width: 30px;
+    height: 30px;
+  }
+  .lp-stack-icon :deep(svg) {
+    width: 18px;
+    height: 18px;
+  }
+  .lp-stack-spec {
+    font-size: 0.68rem;
   }
 }
 </style>
