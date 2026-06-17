@@ -4,16 +4,26 @@
 // narrative landing page rather than the default hero + emoji-feature grid.
 import { computed, ref, type Component } from "vue";
 import {
+  Activity,
   BadgeCheck,
+  Blocks,
   Braces,
   DatabaseZap,
+  ExternalLink,
   FilePen,
+  Gauge,
+  KeyRound,
   Link2,
+  Plug,
   RotateCw,
+  ScrollText,
   Server,
+  Shapes,
   Share2,
+  ShieldCheck,
   Signature,
   UserSearch,
+  Webhook,
 } from "lucide-vue-next";
 
 // Official ActivityPub logo (Simple Icons, CC0).
@@ -326,23 +336,27 @@ const brokers: { name: string; url: string; svg: string }[] = [
 ];
 
 // Observability highlights for the OpenTelemetry section.
-const otelPoints: { term: string; desc: string }[] = [
+const otelPoints: { icon: Component; term: string; desc: string }[] = [
   {
+    icon: Activity,
     term: "Distributed traces",
     desc:
       "every step is a span: HTTP, inbox, outbox, fan-out, signatures, and WebFinger.",
   },
   {
+    icon: Gauge,
     term: "Rich metrics",
     desc:
       "counters and histograms for delivery, queue depth, signature verification, and more.",
   },
   {
+    icon: Plug,
     term: "Any OTLP backend",
     desc:
       "ship to Grafana, Jaeger, Sentry, or Deno's built-in OpenTelemetry.",
   },
   {
+    icon: ScrollText,
     term: "Structured logs too",
     desc:
       "traceable JSON logging via LogTape, correlated by request and message IDs.",
@@ -404,22 +418,26 @@ const cliTerminal = `<span class="t-p">$</span> fedify inbox
 <span class="t-rx">▸ Received</span> <span class="t-at">Follow</span>  POST /i/inbox  <span class="t-ok">202</span>`;
 
 // Vocabulary API highlights.
-const vocabPoints: { term: string; desc: string }[] = [
+const vocabPoints: { icon: Component; term: string; desc: string }[] = [
   {
+    icon: BadgeCheck,
     term: "Standard-compliant output",
     desc:
       "build an object and toJsonLd() emits valid, interoperable JSON-LD.",
   },
   {
+    icon: Shapes,
     term: "One shape to read",
     desc: "every equivalent JSON-LD form normalizes to the same typed value.",
   },
   {
+    icon: ExternalLink,
     term: "References, dereferenced",
     desc:
       "<code>getActor()</code> and <code>getObject()</code> accessors fetch and hydrate remote objects on demand.",
   },
   {
+    icon: ShieldCheck,
     term: "Secure by default",
     desc:
       'an origin-based security model (<a href="https://w3id.org/fep/fe34" target="_blank" rel="noopener noreferrer">FEP-fe34</a>) re-fetches cross-origin objects to prevent spoofing.',
@@ -449,18 +467,21 @@ activity.actorId;
 actor?.name;  <span class="c-cm">// "Alice"</span>`;
 
 // Client-to-server (C2S) highlights for the outbox-listener section.
-const c2sPoints: { term: string; desc: string }[] = [
+const c2sPoints: { icon: Component; term: string; desc: string }[] = [
   {
+    icon: Webhook,
     term: "Typed outbox listeners",
     desc:
       "handle client posts per activity type, exactly like inbox listeners.",
   },
   {
+    icon: KeyRound,
     term: "Auth your way",
     desc:
       "an <code>authorize()</code> hook plugs in OAuth, access tokens, or sessions.",
   },
   {
+    icon: Blocks,
     term: "Standard, not bespoke",
     desc:
       "clients speak the real ActivityPub outbox, so there's no custom API to maintain.",
@@ -688,10 +709,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
           <ul class="lp-checklist">
             <li v-for="p in vocabPoints" :key="p.term">
               <span class="lp-check-ic" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                  stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="m5 12.5 4.5 4.5L19 6.5" />
-                </svg>
+                <component :is="p.icon" :size="18" :stroke-width="1.9" />
               </span>
               <span class="lp-check-text">
                 <span class="lp-check-term">{{ p.term }}</span>
@@ -914,10 +932,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
           <ul class="lp-otel-list">
             <li v-for="p in otelPoints" :key="p.term">
               <span class="lp-otel-ic" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                  stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="m5 12.5 4.5 4.5L19 6.5" />
-                </svg>
+                <component :is="p.icon" :size="18" :stroke-width="1.9" />
               </span>
               <span class="lp-otel-text">
                 <span class="lp-otel-term">{{ p.term }}</span>
@@ -971,10 +986,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
           <ul class="lp-checklist">
             <li v-for="p in c2sPoints" :key="p.term">
               <span class="lp-check-ic" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                  stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="m5 12.5 4.5 4.5L19 6.5" />
-                </svg>
+                <component :is="p.icon" :size="18" :stroke-width="1.9" />
               </span>
               <span class="lp-check-text">
                 <span class="lp-check-term">{{ p.term }}</span>
@@ -1715,17 +1727,22 @@ a.lp-stack-name::after {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   margin-top: 1px;
-  border-radius: 7px;
-  color: #fff;
-  background: linear-gradient(135deg, #0ea5e9, #0369a1);
+  border-radius: 8px;
+  color: var(--vp-c-brand-1);
+  background: linear-gradient(135deg, var(--vp-c-brand-soft), transparent);
+  border: 1px solid rgba(2, 132, 199, 0.18);
 }
-.lp-otel-ic svg,
-.lp-check-ic svg {
-  width: 14px;
-  height: 14px;
+.dark .lp-otel-ic,
+.dark .lp-check-ic {
+  border-color: rgba(56, 189, 248, 0.22);
+}
+.lp-otel-ic :deep(svg),
+.lp-check-ic :deep(svg) {
+  width: 18px;
+  height: 18px;
 }
 .lp-otel-text,
 .lp-check-text {
