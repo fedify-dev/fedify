@@ -2105,6 +2105,17 @@ a.lp-stack-name::after {
   .lp-section { padding: 4rem 0; }
 }
 
+/* On wider desktop viewports the right column has room to spare, so let the hero
+   artwork (and the Fedify mark at its center) grow to fill more of it. */
+@media (min-width: 1080px) {
+  .lp-hero-art {
+    width: min(500px, 100%);
+  }
+  .lp-net-logo {
+    width: 42%;
+  }
+}
+
 @media (max-width: 520px) {
   .lp-hero {
     padding-top: calc(var(--vp-nav-height) + 2rem);
