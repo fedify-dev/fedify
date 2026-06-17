@@ -111,3 +111,11 @@ catalog:
   tsdown: ^0.22.0
   typescript: ^6.0.0
   urlpattern-polyfill: "^10.1.0"
+
+# vitepress-plugin-mermaid hasn't published a VitePress 2 compatible release yet;
+# it only declares `vitepress: ^1` as a peer.  The `withMermaid()` wrapper merely
+# augments the config object, so it works under VitePress 2 — this rule silences
+# the otherwise-spurious peer warning.
+peerDependencyRules:
+  allowedVersions:
+    "vitepress-plugin-mermaid>vitepress": "2"

@@ -106,10 +106,6 @@ function getReferenceItems(): { text: string; link: string }[] {
 const TUTORIAL = {
   text: "Tutorials",
   items: [
-    {
-      text: "Quick demo",
-      link: "https://dash.deno.com/playground/fedify-demo",
-    },
     { text: "Learning the basics", link: "/tutorial/basics.md" },
     { text: "Creating a microblog", link: "/tutorial/microblog.md" },
     {
@@ -288,6 +284,34 @@ export default withMermaid(defineConfig({
   cleanUrls: true,
   ignoreDeadLinks: true,
   markdown: {
+    // Preload the languages that appear in fenced code blocks inside JSDoc
+    // comments.  Twoslash re-highlights those snippets while rendering hover
+    // tooltips, and Shiki 3 (VitePress 2) throws on a not-yet-loaded language
+    // instead of lazily loading it the way the old highlighter did.  Loading a
+    // canonical grammar also registers its aliases (e.g. "javascript" covers
+    // "js", "bash" covers "sh").
+    languages: [
+      "javascript",
+      "jsx",
+      "typescript",
+      "tsx",
+      "json",
+      "jsonc",
+      "bash",
+      "html",
+      "css",
+      "scss",
+      "yaml",
+      "toml",
+      "ini",
+      "xml",
+      "diff",
+      "http",
+      "sql",
+      "markdown",
+      "haskell",
+      "docker",
+    ],
     codeTransformers: [
       transformerTwoslash({
         twoslashOptions: {
