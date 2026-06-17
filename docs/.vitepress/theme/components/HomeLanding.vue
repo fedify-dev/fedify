@@ -325,6 +325,39 @@ const brokers: { name: string; url: string; svg: string }[] = [
   },
 ];
 
+// Observability highlights for the OpenTelemetry section.
+const otelPoints: { term: string; desc: string }[] = [
+  {
+    term: "Distributed traces",
+    desc:
+      "every step is a span: HTTP, inbox, outbox, fan-out, signatures, and WebFinger.",
+  },
+  {
+    term: "Rich metrics",
+    desc:
+      "counters and histograms for delivery, queue depth, signature verification, and more.",
+  },
+  {
+    term: "Any OTLP backend",
+    desc:
+      "ship to Grafana, Jaeger, Sentry, or Deno's built-in OpenTelemetry.",
+  },
+  {
+    term: "Structured logs too",
+    desc:
+      "traceable JSON logging via LogTape, correlated by request and message IDs.",
+  },
+];
+
+// A mock trace waterfall (real Fedify span names) for the observability visual.
+const traceSpans: { label: string; depth: number; start: number; width: number }[] = [
+  { label: "activitypub.inbox", depth: 0, start: 0, width: 100 },
+  { label: "http_signatures.verify", depth: 1, start: 3, width: 19 },
+  { label: "activitypub.dispatch_inbox_listener", depth: 1, start: 25, width: 34 },
+  { label: "activitypub.send_activity", depth: 1, start: 62, width: 31 },
+  { label: "http_signatures.sign", depth: 2, start: 65, width: 13 },
+];
+
 // Lightly highlighted showcase snippet (authored string, rendered with v-html).
 const code = `<span class="c-kw">import</span> { <span class="c-ty">createFederation</span>, <span class="c-ty">Person</span> } <span class="c-kw">from</span> <span class="c-st">"@fedify/fedify"</span>;
 
@@ -638,6 +671,62 @@ federation.<span class="c-fn">setActorDispatcher</span>(
           </li>
           <li class="lp-logo-more">and more</li>
         </ul>
+      </div>
+    </section>
+
+    <!-- ====================== OBSERVABILITY ========================= -->
+    <section class="lp-section">
+      <div class="wrap lp-otel">
+        <div class="lp-otel-copy">
+          <p class="lp-kicker">Built for production</p>
+          <h2 class="lp-h2">See exactly what your server is doing</h2>
+          <p class="lp-body">
+            Fedify is instrumented with OpenTelemetry out of the box, so the
+            whole federation lifecycle shows up as traces and metrics in the
+            observability stack you already run.
+          </p>
+          <ul class="lp-otel-list">
+            <li v-for="p in otelPoints" :key="p.term">
+              <span class="lp-otel-ic" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m5 12.5 4.5 4.5L19 6.5" />
+                </svg>
+              </span>
+              <span class="lp-otel-text">
+                <span class="lp-otel-term">{{ p.term }}</span>
+                <span class="lp-otel-desc">{{ p.desc }}</span>
+              </span>
+            </li>
+          </ul>
+          <a class="lp-textlink" href="/manual/opentelemetry">
+            OpenTelemetry guide →
+          </a>
+        </div>
+        <div class="lp-trace" aria-hidden="true">
+          <div class="lp-trace-bar">
+            <span class="dot" /><span class="dot" /><span class="dot" />
+            <span class="lp-trace-title">trace · activitypub.inbox</span>
+          </div>
+          <div class="lp-trace-body">
+            <div
+              class="lp-trace-row"
+              v-for="s in traceSpans"
+              :key="s.label"
+            >
+              <span
+                class="lp-trace-label"
+                :style="{ paddingLeft: s.depth * 14 + 'px' }"
+              >{{ s.label }}</span>
+              <span class="lp-trace-track">
+                <span
+                  class="lp-trace-span"
+                  :style="{ marginLeft: s.start + '%', width: s.width + '%' }"
+                />
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -1288,6 +1377,113 @@ a.lp-stack-name::after {
   opacity: 0.7;
 }
 
+/* --------------------------- Observability --------------------- */
+.lp-otel {
+  display: grid;
+  grid-template-columns: 1fr 1.05fr;
+  gap: 3rem;
+  align-items: center;
+}
+.lp-otel-list {
+  list-style: none;
+  margin: 1.6rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+.lp-otel-list li {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+.lp-otel-ic {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-top: 1px;
+  border-radius: 7px;
+  color: #fff;
+  background: linear-gradient(135deg, #0ea5e9, #0369a1);
+}
+.lp-otel-ic svg {
+  width: 14px;
+  height: 14px;
+}
+.lp-otel-text {
+  font-size: 1rem;
+  line-height: 1.55;
+}
+.lp-otel-term {
+  display: block;
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+}
+.lp-otel-desc {
+  display: block;
+  color: var(--vp-c-text-2);
+}
+
+/* Trace-waterfall mock. */
+.lp-trace {
+  border-radius: 14px;
+  overflow: clip;
+  background: var(--vp-c-bg);
+  border: 1px solid var(--vp-c-divider);
+  box-shadow: 0 24px 50px -28px rgba(2, 132, 199, 0.45);
+}
+.lp-trace-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1rem;
+  background: var(--vp-c-bg-soft);
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+.lp-trace-bar .dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--vp-c-divider);
+}
+.lp-trace-bar .dot:nth-child(1) { background: #f87171; }
+.lp-trace-bar .dot:nth-child(2) { background: #fbbf24; }
+.lp-trace-bar .dot:nth-child(3) { background: #34d399; }
+.lp-trace-title {
+  margin-left: 0.6rem;
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.8rem;
+  color: var(--vp-c-text-2);
+}
+.lp-trace-body {
+  padding: 1.25rem 1.4rem;
+  display: grid;
+  gap: 0.85rem;
+}
+.lp-trace-label {
+  display: block;
+  margin-bottom: 5px;
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.76rem;
+  color: var(--vp-c-text-2);
+}
+.lp-trace-track {
+  display: block;
+  position: relative;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--vp-c-bg-soft);
+}
+.lp-trace-span {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #38bdf8, #0369a1);
+}
+
 /* ---------------------------- Interop -------------------------- */
 .lp-interop {
   text-align: center;
@@ -1457,7 +1653,8 @@ a.lp-stack-name::after {
   .lp-why,
   .lp-code-grid,
   .lp-byo,
-  .lp-points {
+  .lp-points,
+  .lp-otel {
     grid-template-columns: 1fr;
   }
   .lp-hero-art {
