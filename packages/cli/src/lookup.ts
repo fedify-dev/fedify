@@ -21,7 +21,7 @@ import {
 } from "@fedify/vocab-runtime";
 import type { ResourceDescriptor } from "@fedify/webfinger";
 import { getLogger } from "@logtape/logtape";
-import { message, optionNames } from "@optique/core";
+import { type InferValue, message, optionNames } from "@optique/core";
 import { url as messageUrl } from "@optique/core/message";
 import { printError } from "@optique/run";
 import { createWriteStream, type WriteStream } from "node:fs";
@@ -33,13 +33,14 @@ import { renderImages } from "./imagerenderer.ts";
 import {
   FEDIBIRD_QUOTE_IRI,
   IN_REPLY_TO_IRI,
+  type lookupOptions,
   MISSKEY_QUOTE_IRI,
   QUOTE_IRI,
   QUOTE_URL_IRI,
   type RecurseProperty,
 } from "./lookup/command.ts";
 import { configureLogging } from "./log.ts";
-import type { GlobalOptions, TunnelService } from "./options.ts";
+import type { GlobalOptions } from "./options.ts";
 import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
 import { colorEnabled, colors, describeError, formatObject } from "./utils.ts";
 
@@ -72,27 +73,7 @@ export class RecursiveLookupError extends Error {
   }
 }
 
-type LookupCommand = GlobalOptions & {
-  readonly command: "lookup";
-  readonly traverse: boolean;
-  readonly recurse: RecurseProperty | undefined;
-  readonly recurseDepth: number | undefined;
-  readonly suppressErrors: boolean;
-  readonly authorizedFetch: boolean | undefined;
-  readonly firstKnock:
-    | "draft-cavage-http-signatures-12"
-    | "rfc9421"
-    | undefined;
-  readonly tunnelService: TunnelService | undefined;
-  readonly userAgent: string;
-  readonly allowPrivateAddress: boolean;
-  readonly timeout: number | undefined;
-  readonly urls: readonly string[];
-  readonly reverse: boolean;
-  readonly format: string | undefined;
-  readonly separator: string;
-  readonly output: string | undefined;
-};
+type LookupCommand = InferValue<typeof lookupOptions> & GlobalOptions;
 
 function writeToStream(
   stream: NodeJS.WritableStream,
