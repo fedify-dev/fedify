@@ -1003,6 +1003,20 @@ federation.<span class="c-fn">setActorDispatcher</span>(
         </p>
       </div>
     </section>
+
+    <!-- ======================== BACKED BY ========================== -->
+    <section class="lp-backer">
+      <p class="lp-backer-label">Backed by an investment from</p>
+      <a
+        class="lp-backer-link"
+        href="https://www.sovereign.tech/tech/fedify"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Sovereign Tech Agency"
+      >
+        <span class="lp-backer-logo" aria-hidden="true" />
+      </a>
+    </section>
   </div>
 </template>
 
@@ -1991,6 +2005,40 @@ a.lp-stack-name::after {
 .lp-sponsors a {
   color: var(--vp-c-brand-1);
   font-weight: 600;
+}
+
+/* --------------------------- Backed by ------------------------- */
+.lp-backer {
+  padding: 2.75rem 24px 3.5rem;
+  text-align: center;
+  border-top: 1px solid var(--vp-c-divider);
+}
+.lp-backer-label {
+  margin: 0 0 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--vp-c-text-2);
+  opacity: 0.7;
+}
+.lp-backer-link {
+  display: inline-block;
+  color: var(--vp-c-text-1);
+  transition: color 0.2s ease;
+}
+.lp-backer-link:hover {
+  color: var(--vp-c-brand-1);
+}
+/* Sovereign Tech Agency logo (104x33), tinted via CSS mask so it follows the
+   theme.  The asset bakes in a solid fill so the mask has a shape to clip. */
+.lp-backer-logo {
+  display: block;
+  width: 132px;
+  height: 42px;
+  background-color: currentColor;
+  -webkit-mask: url(/logos/sovereign-tech.svg) center / contain no-repeat;
+  mask: url(/logos/sovereign-tech.svg) center / contain no-repeat;
 }
 
 /* --------------------------- Animation ------------------------- */
