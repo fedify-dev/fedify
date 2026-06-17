@@ -24,7 +24,7 @@ import {
   Signature,
   UserSearch,
   Webhook,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 
 // Official ActivityPub logo (Simple Icons, CC0).
 const activityPubLogo =
