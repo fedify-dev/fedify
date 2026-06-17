@@ -109,17 +109,55 @@ const stack: {
   },
 ];
 
-// Fediverse software Fedify-built apps can talk to.
-const interop = [
-  "Mastodon",
-  "Misskey",
-  "Lemmy",
-  "Pleroma",
-  "PeerTube",
-  "Pixelfed",
-  "Akkoma",
-  "Hollo",
-  "Ghost",
+// Fediverse software Fedify-built apps can talk to, shown as a monochrome logo
+// wall.  `svg` is an inline currentColor mark (Simple Icons, CC0); `mask` points
+// to a logo rendered via CSS mask so it also takes currentColor (Akkoma & Hollo
+// come from the FediverseIconography project).
+const interop: { name: string; url: string; svg?: string; mask?: string }[] = [
+  {
+    name: "Mastodon",
+    url: "https://joinmastodon.org",
+    svg:
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M23.268 5.313c-.35-2.578-2.617-4.61-5.304-5.004C17.51.242 15.792 0 11.813 0h-.03c-3.98 0-4.835.242-5.288.309C3.882.692 1.496 2.518.917 5.127C.64 6.412.61 7.837.661 9.143c.074 1.874.088 3.745.26 5.611c.118 1.24.325 2.47.62 3.68c.55 2.237 2.777 4.098 4.96 4.857c2.336.792 4.849.923 7.256.38q.398-.092.786-.213c.585-.184 1.27-.39 1.774-.753a.06.06 0 0 0 .023-.043v-1.809a.05.05 0 0 0-.02-.041a.05.05 0 0 0-.046-.01a20.3 20.3 0 0 1-4.709.545c-2.73 0-3.463-1.284-3.674-1.818a5.6 5.6 0 0 1-.319-1.433a.053.053 0 0 1 .066-.054c1.517.363 3.072.546 4.632.546c.376 0 .75 0 1.125-.01c1.57-.044 3.224-.124 4.768-.422q.059-.011.11-.024c2.435-.464 4.753-1.92 4.989-5.604c.008-.145.03-1.52.03-1.67c.002-.512.167-3.63-.024-5.545m-3.748 9.195h-2.561V8.29c0-1.309-.55-1.976-1.67-1.976c-1.23 0-1.846.79-1.846 2.35v3.403h-2.546V8.663c0-1.56-.617-2.35-1.848-2.35c-1.112 0-1.668.668-1.67 1.977v6.218H4.822V8.102q0-1.965 1.011-3.12c.696-.77 1.608-1.164 2.74-1.164c1.311 0 2.302.5 2.962 1.498l.638 1.06l.638-1.06c.66-.999 1.65-1.498 2.96-1.498c1.13 0 2.043.395 2.74 1.164q1.012 1.155 1.012 3.12z"/></svg>',
+  },
+  {
+    name: "Misskey",
+    url: "https://misskey-hub.net",
+    svg:
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M8.91 16.892c-1.039.003-1.931-.63-2.352-1.366c-.225-.322-.67-.437-.676 0v2.014q0 1.215-.876 2.1q-.85.86-2.078.86q-1.2 0-2.077-.86A2.93 2.93 0 0 1 0 17.54V6.46q0-.936.526-1.695a2.86 2.86 0 0 1 1.402-1.088a2.9 2.9 0 0 1 1-.177q1.353 0 2.253 1.063l2.997 3.515c.067.05.263.437.732.437c.47 0 .692-.386.758-.437l2.972-3.515Q13.567 3.5 14.918 3.5q.501 0 1.001.177a2.73 2.73 0 0 1 1.377 1.088q.55.758.55 1.695v11.08q0 1.215-.875 2.1q-.852.86-2.078.86q-1.201 0-2.078-.86a2.93 2.93 0 0 1-.85-2.1v-2.014c-.05-.55-.531-.204-.702 0c-.45.843-1.313 1.361-2.352 1.366M21.448 8.61q-1.05 0-1.802-.733q-.726-.759-.726-1.822c0-1.063.242-1.307.726-1.796a2.44 2.44 0 0 1 1.802-.758q1.05 0 1.803.758q.75.735.75 1.796q0 1.063-.75 1.822q-.751.732-1.803.733m.025.507q1.05 0 1.777.758q.75.759.751 1.822v6.248q0 1.064-.75 1.821a2.4 2.4 0 0 1-1.778.734q-1.05 0-1.802-.733a2.5 2.5 0 0 1-.75-1.822v-6.248a2.5 2.5 0 0 1 .75-1.822a2.44 2.44 0 0 1 1.802-.758"/></svg>',
+  },
+  {
+    name: "Lemmy",
+    url: "https://join-lemmy.org",
+    svg:
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M2.96 4.223a4 4 0 0 0-.333.019A2.84 2.84 0 0 0 .474 5.628c-.475.8-.593 1.68-.35 2.497c.242.816.83 1.558 1.698 2.145l.016.011c.746.45 1.492.743 2.288.9c-.02.332-.028.669-.006 1.018c.063 1.043.436 2 .996 2.85l-2.006.818a.42.42 0 0 0-.228.224a.42.42 0 0 0 .088.455a.42.42 0 0 0 .294.123a.4.4 0 0 0 .16-.031l2.209-.904c.408.486.87.932 1.372 1.318q.03.02.06.043l-1.291 1.71a.416.416 0 0 0 .664.5l1.314-1.738a9.3 9.3 0 0 0 2.229 1.025c.383.72 1.138 1.187 2.02 1.187c.89 0 1.644-.501 2.024-1.207a9.4 9.4 0 0 0 2.208-1.027l1.332 1.76a.416.416 0 0 0 .744-.193a.42.42 0 0 0-.08-.307l-1.31-1.735c.008-.007.018-.01.026-.018c.497-.38.955-.818 1.362-1.294l2.155.88a.416.416 0 0 0 .541-.228a.415.415 0 0 0-.227-.544l-1.944-.792c.577-.854.97-1.819 1.05-2.87c.027-.35.025-.691.009-1.026a7 7 0 0 0 2.273-.897l.017-.012c.868-.587 1.456-1.328 1.698-2.145c.242-.816.125-1.697-.35-2.497a2.84 2.84 0 0 0-2.155-1.386a3 3 0 0 0-.332-.019c-.786-.015-1.623.23-2.429.694c-.593.342-1.125.867-1.543 1.439c-1.17-.67-2.693-1.048-4.564-1.078a16 16 0 0 0-.51 0c-2.086.034-3.755.43-5.015 1.144c-.003-.003-.005-.011-.008-.015C6.55 5.815 6 5.27 5.389 4.917c-.805-.465-1.643-.708-2.428-.694Zm.285.736c.557.042 1.17.236 1.779.588c.485.28.976.755 1.346 1.27a6 6 0 0 0-.497.408c-.92.852-1.461 1.96-1.668 3.233a6.2 6.2 0 0 1-1.984-.794C1.466 9.15 1.005 8.54.821 7.919C.636 7.295.713 6.648 1.098 6c.375-.63.928-.953 1.612-1.032a3 3 0 0 1 .535-.007Zm17.51 0a3 3 0 0 1 .535.008c.684.078 1.237.402 1.612 1.032c.385.648.462 1.296.277 1.92c-.184.622-.645 1.231-1.4 1.744a6.2 6.2 0 0 1-1.96.789c-.194-1.297-.737-2.434-1.666-3.302a6 6 0 0 0-.47-.392c.364-.49.828-.943 1.293-1.212c.61-.351 1.222-.545 1.779-.587m-8.749 1.045a15 15 0 0 1 .487 0c2.39.039 4.085.67 5.163 1.678c1.15 1.075 1.642 2.6 1.5 4.467c-.132 1.707-1.221 3.228-2.653 4.324a9 9 0 0 1-2.225 1.229c.003-.045.014-.089.014-.135c.003-1.196-.932-2.213-2.292-2.213s-2.322 1.015-2.292 2.221c.001.05.014.097.018.147a8.9 8.9 0 0 1-2.278-1.245c-1.423-1.095-2.5-2.613-2.603-4.322c-.113-1.857.378-3.339 1.521-4.397s2.986-1.711 5.64-1.754m-3.642 6.829a1.096 1.096 0 1 0 0 2.192a1.096 1.096 0 0 0 0-2.192m7.282.011a1.086 1.086 0 1 0 0 2.173a1.086 1.086 0 0 0 0-2.173M12 16.084c1.024 0 1.565.638 1.563 1.482c-.001.785-.672 1.485-1.563 1.485c-.917 0-1.54-.562-1.563-1.493c-.022-.834.54-1.474 1.563-1.474"/></svg>',
+  },
+  {
+    name: "Pleroma",
+    url: "https://pleroma.social",
+    svg:
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6.36 0a1.87 1.87 0 0 0-1.87 1.868V24h5.964V0zm7.113 0v12h4.168a1.87 1.87 0 0 0 1.868-1.868V0zm0 18.036V24h4.168a1.87 1.87 0 0 0 1.868-1.868v-4.096Z"/></svg>',
+  },
+  {
+    name: "PeerTube",
+    url: "https://joinpeertube.org",
+    svg:
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 6.545v10.91L20.727 12M3.273 12v12L12 17.455M3.273 0v12L12 6.545"/></svg>',
+  },
+  {
+    name: "Pixelfed",
+    url: "https://pixelfed.org",
+    svg:
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 24C5.373 24 0 18.627 0 12S5.373 0 12 0s12 5.373 12 12s-5.373 12-12 12m-.953-9.38h2.202c2.074 0 3.755-1.637 3.755-3.656S15.323 7.31 13.249 7.31h-3.177c-1.197 0-2.167.944-2.167 2.109v8.208z"/></svg>',
+  },
+  { name: "Akkoma", url: "https://akkoma.social", mask: "/logos/akkoma.svg" },
+  { name: "Hollo", url: "https://docs.hollo.social", mask: "/logos/hollo.svg" },
+  {
+    name: "Ghost",
+    url: "https://ghost.org",
+    svg:
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12s12-5.373 12-12S18.627 0 12 0m.256 2.313c2.47.005 5.116 2.008 5.898 2.962l.244.3c1.64 1.994 3.569 4.34 3.569 6.966c0 3.719-2.98 5.808-6.158 7.508c-1.433.766-2.98 1.508-4.748 1.508c-4.543 0-8.366-3.569-8.366-8.112c0-.706.17-1.425.342-2.15c.122-.515.244-1.033.307-1.549c.548-4.539 2.967-6.795 8.422-7.408a4 4 0 0 1 .49-.026Z"/></svg>',
+  },
 ];
 
 // Lightly highlighted showcase snippet (authored string, rendered with v-html).
@@ -321,9 +359,22 @@ federation.<span class="c-fn">setActorDispatcher</span>(
       <div class="wrap lp-interop">
         <p class="lp-kicker">Plays well with others</p>
         <h2 class="lp-h2">Interoperates with the software people already use</h2>
-        <ul class="lp-chips">
-          <li v-for="name in interop" :key="name">{{ name }}</li>
-          <li class="more">and more</li>
+        <ul class="lp-logos">
+          <li v-for="b in interop" :key="b.name">
+            <a
+              class="lp-logo"
+              :class="{ 'lp-logo--mask': b.mask }"
+              :style="b.mask ? { '--mask': `url(${b.mask})` } : undefined"
+              :href="b.url"
+              target="_blank"
+              rel="noopener noreferrer"
+              :aria-label="b.name"
+              :title="b.name"
+            >
+              <span v-if="b.svg" class="lp-logo-svg" v-html="b.svg" />
+            </a>
+          </li>
+          <li class="lp-logo-more">and more</li>
         </ul>
       </div>
     </section>
@@ -881,33 +932,52 @@ a.lp-stack-name::after {
 .lp-interop .lp-h2 {
   text-align: center;
 }
-.lp-chips {
+.lp-logos {
   list-style: none;
-  margin: 2.2rem 0 0;
+  margin: 2.6rem 0 0;
   padding: 0;
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: center;
-  gap: 0.7rem;
+  gap: 1.5rem 2.4rem;
 }
-.lp-chips li {
-  padding: 0.5rem 1.1rem;
-  border-radius: 999px;
-  background: var(--vp-c-bg-soft);
-  border: 1px solid var(--vp-c-divider);
-  font-weight: 600;
-  font-size: 0.92rem;
-  color: var(--vp-c-text-1);
-  transition: border-color 0.2s ease, color 0.2s ease;
-}
-.lp-chips li:hover {
-  border-color: var(--vp-c-brand-1);
-  color: var(--vp-c-brand-1);
-}
-.lp-chips .more {
-  background: transparent;
-  border-style: dashed;
+.lp-logo {
+  display: inline-flex;
+  align-items: center;
   color: var(--vp-c-text-2);
+  text-decoration: none;
+  opacity: 0.65;
+  transition:
+    color 0.2s ease,
+    opacity 0.2s ease;
+}
+.lp-logo:hover {
+  color: var(--vp-c-text-1);
+  opacity: 1;
+}
+.lp-logo-svg {
+  display: inline-flex;
+}
+.lp-logo-svg :deep(svg) {
+  height: 30px;
+  width: auto;
+  display: block;
+}
+/* Logos shipped as files are tinted to currentColor via a CSS mask so they
+   adapt to light/dark like the inline ones. */
+.lp-logo--mask {
+  width: 30px;
+  height: 30px;
+  background-color: currentColor;
+  -webkit-mask: var(--mask) center / contain no-repeat;
+  mask: var(--mask) center / contain no-repeat;
+}
+.lp-logo-more {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--vp-c-text-2);
+  opacity: 0.65;
 }
 
 /* --------------------------- Final CTA ------------------------- */
