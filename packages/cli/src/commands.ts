@@ -152,7 +152,7 @@ export const activityPubCommands = [
     parser: benchOptions,
     metadata: benchMetadata,
     run: async (value) => {
-      const { default: runBench } = await import("./bench/action.ts");
+      const { runBench } = await import("./bench/mod.ts");
       return await runBench(value);
     },
   }),
