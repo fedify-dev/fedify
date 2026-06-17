@@ -510,9 +510,11 @@ federation.<span class="c-fn">setActorDispatcher</span>(
             skip the boilerplate.
           </h1>
           <p class="lp-lede">
-            <strong>Fedify</strong> turns the hard parts of federation, signatures,
-            discovery, activity vocabulary, and delivery, into a handful of
-            type-safe function calls. So you ship features, not specs.
+            <strong>Fedify</strong> is a TypeScript framework that handles
+            federation, signatures, discovery, activity vocabulary, and delivery
+            behind type-safe APIs, so you ship features, not specs. It's modular,
+            too: adopt the whole thing or just the parts you need, and it never
+            dictates how your app is built.
           </p>
           <div class="lp-cta">
             <a class="btn btn-primary" href="/tutorial/basics">
@@ -594,15 +596,17 @@ federation.<span class="c-fn">setActorDispatcher</span>(
       <div class="wrap lp-narrow">
         <p class="lp-kicker">What's Fedify?</p>
         <h2 class="lp-h2">
-          One library that lets your app speak to the entire fediverse.
+          A federation framework, not just a protocol library.
         </h2>
         <p class="lp-body">
           The fediverse is millions of accounts spread across thousands of
           independent servers, all talking through shared protocols. Implementing
           those protocols by hand is a lot of subtle, security-critical work.
-          Fedify gives you a single, framework-agnostic toolkit so a post on your
-          server reaches Mastodon, Misskey, Lemmy, and everything else, correctly
-          and securely.
+          Fedify handles all of it, actors and activity vocabulary, signatures,
+          discovery, and queued delivery, so a post on your server reaches
+          Mastodon, Misskey, Lemmy, and the rest, correctly and securely. It's
+          that broad, yet modular: take only the pieces you need, and it won't
+          decide how the rest of your app is structured.
         </p>
         <a class="lp-textlink" href="/intro">Read the full introduction →</a>
       </div>
@@ -753,12 +757,13 @@ federation.<span class="c-fn">setActorDispatcher</span>(
       <div class="wrap">
         <div class="lp-section-head">
           <p class="lp-kicker">Works with your stack</p>
-          <h2 class="lp-h2">Drops into the framework you already use</h2>
+          <h2 class="lp-h2">Drops into the web framework you already use</h2>
           <p class="lp-body">
-            Fedify runs as middleware that shares your app's domain and port
-            through content negotiation. First-party packages cover the
-            frameworks below, and <code>fedify init</code> scaffolds a project
-            for you.
+            Fedify doesn't take over your app. It runs as middleware on the
+            domain and port you already have, using content negotiation to pick
+            out federation traffic and leaving the rest of your routes alone.
+            First-party packages cover the frameworks below, and
+            <code>fedify init</code> scaffolds a project for you.
           </p>
         </div>
         <ul class="lp-logos lp-frameworks">
