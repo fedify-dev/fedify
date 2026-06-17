@@ -977,6 +977,26 @@ federation.<span class="c-fn">setActorDispatcher</span>(
             GitHub
           </a>
         </div>
+        <p class="lp-community">
+          Need a hand? Ask the community on
+          <a
+            href="https://github.com/fedify-dev/fedify/discussions"
+            target="_blank"
+            rel="noopener noreferrer"
+          >GitHub Discussions</a>
+          or
+          <a
+            href="https://matrix.to/#/#fedify:matrix.org"
+            target="_blank"
+            rel="noopener noreferrer"
+          >Matrix</a>, or tag
+          <a
+            href="https://mastodon.social/tags/fedify"
+            target="_blank"
+            rel="noopener noreferrer"
+          >#Fedify</a>
+          in the fediverse.
+        </p>
         <p class="lp-sponsors">
           Fedify is free and open source.
           <a href="/sponsors">Meet our sponsors →</a>
@@ -1954,8 +1974,17 @@ a.lp-stack-name::after {
 .lp-cta-band .lp-cta {
   justify-content: center;
 }
-.lp-sponsors {
+.lp-community {
   margin-top: 2.2rem;
+  font-size: 0.92rem;
+  color: var(--vp-c-text-2);
+}
+.lp-community a {
+  color: var(--vp-c-brand-1);
+  font-weight: 600;
+}
+.lp-sponsors {
+  margin-top: 0.6rem;
   font-size: 0.92rem;
   color: var(--vp-c-text-2);
 }
