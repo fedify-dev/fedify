@@ -24,16 +24,18 @@ test("runCli does not expose the selected static command marker", async () => {
 
 test("toCliProgram runs commands with stripped values", async () => {
   let receivedValue: Record<string, unknown> | undefined;
-  const program = toCliProgram({
-    command: "fake",
-    port: 3000,
-    ignoreConfig: true,
-    debug: false,
-    __fedifyCliSelectedCommand: { path: ["fake"] },
-    __fedifyCliRunCommand: (value: Record<string, unknown>) => {
-      receivedValue = value;
-    },
-  } as never);
+  const program = toCliProgram(
+    {
+      command: "fake",
+      port: 3000,
+      ignoreConfig: true,
+      debug: false,
+      __fedifyCliSelectedCommand: { path: ["fake"] },
+      __fedifyCliRunCommand: (value: Record<string, unknown>) => {
+        receivedValue = value;
+      },
+    } as unknown as Parameters<typeof toCliProgram>[0],
+  );
   await program.run();
 
   assert.ok(receivedValue != null);
