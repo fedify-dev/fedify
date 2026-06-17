@@ -323,7 +323,7 @@ export default withMermaid(defineConfig({
       md.use(footnote);
       md.use(taskLists);
       md.use(groupIconMdPlugin);
-      for (const jsrRefPlugin of jsrRefPlugins) {
+      for (const jsrRefPlugin of jsrRefPlugins.toReversed()) {
         md.use(jsrRefPlugin);
       }
     },
