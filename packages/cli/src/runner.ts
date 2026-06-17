@@ -245,13 +245,13 @@ function toCliProgram<TCommand extends CliCommand>(
 ): CliProgram {
   const {
     [selectedCommand]: command,
-    [selectedRun]: run,
+    [selectedRun]: runCommand,
     ...value
   } = parsed;
   return {
     command,
     value: value as PublicCommandValue,
-    run: () => run(parsed),
+    run: () => runCommand(parsed),
   };
 }
 
