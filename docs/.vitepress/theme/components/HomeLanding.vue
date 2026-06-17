@@ -374,6 +374,12 @@ const cliCommands: { cmd: string; url: string; desc: string }[] = [
       "Spin up an ephemeral, public inbox to see exactly what your server sends.",
   },
   {
+    cmd: "fedify tunnel",
+    url: "/cli#fedify-tunnel-exposing-a-local-http-server-to-the-public-internet",
+    desc:
+      "Expose your local server to the public internet for live testing.",
+  },
+  {
     cmd: "fedify init",
     url: "/cli#fedify-init-initializing-a-fedify-project",
     desc: "Scaffold a ready-to-run project in seconds.",
@@ -402,7 +408,7 @@ const vocabPoints: { term: string; desc: string }[] = [
   {
     term: "Standard-compliant output",
     desc:
-      "build an object and toJsonLd() emits valid, interoperable JSON-LD every time.",
+      "build an object and toJsonLd() emits valid, interoperable JSON-LD.",
   },
   {
     term: "One shape to read",
@@ -617,7 +623,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
       <div class="wrap lp-why">
         <div class="lp-why-copy">
           <p class="lp-kicker">Why Fedify?</p>
-          <h2 class="lp-h2">Federation is a stack of specs. We implement it.</h2>
+          <h2 class="lp-h2">Federation is a stack of specs. Fedify implements it.</h2>
           <p class="lp-body">
             Going federated means getting a whole pile of standards right, and
             keeping them right as they evolve. Fedify implements them so you
@@ -812,8 +818,26 @@ federation.<span class="c-fn">setActorDispatcher</span>(
       </div>
     </section>
 
-    <!-- ========================= INTEROP ============================ -->
+    <!-- ===================== YOUR DATA / STORAGE ==================== -->
     <section class="lp-section">
+      <div class="wrap lp-narrow">
+        <p class="lp-kicker">Your data, your schema</p>
+        <h2 class="lp-h2">Fedify never owns your data model</h2>
+        <p class="lp-body">
+          Your actors, posts, and followers live in your own database, in
+          whatever schema you already have. Fedify reads them through dispatcher
+          callbacks you write, so the data model stays yours. For its own
+          internal state, a cache and some federation bookkeeping, it relies on a
+          pluggable <code>KvStore</code>: keep it in memory while you develop, or
+          back it with Redis, PostgreSQL, MySQL, SQLite, Deno KV, or Cloudflare
+          Workers KV.
+        </p>
+        <a class="lp-textlink" href="/manual/kv">Key–value store guide →</a>
+      </div>
+    </section>
+
+    <!-- ========================= INTEROP ============================ -->
+    <section class="lp-section lp-section-alt">
       <div class="wrap lp-interop">
         <p class="lp-kicker">Plays well with others</p>
         <h2 class="lp-h2">Interoperates with the software people already use</h2>
@@ -834,6 +858,45 @@ federation.<span class="c-fn">setActorDispatcher</span>(
           </li>
           <li class="lp-logo-more">and more</li>
         </ul>
+      </div>
+    </section>
+
+    <!-- ============================ CLI ============================= -->
+    <section class="lp-section">
+      <div class="wrap lp-cli">
+        <div class="lp-cli-copy">
+          <p class="lp-kicker">Developer tooling</p>
+          <h2 class="lp-h2">A toolchain for building and debugging</h2>
+          <p class="lp-body">
+            The <code>fedify</code> command-line tool turns the fiddly parts of
+            ActivityPub development into one-liners, from inspecting remote
+            objects to watching exactly what your own server sends. Alongside it,
+            <a
+              href="https://jsr.io/@fedify/lint"
+              target="_blank"
+              rel="noopener noreferrer"
+            ><code>@fedify/lint</code></a> catches common federation mistakes as
+            you write, and
+            <a href="/manual/debug"><code>@fedify/debugger</code></a> adds a live
+            dashboard of inbox and outbox activity.
+          </p>
+          <ul class="lp-cli-list">
+            <li v-for="c in cliCommands" :key="c.cmd">
+              <a class="lp-cli-link" :href="c.url">
+                <code class="lp-cli-cmd">{{ c.cmd }}</code>
+              </a>
+              <span class="lp-cli-desc">{{ c.desc }}</span>
+            </li>
+          </ul>
+          <a class="lp-textlink" href="/cli">Explore the CLI →</a>
+        </div>
+        <div class="lp-term" aria-hidden="true">
+          <div class="lp-term-bar">
+            <span class="dot" /><span class="dot" /><span class="dot" />
+            <span class="lp-term-title">zsh — fedify</span>
+          </div>
+          <pre class="lp-term-body"><code v-html="cliTerminal" /></pre>
+        </div>
       </div>
     </section>
 
@@ -893,39 +956,8 @@ federation.<span class="c-fn">setActorDispatcher</span>(
       </div>
     </section>
 
-    <!-- ============================ CLI ============================= -->
-    <section class="lp-section">
-      <div class="wrap lp-cli">
-        <div class="lp-cli-copy">
-          <p class="lp-kicker">Developer tooling</p>
-          <h2 class="lp-h2">A CLI made for fediverse debugging</h2>
-          <p class="lp-body">
-            The <code>fedify</code> command-line toolchain turns the fiddly parts
-            of ActivityPub development into one-liners, from inspecting remote
-            objects to watching exactly what your own server sends.
-          </p>
-          <ul class="lp-cli-list">
-            <li v-for="c in cliCommands" :key="c.cmd">
-              <a class="lp-cli-link" :href="c.url">
-                <code class="lp-cli-cmd">{{ c.cmd }}</code>
-              </a>
-              <span class="lp-cli-desc">{{ c.desc }}</span>
-            </li>
-          </ul>
-          <a class="lp-textlink" href="/cli">Explore the CLI →</a>
-        </div>
-        <div class="lp-term" aria-hidden="true">
-          <div class="lp-term-bar">
-            <span class="dot" /><span class="dot" /><span class="dot" />
-            <span class="lp-term-title">zsh — fedify</span>
-          </div>
-          <pre class="lp-term-body"><code v-html="cliTerminal" /></pre>
-        </div>
-      </div>
-    </section>
-
     <!-- ====================== ACTIVITYPUB API ====================== -->
-    <section class="lp-section lp-section-alt">
+    <section class="lp-section">
       <div class="wrap lp-c2s">
         <div class="lp-c2s-copy">
           <p class="lp-kicker">ActivityPub API</p>
