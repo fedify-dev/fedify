@@ -442,6 +442,34 @@ activity.actorId;
 <span class="c-kw">const</span> actor = <span class="c-kw">await</span> activity.<span class="c-fn">getActor</span>();
 actor?.name;  <span class="c-cm">// "Alice"</span>`;
 
+// Client-to-server (C2S) highlights for the outbox-listener section.
+const c2sPoints: { term: string; desc: string }[] = [
+  {
+    term: "Typed outbox listeners",
+    desc:
+      "handle client posts per activity type, exactly like inbox listeners.",
+  },
+  {
+    term: "Auth your way",
+    desc:
+      "an <code>authorize()</code> hook plugs in OAuth, access tokens, or sessions.",
+  },
+  {
+    term: "Standard, not bespoke",
+    desc:
+      "clients speak the real ActivityPub outbox, so there's no custom API to maintain.",
+  },
+];
+
+// C2S outbox-listener demo (rendered with v-html).
+const outboxCode = `federation
+  .<span class="c-fn">setOutboxListeners</span>(<span class="c-st">"/users/{identifier}/outbox"</span>)
+  .<span class="c-fn">on</span>(<span class="c-ty">Create</span>, <span class="c-kw">async</span> (ctx, activity) => {
+    <span class="c-kw">await</span> <span class="c-fn">saveAndDeliver</span>(ctx, activity);
+  })
+  .<span class="c-fn">authorize</span>(<span class="c-kw">async</span> (ctx, id) =>
+    (<span class="c-kw">await</span> <span class="c-fn">getSession</span>(ctx.request))?.user === id);`;
+
 // Lightly highlighted showcase snippet (authored string, rendered with v-html).
 const code = `<span class="c-kw">import</span> { <span class="c-ty">createFederation</span>, <span class="c-ty">Person</span> } <span class="c-kw">from</span> <span class="c-st">"@fedify/fedify"</span>;
 
@@ -887,6 +915,44 @@ federation.<span class="c-fn">setActorDispatcher</span>(
             <span class="lp-term-title">zsh — fedify</span>
           </div>
           <pre class="lp-term-body"><code v-html="cliTerminal" /></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================== ACTIVITYPUB API ====================== -->
+    <section class="lp-section lp-section-alt">
+      <div class="wrap lp-c2s">
+        <div class="lp-c2s-copy">
+          <p class="lp-kicker">ActivityPub API</p>
+          <h2 class="lp-h2">Accept posts straight from your clients</h2>
+          <p class="lp-body">
+            The ActivityPub API, the client-to-server (C2S) side of the
+            protocol, is something of a holy grail in the fediverse, and Fedify
+            is ready for it. Route <code>POST</code> requests to an actor's
+            outbox through typed listeners and authorize them however you like.
+          </p>
+          <ul class="lp-checklist">
+            <li v-for="p in c2sPoints" :key="p.term">
+              <span class="lp-check-ic" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m5 12.5 4.5 4.5L19 6.5" />
+                </svg>
+              </span>
+              <span class="lp-check-text">
+                <span class="lp-check-term">{{ p.term }}</span>
+                <span class="lp-check-desc" v-html="p.desc" />
+              </span>
+            </li>
+          </ul>
+          <a class="lp-textlink" href="/manual/outbox">Outbox listeners guide →</a>
+        </div>
+        <div class="lp-code-window lp-c2s-window">
+          <div class="lp-code-bar" aria-hidden="true">
+            <span class="dot" /><span class="dot" /><span class="dot" />
+            <span class="lp-code-file">outbox.ts</span>
+          </div>
+          <pre class="lp-code"><code v-html="outboxCode" /></pre>
         </div>
       </div>
     </section>
@@ -1391,7 +1457,8 @@ a.lp-stack-name::after {
 }
 
 /* ------------------------- Code showcase ----------------------- */
-.lp-code-grid {
+.lp-code-grid,
+.lp-c2s {
   display: grid;
   grid-template-columns: 0.9fr 1.1fr;
   gap: 3rem;
@@ -1687,7 +1754,8 @@ a.lp-stack-name::after {
   gap: 3rem;
   align-items: center;
 }
-.lp-cli-copy p code {
+.lp-cli-copy p code,
+.lp-c2s-copy p code {
   font-family: var(--vp-font-family-mono);
   font-size: 0.88em;
   padding: 0.1em 0.4em;
@@ -1948,7 +2016,8 @@ a.lp-stack-name::after {
   .lp-points,
   .lp-otel,
   .lp-cli,
-  .lp-vocab {
+  .lp-vocab,
+  .lp-c2s {
     grid-template-columns: 1fr;
   }
   .lp-hero-art {
