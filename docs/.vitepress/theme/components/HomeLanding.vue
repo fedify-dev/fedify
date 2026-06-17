@@ -358,6 +358,90 @@ const traceSpans: { label: string; depth: number; start: number; width: number }
   { label: "http_signatures.sign", depth: 2, start: 65, width: 13 },
 ];
 
+// Highlighted commands for the CLI section (the two debugging stars first),
+// each linking to its section in the CLI manual.
+const cliCommands: { cmd: string; url: string; desc: string }[] = [
+  {
+    cmd: "fedify lookup --authorized-fetch",
+    url: "/cli#a-authorized-fetch-authorized-fetch",
+    desc:
+      "Inspect any actor or object, even the authorized-fetch-only ones.",
+  },
+  {
+    cmd: "fedify inbox",
+    url: "/cli#fedify-inbox-ephemeral-inbox-server",
+    desc:
+      "Spin up an ephemeral, public inbox to see exactly what your server sends.",
+  },
+  {
+    cmd: "fedify init",
+    url: "/cli#fedify-init-initializing-a-fedify-project",
+    desc: "Scaffold a ready-to-run project in seconds.",
+  },
+  {
+    cmd: "fedify nodeinfo",
+    url: "/cli#fedify-nodeinfo-visualizing-an-instance-s-nodeinfo",
+    desc: "Inspect any instance's software, version, and stats.",
+  },
+];
+
+// A mock terminal session showing `fedify inbox` (rendered with v-html).
+const cliTerminal = `<span class="t-p">$</span> fedify inbox
+
+<span class="t-ok">✔</span> Ephemeral server up: <span class="t-url">https://f9285cf4.lhr.life/</span>
+<span class="t-ok">✔</span> Sent follow to <span class="t-at">@john@activitypub.academy</span>
+
+  <span class="t-k">Actor handle</span>   i@f9285cf4.lhr.life
+  <span class="t-k">Actor inbox</span>    https://f9285cf4.lhr.life/i/inbox
+  <span class="t-k">Shared inbox</span>   https://f9285cf4.lhr.life/inbox
+
+<span class="t-rx">▸ Received</span> <span class="t-at">Follow</span>  POST /i/inbox  <span class="t-ok">202</span>`;
+
+// Vocabulary API highlights.
+const vocabPoints: { term: string; desc: string }[] = [
+  {
+    term: "Standard-compliant output",
+    desc:
+      "build an object and toJsonLd() emits valid, interoperable JSON-LD every time.",
+  },
+  {
+    term: "One shape to read",
+    desc: "every equivalent JSON-LD form normalizes to the same typed value.",
+  },
+  {
+    term: "References, dereferenced",
+    desc:
+      "<code>getActor()</code> and <code>getObject()</code> accessors fetch and hydrate remote objects on demand.",
+  },
+  {
+    term: "Secure by default",
+    desc:
+      'an origin-based security model (<a href="https://w3id.org/fep/fe34" target="_blank" rel="noopener noreferrer">FEP-fe34</a>) re-fetches cross-origin objects to prevent spoofing.',
+  },
+];
+
+// Vocabulary normalization demo: four equivalent JSON-LD forms, one typed value.
+const vocabCode = `<span class="c-cm">// In JSON-LD, these four are all equivalent:</span>
+<span class="c-ty">"to"</span>: <span class="c-st">"as:Public"</span>
+<span class="c-ty">"to"</span>: [<span class="c-st">"as:Public"</span>]
+<span class="c-ty">"to"</span>: <span class="c-st">"https://www.w3.org/ns/activitystreams#Public"</span>
+<span class="c-ty">"to"</span>: [<span class="c-st">"https://www.w3.org/ns/activitystreams#Public"</span>]
+
+<span class="c-cm">// With the Vocabulary API you read one typed value:</span>
+note.<span class="c-fn">toId</span>
+<span class="c-cm">// → URL "https://www.w3.org/ns/activitystreams#Public"</span>`;
+
+// Reference-accessor demo: id accessor (no fetch) vs. dereferencing accessor.
+const accessorCode = `<span class="c-kw">const</span> activity = <span class="c-kw">await</span> <span class="c-ty">Activity</span>.<span class="c-fn">fromJsonLd</span>(json);
+
+<span class="c-cm">// Just the URI, no network request:</span>
+activity.actorId;
+<span class="c-cm">// → URL "https://example.com/users/alice"</span>
+
+<span class="c-cm">// getActor() fetches and hydrates the actor:</span>
+<span class="c-kw">const</span> actor = <span class="c-kw">await</span> activity.<span class="c-fn">getActor</span>();
+actor?.name;  <span class="c-cm">// "Alice"</span>`;
+
 // Lightly highlighted showcase snippet (authored string, rendered with v-html).
 const code = `<span class="c-kw">import</span> { <span class="c-ty">createFederation</span>, <span class="c-ty">Person</span> } <span class="c-kw">from</span> <span class="c-st">"@fedify/fedify"</span>;
 
@@ -552,8 +636,54 @@ federation.<span class="c-fn">setActorDispatcher</span>(
       </div>
     </section>
 
-    <!-- ===================== RELIABLE DELIVERY ====================== -->
+    <!-- ====================== VOCABULARY ============================ -->
     <section class="lp-section lp-section-alt">
+      <div class="wrap lp-vocab">
+        <div class="lp-vocab-copy">
+          <p class="lp-kicker">Type-safe vocabulary</p>
+          <h2 class="lp-h2">Type-safe objects, no JSON-LD headaches</h2>
+          <p class="lp-body">
+            Fedify models the whole Activity Vocabulary as immutable, type-safe
+            objects, backed by a real JSON-LD processor and exposed as a fully
+            typed API.
+          </p>
+          <ul class="lp-checklist">
+            <li v-for="p in vocabPoints" :key="p.term">
+              <span class="lp-check-ic" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m5 12.5 4.5 4.5L19 6.5" />
+                </svg>
+              </span>
+              <span class="lp-check-text">
+                <span class="lp-check-term">{{ p.term }}</span>
+                <span class="lp-check-desc" v-html="p.desc" />
+              </span>
+            </li>
+          </ul>
+          <a class="lp-textlink" href="/manual/vocab">Vocabulary guide →</a>
+        </div>
+        <div class="lp-vocab-demos">
+          <div class="lp-code-window">
+            <div class="lp-code-bar" aria-hidden="true">
+              <span class="dot" /><span class="dot" /><span class="dot" />
+              <span class="lp-code-file">recipients.ts</span>
+            </div>
+            <pre class="lp-code"><code v-html="vocabCode" /></pre>
+          </div>
+          <div class="lp-code-window">
+            <div class="lp-code-bar" aria-hidden="true">
+              <span class="dot" /><span class="dot" /><span class="dot" />
+              <span class="lp-code-file">actor.ts</span>
+            </div>
+            <pre class="lp-code"><code v-html="accessorCode" /></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== RELIABLE DELIVERY ====================== -->
+    <section class="lp-section">
       <div class="wrap">
         <div class="lp-section-head">
           <p class="lp-kicker">Reliable at scale</p>
@@ -591,7 +721,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ======================== FRAMEWORKS ========================= -->
-    <section class="lp-section">
+    <section class="lp-section lp-section-alt">
       <div class="wrap">
         <div class="lp-section-head">
           <p class="lp-kicker">Works with your stack</p>
@@ -650,7 +780,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ========================= INTEROP ============================ -->
-    <section class="lp-section lp-section-alt">
+    <section class="lp-section">
       <div class="wrap lp-interop">
         <p class="lp-kicker">Plays well with others</p>
         <h2 class="lp-h2">Interoperates with the software people already use</h2>
@@ -675,7 +805,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     </section>
 
     <!-- ====================== OBSERVABILITY ========================= -->
-    <section class="lp-section">
+    <section class="lp-section lp-section-alt">
       <div class="wrap lp-otel">
         <div class="lp-otel-copy">
           <p class="lp-kicker">Built for production</p>
@@ -726,6 +856,37 @@ federation.<span class="c-fn">setActorDispatcher</span>(
               </span>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ CLI ============================= -->
+    <section class="lp-section">
+      <div class="wrap lp-cli">
+        <div class="lp-cli-copy">
+          <p class="lp-kicker">Developer tooling</p>
+          <h2 class="lp-h2">A CLI made for fediverse debugging</h2>
+          <p class="lp-body">
+            The <code>fedify</code> command-line toolchain turns the fiddly parts
+            of ActivityPub development into one-liners, from inspecting remote
+            objects to watching exactly what your own server sends.
+          </p>
+          <ul class="lp-cli-list">
+            <li v-for="c in cliCommands" :key="c.cmd">
+              <a class="lp-cli-link" :href="c.url">
+                <code class="lp-cli-cmd">{{ c.cmd }}</code>
+              </a>
+              <span class="lp-cli-desc">{{ c.desc }}</span>
+            </li>
+          </ul>
+          <a class="lp-textlink" href="/cli">Explore the CLI →</a>
+        </div>
+        <div class="lp-term" aria-hidden="true">
+          <div class="lp-term-bar">
+            <span class="dot" /><span class="dot" /><span class="dot" />
+            <span class="lp-term-title">zsh — fedify</span>
+          </div>
+          <pre class="lp-term-body"><code v-html="cliTerminal" /></pre>
         </div>
       </div>
     </section>
@@ -1236,6 +1397,17 @@ a.lp-stack-name::after {
   gap: 3rem;
   align-items: center;
 }
+.lp-vocab {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: 3rem;
+  align-items: start;
+}
+.lp-vocab-demos {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
 .lp-code-window {
   border-radius: 14px;
   overflow: clip;
@@ -1384,19 +1556,23 @@ a.lp-stack-name::after {
   gap: 3rem;
   align-items: center;
 }
-.lp-otel-list {
+/* Shared check-list used by the observability and vocabulary sections. */
+.lp-otel-list,
+.lp-checklist {
   list-style: none;
   margin: 1.6rem 0 0;
   padding: 0;
   display: grid;
   gap: 1rem;
 }
-.lp-otel-list li {
+.lp-otel-list li,
+.lp-checklist li {
   display: flex;
   gap: 0.75rem;
   align-items: flex-start;
 }
-.lp-otel-ic {
+.lp-otel-ic,
+.lp-check-ic {
   flex: none;
   display: inline-flex;
   align-items: center;
@@ -1408,22 +1584,42 @@ a.lp-stack-name::after {
   color: #fff;
   background: linear-gradient(135deg, #0ea5e9, #0369a1);
 }
-.lp-otel-ic svg {
+.lp-otel-ic svg,
+.lp-check-ic svg {
   width: 14px;
   height: 14px;
 }
-.lp-otel-text {
+.lp-otel-text,
+.lp-check-text {
   font-size: 1rem;
   line-height: 1.55;
 }
-.lp-otel-term {
+.lp-otel-term,
+.lp-check-term {
   display: block;
   font-weight: 600;
   color: var(--vp-c-text-1);
 }
-.lp-otel-desc {
+.lp-otel-desc,
+.lp-check-desc {
   display: block;
   color: var(--vp-c-text-2);
+}
+.lp-checklist :deep(code) {
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.86em;
+  padding: 0.1em 0.35em;
+  border-radius: 5px;
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-c-brand-1);
+}
+.lp-checklist :deep(a) {
+  color: var(--vp-c-brand-1);
+  font-weight: 500;
+  text-decoration: none;
+}
+.lp-checklist :deep(a:hover) {
+  text-decoration: underline;
 }
 
 /* Trace-waterfall mock. */
@@ -1483,6 +1679,102 @@ a.lp-stack-name::after {
   border-radius: 999px;
   background: linear-gradient(90deg, #38bdf8, #0369a1);
 }
+
+/* ------------------------------- CLI --------------------------- */
+.lp-cli {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: 3rem;
+  align-items: center;
+}
+.lp-cli-copy p code {
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.88em;
+  padding: 0.1em 0.4em;
+  border-radius: 5px;
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-c-brand-1);
+}
+.lp-cli-list {
+  list-style: none;
+  margin: 1.6rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 1.1rem;
+}
+.lp-cli-link {
+  text-decoration: none;
+}
+.lp-cli-cmd {
+  display: inline-block;
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.85rem;
+  padding: 0.2em 0.55em;
+  border-radius: 6px;
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-c-brand-1);
+  transition:
+    color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.lp-cli-link:hover .lp-cli-cmd {
+  color: var(--vp-c-brand-2);
+  box-shadow: inset 0 0 0 1px var(--vp-c-brand-1);
+}
+.lp-cli-desc {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--vp-c-text-2);
+}
+
+/* Terminal mock. */
+.lp-term {
+  border-radius: 14px;
+  overflow: clip;
+  background: #0b1622;
+  border: 1px solid #1e3a52;
+  box-shadow: 0 30px 60px -30px rgba(2, 132, 199, 0.5);
+}
+.lp-term-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1rem;
+  background: #0d1b2a;
+  border-bottom: 1px solid #1e3a52;
+}
+.lp-term-bar .dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #1e3a52;
+}
+.lp-term-bar .dot:nth-child(1) { background: #f87171; }
+.lp-term-bar .dot:nth-child(2) { background: #fbbf24; }
+.lp-term-bar .dot:nth-child(3) { background: #34d399; }
+.lp-term-title {
+  margin-left: 0.6rem;
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.8rem;
+  color: #7c93a8;
+}
+.lp-term-body {
+  margin: 0;
+  padding: 1.25rem 1.4rem;
+  overflow-x: auto;
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.82rem;
+  line-height: 1.7;
+  color: #cbd5e1;
+}
+.lp-term-body :deep(.t-p) { color: #7dd3fc; user-select: none; }
+.lp-term-body :deep(.t-ok) { color: #86efac; }
+.lp-term-body :deep(.t-url) { color: #7dd3fc; }
+.lp-term-body :deep(.t-at) { color: #fcd34d; }
+.lp-term-body :deep(.t-k) { color: #64748b; }
+.lp-term-body :deep(.t-rx) { color: #93c5fd; }
 
 /* ---------------------------- Interop -------------------------- */
 .lp-interop {
@@ -1654,7 +1946,9 @@ a.lp-stack-name::after {
   .lp-code-grid,
   .lp-byo,
   .lp-points,
-  .lp-otel {
+  .lp-otel,
+  .lp-cli,
+  .lp-vocab {
     grid-template-columns: 1fr;
   }
   .lp-hero-art {
