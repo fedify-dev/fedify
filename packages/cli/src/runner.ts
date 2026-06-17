@@ -240,7 +240,7 @@ export function runCli(args: string[]) {
   return run(command, getRunOptions(args));
 }
 
-function toCliProgram<TCommand extends CliCommand>(
+export function toCliProgram<TCommand extends CliCommand>(
   parsed: RunnableCommandValue<TCommand>,
 ): CliProgram {
   const {
@@ -248,10 +248,11 @@ function toCliProgram<TCommand extends CliCommand>(
     [selectedRun]: runCommand,
     ...value
   } = parsed;
+  const publicValue = value as PublicCommandValue;
   return {
     command,
-    value: value as PublicCommandValue,
-    run: () => runCommand(parsed),
+    value: publicValue,
+    run: () => runCommand(publicValue),
   };
 }
 
