@@ -497,6 +497,23 @@ const outboxCode = `federation
   .<span class="c-fn">authorize</span>(<span class="c-kw">async</span> (ctx, id) =>
     (<span class="c-kw">await</span> <span class="c-fn">getSession</span>(ctx.request))?.user === id);`;
 
+// Sister projects built on Fedify by the same team, shown with their own
+// full-color logos and linking to their sites.
+const sisterProjects = [
+  {
+    name: "BotKit",
+    url: "https://botkit.fedify.dev/",
+    logo: "/logos/botkit.svg",
+    desc: "A framework for building ActivityPub bots.",
+  },
+  {
+    name: "DrFed",
+    url: "https://drfed.org/",
+    logo: "/logos/drfed.svg",
+    desc: "A web-based ActivityPub debugging platform.",
+  },
+];
+
 // Lightly highlighted showcase snippet (authored string, rendered with v-html).
 const code = `<span class="c-kw">import</span> { <span class="c-ty">createFederation</span>, <span class="c-ty">Person</span> } <span class="c-kw">from</span> <span class="c-st">"@fedify/fedify"</span>;
 
@@ -1049,6 +1066,20 @@ federation.<span class="c-fn">setActorDispatcher</span>(
         <p class="lp-sponsors">
           Fedify is free and open source.
           <a href="/sponsors">Meet our sponsors →</a>
+        </p>
+        <p class="lp-also">
+          <span class="lp-also-label">Also from the Fedify team:</span>
+          <a
+            v-for="p in sisterProjects"
+            :key="p.name"
+            class="lp-also-link"
+            :href="p.url"
+            :title="p.desc"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <img :src="p.logo" alt="" />{{ p.name }}
+          </a>
         </p>
       </div>
     </section>
@@ -2065,6 +2096,31 @@ a.lp-stack-name::after {
 .lp-sponsors a {
   color: var(--vp-c-brand-1);
   font-weight: 600;
+}
+.lp-also {
+  margin-top: 0.6rem;
+  font-size: 0.92rem;
+  color: var(--vp-c-text-2);
+}
+.lp-also-label {
+  vertical-align: middle;
+}
+.lp-also-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: 0.6rem;
+  vertical-align: middle;
+  color: var(--vp-c-text-1);
+  font-weight: 600;
+  text-decoration: none;
+}
+.lp-also-link:hover {
+  color: var(--vp-c-brand-1);
+}
+.lp-also-link img {
+  height: 19px;
+  width: auto;
 }
 
 /* --------------------------- Backed by ------------------------- */
