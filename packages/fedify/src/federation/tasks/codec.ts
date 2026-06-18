@@ -66,7 +66,7 @@ export default class TaskCodec {
       isInstanceOf(Array),
       (): unknown[] => [],
       async (revive, node, arr) => {
-        arr.push(...await Array.fromAsync(node, revive));
+        for (const item of await Array.fromAsync(node, revive)) arr.push(item);
       },
     ),
     classReviver(
