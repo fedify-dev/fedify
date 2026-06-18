@@ -197,6 +197,19 @@ test("TaskCodec.serialize() / deserialize()", async (t) => {
       strictEqual(decoded.content?.toString(), "deep");
     },
   );
+
+  await t.step(
+    "round-trips an array too large to spread into push()",
+    async () => {
+      const length = 200_000;
+      const payload = { big: Array.from({ length }, (_, i) => i) };
+      const encoded = await codec.serialize(payload);
+      const decoded = await codec.deserialize(encoded) as { big: number[] };
+      strictEqual(decoded.big.length, length);
+      strictEqual(decoded.big[0], 0);
+      strictEqual(decoded.big[length - 1], length - 1);
+    },
+  );
 });
 
 test("TaskCodec (one instance reused across decodes)", async (t) => {
