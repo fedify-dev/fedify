@@ -16,6 +16,15 @@ import llmstxt from "vitepress-plugin-llms";
 import { withMermaid } from "vitepress-plugin-mermaid";
 
 const jsrRefVersion = process.env.JSR_REF_VERSION ?? "unstable";
+
+// Open Graph and Twitter card images must be absolute URLs that point at the
+// host actually serving the page.  The docs deploy to more than one host (the
+// stable site, the unstable site, and PR previews), each built with its own
+// SITEMAP_HOSTNAME, so derive the image URL from that instead of hard-coding a
+// single host; otherwise non-stable deploys reference a file that only exists
+// on the stable site after a release.
+const docsBaseUrl = process.env.SITEMAP_HOSTNAME ?? "https://fedify.dev/";
+const ogImageUrl = new URL("og.png", docsBaseUrl).href;
 const jsrRefPackages = [
   ["@fedify/fedify", ".jsr-cache.json"],
   ["@fedify/vocab", ".jsr-vocab-cache.json"],
@@ -269,7 +278,7 @@ export default withMermaid(defineConfig({
     ],
     [
       "meta",
-      { property: "og:image", content: "https://fedify.dev/og.png" },
+      { property: "og:image", content: ogImageUrl },
     ],
     [
       "meta",
@@ -296,7 +305,7 @@ export default withMermaid(defineConfig({
     ],
     [
       "meta",
-      { name: "twitter:image", content: "https://fedify.dev/og.png" },
+      { name: "twitter:image", content: ogImageUrl },
     ],
     [
       "meta",
