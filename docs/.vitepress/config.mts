@@ -383,6 +383,10 @@ export default withMermaid(defineConfig({
       md.use(footnote);
       md.use(taskLists);
       md.use(groupIconMdPlugin);
+      // jsrRefPackages is ordered by precedence (first = highest), but a
+      // later-registered jsrRef plugin overrides earlier ones when both match
+      // the same reference.  Apply them in reverse so the first-listed package
+      // is registered last and therefore wins.
       for (const jsrRefPlugin of jsrRefPlugins.toReversed()) {
         md.use(jsrRefPlugin);
       }
