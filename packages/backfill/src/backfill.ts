@@ -21,6 +21,8 @@ const defaultStrategies = [
   "context-auto",
 ] as const satisfies readonly BackfillStrategy[];
 
+const DEFAULT_MAX_DEPTH = 10;
+
 /**
  * Thrown when backfill traversal exceeds the configured request budget.
  *
@@ -317,7 +319,7 @@ async function* getReplyAncestors(
   readonly origin: "in-reply-to";
   readonly depth: number;
 }> {
-  if (options.maxDepth != null && traversal.depth > options.maxDepth) return;
+  if (traversal.depth > (options.maxDepth ?? DEFAULT_MAX_DEPTH)) return;
   for await (
     const target of getReplyTargets(context, object, options, budget)
   ) {
@@ -351,7 +353,7 @@ async function* getReplyDescendants(
   readonly origin: "replies";
   readonly depth: number;
 }> {
-  if (options.maxDepth != null && traversal.depth > options.maxDepth) return;
+  if (traversal.depth > (options.maxDepth ?? DEFAULT_MAX_DEPTH)) return;
   const repliesId = object.repliesId;
   let repliesIdVisited = false;
   if (repliesId != null && !visitReplyTreeCollectionId(repliesId, traversal)) {

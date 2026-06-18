@@ -107,3 +107,5 @@ The `reply-tree` strategy walks `inReplyTo` ancestors and `replies`
 descendants.  It yields discovered post-like objects only; it does not extract
 objects from Activity wrappers.  Immediate parents and direct replies have
 depth 1, their next-level parents or replies have depth 2, and so on.
+Reply-tree traversal defaults to a maximum depth of 10; set `maxDepth` to use a
+different limit.

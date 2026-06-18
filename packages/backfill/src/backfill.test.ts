@@ -304,6 +304,30 @@ describe("backfill", () => {
     strictEqual(items[0].depth, 1);
   });
 
+  test("reply tree defaults maxDepth to 10 for ancestors", async () => {
+    let note = new Note({
+      id: new URL("https://example.com/notes/0"),
+    });
+    for (let i = 1; i <= 12; i++) {
+      note = new Note({
+        id: new URL(`https://example.com/notes/${i}`),
+        replyTarget: note,
+      });
+    }
+    const context: BackfillContext = {
+      documentLoader: () => {
+        throw new Error("documentLoader should not be called");
+      },
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["reply-tree"],
+    });
+
+    strictEqual(items.length, 10);
+    strictEqual(items.at(-1)?.depth, 10);
+  });
+
   test("maxRequests limits reply tree ancestor dereferencing", async () => {
     const parentId = new URL("https://example.com/notes/1");
     const note = new Note({
@@ -681,6 +705,33 @@ describe("backfill", () => {
     strictEqual(items.length, 1);
     strictEqual(items[0].object, reply);
     strictEqual(items[0].depth, 1);
+  });
+
+  test("reply tree defaults maxDepth to 10 for descendants", async () => {
+    let note = new Note({
+      id: new URL("https://example.com/notes/12"),
+    });
+    for (let i = 11; i >= 0; i--) {
+      note = new Note({
+        id: new URL(`https://example.com/notes/${i}`),
+        replies: new Collection({
+          id: new URL(`https://example.com/notes/${i}/replies`),
+          items: [note],
+        }),
+      });
+    }
+    const context: BackfillContext = {
+      documentLoader: () => {
+        throw new Error("documentLoader should not be called");
+      },
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["reply-tree"],
+    });
+
+    strictEqual(items.length, 10);
+    strictEqual(items.at(-1)?.depth, 10);
   });
 
   test("maxRequests limits reply tree replies dereferencing", async () => {

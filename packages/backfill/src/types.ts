@@ -101,6 +101,8 @@ export interface BackfillOptions<
    * Immediate `inReplyTo` targets and direct `replies` collection items have
    * depth 1.  Their parents or replies have depth 2, and so on.  Context
    * collection items are depth 0 and are not limited by this option.
+   *
+   * Defaults to 10.
    */
   readonly maxDepth?: number;
 
