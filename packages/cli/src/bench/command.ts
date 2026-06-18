@@ -159,19 +159,23 @@ tolerance and measured noise band.`,
   },
 );
 
-export const benchCommand = command(
-  "bench",
-  or(compareParser, runParser),
-  {
-    brief: message`Benchmark a Fedify federation workload.`,
-    description: message`Run an ActivityPub-specific load benchmark against a \
+export const benchOptions = or(compareParser, runParser);
+
+export const benchMetadata = {
+  brief: message`Benchmark a Fedify federation workload.`,
+  description: message`Run an ActivityPub-specific load benchmark against a \
 cooperative Fedify target running in benchmark mode.
 
 The suite file declares the target, actors, and scenarios.  This version \
 executes the \`inbox\`, \`webfinger\`, \`actor\`, \`object\`, \`fanout\`, \
 \`failure\`, and \`mixed\` scenario types; \`collection\` remains reserved by \
 the suite format.`,
-  },
+};
+
+export const benchCommand = command(
+  "bench",
+  benchOptions,
+  benchMetadata,
 );
 
 export type BenchCommand = InferValue<typeof benchCommand>;

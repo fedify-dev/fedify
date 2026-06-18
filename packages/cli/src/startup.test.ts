@@ -5,12 +5,12 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const packageDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-test("CLI build keeps the init bridge entrypoint", async () => {
+test("CLI build keeps the init command bridge", async () => {
   const entrypoint = resolve(packageDir, "dist/mod.js");
-  const initBridge = resolve(packageDir, "dist/init/mod.js");
+  const commandBridge = resolve(packageDir, "dist/commands.js");
   await access(entrypoint);
-  await access(initBridge);
+  await access(commandBridge);
 
-  const bridgeSource = await readFile(initBridge, "utf8");
+  const bridgeSource = await readFile(commandBridge, "utf8");
   match(bridgeSource, /@fedify\/init/);
 });

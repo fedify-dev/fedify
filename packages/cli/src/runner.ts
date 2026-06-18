@@ -1,23 +1,30 @@
-import { group, merge, message, or } from "@optique/core";
-import { printError, run } from "@optique/run";
+import {
+  command as optiqueCommand,
+  group,
+  map,
+  merge,
+  message,
+  or,
+  type Parser,
+} from "@optique/core";
+import { printError, run, type RunOptions } from "@optique/run";
 import { merge as deepMerge } from "es-toolkit";
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import process from "node:process";
 import { parse as parseToml } from "smol-toml";
-import { benchCommand } from "./bench/command.ts";
+import {
+  activityPubCommands,
+  type CliCommand,
+  type CliCommandValue,
+  type CliStaticCommand,
+  generatingCommands,
+  networkCommands,
+} from "./commands.ts";
 import { configContext, tryLoadToml } from "./config.ts";
-import { generateVocabCommand } from "./generate-vocab/mod.ts";
-import { inboxCommand } from "./inbox/command.ts";
-import { initCommand } from "./init/mod.ts";
-import { lookupCommand } from "./lookup.ts";
-import { nodeInfoCommand } from "./nodeinfo.ts";
-import { globalOptions } from "./options.ts";
-import { relayCommand } from "./relay/command.ts";
-import { tunnelCommand } from "./tunnel.ts";
+import { type GlobalOptions, globalOptions } from "./options.ts";
 import { describeError } from "./utils.ts";
-import { webFingerCommand } from "./webfinger/mod.ts";
 import metadata from "../deno.json" with { type: "json" };
 
 /**
@@ -51,38 +58,140 @@ function getUserConfigPath(): string {
   return join(xdgConfigHome, "fedify", "config.toml");
 }
 
-export const command = merge(
+const selectedCommand = "__fedifyCliSelectedCommand";
+const selectedRun = "__fedifyCliRunCommand";
+
+type CommandRunner = (
+  globalOptions: GlobalOptions,
+) => unknown | Promise<unknown>;
+
+type CommandInvocation<TCommand extends CliCommand = CliCommand> =
+  TCommand extends CliCommand ? CliCommandValue<TCommand> & {
+      [selectedCommand]: TCommand;
+      [selectedRun]: CommandRunner;
+    }
+    : never;
+
+type RunnableCommandValue<TCommand extends CliCommand = CliCommand> =
+  & CommandInvocation<TCommand>
+  & GlobalOptions;
+
+type PublicCommandValue = Record<string, unknown> & GlobalOptions;
+
+export type CliProgram = {
+  command: CliCommand;
+  value: PublicCommandValue;
+  run: () => unknown | Promise<unknown>;
+};
+
+function staticCommandParser<
+  TValue extends object,
+  TCommand extends CliStaticCommand<TValue> & CliCommand,
+>(
+  staticCommand: TCommand,
+): Parser<"sync", CommandInvocation<TCommand>, unknown> {
+  if (staticCommand.path.length < 1) {
+    throw new TypeError("Static command path must not be empty.");
+  }
+
+  let parser = staticCommand.parser as Parser<
+    "sync",
+    TValue,
+    unknown
+  >;
+  for (let i = staticCommand.path.length - 1; i >= 0; i--) {
+    const name = staticCommand.path[i];
+    if (name == null) {
+      throw new TypeError("Static command path contains an empty segment.");
+    }
+    parser = optiqueCommand(
+      name,
+      parser,
+      i === staticCommand.path.length - 1 ? staticCommand.metadata : undefined,
+    ) as Parser<"sync", TValue, unknown>;
+  }
+
+  const runCommand = staticCommand.run;
+  return map(parser, (value) => ({
+    ...value,
+    [selectedCommand]: staticCommand,
+    [selectedRun]: (globalOptions: GlobalOptions) =>
+      runCommand({ ...value, ...globalOptions }),
+  })) as Parser<"sync", CommandInvocation<TCommand>, unknown>;
+}
+
+function staticCommandsParser<TCommand extends CliCommand>(
+  commands: readonly TCommand[],
+): Parser<"sync", CommandInvocation<TCommand>, unknown> {
+  const parsers = commands.map(staticCommandParser);
+  if (parsers.length < 1) {
+    throw new TypeError("Static command group must not be empty.");
+  }
+  return parsers.length === 1 ? parsers[0]! : or(...parsers);
+}
+
+const runnableCommand = merge(
   or(
     group(
       "Generating code",
-      or(
-        initCommand,
-        generateVocabCommand,
-      ),
+      staticCommandsParser(generatingCommands),
     ),
     group(
       "ActivityPub tools",
-      or(
-        webFingerCommand,
-        lookupCommand,
-        inboxCommand,
-        nodeInfoCommand,
-        relayCommand,
-        benchCommand,
-      ),
+      staticCommandsParser(activityPubCommands),
     ),
     group(
       "Network tools",
-      tunnelCommand,
+      staticCommandsParser(networkCommands),
     ),
   ),
   globalOptions,
+) as Parser<"sync", RunnableCommandValue, unknown>;
+
+export const command = map(
+  runnableCommand,
+  (
+    {
+      [selectedCommand]: _selectedCommand,
+      [selectedRun]: _selectedRun,
+      ...value
+    },
+  ) => value as PublicCommandValue,
 );
 
 type ConfigOptions = {
   ignoreConfig: boolean;
   configPath?: string;
 };
+
+function getRunOptions(args: string[]): RunOptions {
+  return {
+    contexts: [configContext],
+    contextOptions: { load: loadConfig },
+    programName: "fedify",
+    args,
+    help: {
+      command: { group: "Meta commands" },
+      option: { group: "Meta commands" },
+    },
+    version: {
+      value: metadata.version,
+      command: { group: "Meta commands" },
+      option: { group: "Meta commands" },
+    },
+    completion: {
+      command: {
+        names: ["completions", "completion"] as const,
+        group: "Meta commands",
+      },
+    },
+    colors: process.stdout.isTTY &&
+      (process.env.NO_COLOR == null || process.env.NO_COLOR === ""),
+    maxWidth: process.stdout.columns,
+    showDefault: true,
+    showChoices: true,
+  };
+}
 
 export function loadConfig(
   parsed: ConfigOptions,
@@ -128,30 +237,29 @@ export function loadConfig(
  * @returns The parsed command result from Optique's runner.
  */
 export function runCli(args: string[]) {
-  return run(command, {
-    contexts: [configContext],
-    contextOptions: { load: loadConfig },
-    programName: "fedify",
-    args,
-    help: {
-      command: { group: "Meta commands" },
-      option: { group: "Meta commands" },
-    },
-    version: {
-      value: metadata.version,
-      command: { group: "Meta commands" },
-      option: { group: "Meta commands" },
-    },
-    completion: {
-      command: {
-        names: ["completions", "completion"],
-        group: "Meta commands",
-      },
-    },
-    colors: process.stdout.isTTY &&
-      (process.env.NO_COLOR == null || process.env.NO_COLOR === ""),
-    maxWidth: process.stdout.columns,
-    showDefault: true,
-    showChoices: true,
-  });
+  return run(command, getRunOptions(args));
+}
+
+export function toCliProgram<TCommand extends CliCommand>(
+  parsed: RunnableCommandValue<TCommand>,
+): CliProgram {
+  const {
+    [selectedCommand]: command,
+    [selectedRun]: runCommand,
+    ...value
+  } = parsed;
+  const publicValue = value as PublicCommandValue;
+  return {
+    command,
+    value: publicValue,
+    run: () => runCommand(publicValue),
+  };
+}
+
+export async function parseCliProgram(args: string[]): Promise<CliProgram> {
+  const parsed = await run(
+    runnableCommand,
+    getRunOptions(args),
+  );
+  return toCliProgram(parsed);
 }

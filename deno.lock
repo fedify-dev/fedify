@@ -24,9 +24,11 @@
     "jsr:@logtape/file@^2.1.0": "2.1.0",
     "jsr:@logtape/logtape@^1.0.4": "1.3.8",
     "jsr:@logtape/logtape@^2.1.0": "2.1.0",
-    "jsr:@optique/config@^1.0.2": "1.0.2",
-    "jsr:@optique/core@^1.0.2": "1.0.2",
-    "jsr:@optique/run@^1.0.2": "1.0.2",
+    "jsr:@optique/config@^1.1.0": "1.1.0",
+    "jsr:@optique/core@^1.1.0": "1.1.0",
+    "jsr:@optique/discover@1.1.0": "1.1.0",
+    "jsr:@optique/discover@^1.1.0": "1.1.0",
+    "jsr:@optique/run@^1.1.0": "1.1.0",
     "jsr:@standard-schema/spec@^1.1.0": "1.1.0",
     "jsr:@std/assert@0.224": "0.224.0",
     "jsr:@std/assert@0.226": "0.226.0",
@@ -303,18 +305,25 @@
     "@logtape/logtape@2.1.0": {
       "integrity": "8117d9afcd9ba1f2bb81b237d2ae452b8982e397aeabc9f05f58d7be452c15e2"
     },
-    "@optique/config@1.0.2": {
-      "integrity": "9ba458a3cb2f00f83d36a70f942782cd2c622fd72c527f59e5f8234c780c4b30",
+    "@optique/config@1.1.0": {
+      "integrity": "9f9425156860e72f46717b8be8b01f0868f47465e9cd1d3788f4ba5038a355c9",
       "dependencies": [
         "jsr:@optique/core",
         "npm:@standard-schema/spec@^1.1.0"
       ]
     },
-    "@optique/core@1.0.2": {
-      "integrity": "3f90a2965286cd4d4d103f6605ed9a00951393dbab0748402576350ad3780b33"
+    "@optique/core@1.1.0": {
+      "integrity": "f864b1918415fd2a94c0b8ee6a31b6e6faeb2a972e6e75f0be4cf2d201e3fcf4"
     },
-    "@optique/run@1.0.2": {
-      "integrity": "353c3cfafb69f2099ff2f29e1145696ef6ecd355d44d9626ab4726020c9d72f5",
+    "@optique/discover@1.1.0": {
+      "integrity": "dec51dd8ba79e70a1557e4f55e58a792c4ab10cbf63f7382dad80c902801d1b6",
+      "dependencies": [
+        "jsr:@optique/core",
+        "jsr:@optique/run"
+      ]
+    },
+    "@optique/run@1.1.0": {
+      "integrity": "4773919cde888d4b35dc8e34a3e87fab544ab9d00c7d5312de5a77b230a0cffe",
       "dependencies": [
         "jsr:@optique/core"
       ]
@@ -9306,9 +9315,10 @@
       "jsr:@hono/hono@^4.8.3",
       "jsr:@logtape/file@^2.1.0",
       "jsr:@logtape/logtape@^2.1.0",
-      "jsr:@optique/config@^1.0.2",
-      "jsr:@optique/core@^1.0.2",
-      "jsr:@optique/run@^1.0.2",
+      "jsr:@optique/config@^1.1.0",
+      "jsr:@optique/core@^1.1.0",
+      "jsr:@optique/discover@^1.1.0",
+      "jsr:@optique/run@^1.1.0",
       "jsr:@standard-schema/spec@^1.1.0",
       "jsr:@std/assert@^1.0.13",
       "jsr:@std/async@^1.0.13",

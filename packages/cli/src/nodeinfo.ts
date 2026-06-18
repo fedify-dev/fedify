@@ -84,26 +84,30 @@ const nodeInfoOption = merge(
   }),
 );
 
-export const nodeInfoCommand = Command(
-  "nodeinfo",
-  merge(
-    object("Arguments", {
-      command: constant("nodeinfo"),
-      host: argument(string({ metavar: "HOST" }), {
-        description: message`Bare hostname or a full URL of the instance`,
-      }),
+export const nodeInfoOptions = merge(
+  object("Arguments", {
+    command: constant("nodeinfo"),
+    host: argument(string({ metavar: "HOST" }), {
+      description: message`Bare hostname or a full URL of the instance`,
     }),
-    nodeInfoOption,
-    group("Network options", userAgentOption),
-  ),
-  {
-    brief:
-      message`Get information about a remote node using the NodeInfo protocol`,
-    description:
-      message`Get information about a remote node using the NodeInfo protocol.
+  }),
+  nodeInfoOption,
+  group("Network options", userAgentOption),
+);
+
+export const nodeInfoMetadata = {
+  brief:
+    message`Get information about a remote node using the NodeInfo protocol`,
+  description:
+    message`Get information about a remote node using the NodeInfo protocol.
 
 The argument is the hostname of the remote node, or the URL of the remote node.`,
-  },
+};
+
+export const nodeInfoCommand = Command(
+  "nodeinfo",
+  nodeInfoOptions,
+  nodeInfoMetadata,
 );
 
 export async function runNodeInfo(

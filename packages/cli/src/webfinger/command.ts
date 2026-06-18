@@ -41,32 +41,36 @@ const maxRedirection = bindConfig(
   },
 );
 
-export const webFingerCommand = command(
-  "webfinger",
-  merge(
-    "Network options",
-    object({
-      command: constant("webfinger"),
-      resources: group(
-        "Arguments",
-        multiple(
-          argument(string({ metavar: "RESOURCE" }), {
-            description: message`WebFinger resource(s) to look up.`,
-          }),
-          { min: 1 },
-        ),
+export const webFingerOptions = merge(
+  "Network options",
+  object({
+    command: constant("webfinger"),
+    resources: group(
+      "Arguments",
+      multiple(
+        argument(string({ metavar: "RESOURCE" }), {
+          description: message`WebFinger resource(s) to look up.`,
+        }),
+        { min: 1 },
       ),
-      allowPrivateAddresses,
-      maxRedirection,
-    }),
-    userAgentOption,
-  ),
-  {
-    brief: message`Look up WebFinger resources.`,
-    description: message`Look up WebFinger resources.
+    ),
+    allowPrivateAddresses,
+    maxRedirection,
+  }),
+  userAgentOption,
+);
+
+export const webFingerMetadata = {
+  brief: message`Look up WebFinger resources.`,
+  description: message`Look up WebFinger resources.
 
 The argument can be multiple.`,
-  },
+};
+
+export const webFingerCommand = command(
+  "webfinger",
+  webFingerOptions,
+  webFingerMetadata,
 );
 
 export type WebFingerCommand = InferValue<typeof webFingerCommand>;
