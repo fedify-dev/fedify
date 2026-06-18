@@ -635,8 +635,44 @@ describe("backfill", () => {
     strictEqual(items.length, 2);
     strictEqual(items[0].object, parent);
     strictEqual(items[0].origin, "in-reply-to");
+    strictEqual(items[0].depth, 1);
     strictEqual(items[1].object, sibling);
     strictEqual(items[1].origin, "replies");
+    strictEqual(items[1].depth, 2);
+  });
+
+  test("reply tree maxDepth applies from seed through ancestors", async () => {
+    const seedId = new URL("https://example.com/notes/2");
+    const sibling = new Note({
+      id: new URL("https://example.com/notes/3"),
+      content: "sibling",
+    });
+    const parent = new Note({
+      id: new URL("https://example.com/notes/1"),
+      content: "parent",
+      replies: new Collection({
+        id: new URL("https://example.com/notes/1/replies"),
+        items: [seedId, sibling],
+      }),
+    });
+    const note = new Note({
+      id: seedId,
+      replyTarget: parent,
+    });
+    const context: BackfillContext = {
+      documentLoader: () => {
+        throw new Error("documentLoader should not be called");
+      },
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["reply-tree"],
+      maxDepth: 1,
+    });
+
+    strictEqual(items.length, 1);
+    strictEqual(items[0].object, parent);
+    strictEqual(items[0].depth, 1);
   });
 
   test("reply tree dereferences replies collection URL", async () => {
@@ -787,6 +823,54 @@ describe("backfill", () => {
     strictEqual(requests, 1);
     strictEqual(items.length, 1);
     strictEqual(items[0].object.id?.href, reply.id?.href);
+  });
+
+  test("reply tree retries a replies collection after load failure", async () => {
+    const repliesId = new URL("https://example.com/replies/shared");
+    const grandchild = new Note({
+      id: new URL("https://example.com/notes/4"),
+      content: "grandchild",
+    });
+    const first = new Note({
+      id: new URL("https://example.com/notes/2"),
+      replies: repliesId,
+    });
+    const second = new Note({
+      id: new URL("https://example.com/notes/3"),
+      replies: repliesId,
+    });
+    const note = new Note({
+      id: new URL("https://example.com/notes/1"),
+      replies: new Collection({
+        id: new URL("https://example.com/notes/1/replies"),
+        items: [first, second],
+      }),
+    });
+    let requests = 0;
+    const context: BackfillContext = {
+      documentLoader: (iri) => {
+        strictEqual(iri.href, repliesId.href);
+        requests++;
+        if (requests === 1) throw new Error("temporary failure");
+        return Promise.resolve(
+          new Collection({
+            id: repliesId,
+            items: [grandchild],
+          }),
+        );
+      },
+    };
+
+    const items = await collect(context, note, {
+      strategies: ["reply-tree"],
+    });
+
+    strictEqual(requests, 2);
+    deepStrictEqual(
+      items.map((item) => item.object.id?.href),
+      [first.id?.href, second.id?.href, grandchild.id?.href],
+    );
+    strictEqual(items[2].depth, 2);
   });
 
   test("reply tree skips visited reply IRIs before dereferencing", async () => {

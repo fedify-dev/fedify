@@ -276,7 +276,10 @@ async function* getReplyTreeItems(
   const visitedCollections = new WeakSet<BackfillCollection>();
   if (note.id != null) visitedObjectIds.add(note.id.href);
   visitedObjects.add(note);
-  const ancestors: APObject[] = [];
+  const ancestors: Array<{
+    readonly object: APObject;
+    readonly depth: number;
+  }> = [];
   for await (
     const item of getReplyAncestors(context, note, options, budget, {
       depth: 1,
@@ -286,12 +289,12 @@ async function* getReplyTreeItems(
       visitedCollections,
     })
   ) {
-    ancestors.push(item.object);
+    ancestors.push({ object: item.object, depth: item.depth });
     yield item;
   }
-  for (const object of ancestors.toReversed()) {
-    yield* getReplyDescendants(context, object, options, budget, {
-      depth: 1,
+  for (const ancestor of ancestors.toReversed()) {
+    yield* getReplyDescendants(context, ancestor.object, options, budget, {
+      depth: ancestor.depth + 1,
       visitedObjectIds,
       visitedObjects,
       visitedCollectionIds,
@@ -355,18 +358,17 @@ async function* getReplyDescendants(
 }> {
   if (traversal.depth > (options.maxDepth ?? DEFAULT_MAX_DEPTH)) return;
   const repliesId = object.repliesId;
-  let repliesIdVisited = false;
-  if (repliesId != null && !visitReplyTreeCollectionId(repliesId, traversal)) {
+  if (
+    repliesId != null &&
+    traversal.visitedCollectionIds.has(repliesId.href)
+  ) {
     return;
   }
-  repliesIdVisited = repliesId != null;
   const replies = await getRepliesCollection(context, object, options, budget);
   if (replies == null) return;
-  if (repliesIdVisited) {
-    traversal.visitedCollections.add(replies);
-  } else if (!visitReplyTreeCollection(replies, traversal)) {
-    return;
-  }
+  const unvisited = visitReplyTreeCollection(replies, traversal);
+  if (repliesId != null) traversal.visitedCollectionIds.add(repliesId.href);
+  if (!unvisited) return;
   for await (
     const reply of getCollectionItems(
       context,
