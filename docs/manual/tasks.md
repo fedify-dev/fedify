@@ -57,8 +57,9 @@ Task payloads cross a message queue, so they are serialized on enqueue and
 deserialized on dispatch.  Fedify owns this codec—applications never encode
 payloads themselves.  The codec is built on [devalue], which means payloads
 are not limited to JSON: `Date`, `Map`, `Set`, `URL`, `RegExp`, `bigint`,
-typed arrays, circular references, and repeated references all round-trip
-faithfully.
+typed arrays, `Temporal` values (e.g., `Temporal.Instant`,
+`Temporal.Duration`), circular references, and repeated references all
+round-trip faithfully.
 
 Activity Vocabulary objects (`Note`, `Create`, `Person`, `Link`, and so on)
 are also supported as payload values.  Each vocabulary object is bridged
@@ -66,7 +67,7 @@ through expanded JSON-LD on the wire and comes back as a real instance, so
 the handler can call its methods and getters as usual:
 
 ~~~~ typescript
-import { Note } from "@fedify/fedify/vocab";
+import { Note } from "@fedify/vocab";
 import { z } from "zod";
 
 const indexNote = federation.defineTask("indexNote", {
@@ -246,6 +247,14 @@ await federation.startQueue(contextData, { queue: "task" });
 A task that falls back to the outbox queue needs no dedicated worker; the
 outbox worker dispatches every message by its type regardless of which queue
 delivered it.
+
+> [!CAUTION]
+> Task payloads cross durable queue storage, so treat the queue backend and
+> its payloads as internal, trusted storage.  Do not place long-lived secrets
+> or credentials directly in a task payload; pass an identifier that the
+> worker resolves from your application storage instead.  When task workloads
+> must stay isolated from ActivityPub delivery, give them a dedicated task
+> queue and set `taskQueueResolution: "strict"`.
 
 
 Limitations
