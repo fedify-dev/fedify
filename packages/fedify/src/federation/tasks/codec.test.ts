@@ -211,20 +211,24 @@ test("TaskCodec.serialize() / deserialize()", async (t) => {
     },
   );
 
-  await t.step("round-trips Temporal values", async () => {
-    const payload = {
-      instant: Temporal.Instant.from("2026-01-02T03:04:05Z"),
-      duration: Temporal.Duration.from({ hours: 1, minutes: 30 }),
-    };
-    const encoded = await codec.serialize(payload);
-    const decoded = await codec.deserialize(encoded) as {
-      instant: Temporal.Instant;
-      duration: Temporal.Duration;
-    };
-    ok(decoded.instant instanceof Temporal.Instant);
-    ok(decoded.instant.equals(payload.instant));
-    ok(decoded.duration instanceof Temporal.Duration);
-    strictEqual(decoded.duration.toString(), payload.duration.toString());
+  await t.step({
+    name: "round-trips Temporal values",
+    ignore: "Bun" in globalThis,
+    async fn() {
+      const payload = {
+        instant: Temporal.Instant.from("2026-01-02T03:04:05Z"),
+        duration: Temporal.Duration.from({ hours: 1, minutes: 30 }),
+      };
+      const encoded = await codec.serialize(payload);
+      const decoded = await codec.deserialize(encoded) as {
+        instant: Temporal.Instant;
+        duration: Temporal.Duration;
+      };
+      ok(decoded.instant instanceof Temporal.Instant);
+      ok(decoded.instant.equals(payload.instant));
+      ok(decoded.duration instanceof Temporal.Duration);
+      strictEqual(decoded.duration.toString(), payload.duration.toString());
+    },
   });
 });
 
