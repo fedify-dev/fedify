@@ -16,6 +16,15 @@ import llmstxt from "vitepress-plugin-llms";
 import { withMermaid } from "vitepress-plugin-mermaid";
 
 const jsrRefVersion = process.env.JSR_REF_VERSION ?? "unstable";
+
+// Open Graph and Twitter card images must be absolute URLs that point at the
+// host actually serving the page.  The docs deploy to more than one host (the
+// stable site, the unstable site, and PR previews), each built with its own
+// SITEMAP_HOSTNAME, so derive the image URL from that instead of hard-coding a
+// single host; otherwise non-stable deploys reference a file that only exists
+// on the stable site after a release.
+const docsBaseUrl = process.env.SITEMAP_HOSTNAME ?? "https://fedify.dev/";
+const ogImageUrl = new URL("og.png", docsBaseUrl).href;
 const jsrRefPackages = [
   ["@fedify/fedify", ".jsr-cache.json"],
   ["@fedify/vocab", ".jsr-vocab-cache.json"],
@@ -106,10 +115,6 @@ function getReferenceItems(): { text: string; link: string }[] {
 const TUTORIAL = {
   text: "Tutorials",
   items: [
-    {
-      text: "Quick demo",
-      link: "https://dash.deno.com/playground/fedify-demo",
-    },
     { text: "Learning the basics", link: "/tutorial/basics.md" },
     { text: "Creating a microblog", link: "/tutorial/microblog.md" },
     {
@@ -269,11 +274,38 @@ export default withMermaid(defineConfig({
     ],
     [
       "meta",
+      { property: "og:type", content: "website" },
+    ],
+    [
+      "meta",
+      { property: "og:image", content: ogImageUrl },
+    ],
+    [
+      "meta",
+      { property: "og:image:width", content: "1200" },
+    ],
+    [
+      "meta",
+      { property: "og:image:height", content: "630" },
+    ],
+    [
+      "meta",
+      { property: "og:image:type", content: "image/png" },
+    ],
+    [
+      "meta",
       {
-        property: "og:image",
-        content:
-          "https://repository-images.githubusercontent.com/766072261/03a63032-03aa-481e-aa31-091809a49043",
+        property: "og:image:alt",
+        content: "Fedify: an ActivityPub framework for TypeScript",
       },
+    ],
+    [
+      "meta",
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+    [
+      "meta",
+      { name: "twitter:image", content: ogImageUrl },
     ],
     [
       "meta",
@@ -288,6 +320,34 @@ export default withMermaid(defineConfig({
   cleanUrls: true,
   ignoreDeadLinks: true,
   markdown: {
+    // Preload the languages that appear in fenced code blocks inside JSDoc
+    // comments.  Twoslash re-highlights those snippets while rendering hover
+    // tooltips, and Shiki 3 (VitePress 2) throws on a not-yet-loaded language
+    // instead of lazily loading it the way the old highlighter did.  Loading a
+    // canonical grammar also registers its aliases (e.g. "javascript" covers
+    // "js", "bash" covers "sh").
+    languages: [
+      "javascript",
+      "jsx",
+      "typescript",
+      "tsx",
+      "json",
+      "jsonc",
+      "bash",
+      "html",
+      "css",
+      "scss",
+      "yaml",
+      "toml",
+      "ini",
+      "xml",
+      "diff",
+      "http",
+      "sql",
+      "markdown",
+      "haskell",
+      "docker",
+    ],
     codeTransformers: [
       transformerTwoslash({
         twoslashOptions: {
@@ -323,7 +383,11 @@ export default withMermaid(defineConfig({
       md.use(footnote);
       md.use(taskLists);
       md.use(groupIconMdPlugin);
-      for (const jsrRefPlugin of jsrRefPlugins) {
+      // jsrRefPackages is ordered by precedence (first = highest), but a
+      // later-registered jsrRef plugin overrides earlier ones when both match
+      // the same reference.  Apply them in reverse so the first-listed package
+      // is registered last and therefore wins.
+      for (const jsrRefPlugin of jsrRefPlugins.toReversed()) {
         md.use(jsrRefPlugin);
       }
     },
