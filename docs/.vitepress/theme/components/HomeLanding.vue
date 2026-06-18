@@ -1557,8 +1557,13 @@ a.lp-stack-name::after {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  min-width: 0;
 }
 .lp-code-window {
+  /* min-width: 0 lets this shrink inside its grid/flex track so the <pre>'s
+     own overflow-x scrolls, instead of widening the layout and being clipped
+     by the page's overflow on narrow screens. */
+  min-width: 0;
   border-radius: 14px;
   overflow: clip;
   background: #0b1622;
@@ -1887,6 +1892,7 @@ a.lp-stack-name::after {
 
 /* Terminal mock. */
 .lp-term {
+  min-width: 0;
   border-radius: 14px;
   overflow: clip;
   background: #0b1622;
@@ -2157,6 +2163,17 @@ a.lp-stack-name::after {
     margin-bottom: 1rem;
   }
   .lp-section { padding: 4rem 0; }
+}
+
+/* On phones the code samples no longer fit on one line, so wrap them instead of
+   scrolling horizontally.  overflow-wrap: anywhere also breaks otherwise
+   unbreakable tokens like the full ActivityStreams IRI in the vocabulary demo. */
+@media (max-width: 600px) {
+  .lp-code,
+  .lp-term-body {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
 }
 
 /* On wider desktop viewports the right column has room to spare, so let the hero
