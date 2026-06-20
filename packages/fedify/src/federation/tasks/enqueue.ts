@@ -9,6 +9,7 @@
 import { getLogger } from "@logtape/logtape";
 import { context, propagation } from "@opentelemetry/api";
 import type { KvKey } from "../kv.ts";
+import { getFederationMetrics } from "../metrics.ts";
 import type { FederationImpl } from "../middleware.ts";
 import { type MessageQueue, ParallelMessageQueue } from "../mq.ts";
 import type { TaskMessage } from "../queue.ts";
@@ -100,6 +101,15 @@ const enqueueTasks = <TContextData>(
         orderingKey: options.orderingKey,
         deduplicationKey: claim.forwardedDeduplicationKey,
       });
+      // Counted only after a genuine dispatch: a dedup skip returns before
+      // this, and a failed dispatch throws into the rollback below.
+      const meter = getFederationMetrics(ctx.federation.meterProvider);
+      for (const message of messages) {
+        meter.recordQueueTaskEnqueued(
+          { role: "task", queue, taskName: task.name },
+          message.attempt,
+        );
+      }
     } catch (error) {
       if (claim.rollback != null) {
         try {

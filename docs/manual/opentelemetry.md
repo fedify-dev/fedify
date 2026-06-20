@@ -226,6 +226,7 @@ spans:
 | `activitypub.fetch_document`                        | Client      | Fetches a remote JSON-LD document.            |
 | `activitypub.send_activity`                         | Client      | Sends the ActivityPub activity.               |
 | `activitypub.verify_key_ownership`                  | Internal    | Verifies actor ownership of a key.            |
+| `fedify.task`                                       | Consumer    | Dequeues a custom background task to process. |
 | `http_signatures.sign`                              | Internal    | Signs the HTTP request.                       |
 | `http_signatures.verify`                            | Internal    | Verifies the HTTP request signature.          |
 | `ld_signatures.sign`                                | Internal    | Makes the Linked Data signature.              |
@@ -364,7 +365,7 @@ Fedify records the following OpenTelemetry metrics:
 | `webfinger.handle.duration`                   | Histogram     | `ms`          | Measures inbound WebFinger request handling duration.                                             |
 | `fedify.http.server.request.count`            | Counter       | `{request}`   | Counts inbound HTTP requests handled by `Federation.fetch()`.                                     |
 | `fedify.http.server.request.duration`         | Histogram     | `ms`          | Measures inbound HTTP request duration in `Federation.fetch()`.                                   |
-| `fedify.queue.task.enqueued`                  | Counter       | `{task}`      | Counts inbox, outbox, and fanout tasks Fedify enqueued.                                           |
+| `fedify.queue.task.enqueued`                  | Counter       | `{task}`      | Counts inbox, outbox, fanout, and custom background tasks Fedify enqueued.                        |
 | `fedify.queue.task.started`                   | Counter       | `{task}`      | Counts queue tasks Fedify began processing as a worker.                                           |
 | `fedify.queue.task.completed`                 | Counter       | `{task}`      | Counts queue tasks Fedify finished processing without throwing.                                   |
 | `fedify.queue.task.failed`                    | Counter       | `{task}`      | Counts queue tasks Fedify abandoned because processing threw.                                     |
@@ -803,11 +804,20 @@ Fedify records the following OpenTelemetry metrics:
 `fedify.queue.task.enqueued`, `fedify.queue.task.started`,
 `fedify.queue.task.completed`, `fedify.queue.task.failed`, and
 `fedify.queue.task.duration`
-:   `fedify.queue.role` (`inbox`, `outbox`, or `fanout`) is always present.
+:   `fedify.queue.role` (`inbox`, `outbox`, `fanout`, or `task`) is always
+    present.
     `fedify.queue.backend` is the queue implementation's constructor name
     (for example `RedisMessageQueue`) when available; it is omitted for
     queues whose constructor is the plain `Object` (for example,
-    `MessageQueue` instances built from an object literal).
+    `MessageQueue` instances built from an object literal).  For a custom
+    background task (`role=task`) the backend reflects the queue actually used
+    after routing, including the `outboxQueue` fallback, and `fedify.task.name`
+    carries the registered task name—it is omitted for an `unknown_task` drop,
+    whose name is wire-derived, so task-metric cardinality stays bounded to the
+    registered names.  A failed task outcome
+    (`fedify.queue.task.result=failed`) additionally carries
+    `fedify.task.failure_reason`, one of `deserialization`, `validation`,
+    `unknown_task`, or `handler`.
     `fedify.queue.native_retrial` reflects the queue backend's `nativeRetrial`
     flag when set on the queue. `activitypub.activity.type` is recorded
     whenever Fedify knows the activity type for the queued message; for inbox
@@ -818,22 +828,26 @@ Fedify records the following OpenTelemetry metrics:
     from initial enqueues. `fedify.queue.task.completed`,
     `fedify.queue.task.failed`, and `fedify.queue.task.duration` carry
     `fedify.queue.task.result`, which is `completed` when processing returned
-    without throwing, `failed` when the worker re-threw a non-abort error, and
-    `aborted` when the worker re-threw an `AbortError` (for example, because a
-    graceful-shutdown `AbortSignal` interrupted processing).  When the queue
-    backend does not declare `nativeRetrial`, Fedify catches inbox listener and
-    outbox delivery errors itself; if its retry policy still allows another
-    attempt, it schedules a retry by re-enqueuing the message and returns from
-    the worker without re-throwing, so the worker boundary records
-    `result=completed`.  When the retry policy gives up, the worker also
-    returns normally (`result=completed`) without scheduling a retry.
-    Outbox-side activity failures remain observable through the
-    `activitypub.delivery.*` metrics and the `activitypub.delivery.failed`
-    span event, and any retry attempt (inbox or outbox) appears as a
-    `fedify.queue.task.enqueued` measurement with a non-zero
-    `fedify.queue.task.attempt`.  Inbox listener errors that the retry policy
-    abandons are visible through error logs and the inbox span's error status,
-    but not through a dedicated metric.
+    without throwing, `failed` when processing did not succeed (for inbox and
+    outbox, the worker re-threw a non-abort error; for a custom task, either
+    the handler threw or the payload was dropped—`deserialization`,
+    `validation`, or `unknown_task`—in which case the message is still acked
+    but the outcome is recorded as `failed` with a
+    `fedify.task.failure_reason`), and `aborted` when the worker re-threw an
+    `AbortError` (for example, because a graceful-shutdown `AbortSignal`
+    interrupted processing).  When the queue backend does not declare
+    `nativeRetrial`, Fedify catches inbox listener and outbox delivery errors
+    itself; if its retry policy still allows another attempt, it schedules a
+    retry by re-enqueuing the message and returns from the worker without
+    re-throwing, so the worker boundary records `result=completed`.  When the
+    retry policy gives up, the worker also returns normally
+    (`result=completed`) without scheduling a retry. Outbox-side activity
+    failures remain observable through the `activitypub.delivery.*` metrics and
+    the `activitypub.delivery.failed` span event, and any retry attempt (inbox
+    or outbox) appears as a `fedify.queue.task.enqueued` measurement with a
+    non-zero `fedify.queue.task.attempt`.  Inbox listener errors that the retry
+    policy abandons are visible through error logs and the inbox span's error
+    status, but not through a dedicated metric.
 
 `fedify.queue.task.in_flight`
 :   `fedify.queue.role` and `fedify.queue.backend` (when available), plus

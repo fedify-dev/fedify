@@ -45,14 +45,16 @@ Version 2.4.0
         `FederationOptions.taskDeduplicationTtl` and
         `FederationOptions.taskDeduplicationFallback` options.
 
-    [[#206], [#797], [#798], [#803], [#806] by ChanHaeng Lee]
+    [[#206], [#797], [#798], [#799] [#803], [#806], [#812] by ChanHaeng Lee]
 
 [Standard Schema]: https://standardschema.dev/
 [#206]: https://github.com/fedify-dev/fedify/issues/206
 [#797]: https://github.com/fedify-dev/fedify/issues/797
 [#798]: https://github.com/fedify-dev/fedify/issues/798
+[#799]: https://github.com/fedify-dev/fedify/issues/799
 [#803]: https://github.com/fedify-dev/fedify/pull/803
 [#806]: https://github.com/fedify-dev/fedify/pull/806
+[#812]: https://github.com/fedify-dev/fedify/pull/812
 
 ### @fedify/fedify
 
