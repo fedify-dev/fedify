@@ -141,6 +141,7 @@ import {
   isAbortError,
   type QueueDepthGaugeEntry,
   type QueueTaskCommonAttributes,
+  type QueueTaskFailureReason,
   type QueueTaskResult,
   recordCircuitBreakerStateChange,
   recordCollectionRequest,
@@ -1192,7 +1193,73 @@ export class FederationImpl<TContextData>
           },
         );
       } else if (message.type === "task") {
-        await this.#listenTaskMessage(contextData, message);
+        const registered = this.taskDefinitions.get(message.taskName) != null;
+        const common: QueueTaskCommonAttributes = {
+          role: "task",
+          queue: this.resolveTaskQueue(message.taskName),
+          taskName: registered ? message.taskName : undefined,
+        };
+        await tracer.startActiveSpan(
+          "fedify.task",
+          {
+            kind: SpanKind.CONSUMER,
+            attributes: {
+              "fedify.task.name": message.taskName,
+              "fedify.task.attempt": message.attempt,
+            },
+          },
+          extractedContext,
+          async (span) => {
+            const spanCtx = span.spanContext();
+            return await withContext(
+              { traceId: spanCtx.traceId, spanId: spanCtx.spanId },
+              async () => {
+                meter.recordQueueTaskStarted(common);
+                meter.incrementQueueTaskInFlight(common);
+                const startedAt = performance.now();
+                const recordOutcome = (
+                  outcome: QueueTaskResult,
+                  failureReason: QueueTaskFailureReason | undefined,
+                  error?: unknown,
+                ): void => {
+                  if (failureReason != null) {
+                    span.setAttribute(
+                      "fedify.task.failure_reason",
+                      failureReason,
+                    );
+                    span.setStatus({
+                      code: SpanStatusCode.ERROR,
+                      ...(error == null ? {} : { message: String(error) }),
+                    });
+                  }
+                  meter.recordQueueTaskOutcome(
+                    common,
+                    outcome,
+                    getDurationMs(startedAt),
+                    outcome === "failed" ? failureReason : undefined,
+                  );
+                };
+                try {
+                  const failureReason = await this.#listenTaskMessage(
+                    contextData,
+                    message,
+                  );
+                  recordOutcome(
+                    failureReason == null ? "completed" : "failed",
+                    failureReason,
+                  );
+                } catch (e) {
+                  if (isAbortError(e)) recordOutcome("aborted", undefined);
+                  else recordOutcome("failed", "handler", e);
+                  throw e;
+                } finally {
+                  meter.decrementQueueTaskInFlight(common);
+                  span.end();
+                }
+              },
+            );
+          },
+        );
       }
     });
   }
@@ -2091,7 +2158,7 @@ export class FederationImpl<TContextData>
   async #listenTaskMessage(
     contextData: TContextData,
     message: TaskMessage,
-  ): Promise<void> {
+  ): Promise<QueueTaskFailureReason | undefined> {
     const logger = getLogger(["fedify", "federation", "task"]);
     const def = this.taskDefinitions.get(message.taskName);
     if (def == null) {
@@ -2101,30 +2168,39 @@ export class FederationImpl<TContextData>
           "dropping.",
         { taskName: message.taskName },
       );
-      return;
+      return "unknown_task";
     }
     const context = this.#createContext(new URL(message.baseUrl), contextData);
-    let data: unknown;
-    try {
-      // decode() deserializes then re-validates at the dequeue boundary
-      // (drift protection): a durable queue can hand a new deploy a payload
-      // an old deploy enqueued.
-      data = await context.codec.decode(def.schema, message.data);
-    } catch (error) {
-      // A malformed or incompatible payload won't succeed by retrying.
+    const deserialized = await context.codec.deserialize(message.data)
+      .then((value) => ({ ok: true, value }) as const)
+      .catch((error) => ({ ok: false, error }) as const);
+    if (!deserialized.ok) {
       logger.error(
-        "Custom task {taskName} payload could not be decoded or validated; " +
+        "Custom task {taskName} payload could not be deserialized; " +
           "dropping:\n{error}",
-        { taskName: message.taskName, error },
+        { taskName: message.taskName, error: deserialized.error },
       );
-      return;
+      return "deserialization";
+    }
+    const data = await context.codec.validate(def.schema, deserialized.value)
+      .then((value) => ({ ok: true, value }) as const)
+      .catch((error) => ({ ok: false, error }) as const);
+    if (!data.ok) {
+      // An incompatible payload won't succeed by retrying.
+      logger.error(
+        "Custom task {taskName} payload failed schema validation; " +
+          "dropping:\n{error}",
+        { taskName: message.taskName, error: data.error },
+      );
+      return "validation";
     }
     try {
-      await def.handler(context, data);
+      await def.handler(context, data.value);
+      return undefined;
     } catch (error) {
       if (def.onError != null) {
         try {
-          await def.onError(context, error, data);
+          await def.onError(context, error, data.value);
         } catch (onErrorError) {
           logger.error(
             "onError for custom task {taskName} threw:\n{error}",
@@ -2169,6 +2245,10 @@ export class FederationImpl<TContextData>
           delay: clampNegativeDelay(delay),
           orderingKey: message.orderingKey,
         });
+        getFederationMetrics(this.meterProvider).recordQueueTaskEnqueued(
+          { role: "task", queue, taskName: message.taskName },
+          retryMessage.attempt,
+        );
       } else {
         logger.error(
           "Custom task {taskName} failed after {attempt} attempts; giving " +
@@ -2176,6 +2256,8 @@ export class FederationImpl<TContextData>
           { taskName: message.taskName, attempt: message.attempt, error },
         );
       }
+      // A swallowed abort is a graceful interruption, not a task failure.
+      return isAbortError(error) ? undefined : "handler";
     }
   }
 

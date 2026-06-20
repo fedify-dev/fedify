@@ -349,11 +349,79 @@ collapsed onto one message.
 > owns an atomic check.
 
 
+Observability
+-------------
+
+*Task-specific telemetry is available since Fedify 2.3.0.*
+
+Each task the worker dequeues runs inside a `fedify.task` [OpenTelemetry] span
+(a *consumer* span, since tasks are not part of ActivityPub it is namespaced
+under `fedify.` rather than `activitypub.`).  The span inherits the trace
+context captured at the enqueue site, so a task's processing chains to the
+request or job that enqueued it—and every retry attempt chains to the same
+parent.  The span carries:
+
+ -  `fedify.task.name` — the registered task name.
+ -  `fedify.task.attempt` — the zero-based attempt number; a retry re-enqueue
+    increments it.
+ -  `fedify.task.failure_reason` — set only on a terminal failure, one of the
+    four bounded values below.
+
+On a terminal failure the span's status is also set to `ERROR`, so trace-based
+error views surface dropped and given-up tasks together with their
+`fedify.task.failure_reason`.  A worker shutdown is the one exception: an
+`aborted` attempt leaves the status unset, since an interruption is not a task
+failure.
+
+Tasks also reuse the `fedify.queue.task.*` metric family (`enqueued`,
+`started`, `completed`, `failed`, `duration`, `in_flight`) that the inbox,
+outbox, and fanout workers already report.  On a task run measurement
+(`enqueued`, `started`, `completed`, `failed`, `duration`),
+`fedify.queue.role` is `task` and `fedify.task.name` names the task; the
+process-local `in_flight` UpDownCounter omits `fedify.task.name` so its
+increments and decrements pair up cleanly.
+`fedify.queue.backend` reflects the queue actually used after routing—so a task
+that falls back to the `outboxQueue` (see
+[Routing](#queue-routing-and-isolation)) is labeled with the outbox queue's
+backend, not a task queue's.  A failed outcome
+also carries `fedify.task.failure_reason` on `fedify.queue.task.failed` and
+`fedify.queue.task.duration`.
+
+The `fedify.task.failure_reason` attribute takes one of four bounded values,
+mapping to the worker's dispatch decision points:
+
+| Value             | Meaning                                            |
+| ----------------- | -------------------------------------------------- |
+| `deserialization` | The wire payload could not be deserialized.        |
+| `validation`      | The deserialized payload failed schema validation. |
+| `unknown_task`    | The task name has no registered handler.           |
+| `handler`         | The registered handler threw.                      |
+
+The first three are *drops*: the payload cannot succeed by retrying, so the
+worker acknowledges the message and does not re-enqueue it.  Telemetry still
+records these as a failed outcome with the matching reason, while the queue is
+left drained—so a drop is observable without being retried.  A `handler`
+failure follows the configured retry policy (see
+[Retries](#retry-and-error-handling)).  A worker shutdown is never counted as a
+failure: an interrupted attempt carries no `fedify.task.failure_reason`,
+recorded as an `aborted` outcome when the abort propagates (on a `nativeRetrial`
+queue) and otherwise folded into a retry like any handler error.
+
+The bounded value set keeps metric cardinality finite: a metric's task name is
+a registered, known-at-startup value, never derived from message content—an
+`unknown_task` drop carries a wire-supplied name, so that name is kept off the
+metrics (it still appears on the span, which does not aggregate into time
+series).  See the [OpenTelemetry](./opentelemetry.md) manual for the full span,
+attribute, and metric reference.
+
+[OpenTelemetry]: https://opentelemetry.io/
+
+
 Limitations
 -----------
 
-The current API intentionally ships without task-specific OpenTelemetry spans
-and metrics, cron-style periodic scheduling, result backends, and per-task
-priority.  Some of these are planned as follow-ups; see the [tracking issue].
+The current API intentionally ships without cron-style periodic scheduling,
+result backends, and per-task priority.  Some of these are planned as
+follow-ups; see the [tracking issue].
 
 [tracking issue]: https://github.com/fedify-dev/fedify/issues/206
