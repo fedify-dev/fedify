@@ -155,6 +155,7 @@ async function fetchJson(url: string): Promise<unknown> {
     signal: AbortSignal.timeout(requestTimeoutMs),
   });
   if (!response.ok) {
+    await response.body?.cancel();
     throw new Error(`${url} returned HTTP ${response.status}`);
   }
   return await response.json();
@@ -200,10 +201,19 @@ async function checkDashboardQueries(): Promise<void> {
   if (expressions.length < 1) {
     throw new Error("No Prometheus expressions found in the Grafana dashboard");
   }
-  for (const expression of expressions) {
-    await evaluatePrometheusExpression(expression);
-  }
+  await Promise.all(expressions.map(evaluatePrometheusExpression));
   console.log(`Grafana dashboard queries: ${expressions.length} valid`);
+}
+
+type SmokeSignal = "SIGINT" | "SIGTERM";
+
+function addSmokeSignalListener(
+  signal: SmokeSignal,
+  listener: () => void,
+): boolean {
+  if (Deno.build.os === "windows" && signal === "SIGTERM") return false;
+  Deno.addSignalListener(signal, listener);
+  return true;
 }
 
 async function smokeChecks(): Promise<void> {
@@ -235,8 +245,8 @@ async function smokeChecks(): Promise<void> {
   await stopSmokeStack({ quiet: true });
   cleanedUp = false;
 
-  Deno.addSignalListener("SIGINT", onSigint);
-  Deno.addSignalListener("SIGTERM", onSigterm);
+  const sigintRegistered = addSmokeSignalListener("SIGINT", onSigint);
+  const sigtermRegistered = addSmokeSignalListener("SIGTERM", onSigterm);
 
   try {
     await run("Start smoke stack", "docker", [
@@ -287,8 +297,8 @@ async function smokeChecks(): Promise<void> {
         );
     });
   } finally {
-    Deno.removeSignalListener("SIGINT", onSigint);
-    Deno.removeSignalListener("SIGTERM", onSigterm);
+    if (sigintRegistered) Deno.removeSignalListener("SIGINT", onSigint);
+    if (sigtermRegistered) Deno.removeSignalListener("SIGTERM", onSigterm);
     await stopSmokeStack();
   }
 }

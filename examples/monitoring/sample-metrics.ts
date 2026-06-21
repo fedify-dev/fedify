@@ -454,10 +454,12 @@ function recordAll(): void {
 recordAll();
 const interval = setInterval(recordAll, 1000);
 
-Deno.addSignalListener("SIGTERM", () => {
-  clearInterval(interval);
-  Deno.exit(0);
-});
+if (Deno.build.os !== "windows") {
+  Deno.addSignalListener("SIGTERM", () => {
+    clearInterval(interval);
+    Deno.exit(0);
+  });
+}
 
 console.log("Fedify monitoring sample metrics are being exported over OTLP.");
 await new Promise(() => {});
