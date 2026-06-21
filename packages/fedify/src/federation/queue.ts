@@ -12,7 +12,11 @@ export interface SenderKeyJwkPair {
  * type.
  * @since 1.6.0
  */
-export type Message = FanoutMessage | OutboxMessage | InboxMessage;
+export type Message =
+  | FanoutMessage
+  | OutboxMessage
+  | InboxMessage
+  | TaskMessage;
 
 export interface FanoutMessage {
   readonly type: "fanout";
@@ -68,6 +72,25 @@ export interface OutboxMessage {
    * @internal
    */
   readonly circuitHeldSince?: string;
+  readonly traceContext: Readonly<Record<string, string>>;
+}
+
+/**
+ * A message that carries a custom background task.  Every field is
+ * a string, number, or plain record so that the message survives both
+ * JSON serialization and structured clone on every queue backend.
+ * @since 2.x.x
+ */
+export interface TaskMessage {
+  readonly type: "task";
+  readonly id: ReturnType<typeof crypto.randomUUID>;
+  readonly baseUrl: string;
+  readonly taskName: string;
+  /** devalue-encoded task data; vocab objects bridged to expanded JSON-LD. */
+  readonly data: string;
+  readonly started: string;
+  readonly attempt: number;
+  readonly orderingKey?: string;
   readonly traceContext: Readonly<Record<string, string>>;
 }
 

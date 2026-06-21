@@ -100,6 +100,8 @@ function createContext<TContextData>(
     lookupWebFinger,
     sendActivity,
     routeActivity,
+    enqueueTask,
+    enqueueTaskMany,
   } = values;
   function throwRouterError(): URL {
     throw new RouterError("Not implemented");
@@ -163,6 +165,12 @@ function createContext<TContextData>(
       throw new Error("Not implemented");
     }),
     routeActivity: routeActivity ?? ((_params) => {
+      throw new Error("Not implemented");
+    }),
+    enqueueTask: enqueueTask ?? ((_task, _data, _options) => {
+      throw new Error("Not implemented");
+    }),
+    enqueueTaskMany: enqueueTaskMany ?? ((_task, _payloads, _options) => {
       throw new Error("Not implemented");
     }),
   };

@@ -58,13 +58,6 @@ import { getNodeInfo, type GetNodeInfoOptions } from "../nodeinfo/client.ts";
 import { handleNodeInfo, handleNodeInfoJrd } from "../nodeinfo/handler.ts";
 import type { JsonValue, NodeInfo } from "../nodeinfo/types.ts";
 import {
-  type BenchmarkMetricReader,
-  type BenchmarkTriggerOptions,
-  createBenchmarkMeterProvider,
-  handleBenchmarkStats,
-  handleBenchmarkTrigger,
-} from "./bench.ts";
-import {
   type HttpMessageSignaturesSpec,
   type HttpMessageSignaturesSpecDeterminer,
   verifyRequest,
@@ -87,6 +80,13 @@ import { getKeyOwner, type GetKeyOwnerOptions } from "../sig/owner.ts";
 import { hasProofLike, signObject, verifyObject } from "../sig/proof.ts";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 import { kvCache } from "../utils/kv-cache.ts";
+import {
+  type BenchmarkMetricReader,
+  type BenchmarkTriggerOptions,
+  createBenchmarkMeterProvider,
+  handleBenchmarkStats,
+  handleBenchmarkTrigger,
+} from "./bench.ts";
 import { ACTOR_ALIAS_PREFIX, FederationBuilderImpl } from "./builder.ts";
 import type { OutboxErrorHandler } from "./callback.ts";
 import {
@@ -158,6 +158,7 @@ import type {
   Message,
   OutboxMessage,
   SenderKeyJwkPair,
+  TaskMessage,
 } from "./queue.ts";
 import { createExponentialBackoffPolicy, type RetryPolicy } from "./retry.ts";
 import {
@@ -166,8 +167,13 @@ import {
   SendActivityError,
   type SenderKeyPair,
 } from "./send.ts";
-import { handleWebFinger } from "./webfinger.ts";
+import {
+  TaskCodec,
+  type TaskDefinition,
+  type TaskEnqueueOptions,
+} from "./tasks/mod.ts";
 import { hasMalformedKnownTemporalLiteral } from "./temporal.ts";
+import { handleWebFinger } from "./webfinger.ts";
 
 const circuitBreakerCasWarningKvStores = new WeakSet<KvStore>();
 let nextQueueDepthGaugeSourceId = 0;
@@ -449,6 +455,14 @@ export interface FederationQueueOptions {
    * {@link Context.sendActivity} calls.
    */
   readonly fanout?: MessageQueue;
+
+  /**
+   * The message queue for custom background tasks.  If not provided,
+   * tasks are routed to the outbox queue (unless
+   * {@link FederationOptions.taskQueueResolution} is `"strict"`).
+   * @since 2.x.x
+   */
+  readonly task?: MessageQueue;
 }
 
 /**
@@ -542,9 +556,12 @@ export class FederationImpl<TContextData>
   inboxQueue?: MessageQueue;
   outboxQueue?: MessageQueue;
   fanoutQueue?: MessageQueue;
+  taskQueue?: MessageQueue;
   inboxQueueStarted: boolean;
   outboxQueueStarted: boolean;
   fanoutQueueStarted: boolean;
+  taskQueueStarted: boolean;
+  startedTaskQueues: Set<MessageQueue>;
   manuallyStartQueue: boolean;
   origin?: FederationOrigin;
   documentLoaderFactory: DocumentLoaderFactory;
@@ -558,6 +575,8 @@ export class FederationImpl<TContextData>
   skipSignatureVerification: boolean;
   outboxRetryPolicy: RetryPolicy;
   inboxRetryPolicy: RetryPolicy;
+  taskRetryPolicy: RetryPolicy;
+  taskQueueResolution: "fallback" | "strict";
   circuitBreaker?: CircuitBreaker;
   activityTransformers: readonly ActivityTransformer<TContextData>[];
   _tracerProvider: TracerProvider | undefined;
@@ -626,14 +645,19 @@ export class FederationImpl<TContextData>
       this.inboxQueue = undefined;
       this.outboxQueue = undefined;
       this.fanoutQueue = undefined;
+      this.taskQueue = undefined;
     } else if ("enqueue" in options.queue && "listen" in options.queue) {
       this.inboxQueue = options.queue;
       this.outboxQueue = options.queue;
       this.fanoutQueue = options.queue;
+      // A bare queue leaves taskQueue undefined; tasks are served through
+      // the outboxQueue fallback.
+      this.taskQueue = undefined;
     } else {
       this.inboxQueue = options.queue.inbox;
       this.outboxQueue = options.queue.outbox;
       this.fanoutQueue = options.queue.fanout;
+      this.taskQueue = options.queue.task;
     }
     if (options.circuitBreaker !== false && this.outboxQueue != null) {
       this.circuitBreaker = new CircuitBreaker({
@@ -664,6 +688,8 @@ export class FederationImpl<TContextData>
     this.inboxQueueStarted = false;
     this.outboxQueueStarted = false;
     this.fanoutQueueStarted = false;
+    this.taskQueueStarted = false;
+    this.startedTaskQueues = new Set();
     this.manuallyStartQueue = options.manuallyStartQueue ?? false;
     if (options.origin != null) {
       if (typeof options.origin === "string") {
@@ -842,6 +868,9 @@ export class FederationImpl<TContextData>
       createExponentialBackoffPolicy();
     this.inboxRetryPolicy = options.inboxRetryPolicy ??
       createExponentialBackoffPolicy();
+    this.taskRetryPolicy = options.taskRetryPolicy ??
+      createExponentialBackoffPolicy();
+    this.taskQueueResolution = options.taskQueueResolution ?? "fallback";
     this.activityTransformers = options.activityTransformers ??
       getDefaultActivityTransformers<TContextData>();
     this._tracerProvider = options.tracerProvider;
@@ -894,12 +923,31 @@ export class FederationImpl<TContextData>
     return this.tracerProvider.getTracer(metadata.name, metadata.version);
   }
 
+  resolveTaskQueue(taskName: string): MessageQueue | undefined {
+    const def = this.taskDefinitions.get(taskName);
+    const resolved = def?.queue ?? this.taskQueue;
+    if (resolved != null) return resolved;
+    return this.taskQueueResolution === "strict" ? undefined : this.outboxQueue;
+  }
+
   async _startQueueInternal(
     ctxData: TContextData,
     signal?: AbortSignal,
     queue?: keyof FederationQueueOptions,
   ): Promise<void> {
-    if (this.inboxQueue == null && this.outboxQueue == null) return;
+    // Tasks may route to a dedicated queue of their own (defineTask({ queue }))
+    // even when no federation-wide queue is configured, so a deployment with
+    // only per-task queues still has work to start.
+    const hasDedicatedTaskQueue = [...this.taskDefinitions.values()].some(
+      (def) => def.queue != null,
+    );
+    if (
+      this.inboxQueue == null && this.outboxQueue == null &&
+      this.fanoutQueue == null && this.taskQueue == null &&
+      !hasDedicatedTaskQueue
+    ) {
+      return;
+    }
     const logger = getLogger(["fedify", "federation", "queue"]);
     const promises: Promise<void>[] = [];
     if (
@@ -945,6 +993,50 @@ export class FederationImpl<TContextData>
           { signal },
         ),
       );
+    }
+    if (
+      this.taskQueue != null &&
+      this.taskQueue !== this.inboxQueue &&
+      this.taskQueue !== this.outboxQueue &&
+      this.taskQueue !== this.fanoutQueue &&
+      (queue == null || queue === "task") &&
+      !this.taskQueueStarted
+    ) {
+      logger.debug("Starting a task worker.");
+      this.taskQueueStarted = true;
+      promises.push(
+        this.taskQueue.listen(
+          (msg) => this.processQueuedTask(ctxData, msg),
+          { signal },
+        ),
+      );
+    }
+    // Dedicated per-task queues belong to the "task" selector.  Each distinct
+    // instance needs its own worker; dedupe against the standard queues and
+    // against task queues already started on an earlier call so no instance is
+    // listened on twice.
+    if (queue == null || queue === "task") {
+      const standardQueues = new Set<MessageQueue>(
+        [this.inboxQueue, this.outboxQueue, this.fanoutQueue, this.taskQueue]
+          .filter((q): q is MessageQueue => q != null),
+      );
+      for (const def of this.taskDefinitions.values()) {
+        const taskQueue = def.queue;
+        if (
+          taskQueue == null || standardQueues.has(taskQueue) ||
+          this.startedTaskQueues.has(taskQueue)
+        ) {
+          continue;
+        }
+        logger.debug("Starting a worker for a dedicated per-task queue.");
+        this.startedTaskQueues.add(taskQueue);
+        promises.push(
+          taskQueue.listen(
+            (msg) => this.processQueuedTask(ctxData, msg),
+            { signal },
+          ),
+        );
+      }
     }
     await Promise.all(promises);
   }
@@ -1126,6 +1218,8 @@ export class FederationImpl<TContextData>
             );
           },
         );
+      } else if (message.type === "task") {
+        await this.#listenTaskMessage(contextData, message);
       }
     });
   }
@@ -2021,6 +2115,97 @@ export class FederationImpl<TContextData>
     );
   }
 
+  async #listenTaskMessage(
+    contextData: TContextData,
+    message: TaskMessage,
+  ): Promise<void> {
+    const logger = getLogger(["fedify", "federation", "task"]);
+    const def = this.taskDefinitions.get(message.taskName);
+    if (def == null) {
+      // Unknown task: a handler won't appear by retrying.  Drop and log.
+      logger.warn(
+        "Received a custom task {taskName} with no registered handler; " +
+          "dropping.",
+        { taskName: message.taskName },
+      );
+      return;
+    }
+    const context = this.#createContext(new URL(message.baseUrl), contextData);
+    let data: unknown;
+    try {
+      // decode() deserializes then re-validates at the dequeue boundary
+      // (drift protection): a durable queue can hand a new deploy a payload
+      // an old deploy enqueued.
+      data = await context.codec.decode(def.schema, message.data);
+    } catch (error) {
+      // A malformed or incompatible payload won't succeed by retrying.
+      logger.error(
+        "Custom task {taskName} payload could not be decoded or validated; " +
+          "dropping:\n{error}",
+        { taskName: message.taskName, error },
+      );
+      return;
+    }
+    try {
+      await def.handler(context, data);
+    } catch (error) {
+      if (def.onError != null) {
+        try {
+          await def.onError(context, error, data);
+        } catch (onErrorError) {
+          logger.error(
+            "onError for custom task {taskName} threw:\n{error}",
+            { taskName: message.taskName, error: onErrorError },
+          );
+        }
+      }
+      const queue = this.resolveTaskQueue(def.name);
+      if (queue?.nativeRetrial) throw error; // the backend owns retries
+      const retryPolicy = def.retryPolicy ?? this.taskRetryPolicy;
+      // A corrupted `started` must not throw here and abort the retry.
+      let elapsedTime = Temporal.Duration.from({ seconds: 0 });
+      try {
+        elapsedTime = Temporal.Instant.from(message.started)
+          .until(Temporal.Now.instant());
+      } catch (parseError) {
+        logger.error(
+          "Custom task {taskName} has an unparsable started time " +
+            "{started}; treating elapsedTime as zero:\n{error}",
+          {
+            taskName: message.taskName,
+            started: message.started,
+            error: parseError,
+          },
+        );
+      }
+      const delay = retryPolicy({
+        elapsedTime,
+        attempts: message.attempt,
+      });
+      if (delay != null && queue != null) {
+        logger.error(
+          "Custom task {taskName} failed (attempt #{attempt}); retry...:" +
+            "\n{error}",
+          { taskName: message.taskName, attempt: message.attempt, error },
+        );
+        const retryMessage = {
+          ...message,
+          attempt: message.attempt + 1,
+        } satisfies TaskMessage;
+        await queue.enqueue(retryMessage, {
+          delay: clampNegativeDelay(delay),
+          orderingKey: message.orderingKey,
+        });
+      } else {
+        logger.error(
+          "Custom task {taskName} failed after {attempt} attempts; giving " +
+            "up:\n{error}",
+          { taskName: message.taskName, attempt: message.attempt, error },
+        );
+      }
+    }
+  }
+
   startQueue(
     contextData: TContextData,
     options: FederationStartQueueOptions = {},
@@ -2890,6 +3075,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   readonly documentLoader: DocumentLoader;
   readonly contextLoader: DocumentLoader;
   readonly invokedFromActorKeyPairsDispatcher?: { identifier: string };
+  #codec?: TaskCodec;
 
   constructor(
     {
@@ -2908,6 +3094,16 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     this.contextLoader = contextLoader;
     this.invokedFromActorKeyPairsDispatcher =
       invokedFromActorKeyPairsDispatcher;
+  }
+
+  /**
+   * A {@link TaskCodec} bound to this context's loaders, used to encode
+   * and decode custom task payloads.  Lazily created and cached so a context
+   * that never enqueues or dispatches a task pays nothing.
+   * @internal
+   */
+  get codec(): TaskCodec {
+    return this.#codec ??= new TaskCodec(this);
   }
 
   clone(data: TContextData): Context<TContextData> {
@@ -3445,6 +3641,94 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       allowPrivateAddress: this.federation.allowPrivateAddress,
     });
   }
+
+  async enqueueTask<TData>(
+    task: TaskDefinition<TContextData, TData>,
+    data: TData,
+    options: TaskEnqueueOptions = {},
+  ): Promise<void> {
+    await this.#enqueueTasks(task, [data], options);
+  }
+
+  async enqueueTaskMany<TData>(
+    task: TaskDefinition<TContextData, TData>,
+    payloads: readonly TData[],
+    options: TaskEnqueueOptions = {},
+  ): Promise<void> {
+    await this.#enqueueTasks(task, payloads, options);
+  }
+
+  async #enqueueTasks<TData>(
+    task: TaskDefinition<TContextData, TData>,
+    items: readonly TData[],
+    options: TaskEnqueueOptions,
+  ): Promise<void> {
+    // Fail fast on a handle from another federation instance; without this
+    // check the message would enqueue fine and be dropped by the worker.
+    // Compare the registered handle by identity, not just the name: another
+    // instance may define the same task name with a different schema, and
+    // its handle would otherwise encode under that foreign schema here
+    // while the worker decodes under the local one.
+    const def = this.federation.taskDefinitions.get(task.name);
+    if (def == null || def.handle !== task) {
+      throw new TypeError(
+        `Task ${
+          JSON.stringify(task.name)
+        } is not defined on this federation; ` +
+          "pass a handle returned by its defineTask().",
+      );
+    }
+    const queue = this.federation.resolveTaskQueue(task.name);
+    if (queue == null) {
+      throw new TypeError(
+        "No message queue is configured for tasks; pass `queue` to " +
+          "createFederation() or to defineTask().",
+      );
+    }
+    if (items.length < 1) return;
+    const delay = options.delay == null
+      ? undefined
+      : Temporal.Duration.from(options.delay);
+    // Encode in parallel: `enqueueTaskMany` is the bulk path, and the enqueue
+    // below already parallelizes, so serial encoding would be the bottleneck.
+    // `map` preserves order, and a rejected encode (validation failure) rejects
+    // the whole batch before anything is enqueued, keeping fail-fast intact.
+    const messages: TaskMessage[] = await Promise.all(
+      items.map(this.#encodeTaskMessage(task, options)),
+    );
+    if (!this.federation.manuallyStartQueue) {
+      this.federation._startQueueInternal(this.data);
+    }
+    const enqueueOptions = { delay, orderingKey: options.orderingKey };
+    if (messages.length === 1) {
+      await queue.enqueue(messages[0], enqueueOptions);
+    } else if (queue.enqueueMany != null) {
+      await queue.enqueueMany(messages, enqueueOptions);
+    } else {
+      await Promise.all(messages.map((m) => queue.enqueue(m, enqueueOptions)));
+    }
+  }
+
+  #encodeTaskMessage = <TData>(
+    task: TaskDefinition<TContextData, TData>,
+    options: TaskEnqueueOptions,
+  ) =>
+  async (data: TData): Promise<TaskMessage> => {
+    const encoded = await this.codec.encode(task.schema, data);
+    const carrier: Record<string, string> = {};
+    propagation.inject(context.active(), carrier);
+    return {
+      type: "task",
+      id: crypto.randomUUID(),
+      baseUrl: this.origin,
+      taskName: task.name,
+      data: encoded,
+      started: Temporal.Now.instant().toString(),
+      attempt: 0,
+      orderingKey: options.orderingKey,
+      traceContext: carrier,
+    };
+  };
 
   sendActivity(
     sender:
