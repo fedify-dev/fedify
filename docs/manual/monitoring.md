@@ -411,17 +411,20 @@ records.  Route this to a ticket or a chat channel, not to a pager:
   expr: |
     sum(increase(activitypub_delivery_permanent_failure_total{
       http_response_status_code=~"404|410"
-    }[15m])) > 10
-  for: 1h
+    }[1h])) > 50
   labels:
     severity: ticket
   annotations:
     summary: "Elevated 404/410 from remote inboxes; check for a departed instance"
 ~~~~
 
-The point of the `severity: ticket` label and the long `for: 1h` window is to
-keep normal account churn from waking anyone.  Nothing here is broken on your
-server; this is an invitation to investigate, not an incident.
+The one-hour lookback is deliberate.  When a large instance disappears, Fedify
+records a short burst of `404`/`410` permanent failures and then stops retrying
+them, so a narrow window paired with a long `for` clause would let the burst
+age out before the alert ever became eligible to fire.  Counting over a full
+hour with no `for` catches the burst, then clears itself once it ages out.  The
+`severity: ticket` label keeps it off the pager: nothing here is broken on your
+server, and this is an invitation to investigate, not an incident.
 
 ### Signature verification failures
 
