@@ -175,14 +175,16 @@ messages, so query it alone rather than summing `queued`, `ready`, and
 `delayed`, which would count the same backlog more than once:
 
 ~~~~ promql
-sum by (fedify_queue_role) (fedify_queue_depth{fedify_queue_depth_state="queued"})
+max by (fedify_queue_role) (fedify_queue_depth{fedify_queue_depth_state="queued"})
 ~~~~
 
-If several `Federation` instances share one `MeterProvider`, keep
-`fedify_federation_instance_id` in the grouping.  Fedify tags each instance's
-depth series with it, and instances that share a queue backend each report that
-backend's full depth, so collapsing the label would count the same backlog once
-per instance.
+Use `max` here, not `sum`.  When several observers report the same queue,
+whether that is multiple replicas behind a shared Redis or PostgreSQL backend
+or several `Federation` instances sharing one `MeterProvider`, each one reads
+the backend's full depth rather than a private shard.  Summing multiplies the
+backlog by the number of observers and makes every depth alert page early;
+`max` reads the true depth.  Sum only when each instance owns a separate queue
+backend.
 
 Pair it with how many tasks each process is actively working, which is a
 gauge-like UpDownCounter and is reported per process, so sum it across replicas:
