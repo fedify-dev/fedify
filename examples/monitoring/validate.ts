@@ -232,7 +232,7 @@ async function smokeChecks(): Promise<void> {
       "--volumes",
     ], { noThrow: true, ...options });
   };
-  const cleanupAfterSignal = (signal: "SIGINT" | "SIGTERM", code: number) => {
+  const cleanupAfterSignal = (signal: SmokeSignal, code: number) => {
     void (async () => {
       console.error(`\nReceived ${signal}; cleaning up smoke stack.`);
       await stopSmokeStack();
