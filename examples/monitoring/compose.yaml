@@ -28,7 +28,7 @@ services:
     image: docker.io/grafana/grafana:13.0.2
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
-      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
       GF_AUTH_BASIC_ENABLED: "false"
       GF_AUTH_DISABLE_LOGIN_FORM: "true"
       GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"

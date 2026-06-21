@@ -27,9 +27,9 @@ docker compose -f examples/monitoring/compose.yaml up
 
 Then open:
 
- -  Grafana: <http://localhost:3000/d/fedify-overview/fedify-overview>
- -  Prometheus: <http://localhost:9090/>
- -  Collector Prometheus endpoint: <http://localhost:9464/metrics>
+ -  [Grafana]
+ -  [Prometheus]
+ -  [Collector Prometheus endpoint]
 
 Grafana anonymous admin access is enabled for this local example only.  Do not
 copy that authentication setting into production.
@@ -39,6 +39,10 @@ Stop the stack with:
 ~~~~ sh
 docker compose -f examples/monitoring/compose.yaml down
 ~~~~
+
+[Grafana]: http://localhost:3000/d/fedify-overview/fedify-overview
+[Prometheus]: http://localhost:9090/
+[Collector Prometheus endpoint]: http://localhost:9464/metrics
 
 
 Validate the example
@@ -200,10 +204,10 @@ Troubleshooting
 ---------------
 
 The dashboard is empty
-:   Check <http://localhost:9090/targets>.  The `otel-collector` target should
-    be up.  Then check whether `fedify_http_server_request_count_total` exists
-    in Prometheus.  If it does not, confirm the app has OpenTelemetry enabled
-    and is exporting to `http://localhost:4318`.
+:   Check [Prometheus targets].  The `otel-collector` target should be up.
+    Then check whether `fedify_http_server_request_count_total` exists in
+    Prometheus.  If it does not, confirm the app has OpenTelemetry enabled and
+    is exporting to the [Collector OTLP endpoint].
 
 `fedify.queue.depth` is missing
 :   Queue depth is emitted only when the configured message queue backend
@@ -220,3 +224,6 @@ Prometheus metric names look different
     histograms gain `_milliseconds_bucket`, `_milliseconds_sum`, and
     `_milliseconds_count` series.  If you change Collector translation options,
     update dashboard and alert PromQL to match.
+
+[Prometheus targets]: http://localhost:9090/targets
+[Collector OTLP endpoint]: http://localhost:4318

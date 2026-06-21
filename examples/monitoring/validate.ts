@@ -17,6 +17,7 @@ const validateScript = join(exampleDir, "validate.ts");
 
 const projectName = "fedify-monitoring-validate";
 const smoke = Deno.args.includes("--smoke");
+const requestTimeoutMs = 5_000;
 
 interface RunOptions {
   cwd?: string;
@@ -150,7 +151,9 @@ async function waitFor(
 }
 
 async function fetchJson(url: string): Promise<unknown> {
-  const response = await fetch(url);
+  const response = await fetch(url, {
+    signal: AbortSignal.timeout(requestTimeoutMs),
+  });
   if (!response.ok) {
     throw new Error(`${url} returned HTTP ${response.status}`);
   }
@@ -204,16 +207,36 @@ async function checkDashboardQueries(): Promise<void> {
 }
 
 async function smokeChecks(): Promise<void> {
-  await run("Stop previous smoke stack", "docker", [
-    "compose",
-    "-p",
-    projectName,
-    "-f",
-    composeFile,
-    "down",
-    "--remove-orphans",
-    "--volumes",
-  ], { noThrow: true, quiet: true });
+  let cleanedUp = false;
+  const stopSmokeStack = async (options: RunOptions = {}) => {
+    if (cleanedUp) return;
+    cleanedUp = true;
+    await run("Stop smoke stack", "docker", [
+      "compose",
+      "-p",
+      projectName,
+      "-f",
+      composeFile,
+      "down",
+      "--remove-orphans",
+      "--volumes",
+    ], { noThrow: true, ...options });
+  };
+  const cleanupAfterSignal = (signal: "SIGINT" | "SIGTERM", code: number) => {
+    void (async () => {
+      console.error(`\nReceived ${signal}; cleaning up smoke stack.`);
+      await stopSmokeStack();
+      Deno.exit(code);
+    })();
+  };
+  const onSigint = () => cleanupAfterSignal("SIGINT", 130);
+  const onSigterm = () => cleanupAfterSignal("SIGTERM", 143);
+
+  await stopSmokeStack({ quiet: true });
+  cleanedUp = false;
+
+  Deno.addSignalListener("SIGINT", onSigint);
+  Deno.addSignalListener("SIGTERM", onSigterm);
 
   try {
     await run("Start smoke stack", "docker", [
@@ -227,7 +250,9 @@ async function smokeChecks(): Promise<void> {
     ]);
 
     await waitFor("Prometheus", async () => {
-      const response = await fetch("http://localhost:9090/-/ready");
+      const response = await fetch("http://localhost:9090/-/ready", {
+        signal: AbortSignal.timeout(requestTimeoutMs),
+      });
       await response.body?.cancel();
       return response.ok;
     });
@@ -262,16 +287,9 @@ async function smokeChecks(): Promise<void> {
         );
     });
   } finally {
-    await run("Stop smoke stack", "docker", [
-      "compose",
-      "-p",
-      projectName,
-      "-f",
-      composeFile,
-      "down",
-      "--remove-orphans",
-      "--volumes",
-    ], { noThrow: true });
+    Deno.removeSignalListener("SIGINT", onSigint);
+    Deno.removeSignalListener("SIGTERM", onSigterm);
+    await stopSmokeStack();
   }
 }
 
