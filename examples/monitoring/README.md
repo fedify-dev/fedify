@@ -31,7 +31,7 @@ Then open:
  -  [Prometheus]
  -  [Collector Prometheus endpoint]
 
-Grafana anonymous admin access is enabled for this local example only.  Do not
+Grafana anonymous viewer access is enabled for this local example only.  Do not
 copy that authentication setting into production.
 
 Stop the stack with:
@@ -80,7 +80,7 @@ OTEL_DENO=1 \
 OTEL_SERVICE_NAME=my-fedify-app \
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
 OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf \
-deno run --unstable-otel -A your_fedify_app.ts
+deno run -A your_fedify_app.ts
 ~~~~
 
 If your app runs in another Compose service on the same network, use the

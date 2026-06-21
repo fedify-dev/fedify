@@ -50,7 +50,6 @@ services:
     command:
       - deno
       - run
-      - --unstable-otel
       - --config
       - /workspace/deno.json
       - --node-modules-dir=none
