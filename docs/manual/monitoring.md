@@ -174,14 +174,14 @@ state, broken out by role.  The `queued` state is the total of waiting
 messages, so query it alone rather than summing `queued`, `ready`, and
 `delayed`, which would count the same backlog more than once:
 
-~~~~
+~~~~ promql
 sum by (fedify_queue_role) (fedify_queue_depth{fedify_queue_depth_state="queued"})
 ~~~~
 
 Pair it with how many tasks each process is actively working, which is a
 gauge-like UpDownCounter and is reported per process, so sum it across replicas:
 
-~~~~
+~~~~ promql
 sum by (fedify_queue_role) (fedify_queue_task_in_flight)
 ~~~~
 
@@ -190,7 +190,7 @@ second opinion when it does, watch the throughput balance instead.  Enqueue
 rate running consistently above completion rate is the definition of falling
 behind:
 
-~~~~
+~~~~ promql
 sum by (fedify_queue_role) (rate(fedify_queue_task_enqueued_total[5m]))
   - sum by (fedify_queue_role) (rate(fedify_queue_task_completed_total[5m]))
 ~~~~
@@ -207,7 +207,7 @@ worker capacity or a faster backend, not a higher alert threshold.
 it as a high percentile rather than an average; the tail is what remote servers
 experience as timeouts.
 
-~~~~
+~~~~ promql
 histogram_quantile(
   0.95,
   sum by (le) (rate(activitypub_inbox_processing_duration_milliseconds_bucket[5m]))
@@ -227,7 +227,7 @@ separate the second case from the first.
 `activitypub_delivery_success` label, so one expression gives you both volume
 and the success split:
 
-~~~~
+~~~~ promql
 sum by (activitypub_delivery_success) (rate(activitypub_delivery_sent_total[5m]))
 ~~~~
 
@@ -238,7 +238,7 @@ sum by (activitypub_delivery_success) (rate(activitypub_delivery_sent_total[5m])
 The failed-attempt fraction is the per-attempt complement of the success rate
 that the *Deployment* guide calls out as a core federation signal:
 
-~~~~
+~~~~ promql
 sum(rate(activitypub_delivery_sent_total{activitypub_delivery_success="false"}[5m]))
   / sum(rate(activitypub_delivery_sent_total[5m]))
 ~~~~
@@ -256,7 +256,7 @@ path (DNS, egress, a misconfigured proxy) rather than at any single peer.
 `activitypub.delivery.permanent_failure` increments once per recipient that
 Fedify stops retrying, with the deciding status code attached:
 
-~~~~
+~~~~ promql
 sum by (http_response_status_code) (
   rate(activitypub_delivery_permanent_failure_total[5m])
 )
@@ -276,7 +276,7 @@ go?*
 `activitypub.signature.verification.duration` covers the whole verification
 path, including any remote key fetch, and splits cleanly by signature kind:
 
-~~~~
+~~~~ promql
 histogram_quantile(
   0.95,
   sum by (le, activitypub_signature_kind)
@@ -439,7 +439,7 @@ one series.  The number of remote hosts you talk to, though, is as large as
 your federation graph.  Aggregate this label away by default, and break it out
 only when you are investigating a specific problem:
 
-~~~~
+~~~~ promql
 # For a dashboard: total, host-independent.
 sum(rate(activitypub_delivery_permanent_failure_total[5m]))
 
