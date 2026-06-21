@@ -1343,6 +1343,13 @@ signals: CPU, RSS, event-loop lag, GC pauses, connection pool utilization
 for your KV/MQ backend.  None of these are Fedify-specific, but all of
 them should be in place before you take real traffic.
 
+Fedify exposes each of these federation signals as an [OpenTelemetry
+metric](./opentelemetry.md#instrumented-metrics).  The [*Production
+monitoring* guide](./monitoring.md) turns them into a starter dashboard and
+a set of alert rules, with PromQL examples, guidance on which failures should
+page versus prompt investigation, and notes on keeping metric cardinality
+bounded.
+
 
 ActivityPub-specific operational concerns
 -----------------------------------------
