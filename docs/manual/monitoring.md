@@ -204,8 +204,12 @@ worker capacity or a faster backend, not a higher alert threshold.
 *How long does it take to finish the side effects of an incoming activity?*
 
 `activitypub.inbox.processing_duration` measures the listener's own work.  Read
-it as a high percentile rather than an average; the tail is what remote servers
-experience as timeouts.
+it as a high percentile rather than an average.  When an inbox `queue` is
+configured, that work runs in the queue worker after Fedify has already
+answered the remote with `202 Accepted`, so a slow tail here means slow side
+effects, not remote servers waiting on you.  The latency a remote actually
+experiences lives on `fedify.http.server.request.duration` for the inbox
+endpoints; only with inline (no-queue) listeners do the two coincide.
 
 ~~~~ promql
 histogram_quantile(
@@ -355,8 +359,11 @@ your side of the network:
 ### Sustained inbox latency
 
 A single slow request is noise; a high percentile that stays elevated means
-remote servers are timing out waiting on you, which eventually shows up as
-their delivery failures:
+side-effect processing is backing up, usually behind a slow database write or
+a remote key fetch during verification.  Behind an inbox queue this latency is
+decoupled from what remote servers wait on, so pair it with a
+`fedify.http.server.request.duration` alert on the inbox endpoints to catch
+remote-facing slowness too:
 
 ~~~~ yaml
 - alert: FedifyInboxLatencyHigh
