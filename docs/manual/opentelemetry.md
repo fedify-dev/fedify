@@ -919,6 +919,12 @@ metric retains the matched endpoint (for example `actor`) so that
 fault-attribution stays per endpoint; `error` is only used when classification
 itself failed.
 
+For turning these metrics into a production dashboard and alert rules, see the
+[*Production monitoring* guide](./monitoring.md).  It maps the metrics above to
+the federation-health questions operators ask, with PromQL examples, the
+OpenTelemetry-to-Prometheus naming translation, and cardinality guidance for
+dashboard and alert authors.
+
 [URI Template]: https://datatracker.ietf.org/doc/html/rfc6570
 
 
