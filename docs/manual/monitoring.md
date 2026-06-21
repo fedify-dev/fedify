@@ -178,6 +178,12 @@ messages, so query it alone rather than summing `queued`, `ready`, and
 sum by (fedify_queue_role) (fedify_queue_depth{fedify_queue_depth_state="queued"})
 ~~~~
 
+If several `Federation` instances share one `MeterProvider`, keep
+`fedify_federation_instance_id` in the grouping.  Fedify tags each instance's
+depth series with it, and instances that share a queue backend each report that
+backend's full depth, so collapsing the label would count the same backlog once
+per instance.
+
 Pair it with how many tasks each process is actively working, which is a
 gauge-like UpDownCounter and is reported per process, so sum it across replicas:
 
