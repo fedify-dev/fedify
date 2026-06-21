@@ -183,6 +183,10 @@ done
 description = "Run tests for all example projects"
 run = "deno run -A examples/test-examples/mod.ts"
 
+[tasks."test:monitoring"]
+description = "Validate the monitoring example configuration"
+run = "deno run -A examples/monitoring/validate.ts"
+
 [tasks."test:init"]
 description = "Run tests for the init package"
 run = "deno task -f @fedify/init test-init"

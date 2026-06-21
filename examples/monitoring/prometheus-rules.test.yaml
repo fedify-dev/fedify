@@ -1,0 +1,52 @@
+rule_files:
+  - /workspace/prometheus-rules.yaml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'activitypub_delivery_sent_total{activitypub_delivery_success="false"}'
+        values: "0+1x30"
+      - series: 'activitypub_delivery_sent_total{activitypub_delivery_success="true"}'
+        values: "0+1x30"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: FedifyOutboundDeliveryFailing
+        exp_alerts:
+          - exp_labels:
+              severity: page
+            exp_annotations:
+              summary: "Over 20% of outbound delivery attempts are failing"
+              description: "A sustained delivery failure ratio across all peers usually points at local egress, DNS, proxy, or signing problems."
+              guidance: "Paging alert: inspect delivery spans, network egress, and recent key or signature changes."
+
+  - interval: 1m
+    input_series:
+      - series: 'webfinger_lookup_total{webfinger_lookup_result="error"}'
+        values: "0+3x40"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: FedifyDiscoveryFailures
+        exp_alerts:
+          - exp_labels:
+              severity: ticket
+            exp_annotations:
+              summary: "Sustained WebFinger or actor discovery failures"
+              description: "Actor discovery is failing often enough to affect federation with new or refreshed peers."
+              guidance: "Investigation alert: check remote DNS, redirects, malformed WebFinger responses, and outbound fetch policy."
+
+  - interval: 1m
+    input_series:
+      - series: 'activitypub_actor_discovery_total{activitypub_actor_discovery_result="error"}'
+        values: "0+3x40"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: FedifyDiscoveryFailures
+        exp_alerts:
+          - exp_labels:
+              severity: ticket
+            exp_annotations:
+              summary: "Sustained WebFinger or actor discovery failures"
+              description: "Actor discovery is failing often enough to affect federation with new or refreshed peers."
+              guidance: "Investigation alert: check remote DNS, redirects, malformed WebFinger responses, and outbound fetch policy."
