@@ -142,6 +142,7 @@ So the metrics you query look like this:
 | `activitypub.inbox.processing_duration`       | histogram       | `activitypub_inbox_processing_duration_milliseconds_{bucket,sum,count}`       |
 | `activitypub.signature.verification_failure`  | counter         | `activitypub_signature_verification_failure_total`                            |
 | `activitypub.signature.verification.duration` | histogram       | `activitypub_signature_verification_duration_milliseconds_{bucket,sum,count}` |
+| `activitypub.signature.key_fetch.duration`    | histogram       | `activitypub_signature_key_fetch_duration_milliseconds_{bucket,sum,count}`    |
 | `fedify.queue.task.enqueued`                  | counter         | `fedify_queue_task_enqueued_total`                                            |
 | `fedify.queue.task.completed`                 | counter         | `fedify_queue_task_completed_total`                                           |
 | `fedify.queue.task.in_flight`                 | up down counter | `fedify_queue_task_in_flight`                                                 |
