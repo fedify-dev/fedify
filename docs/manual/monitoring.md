@@ -254,17 +254,19 @@ sum(rate(activitypub_delivery_sent_total{activitypub_delivery_success="false"}[5
 ~~~~
 
 Keep this distinct from permanent failures.  A failed attempt is usually
-transient and will be retried; the next panel counts the deliveries Fedify has
-given up on entirely.  A failure fraction that climbs from a few percent toward
-a fifth or more, across many remote hosts at once, points at your own outbound
-path (DNS, egress, a misconfigured proxy) rather than at any single peer.
+transient and will be retried; the next panel counts only the deliveries a
+remote rejected with a permanent-failure status.  A failure fraction that
+climbs from a few percent toward a fifth or more, across many remote hosts at
+once, points at your own outbound path (DNS, egress, a misconfigured proxy)
+rather than at any single peer.
 
 ### Permanent delivery failures
 
-*Which deliveries has Fedify abandoned, and why?*
+*Which deliveries did a remote reject with a permanent-failure status?*
 
-`activitypub.delivery.permanent_failure` increments once per recipient that
-Fedify stops retrying, with the deciding status code attached:
+`activitypub.delivery.permanent_failure` increments once per recipient that a
+remote rejected with a permanent-failure status, with that status code
+attached:
 
 ~~~~ promql
 sum by (http_response_status_code) (
@@ -277,6 +279,18 @@ The `404` and `410` rows are the fediverse's normal background churn (see the
 deserve a page).  Other codes are worth a closer look: a sustained band of
 permanent failures on an unusual status often means one large instance has
 changed how it rejects you.
+
+This counter only sees deliveries a remote rejected with a permanent-failure
+status code (`404` and `410` by default, plus anything you add to
+`~FederationOptions.permanentFailureStatusCodes`).  Deliveries Fedify abandons
+after its outbox retry policy exhausts on transport errors or transient `5xx`
+responses land on `activitypub.outbox.activity` with
+`activitypub.processing.result="abandoned"` instead.  Add that series to see
+every dropped delivery, not just the status-coded ones:
+
+~~~~ promql
+sum(rate(activitypub_outbox_activity_total{activitypub_processing_result="abandoned"}[5m]))
+~~~~
 
 ### Signature verification latency
 
