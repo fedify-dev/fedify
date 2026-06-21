@@ -382,9 +382,9 @@ records.  Route this to a ticket or a chat channel, not to a pager:
 ~~~~ yaml
 - alert: FedifyRemoteGoneSpike
   expr: |
-    sum(rate(activitypub_delivery_permanent_failure_total{
+    sum(increase(activitypub_delivery_permanent_failure_total{
       http_response_status_code=~"404|410"
-    }[15m])) > 1
+    }[15m])) > 10
   for: 1h
   labels:
     severity: ticket
@@ -410,8 +410,8 @@ transition.  Break the alert down by reason so the two cases stay separable:
 - alert: FedifySignatureVerificationFailures
   expr: |
     sum by (activitypub_verification_failure_reason) (
-      rate(activitypub_signature_verification_failure_total[5m])
-    ) > 1
+      increase(activitypub_signature_verification_failure_total[5m])
+    ) > 10
   for: 15m
   annotations:
     summary: "Sustained signature verification failures ({{ $labels.activitypub_verification_failure_reason }})"
