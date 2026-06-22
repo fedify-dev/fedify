@@ -923,8 +923,7 @@ For turning these metrics into a production dashboard and alert rules, see the
 [*Production monitoring* guide](./monitoring.md).  It maps the metrics above to
 the federation-health questions operators ask, with PromQL examples, the
 OpenTelemetry-to-Prometheus naming translation, and cardinality guidance for
-dashboard and alert authors.  The
-[runnable monitoring example]
+dashboard and alert authors.  The [runnable monitoring example]
 contains a Docker Compose stack with Prometheus, Grafana, OpenTelemetry
 Collector, provisioned alert rules, and a starter dashboard.
 
