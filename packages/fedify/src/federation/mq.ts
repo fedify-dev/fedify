@@ -451,6 +451,10 @@ export class ParallelMessageQueue implements MessageQueue {
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
     if (this.queue.enqueueMany == null) {
+      if (messages.length === 1) {
+        await this.queue.enqueue(messages[0], options);
+        return;
+      }
       if (options?.deduplicationKey != null) {
         throw new TypeError(
           "Cannot enqueue a batch with a deduplicationKey: the wrapped queue " +
