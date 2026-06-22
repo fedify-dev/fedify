@@ -443,6 +443,58 @@ test("startQueue() task worker", async (t) => {
       strictEqual(received, "payload");
     },
   );
+
+  await t.step(
+    'queue: "task" starts the outbox fallback when no task queue is set',
+    async () => {
+      const inbox = new MockQueue();
+      const outbox = new MockQueue();
+      const fanout = new MockQueue();
+      const federation = createFederation<void>({
+        ...baseOptions,
+        queue: { inbox, outbox, fanout },
+      });
+      federation.defineTask("fallback", {
+        schema: stringSchema,
+        handler: () => {},
+      });
+      const controller = new AbortController();
+      const listening = federation.startQueue(undefined, {
+        signal: controller.signal,
+        queue: "task",
+      });
+      // Tasks route to the outbox fallback, so the "task" selector must start
+      // the outbox worker—otherwise enqueued tasks have no listener.
+      strictEqual(outbox.listenCount, 1);
+      strictEqual(inbox.listenCount, 0);
+      strictEqual(fanout.listenCount, 0);
+      controller.abort();
+      await listening;
+    },
+  );
+
+  await t.step(
+    'queue: "task" starts a task queue shared with the outbox once',
+    async () => {
+      const inbox = new MockQueue();
+      const shared = new MockQueue();
+      const fanout = new MockQueue();
+      const federation = createFederation<void>({
+        ...baseOptions,
+        queue: { inbox, outbox: shared, fanout, task: shared },
+      });
+      const controller = new AbortController();
+      const listening = federation.startQueue(undefined, {
+        signal: controller.signal,
+        queue: "task",
+      });
+      strictEqual(shared.listenCount, 1);
+      strictEqual(inbox.listenCount, 0);
+      strictEqual(fanout.listenCount, 0);
+      controller.abort();
+      await listening;
+    },
+  );
 });
 
 test("processQueuedTask() task dispatch", async (t) => {

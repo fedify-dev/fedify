@@ -602,11 +602,7 @@ export class FederationImpl<TContextData>
   outboxQueue?: MessageQueue;
   fanoutQueue?: MessageQueue;
   taskQueue?: MessageQueue;
-  inboxQueueStarted: boolean;
-  outboxQueueStarted: boolean;
-  fanoutQueueStarted: boolean;
-  taskQueueStarted: boolean;
-  startedTaskQueues: Set<MessageQueue>;
+  startedQueues: Set<MessageQueue>;
   manuallyStartQueue: boolean;
   origin?: FederationOrigin;
   documentLoaderFactory: DocumentLoaderFactory;
@@ -733,11 +729,7 @@ export class FederationImpl<TContextData>
         );
       }
     }
-    this.inboxQueueStarted = false;
-    this.outboxQueueStarted = false;
-    this.fanoutQueueStarted = false;
-    this.taskQueueStarted = false;
-    this.startedTaskQueues = new Set();
+    this.startedQueues = new Set();
     this.manuallyStartQueue = options.manuallyStartQueue ?? false;
     if (options.origin != null) {
       if (typeof options.origin === "string") {
@@ -988,108 +980,36 @@ export class FederationImpl<TContextData>
     signal?: AbortSignal,
     queue?: keyof FederationQueueOptions,
   ): Promise<void> {
-    // Tasks may route to a dedicated queue of their own (defineTask({ queue }))
-    // even when no federation-wide queue is configured, so a deployment with
-    // only per-task queues still has work to start.
-    const hasDedicatedTaskQueue = [...this.taskDefinitions.values()].some(
-      (def) => def.queue != null,
-    );
-    if (
-      this.inboxQueue == null && this.outboxQueue == null &&
-      this.fanoutQueue == null && this.taskQueue == null &&
-      !hasDedicatedTaskQueue
-    ) {
-      return;
-    }
+    // Tasks fall back to the outbox queue and may add per-task queues; the
+    // identity Set then starts each instance once even when roles share one.
+    type QueueNameMessage = [
+      keyof FederationQueueOptions,
+      MessageQueue | undefined,
+    ];
+    const taskQueue = this.taskQueue ??
+      (this.taskQueueResolution === "fallback" ? this.outboxQueue : undefined);
+    const customQueues = this.taskDefinitions.values()
+      .map((def): QueueNameMessage => ["task", def.queue]);
+    const targets: QueueNameMessage[] = [
+      ["inbox", this.inboxQueue],
+      ["outbox", this.outboxQueue],
+      ["fanout", this.fanoutQueue],
+      ["task", taskQueue],
+      ...customQueues,
+    ];
     const logger = getLogger(["fedify", "federation", "queue"]);
     const promises: Promise<void>[] = [];
-    if (
-      this.inboxQueue != null && (queue == null || queue === "inbox") &&
-      !this.inboxQueueStarted
-    ) {
-      logger.debug("Starting an inbox task worker.");
-      this.inboxQueueStarted = true;
+    for (const [role, target] of targets) {
+      if (target == null || !(queue == null || queue === role)) continue;
+      if (this.startedQueues.has(target)) continue;
+      this.startedQueues.add(target);
+      logger.debug("Starting a {role} queue worker.", { role });
       promises.push(
-        this.inboxQueue.listen(
+        target.listen(
           (msg) => this.processQueuedTask(ctxData, msg),
           { signal },
         ),
       );
-    }
-    if (
-      this.outboxQueue != null &&
-      this.outboxQueue !== this.inboxQueue &&
-      (queue == null || queue === "outbox") &&
-      !this.outboxQueueStarted
-    ) {
-      logger.debug("Starting an outbox task worker.");
-      this.outboxQueueStarted = true;
-      promises.push(
-        this.outboxQueue.listen(
-          (msg) => this.processQueuedTask(ctxData, msg),
-          { signal },
-        ),
-      );
-    }
-    if (
-      this.fanoutQueue != null &&
-      this.fanoutQueue !== this.inboxQueue &&
-      this.fanoutQueue !== this.outboxQueue &&
-      (queue == null || queue === "fanout") &&
-      !this.fanoutQueueStarted
-    ) {
-      logger.debug("Starting a fanout task worker.");
-      this.fanoutQueueStarted = true;
-      promises.push(
-        this.fanoutQueue.listen(
-          (msg) => this.processQueuedTask(ctxData, msg),
-          { signal },
-        ),
-      );
-    }
-    if (
-      this.taskQueue != null &&
-      this.taskQueue !== this.inboxQueue &&
-      this.taskQueue !== this.outboxQueue &&
-      this.taskQueue !== this.fanoutQueue &&
-      (queue == null || queue === "task") &&
-      !this.taskQueueStarted
-    ) {
-      logger.debug("Starting a task worker.");
-      this.taskQueueStarted = true;
-      promises.push(
-        this.taskQueue.listen(
-          (msg) => this.processQueuedTask(ctxData, msg),
-          { signal },
-        ),
-      );
-    }
-    // Dedicated per-task queues belong to the "task" selector.  Each distinct
-    // instance needs its own worker; dedupe against the standard queues and
-    // against task queues already started on an earlier call so no instance is
-    // listened on twice.
-    if (queue == null || queue === "task") {
-      const standardQueues = new Set<MessageQueue>(
-        [this.inboxQueue, this.outboxQueue, this.fanoutQueue, this.taskQueue]
-          .filter((q): q is MessageQueue => q != null),
-      );
-      for (const def of this.taskDefinitions.values()) {
-        const taskQueue = def.queue;
-        if (
-          taskQueue == null || standardQueues.has(taskQueue) ||
-          this.startedTaskQueues.has(taskQueue)
-        ) {
-          continue;
-        }
-        logger.debug("Starting a worker for a dedicated per-task queue.");
-        this.startedTaskQueues.add(taskQueue);
-        promises.push(
-          taskQueue.listen(
-            (msg) => this.processQueuedTask(ctxData, msg),
-            { signal },
-          ),
-        );
-      }
     }
     await Promise.all(promises);
   }
