@@ -505,6 +505,37 @@ test(
 );
 
 test(
+  "ParallelMessageQueue falls back to enqueue() for a single deduplicated " +
+    "item when the wrapped queue lacks enqueueMany",
+  async () => {
+    class NoBulkQueue implements MessageQueue {
+      readonly nativeDeduplication = true;
+      readonly enqueued: unknown[] = [];
+      readonly options: (MessageQueueEnqueueOptions | undefined)[] = [];
+      enqueue(
+        message: unknown,
+        options?: MessageQueueEnqueueOptions,
+      ): Promise<void> {
+        this.enqueued.push(message);
+        this.options.push(options);
+        return Promise.resolve();
+      }
+      listen(): Promise<void> {
+        return Promise.resolve();
+      }
+    }
+
+    const inner = new NoBulkQueue();
+    const workers = new ParallelMessageQueue(inner, 5);
+    // The atomicity limitation only applies to multi-item fan-out, so a
+    // single-item batch forwards its deduplicationKey to enqueue() unchanged.
+    await workers.enqueueMany([{ x: 1 }], { deduplicationKey: "k" });
+    assertEquals(inner.enqueued, [{ x: 1 }]);
+    assertEquals(inner.options[0]?.deduplicationKey, "k");
+  },
+);
+
+test(
   "ParallelMessageQueue still fans out a non-deduplicated batch when the " +
     "wrapped queue lacks enqueueMany",
   async () => {
