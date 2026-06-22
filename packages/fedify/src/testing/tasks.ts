@@ -129,8 +129,11 @@ export class MockQueue implements MessageQueue {
     options?: MessageQueueListenOptions,
   ): Promise<void> {
     this.listenCount++;
+    if (options?.signal?.aborted) return Promise.resolve();
     return new Promise((resolve) => {
-      options?.signal?.addEventListener("abort", () => resolve());
+      options?.signal?.addEventListener("abort", () => resolve(), {
+        once: true,
+      });
     });
   }
 }

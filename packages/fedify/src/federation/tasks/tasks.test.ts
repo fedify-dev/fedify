@@ -497,6 +497,23 @@ test("startQueue() task worker", async (t) => {
   );
 });
 
+test("MockQueue.listen() resolves on a pre-aborted signal", async () => {
+  const queue = new MockQueue();
+  const controller = new AbortController();
+  controller.abort();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const settled = await Promise.race([
+    queue.listen(() => {}, { signal: controller.signal }).then(() =>
+      "resolved"
+    ),
+    new Promise<string>((resolve) => {
+      timer = setTimeout(() => resolve("pending"), 50);
+    }),
+  ]);
+  clearTimeout(timer);
+  strictEqual(settled, "resolved");
+});
+
 test("processQueuedTask() task dispatch", async (t) => {
   await t.step("drops an unknown task with a warning", async () => {
     const queue = new MockQueue();
