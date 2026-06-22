@@ -459,8 +459,9 @@ export interface Context<TContextData> {
 
   /**
    * Enqueues multiple payloads for a custom background task at once.
-   * Uses the queue's bulk enqueue operation when available, falling back
-   * to parallel single enqueues.
+   * Uses the queue's bulk enqueue operation when available.  Without
+   * deduplication, it may fall back to parallel single enqueues when the
+   * queue does not implement bulk enqueue.
    * @template TData The type of the task payload, inferred from the task's
    *                 schema.
    * @param task The handle returned by {@link TaskRegistry.defineTask}.
@@ -468,8 +469,11 @@ export interface Context<TContextData> {
    *                 task's schema before being enqueued.
    * @param options Options for enqueuing the tasks.
    * @throws {TypeError} If the task is not defined on this federation,
-   *                     if no message queue is configured for tasks, or if
-   *                     a payload fails schema validation.
+   *                     if no message queue is configured for tasks, if
+   *                     a payload fails schema validation, or if a
+   *                     deduplicated multi-item batch cannot be enqueued
+   *                     atomically because the queue does not implement
+   *                     bulk enqueue.
    * @since 2.x.x
    */
   enqueueTaskMany<TData>(
