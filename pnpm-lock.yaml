@@ -16,11 +16,11 @@ catalogs:
       specifier: ^0.5.1
       version: 0.5.1
     '@logtape/file':
-      specifier: ^2.1.0
-      version: 2.1.0
+      specifier: ^2.2.0
+      version: 2.2.0
     '@logtape/logtape':
-      specifier: ^2.1.0
-      version: 2.1.0
+      specifier: ^2.2.0
+      version: 2.2.0
     '@multiformats/base-x':
       specifier: ^4.0.1
       version: 4.0.1
@@ -279,10 +279,10 @@ importers:
         version: 0.5.1
       '@logtape/file':
         specifier: 'catalog:'
-        version: 2.1.0(@logtape/logtape@2.1.0)
+        version: 2.2.0(@logtape/logtape@2.2.0)
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.1.0
+        version: 2.2.0
       '@lucide/vue':
         specifier: ^1.20.0
         version: 1.20.0(vue@3.5.33(typescript@6.0.3))
@@ -479,7 +479,7 @@ importers:
         version: link:../../packages/vocab
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.1.0
+        version: 2.2.0
       express:
         specifier: 'catalog:'
         version: 4.21.2
@@ -532,7 +532,7 @@ importers:
         version: link:../../packages/vocab
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.1.0
+        version: 2.2.0
       koa:
         specifier: 'catalog:'
         version: 2.16.2
@@ -612,7 +612,7 @@ importers:
         version: link:../../packages/vocab
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.1.0
+        version: 2.2.0
       next:
         specifier: ^14.0.0
         version: 14.2.30(@opentelemetry/api@1.9.1)(react-dom@19.0.0-rc-7771d3a7-20240827(react@19.0.0-rc-7771d3a7-20240827))(react@19.0.0-rc-7771d3a7-20240827)
@@ -713,7 +713,7 @@ importers:
         version: link:../../packages/vocab
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.1.0
+        version: 2.2.0
       h3:
         specifier: 'catalog:'
         version: 1.15.11
@@ -953,10 +953,10 @@ importers:
         version: 0.5.1
       '@logtape/file':
         specifier: 'catalog:'
-        version: 2.1.0(@logtape/logtape@2.1.0)
+        version: 2.2.0(@logtape/logtape@2.2.0)
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.1.0
+        version: 2.2.0
       '@optique/config':
         specifier: 'catalog:'
         version: 1.1.0(@standard-schema/spec@1.1.0)
@@ -1078,7 +1078,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.1.0
+        version: 2.2.0
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.1
@@ -1184,7 +1184,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.1.0
+        version: 2.2.0
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.1
@@ -1260,7 +1260,7 @@ importers:
         version: link:../vocab-runtime
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.1.0
+        version: 2.2.0
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.1
@@ -1329,7 +1329,7 @@ importers:
         version: 7.10.1(@types/node@22.19.1)
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.1.0
+        version: 2.2.0
       '@optique/core':
         specifier: 'catalog:'
         version: 1.1.0
@@ -1419,7 +1419,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.1.0
+        version: 2.2.0
       es-toolkit:
         specifier: 'catalog:'
         version: 1.46.1
@@ -1522,7 +1522,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.1.0
+        version: 2.2.0
       postgres:
         specifier: 'catalog:'
         version: 3.4.7
@@ -1553,7 +1553,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.1.0
+        version: 2.2.0
       ioredis:
         specifier: 'catalog:'
         version: 5.10.1
@@ -1590,7 +1590,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.1.0
+        version: 2.2.0
     devDependencies:
       '@fedify/vocab-runtime':
         specifier: workspace:^
@@ -1631,7 +1631,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.1.0
+        version: 2.2.0
       es-toolkit:
         specifier: ^1.46.1
         version: 1.46.1
@@ -1724,7 +1724,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.1.0
+        version: 2.2.0
       '@multiformats/base-x':
         specifier: 'catalog:'
         version: 4.0.1
@@ -1770,7 +1770,7 @@ importers:
         version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.1.0
+        version: 2.2.0
       '@multiformats/base-x':
         specifier: 'catalog:'
         version: 4.0.1
@@ -1835,7 +1835,7 @@ importers:
         version: link:../vocab-runtime
       '@logtape/logtape':
         specifier: 'catalog:'
-        version: 2.1.0
+        version: 2.2.0
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.1
@@ -3622,16 +3622,16 @@ packages:
   '@kwsites/promise-deferred@1.1.1':
     resolution: {integrity: sha512-GaHYm+c0O9MjZRu0ongGBRbinu8gVAMd2UZjji6jVmqKtZluZnptXGWhz1E8j8D2HJ3f/yMxKAUC0b+57wncIw==}
 
-  '@logtape/file@2.1.0':
-    resolution: {integrity: sha512-sUHLrpsUayPKTe7y4tidMGkCxTpvBqm0EHIo222wftWUC0W5D4etga9Jly02CwySDkxDkkgAkEyWFyYXCHupNQ==}
+  '@logtape/file@2.2.0':
+    resolution: {integrity: sha512-QfAqxvf5RS7IH078kwBlGYOcgYpA30xVhB55iYk/h94fFTGk44MKReH2GmcJZSfAnWqYKpHYR4HkAr5AUrpLfQ==}
     peerDependencies:
-      '@logtape/logtape': ^2.1.0
+      '@logtape/logtape': ^2.2.0
 
   '@logtape/logtape@1.3.8':
     resolution: {integrity: sha512-iGk5CJFL0s/nTLmxCsVia/x1D/3oAFfw+40AaNMserTEwJf8m9eKV+R7RVWCXCcgYp41KLwk0/M0xiBvI0AFmA==}
 
-  '@logtape/logtape@2.1.0':
-    resolution: {integrity: sha512-KpKQBeLJSlFtkGr9Dpi03ld96nqBEG8WiD5lTrwE33oaKdQXOcO5oJAr28hsCQ1RnZ0U8xaVvxwopNDgjFNYuw==}
+  '@logtape/logtape@2.2.0':
+    resolution: {integrity: sha512-lqjd2/2CVmyYBNBEUI377+G/sazT5qQvAAGB1msth8D94ovJ/kI6RtM/uoipwWoRjs6JG34cfFE1UNbgeSFsTA==}
 
   '@lucide/vue@1.20.0':
     resolution: {integrity: sha512-fy0XKdMPSGhhmfTp6evMN69ts7AJnopqflzbYM60a6vbnINhD5H/PbT+VeO9EQCHfSxQQiYBwUcBflbfKU57ng==}
@@ -14635,13 +14635,13 @@ snapshots:
 
   '@kwsites/promise-deferred@1.1.1': {}
 
-  '@logtape/file@2.1.0(@logtape/logtape@2.1.0)':
+  '@logtape/file@2.2.0(@logtape/logtape@2.2.0)':
     dependencies:
-      '@logtape/logtape': 2.1.0
+      '@logtape/logtape': 2.2.0
 
   '@logtape/logtape@1.3.8': {}
 
-  '@logtape/logtape@2.1.0': {}
+  '@logtape/logtape@2.2.0': {}
 
   '@lucide/vue@1.20.0(vue@3.5.33(typescript@6.0.3))':
     dependencies:
