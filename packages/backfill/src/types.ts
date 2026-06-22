@@ -9,21 +9,28 @@ import type { Object as APObject } from "@fedify/vocab";
  *    activities in the context collection.
  * -  `"context-auto"` classifies context collection items automatically,
  *    handling direct post-like objects and supported `Create` activities.
- *    If included, it absorbs all other strategies.
+ *    If included, it absorbs other context collection strategies.
+ * -  `"reply-tree"` walks the reply graph through `inReplyTo` ancestors and
+ *    `replies` descendants, yielding discovered post-like objects.
  *
  * @since 2.x.0
  */
 export type BackfillStrategy =
   | "context-objects"
   | "context-activities"
-  | "context-auto";
+  | "context-auto"
+  | "reply-tree";
 
 /**
  * Source relation that produced a backfilled object.
  *
  * @since 2.x.0
  */
-export type BackfillOrigin = "context" | "collection";
+export type BackfillOrigin =
+  | "context"
+  | "collection"
+  | "in-reply-to"
+  | "replies";
 
 /**
  * Options passed to {@link BackfillDocumentLoader}.
@@ -54,13 +61,14 @@ export type BackfillDocumentLoader = (
  */
 export interface BackfillContext {
   /**
-   * Dereferences context collections and collection item IRIs.
+   * Dereferences context collections, collection item IRIs, reply targets,
+   * and replies collections.
    */
   readonly documentLoader: BackfillDocumentLoader;
 }
 
 /**
- * Controls direct context collection backfill traversal.
+ * Controls backfill traversal.
  *
  * @since 2.x.0
  */
@@ -70,8 +78,13 @@ export interface BackfillOptions<
   /**
    * Backfill strategies to run.
    *
+   * Strategies run in order and share request, item, abort, and deduplication
+   * state.  If multiple strategies discover the same object ID, the first
+   * strategy keeps its {@link BackfillItem} metadata.
+   *
    * Defaults to `["context-auto"]`.
-   * If `"context-auto"` is included, it absorbs all other strategies.
+   * If `"context-auto"` is included, it absorbs other context collection
+   * strategies.
    *
    * @since 2.x.0
    */
@@ -83,15 +96,22 @@ export interface BackfillOptions<
   readonly maxItems?: number;
 
   /**
-   * Maximum traversal depth.  This is reserved for future reply-tree traversal;
+   * Maximum reply-tree traversal depth.
+   *
+   * Immediate `inReplyTo` targets and direct `replies` collection items have
+   * depth 1.  Their parents or replies have depth 2, and so on.  Context
+   * collection items are depth 0 and are not limited by this option.
+   *
+   * Defaults to 10.
    */
   readonly maxDepth?: number;
 
   /**
    * Maximum number of calls to {@link BackfillContext.documentLoader}.
    *
-   * Dereferencing the note context, collection item IRIs, and future page IRIs
-   * all count as requests.  Embedded collection items do not count.
+   * Dereferencing the note context, collection item IRIs, reply target IRIs,
+   * replies collection IRIs, and future page IRIs all count as requests across
+   * all strategies.  Embedded objects and collections do not count.
    */
   readonly maxRequests?: number;
 
@@ -140,8 +160,11 @@ export interface BackfillItem<
   readonly origin: BackfillOrigin;
 
   /**
-   * Traversal depth.  Direct context collection items are depth 0; deeper
-   * values are reserved for future reply-tree traversal.
+   * Traversal depth.
+   *
+   * Direct context collection items are depth 0.  Reply-tree items use depth
+   * 1 for immediate `inReplyTo` targets and direct `replies` collection items,
+   * depth 2 for the next level, and so on.
    */
   readonly depth?: number;
 }
