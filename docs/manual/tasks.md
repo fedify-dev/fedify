@@ -1,3 +1,5 @@
+<!-- deno-fmt-ignore-file -->
+
 Background tasks
 ================
 
@@ -310,9 +312,9 @@ How the key is resolved depends on the queue and the key–value store:
     ~~~~
 
 Among the first-party adapters, the in-memory, Deno KV, SQLite, and MySQL
-key–value stores implement `~KvStore.cas`; PostgreSQL and Redis do not yet, so
-those deployments take the `taskDeduplicationFallback` branch until per-adapter
-follow-ups add it.
+key–value stores implement `~KvStore.cas`; PostgreSQL, Redis, and
+Cloudflare Workers KV do not yet, so those deployments take the
+`taskDeduplicationFallback` branch until per-adapter follow-ups add it.
 
 For `~Context.enqueueTaskMany()`, a single `deduplicationKey` applies to the
 whole batch: the batch enqueues as a unit or is skipped as a unit, never
