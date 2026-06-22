@@ -1,0 +1,157 @@
+groups:
+  - name: fedify.rules
+    rules:
+      - alert: FedifyCollectorTargetDown
+        expr: up{job="otel-collector"} == 0
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: "Fedify metrics scrape target is down"
+          description: "Prometheus cannot scrape the OpenTelemetry Collector endpoint that exposes Fedify metrics."
+          guidance: "Paging alert: check the Collector process, network path, and Prometheus scrape configuration."
+
+      - alert: FedifyMetricsMissing
+        expr: absent(fedify_http_server_request_count_total)
+        for: 10m
+        labels:
+          severity: page
+        annotations:
+          summary: "Fedify metrics are missing"
+          description: "No Fedify HTTP server metrics have been seen for 10 minutes."
+          guidance: "Paging alert when this target should be serving traffic: check OpenTelemetry SDK startup and OTLP export settings."
+
+      - alert: FedifyQueueFallingBehind
+        expr: |
+          sum by (fedify_queue_role) (rate(fedify_queue_task_enqueued_total[10m]))
+            - (
+                sum by (fedify_queue_role) (rate(fedify_queue_task_completed_total[10m]))
+                  or sum by (fedify_queue_role) (rate(fedify_queue_task_enqueued_total[10m])) * 0
+              )
+            > 0
+        for: 30m
+        labels:
+          severity: page
+        annotations:
+          summary: "Fedify {{ $labels.fedify_queue_role }} queue is not draining"
+          description: "Task enqueue rate has stayed above completion rate for 30 minutes."
+          guidance: "Paging alert: add worker capacity or investigate the queue backend and slow listener or delivery dependencies."
+
+      - alert: FedifyQueueDepthHigh
+        expr: |
+          max by (fedify_queue_role) (
+            fedify_queue_depth{fedify_queue_depth_state="queued"}
+          ) > 1000
+        for: 15m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Fedify {{ $labels.fedify_queue_role }} queue depth is high"
+          description: "The queue backend reports more than 1000 queued messages for 15 minutes."
+          guidance: "Investigation alert: replace this example threshold with a value learned from your normal traffic."
+
+      - alert: FedifyOutboundDeliveryFailing
+        expr: |
+          (
+            (sum(rate(activitypub_delivery_sent_total{
+              activitypub_delivery_success="false"
+            }[5m])) or vector(0))
+              / sum(rate(activitypub_delivery_sent_total[5m]))
+          )
+            > 0.2
+            and sum(rate(activitypub_delivery_sent_total[5m])) > 0
+        for: 10m
+        labels:
+          severity: page
+        annotations:
+          summary: "Over 20% of outbound delivery attempts are failing"
+          description: "A sustained delivery failure ratio across all peers usually points at local egress, DNS, proxy, or signing problems."
+          guidance: "Paging alert: inspect delivery spans, network egress, and recent key or signature changes."
+
+      - alert: FedifyPermanentDeliveryFailures
+        expr: |
+          sum(rate(activitypub_delivery_permanent_failure_total[5m])) > 1
+        for: 15m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Permanent ActivityPub delivery failures increased"
+          description: "Remote servers are rejecting deliveries with permanent-failure status codes."
+          guidance: "Investigation alert: break down by http_response_status_code and use topk by activitypub_remote_host only while investigating."
+
+      - alert: FedifyRemoteGoneSpike
+        expr: |
+          sum(increase(activitypub_delivery_permanent_failure_total{
+            http_response_status_code=~"404|410"
+          }[1h])) > 50
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Elevated 404/410 responses from remote inboxes"
+          description: "A remote instance may have removed accounts, changed paths, or gone away."
+          guidance: "Investigation alert, not a page: consider pruning orphaned follower records after confirming the affected peers."
+
+      - alert: FedifyInboxLatencyHigh
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (
+              rate(activitypub_inbox_processing_duration_milliseconds_bucket[5m])
+            )
+          ) > 2000
+        for: 15m
+        labels:
+          severity: page
+        annotations:
+          summary: "Inbox processing p95 above 2s for 15 minutes"
+          description: "Inbox listener side effects are slow. Behind a queue this affects eventual processing, not the remote HTTP response."
+          guidance: "Paging alert: compare with queue backlog and signature key fetch duration to find the slow dependency."
+
+      - alert: FedifySignatureVerificationFailures
+        expr: |
+          sum by (activitypub_verification_failure_reason) (
+            increase(activitypub_signature_verification_failure_total[5m])
+          ) > 10
+        for: 15m
+        labels:
+          severity: page
+        annotations:
+          summary: "Sustained signature verification failures"
+          description: "Fedify is rejecting inbound signed activities for reason {{ $labels.activitypub_verification_failure_reason }}."
+          guidance: "Paging alert when broad across peers: check clock drift, actor key rotation, and remote key fetch failures."
+
+      - alert: FedifyDiscoveryFailures
+        expr: |
+          (
+            sum(increase(webfinger_lookup_total{
+              webfinger_lookup_result=~"invalid|network_error|error"
+            }[10m])) or vector(0)
+          )
+            + (
+              sum(increase(activitypub_actor_discovery_total{
+                activitypub_actor_discovery_result!="resolved"
+              }[10m])) or vector(0)
+            )
+            > 20
+        for: 15m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Sustained WebFinger or actor discovery failures"
+          description: "Actor discovery is failing often enough to affect federation with new or refreshed peers."
+          guidance: "Investigation alert: check remote DNS, redirects, malformed WebFinger responses, and outbound fetch policy."
+
+      - alert: FedifyKeyLookupFailures
+        expr: |
+          sum by (activitypub_lookup_result) (
+            increase(activitypub_key_lookup_total{
+              activitypub_lookup_result=~"not_found|invalid|network_error|error"
+            }[10m])
+          ) > 10
+        for: 15m
+        labels:
+          severity: page
+        annotations:
+          summary: "Sustained public key lookup failures"
+          description: "Public key lookup failures with result {{ $labels.activitypub_lookup_result }} are high enough to break signature verification."
+          guidance: "Paging alert if broad across peers: check outbound network access, document loader configuration, and key cache behavior."

@@ -317,6 +317,11 @@ const SKIPPED_EXAMPLES: SkippedExample[] = [
       "No actor dispatcher configured; federation lookup cannot be verified",
   },
   {
+    name: "monitoring",
+    reason:
+      "Docker Compose monitoring stack; validate with mise run test:monitoring",
+  },
+  {
     name: "rfc-9421-test",
     reason:
       "Requires live interaction with external fediverse servers (Bonfire, Mastodon)",

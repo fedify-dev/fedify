@@ -923,9 +923,12 @@ For turning these metrics into a production dashboard and alert rules, see the
 [*Production monitoring* guide](./monitoring.md).  It maps the metrics above to
 the federation-health questions operators ask, with PromQL examples, the
 OpenTelemetry-to-Prometheus naming translation, and cardinality guidance for
-dashboard and alert authors.
+dashboard and alert authors.  The [runnable monitoring example]
+contains a Docker Compose stack with Prometheus, Grafana, OpenTelemetry
+Collector, provisioned alert rules, and a starter dashboard.
 
 [URI Template]: https://datatracker.ietf.org/doc/html/rfc6570
+[runnable monitoring example]: https://github.com/fedify-dev/fedify/tree/main/examples/monitoring
 
 
 Semantic [attributes] for ActivityPub

@@ -29,9 +29,13 @@ are the integration points most backends share, not because Fedify prefers
 them.  Everything here applies to any backend that ingests OTLP or scrapes
 Prometheus; where a vendor's setup begins, this guide stops and points you at
 their documentation.
+The [runnable monitoring example] packages the Collector, Prometheus, Grafana,
+alert rules, dashboard provisioning, and a small synthetic metric source into a
+Docker Compose stack you can start locally.
 
 [Prometheus]: https://prometheus.io/
 [OpenTelemetry Collector]: https://opentelemetry.io/docs/collector/
+[runnable monitoring example]: https://github.com/fedify-dev/fedify/tree/main/examples/monitoring
 
 
 Before you begin
