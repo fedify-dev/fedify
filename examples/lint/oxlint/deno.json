@@ -1,0 +1,6 @@
+{
+  "tasks": {
+    "lint": "deno run -A npm:oxlint .",
+    "lint:fixed": "deno run -A npm:oxlint federation.fixed.ts"
+  }
+}
