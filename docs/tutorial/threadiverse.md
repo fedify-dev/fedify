@@ -275,38 +275,10 @@ npm run format:check
 npm run lint
 ~~~~
 
-Oxlint may warn that *federation/index.ts* imports `getLogger` from LogTape
-and assigns the result to a `logger` constant, but nothing reads that
-`logger` yet.  Delete the unused import and declaration:
-
-~~~~ typescript [federation/index.ts]
-import {
-  createFederation,
-  InProcessMessageQueue,
-  MemoryKvStore,
-} from "@fedify/fedify";
-import { Person } from "@fedify/vocab";
-
-const federation = createFederation({
-  kv: new MemoryKvStore(),
-  queue: new InProcessMessageQueue(),
-});
-
-federation.setActorDispatcher(
-  "/users/{identifier}",
-  async (ctx, identifier) => {
-    return new Person({
-      id: ctx.getActorUri(identifier),
-      preferredUsername: identifier,
-      name: identifier,
-    });
-  },
-);
-
-export default federation;
-~~~~
-
-We'll add logging back later when there's something worth logging.
+Both commands should pass on the generated files.  The generated
+*federation/index.ts* keeps its LogTape logger and uses it in the actor
+dispatcher, which gives the file a small logging example before we add more
+domain-specific logs later.
 
 [Oxfmt]: https://oxc.rs/docs/guide/usage/formatter/
 [Oxlint]: https://oxc.rs/docs/guide/usage/linter/

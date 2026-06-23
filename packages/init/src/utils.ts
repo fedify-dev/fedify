@@ -89,15 +89,31 @@ export const formatJson = (obj: unknown) => formatJsonValue(obj, 0) + "\n";
 
 const MAX_JSON_FORMAT_DEPTH = 100;
 
-function formatJsonValue(value: unknown, depth: number): string {
+function formatJsonValue(
+  value: unknown,
+  depth: number,
+  toJSONDepth = 0,
+): string {
   if (depth > MAX_JSON_FORMAT_DEPTH) {
     throw new RangeError("Maximum depth exceeded while formatting JSON.");
+  }
+  if (toJSONDepth > MAX_JSON_FORMAT_DEPTH) {
+    throw new RangeError("Maximum depth exceeded while formatting JSON.");
+  }
+  if (hasToJSON(value)) {
+    return formatJsonValue(value.toJSON(), depth, toJSONDepth + 1);
   }
   if (Array.isArray(value)) return formatJsonArray(value, depth);
   if (value !== null && typeof value === "object") {
     return formatJsonObject(value as Record<string, unknown>, depth);
   }
   return formatJsonPrimitive(value);
+}
+
+function hasToJSON(value: unknown): value is { toJSON: () => unknown } {
+  return value !== null &&
+    typeof value === "object" &&
+    typeof (value as { toJSON?: unknown }).toJSON === "function";
 }
 
 function formatJsonArray(values: unknown[], depth: number): string {

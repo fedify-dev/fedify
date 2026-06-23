@@ -11,3 +11,15 @@ test("formatJson rejects deeply nested values", () => {
     new RangeError("Maximum depth exceeded while formatting JSON."),
   );
 });
+
+test("formatJson serializes values with toJSON methods", () => {
+  assert.equal(
+    formatJson({
+      stamp: new Date("2026-06-24T00:00:00.000Z"),
+      custom: {
+        toJSON: () => ({ value: "serialized" }),
+      },
+    }),
+    '{\n  "stamp": "2026-06-24T00:00:00.000Z",\n  "custom": {\n    "value": "serialized"\n  }\n}\n',
+  );
+});
