@@ -10,6 +10,7 @@ import { kvStores, messageQueues } from "../lib.ts";
 import type { InitCommandData } from "../types.ts";
 import bareBonesDescription from "../webframeworks/bare-bones.ts";
 import nextDescription from "../webframeworks/next.ts";
+import nitroDescription from "../webframeworks/nitro.ts";
 import nuxtDescription from "../webframeworks/nuxt.ts";
 import { cleanupScaffoldedFiles } from "./cleanup.ts";
 import { loadDenoConfig } from "./configs.ts";
@@ -245,6 +246,40 @@ test("cleanupScaffoldedFiles removes Next.js ESLint artifacts", async () => {
   }
 });
 
+test("patchFiles preserves Nitro's generated tsconfig extends", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fedify-init-nitro-tsconfig-"));
+
+  try {
+    const data = await createNitroNpmInitData(dir);
+    await writeFile(
+      join(dir, "tsconfig.json"),
+      `{
+  // https://nitro.build/guide/typescript
+  "extends": "./.nitro/types/tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+  },
+}
+`,
+    );
+
+    await cleanupScaffoldedFiles(data);
+    await patchFiles(data);
+
+    const tsconfig = JSON.parse(
+      await readFile(join(dir, "tsconfig.json"), "utf8"),
+    ) as {
+      extends?: string;
+      compilerOptions?: Record<string, unknown>;
+    };
+    assert.equal(tsconfig.extends, "./.nitro/types/tsconfig.json");
+    assert.deepEqual(tsconfig.compilerOptions?.types, ["node"]);
+    assert.equal(tsconfig.compilerOptions?.moduleResolution, "Bundler");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("patchFiles wires Nuxt logging through a Nitro plugin", async () => {
   const dir = await mkdtemp(join(tmpdir(), "fedify-init-nuxt-"));
 
@@ -357,6 +392,41 @@ async function createNextNpmInitData(dir: string): Promise<InitCommandData> {
     projectName: "example",
     packageManager: "npm",
     webFramework: "next",
+    kvStore: "in-memory",
+    messageQueue: "in-process",
+    dryRun: false,
+    allowNonEmpty: false,
+    skipInstall: false,
+    testMode: false,
+    dir,
+    initializer,
+    kv: kvStores["in-memory"],
+    mq: messageQueues["in-process"],
+    env: {},
+  } satisfies InitCommandData;
+  return data;
+}
+
+async function createNitroNpmInitData(dir: string): Promise<InitCommandData> {
+  const initializer = await nitroDescription.init({
+    command: "init",
+    projectName: "example",
+    packageManager: "npm",
+    webFramework: "nitro",
+    kvStore: "in-memory",
+    messageQueue: "in-process",
+    dryRun: false,
+    allowNonEmpty: false,
+    skipInstall: false,
+    testMode: false,
+    dir,
+  });
+
+  const data = {
+    command: "init",
+    projectName: "example",
+    packageManager: "npm",
+    webFramework: "nitro",
     kvStore: "in-memory",
     messageQueue: "in-process",
     dryRun: false,

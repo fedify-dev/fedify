@@ -10,9 +10,7 @@ const nitroDescription: WebFrameworkDescription = {
   defaultPort: 3000,
   init: async ({ packageManager: pm, testMode }) => ({
     command: getNitroInitCommand(pm),
-    cleanupFiles: pm === "deno"
-      ? []
-      : ["server/routes/index.ts", "tsconfig.json"],
+    cleanupFiles: pm === "deno" ? [] : ["server/routes/index.ts"],
     dependencies: {
       "@fedify/h3": PACKAGE_VERSION,
       ...(pm === "deno" && defaultDenoDependencies),
