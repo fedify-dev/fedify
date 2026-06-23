@@ -1,8 +1,8 @@
 ---
 name: get-reviews
 description: >-
-  This skill is utilized when requesting reviews from GitHub pull requests.
-  Get the reviews, organize, and resolve them by applying or dismissing.
+  This skill is utilized when fetching reviews from GitHub pull requests.
+  Get the reviews, organize, and help to resolve them.
 argument-hint: "Provide the number of the pull request to get the reviews."
 ---
 
@@ -15,7 +15,7 @@ This skill is utilized when requesting reviews from GitHub pull requests.
 
 1.  Get the reviews.
 2.  Organize the reviews.
-3.  Resolve the reviews by applying or dismissing them.
+3.  Help to resolve the reviews.
 
 
 Get the reviews
@@ -122,18 +122,38 @@ All related information with the review should be stored in
 After organizing the reviews, show the links to the files to the contributor.
 
 
-Resolve the reviews
--------------------
+Help to resolve the reviews
+---------------------------
+
+The agent's role in this step is to *help* the contributor resolve the reviews,
+not to resolve them on the agent's own authority. The final judgement always
+belongs to the contributor; the agent's job is to surface the information needed
+to decide, and then to carry out whatever the contributor decides.
+
+For each unresolved review, give the contributor what they need to judge it,
+rather than judging on their behalf:
+
+ -  Add relative links to the code or documentation the review points at.
+ -  Summarize the relevant facts, the trade-offs, and any available options.
+ -  Where the facts are clear, the agent may include a *suggested* judgement,
+    but it must be clearly marked as a suggestion and never substitute for the
+    contributor's decision.
 
 Let the contributor read the review files, decide the judgement and the plans
-for each review, and let them update the review files if necessary.
-After the contributor decides the judgement and the plans, apply or dismiss the
-reviews based on the files.
+for each review, and update the review files if necessary. Do not apply or
+dismiss anything until the contributor has decided. After the contributor
+decides the judgement and the plans, apply or dismiss the reviews based on the
+files.
 
 Categorize the reviews and the plans, and apply them at once by category.
 After applying the review, use [`/commit` skill](../commit/SKILL.md) to commit
-the changes. The commit message should include the related review links.
+the changes. The commit message should include the related review links:
+
 `https://github.com/fedify-dev/fedify/pull/{PR_NUMBER}#discussion_r{REVIEW_THREAD.COMMENTS[0].DATABASE_ID}`
+
+Because these changes are produced with agent assistance, the commit message
+must also carry the `Assisted-by: AGENT_NAME:MODEL_VERSION` trailer required by
+[*AI_POLICY.md*](../../../AI_POLICY.md), in addition to the review links.
 
 After committing the changes, update the review file to include the commit hash
 and the comment section. If the review is dismissed, update the review file to
@@ -147,6 +167,14 @@ the English version to match the content in the contributor's language.
 
 Post all review comments in English, even if the file written in the
 contributor's native language. The comments should be polite and constructive.
+
+Before pushing commits, posting comments, or marking any review as resolved,
+the contributor must verify the actual applied changes and the relevant
+test/check results (e.g., `mise run check` and the related tests). Per
+[*AI_POLICY.md*](../../../AI_POLICY.md), AI-created work must be fully verified
+with human use; do not post comments or mark reviews resolved for changes whose
+correctness is only hypothetical. The agent prepares everything for this
+verification but leaves the verification itself to the contributor.
 
 After resolving the reviews, pushing commits, posting comments, and updating
 the reviews as resolved, move the review files to
