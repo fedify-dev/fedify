@@ -390,6 +390,20 @@ To be released.
     root, or when you want to inspect the generated files before
     installing.  [[#720], [#776] by fru1tworld]
 
+### @fedify/lint
+
+ -  Added official Oxlint support through a new `@fedify/lint/oxlint` subpath
+    export, which exposes Fedify's lint rules in the shape Oxlint's JS plugin
+    API expects.  Previously, using `@fedify/lint` from Oxlint required a local
+    wrapper module to re-export the plugin object as the default export; the new
+    entrypoint removes that friction.  The rules are reused verbatim from the
+    ESLint plugin, and the existing Deno and ESLint root exports are unchanged.
+    Note that Oxlint's JS plugin support is still alpha upstream.
+    [[#702], [#760] by NyanRus]
+
+[#702]: https://github.com/fedify-dev/fedify/issues/702
+[#760]: https://github.com/fedify-dev/fedify/pull/760
+
 ### @fedify/vocab-runtime
 
  -  Added `PropertyPreprocessor`, `PropertyPreprocessorContext`, and `Json`
