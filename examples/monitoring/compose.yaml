@@ -46,7 +46,7 @@ services:
       - prometheus
 
   sample-metrics:
-    image: docker.io/denoland/deno:2.7.13
+    image: docker.io/denoland/deno:2.8.3
     command:
       - deno
       - run

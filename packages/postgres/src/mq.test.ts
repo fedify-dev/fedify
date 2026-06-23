@@ -589,38 +589,55 @@ nodeTest(
       pollInterval: { milliseconds: 100 },
     });
 
+    type TimeoutCallback = Parameters<typeof setTimeout>[0];
+    type TimeoutHandle = ReturnType<typeof setTimeout>;
+    type ClearTimeoutHandle = Parameters<typeof clearTimeout>[0];
+
     const originalSetTimeout = globalThis.setTimeout;
     const originalClearTimeout = globalThis.clearTimeout;
+    const callOriginalSetTimeout = originalSetTimeout as (
+      callback: TimeoutCallback,
+      timeout?: number,
+      ...args: unknown[]
+    ) => TimeoutHandle;
+    const callOriginalClearTimeout = originalClearTimeout as (
+      handle?: ClearTimeoutHandle,
+    ) => void;
 
-    const delayedHandles = new Set<ReturnType<typeof setTimeout>>();
-    const firedDelayedHandles = new Set<ReturnType<typeof setTimeout>>();
+    const delayedHandles = new Set<TimeoutHandle>();
+    const firedDelayedHandles = new Set<TimeoutHandle>();
     let clearedFiredDelayedHandles = 0;
 
-    globalThis.setTimeout = ((callback, timeout, ...args) => {
+    globalThis.setTimeout = ((
+      callback: TimeoutCallback,
+      timeout?: number,
+      ...args: unknown[]
+    ): TimeoutHandle => {
       if (timeout !== delayMs) {
-        return originalSetTimeout(callback, timeout, ...args);
+        return callOriginalSetTimeout(callback, timeout, ...args);
       }
       // deno-lint-ignore prefer-const
-      let handle: ReturnType<typeof setTimeout>;
+      let handle: TimeoutHandle;
       const wrapped = (...wrappedArgs: unknown[]) => {
         firedDelayedHandles.add(handle);
         if (typeof callback === "function") {
-          return callback(...wrappedArgs);
+          return (callback as (...args: unknown[]) => void)(...wrappedArgs);
         }
       };
-      handle = originalSetTimeout(wrapped, timeout, ...args);
+      handle = callOriginalSetTimeout(wrapped, timeout, ...args);
       delayedHandles.add(handle);
       return handle;
     }) as typeof setTimeout;
 
-    globalThis.clearTimeout = ((handle) => {
+    globalThis.clearTimeout = ((handle?: ClearTimeoutHandle) => {
+      const timeoutHandle = handle as TimeoutHandle;
       if (
-        delayedHandles.has(handle as ReturnType<typeof setTimeout>) &&
-        firedDelayedHandles.has(handle as ReturnType<typeof setTimeout>)
+        delayedHandles.has(timeoutHandle) &&
+        firedDelayedHandles.has(timeoutHandle)
       ) {
         clearedFiredDelayedHandles++;
       }
-      return originalClearTimeout(handle);
+      return callOriginalClearTimeout(handle);
     }) as typeof clearTimeout;
 
     try {

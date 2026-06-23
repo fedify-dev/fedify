@@ -1014,6 +1014,9 @@ importers:
       ora:
         specifier: ^8.2.0
         version: 8.2.0
+      pngjs:
+        specifier: ^7.0.0
+        version: 7.0.0
       shiki:
         specifier: ^1.6.4
         version: 1.29.2
@@ -1036,6 +1039,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 22.19.1
+      '@types/pngjs':
+        specifier: ^6.0.5
+        version: 6.0.5
       tsdown:
         specifier: 'catalog:'
         version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
@@ -6012,6 +6018,9 @@ packages:
 
   '@types/pg@8.6.1':
     resolution: {integrity: sha512-1Kc4oAGzAl7uqUStZCDvaLFqZrW9qWSjXOmBfdgyBP5La7Us6Mg4GBvRlSoaZMhQF/zSj1C8CtKMBkoiT8eL8w==}
+
+  '@types/pngjs@6.0.5':
+    resolution: {integrity: sha512-0k5eKfrA83JOZPppLtS2C7OUtyNAl2wKNxfyYl9Q5g9lPkgBl/9hNyAu6HuEH2J4XmIv2znEpkDd0SaZVxW6iQ==}
 
   '@types/prop-types@15.7.15':
     resolution: {integrity: sha512-F6bEyamV9jKGAFBEmlQnesRPGOQqS2+Uwi0Em15xenOxHaf2hv6L8YCVn3rPdPJOiJfPiCnLIRyvwVaqMY3MIw==}
@@ -17134,6 +17143,10 @@ snapshots:
       '@types/node': 24.3.0
       pg-protocol: 1.10.3
       pg-types: 2.2.0
+
+  '@types/pngjs@6.0.5':
+    dependencies:
+      '@types/node': 24.3.0
 
   '@types/prop-types@15.7.15': {}
 

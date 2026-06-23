@@ -113,6 +113,7 @@
     "npm:@types/estree@^1.0.9": "1.0.9",
     "npm:@types/node@^22.16.0": "22.19.17",
     "npm:@types/node@^24.2.1": "24.12.2",
+    "npm:@types/pngjs@^6.0.5": "6.0.5",
     "npm:@typescript-eslint/parser@^8.49.0": "8.58.2_eslint@9.39.4_typescript@6.0.3",
     "npm:@typescript-eslint/utils@8": "8.58.2_eslint@9.39.4_typescript@6.0.3",
     "npm:amqplib@~0.10.9": "0.10.9",
@@ -151,6 +152,8 @@
     "npm:ora@^8.2.0": "8.2.0",
     "npm:pkijs@^3.2.5": "3.4.0",
     "npm:pkijs@^3.3.3": "3.4.0",
+    "npm:pngjs@7": "7.0.0",
+    "npm:pngjs@7.0.0": "7.0.0",
     "npm:postgres@^3.4.7": "3.4.9",
     "npm:preact-render-to-string@^6.6.3": "6.7.0_preact@10.29.2",
     "npm:preact@10.19.6": "10.19.6",
@@ -3423,6 +3426,12 @@
       "integrity": "sha512-A1sre26ke7HDIuY/M23nd9gfB+nrmhtYyMINbjI1zHJxYteKR6qSMX56FsmjMcDb3SMcjJg5BiRRgOCC/yBD0g==",
       "dependencies": [
         "undici-types@7.16.0"
+      ]
+    },
+    "@types/pngjs@6.0.5": {
+      "integrity": "sha512-0k5eKfrA83JOZPppLtS2C7OUtyNAl2wKNxfyYl9Q5g9lPkgBl/9hNyAu6HuEH2J4XmIv2znEpkDd0SaZVxW6iQ==",
+      "dependencies": [
+        "@types/node@24.12.2"
       ]
     },
     "@types/resolve@1.20.2": {
@@ -9437,6 +9446,7 @@
           "npm:icojs@~0.19.5",
           "npm:inquirer-toggle@^1.0.1",
           "npm:ora@^8.2.0",
+          "npm:pngjs@7",
           "npm:shiki@^1.6.4",
           "npm:smol-toml@^1.6.1",
           "npm:srvx@~0.8.7",
@@ -9450,6 +9460,7 @@
             "npm:@jimp/core@^1.6.1",
             "npm:@jimp/wasm-webp@^1.6.1",
             "npm:@poppanator/http-constants@^1.1.1",
+            "npm:@types/pngjs@^6.0.5",
             "npm:chalk@^5.6.2",
             "npm:cli-highlight@^2.1.11",
             "npm:cli-table3@~0.6.5",
@@ -9460,6 +9471,7 @@
             "npm:inquirer@^12.9.4",
             "npm:jimp@^1.6.1",
             "npm:ora@^8.2.0",
+            "npm:pngjs@7",
             "npm:shiki@^1.6.4",
             "npm:smol-toml@^1.6.1",
             "npm:srvx@~0.8.7",
