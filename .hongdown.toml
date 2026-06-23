@@ -90,6 +90,7 @@ proper_nouns = [
   "Object Integrity Proofs",
   "OpenTelemetry",
   "OpenTelemetry Collector",
+  "Oxlint",
   "Piefed",
   "Pixelfed",
   "Pleroma",
