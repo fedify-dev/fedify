@@ -110,34 +110,6 @@ To be released.
     operators distinguish a slow-draining queue from a queue that sees
     less traffic.  [[#316], [#740], [#759]]
 
- -  Added an outbound delivery circuit breaker for queued outbox delivery.
-    Fedify now tracks consecutive network and HTTP 5xx delivery failures
-    per remote host (including any non-default port), stores the state in
-    the configured `KvStore`, and requeues messages held by an open circuit
-    instead of repeatedly sending to an unreachable server.  The circuit
-    breaker is enabled by default for queued outbox delivery and can be
-    disabled with
-    `circuitBreaker: false`; applications can customize the failure policy,
-    recovery delay, held activity TTL, release interval, and state/drop
-    callbacks.  HTTP 429 responses do not count as circuit failures and
-    `Retry-After` is respected when present.  State changes are exposed
-    through `activitypub.circuit_breaker.state_change` metrics and
-    `activitypub.circuit_breaker.state_change` span events, and expired
-    held activities call the outbox permanent failure handler with
-    `reason: "circuit-breaker-ttl"`.  [[#620], [#778]]
-
- -  Added `benchmarkMode` to `createFederation()` and
-    `FederationBuilder.build()` for cooperative federation benchmarking.
-    When enabled, Fedify exposes `GET /.well-known/fedify/bench/stats`
-    for in-process OpenTelemetry metric snapshots and
-    `POST /.well-known/fedify/bench/trigger` for driving `sendActivity()`
-    to server-configured benchmark sink recipients.  Benchmark mode also
-    defaults `allowPrivateAddress` to `true` when built-in loaders are used,
-    defaults `signatureTimeWindow` to `false`, reports queue depth through
-    the new `fedify.queue.depth` gauge, and adds explicit low-latency
-    buckets to the signature verification duration histogram.
-    [[#744], [#782], [#787]]
-
  -  Added OpenTelemetry metrics for ActivityPub fanout and activity
     lifecycle events, complementing the per-recipient
     `activitypub.delivery.*` counters and the per-task
@@ -243,6 +215,34 @@ To be released.
     alias host when cross-origin verification runs).
     [[#316], [#739], [#772]]
 
+ -  Added an outbound delivery circuit breaker for queued outbox delivery.
+    Fedify now tracks consecutive network and HTTP 5xx delivery failures
+    per remote host (including any non-default port), stores the state in
+    the configured `KvStore`, and requeues messages held by an open circuit
+    instead of repeatedly sending to an unreachable server.  The circuit
+    breaker is enabled by default for queued outbox delivery and can be
+    disabled with
+    `circuitBreaker: false`; applications can customize the failure policy,
+    recovery delay, held activity TTL, release interval, and state/drop
+    callbacks.  HTTP 429 responses do not count as circuit failures and
+    `Retry-After` is respected when present.  State changes are exposed
+    through `activitypub.circuit_breaker.state_change` metrics and
+    `activitypub.circuit_breaker.state_change` span events, and expired
+    held activities call the outbox permanent failure handler with
+    `reason: "circuit-breaker-ttl"`.  [[#620], [#778]]
+
+ -  Added `benchmarkMode` to `createFederation()` and
+    `FederationBuilder.build()` for cooperative federation benchmarking.
+    When enabled, Fedify exposes `GET /.well-known/fedify/bench/stats`
+    for in-process OpenTelemetry metric snapshots and
+    `POST /.well-known/fedify/bench/trigger` for driving `sendActivity()`
+    to server-configured benchmark sink recipients.  Benchmark mode also
+    defaults `allowPrivateAddress` to `true` when built-in loaders are used,
+    defaults `signatureTimeWindow` to `false`, reports queue depth through
+    the new `fedify.queue.depth` gauge, and adds explicit low-latency
+    buckets to the signature verification duration histogram.
+    [[#744], [#782], [#787]]
+
  -  Replaced Fedify's internal federation routing with
     *@fedify/uri-template* for stricter RFC 6570 URI Template expansion and
     matching.  The deprecated `Router` export from *@fedify/fedify* remains
@@ -292,6 +292,10 @@ To be released.
 
 ### @fedify/cli
 
+ -  Added the `--skip-install` option to `fedify init`, following the
+    corresponding `@fedify/init` update, which skips automatic dependency
+    installation after scaffolding.  [[#720], [#776] by fru1tworld]
+
  -  Added the `fedify bench` command for benchmarking Fedify federation
     workloads.  It acts as a synthetic remote actor that drives
     ActivityPub-specific load (signed inbox deliveries and WebFinger lookups)
@@ -324,6 +328,8 @@ To be released.
     results.  This change is published as benchmark report schema version 3
     and comparison report schema version 1.  [[#744], [#786], [#804]]
 
+[#720]: https://github.com/fedify-dev/fedify/issues/720
+[#776]: https://github.com/fedify-dev/fedify/pull/776
 [#783]: https://github.com/fedify-dev/fedify/issues/783
 [#784]: https://github.com/fedify-dev/fedify/issues/784
 [#785]: https://github.com/fedify-dev/fedify/issues/785
@@ -376,15 +382,6 @@ To be released.
  -  Added `SqliteMessageQueue.getDepth()` for reporting queued, ready, and
     delayed message counts.  [[#735], [#748]]
 
-### @fedify/cli
-
- -  Added the `--skip-install` option to `fedify init`, following the
-    corresponding `@fedify/init` update, which skips automatic dependency
-    installation after scaffolding.  [[#720], [#776] by fru1tworld]
-
-[#720]: https://github.com/fedify-dev/fedify/issues/720
-[#776]: https://github.com/fedify-dev/fedify/pull/776
-
 ### @fedify/init
 
  -  Added a `--skip-install` option to `fedify init` that skips automatic
@@ -392,26 +389,6 @@ To be released.
     environments, monorepo workspaces that install dependencies from the
     root, or when you want to inspect the generated files before
     installing.  [[#720], [#776] by fru1tworld]
-
-### Claude Code plugin
-
- -  Added a Claude Code plugin at *claude-plugin/*, installable with:
-
-    ~~~~ text
-    /plugin marketplace add fedify-dev/fedify
-    /plugin install fedify@fedify
-    ~~~~
-
-    The plugin provides six slash commands (`/fedify:fedify`, `/fedify:docs`,
-    `/fedify:actor`, `/fedify:inbox`, `/fedify:migration`, `/fedify:fep`) and
-    two specialized
-    agents (`fedify-reviewer` and `fedify-debugger`).  The Agent Skills bundle
-    lives canonically in *claude-plugin/skills/fedify/* and is referenced from
-    *packages/fedify/skills/fedify/* via a symlink; the `prepack` script
-    resolves the symlink to real files before packing so the published npm
-    tarball is self-contained.  [[#489]]
-
-[#489]: https://github.com/fedify-dev/fedify/issues/489
 
 ### @fedify/vocab-runtime
 
@@ -448,6 +425,26 @@ To be released.
     pass an explicit `baseUrl`.  The stored URL is defensively copied so
     that mutation of the caller's original `URL` object does not affect
     later resolution.  [[#792]]
+
+### Claude Code plugin
+
+ -  Added a Claude Code plugin at *claude-plugin/*, installable with:
+
+    ~~~~ text
+    /plugin marketplace add fedify-dev/fedify
+    /plugin install fedify@fedify
+    ~~~~
+
+    The plugin provides six slash commands (`/fedify:fedify`, `/fedify:docs`,
+    `/fedify:actor`, `/fedify:inbox`, `/fedify:migration`, `/fedify:fep`) and
+    two specialized
+    agents (`fedify-reviewer` and `fedify-debugger`).  The Agent Skills bundle
+    lives canonically in *claude-plugin/skills/fedify/* and is referenced from
+    *packages/fedify/skills/fedify/* via a symlink; the `prepack` script
+    resolves the symlink to real files before packing so the published npm
+    tarball is self-contained.  [[#489]]
+
+[#489]: https://github.com/fedify-dev/fedify/issues/489
 
 
 Version 2.2.5
