@@ -4,7 +4,7 @@ import { access, readFile } from "node:fs/promises";
 import { join as joinPath } from "node:path";
 import { createFile, throwUnlessNotExists } from "../lib.ts";
 import type { InitCommandData } from "../types.ts";
-import { formatJson, merge, replaceAll, set } from "../utils.ts";
+import { formatJson, merge, set } from "../utils.ts";
 import {
   devToolConfigs,
   loadDenoConfig,
@@ -315,13 +315,78 @@ const mergeJson = (prev: string, data: object): string =>
  * @param jsonString - The JSON string potentially containing JSONC syntax
  * @returns JSON string with JSONC-only syntax removed
  */
-const removeJsoncSyntax = (jsonString: string): string =>
-  pipe(
-    jsonString,
-    replaceAll(/\/\/.*$/gm, ""),
-    replaceAll(/\/\*[\s\S]*?\*\//g, ""),
-    replaceAll(/,(\s*[}\]])/g, "$1"),
-  );
+const removeJsoncSyntax = (jsonString: string): string => {
+  let output = "";
+  let index = 0;
+  let inString = false;
+  let escaped = false;
+
+  while (index < jsonString.length) {
+    const char = jsonString[index]!;
+    const next = jsonString[index + 1];
+
+    if (inString) {
+      output += char;
+      if (escaped) {
+        escaped = false;
+      } else if (char === "\\") {
+        escaped = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      index++;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      output += char;
+      index++;
+      continue;
+    }
+
+    if (char === "/" && next === "/") {
+      index += 2;
+      while (
+        index < jsonString.length &&
+        jsonString[index] !== "\n" &&
+        jsonString[index] !== "\r"
+      ) {
+        index++;
+      }
+      continue;
+    }
+
+    if (char === "/" && next === "*") {
+      index += 2;
+      while (index < jsonString.length) {
+        const blockChar = jsonString[index]!;
+        const blockNext = jsonString[index + 1];
+        if (blockChar === "*" && blockNext === "/") {
+          index += 2;
+          break;
+        }
+        if (blockChar === "\n" || blockChar === "\r") output += blockChar;
+        index++;
+      }
+      continue;
+    }
+
+    if (char === ",") {
+      let lookahead = index + 1;
+      while (/\s/.test(jsonString[lookahead] ?? "")) lookahead++;
+      if (jsonString[lookahead] === "}" || jsonString[lookahead] === "]") {
+        index++;
+        continue;
+      }
+    }
+
+    output += char;
+    index++;
+  }
+
+  return output;
+};
 
 /**
  * Appends new text content to existing text content line by line.

@@ -258,6 +258,13 @@ test("patchFiles preserves Nitro's generated tsconfig extends", async () => {
   "extends": "./.nitro/types/tsconfig.json",
   "compilerOptions": {
     "types": ["node"],
+    "paths": {
+      "~/api/*": ["./server/api/*"],
+    },
+  },
+  "metadata": {
+    "homepage": "https://example.com/docs",
+    "commentPattern": "keep // this and /* this */ text",
   },
 }
 `,
@@ -271,10 +278,20 @@ test("patchFiles preserves Nitro's generated tsconfig extends", async () => {
     ) as {
       extends?: string;
       compilerOptions?: Record<string, unknown>;
+      metadata?: Record<string, unknown>;
     };
     assert.equal(tsconfig.extends, "./.nitro/types/tsconfig.json");
     assert.deepEqual(tsconfig.compilerOptions?.types, ["node"]);
+    const paths = tsconfig.compilerOptions?.paths as
+      | Record<string, unknown>
+      | undefined;
+    assert.deepEqual(paths?.["~/api/*"], ["./server/api/*"]);
     assert.equal(tsconfig.compilerOptions?.moduleResolution, "Bundler");
+    assert.equal(tsconfig.metadata?.homepage, "https://example.com/docs");
+    assert.equal(
+      tsconfig.metadata?.commentPattern,
+      "keep // this and /* this */ text",
+    );
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
