@@ -142,7 +142,9 @@ function formatJsonObject(
   depth: number,
 ): string {
   const entries = Object.entries(object).filter(([, value]) =>
-    value !== undefined
+    value !== undefined &&
+    typeof value !== "function" &&
+    typeof value !== "symbol"
   );
   if (entries.length === 0) return "{}";
   const childIndent = indent(depth + 1);

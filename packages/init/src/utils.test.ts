@@ -23,3 +23,16 @@ test("formatJson serializes values with toJSON methods", () => {
     '{\n  "stamp": "2026-06-24T00:00:00.000Z",\n  "custom": {\n    "value": "serialized"\n  }\n}\n',
   );
 });
+
+test("formatJson omits unserializable object property values", () => {
+  assert.equal(
+    formatJson({
+      keep: "value",
+      skipUndefined: undefined,
+      skipFunction: () => "value",
+      skipSymbol: Symbol("value"),
+      array: [undefined, () => "value", Symbol("value")],
+    }),
+    '{\n  "keep": "value",\n  "array": [null, null, null]\n}\n',
+  );
+});
