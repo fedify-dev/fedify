@@ -13,7 +13,7 @@ import type { Object as APObject } from "@fedify/vocab";
  * -  `"reply-tree"` walks the reply graph through `inReplyTo` ancestors and
  *    `replies` descendants, yielding discovered post-like objects.
  *
- * @since 2.x.0
+ * @since 2.3.0
  */
 export type BackfillStrategy =
   | "context-objects"
@@ -24,10 +24,9 @@ export type BackfillStrategy =
 /**
  * Source relation that produced a backfilled object.
  *
- * @since 2.x.0
+ * @since 2.3.0
  */
 export type BackfillOrigin =
-  | "context"
   | "collection"
   | "in-reply-to"
   | "replies";
@@ -35,7 +34,7 @@ export type BackfillOrigin =
 /**
  * Options passed to {@link BackfillDocumentLoader}.
  *
- * @since 2.x.0
+ * @since 2.3.0
  */
 export interface BackfillDocumentLoaderOptions {
   /**
@@ -47,7 +46,7 @@ export interface BackfillDocumentLoaderOptions {
 /**
  * Dereferences an ActivityPub object or collection IRI.
  *
- * @since 2.x.0
+ * @since 2.3.0
  */
 export type BackfillDocumentLoader = (
   iri: URL,
@@ -57,7 +56,7 @@ export type BackfillDocumentLoader = (
 /**
  * Dependencies used by backfill traversal.
  *
- * @since 2.x.0
+ * @since 2.3.0
  */
 export interface BackfillContext {
   /**
@@ -70,7 +69,7 @@ export interface BackfillContext {
 /**
  * Controls backfill traversal.
  *
- * @since 2.x.0
+ * @since 2.3.0
  */
 export interface BackfillOptions<
   TObject extends APObject = APObject,
@@ -86,7 +85,7 @@ export interface BackfillOptions<
    * If `"context-auto"` is included, it absorbs other context collection
    * strategies.
    *
-   * @since 2.x.0
+   * @since 2.3.0
    */
   readonly strategies?: readonly BackfillStrategy[];
 
@@ -134,7 +133,7 @@ export interface BackfillOptions<
 /**
  * A single object discovered by backfill traversal.
  *
- * @since 2.x.0
+ * @since 2.3.0
  */
 export interface BackfillItem<
   TObject extends APObject = APObject,
