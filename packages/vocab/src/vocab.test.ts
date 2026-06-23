@@ -4,13 +4,13 @@ import {
   LanguageString,
   parseDecimal,
 } from "@fedify/vocab-runtime";
-import { configure, type LogRecord, reset } from "@logtape/logtape";
 import {
   areAllScalarTypes,
   loadSchemaFiles,
   type PropertySchema,
   type TypeSchema,
 } from "@fedify/vocab-tools";
+import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { pascalCase } from "es-toolkit";
 import {
   deepStrictEqual,
@@ -2992,7 +2992,7 @@ test("FEP-0837: Agreement parses verbatim Accept-result example from spec", asyn
   );
 });
 
-test("FEP-0837: Full marketplace flow — Proposal → Offer → Accept → Confirmation", async () => {
+test("FEP-0837: Full marketplace flow - Proposal => Offer => Accept => Confirmation", async () => {
   // Stage 1: Alice publishes a Proposal.  Its id anchors the intent fragment
   // URI (`#primary`) that the downstream commitments satisfy.
   const proposal = new Proposal({
