@@ -425,7 +425,7 @@ To be released.
 
  -  Added the second-stage vocabulary types for [FEP-0837], economic
     resource coordination in federated networks.
-    [[#775] by Samuel Brinkmann]
+    [[#775], [#817] by Samuel Brinkmann]
 
      -  Added `Agreement` class, representing the agreement reached between
         parties responding to a `Proposal`, wrapped in an `Offer` and
@@ -437,6 +437,7 @@ To be released.
 [FEP-0837]: https://w3id.org/fep/0837
 [#775]: https://github.com/fedify-dev/fedify/issues/775
 [#790]: https://github.com/fedify-dev/fedify/issues/790
+[#817]: https://github.com/fedify-dev/fedify/pull/817
 
 ### @fedify/vocab-tools
 
