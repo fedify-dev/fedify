@@ -3,8 +3,8 @@ import { PACKAGE_VERSION } from "../lib.ts";
 
 export const defaultDevDependencies = {
   "@fedify/lint": PACKAGE_VERSION,
-  "eslint": deps["npm:eslint"],
-  "@biomejs/biome": deps["npm:@biomejs/biome"],
+  "oxfmt": deps["npm:oxfmt"],
+  "oxlint": deps["npm:oxlint"],
 };
 
 export const defaultDenoDependencies = {

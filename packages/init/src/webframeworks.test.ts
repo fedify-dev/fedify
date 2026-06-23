@@ -1,8 +1,9 @@
-import { ok } from "node:assert/strict";
+import { equal, ok } from "node:assert/strict";
 import test from "node:test";
 import astroDescription from "./webframeworks/astro.ts";
 import nextDescription from "./webframeworks/next.ts";
 import nitroDescription from "./webframeworks/nitro.ts";
+import webFrameworks from "./webframeworks/mod.ts";
 import solidstartDescription from "./webframeworks/solidstart.ts";
 
 test("Nitro template loads LogTape during server startup", async () => {
@@ -91,4 +92,35 @@ test("SolidStart template loads LogTape through middleware", async () => {
   const middleware = files["src/middleware/index.ts"];
   ok(middleware);
   ok(middleware.includes('import "../logging";'));
+});
+
+test("Node.js and Bun templates use Oxfmt and Oxlint", async () => {
+  for (const [webFramework, description] of Object.entries(webFrameworks)) {
+    for (const packageManager of ["npm", "bun"] as const) {
+      if (!description.packageManagers.includes(packageManager)) continue;
+      const initializer = await description.init({
+        projectName: "test-app",
+        dir: ".",
+        command: "init",
+        packageManager,
+        kvStore: "in-memory",
+        messageQueue: "in-process",
+        webFramework: webFramework as keyof typeof webFrameworks,
+        testMode: false,
+        dryRun: true,
+        allowNonEmpty: false,
+        skipInstall: false,
+      });
+
+      equal(initializer.tasks?.format, "oxfmt");
+      equal(initializer.tasks?.["format:check"], "oxfmt --check");
+      equal(initializer.tasks?.lint, "oxlint .");
+      equal(initializer.files?.["eslint.config.ts"], undefined);
+      equal(initializer.devDependencies?.["@fedify/lint"] != null, true);
+      equal(initializer.devDependencies?.["oxfmt"] != null, true);
+      equal(initializer.devDependencies?.["oxlint"] != null, true);
+      equal(initializer.devDependencies?.["eslint"], undefined);
+      equal(initializer.devDependencies?.["@biomejs/biome"], undefined);
+    }
+  }
 });

@@ -70,6 +70,14 @@ export interface PackageManagerDescription {
 export interface WebFrameworkInitializer {
   /** Optional shell command to run before scaffolding (e.g., `create-next-app`). */
   command?: string[];
+  /** Files from a framework scaffolder to remove before Fedify writes files. */
+  cleanupFiles?: string[];
+  /** package.json entries from a framework scaffolder to remove before merging. */
+  cleanupPackageJson?: {
+    scripts?: string[];
+    dependencies?: string[];
+    devDependencies?: string[];
+  };
   /** Runtime dependencies to install (package name to version). */
   dependencies?: Record<string, string>;
   /** Development-only dependencies to install (package name to version). */

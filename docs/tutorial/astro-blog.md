@@ -198,7 +198,8 @@ After a moment, you'll have a working project with the following structure:
      -  *middleware.ts* — Connects Fedify to Astro's request pipeline
  -  *public/* — Files served as-is (favicon, etc.)
  -  *astro.config.ts* — Astro configuration
- -  *biome.json* — Code formatter and linter settings
+ -  *.oxfmtrc.json* — Code formatter settings
+ -  *.oxlintrc.json* — Code linter settings
  -  *package.json* — Package metadata and scripts
  -  *tsconfig.json* — TypeScript settings
 
@@ -215,9 +216,9 @@ includes settings for it.
 After [installing VS Code], open the project folder: *File* → *Open Folder…*.
 
 If a popup asks you to install the recommended extensions, click *Install
-All*.  This installs the [Biome extension] (formats and lints your code on
-save) and the [Astro extension] (syntax highlighting and IntelliSense for
-*.astro* files).
+All*.  This installs the [Oxc extension] (formats and lints JavaScript and
+TypeScript on save) and the [Astro extension] (syntax highlighting and
+IntelliSense for *.astro* files).
 
 Let's verify the project works.  First, install the dependencies:
 
@@ -284,7 +285,7 @@ Stop the dev server with <kbd>Ctrl</kbd>+<kbd>C</kbd> for now.
 
 [Visual Studio Code]: https://code.visualstudio.com/
 [installing VS Code]: https://code.visualstudio.com/docs/setup/setup-overview
-[Biome extension]: https://marketplace.visualstudio.com/items?itemName=biomejs.biome
+[Oxc extension]: https://marketplace.visualstudio.com/items?itemName=oxc.oxc-vscode
 [Astro extension]: https://marketplace.visualstudio.com/items?itemName=astro-build.astro-vscode
 [actor]: https://www.w3.org/TR/activitypub/#actors
 

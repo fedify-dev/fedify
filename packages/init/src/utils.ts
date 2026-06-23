@@ -85,7 +85,59 @@ export const replaceAll = (
 (text: string): string => text.replaceAll(pattern, replacement as string);
 
 /** Serializes a value to a pretty-printed JSON string with a trailing newline. */
-export const formatJson = (obj: unknown) => JSON.stringify(obj, null, 2) + "\n";
+export const formatJson = (obj: unknown) => formatJsonValue(obj, 0) + "\n";
+
+function formatJsonValue(value: unknown, depth: number): string {
+  if (Array.isArray(value)) return formatJsonArray(value, depth);
+  if (value !== null && typeof value === "object") {
+    return formatJsonObject(value as Record<string, unknown>, depth);
+  }
+  return formatJsonPrimitive(value);
+}
+
+function formatJsonArray(values: unknown[], depth: number): string {
+  if (values.length === 0) return "[]";
+  const canCompact = values.every((value) =>
+    value == null || typeof value !== "object"
+  );
+  const compact = canCompact
+    ? `[${values.map(formatJsonPrimitive).join(", ")}]`
+    : "";
+  if (
+    canCompact &&
+    compact.length <= 80
+  ) {
+    return compact;
+  }
+  const childIndent = indent(depth + 1);
+  return `[\n${
+    values.map((value) => `${childIndent}${formatJsonValue(value, depth + 1)}`)
+      .join(",\n")
+  }\n${indent(depth)}]`;
+}
+
+function formatJsonObject(
+  object: Record<string, unknown>,
+  depth: number,
+): string {
+  const entries = Object.entries(object).filter(([, value]) =>
+    value !== undefined
+  );
+  if (entries.length === 0) return "{}";
+  const childIndent = indent(depth + 1);
+  return `{\n${
+    entries.map(([key, value]) =>
+      `${childIndent}${JSON.stringify(key)}: ${
+        formatJsonValue(value, depth + 1)
+      }`
+    ).join(",\n")
+  }\n${indent(depth)}}`;
+}
+
+const indent = (depth: number): string => "  ".repeat(depth);
+
+const formatJsonPrimitive = (value: unknown): string =>
+  JSON.stringify(value) ?? "null";
 
 /** Checks whether a string or array-like value has a length greater than zero. */
 export const notEmpty = <T extends string | { length: number }>(s: T) =>

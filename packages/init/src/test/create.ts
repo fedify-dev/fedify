@@ -38,6 +38,13 @@ async (
     .spawn();
   await saveOutputs(testDir, result);
   if (result.code === 0) {
+    if (!dry && !(await validateDevToolScripts(testDir, options))) {
+      printMessage`  Fail: ${vals}`;
+      printMessage`    Check out these files for more details: \
+${join(testDir, "out.txt")} and \
+${join(testDir, "err.txt")}\n`;
+      return "";
+    }
     printMessage`  Pass: ${vals}`;
     return testDir;
   }
@@ -111,6 +118,32 @@ const saveOutputs = async (
   if (stdout) await appendFile(join(dirPath, "out.txt"), stdout + "\n", "utf8");
   if (stderr) await appendFile(join(dirPath, "err.txt"), stderr + "\n", "utf8");
 };
+
+async function validateDevToolScripts(
+  dir: string,
+  options: GeneratedType<ReturnType<typeof generateTestCases>>,
+): Promise<boolean> {
+  const [, packageManager] = options as [
+    WebFramework,
+    PackageManager,
+    KvStore,
+    MessageQueue,
+  ];
+  if (packageManager === "deno") return true;
+
+  for (const script of ["format:check", "lint"]) {
+    const result = await $`${[packageManager, "run", script]}`
+      .cwd(dir)
+      .stdin("null")
+      .stdout("piped")
+      .stderr("piped")
+      .noThrow()
+      .spawn();
+    await saveOutputs(dir, result);
+    if (result.code !== 0) return false;
+  }
+  return true;
+}
 
 export function filterOptions(
   options: GeneratedType<ReturnType<typeof generateTestCases>>,

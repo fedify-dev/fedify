@@ -3,7 +3,7 @@ import deps from "../json/deps.json" with { type: "json" };
 import { PACKAGE_VERSION, readTemplate } from "../lib.ts";
 import type { PackageManager, WebFrameworkDescription } from "../types.ts";
 import { defaultDenoDependencies, defaultDevDependencies } from "./const.ts";
-import { getInstruction } from "./utils.ts";
+import { getInstruction, getNodeBunDevToolTasks } from "./utils.ts";
 
 const nuxtDescription: WebFrameworkDescription = {
   label: "Nuxt",
@@ -26,13 +26,8 @@ const nuxtDescription: WebFrameworkDescription = {
       "server/plugins/logging.ts": await readTemplate(
         "nuxt/server/plugins/logging.ts",
       ),
-      ...(pm !== "deno" && {
-        "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
-      }),
     },
-    tasks: pm !== "deno"
-      ? { "lint": "eslint ." }
-      : {} as Record<string, string>,
+    tasks: getNodeBunDevToolTasks(pm),
     instruction: getInstruction(pm, 3000),
   }),
 };

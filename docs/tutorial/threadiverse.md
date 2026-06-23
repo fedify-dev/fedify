@@ -184,7 +184,8 @@ After a moment your working directory will contain something like this:
  -  *federation/* — ActivityPub server code
      -  *index.ts* — Fedify `Federation` instance
  -  *public/* — static assets served as-is
- -  *biome.json* — formatter and linter configuration
+ -  *.oxfmtrc.json* — formatter configuration
+ -  *.oxlintrc.json* — linter configuration
  -  *logging.ts* — logging setup
  -  *middleware.ts* — Next.js middleware that hands federation requests off
     to Fedify
@@ -248,81 +249,35 @@ Linux, you've hit the default `fs.inotify.max_user_instances` limit.
 Restarting `npm run dev` with `WATCHPACK_POLLING=true` in front of it makes
 Next.js fall back to polling-based file watching and sidesteps the problem.
 
-### Swapping ESLint for Biome
+### Checking formatting and linting
 
-The Next.js scaffold that `create-next-app` dropped into the project comes
-with [ESLint] for linting, while the Fedify side of the scaffold prefers
-[Biome].  `fedify init` tries to accommodate both by shipping them side by
-side, but that means you have to install two tools that disagree with each
-other on style.  Since Biome can do both the formatting *and* the linting we
-need, let's delete ESLint and let Biome run the whole show.
+The project already uses [Oxfmt] for formatting and [Oxlint] for linting.
+The generated *.oxlintrc.json* also loads Fedify's lint rules through
+`@fedify/lint/oxlint`, so there is no separate ESLint setup to remove.
 
-Open *biome.json* and turn the linter on with the recommended rule set:
-
-~~~~ json [biome.json]
-{
-  "$schema": "https://biomejs.dev/schemas/2.4.12/schema.json",
-  "assist": { "actions": { "source": { "organizeImports": "on" } } },
-  "formatter": {
-    "enabled": true,
-    "indentStyle": "space",
-    "indentWidth": 2
-  },
-  "linter": {
-    "enabled": true,
-    "rules": { "recommended": true }
-  },
-  "files": {
-    "includes": ["**", "!.next", "!node_modules", "!public"]
-  }
-}
-~~~~
-
-Delete the two ESLint configs:
-
-~~~~ sh
-rm eslint.config.mjs eslint.config.ts
-~~~~
-
-In *package.json*, drop the `eslint`, `eslint-config-next`, and `@fedify/lint`
-packages from `devDependencies`, and rewrite the `lint` and `format` scripts
-so they call Biome instead:
+The relevant *package.json* scripts look like this:
 
 ~~~~ json [package.json]
 "scripts": {
   "dev": "next dev",
   "build": "next build",
   "start": "next start",
-  "lint": "biome check",
-  "format": "biome check --write"
+  "format": "oxfmt",
+  "format:check": "oxfmt --check",
+  "lint": "oxlint ."
 },
 ~~~~
 
-Then reinstall dependencies so the lockfile reflects the smaller dep tree:
+Check the generated files now:
 
 ~~~~ sh
-npm install
+npm run format:check
+npm run lint
 ~~~~
 
-From now on you can format and lint the whole project with a single command:
-
-~~~~ sh
-npm run format
-~~~~
-
-Running it once right now flags two pre-existing issues in the
-*fedify init* output:
-
- -  *app/globals.css* uses Tailwind CSS directives (`@theme inline`, a
-    dark-mode media query) that Biome's CSS parser does not recognise
-    out of the box, so it emits a parse error and aborts formatting
-    for that file.  Ignore it for now; we replace *app/globals.css*
-    wholesale in the next chapter, which removes every Tailwind-specific
-    line, and the error goes away on its own.
- -  *federation/index.ts* imports `getLogger` from LogTape and assigns
-    the result to a `logger` constant, but nothing ever reads that
-    `logger`.  Biome's `noUnusedVariables` rule flags it.  Delete the
-    unused import and declaration:
+Oxlint may warn that *federation/index.ts* imports `getLogger` from LogTape
+and assigns the result to a `logger` constant, but nothing reads that
+`logger` yet.  Delete the unused import and declaration:
 
 ~~~~ typescript [federation/index.ts]
 import {
@@ -353,8 +308,8 @@ export default federation;
 
 We'll add logging back later when there's something worth logging.
 
-[ESLint]: https://eslint.org/
-[Biome]: https://biomejs.dev/
+[Oxfmt]: https://oxc.rs/docs/guide/usage/formatter/
+[Oxlint]: https://oxc.rs/docs/guide/usage/linter/
 
 
 Layout and navigation

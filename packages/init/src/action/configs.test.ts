@@ -1,15 +1,21 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { promisify } from "node:util";
 import { message } from "@optique/core";
 import { kvStores, messageQueues } from "../lib.ts";
 import type { InitCommandData } from "../types.ts";
 import bareBonesDescription from "../webframeworks/bare-bones.ts";
+import nextDescription from "../webframeworks/next.ts";
 import nuxtDescription from "../webframeworks/nuxt.ts";
+import { cleanupScaffoldedFiles } from "./cleanup.ts";
 import { loadDenoConfig } from "./configs.ts";
 import { patchFiles } from "./patch.ts";
+
+const execFileAsync = promisify(execFile);
 
 function createInitData(): InitCommandData {
   const data = {
@@ -104,8 +110,8 @@ test("loadDenoConfig keeps unstable.temporal before Deno 2.7.0", () => {
   }
 });
 
-test("patchFiles creates a Biome config matching the npm package version", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "fedify-init-biome-"));
+test("patchFiles creates Oxfmt and Oxlint configs for npm projects", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fedify-init-oxc-"));
 
   try {
     const data = await createNpmInitData(dir);
@@ -114,22 +120,125 @@ test("patchFiles creates a Biome config matching the npm package version", async
     const packageJson = JSON.parse(
       await readFile(join(dir, "package.json"), "utf8"),
     ) as {
+      scripts?: Record<string, string>;
       devDependencies?: Record<string, string>;
     };
-    const biomeConfig = JSON.parse(
-      await readFile(join(dir, "biome.json"), "utf8"),
-    ) as Record<string, unknown>;
+    const oxfmtConfig = JSON.parse(
+      await readFile(join(dir, ".oxfmtrc.json"), "utf8"),
+    ) as {
+      $schema?: string;
+      ignorePatterns?: string[];
+      sortPackageJson?: boolean;
+      tabWidth?: number;
+    };
+    const oxlintConfig = JSON.parse(
+      await readFile(join(dir, ".oxlintrc.json"), "utf8"),
+    ) as {
+      ignorePatterns?: string[];
+      jsPlugins?: string[];
+      rules?: Record<string, string>;
+    };
+    const vscodeExtensions = JSON.parse(
+      await readFile(join(dir, ".vscode", "extensions.json"), "utf8"),
+    ) as {
+      recommendations?: string[];
+    };
 
-    const biomeVersion = packageJson.devDependencies?.["@biomejs/biome"];
-    const schema = biomeConfig.$schema;
-    assert.ok(typeof biomeVersion === "string");
-    assert.ok(typeof schema === "string");
-    assert.equal(getSchemaVersion(schema), getPackageVersion(biomeVersion));
-    assert.equal(getOrganizeImportsSetting(biomeConfig), "on");
+    assert.equal(packageJson.scripts?.format, "oxfmt");
+    assert.equal(packageJson.scripts?.["format:check"], "oxfmt --check");
+    assert.equal(packageJson.scripts?.lint, "oxlint .");
+    assert.ok(packageJson.devDependencies?.["@fedify/lint"]);
+    assert.ok(packageJson.devDependencies?.["oxfmt"]);
+    assert.ok(packageJson.devDependencies?.["oxlint"]);
+    assert.equal(packageJson.devDependencies?.["eslint"], undefined);
+    assert.equal(packageJson.devDependencies?.["@biomejs/biome"], undefined);
     assert.equal(
-      "organizeImports" in biomeConfig,
-      false,
+      oxfmtConfig.$schema,
+      "./node_modules/oxfmt/configuration_schema.json",
     );
+    assert.equal(oxfmtConfig.sortPackageJson, false);
+    assert.equal(oxfmtConfig.tabWidth, 2);
+    assert.ok(oxfmtConfig.ignorePatterns?.includes("node_modules/**"));
+    assert.ok(oxfmtConfig.ignorePatterns?.includes("**/*.md"));
+    assert.ok(oxlintConfig.ignorePatterns?.includes("node_modules/**"));
+    assert.deepEqual(oxlintConfig.jsPlugins, ["@fedify/lint/oxlint"]);
+    assert.equal(
+      oxlintConfig.rules?.["@fedify/lint/actor-id-required"],
+      "error",
+    );
+    assert.equal(
+      oxlintConfig.rules?.["@fedify/lint/actor-outbox-property-required"],
+      "warn",
+    );
+    assert.deepEqual(vscodeExtensions.recommendations, ["oxc.oxc-vscode"]);
+    await assert.rejects(readFile(join(dir, "biome.json"), "utf8"), {
+      code: "ENOENT",
+    });
+    await assert.rejects(readFile(join(dir, "eslint.config.ts"), "utf8"), {
+      code: "ENOENT",
+    });
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("patchFiles keeps generated Deno federation file formatted", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fedify-init-deno-fmt-"));
+
+  try {
+    const data = await createDenoInitData(dir);
+    await patchFiles(data);
+
+    await execFileAsync("deno", [
+      "fmt",
+      "--check",
+      join(dir, "src", "federation.ts"),
+    ]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cleanupScaffoldedFiles removes Next.js ESLint artifacts", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fedify-init-next-cleanup-"));
+
+  try {
+    const data = await createNextNpmInitData(dir);
+    await writeFile(join(dir, "eslint.config.mjs"), "export default [];\n");
+    await writeFile(
+      join(dir, "package.json"),
+      JSON.stringify({
+        scripts: {
+          dev: "next dev",
+          lint: "eslint",
+        },
+        devDependencies: {
+          eslint: "^9",
+          "eslint-config-next": "16.2.9",
+          typescript: "^5",
+        },
+      }),
+    );
+
+    await cleanupScaffoldedFiles(data);
+
+    const packageJson = JSON.parse(
+      await readFile(join(dir, "package.json"), "utf8"),
+    ) as {
+      scripts?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+    assert.equal(packageJson.scripts?.dev, "next dev");
+    assert.equal(packageJson.scripts?.lint, undefined);
+    assert.equal(packageJson.devDependencies?.eslint, undefined);
+    assert.equal(
+      packageJson.devDependencies?.["eslint-config-next"],
+      undefined,
+    );
+    assert.equal(packageJson.devDependencies?.typescript, "^5");
+    await assert.rejects(readFile(join(dir, "eslint.config.mjs"), "utf8"), {
+      code: "ENOENT",
+    });
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -192,6 +301,76 @@ async function createNpmInitData(dir: string): Promise<InitCommandData> {
   return data;
 }
 
+async function createDenoInitData(dir: string): Promise<InitCommandData> {
+  const initializer = await bareBonesDescription.init({
+    command: "init",
+    projectName: "example",
+    packageManager: "deno",
+    webFramework: "bare-bones",
+    kvStore: "in-memory",
+    messageQueue: "in-process",
+    dryRun: false,
+    allowNonEmpty: false,
+    skipInstall: false,
+    testMode: false,
+    dir,
+  });
+
+  const data = {
+    command: "init",
+    projectName: "example",
+    packageManager: "deno",
+    webFramework: "bare-bones",
+    kvStore: "in-memory",
+    messageQueue: "in-process",
+    dryRun: false,
+    allowNonEmpty: false,
+    skipInstall: false,
+    testMode: false,
+    dir,
+    initializer,
+    kv: kvStores["in-memory"],
+    mq: messageQueues["in-process"],
+    env: {},
+  } satisfies InitCommandData;
+  return data;
+}
+
+async function createNextNpmInitData(dir: string): Promise<InitCommandData> {
+  const initializer = await nextDescription.init({
+    command: "init",
+    projectName: "example",
+    packageManager: "npm",
+    webFramework: "next",
+    kvStore: "in-memory",
+    messageQueue: "in-process",
+    dryRun: false,
+    allowNonEmpty: false,
+    skipInstall: false,
+    testMode: false,
+    dir,
+  });
+
+  const data = {
+    command: "init",
+    projectName: "example",
+    packageManager: "npm",
+    webFramework: "next",
+    kvStore: "in-memory",
+    messageQueue: "in-process",
+    dryRun: false,
+    allowNonEmpty: false,
+    skipInstall: false,
+    testMode: false,
+    dir,
+    initializer,
+    kv: kvStores["in-memory"],
+    mq: messageQueues["in-process"],
+    env: {},
+  } satisfies InitCommandData;
+  return data;
+}
+
 async function createNuxtNpmInitData(dir: string): Promise<InitCommandData> {
   const initializer = await nuxtDescription.init({
     command: "init",
@@ -225,30 +404,4 @@ async function createNuxtNpmInitData(dir: string): Promise<InitCommandData> {
     env: {},
   } satisfies InitCommandData;
   return data;
-}
-
-function getSchemaVersion(schema: string): string {
-  const match = schema.match(/\/schemas\/(\d+\.\d+\.\d+)\//);
-  assert.ok(match, `Unexpected Biome schema URL: ${schema}`);
-  return match[1];
-}
-
-function getPackageVersion(version: string): string {
-  const match = version.match(/\d+\.\d+\.\d+/);
-  assert.ok(match, `Unexpected Biome package version: ${version}`);
-  return match[0];
-}
-
-function getOrganizeImportsSetting(config: Record<string, unknown>): unknown {
-  const assist = config.assist;
-  assert.ok(isRecord(assist));
-  const actions = assist.actions;
-  assert.ok(isRecord(actions));
-  const source = actions.source;
-  assert.ok(isRecord(source));
-  return source.organizeImports;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value != null;
 }

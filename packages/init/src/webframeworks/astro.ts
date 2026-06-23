@@ -3,7 +3,7 @@ import deps from "../json/deps.json" with { type: "json" };
 import { PACKAGE_VERSION, readTemplate } from "../lib.ts";
 import type { PackageManager, WebFrameworkDescription } from "../types.ts";
 import { defaultDenoDependencies, defaultDevDependencies } from "./const.ts";
-import { getInstruction, pmToRt } from "./utils.ts";
+import { getInstruction, nodeBunDevToolTasks, pmToRt } from "./utils.ts";
 
 const astroDescription: WebFrameworkDescription = {
   label: "Astro",
@@ -48,9 +48,6 @@ const astroDescription: WebFrameworkDescription = {
           `astro/astro.config.${pmToRt(pm)}.ts`,
         ),
         "src/middleware.ts": await readTemplate("astro/src/middleware.ts"),
-        ...(pm !== "deno" && {
-          "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
-        }),
       },
       tasks: TASKS[pmToRt(pm)],
       instruction: getInstruction(pm, 4321),
@@ -96,12 +93,12 @@ const TASKS = {
     dev: "bunx --bun astro dev",
     build: "bunx --bun astro build",
     preview: "bun ./dist/server/entry.mjs",
-    lint: "eslint .",
+    ...nodeBunDevToolTasks,
   },
   "node": {
     dev: "dotenvx run -- astro dev",
     build: "dotenvx run -- astro build",
     preview: "dotenvx run -- astro preview",
-    lint: "eslint .",
+    ...nodeBunDevToolTasks,
   },
 };

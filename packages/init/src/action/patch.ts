@@ -154,7 +154,8 @@ const getJsons = <
         ? { "tsconfig.json": loadTsConfig(data).data }
         : {}),
       "package.json": loadPackageJson(data).data,
-      [devToolConfigs["biome"].path]: devToolConfigs["biome"].data,
+      [devToolConfigs["oxfmt"].path]: devToolConfigs["oxfmt"].data,
+      [devToolConfigs["oxlint"].path]: devToolConfigs["oxlint"].data,
       [devToolConfigs["vscSet"].path]: devToolConfigs["vscSet"].data,
       [devToolConfigs["vscExt"].path]: devToolConfigs["vscExt"].data,
     };
