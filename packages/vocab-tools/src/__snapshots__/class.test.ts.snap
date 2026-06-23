@@ -31031,8 +31031,8 @@ satisfies?: URL | null;resourceQuantity?: Measure | null;}
 /** The {@link Intent} of a {@link Proposal} that this commitment
  * satisfies.  The value is the proposal's URI with a
  * [fragment](https://developer.mozilla.org/en-US/docs/Web/URI/Reference/Fragment)
- * appended to identify the intent.  Recommended fragments are
- * \`primary\` and\`reciprocal\`.
+ * appended to identify the intent. Recommended fragments are
+ * \`primary\` and \`reciprocal\`.
  * 
  */
  get satisfies(): (URL | null) {
