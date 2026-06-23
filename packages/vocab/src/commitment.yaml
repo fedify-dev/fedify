@@ -27,8 +27,10 @@ properties:
   uri: "https://w3id.org/valueflows/ont/vf#satisfies"
   description: |
     The {@link Intent} of a {@link Proposal} that this commitment
-    satisfies.  The value is typically a fragment identifier such as
-    `#primary` or `#reciprocal`.
+    satisfies.  The value is the proposal's URI with a
+    [fragment](https://developer.mozilla.org/en-US/docs/Web/URI/Reference/Fragment)
+    appended to identify the intent.  Recommended fragments are
+    `primary` and`reciprocal`.
   range:
   - "http://www.w3.org/2001/XMLSchema#anyURI"
 

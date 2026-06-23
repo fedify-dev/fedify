@@ -2909,8 +2909,8 @@ test("FEP-0837: Agreement roundtrip with both commitments", async () => {
   );
 });
 
-test("FEP-0837: Agreement parses verbatim Accept-result example from spec", async () => {
-  // Verbatim from FEP-0837 "Accepting an agreement" example.
+test("FEP-0837: Agreement parses Accept-result example adapted from spec", async () => {
+  // Adapted from FEP-0837's "Accepting an agreement" example, to Fedify customization
   const json = {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
