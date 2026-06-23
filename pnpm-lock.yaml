@@ -199,6 +199,9 @@ importers:
       '@fedify/astro':
         specifier: workspace:^
         version: link:../packages/astro
+      '@fedify/backfill':
+        specifier: workspace:^
+        version: link:../packages/backfill
       '@fedify/cfworkers':
         specifier: workspace:^
         version: link:../packages/cfworkers
