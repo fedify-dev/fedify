@@ -116,6 +116,7 @@ test("Node.js and Bun templates use Oxfmt and Oxlint", async () => {
       equal(initializer.tasks?.["format:check"], "oxfmt --check");
       equal(initializer.tasks?.lint, "oxlint .");
       equal(initializer.files?.["eslint.config.ts"], undefined);
+      equal(initializer.files?.["eslint.config.mjs"], undefined);
       equal(initializer.devDependencies?.["@fedify/lint"] != null, true);
       equal(initializer.devDependencies?.["oxfmt"] != null, true);
       equal(initializer.devDependencies?.["oxlint"] != null, true);

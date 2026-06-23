@@ -87,7 +87,12 @@ export const replaceAll = (
 /** Serializes a value to a pretty-printed JSON string with a trailing newline. */
 export const formatJson = (obj: unknown) => formatJsonValue(obj, 0) + "\n";
 
+const MAX_JSON_FORMAT_DEPTH = 100;
+
 function formatJsonValue(value: unknown, depth: number): string {
+  if (depth > MAX_JSON_FORMAT_DEPTH) {
+    throw new RangeError("Maximum depth exceeded while formatting JSON.");
+  }
   if (Array.isArray(value)) return formatJsonArray(value, depth);
   if (value !== null && typeof value === "object") {
     return formatJsonObject(value as Record<string, unknown>, depth);

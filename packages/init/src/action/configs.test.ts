@@ -161,6 +161,7 @@ test("patchFiles creates Oxfmt and Oxlint configs for npm projects", async () =>
     assert.ok(oxfmtConfig.ignorePatterns?.includes("node_modules/**"));
     assert.ok(oxfmtConfig.ignorePatterns?.includes("**/*.md"));
     assert.ok(oxlintConfig.ignorePatterns?.includes("node_modules/**"));
+    assert.ok(oxlintConfig.ignorePatterns?.includes("**/*.md"));
     assert.deepEqual(oxlintConfig.jsPlugins, ["@fedify/lint/oxlint"]);
     assert.equal(
       oxlintConfig.rules?.["@fedify/lint/actor-id-required"],
