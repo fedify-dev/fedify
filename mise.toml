@@ -181,6 +181,10 @@ done
 
 [tasks."test:examples"]
 description = "Run tests for all example projects"
+# `prepare` builds @fedify/lint's dist/oxlint.js loader (via build:self) and,
+# through its `install` dependency, provisions the prebuilt oxlint native
+# binary into node_modules — both are needed by the lint/oxlint example.
+depends = ["prepare"]
 run = "deno run -A examples/test-examples/mod.ts"
 
 [tasks."test:monitoring"]

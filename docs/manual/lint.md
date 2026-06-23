@@ -1,8 +1,8 @@
 ---
 description: >-
-  Fedify provides linting plugins for Deno Lint and ESLint to help you catch
-  common mistakes and enforce best practices when building federated server
-  apps.
+  Fedify provides linting plugins for Deno Lint, ESLint, and Oxlint to help you
+  catch common mistakes and enforce best practices when building federated
+  server apps.
 ---
 
 Linting
@@ -15,8 +15,9 @@ _This package is available since Fedify 2.0.0._
 > app to catch common mistakes early and enforce best practices.
 
 Fedify provides the [`@fedify/lint`] package, which includes lint rules
-specifically designed for Fedify applications. It supports both [Deno Lint] and
-[ESLint], so you can use it regardless of your JavaScript/TypeScript runtime.
+specifically designed for Fedify applications. It supports [Deno Lint],
+[ESLint], and [Oxlint], so you can use it regardless of your
+JavaScript/TypeScript runtime.
 
 The plugin includes rules that check for:
 
@@ -29,6 +30,7 @@ The plugin includes rules that check for:
 [`@fedify/lint`]: https://jsr.io/@fedify/lint
 [Deno Lint]: https://docs.deno.com/runtime/reference/lint_plugins/
 [ESLint]: https://eslint.org/
+[Oxlint]: https://oxc.rs/docs/guide/usage/linter/
 
 
 Installation
@@ -257,6 +259,114 @@ yarn eslint .
 
 ~~~~ sh [Bun]
 bunx eslint .
+~~~~
+
+:::
+
+
+Oxlint
+------
+
+[Oxlint] is a fast Rust-based linter that supports ESLint-compatible JS
+plugins. `@fedify/lint` exposes its rules through Oxlint's [JS plugin API]
+via the `@fedify/lint/oxlint` subpath export.
+
+> [!NOTE]
+> Oxlint's JS plugin API is currently in alpha and not subject to semver.
+
+[JS plugin API]: https://oxc.rs/docs/guide/usage/linter/writing-js-plugins.html
+
+### Basic setup
+
+Add the plugin to your _.oxlintrc.json_ via the `jsPlugins` field, then enable
+the rules you want:
+
+~~~~ json
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+  "jsPlugins": ["@fedify/lint/oxlint"],
+  "rules": {
+    "@fedify/lint/actor-id-required": "error",
+    "@fedify/lint/actor-id-mismatch": "error"
+  }
+}
+~~~~
+
+Rule IDs are namespaced under `@fedify/lint/`, matching the ESLint preset.
+
+### Custom configuration
+
+Each rule accepts `"error"`, `"warn"`, or `"off"`. Enable any subset listed in
+the [*Rules* section](#rules) below:
+
+~~~~ json
+{
+  "jsPlugins": ["@fedify/lint/oxlint"],
+  "rules": {
+    "@fedify/lint/actor-id-required": "error",
+    "@fedify/lint/actor-id-mismatch": "error",
+    "@fedify/lint/actor-inbox-property-required": "warn",
+    "@fedify/lint/actor-outbox-property-required": "warn",
+    "@fedify/lint/actor-followers-property-required": "warn",
+    "@fedify/lint/actor-public-key-required": "warn",
+    "@fedify/lint/actor-assertion-method-required": "warn",
+    "@fedify/lint/collection-filtering-not-implemented": "warn"
+  }
+}
+~~~~
+
+### Running Oxlint
+
+Add a script to _package.json_:
+
+~~~~ jsonc
+{
+  "scripts": {
+    "lint": "oxlint ."
+  }
+}
+~~~~
+
+Then run the linter:
+
+::: code-group
+
+~~~~ sh [npm]
+npm run lint
+~~~~
+
+~~~~ sh [pnpm]
+pnpm lint
+~~~~
+
+~~~~ sh [Yarn]
+yarn lint
+~~~~
+
+~~~~ sh [Bun]
+bun lint
+~~~~
+
+:::
+
+Or invoke Oxlint directly:
+
+::: code-group
+
+~~~~ sh [npm]
+npx oxlint .
+~~~~
+
+~~~~ sh [pnpm]
+pnpx oxlint .
+~~~~
+
+~~~~ sh [Yarn]
+yarn oxlint .
+~~~~
+
+~~~~ sh [Bun]
+bunx oxlint .
 ~~~~
 
 :::
@@ -1217,10 +1327,12 @@ See also
  -  [`@fedify/lint` on npm]
  -  [Deno Lint plugins documentation]
  -  [ESLint documentation]
+ -  [Oxlint documentation]
  -  [Example project]
 
 [`@fedify/lint` on JSR]: https://jsr.io/@fedify/lint
 [`@fedify/lint` on npm]: https://www.npmjs.com/package/@fedify/lint
 [Deno Lint plugins documentation]: https://docs.deno.com/runtime/reference/lint_plugins/
 [ESLint documentation]: https://eslint.org/
+[Oxlint documentation]: https://oxc.rs/docs/guide/usage/linter/
 [Example project]: https://github.com/fedify-dev/fedify/tree/main/examples/lint

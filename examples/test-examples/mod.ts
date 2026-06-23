@@ -293,6 +293,16 @@ const SCRIPT_EXAMPLES: ScriptExample[] = [
     cmd: ["deno", "run", "--allow-all", "main.ts"],
     description: "Custom collection demonstration (in-process federation)",
   },
+  {
+    // Oxlint example for @fedify/lint.  The corrected fixture must lint
+    // clean, and the intentionally violating fixture must produce
+    // diagnostics (non-zero exit).  Requires the @fedify/lint package to
+    // be built first (`mise run prepare-each lint`).
+    name: "lint",
+    dir: "lint/oxlint",
+    cmd: ["sh", "-c", "pnpm lint:fixed && ! pnpm lint"],
+    description: "@fedify/lint with Oxlint (fixed passes, violating fails)",
+  },
 ];
 
 const MULTI_HANDLE_EXAMPLES: MultiHandleExample[] = [
