@@ -409,6 +409,19 @@ To be released.
     identifiers (`_:b0`) against `options.baseUrl`; blank nodes are left
     as `null` in the resulting instance's `id` field.  [[#792]]
 
+ -  Added the second-stage vocabulary types for [FEP-0837], economic
+    resource coordination in federated networks.
+    [[#775] by Samuel Brinkmann]
+
+     -  Added `Agreement` class, representing the agreement reached between
+        parties responding to a `Proposal`, wrapped in an `Offer` and
+        finalized as the `result` of an `Accept`.
+     -  Added `Commitment` class, representing a promised economic
+        transaction that references an `Intent` via `satisfies` and carries
+        the committed quantity via `resourceQuantity`.
+
+[FEP-0837]: https://w3id.org/fep/0837
+[#775]: https://github.com/fedify-dev/fedify/issues/775
 [#790]: https://github.com/fedify-dev/fedify/issues/790
 
 ### @fedify/vocab-tools
@@ -704,7 +717,6 @@ Released on April 28, 2026.
         measure, with `unit` and `numericalValue` properties.
 
 [FEP-044f]: https://w3id.org/fep/044f
-[FEP-0837]: https://w3id.org/fep/0837
 [#452]: https://github.com/fedify-dev/fedify/issues/452
 [#578]: https://github.com/fedify-dev/fedify/issues/578
 [#645]: https://github.com/fedify-dev/fedify/issues/645

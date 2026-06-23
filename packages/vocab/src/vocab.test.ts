@@ -22,27 +22,36 @@ import {
 import { assertInstanceOf } from "./utils.ts";
 import * as vocab from "./vocab.ts";
 import {
+  Accept,
   Activity,
+  Agreement,
   Announce,
   Collection,
+  Commitment,
   Create,
   CryptographicKey,
   type DataIntegrityProof,
   Delete,
+  Document,
   Endpoints,
   Follow,
   Hashtag,
+  Intent,
   InteractionPolicy,
   InteractionRule,
   Link,
+  Measure,
   Note,
   Object,
+  Offer,
   OrderedCollectionPage,
   Person,
   Place,
+  Proposal,
   Question,
   QuoteAuthorization,
   QuoteRequest,
+  Reject,
   Source,
   Tombstone,
 } from "./vocab.ts";
@@ -2801,6 +2810,338 @@ test(
     );
   },
 );
+
+test("FEP-0837: Commitment roundtrip preserves satisfies and resourceQuantity", async () => {
+  const commitment = new Commitment({
+    id: new URL("https://market.example/agreements/abc#primary"),
+    satisfies: new URL(
+      "https://market.example/proposals/abc#primary",
+    ),
+    resourceQuantity: new Measure({
+      unit: "one",
+      numericalValue: parseDecimal("1"),
+    }),
+  });
+  const jsonLd = await commitment.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  });
+  const restored = await Commitment.fromJsonLd(jsonLd, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  // A finalized Commitment carries a (fragment) id even though Commitment is
+  // not an independently fetchable entity (`entity: false`).
+  deepStrictEqual(restored.id?.href, commitment.id?.href);
+  deepStrictEqual(restored.satisfies, commitment.satisfies);
+  deepStrictEqual(restored.resourceQuantity?.unit, "one");
+  deepStrictEqual(
+    restored.resourceQuantity?.numericalValue,
+    parseDecimal("1"),
+  );
+});
+
+test("FEP-0837: Agreement roundtrip with both commitments", async () => {
+  const agreement = new Agreement({
+    id: new URL(
+      "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2",
+    ),
+    attribution: new URL("https://market.example/users/alice"),
+    stipulates: new Commitment({
+      id: new URL(
+        "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2#primary",
+      ),
+      satisfies: new URL(
+        "https://market.example/proposals/ddde9d6f#primary",
+      ),
+      resourceQuantity: new Measure({
+        unit: "one",
+        numericalValue: parseDecimal("1"),
+      }),
+    }),
+    stipulatesReciprocal: new Commitment({
+      id: new URL(
+        "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2#reciprocal",
+      ),
+      satisfies: new URL(
+        "https://market.example/proposals/ddde9d6f#reciprocal",
+      ),
+      resourceQuantity: new Measure({
+        unit: "currencyAmount",
+        numericalValue: parseDecimal("30.00"),
+      }),
+    }),
+  });
+  const jsonLd = await agreement.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  });
+  const restored = await Agreement.fromJsonLd(jsonLd, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  deepStrictEqual(restored.id?.href, agreement.id?.href);
+  deepStrictEqual(
+    restored.stipulates?.id?.href,
+    agreement.stipulates?.id?.href,
+  );
+  deepStrictEqual(
+    restored.stipulates?.satisfies?.href,
+    agreement.stipulates?.satisfies?.href,
+  );
+  deepStrictEqual(
+    restored.stipulates?.resourceQuantity?.numericalValue,
+    parseDecimal("1"),
+  );
+  deepStrictEqual(
+    restored.stipulatesReciprocal?.id?.href,
+    agreement.stipulatesReciprocal?.id?.href,
+  );
+  deepStrictEqual(
+    restored.stipulatesReciprocal?.satisfies?.href,
+    agreement.stipulatesReciprocal?.satisfies?.href,
+  );
+  deepStrictEqual(
+    restored.stipulatesReciprocal?.resourceQuantity?.unit,
+    "currencyAmount",
+  );
+  deepStrictEqual(
+    restored.stipulatesReciprocal?.resourceQuantity?.numericalValue,
+    parseDecimal("30.00"),
+  );
+});
+
+test("FEP-0837: Agreement parses verbatim Accept-result example from spec", async () => {
+  // Verbatim from FEP-0837 "Accepting an agreement" example.
+  const json = {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      {
+        vf: "https://w3id.org/valueflows/ont/vf#",
+        Agreement: "vf:Agreement",
+        stipulates: "vf:stipulates",
+        stipulatesReciprocal: "vf:stipulatesReciprocal",
+        Commitment: "vf:Commitment",
+        satisfies: { "@id": "vf:satisfies", "@type": "@id" },
+        resourceQuantity: "vf:resourceQuantity",
+        hasUnit: "om2:hasUnit",
+        hasNumericalValue: "om2:hasNumericalValue",
+        om2: "http://www.ontology-of-units-of-measure.org/resource/om-2/",
+      },
+    ],
+    type: "Agreement",
+    id:
+      "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2",
+    attributedTo: "https://market.example/users/alice",
+    stipulates: {
+      id:
+        "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2#primary",
+      type: "Commitment",
+      satisfies:
+        "https://market.example/proposals/ddde9d6f-6f3b-4770-a966-3a18ef006930#primary",
+      resourceQuantity: {
+        hasUnit: "one",
+        hasNumericalValue: "1",
+      },
+    },
+    stipulatesReciprocal: {
+      id:
+        "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2#reciprocal",
+      type: "Commitment",
+      satisfies:
+        "https://market.example/proposals/ddde9d6f-6f3b-4770-a966-3a18ef006930#reciprocal",
+      resourceQuantity: {
+        hasUnit: "currencyAmount",
+        hasNumericalValue: "30.00",
+      },
+    },
+  };
+  const agreement = await Agreement.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  deepStrictEqual(
+    agreement.id?.href,
+    "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2",
+  );
+  deepStrictEqual(
+    agreement.attributionId?.href,
+    "https://market.example/users/alice",
+  );
+  deepStrictEqual(
+    agreement.stipulates?.id?.href,
+    "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2#primary",
+  );
+  deepStrictEqual(
+    agreement.stipulates?.satisfies?.href,
+    "https://market.example/proposals/ddde9d6f-6f3b-4770-a966-3a18ef006930#primary",
+  );
+  deepStrictEqual(
+    agreement.stipulates?.resourceQuantity?.numericalValue,
+    parseDecimal("1"),
+  );
+  deepStrictEqual(
+    agreement.stipulatesReciprocal?.id?.href,
+    "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2#reciprocal",
+  );
+  deepStrictEqual(
+    agreement.stipulatesReciprocal?.satisfies?.href,
+    "https://market.example/proposals/ddde9d6f-6f3b-4770-a966-3a18ef006930#reciprocal",
+  );
+  deepStrictEqual(
+    agreement.stipulatesReciprocal?.resourceQuantity?.numericalValue,
+    parseDecimal("30.00"),
+  );
+});
+
+test("FEP-0837: Full marketplace flow — Proposal → Offer → Accept → Confirmation", async () => {
+  // Stage 1: Alice publishes a Proposal.  Its id anchors the intent fragment
+  // URI (`#primary`) that the downstream commitments satisfy.
+  const proposal = new Proposal({
+    id: new URL(
+      "https://market.example/proposals/ddde9d6f-6f3b-4770-a966-3a18ef006930",
+    ),
+    attribution: new URL("https://market.example/users/alice"),
+    purpose: "offer",
+    publishes: new Intent({
+      action: "transfer",
+      resourceConformsTo: new URL("https://www.wikidata.org/wiki/Q11442"),
+      resourceQuantity: new Measure({
+        unit: "one",
+        numericalValue: parseDecimal("1"),
+      }),
+    }),
+    to: new URL("https://www.w3.org/ns/activitystreams#Public"),
+  });
+  ok(proposal.purpose === "offer");
+  const primaryIntent = new URL(`${proposal.id?.href}#primary`);
+
+  // Stage 2a: Bob sends Offer(Agreement) whose commitment satisfies the
+  // proposal's primary intent.
+  const offerId = new URL(
+    "https://social.example/objects/fc4af0d2-c3a1-409b-947c-3c5be29f49b0/offer",
+  );
+  const offer = new Offer({
+    id: offerId,
+    actor: new URL("https://social.example/users/bob"),
+    object: new Agreement({
+      stipulates: new Commitment({
+        satisfies: primaryIntent,
+        resourceQuantity: new Measure({
+          unit: "one",
+          numericalValue: parseDecimal("1"),
+        }),
+      }),
+    }),
+    to: new URL("https://market.example/users/alice"),
+  });
+  const offerJson = await offer.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  });
+  const offerRestored = await Offer.fromJsonLd(offerJson, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  const restoredAgreement = await offerRestored.getObject({
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  assertInstanceOf(restoredAgreement, Agreement);
+  deepStrictEqual(
+    restoredAgreement.stipulates?.satisfies?.href,
+    primaryIntent.href,
+  );
+  deepStrictEqual(
+    restoredAgreement.stipulates?.resourceQuantity?.numericalValue,
+    parseDecimal("1"),
+  );
+
+  // Stage 2b: Alice sends Accept(Offer) with finalized Agreement in `result`.
+  const agreementId = new URL(
+    "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2",
+  );
+  const accept = new Accept({
+    id: new URL(
+      "https://market.example/activities/059f08fa-31b1-4136-8d76-5987d705a0ab",
+    ),
+    actor: new URL("https://market.example/users/alice"),
+    object: offerId,
+    result: new Agreement({
+      id: agreementId,
+      attribution: new URL("https://market.example/users/alice"),
+      stipulates: new Commitment({
+        satisfies: primaryIntent,
+        resourceQuantity: new Measure({
+          unit: "one",
+          numericalValue: parseDecimal("1"),
+        }),
+      }),
+    }),
+    to: new URL("https://social.example/users/bob"),
+  });
+  const acceptJson = await accept.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  });
+  const acceptRestored = await Accept.fromJsonLd(acceptJson, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  deepStrictEqual(acceptRestored.objectId?.href, offerId.href);
+  const acceptResult = await acceptRestored.getResult({
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  assertInstanceOf(acceptResult, Agreement);
+  deepStrictEqual(acceptResult.id?.href, agreementId.href);
+
+  // Stage 2 alt: Reject(Offer) with a reason.
+  const reject = new Reject({
+    actor: new URL("https://market.example/users/alice"),
+    object: offerId,
+    content: "Not available",
+    to: new URL("https://social.example/users/bob"),
+  });
+  const rejectJson = await reject.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  });
+  const rejectRestored = await Reject.fromJsonLd(rejectJson, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  deepStrictEqual(rejectRestored.objectId?.href, offerId.href);
+  deepStrictEqual(rejectRestored.content?.toString(), "Not available");
+
+  // Stage 3: Confirmation as Create(Document) with `context` linking to the
+  // finalized Agreement.  The Create activity needs an @id at the same origin
+  // as its embedded Document so cross-origin trust preserves the embedded
+  // form (rather than unwinding to a URL reference that would require a fetch).
+  const receipt = new Create({
+    id: new URL(
+      "https://market.example/receipts/ad2f7ee1-6567-413e-a10b-72650cbdc743/create",
+    ),
+    actor: new URL("https://market.example/users/alice"),
+    object: new Document({
+      id: new URL(
+        "https://market.example/receipts/ad2f7ee1-6567-413e-a10b-72650cbdc743",
+      ),
+      name: "Receipt",
+      contexts: [agreementId],
+      published: Temporal.Instant.from("2023-07-03T14:13:41.843794Z"),
+    }),
+    to: new URL("https://social.example/users/bob"),
+  });
+  const receiptJson = await receipt.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  });
+  const receiptRestored = await Create.fromJsonLd(receiptJson, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  const receiptObject = await receiptRestored.getObject({
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  assertInstanceOf(receiptObject, Document);
+  deepStrictEqual(receiptObject.contextIds[0]?.href, agreementId.href);
+});
 
 function getAllProperties(
   type: TypeSchema,
