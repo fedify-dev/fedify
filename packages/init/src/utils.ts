@@ -85,82 +85,31 @@ export const replaceAll = (
 (text: string): string => text.replaceAll(pattern, replacement as string);
 
 /** Serializes a value to a pretty-printed JSON string with a trailing newline. */
-export const formatJson = (obj: unknown) => formatJsonValue(obj, 0) + "\n";
+export const formatJson = (obj: unknown) =>
+  JSON.stringify(obj, createJsonDepthGuard(), 2) + "\n";
 
 const MAX_JSON_FORMAT_DEPTH = 100;
 
-function formatJsonValue(
+const createJsonDepthGuard = (): (
+  this: unknown,
+  key: string,
   value: unknown,
-  depth: number,
-  toJSONDepth = 0,
-): string {
-  if (depth > MAX_JSON_FORMAT_DEPTH) {
-    throw new RangeError("Maximum depth exceeded while formatting JSON.");
-  }
-  if (toJSONDepth > MAX_JSON_FORMAT_DEPTH) {
-    throw new RangeError("Maximum depth exceeded while formatting JSON.");
-  }
-  if (hasToJSON(value)) {
-    return formatJsonValue(value.toJSON(), depth, toJSONDepth + 1);
-  }
-  if (Array.isArray(value)) return formatJsonArray(value, depth);
-  if (value !== null && typeof value === "object") {
-    return formatJsonObject(value as Record<string, unknown>, depth);
-  }
-  return formatJsonPrimitive(value);
-}
-
-function hasToJSON(value: unknown): value is { toJSON: () => unknown } {
-  return value !== null &&
-    typeof value === "object" &&
-    typeof (value as { toJSON?: unknown }).toJSON === "function";
-}
-
-function formatJsonArray(values: unknown[], depth: number): string {
-  if (values.length === 0) return "[]";
-  const canCompact = values.every((value) =>
-    value == null || typeof value !== "object"
-  );
-  const compact = canCompact
-    ? `[${values.map(formatJsonPrimitive).join(", ")}]`
-    : "";
-  if (
-    canCompact &&
-    compact.length <= 80
-  ) {
-    return compact;
-  }
-  const childIndent = indent(depth + 1);
-  return `[\n${
-    values.map((value) => `${childIndent}${formatJsonValue(value, depth + 1)}`)
-      .join(",\n")
-  }\n${indent(depth)}]`;
-}
-
-function formatJsonObject(
-  object: Record<string, unknown>,
-  depth: number,
-): string {
-  const entries = Object.entries(object).filter(([, value]) =>
-    value !== undefined &&
-    typeof value !== "function" &&
-    typeof value !== "symbol"
-  );
-  if (entries.length === 0) return "{}";
-  const childIndent = indent(depth + 1);
-  return `{\n${
-    entries.map(([key, value]) =>
-      `${childIndent}${JSON.stringify(key)}: ${
-        formatJsonValue(value, depth + 1)
-      }`
-    ).join(",\n")
-  }\n${indent(depth)}}`;
-}
-
-const indent = (depth: number): string => "  ".repeat(depth);
-
-const formatJsonPrimitive = (value: unknown): string =>
-  JSON.stringify(value) ?? "null";
+) => unknown => {
+  const depths = new WeakMap<object, number>();
+  return function (_key, value) {
+    if (value !== null && typeof value === "object") {
+      const parentDepth = this !== null && typeof this === "object"
+        ? depths.get(this) ?? 0
+        : 0;
+      const depth = parentDepth + 1;
+      if (depth > MAX_JSON_FORMAT_DEPTH) {
+        throw new RangeError("Maximum depth exceeded while formatting JSON.");
+      }
+      depths.set(value, depth);
+    }
+    return value;
+  };
+};
 
 /** Checks whether a string or array-like value has a length greater than zero. */
 export const notEmpty = <T extends string | { length: number }>(s: T) =>

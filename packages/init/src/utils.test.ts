@@ -33,6 +33,6 @@ test("formatJson omits unserializable object property values", () => {
       skipSymbol: Symbol("value"),
       array: [undefined, () => "value", Symbol("value")],
     }),
-    '{\n  "keep": "value",\n  "array": [null, null, null]\n}\n',
+    '{\n  "keep": "value",\n  "array": [\n    null,\n    null,\n    null\n  ]\n}\n',
   );
 });
