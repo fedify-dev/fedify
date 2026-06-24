@@ -1,5 +1,10 @@
 import { readFile, rm, writeFile } from "node:fs/promises";
-import { join as joinPath } from "node:path";
+import {
+  isAbsolute,
+  join as joinPath,
+  relative as relativePath,
+  resolve as resolvePath,
+} from "node:path";
 import { throwUnlessNotExists } from "../lib.ts";
 import type { InitCommandData, WebFrameworkInitializer } from "../types.ts";
 import { formatJson } from "../utils.ts";
@@ -10,9 +15,21 @@ export async function cleanupScaffoldedFiles(
   await Promise.all(
     (initializer.cleanupFiles ?? [])
       .filter((path) => path.trim() !== "")
-      .map((path) => rm(joinPath(dir, path), { force: true, recursive: true })),
+      .map((path) =>
+        rm(resolveCleanupPath(dir, path), { force: true, recursive: true })
+      ),
   );
   await cleanupPackageJson(dir, initializer.cleanupPackageJson);
+}
+
+function resolveCleanupPath(dir: string, path: string): string {
+  const baseDir = resolvePath(dir);
+  const targetPath = resolvePath(baseDir, path);
+  const relative = relativePath(baseDir, targetPath);
+  if (relative.startsWith("..") || isAbsolute(relative)) {
+    throw new Error(`Cleanup path escapes project directory: ${path}`);
+  }
+  return targetPath;
 }
 
 async function cleanupPackageJson(

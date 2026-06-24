@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -299,6 +299,29 @@ test("cleanupScaffoldedFiles ignores empty cleanup file paths", async () => {
     });
   } finally {
     await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cleanupScaffoldedFiles rejects cleanup path traversal", async () => {
+  const parent = await mkdtemp(join(tmpdir(), "fedify-init-cleanup-parent-"));
+  const dir = join(parent, "project");
+
+  try {
+    await mkdir(dir);
+    const data = await createNpmInitData(dir);
+    data.initializer.cleanupFiles = ["../outside.txt"];
+    await writeFile(join(parent, "outside.txt"), "outside\n");
+
+    await assert.rejects(
+      cleanupScaffoldedFiles(data),
+      new Error("Cleanup path escapes project directory: ../outside.txt"),
+    );
+    assert.equal(
+      await readFile(join(parent, "outside.txt"), "utf8"),
+      "outside\n",
+    );
+  } finally {
+    await rm(parent, { recursive: true, force: true });
   }
 });
 
