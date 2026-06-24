@@ -26,6 +26,9 @@ const nextDescription: WebFrameworkDescription = {
     },
     federationFile: "federation/index.ts",
     loggingFile: "logging.ts",
+    format: {
+      ignorePatterns: [".next/**"],
+    },
     files: {
       "instrumentation.ts": await readTemplate("next/instrumentation.ts"),
       "middleware.ts": await readTemplate("next/middleware.ts"),

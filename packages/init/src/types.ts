@@ -98,6 +98,10 @@ export interface WebFrameworkInitializer {
    *  default value.  Merged together with KV store and message queue env vars
    *  into the generated `.env` file. */
   env?: Record<string, string>;
+  /** Formatter and linter options to merge into generated tool configs. */
+  format?: {
+    ignorePatterns?: string[];
+  };
   /** TypeScript compiler options to include in `tsconfig.json`. */
   compilerOptions?: Record<string, string | boolean | number | string[] | null>;
   /** Task scripts keyed by task name (e.g., `"dev"`, `"prod"`, `"lint"`). */

@@ -1,14 +1,10 @@
 {
   "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
   "ignorePatterns": [
-    ".next/**",
-    ".output/**",
-    ".solid/**",
-    ".vinxi/**",
+    "**/*.md",
     "build/**",
     "coverage/**",
     "dist/**",
-    "**/*.md",
     "node_modules/**"
   ],
   "jsPlugins": [

@@ -18,6 +18,9 @@ const nitroDescription: WebFrameworkDescription = {
     devDependencies: defaultDevDependencies,
     federationFile: "server/federation.ts",
     loggingFile: "server/logging.ts",
+    format: {
+      ignorePatterns: [".output/**"],
+    },
     env: testMode ? { HOST: "127.0.0.1" } : {} as Record<string, string>,
     files: {
       "server/plugins/logging.ts": await readTemplate(

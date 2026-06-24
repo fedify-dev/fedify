@@ -19,6 +19,9 @@ const solidstartDescription: WebFrameworkDescription = {
     },
     federationFile: "src/federation.ts",
     loggingFile: "src/logging.ts",
+    format: {
+      ignorePatterns: [".solid/**", ".vinxi/**"],
+    },
     files: {
       "app.config.ts": (await readTemplate("solidstart/app.config.ts"))
         .replace(

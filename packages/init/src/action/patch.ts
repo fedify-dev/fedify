@@ -13,6 +13,8 @@ import { formatJson, merge, set } from "../utils.ts";
 import {
   devToolConfigs,
   loadDenoConfig,
+  loadOxfmtConfig,
+  loadOxlintConfig,
   loadPackageJson,
   loadTsConfig,
 } from "./configs.ts";
@@ -49,6 +51,7 @@ export const getJsonsCacheKey = (data: JsonConfigData): string =>
       compilerOptions: data.initializer.compilerOptions ?? {},
       dependencies: data.initializer.dependencies ?? {},
       devDependencies: data.initializer.devDependencies ?? {},
+      format: data.initializer.format ?? {},
       tasks: data.initializer.tasks ?? {},
     },
     kv: {
@@ -159,8 +162,8 @@ const getJsons = <
         ? { "tsconfig.json": loadTsConfig(data).data }
         : {}),
       "package.json": loadPackageJson(data).data,
-      [devToolConfigs["oxfmt"].path]: devToolConfigs["oxfmt"].data,
-      [devToolConfigs["oxlint"].path]: devToolConfigs["oxlint"].data,
+      [devToolConfigs["oxfmt"].path]: loadOxfmtConfig(data).data,
+      [devToolConfigs["oxlint"].path]: loadOxlintConfig(data).data,
       [devToolConfigs["vscSet"].path]: devToolConfigs["vscSet"].data,
       [devToolConfigs["vscExt"].path]: devToolConfigs["vscExt"].data,
     };

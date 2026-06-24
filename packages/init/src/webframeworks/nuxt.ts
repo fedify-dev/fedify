@@ -20,6 +20,9 @@ const nuxtDescription: WebFrameworkDescription = {
     federationFile: "server/federation.ts",
     loggingFile: "server/logging.ts",
     loggingTemplate: "nuxt/server/logging.ts",
+    format: {
+      ignorePatterns: [".output/**"],
+    },
     env: testMode ? { HOST: "127.0.0.1" } : {} as Record<string, string>,
     files: {
       "nuxt.config.ts": await readTemplate("nuxt/nuxt.config.ts"),

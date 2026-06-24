@@ -159,10 +159,14 @@ test("patchFiles creates Oxfmt and Oxlint configs for npm projects", async () =>
     );
     assert.equal(oxfmtConfig.sortPackageJson, false);
     assert.equal(oxfmtConfig.tabWidth, 2);
-    assert.ok(oxfmtConfig.ignorePatterns?.includes("node_modules/**"));
-    assert.ok(oxfmtConfig.ignorePatterns?.includes("**/*.md"));
-    assert.ok(oxlintConfig.ignorePatterns?.includes("node_modules/**"));
-    assert.ok(oxlintConfig.ignorePatterns?.includes("**/*.md"));
+    assert.deepEqual(oxfmtConfig.ignorePatterns, [
+      "**/*.md",
+      "build/**",
+      "coverage/**",
+      "dist/**",
+      "node_modules/**",
+    ]);
+    assert.deepEqual(oxlintConfig.ignorePatterns, oxfmtConfig.ignorePatterns);
     assert.deepEqual(oxlintConfig.jsPlugins, ["@fedify/lint/oxlint"]);
     assert.equal(
       oxlintConfig.rules?.["@fedify/lint/actor-id-required"],
@@ -196,6 +200,38 @@ test("patchFiles keeps generated Deno federation file formatted", async () => {
       "--check",
       join(dir, "src", "federation.ts"),
     ]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("patchFiles adds framework-specific Oxc ignore patterns", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fedify-init-next-oxc-"));
+
+  try {
+    const data = await createNextNpmInitData(dir);
+    await patchFiles(data);
+
+    const oxfmtConfig = JSON.parse(
+      await readFile(join(dir, ".oxfmtrc.json"), "utf8"),
+    ) as {
+      ignorePatterns?: string[];
+    };
+    const oxlintConfig = JSON.parse(
+      await readFile(join(dir, ".oxlintrc.json"), "utf8"),
+    ) as {
+      ignorePatterns?: string[];
+    };
+
+    assert.deepEqual(oxfmtConfig.ignorePatterns, [
+      "**/*.md",
+      ".next/**",
+      "build/**",
+      "coverage/**",
+      "dist/**",
+      "node_modules/**",
+    ]);
+    assert.deepEqual(oxlintConfig.ignorePatterns, oxfmtConfig.ignorePatterns);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

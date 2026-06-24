@@ -170,6 +170,35 @@ export const loadPackageJson = (
   },
 });
 
+export const loadOxfmtConfig = (
+  data: InitCommandData,
+) => ({
+  path: joinPath(".oxfmtrc.json"),
+  data: withFormatIgnorePatterns(oxfmt, data),
+});
+
+export const loadOxlintConfig = (
+  data: InitCommandData,
+) => ({
+  path: joinPath(".oxlintrc.json"),
+  data: withFormatIgnorePatterns(oxlint, data),
+});
+
+const withFormatIgnorePatterns = <
+  T extends { ignorePatterns?: string[] },
+>(
+  config: T,
+  data: InitCommandData,
+): T => ({
+  ...config,
+  ignorePatterns: [
+    ...new Set([
+      ...(config.ignorePatterns ?? []),
+      ...(data.initializer.format?.ignorePatterns ?? []),
+    ]),
+  ].sort(),
+});
+
 /**
  * Configuration objects for various development tool setup files.
  * Contains predefined configurations for code formatting, VS Code settings, and extensions
