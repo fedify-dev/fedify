@@ -41,6 +41,23 @@ test("assertNoGeneratedFileConflicts rejects existing generated files", async ()
   });
 });
 
+test("assertNoGeneratedFileConflicts rejects existing cleanup files", async () => {
+  await withTempDir(async (dir) => {
+    await mkdir(join(dir, "server", "routes"), { recursive: true });
+    await writeFile(join(dir, "server", "routes", "index.ts"), "");
+
+    await assert.rejects(
+      () => assertNoGeneratedFileConflicts(createInitData(dir, true)),
+      (error) => {
+        assert.ok(error instanceof GeneratedFileConflictError);
+        assert.deepEqual(error.conflicts, ["server/routes/index.ts"]);
+        assert.match(error.message, /server\/routes\/index\.ts/);
+        return true;
+      },
+    );
+  });
+});
+
 test("assertNoGeneratedFileConflicts skips checks without allowNonEmpty", async () => {
   await withTempDir(async (dir) => {
     await writeFile(join(dir, "package.json"), "{}\n");
@@ -100,6 +117,7 @@ function createInitData(
       files: {
         "src/main.ts": "",
       },
+      cleanupFiles: ["server/routes/index.ts"],
     },
     kv: {
       label: "In-Memory",

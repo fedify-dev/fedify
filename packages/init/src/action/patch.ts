@@ -96,8 +96,8 @@ export const recommendPatchFiles = (data: InitCommandData) =>
 /**
  * Verifies that `--allow-non-empty` will not modify files that already
  * existed before any framework scaffolding command runs.  This only covers
- * files that Fedify writes itself; framework scaffolders may still reject
- * unrelated pre-existing files independently.
+ * files that Fedify writes or deletes itself; framework scaffolders may still
+ * reject unrelated pre-existing files independently.
  */
 export async function assertNoGeneratedFileConflicts(
   data: InitCommandData,
@@ -186,6 +186,7 @@ const getGeneratedFilePaths = (data: InitCommandData): string[] => [
   ".env",
   ...Object.keys(data.initializer.files ?? {}),
   ...Object.keys(getJsons(data)),
+  ...(data.initializer.cleanupFiles ?? []).filter((path) => path.trim() !== ""),
 ];
 
 const getExistingGeneratedFiles = async (
@@ -213,7 +214,7 @@ const pathExists = async (path: string): Promise<boolean> => {
 
 const formatConflictMessage = (conflicts: readonly string[]): string =>
   [
-    "Cannot initialize in a non-empty directory because these generated files",
+    "Cannot initialize in a non-empty directory because these files",
     "already exist:",
     ...conflicts.map((path) => ` - ${path}`),
     "Remove the conflicting files or choose another directory.",
