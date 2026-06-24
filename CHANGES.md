@@ -227,12 +227,13 @@ To be released.
     It supports FEP-f228 context collections containing post-like objects or
     `Create` activities, optional reply-tree traversal, ordered hybrid
     strategies, shared safety budgets, deduplication, and traversal-local
-    document caching.  [[#275], [#779], [#801], [#807] by Jiwon Kwon]
+    document caching.  [[#275], [#779], [#801], [#807], [#816] by Jiwon Kwon]
 
 [#275]: https://github.com/fedify-dev/fedify/issues/275
 [#779]: https://github.com/fedify-dev/fedify/pull/779
 [#801]: https://github.com/fedify-dev/fedify/pull/801
 [#807]: https://github.com/fedify-dev/fedify/pull/807
+[#816]: https://github.com/fedify-dev/fedify/pull/816
 
 ### @fedify/fixture
 
