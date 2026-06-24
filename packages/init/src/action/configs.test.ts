@@ -282,6 +282,62 @@ test("cleanupScaffoldedFiles removes Next.js ESLint artifacts", async () => {
   }
 });
 
+test("cleanupScaffoldedFiles ignores empty cleanup file paths", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fedify-init-cleanup-empty-"));
+
+  try {
+    const data = await createNpmInitData(dir);
+    data.initializer.cleanupFiles = ["", "   ", "generated.txt"];
+    await writeFile(join(dir, "generated.txt"), "generated\n");
+    await writeFile(join(dir, "keep.txt"), "keep\n");
+
+    await cleanupScaffoldedFiles(data);
+
+    assert.equal(await readFile(join(dir, "keep.txt"), "utf8"), "keep\n");
+    await assert.rejects(readFile(join(dir, "generated.txt"), "utf8"), {
+      code: "ENOENT",
+    });
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("cleanupScaffoldedFiles removes Nitro lint artifacts", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fedify-init-nitro-cleanup-"));
+
+  try {
+    const data = await createNitroNpmInitData(dir);
+    await writeFile(
+      join(dir, "package.json"),
+      JSON.stringify({
+        devDependencies: {
+          eslint: "^9",
+          "eslint-config-unjs": "^0.5.0",
+          prettier: "^3",
+          typescript: "^5",
+        },
+      }),
+    );
+
+    await cleanupScaffoldedFiles(data);
+
+    const packageJson = JSON.parse(
+      await readFile(join(dir, "package.json"), "utf8"),
+    ) as {
+      devDependencies?: Record<string, string>;
+    };
+    assert.equal(packageJson.devDependencies?.eslint, undefined);
+    assert.equal(
+      packageJson.devDependencies?.["eslint-config-unjs"],
+      undefined,
+    );
+    assert.equal(packageJson.devDependencies?.prettier, undefined);
+    assert.equal(packageJson.devDependencies?.typescript, "^5");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("patchFiles preserves Nitro's generated tsconfig extends", async () => {
   const dir = await mkdtemp(join(tmpdir(), "fedify-init-nitro-tsconfig-"));
 

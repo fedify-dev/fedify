@@ -11,6 +11,9 @@ const nitroDescription: WebFrameworkDescription = {
   init: async ({ packageManager: pm, testMode }) => ({
     command: getNitroInitCommand(pm),
     cleanupFiles: pm === "deno" ? [] : ["server/routes/index.ts"],
+    cleanupPackageJson: pm === "deno" ? {} : {
+      devDependencies: ["eslint", "eslint-config-unjs", "prettier"],
+    },
     dependencies: {
       "@fedify/h3": PACKAGE_VERSION,
       ...(pm === "deno" && defaultDenoDependencies),

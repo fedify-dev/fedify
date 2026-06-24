@@ -8,9 +8,9 @@ export async function cleanupScaffoldedFiles(
   { dir, initializer }: InitCommandData,
 ): Promise<void> {
   await Promise.all(
-    (initializer.cleanupFiles ?? []).map((path) =>
-      rm(joinPath(dir, path), { force: true, recursive: true })
-    ),
+    (initializer.cleanupFiles ?? [])
+      .filter((path) => path.trim() !== "")
+      .map((path) => rm(joinPath(dir, path), { force: true, recursive: true })),
   );
   await cleanupPackageJson(dir, initializer.cleanupPackageJson);
 }
