@@ -312,7 +312,7 @@ To be released.
     block per scenario that gates a run for CI.  The command refuses public
     non-`benchmarkMode` targets without an explicit unsafe override, supports
     discovery-aware `--dry-run` planning, and ships with a local benchmark
-    fixture used by the scenario tests.  [[#744], [#783], [#784]]
+    fixture used by the scenario tests.  [[#744], [#783], [#784], [#791]]
 
  -  Added `actor`, `object`, `fanout`, `failure`, and `mixed` scenario runners
     to `fedify bench`.  Read scenarios can now benchmark actor and object
@@ -324,6 +324,12 @@ To be released.
     `sinkBase` to generate deterministic benchmark sink inbox URLs for targets
     that keep `triggerSinks` allowlisting enabled.  This change is published
     as benchmark scenario schema version 2.  [[#744], [#785], [#801], [#802]]
+
+ -  Hardened `fedify bench` safety planning and preflight checks.  The command
+    now resolves inbox destinations before load generation, treats unreadable
+    or malformed resolver output conservatively, applies suite defaults
+    consistently, and keeps the local benchmark fixture inside the CLI package
+    for regression coverage.  [[#744], [#795]]
 
  -  Added `fedify bench compare` for CI-friendly performance regression gates.
     The command checks out base and head refs into temporary worktrees, starts
@@ -341,6 +347,8 @@ To be released.
 [#784]: https://github.com/fedify-dev/fedify/issues/784
 [#785]: https://github.com/fedify-dev/fedify/issues/785
 [#786]: https://github.com/fedify-dev/fedify/issues/786
+[#791]: https://github.com/fedify-dev/fedify/pull/791
+[#795]: https://github.com/fedify-dev/fedify/pull/795
 [#801]: https://github.com/fedify-dev/fedify/pull/801
 [#802]: https://github.com/fedify-dev/fedify/pull/802
 [#804]: https://github.com/fedify-dev/fedify/pull/804
@@ -352,13 +360,15 @@ To be released.
     It supports [FEP-f228] context collections containing post-like objects or
     `Create` activities, optional reply-tree traversal, ordered hybrid
     strategies, shared safety budgets, deduplication, and traversal-local
-    document caching.  [[#275], [#779], [#801], [#807], [#816] by Jiwon Kwon]
+    document caching.
+    [[#275], [#779], [#801], [#807], [#816], [#820] by Jiwon Kwon]
 
 [FEP-f228]: https://w3id.org/fep/f228
 [#275]: https://github.com/fedify-dev/fedify/issues/275
 [#779]: https://github.com/fedify-dev/fedify/pull/779
 [#807]: https://github.com/fedify-dev/fedify/pull/807
 [#816]: https://github.com/fedify-dev/fedify/pull/816
+[#820]: https://github.com/fedify-dev/fedify/pull/820
 
 ### @fedify/fixture
 
@@ -482,6 +492,27 @@ To be released.
     that mutation of the caller's original `URL` object does not affect
     later resolution.  [[#792]]
 
+### Documentation and examples
+
+ -  Rebuilt the documentation home page on VitePress 2 with a custom Fedify
+    landing page, package-manager-specific installation commands, richer
+    feature sections, linked fediverse software logos, Sovereign Tech Agency
+    credit, and a generated Open Graph image.  [[#809]]
+
+ -  Added a production monitoring guide that turns Fedify's OpenTelemetry
+    metrics into practical Prometheus queries, dashboard panels, and alerting
+    rules for federation health, queue backlog, delivery failures, signature
+    verification failures, and circuit breaker state.  [[#813]]
+
+ -  Added a runnable monitoring example at *examples/monitoring/* with an
+    OpenTelemetry Collector, Prometheus, Grafana dashboard provisioning,
+    Prometheus alert rules, synthetic Fedify-shaped metrics, validation
+    checks, and an optional Docker Compose smoke test.  [[#814]]
+
+[#809]: https://github.com/fedify-dev/fedify/pull/809
+[#813]: https://github.com/fedify-dev/fedify/pull/813
+[#814]: https://github.com/fedify-dev/fedify/pull/814
+
 ### Claude Code plugin
 
  -  Added a Claude Code plugin at *claude-plugin/*, installable with:
@@ -498,9 +529,10 @@ To be released.
     lives canonically in *claude-plugin/skills/fedify/* and is referenced from
     *packages/fedify/skills/fedify/* via a symlink; the `prepack` script
     resolves the symlink to real files before packing so the published npm
-    tarball is self-contained.  [[#489]]
+    tarball is self-contained.  [[#489], [#756]]
 
 [#489]: https://github.com/fedify-dev/fedify/issues/489
+[#756]: https://github.com/fedify-dev/fedify/pull/756
 
 
 Version 2.2.5
