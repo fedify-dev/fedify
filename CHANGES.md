@@ -349,11 +349,12 @@ To be released.
 ### @fedify/backfill
 
  -  Added *@fedify/backfill* for reconstructing ActivityPub conversations.
-    It supports FEP-f228 context collections containing post-like objects or
+    It supports [FEP-f228] context collections containing post-like objects or
     `Create` activities, optional reply-tree traversal, ordered hybrid
     strategies, shared safety budgets, deduplication, and traversal-local
     document caching.  [[#275], [#779], [#801], [#807], [#816] by Jiwon Kwon]
 
+[FEP-f228]: https://w3id.org/fep/f228
 [#275]: https://github.com/fedify-dev/fedify/issues/275
 [#779]: https://github.com/fedify-dev/fedify/pull/779
 [#807]: https://github.com/fedify-dev/fedify/pull/807
