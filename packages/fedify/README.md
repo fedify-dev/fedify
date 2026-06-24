@@ -7,7 +7,7 @@
 [![npm][npm badge]][npm]
 [![GitHub Actions][GitHub Actions badge]][GitHub Actions]
 [![Matrix][Matrix badge]][Matrix]
-[![Follow @fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
+[![@fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
 
 > [!NOTE]
 > Looking for a quick demo?  Here it is: [Fedify Demo] on Deno Playground.
@@ -36,9 +36,12 @@ If you want to know more about the project, please take a look at the following
 resources:
 
  -  [Installation]
- -  Tutorials:
-    [Learning the basics] &
-    [Creating a microblog]
+ -  Tutorials
+     -  [Learning the basics of Fedify]
+     -  [Creating your own federated microblog]
+     -  [Creating a federated image sharing service]
+     -  [Building a federated blog]
+     -  [Building a threadiverse community platform]
  -  [Migrating from other libraries]
  -  [API reference][JSR]
  -  [Examples]
@@ -58,7 +61,7 @@ in the fediverse!
 [GitHub Actions]: https://github.com/fedify-dev/fedify/actions/workflows/build.yaml
 [Matrix badge]: https://img.shields.io/matrix/fedify%3Amatrix.org?logo=matrix
 [Matrix]: https://matrix.to/#/#fedify:matrix.org
-[@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
+[@fedify@hollo.social badge]: https://fedi-badge.minhee.org/@fedify@hollo.social/followers.svg
 [@fedify@hollo.social]: https://hollo.social/@fedify
 [Fedify Demo]: https://dash.deno.com/playground/fedify-demo
 [ActivityPub]: https://www.w3.org/TR/activitypub/
@@ -71,8 +74,11 @@ in the fediverse!
 [Linked Data Signatures]: https://web.archive.org/web/20170923124140/https://w3c-dvcg.github.io/ld-signatures/
 [NodeInfo]: https://nodeinfo.diaspora.software/
 [Installation]: https://fedify.dev/install
-[Learning the basics]: https://fedify.dev/tutorial/basics
-[Creating a microblog]: https://fedify.dev/tutorial/microblog
+[Learning the basics of Fedify]: https://fedify.dev/tutorial/basics
+[Creating your own federated microblog]: https://fedify.dev/tutorial/microblog
+[Creating a federated image sharing service]: https://fedify.dev/tutorial/content-sharing
+[Building a federated blog]: https://fedify.dev/tutorial/astro-blog
+[Building a threadiverse community platform]: https://fedify.dev/tutorial/threadiverse
 [Migrating from other libraries]: https://fedify.dev/manual/migrate
 [Examples]: https://github.com/fedify-dev/fedify/tree/main/examples
 [GitHub Discussions]: https://github.com/fedify-dev/fedify/discussions

@@ -1,0 +1,10 @@
+# Server-side metrics are not merged for mixed scenario results.
+version: 1
+target: http://localhost:3000
+scenarios:
+  - name: realistic-blend
+    type: mixed
+    mix:
+      - { scenario: fanout-1k, weight: 1 }
+    expect:
+      queueDrain.p95: "< 2s"

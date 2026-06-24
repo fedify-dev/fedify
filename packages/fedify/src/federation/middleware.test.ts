@@ -50,8 +50,15 @@ import {
   rsaPublicKey3,
 } from "../testing/keys.ts";
 import { FetchError, getDocumentLoader } from "@fedify/vocab-runtime";
-import { SpanStatusCode } from "@opentelemetry/api";
+import { metrics, SpanStatusCode } from "@opentelemetry/api";
+import {
+  DataPointType,
+  MeterProvider,
+  MetricReader,
+} from "@opentelemetry/sdk-metrics";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
+import { CircuitBreaker } from "./circuit-breaker.ts";
+import { handleBenchmarkTrigger } from "./bench.ts";
 
 const documentLoader = getDocumentLoader();
 import type { Context, GetActorOptions } from "./context.ts";
@@ -63,6 +70,7 @@ import {
   InboxContextImpl,
   KvSpecDeterminer,
 } from "./middleware.ts";
+import { recordInboxActivity } from "./metrics.ts";
 import type { MessageQueue } from "./mq.ts";
 import type { InboxMessage, Message, OutboxMessage } from "./queue.ts";
 
@@ -76,6 +84,16 @@ async function withLogtapeLock<T>(fn: () => Promise<T>): Promise<T> {
   const run = logtapeLock.then(fn, fn);
   logtapeLock = run.then(() => undefined, () => undefined);
   return await run;
+}
+
+class TestMetricReader extends MetricReader {
+  protected onShutdown(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  protected onForceFlush(): Promise<void> {
+    return Promise.resolve();
+  }
 }
 
 test("createFederation()", async (t) => {
@@ -95,6 +113,131 @@ test("createFederation()", async (t) => {
         allowPrivateAddress: true,
       }), TypeError);
   });
+
+  await t.step("benchmarkMode applies cooperative benchmark defaults", () => {
+    const federation = createFederation<number>({
+      kv,
+      benchmarkMode: true,
+    });
+    assertInstanceOf(federation, FederationImpl);
+    assertEquals(federation.allowPrivateAddress, true);
+    assertEquals(federation.signatureTimeWindow, false);
+  });
+
+  await t.step("benchmarkMode preserves explicit option overrides", () => {
+    const federation = createFederation<number>({
+      kv,
+      benchmarkMode: true,
+      allowPrivateAddress: false,
+      signatureTimeWindow: { minutes: 10 },
+    });
+    assertInstanceOf(federation, FederationImpl);
+    assertEquals(federation.allowPrivateAddress, false);
+    assertEquals(federation.signatureTimeWindow, { minutes: 10 });
+  });
+
+  await t.step("benchmarkMode tolerates calendar time windows", () => {
+    const federation = createFederation<number>({
+      kv,
+      benchmarkMode: true,
+      signatureTimeWindow: { months: 1 },
+    });
+    assertInstanceOf(federation, FederationImpl);
+    assertEquals(federation.signatureTimeWindow, { months: 1 });
+  });
+
+  await t.step("benchmarkMode leaves custom loader factories alone", () => {
+    const federation = createFederation<number>({
+      kv,
+      benchmarkMode: true,
+      documentLoaderFactory: () => mockDocumentLoader,
+      contextLoaderFactory: () => mockDocumentLoader,
+      authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
+    });
+    assertInstanceOf(federation, FederationImpl);
+    assertEquals(federation.allowPrivateAddress, false);
+  });
+
+  await t.step(
+    "benchmarkMode keeps private-address default with auth loader only",
+    () => {
+      const federation = createFederation<number>({
+        kv,
+        benchmarkMode: true,
+        authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
+      });
+      assertInstanceOf(federation, FederationImpl);
+      assertEquals(federation.allowPrivateAddress, true);
+    },
+  );
+
+  await t.step("benchmarkMode rejects an explicit meterProvider", () => {
+    const [meterProvider] = createTestMeterProvider();
+    assertThrows(
+      () =>
+        createFederation<number>({
+          kv,
+          benchmarkMode: true,
+          meterProvider,
+        }),
+      TypeError,
+      "benchmarkMode requires Fedify to own the meterProvider",
+    );
+  });
+
+  await t.step(
+    "benchmarkMode warns that benchmark-only relaxations are on",
+    async () => {
+      await withLogtapeLock(async () => {
+        const records: LogRecord[] = [];
+        await reset();
+        try {
+          await configure({
+            sinks: {
+              test(record) {
+                records.push(record);
+              },
+            },
+            loggers: [
+              {
+                category: ["fedify", "federation", "benchmark"],
+                lowestLevel: "warning",
+                sinks: ["test"],
+              },
+            ],
+          });
+          createFederation<number>({ kv, benchmarkMode: true });
+          assertEquals(records.length, 1);
+          assertEquals(records[0].level, "warning");
+          assertEquals(
+            records[0].rawMessage,
+            "Fedify benchmarkMode is enabled; private address checks " +
+              "disabled (allowPrivateAddress=true); HTTP Signature time " +
+              "window disabled (signatureTimeWindow=false). Benchmark " +
+              "endpoints are active and must not be used in production.",
+          );
+          assertEquals(
+            records[0].properties.relaxations,
+            [
+              {
+                protection: "private_address_checks",
+                effect: "disabled",
+                effectiveValue: true,
+              },
+              {
+                protection: "http_signature_time_window",
+                effect: "disabled",
+                effectiveValue: false,
+                secureDefaultSeconds: 3600,
+              },
+            ],
+          );
+        } finally {
+          await reset();
+        }
+      });
+    },
+  );
 
   await t.step("origin", () => {
     const f = createFederation<void>({ kv, origin: "http://example.com:8080" });
@@ -210,6 +353,444 @@ test("createFederation()", async (t) => {
         }),
       TypeError,
     );
+  });
+});
+
+test("benchmarkMode stats endpoint", async (t) => {
+  await t.step("is absent when benchmarkMode is off", async () => {
+    const federation = createFederation<void>({ kv: new MemoryKvStore() });
+    const response = await federation.fetch(
+      new Request("https://example.com/.well-known/fedify/bench/stats"),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 404);
+  });
+
+  await t.step("returns a v1 in-process metrics snapshot", async () => {
+    const queue: MessageQueue = {
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+      getDepth() {
+        return Promise.resolve({ queued: 3, ready: 2, delayed: 1 });
+      },
+    };
+    const federation = createFederation<void>({
+      kv: new MemoryKvStore(),
+      benchmarkMode: true,
+      queue,
+    });
+    recordInboxActivity(
+      (federation as FederationImpl<void>).meterProvider,
+      "processed",
+      vocab.Create.typeId.href,
+    );
+
+    const response = await federation.fetch(
+      new Request("https://example.com/.well-known/fedify/bench/stats"),
+      { contextData: undefined },
+    );
+
+    assertEquals(response.status, 200);
+    assertEquals(response.headers.get("Content-Type"), "application/json");
+    const body = await response.json() as {
+      version: number;
+      source: string;
+      generatedAt: string;
+      scopeMetrics: {
+        metrics: {
+          name: string;
+          dataPointType: string;
+          dataPoints: { attributes: Record<string, unknown>; value: unknown }[];
+        }[];
+      }[];
+    };
+    assertEquals(body.version, 1);
+    assertEquals(body.source, "server");
+    assertEquals(Number.isNaN(Date.parse(body.generatedAt)), false);
+    const metrics = body.scopeMetrics.flatMap((scope) => scope.metrics);
+    assertExists(
+      metrics.find((metric) => metric.name === "activitypub.inbox.activity"),
+    );
+    const queueDepth = metrics.find((metric) =>
+      metric.name === "fedify.queue.depth"
+    );
+    assertExists(queueDepth);
+    assertEquals(queueDepth.dataPointType, "gauge");
+    assertEquals(
+      queueDepth.dataPoints.map((point) => ({
+        state: point.attributes["fedify.queue.depth.state"],
+        role: point.attributes["fedify.queue.role"],
+        value: point.value,
+      })).sort((a, b) => String(a.state).localeCompare(String(b.state))),
+      [
+        { state: "delayed", role: "shared", value: 1 },
+        { state: "queued", role: "shared", value: 3 },
+        { state: "ready", role: "shared", value: 2 },
+      ],
+    );
+  });
+});
+
+test("createFederation() registers queue depth for regular metrics", async () => {
+  const reader = new TestMetricReader();
+  const meterProvider = new MeterProvider({ readers: [reader] });
+  try {
+    const queue: MessageQueue = {
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+      getDepth() {
+        return Promise.resolve({ queued: 5, ready: 4, delayed: 3 });
+      },
+    };
+    createFederation<void>({
+      kv: new MemoryKvStore(),
+      meterProvider,
+      queue,
+    });
+
+    const result = await reader.collect();
+    const queueDepth = result.resourceMetrics.scopeMetrics
+      .flatMap((scope) => scope.metrics)
+      .find((metric) => metric.descriptor.name === "fedify.queue.depth");
+
+    assertExists(queueDepth);
+    assertEquals(queueDepth.dataPointType, DataPointType.GAUGE);
+    assertEquals(
+      queueDepth.dataPoints.map((point) => ({
+        state: point.attributes["fedify.queue.depth.state"],
+        role: point.attributes["fedify.queue.role"],
+        value: point.value,
+      })).sort((a, b) => String(a.state).localeCompare(String(b.state))),
+      [
+        { state: "delayed", role: "shared", value: 3 },
+        { state: "queued", role: "shared", value: 5 },
+        { state: "ready", role: "shared", value: 4 },
+      ],
+    );
+  } finally {
+    await meterProvider.shutdown();
+  }
+});
+
+test("createFederation() registers queue depth after global meterProvider is set", async () => {
+  metrics.disable();
+  const queue: MessageQueue = {
+    enqueue() {
+      return Promise.resolve();
+    },
+    listen() {
+      return Promise.resolve();
+    },
+    getDepth() {
+      return Promise.resolve({ queued: 8 });
+    },
+  };
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    queue,
+  });
+  const reader = new TestMetricReader();
+  const meterProvider = new MeterProvider({ readers: [reader] });
+  try {
+    metrics.setGlobalMeterProvider(meterProvider);
+    (federation as FederationImpl<void>).meterProvider;
+
+    const result = await reader.collect();
+    const queueDepth = result.resourceMetrics.scopeMetrics
+      .flatMap((scope) => scope.metrics)
+      .find((metric) => metric.descriptor.name === "fedify.queue.depth");
+
+    assertExists(queueDepth);
+    assertEquals(queueDepth.dataPointType, DataPointType.GAUGE);
+    assertEquals(
+      queueDepth.dataPoints.map((point) => ({
+        state: point.attributes["fedify.queue.depth.state"],
+        role: point.attributes["fedify.queue.role"],
+        value: point.value,
+      })),
+      [
+        { state: "queued", role: "shared", value: 8 },
+      ],
+    );
+  } finally {
+    metrics.disable();
+    await meterProvider.shutdown();
+  }
+});
+
+test("createFederation() distinguishes queue depth series per federation", async () => {
+  const reader = new TestMetricReader();
+  const meterProvider = new MeterProvider({ readers: [reader] });
+  try {
+    const createQueue = (queued: number): MessageQueue => ({
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+      getDepth() {
+        return Promise.resolve({ queued });
+      },
+    });
+    createFederation<void>({
+      kv: new MemoryKvStore(),
+      meterProvider,
+      queue: createQueue(1),
+    });
+    createFederation<void>({
+      kv: new MemoryKvStore(),
+      meterProvider,
+      queue: createQueue(2),
+    });
+
+    const result = await reader.collect();
+    const queueDepth = result.resourceMetrics.scopeMetrics
+      .flatMap((scope) => scope.metrics)
+      .find((metric) => metric.descriptor.name === "fedify.queue.depth");
+
+    assertExists(queueDepth);
+    const queuedPoints = queueDepth.dataPoints.filter((point) =>
+      point.attributes["fedify.queue.depth.state"] === "queued"
+    );
+    assertEquals(
+      queuedPoints.map((point) => point.value).sort(),
+      [1, 2],
+    );
+    const instanceIds = queuedPoints.map((point) =>
+      point.attributes["fedify.federation.instance_id"]
+    );
+    assertEquals(
+      instanceIds.every((id) => typeof id === "string"),
+      true,
+    );
+    assertEquals(new Set(instanceIds).size, 2);
+  } finally {
+    await meterProvider.shutdown();
+  }
+});
+
+test("benchmarkMode trigger endpoint", async (t) => {
+  const createTriggerTarget = (
+    options: { allowUnsafeTriggerRecipients?: boolean } = {},
+  ) => {
+    const messages: OutboxMessage[] = [];
+    const queue: MessageQueue = {
+      enqueue(message: OutboxMessage) {
+        messages.push(message);
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+    };
+    const federation = createFederation<void>({
+      kv: new MemoryKvStore(),
+      benchmarkMode: {
+        triggerSinks: ["https://sink.example/inbox"],
+        allowUnsafeTriggerRecipients: options.allowUnsafeTriggerRecipients,
+      },
+      contextLoaderFactory: () => mockDocumentLoader,
+      queue: { outbox: queue },
+    });
+    federation
+      .setActorDispatcher(
+        "/users/{identifier}",
+        (ctx, identifier) =>
+          new vocab.Person({
+            id: ctx.getActorUri(identifier),
+            inbox: ctx.getInboxUri(identifier),
+          }),
+      )
+      .setKeyPairsDispatcher(() => [
+        { privateKey: rsaPrivateKey2, publicKey: rsaPublicKey2.publicKey! },
+      ]);
+    return { federation, messages };
+  };
+
+  const createTriggerBody = async (
+    options: {
+      recipientInbox?: string;
+      recipients?: unknown[];
+      sinks?: string[];
+      allowUnsafeRecipients?: boolean;
+    } = {},
+  ) => ({
+    sender: { identifier: "alice" },
+    sinks: options.sinks,
+    recipients: options.recipients ?? [
+      {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Service",
+        id: "https://sink.example/actors/bob",
+        inbox: options.recipientInbox ?? "https://sink.example/inbox",
+      },
+    ],
+    activity: await new vocab.Create({
+      id: new URL("https://example.com/activities/bench-1"),
+      actor: new URL("https://example.com/users/alice"),
+      object: new vocab.Note({
+        id: new URL("https://example.com/notes/bench-1"),
+        attribution: new URL("https://example.com/users/alice"),
+        content: "benchmark",
+      }),
+    }).toJsonLd({ contextLoader: mockDocumentLoader }),
+    allowUnsafeRecipients: options.allowUnsafeRecipients,
+  });
+
+  await t.step("is absent when benchmarkMode is off", async () => {
+    const federation = createFederation<void>({ kv: new MemoryKvStore() });
+    const response = await federation.fetch(
+      new Request("https://example.com/.well-known/fedify/bench/trigger", {
+        method: "POST",
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 404);
+  });
+
+  await t.step("rejects unreadable JSON request bodies", async () => {
+    const request = {
+      method: "POST",
+      json() {
+        throw new TypeError("body is unavailable");
+      },
+    } as unknown as Request;
+    const response = await handleBenchmarkTrigger(
+      request,
+      {} as Context<void>,
+    );
+    assertEquals(response.status, 400);
+    assertEquals(await response.json(), {
+      error: "Invalid JSON request body.",
+    });
+  });
+
+  await t.step("rejects empty recipient lists", async () => {
+    const { federation, messages } = createTriggerTarget();
+    const response = await federation.fetch(
+      new Request("https://example.com/.well-known/fedify/bench/trigger", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(await createTriggerBody({ recipients: [] })),
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 400);
+    assertEquals(await response.json(), {
+      error:
+        "No valid recipient inboxes found. The recipients list must not be empty.",
+    });
+    assertEquals(messages, []);
+  });
+
+  await t.step(
+    "rejects recipients outside configured trigger sinks",
+    async () => {
+      const { federation, messages } = createTriggerTarget();
+      const response = await federation.fetch(
+        new Request("https://example.com/.well-known/fedify/bench/trigger", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            await createTriggerBody({
+              recipientInbox: "https://not-a-sink.example/inbox",
+            }),
+          ),
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 403);
+      assertEquals(messages, []);
+    },
+  );
+
+  await t.step(
+    "does not trust request-provided trigger sinks or bypasses",
+    async () => {
+      const { federation, messages } = createTriggerTarget();
+      const response = await federation.fetch(
+        new Request("https://example.com/.well-known/fedify/bench/trigger", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            await createTriggerBody({
+              recipientInbox: "https://not-a-sink.example/inbox",
+              sinks: ["https://not-a-sink.example/inbox"],
+              allowUnsafeRecipients: true,
+            }),
+          ),
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 403);
+      assertEquals(messages, []);
+    },
+  );
+
+  await t.step(
+    "allows unsafe recipients only with a server override",
+    async () => {
+      const { federation, messages } = createTriggerTarget({
+        allowUnsafeTriggerRecipients: true,
+      });
+      const response = await federation.fetch(
+        new Request("https://example.com/.well-known/fedify/bench/trigger", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            await createTriggerBody({
+              recipientInbox: "https://not-a-sink.example/inbox",
+            }),
+          ),
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 202);
+      assertEquals(messages.length, 1);
+      assertEquals(messages[0].inbox, "https://not-a-sink.example/inbox");
+    },
+  );
+
+  await t.step("sends the activity to explicit sink recipients", async () => {
+    const { federation, messages } = createTriggerTarget();
+    const response = await federation.fetch(
+      new Request("https://example.com/.well-known/fedify/bench/trigger", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(await createTriggerBody()),
+      }),
+      { contextData: undefined },
+    );
+
+    assertEquals(response.status, 202);
+    const body = await response.json() as {
+      version: number;
+      activityId: string;
+      queueCorrelationId: string;
+      recipientCount: number;
+      inboxCount: number;
+    };
+    assertEquals(body.version, 1);
+    assertEquals(body.activityId, "https://example.com/activities/bench-1");
+    assertEquals(
+      body.queueCorrelationId,
+      "https://example.com/activities/bench-1",
+    );
+    assertEquals(body.recipientCount, 1);
+    assertEquals(body.inboxCount, 1);
+    assertEquals(messages.length, 1);
+    assertEquals(messages[0].type, "outbox");
+    assertEquals(messages[0].activityId, body.queueCorrelationId);
+    assertEquals(messages[0].inbox, "https://sink.example/inbox");
   });
 });
 
@@ -1672,6 +2253,46 @@ test("Federation.fetch() records HTTP server request metrics", async (t) => {
       assertEquals(
         counts[0].attributes["fedify.route.template"],
         "/users/{identifier}",
+      );
+    },
+  );
+
+  await t.step(
+    "records collection metrics for not_acceptable collection requests",
+    async () => {
+      const { federation, recorder } = createTestContext();
+      const response = await federation.fetch(
+        new Request("https://example.com/users/alice/followers", {
+          method: "GET",
+          headers: { "Accept": "text/html" },
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 406);
+
+      const requests = recorder.getMeasurements(
+        "activitypub.collection.request",
+      );
+      assertEquals(requests.length, 1);
+      assertEquals(
+        requests[0].attributes["activitypub.collection.kind"],
+        "followers",
+      );
+      assertEquals(
+        requests[0].attributes["activitypub.collection.page"],
+        false,
+      );
+      assertEquals(
+        requests[0].attributes["fedify.collection.dispatcher"],
+        "built_in",
+      );
+      assertEquals(
+        requests[0].attributes["activitypub.collection.result"],
+        "not_acceptable",
+      );
+      assertEquals(
+        requests[0].attributes["http.response.status_code"],
+        406,
       );
     },
   );
@@ -6526,6 +7147,1149 @@ test("FederationImpl.processQueuedTask() permanent failure", async (t) => {
         await reset();
       }
     });
+  });
+
+  fetchMock.hardReset();
+});
+
+test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
+  fetchMock.spyGlobal();
+
+  interface Queued {
+    message: Message;
+    options: Parameters<MessageQueue["enqueue"]>[1];
+  }
+
+  interface CircuitBreakerSetup {
+    federation: FederationImpl<void>;
+    kv: MemoryKvStore;
+    queued: Queued[];
+  }
+
+  function setup(
+    options: ConstructorParameters<typeof FederationImpl<void>>[0][
+      "circuitBreaker"
+    ],
+    federationOptions: Pick<
+      ConstructorParameters<typeof FederationImpl<void>>[0],
+      | "meterProvider"
+      | "tracerProvider"
+      | "permanentFailureStatusCodes"
+      | "outboxRetryPolicy"
+    > = {},
+    queueOptions: Pick<MessageQueue, "nativeRetrial"> = {},
+  ): CircuitBreakerSetup {
+    const kv = new MemoryKvStore();
+    const queued: Queued[] = [];
+    const queue: MessageQueue = {
+      nativeRetrial: queueOptions.nativeRetrial,
+      enqueue(message, options) {
+        queued.push({ message, options });
+        return Promise.resolve();
+      },
+      listen(_handler, _options) {
+        return Promise.resolve();
+      },
+    };
+    const federation = new FederationImpl<void>({
+      kv,
+      queue,
+      circuitBreaker: options,
+      ...federationOptions,
+    });
+    federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
+    return { federation, kv, queued };
+  }
+
+  function createOutboxMessage(
+    inbox: string,
+    overrides: Partial<OutboxMessage> = {},
+  ): OutboxMessage {
+    return {
+      type: "outbox",
+      id: crypto.randomUUID(),
+      baseUrl: "https://example.com",
+      keys: [],
+      activity: {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Create",
+        id: "https://example.com/activity/circuit",
+        actor: "https://example.com/users/alice",
+        object: { type: "Note", content: "test" },
+      },
+      activityId: "https://example.com/activity/circuit",
+      activityType: "https://www.w3.org/ns/activitystreams#Create",
+      inbox,
+      sharedInbox: false,
+      actorIds: ["https://breaker.example/users/bob"],
+      started: new Date().toISOString(),
+      attempt: 0,
+      headers: {},
+      traceContext: {},
+      ...overrides,
+    };
+  }
+
+  await t.step("is not created without an outbox queue", () => {
+    const federation = new FederationImpl<void>({
+      kv: new MemoryKvStore(),
+    });
+    assertEquals(federation.circuitBreaker, undefined);
+  });
+
+  await t.step("5xx opens circuit and holds the failed message", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://breaker.example/inbox", {
+      status: 500,
+      body: "server error",
+    });
+    const { federation, queued, kv } = setup({
+      failureThreshold: 1,
+      failureWindow: { minutes: 10 },
+      recoveryDelay: { minutes: 30 },
+    });
+    const orderingKey = "https://example.com/object/breaker";
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://breaker.example/inbox", { orderingKey }),
+    );
+
+    assertEquals(queued.length, 1);
+    const held = queued[0].message as OutboxMessage;
+    assertEquals(held.attempt, 0);
+    assertEquals(held.orderingKey, orderingKey);
+    assertEquals(held.circuitHeld, true);
+    assertExists(held.circuitHeldSince);
+    assertEquals(queued[0].options?.orderingKey, orderingKey);
+    assertEquals(
+      queued[0].options?.delay,
+      Temporal.Duration.from({ minutes: 30 }),
+    );
+    const state = await kv.get<Record<string, unknown>>([
+      "_fedify",
+      "circuit",
+      "breaker.example",
+    ]);
+    assertEquals(state?.state, "open");
+    assertEquals(Array.isArray(state?.failures), true);
+    assertEquals((state?.failures as unknown[]).length, 1);
+    assertExists(state?.opened);
+  });
+
+  await t.step("open circuit requeues without sending", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    let requests = 0;
+    fetchMock.post("https://open.example/inbox", () => {
+      requests++;
+      return { status: 500, body: "server error" };
+    });
+    const { federation, queued } = setup({
+      failureThreshold: 1,
+      recoveryDelay: { hours: 1 },
+    });
+    const orderingKey = "https://example.com/object/open";
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://open.example/inbox", { orderingKey }),
+    );
+    const held = queued[0].message as OutboxMessage;
+    queued.length = 0;
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://open.example/inbox", {
+        circuitHeld: true,
+        circuitHeldSince: held.circuitHeldSince,
+        orderingKey,
+      }),
+    );
+
+    assertEquals(requests, 1);
+    assertEquals(queued.length, 1);
+    const requeued = queued[0].message as OutboxMessage;
+    assertEquals(requeued.attempt, 0);
+    assertEquals(requeued.orderingKey, orderingKey);
+    assertEquals(requeued.circuitHeld, true);
+    assertEquals(requeued.circuitHeldSince, held.circuitHeldSince);
+    assertEquals(queued[0].options?.orderingKey, orderingKey);
+    assertEquals(
+      queued[0].options?.delay,
+      Temporal.Duration.from({ hours: 1 }),
+    );
+  });
+
+  await t.step("circuit keys include non-default ports", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    let defaultPortRequests = 0;
+    fetchMock.post("https://ports.example:8443/inbox", {
+      status: 500,
+      body: "server error",
+    });
+    fetchMock.post("https://ports.example/inbox", () => {
+      defaultPortRequests++;
+      return { status: 202, body: "" };
+    });
+    const { federation, queued, kv } = setup({
+      failureThreshold: 1,
+      recoveryDelay: { hours: 1 },
+    });
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://ports.example:8443/inbox"),
+    );
+    assertEquals(
+      (await kv.get<Record<string, unknown>>([
+        "_fedify",
+        "circuit",
+        "ports.example:8443",
+      ]))?.state,
+      "open",
+    );
+    assertEquals(
+      await kv.get(["_fedify", "circuit", "ports.example"]),
+      undefined,
+    );
+
+    queued.length = 0;
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://ports.example/inbox"),
+    );
+
+    assertEquals(defaultPortRequests, 1);
+    assertEquals(queued, []);
+  });
+
+  await t.step("post-send circuit errors do not retry delivery", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://success-bookkeeping.example/inbox", {
+      status: 202,
+      body: "",
+    });
+    const { federation, queued, kv } = setup({
+      failureThreshold: 1,
+    });
+    await kv.set(["_fedify", "circuit", "success-bookkeeping.example"], {
+      state: "closed",
+      failures: [],
+    });
+    kv.cas = () => Promise.resolve(false);
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://success-bookkeeping.example/inbox"),
+    );
+
+    assertEquals(queued, []);
+  });
+
+  await t.step("pre-send circuit errors do not block delivery", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    let requests = 0;
+    fetchMock.post("https://presend-bookkeeping.example/inbox", () => {
+      requests++;
+      return { status: 202, body: "" };
+    });
+    const { federation, queued, kv } = setup({ failureThreshold: 1 });
+    kv.get = () => Promise.reject(new Error("kv get failed"));
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://presend-bookkeeping.example/inbox"),
+    );
+
+    assertEquals(requests, 1);
+    assertEquals(queued, []);
+  });
+
+  await t.step("circuit failure errors fall back to retry", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://failure-bookkeeping.example/inbox", {
+      status: 500,
+      body: "server error",
+    });
+    const { federation, queued, kv } = setup(
+      {
+        failureThreshold: 1,
+      },
+      { outboxRetryPolicy: () => Temporal.Duration.from({ seconds: 3 }) },
+    );
+    kv.cas = () => Promise.resolve(false);
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://failure-bookkeeping.example/inbox"),
+    );
+
+    assertEquals(queued.length, 1);
+    const retry = queued[0].message as OutboxMessage;
+    assertEquals(retry.attempt, 1);
+    assertEquals(retry.circuitHeld, undefined);
+    assertEquals(
+      queued[0].options?.delay,
+      Temporal.Duration.from({ seconds: 3 }),
+    );
+  });
+
+  await t.step("local delivery errors do not open circuit", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    const { federation, queued, kv } = setup(
+      { failureThreshold: 1 },
+      { outboxRetryPolicy: () => Temporal.Duration.from({ seconds: 3 }) },
+    );
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://local-error.example/inbox", {
+        headers: { "Invalid Header": "x" },
+      }),
+    );
+
+    assertEquals(queued.length, 1);
+    const retry = queued[0].message as OutboxMessage;
+    assertEquals(retry.attempt, 1);
+    assertEquals(retry.circuitHeld, undefined);
+    assertEquals(
+      queued[0].options?.delay,
+      Temporal.Duration.from({ seconds: 3 }),
+    );
+    assertEquals(
+      await kv.get(["_fedify", "circuit", "local-error.example"]),
+      undefined,
+    );
+  });
+
+  await t.step("calendar retry delays are enqueued", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://calendar-delay.example/inbox", {
+      status: 500,
+      body: "server error",
+    });
+    const { federation, queued } = setup(
+      {
+        failureThreshold: 5,
+      },
+      { outboxRetryPolicy: () => Temporal.Duration.from({ days: 1 }) },
+    );
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://calendar-delay.example/inbox"),
+    );
+
+    assertEquals(queued.length, 1);
+    assertEquals(
+      queued[0].options?.delay,
+      Temporal.Duration.from({ days: 1 }),
+    );
+  });
+
+  await t.step("negative calendar retry delays are clamped", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://negative-calendar-delay.example/inbox", {
+      status: 500,
+      body: "server error",
+    });
+    const { federation, queued } = setup(
+      {
+        failureThreshold: 5,
+      },
+      { outboxRetryPolicy: () => Temporal.Duration.from({ days: -1 }) },
+    );
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://negative-calendar-delay.example/inbox"),
+    );
+
+    assertEquals(queued.length, 1);
+    assertEquals(
+      queued[0].options?.delay,
+      Temporal.Duration.from({ seconds: 0 }),
+    );
+  });
+
+  await t.step("circuit hold respects retry give-up", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://hold-give-up.example/inbox", {
+      status: 500,
+      body: "server error",
+    });
+    const { federation, queued, kv } = setup(
+      {
+        failureThreshold: 1,
+        recoveryDelay: { minutes: 30 },
+      },
+      { outboxRetryPolicy: () => null },
+    );
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://hold-give-up.example/inbox"),
+    );
+
+    assertEquals(queued, []);
+    assertEquals(
+      (await kv.get<Record<string, unknown>>([
+        "_fedify",
+        "circuit",
+        "hold-give-up.example",
+      ]))?.state,
+      "open",
+    );
+  });
+
+  await t.step("circuit decision errors fall back to retry", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://decision-bookkeeping.example/inbox", {
+      status: 500,
+      body: "server error",
+    });
+    const { federation, queued, kv } = setup(
+      {
+        failureThreshold: 1,
+      },
+      { outboxRetryPolicy: () => Temporal.Duration.from({ seconds: 4 }) },
+    );
+    const originalGet = kv.get.bind(kv);
+    let getCalls = 0;
+    kv.get = (...args) => {
+      getCalls++;
+      return getCalls === 1
+        ? originalGet(...args)
+        : Promise.reject(new Error("kv get failed"));
+    };
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://decision-bookkeeping.example/inbox"),
+    );
+
+    assertEquals(queued.length, 1);
+    const retry = queued[0].message as OutboxMessage;
+    assertEquals(retry.attempt, 1);
+    assertEquals(retry.circuitHeld, undefined);
+    assertEquals(
+      queued[0].options?.delay,
+      Temporal.Duration.from({ seconds: 4 }),
+    );
+  });
+
+  await t.step("circuit reachable errors keep permanent failure", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://permanent-bookkeeping.example/inbox", {
+      status: 500,
+      body: "server error",
+    });
+    const { federation, queued, kv } = setup(
+      {
+        failureThreshold: 1,
+      },
+      { permanentFailureStatusCodes: [500] },
+    );
+    await kv.set(["_fedify", "circuit", "permanent-bookkeeping.example"], {
+      state: "half-open",
+      failures: ["2026-05-25T00:00:00Z"],
+      opened: "2026-05-25T00:00:00Z",
+      halfOpened: "2026-05-25T00:00:00Z",
+    });
+    const originalCas = kv.cas.bind(kv);
+    let casCalls = 0;
+    kv.cas = (...args) => {
+      casCalls++;
+      return casCalls === 1 ? originalCas(...args) : Promise.resolve(false);
+    };
+    let permanentFailureStatusCode: unknown;
+    federation.setOutboxPermanentFailureHandler((_ctx, values) => {
+      permanentFailureStatusCode = values.statusCode;
+    });
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://permanent-bookkeeping.example/inbox"),
+    );
+
+    assertEquals(queued, []);
+    assertEquals(permanentFailureStatusCode, 500);
+  });
+
+  await t.step("429 respects Retry-After without opening circuit", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://rate.example/inbox", {
+      status: 429,
+      headers: { "Retry-After": "120" },
+      body: "rate limited",
+    });
+    const { federation, queued, kv } = setup({
+      failureThreshold: 1,
+      recoveryDelay: { minutes: 30 },
+    });
+    const orderingKey = "https://example.com/object/rate";
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://rate.example/inbox", { orderingKey }),
+    );
+
+    assertEquals(queued.length, 1);
+    const retry = queued[0].message as OutboxMessage;
+    assertEquals(retry.attempt, 1);
+    assertEquals(retry.orderingKey, orderingKey);
+    assertEquals(retry.circuitHeld, undefined);
+    assertEquals(queued[0].options?.orderingKey, orderingKey);
+    assertEquals(
+      queued[0].options?.delay,
+      Temporal.Duration.from({ seconds: 120 }),
+    );
+    assertEquals(
+      await kv.get(["_fedify", "circuit", "rate.example"]),
+      undefined,
+    );
+  });
+
+  await t.step(
+    "429 respects Retry-After with circuit breaker disabled",
+    async () => {
+      fetchMock.hardReset();
+      fetchMock.spyGlobal();
+      fetchMock.post("https://rate-disabled.example/inbox", {
+        status: 429,
+        headers: { "Retry-After": "120" },
+        body: "rate limited",
+      });
+      const { federation, queued, kv } = setup(false, {}, {
+        nativeRetrial: true,
+      });
+      assertEquals(federation.circuitBreaker, undefined);
+
+      await federation.processQueuedTask(
+        undefined,
+        createOutboxMessage("https://rate-disabled.example/inbox", {
+          orderingKey: "https://example.com/object/rate-limited",
+        }),
+      );
+
+      assertEquals(queued.length, 1);
+      const retry = queued[0].message as OutboxMessage;
+      assertEquals(retry.attempt, 1);
+      assertEquals(retry.circuitHeld, undefined);
+      assertEquals(
+        queued[0].options?.delay,
+        Temporal.Duration.from({ seconds: 120 }),
+      );
+      assertEquals(
+        queued[0].options?.orderingKey,
+        "https://example.com/object/rate-limited",
+      );
+      assertEquals(
+        await kv.get(["_fedify", "circuit", "rate-disabled.example"]),
+        undefined,
+      );
+    },
+  );
+
+  await t.step("429 Retry-After still respects retry give-up", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://give-up.example/inbox", {
+      status: 429,
+      headers: { "Retry-After": "120" },
+      body: "rate limited",
+    });
+    const { federation, queued, kv } = setup(
+      { failureThreshold: 1 },
+      { outboxRetryPolicy: () => null },
+    );
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://give-up.example/inbox"),
+    );
+
+    assertEquals(queued, []);
+    assertEquals(
+      await kv.get(["_fedify", "circuit", "give-up.example"]),
+      undefined,
+    );
+  });
+
+  await t.step("503 respects Retry-After while counting failure", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://unavailable.example/inbox", {
+      status: 503,
+      headers: { "Retry-After": "120" },
+      body: "temporarily unavailable",
+    });
+    const { federation, queued, kv } = setup(
+      {
+        failureThreshold: 5,
+        failureWindow: { minutes: 10 },
+      },
+      { outboxRetryPolicy: () => Temporal.Duration.from({ seconds: 3 }) },
+    );
+    const orderingKey = "https://example.com/object/unavailable";
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://unavailable.example/inbox", {
+        orderingKey,
+      }),
+    );
+
+    assertEquals(queued.length, 1);
+    const retry = queued[0].message as OutboxMessage;
+    assertEquals(retry.attempt, 1);
+    assertEquals(retry.circuitHeld, undefined);
+    assertEquals(retry.orderingKey, orderingKey);
+    assertEquals(
+      queued[0].options?.delay,
+      Temporal.Duration.from({ seconds: 120 }),
+    );
+    assertEquals(queued[0].options?.orderingKey, orderingKey);
+    const state = await kv.get<Record<string, unknown>>([
+      "_fedify",
+      "circuit",
+      "unavailable.example",
+    ]);
+    assertEquals(state?.state, "closed");
+    assertEquals((state?.failures as unknown[]).length, 1);
+  });
+
+  await t.step("503 Retry-After delays newly opened circuit hold", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://open-retry-after.example/inbox", {
+      status: 503,
+      headers: { "Retry-After": "3600" },
+      body: "temporarily unavailable",
+    });
+    const { federation, queued, kv } = setup(
+      {
+        failureThreshold: 1,
+        recoveryDelay: { seconds: 30 },
+      },
+      { outboxRetryPolicy: () => Temporal.Duration.from({ seconds: 3 }) },
+    );
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://open-retry-after.example/inbox"),
+    );
+
+    assertEquals(queued.length, 1);
+    const held = queued[0].message as OutboxMessage;
+    assertEquals(held.attempt, 0);
+    assertEquals(held.circuitHeld, true);
+    assertEquals(queued[0].options?.delay?.toString(), "PT3600S");
+    const state = await kv.get<Record<string, unknown>>([
+      "_fedify",
+      "circuit",
+      "open-retry-after.example",
+    ]);
+    assertEquals(state?.state, "open");
+  });
+
+  await t.step("malformed Retry-After falls back to retry policy", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://huge-retry-after.example/inbox", {
+      status: 429,
+      headers: { "Retry-After": "999999999999999999999999999999" },
+      body: "rate limited",
+    });
+    const { federation, queued, kv } = setup(
+      { failureThreshold: 1 },
+      { outboxRetryPolicy: () => Temporal.Duration.from({ seconds: 3 }) },
+    );
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://huge-retry-after.example/inbox"),
+    );
+
+    assertEquals(queued.length, 1);
+    assertEquals(
+      queued[0].options?.delay?.total({ unit: "second" }),
+      3,
+    );
+    assertEquals(
+      await kv.get(["_fedify", "circuit", "huge-retry-after.example"]),
+      undefined,
+    );
+  });
+
+  await t.step(
+    "invalid Retry-After date falls back to retry policy",
+    async () => {
+      fetchMock.hardReset();
+      fetchMock.spyGlobal();
+      fetchMock.post("https://invalid-retry-after.example/inbox", {
+        status: 429,
+        headers: { "Retry-After": "1.5" },
+        body: "rate limited",
+      });
+      const { federation, queued, kv } = setup(
+        { failureThreshold: 1 },
+        { outboxRetryPolicy: () => Temporal.Duration.from({ seconds: 3 }) },
+      );
+
+      await federation.processQueuedTask(
+        undefined,
+        createOutboxMessage("https://invalid-retry-after.example/inbox"),
+      );
+
+      assertEquals(queued.length, 1);
+      assertEquals(
+        queued[0].options?.delay?.total({ unit: "second" }),
+        3,
+      );
+      assertEquals(
+        await kv.get(["_fedify", "circuit", "invalid-retry-after.example"]),
+        undefined,
+      );
+    },
+  );
+
+  await t.step("asctime Retry-After date is interpreted as UTC", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    const retryAfter = "Wed Dec 31 23:59:59 2036";
+    fetchMock.post("https://asctime-retry-after.example/inbox", {
+      status: 429,
+      headers: { "Retry-After": retryAfter },
+      body: "rate limited",
+    });
+    const { federation, queued } = setup(
+      { failureThreshold: 1 },
+      { outboxRetryPolicy: () => Temporal.Duration.from({ seconds: 3 }) },
+    );
+    const before = Temporal.Now.instant();
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://asctime-retry-after.example/inbox"),
+    );
+
+    const after = Temporal.Now.instant();
+    const retryAtMs = Date.parse(`${retryAfter} GMT`);
+    assertEquals(queued.length, 1);
+    const delayMs = queued[0].options?.delay?.total({ unit: "millisecond" });
+    assertExists(delayMs);
+    assertEquals(delayMs <= retryAtMs - before.epochMilliseconds, true);
+    assertEquals(delayMs >= retryAtMs - after.epochMilliseconds, true);
+  });
+
+  await t.step("permanent 5xx does not open circuit", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://permanent-500.example/inbox", {
+      status: 500,
+      body: "server error",
+    });
+    const { federation, queued, kv } = setup(
+      { failureThreshold: 1 },
+      { permanentFailureStatusCodes: [500] },
+    );
+    let permanentFailureStatusCode: unknown;
+    federation.setOutboxPermanentFailureHandler((_ctx, values) => {
+      permanentFailureStatusCode = values.statusCode;
+    });
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://permanent-500.example/inbox"),
+    );
+
+    assertEquals(queued, []);
+    assertEquals(permanentFailureStatusCode, 500);
+    assertEquals(
+      await kv.get(["_fedify", "circuit", "permanent-500.example"]),
+      undefined,
+    );
+  });
+
+  await t.step("permanent 5xx closes half-open circuit", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://permanent-probe.example/inbox", {
+      status: 500,
+      body: "server error",
+    });
+    const { federation, queued, kv } = setup(
+      {
+        failureThreshold: 1,
+        releaseInterval: { seconds: 1 },
+      },
+      { permanentFailureStatusCodes: [500] },
+    );
+    await kv.set(["_fedify", "circuit", "permanent-probe.example"], {
+      state: "half-open",
+      failures: ["2026-05-25T00:00:00Z"],
+      opened: "2026-05-25T00:00:00Z",
+      halfOpened: "2026-05-25T00:00:00Z",
+    });
+    let permanentFailureStatusCode: unknown;
+    federation.setOutboxPermanentFailureHandler((_ctx, values) => {
+      permanentFailureStatusCode = values.statusCode;
+    });
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://permanent-probe.example/inbox"),
+    );
+
+    assertEquals(queued, []);
+    assertEquals(permanentFailureStatusCode, 500);
+    assertEquals(
+      await kv.get(["_fedify", "circuit", "permanent-probe.example"]),
+      undefined,
+    );
+  });
+
+  await t.step("permanent 4xx closes half-open circuit", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://gone.example/inbox", {
+      status: 410,
+      body: "gone",
+    });
+    const { federation, queued, kv } = setup({
+      failureThreshold: 1,
+      releaseInterval: { seconds: 1 },
+    });
+    await kv.set(["_fedify", "circuit", "gone.example"], {
+      state: "half-open",
+      failures: ["2026-05-25T00:00:00Z"],
+      opened: "2026-05-25T00:00:00Z",
+      halfOpened: "2026-05-25T00:00:00Z",
+    });
+    let permanentFailureStatusCode: unknown;
+    federation.setOutboxPermanentFailureHandler((_ctx, values) => {
+      permanentFailureStatusCode = values.statusCode;
+    });
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://gone.example/inbox"),
+    );
+
+    assertEquals(queued, []);
+    assertEquals(permanentFailureStatusCode, 410);
+    assertEquals(
+      await kv.get(["_fedify", "circuit", "gone.example"]),
+      undefined,
+    );
+  });
+
+  await t.step("false disables circuit handling", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://disabled.example/inbox", {
+      status: 500,
+      body: "server error",
+    });
+    const { federation, queued, kv } = setup(false);
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://disabled.example/inbox"),
+    );
+
+    assertEquals(queued.length, 1);
+    const retry = queued[0].message as OutboxMessage;
+    assertEquals(retry.attempt, 1);
+    assertEquals(retry.circuitHeld, undefined);
+    assertEquals(
+      await kv.get(["_fedify", "circuit", "disabled.example"]),
+      undefined,
+    );
+  });
+
+  await t.step("state changes are recorded in metrics and spans", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    fetchMock.post("https://telemetry.example/inbox", {
+      status: 500,
+      body: "server error",
+    });
+    const [meterProvider, recorder] = createTestMeterProvider();
+    const [tracerProvider, exporter] = createTestTracerProvider();
+    const { federation, queued } = setup(
+      { failureThreshold: 1 },
+      { meterProvider, tracerProvider },
+    );
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://telemetry.example/inbox"),
+    );
+
+    assertEquals(queued.length, 1);
+    const measurements = recorder.getMeasurements(
+      "activitypub.circuit_breaker.state_change",
+    );
+    assertEquals(measurements.length, 1);
+    assertEquals(
+      measurements[0].attributes["activitypub.remote.host"],
+      "telemetry.example",
+    );
+    assertEquals(
+      measurements[0].attributes["activitypub.circuit_breaker.state"],
+      "open",
+    );
+    const events = exporter.getEvents(
+      "activitypub.outbox",
+      "activitypub.circuit_breaker.state_change",
+    );
+    assertEquals(events.length, 1);
+    assertEquals(
+      events[0].attributes?.["activitypub.remote.host"],
+      "telemetry.example",
+    );
+    assertEquals(
+      events[0].attributes?.["activitypub.circuit_breaker.previous_state"],
+      "closed",
+    );
+    assertEquals(
+      events[0].attributes?.["activitypub.circuit_breaker.state"],
+      "open",
+    );
+    const heldEvents = exporter.getEvents(
+      "activitypub.outbox",
+      "activitypub.circuit_breaker.held",
+    );
+    assertEquals(heldEvents.length, 1);
+    assertEquals(
+      heldEvents[0].attributes?.["activitypub.remote.host"],
+      "telemetry.example",
+    );
+    assertEquals(
+      heldEvents[0].attributes?.["activitypub.circuit_breaker.state"],
+      "open",
+    );
+  });
+
+  await t.step("held half-open circuit is recorded in spans", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    const now = Temporal.Instant.from("2026-05-25T00:00:30Z");
+    const [tracerProvider, exporter] = createTestTracerProvider();
+    const { federation, queued, kv } = setup(
+      {
+        failureThreshold: 1,
+        recoveryDelay: { minutes: 5 },
+        releaseInterval: { minutes: 1 },
+      },
+      { tracerProvider },
+    );
+    federation.circuitBreaker = new CircuitBreaker({
+      kv,
+      prefix: ["_fedify", "circuit"],
+      now: () => now,
+      options: {
+        failureThreshold: 1,
+        recoveryDelay: { minutes: 5 },
+        releaseInterval: { minutes: 1 },
+      },
+    });
+    await kv.set(["_fedify", "circuit", "half-open-telemetry.example"], {
+      state: "half-open",
+      failures: ["2026-05-25T00:00:00Z"],
+      opened: "2026-05-25T00:00:00Z",
+      halfOpened: "2026-05-25T00:00:00Z",
+    });
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://half-open-telemetry.example/inbox", {
+        circuitHeld: true,
+        circuitHeldSince: "2026-05-25T00:00:00Z",
+      }),
+    );
+
+    assertEquals(queued.length, 1);
+    const events = exporter.getEvents(
+      "activitypub.outbox",
+      "activitypub.circuit_breaker.held",
+    );
+    assertEquals(events.length, 1);
+    assertEquals(
+      events[0].attributes?.["activitypub.remote.host"],
+      "half-open-telemetry.example",
+    );
+    assertEquals(
+      events[0].attributes?.["activitypub.circuit_breaker.state"],
+      "half_open",
+    );
+  });
+
+  await t.step(
+    "stale half-open probe does not record open transition",
+    async () => {
+      fetchMock.hardReset();
+      fetchMock.spyGlobal();
+      fetchMock.post("https://stale-probe-telemetry.example/inbox", {
+        status: 202,
+        body: "",
+      });
+      const now = Temporal.Instant.from("2026-05-25T00:00:02Z");
+      const [tracerProvider, exporter] = createTestTracerProvider();
+      const { federation, kv } = setup(
+        {
+          failureThreshold: 1,
+          recoveryDelay: { seconds: 1 },
+        },
+        { tracerProvider },
+      );
+      federation.circuitBreaker = new CircuitBreaker({
+        kv,
+        prefix: ["_fedify", "circuit"],
+        now: () => now,
+        options: {
+          failureThreshold: 1,
+          recoveryDelay: { seconds: 1 },
+        },
+      });
+      await kv.set(["_fedify", "circuit", "stale-probe-telemetry.example"], {
+        state: "half-open",
+        failures: ["2026-05-25T00:00:00Z"],
+        opened: "2026-05-25T00:00:00Z",
+        halfOpened: "2026-05-25T00:00:00Z",
+      });
+
+      await federation.processQueuedTask(
+        undefined,
+        createOutboxMessage("https://stale-probe-telemetry.example/inbox"),
+      );
+
+      const events = exporter.getEvents(
+        "activitypub.outbox",
+        "activitypub.circuit_breaker.state_change",
+      );
+      assertEquals(events.length, 1);
+      assertEquals(
+        events[0].attributes?.["activitypub.circuit_breaker.previous_state"],
+        "half_open",
+      );
+      assertEquals(
+        events[0].attributes?.["activitypub.circuit_breaker.state"],
+        "closed",
+      );
+    },
+  );
+
+  await t.step("expired held activity is dropped", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    const now = Temporal.Instant.from("2026-05-25T00:00:02Z");
+    let dropped: { remoteHost: string; heldSince: Temporal.Instant } | null =
+      null;
+    const { federation, queued, kv } = setup(false);
+    federation.circuitBreaker = new CircuitBreaker({
+      kv,
+      prefix: ["_fedify", "circuit"],
+      now: () => now,
+      options: {
+        failureThreshold: 1,
+        heldActivityTtl: { seconds: 1 },
+        onActivityDrop(remoteHost, details) {
+          dropped = { remoteHost, heldSince: details.heldSince };
+        },
+      },
+    });
+    let permanentFailureReason: unknown;
+    federation.setOutboxPermanentFailureHandler((_ctx, values) => {
+      permanentFailureReason = values.reason;
+    });
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://ttl.example/inbox", {
+        circuitHeld: true,
+        circuitHeldSince: "2026-05-25T00:00:00Z",
+      }),
+    );
+
+    assertEquals(queued, []);
+    assertEquals(dropped, {
+      remoteHost: "ttl.example",
+      heldSince: Temporal.Instant.from("2026-05-25T00:00:00Z"),
+    });
+    assertEquals(permanentFailureReason, "circuit-breaker-ttl");
+  });
+
+  await t.step("expired held probe is dropped after failed send", async () => {
+    fetchMock.hardReset();
+    fetchMock.spyGlobal();
+    let now = Temporal.Instant.from("2026-05-25T00:00:01Z");
+    const heldSince = Temporal.Instant.from("2026-05-25T00:00:00Z");
+    fetchMock.post("https://expired-probe.example/inbox", () => {
+      now = Temporal.Instant.from("2026-05-25T00:00:03Z");
+      return { status: 500, body: "server error" };
+    });
+    let dropped: { remoteHost: string; heldSince: Temporal.Instant } | null =
+      null;
+    const { federation, queued, kv } = setup({
+      failureThreshold: 1,
+      recoveryDelay: { seconds: 1 },
+      heldActivityTtl: { seconds: 2 },
+      releaseInterval: { seconds: 1 },
+    });
+    federation.circuitBreaker = new CircuitBreaker({
+      kv,
+      prefix: ["_fedify", "circuit"],
+      now: () => now,
+      options: {
+        failureThreshold: 1,
+        recoveryDelay: { seconds: 1 },
+        heldActivityTtl: { seconds: 2 },
+        releaseInterval: { seconds: 1 },
+        onActivityDrop(remoteHost, details) {
+          dropped = { remoteHost, heldSince: details.heldSince };
+        },
+      },
+    });
+    await kv.set(["_fedify", "circuit", "expired-probe.example"], {
+      state: "half-open",
+      failures: ["2026-05-25T00:00:00Z"],
+      opened: "2026-05-25T00:00:00Z",
+      halfOpened: "2026-05-25T00:00:00Z",
+    });
+    let permanentFailureReason: unknown;
+    federation.setOutboxPermanentFailureHandler((_ctx, values) => {
+      permanentFailureReason = values.reason;
+    });
+
+    await federation.processQueuedTask(
+      undefined,
+      createOutboxMessage("https://expired-probe.example/inbox", {
+        circuitHeld: true,
+        circuitHeldSince: heldSince.toString(),
+      }),
+    );
+
+    assertEquals(queued, []);
+    assertEquals(dropped, {
+      remoteHost: "expired-probe.example",
+      heldSince,
+    });
+    assertEquals(permanentFailureReason, "circuit-breaker-ttl");
   });
 
   fetchMock.hardReset();

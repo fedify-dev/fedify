@@ -190,19 +190,25 @@ later, but write unit tests as well if possible.  Name test files with the
 
 #### Test runner
 
-You can import the `test` function from `@fedify/fixture` for runtime-agnostic
-tests that work across Deno, Node.js, and Bun.  Validate the values with
-`node:assert/strict` assertions.
+Use `node:test` and `node:assert/strict` directly—Deno, Node.js, and Bun all
+support these built-in modules, so they are the preferred choice for new
+integration packages:
 
-> **Warning**: `@fedify/fixture` is a **private** workspace package and
-> must never be imported from published (non-test) source files.  Only
-> import it in `*.test.ts` files.
+~~~~ typescript
+import { describe, it } from "node:test";
+import { deepStrictEqual, ok } from "node:assert/strict";
+~~~~
 
 If the framework relies on virtual modules, build-time code generation,
-or other mechanisms that make `@fedify/fixture` impractical, you may use the
+or other mechanisms that make `node:test` impractical, you may use the
 framework's own test utilities or a compatible test runner (e.g., `vitest`).
 Document the choice in the test file so future contributors understand why a
 different runner was chosen.
+
+You can still import helpers from `@fedify/fixture` in `*.test.ts` files
+when useful (e.g., `mockDocumentLoader`, `TestSpanExporter`).  Just never
+import `@fedify/fixture` from published (non-test) source files—it is a
+private workspace package absent from the published artifacts.
 
 #### Minimum test coverage
 

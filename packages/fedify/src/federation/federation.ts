@@ -13,6 +13,7 @@ import type {
 import type { MeterProvider, TracerProvider } from "@opentelemetry/api";
 import type { ActivityTransformer } from "../compat/types.ts";
 import type { HttpMessageSignaturesSpec } from "../sig/http.ts";
+import type { CircuitBreakerOptions } from "./circuit-breaker.ts";
 import type {
   ActorAliasMapper,
   ActorDispatcher,
@@ -801,7 +802,10 @@ export interface FederationBuilder<TContextData>
   extends Federatable<TContextData> {
   /**
    * Builds the federation object.
+   * @param options Parameters for initializing the federation object.
    * @returns The federation object.
+   * @throws {TypeError} If benchmark mode and `meterProvider` are both
+   * specified.
    */
   build(
     options: FederationOptions<TContextData>,
@@ -843,6 +847,27 @@ export interface InboxChallengePolicy {
    * @default `300` (5 minutes)
    */
   nonceTtlSeconds?: number;
+}
+
+/**
+ * Options for cooperative benchmark mode.
+ * @since 2.3.0
+ */
+export interface FederationBenchmarkOptions {
+  /**
+   * Server-controlled inbox URLs that the benchmark trigger endpoint may
+   * deliver to.
+   */
+  triggerSinks?: readonly (string | URL)[];
+
+  /**
+   * Whether the benchmark trigger endpoint may deliver to recipients outside
+   * {@link FederationBenchmarkOptions.triggerSinks}.
+   *
+   * Do not enable this option unless the benchmark endpoint is only reachable
+   * by a trusted benchmark controller.
+   */
+  allowUnsafeTriggerRecipients?: boolean;
 }
 
 /**
@@ -934,6 +959,22 @@ export interface FederationOptions<TContextData> {
   allowPrivateAddress?: boolean;
 
   /**
+   * Whether to enable cooperative benchmark mode.  This mode exposes
+   * benchmark-only endpoints and relaxes selected defaults for benchmark
+   * targets.  Pass an object to configure benchmark trigger delivery.
+   * Do not enable this option in production.
+   *
+   * When enabled, {@link FederationOptions.allowPrivateAddress} defaults to
+   * `true` unless {@link FederationOptions.documentLoaderFactory} or
+   * {@link FederationOptions.contextLoaderFactory} is configured, and
+   * {@link FederationOptions.signatureTimeWindow} defaults to `false`.
+   *
+   * Turned off by default.
+   * @since 2.3.0
+   */
+  benchmarkMode?: boolean | FederationBenchmarkOptions;
+
+  /**
    * Options for making `User-Agent` strings for HTTP requests.
    * If a string is provided, it is used as the `User-Agent` header.
    * If an object is provided, it is passed to the {@link getUserAgent}
@@ -1019,6 +1060,17 @@ export interface FederationOptions<TContextData> {
    * @since 0.12.0
    */
   outboxRetryPolicy?: RetryPolicy;
+
+  /**
+   * The circuit breaker for queued outbound activity delivery.  When enabled,
+   * Fedify tracks repeated failures per remote host and temporarily holds
+   * queued activities instead of repeatedly hammering an unreachable server.
+   *
+   * Passing `false` disables the circuit breaker.
+   *
+   * @since 2.3.0
+   */
+  circuitBreaker?: false | CircuitBreakerOptions;
 
   /**
    * The retry policy for processing incoming activities.  By default, this

@@ -1,11 +1,24 @@
 import { createTestMeterProvider, test } from "@fedify/fixture";
 import { assertEquals, assertRejects } from "@std/assert";
+import {
+  DataPointType,
+  type HistogramMetricData,
+  MeterProvider,
+  MetricReader,
+} from "@opentelemetry/sdk-metrics";
 import type { DocumentLoader, RemoteDocument } from "@fedify/vocab-runtime";
 import { FetchError } from "@fedify/vocab-runtime";
-import type { MessageQueue } from "./mq.ts";
+import type { MessageQueue, MessageQueueDepth } from "./mq.ts";
 import {
   classifyFetchError,
+  getFederationMetrics,
+  getRemoteHost,
   instrumentDocumentLoader,
+  recordCircuitBreakerStateChange,
+  recordCollectionDispatchDuration,
+  recordCollectionPageItems,
+  recordCollectionRequest,
+  recordCollectionTotalItems,
   recordDocumentCache,
   recordDocumentFetch,
   recordFanoutRecipients,
@@ -14,7 +27,18 @@ import {
   recordOutboxActivity,
   recordOutboxEnqueue,
   recordWebFingerHandle,
+  registerQueueDepthGauge,
 } from "./metrics.ts";
+
+class TestMetricReader extends MetricReader {
+  protected onShutdown(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  protected onForceFlush(): Promise<void> {
+    return Promise.resolve();
+  }
+}
 
 const noopQueue: MessageQueue = {
   enqueue() {
@@ -24,6 +48,21 @@ const noopQueue: MessageQueue = {
     return Promise.resolve();
   },
 };
+
+test("getRemoteHost() includes non-default ports", () => {
+  assertEquals(
+    getRemoteHost(new URL("https://example.com/inbox")),
+    "example.com",
+  );
+  assertEquals(
+    getRemoteHost(new URL("https://example.com:8443/inbox")),
+    "example.com:8443",
+  );
+  assertEquals(
+    getRemoteHost(new URL("https://example.com:443/inbox")),
+    "example.com",
+  );
+});
 
 test("recordFanoutRecipients() records the recipient count with activity type", () => {
   const [meterProvider, recorder] = createTestMeterProvider();
@@ -56,6 +95,166 @@ test("recordFanoutRecipients() omits activity type when unknown", () => {
     "activitypub.activity.type" in measurements[0].attributes,
     false,
   );
+});
+
+test("signature verification duration uses explicit low-latency buckets", async () => {
+  const reader = new TestMetricReader();
+  const meterProvider = new MeterProvider({ readers: [reader] });
+  try {
+    getFederationMetrics(meterProvider).recordSignatureVerificationDuration(
+      7,
+      "http",
+      "verified",
+    );
+
+    const result = await reader.collect();
+    const metric = result.resourceMetrics.scopeMetrics
+      .flatMap((scope) => scope.metrics)
+      .find((metric) =>
+        metric.descriptor.name ===
+          "activitypub.signature.verification.duration"
+      );
+    assertEquals(metric?.dataPointType, DataPointType.HISTOGRAM);
+    const histogram = metric as HistogramMetricData | undefined;
+    assertEquals(histogram?.dataPoints[0].value.buckets.boundaries, [
+      0.1,
+      0.25,
+      0.5,
+      1,
+      2.5,
+      5,
+      10,
+      25,
+      50,
+      100,
+      250,
+      500,
+      1000,
+    ]);
+  } finally {
+    await meterProvider.shutdown();
+  }
+});
+
+test("registerQueueDepthGauge() skips unavailable depth snapshots", async () => {
+  const reader = new TestMetricReader();
+  const meterProvider = new MeterProvider({ readers: [reader] });
+  try {
+    const throwingQueue: MessageQueue = {
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+      getDepth() {
+        throw new TypeError("backend unavailable");
+      },
+    };
+    const nullDepthQueue: MessageQueue = {
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+      getDepth() {
+        return Promise.resolve(null as unknown as MessageQueueDepth);
+      },
+    };
+    const healthyQueue: MessageQueue = {
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+      getDepth() {
+        return Promise.resolve({ queued: 7 });
+      },
+    };
+
+    registerQueueDepthGauge(meterProvider, [
+      { role: "inbox", queue: throwingQueue },
+      { role: "outbox", queue: nullDepthQueue },
+      { role: "fanout", queue: healthyQueue },
+    ]);
+
+    const result = await reader.collect();
+    assertEquals(result.errors, []);
+    const queueDepth = result.resourceMetrics.scopeMetrics
+      .flatMap((scope) => scope.metrics)
+      .find((metric) => metric.descriptor.name === "fedify.queue.depth");
+    assertEquals(queueDepth?.dataPointType, DataPointType.GAUGE);
+    assertEquals(
+      queueDepth?.dataPoints.map((point) => ({
+        state: point.attributes["fedify.queue.depth.state"],
+        role: point.attributes["fedify.queue.role"],
+        value: point.value,
+      })),
+      [
+        { state: "queued", role: "fanout", value: 7 },
+      ],
+    );
+  } finally {
+    await meterProvider.shutdown();
+  }
+});
+
+test("registerQueueDepthGauge() queries queue depths in parallel", async () => {
+  const reader = new TestMetricReader();
+  const meterProvider = new MeterProvider({ readers: [reader] });
+  let releaseSlowDepth: ((depth: MessageQueueDepth) => void) | undefined;
+  let fastDepthStarted = false;
+  try {
+    const slowQueue: MessageQueue = {
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+      getDepth() {
+        return new Promise<MessageQueueDepth>((resolve) => {
+          releaseSlowDepth = resolve;
+        });
+      },
+    };
+    const fastQueue: MessageQueue = {
+      enqueue() {
+        return Promise.resolve();
+      },
+      listen() {
+        return Promise.resolve();
+      },
+      getDepth() {
+        fastDepthStarted = true;
+        return Promise.resolve({ queued: 5 });
+      },
+    };
+
+    registerQueueDepthGauge(meterProvider, [
+      { role: "inbox", queue: slowQueue },
+      { role: "outbox", queue: fastQueue },
+    ]);
+
+    const collection = reader.collect();
+    await Promise.resolve();
+    assertEquals(fastDepthStarted, true);
+    releaseSlowDepth?.({ queued: 3 });
+
+    const result = await collection;
+    const queueDepth = result.resourceMetrics.scopeMetrics
+      .flatMap((scope) => scope.metrics)
+      .find((metric) => metric.descriptor.name === "fedify.queue.depth");
+    assertEquals(
+      queueDepth?.dataPoints.map((point) => point.value).sort(),
+      [3, 5],
+    );
+  } finally {
+    releaseSlowDepth?.({ queued: 0 });
+    await meterProvider.shutdown();
+  }
 });
 
 test("recordInboxActivity() records counter with result and activity type", () => {
@@ -159,6 +358,29 @@ test("recordOutboxActivity() records counter with result and activity type", () 
   assertEquals(
     measurements.map((m) => m.attributes["activitypub.processing.result"]),
     ["queued", "retried", "abandoned"],
+  );
+});
+
+test("recordCircuitBreakerStateChange() records counter with bounded attributes", () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  recordCircuitBreakerStateChange(
+    meterProvider,
+    "remote.example",
+    "half_open",
+  );
+  const measurements = recorder.getMeasurements(
+    "activitypub.circuit_breaker.state_change",
+  );
+  assertEquals(measurements.length, 1);
+  assertEquals(measurements[0].type, "counter");
+  assertEquals(measurements[0].value, 1);
+  assertEquals(
+    measurements[0].attributes["activitypub.remote.host"],
+    "remote.example",
+  );
+  assertEquals(
+    measurements[0].attributes["activitypub.circuit_breaker.state"],
+    "half_open",
   );
 });
 
@@ -388,6 +610,106 @@ test("recordWebFingerHandle() omits optional attributes when not provided", () =
     "http.response.status_code" in (counter?.attributes ?? {}),
     false,
   );
+});
+
+test("recordCollectionRequest() records counter with bounded attributes", () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  recordCollectionRequest(meterProvider, {
+    kind: "followers",
+    page: true,
+    dispatcher: "built_in",
+    result: "served",
+    statusCode: 200,
+  });
+
+  const counter = recorder.getMeasurement("activitypub.collection.request");
+  assertEquals(counter?.type, "counter");
+  assertEquals(counter?.value, 1);
+  assertEquals(counter?.attributes["activitypub.collection.kind"], "followers");
+  assertEquals(counter?.attributes["activitypub.collection.page"], true);
+  assertEquals(counter?.attributes["fedify.collection.dispatcher"], "built_in");
+  assertEquals(counter?.attributes["activitypub.collection.result"], "served");
+  assertEquals(counter?.attributes["http.response.status_code"], 200);
+});
+
+test("recordCollectionRequest() omits status code when unavailable", () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  recordCollectionRequest(meterProvider, {
+    kind: "custom",
+    page: false,
+    dispatcher: "custom",
+    result: "error",
+  });
+
+  const counter = recorder.getMeasurement("activitypub.collection.request");
+  assertEquals(counter?.attributes["activitypub.collection.kind"], "custom");
+  assertEquals(counter?.attributes["activitypub.collection.page"], false);
+  assertEquals(counter?.attributes["fedify.collection.dispatcher"], "custom");
+  assertEquals(counter?.attributes["activitypub.collection.result"], "error");
+  assertEquals(
+    "http.response.status_code" in (counter?.attributes ?? {}),
+    false,
+  );
+});
+
+test("recordCollectionDispatchDuration() records histogram", () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  recordCollectionDispatchDuration(meterProvider, 12, {
+    kind: "outbox",
+    page: false,
+    dispatcher: "built_in",
+    result: "served",
+  });
+
+  const duration = recorder.getMeasurement(
+    "activitypub.collection.dispatch.duration",
+  );
+  assertEquals(duration?.type, "histogram");
+  assertEquals(duration?.value, 12);
+  assertEquals(duration?.attributes["activitypub.collection.kind"], "outbox");
+  assertEquals(duration?.attributes["activitypub.collection.page"], false);
+  assertEquals(
+    duration?.attributes["fedify.collection.dispatcher"],
+    "built_in",
+  );
+  assertEquals(duration?.attributes["activitypub.collection.result"], "served");
+});
+
+test("recordCollectionPageItems() records item count histogram", () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  recordCollectionPageItems(meterProvider, 3, {
+    kind: "featured_tags",
+    page: true,
+    dispatcher: "built_in",
+    result: "served",
+    statusCode: 200,
+  });
+
+  const items = recorder.getMeasurement("activitypub.collection.page.items");
+  assertEquals(items?.type, "histogram");
+  assertEquals(items?.value, 3);
+  assertEquals(
+    items?.attributes["activitypub.collection.kind"],
+    "featured_tags",
+  );
+  assertEquals(items?.attributes["activitypub.collection.page"], true);
+  assertEquals(items?.attributes["http.response.status_code"], 200);
+});
+
+test("recordCollectionTotalItems() records total item histogram", () => {
+  const [meterProvider, recorder] = createTestMeterProvider();
+  recordCollectionTotalItems(meterProvider, 42, {
+    kind: "liked",
+    page: false,
+    dispatcher: "built_in",
+    result: "served",
+  });
+
+  const total = recorder.getMeasurement("activitypub.collection.total_items");
+  assertEquals(total?.type, "histogram");
+  assertEquals(total?.value, 42);
+  assertEquals(total?.attributes["activitypub.collection.kind"], "liked");
+  assertEquals(total?.attributes["activitypub.collection.page"], false);
 });
 
 test("classifyFetchError() classifies FetchError with 404 as not_found", () => {

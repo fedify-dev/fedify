@@ -1,4 +1,4 @@
-import { text } from "@optique/core";
+import { commandLine, text } from "@optique/core";
 import { flow } from "es-toolkit";
 import type { InitCommand } from "../command.ts";
 import type { InitCommandData } from "../types.ts";
@@ -115,6 +115,16 @@ export const noticeHowToRun = (
 ${instruction}
     
 Start by editing the ${text(federationFile)} file to define your federation!
+`;
+
+/** Prints a notice that dependency installation was skipped and how to install them manually. */
+export const noticeSkippedInstall = (
+  { packageManager }: InitCommandData,
+) =>
+  printMessage`
+Dependencies were not installed.  Run ${
+    commandLine(`${packageManager} install`)
+  } in the project directory to install them.
 `;
 
 /**

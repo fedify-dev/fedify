@@ -16,7 +16,7 @@
 <!-- Default -->
 
 [![Matrix][Matrix badge]][Matrix]
-[![Follow @fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
+[![@fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
 
 This package provides a simple way to integrate [Fedify] with [프레임워크].
 
@@ -26,7 +26,7 @@ This package provides a simple way to integrate [Fedify] with [프레임워크].
 [npm]: https://www.npmjs.com/package/@fedify/프레임워크
 [Matrix badge]: https://img.shields.io/matrix/fedify%3Amatrix.org
 [Matrix]: https://matrix.to/#/#fedify:matrix.org
-[@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
+[@fedify@hollo.social badge]: https://fedi-badge.minhee.org/@fedify@hollo.social/followers.svg
 [@fedify@hollo.social]: https://hollo.social/@fedify
 [Fedify]: https://fedify.dev/
 [프레임워크]: https://프레임.워크/

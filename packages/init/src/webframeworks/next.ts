@@ -3,14 +3,19 @@ import deps from "../json/deps.json" with { type: "json" };
 import { PACKAGE_VERSION, readTemplate } from "../lib.ts";
 import type { PackageManager, WebFrameworkDescription } from "../types.ts";
 import { defaultDenoDependencies, defaultDevDependencies } from "./const.ts";
-import { getInstruction } from "./utils.ts";
+import { getInstruction, getNodeBunDevToolTasks } from "./utils.ts";
 
 const nextDescription: WebFrameworkDescription = {
   label: "Next.js",
   packageManagers: PACKAGE_MANAGER,
   defaultPort: 3000,
-  init: async ({ packageManager: pm }) => ({
-    command: getNextInitCommand(pm),
+  init: async ({ packageManager: pm, skipInstall }) => ({
+    command: getNextInitCommand(pm, skipInstall),
+    cleanupFiles: pm === "deno" ? [] : ["eslint.config.mjs"],
+    cleanupPackageJson: pm === "deno" ? {} : {
+      scripts: ["lint"],
+      devDependencies: ["eslint", "eslint-config-next"],
+    },
     dependencies: {
       "@fedify/next": PACKAGE_VERSION,
       ...(pm === "deno" ? defaultDenoDependencies : {}),
@@ -21,16 +26,14 @@ const nextDescription: WebFrameworkDescription = {
     },
     federationFile: "federation/index.ts",
     loggingFile: "logging.ts",
+    format: {
+      ignorePatterns: [".next/**"],
+    },
     files: {
       "instrumentation.ts": await readTemplate("next/instrumentation.ts"),
       "middleware.ts": await readTemplate("next/middleware.ts"),
-      ...(pm !== "deno" && {
-        "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
-      }),
     },
-    tasks: pm !== "deno"
-      ? { "lint": "eslint ." }
-      : {} as Record<string, string>,
+    tasks: getNodeBunDevToolTasks(pm),
     instruction: getInstruction(pm, 3000),
   }),
 };
@@ -43,7 +46,13 @@ export default nextDescription;
  */
 const getNextInitCommand = (
   pm: PackageManager,
-): string[] => [...createNextAppCommand(pm), ".", "--yes"];
+  skipInstall: boolean,
+): string[] => [
+  ...createNextAppCommand(pm),
+  ".",
+  "--yes",
+  ...(skipInstall ? ["--skip-install"] : []),
+];
 
 const createNextAppCommand = (pm: PackageManager): string[] =>
   pm === "deno"

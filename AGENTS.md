@@ -108,9 +108,10 @@ Code patterns and principles
 3.  **Type Safety**: Maintain strict TypeScript typing throughout. Use generics
     like `<TContextData>` to allow applications to customize context data.
 
-4.  **Testing**: Follow the existing test patterns. Tests use `@fedify/fixture`
-    which provides runtime-agnostic test adapters (wraps Deno, Node.js, and Bun
-    test APIs). Use in-memory stores for testing.
+4.  **Testing**: Follow the existing test patterns. Tests use `node:test` and
+    `node:assert/strict` (supported on Deno, Node.js, and Bun). Use in-memory
+    stores for testing. Exception: `@fedify/fedify` and `@fedify/vocab` use
+    `test()` from `@fedify/fixture` for Cloudflare Workers compatibility.
 
 5.  **Framework Agnostic**: Code should work across Deno, Node.js, and Bun
     environments.
@@ -179,11 +180,12 @@ A detailed step-by-step guide is available across three skills:
 3.  Follow the pattern from existing database adapter packages
 4.  Implement both KV store and message queue interfaces as needed
 
-### Writing tests with `@fedify/fixture`
+### Writing tests
 
-See *CONTRIBUTING.md* “Writing tests with `@fedify/fixture`” section and
-*packages/fixture/README.md* for detailed instructions on using the fixture
-package for runtime-agnostic testing.
+See *CONTRIBUTING.md* “Writing tests with `node:test`” section and
+*packages/fixture/README.md* for details on `@fedify/fixture` utilities
+(`mockDocumentLoader`, `TestSpanExporter`, etc.) and the Cloudflare Workers
+exception.
 
 ### Adding a new package
 
@@ -207,10 +209,18 @@ Testing requirements
 
 1.  Write unit tests for all new functionality
 2.  Follow the pattern of existing tests
-3.  Import `test` from `@fedify/fixture` for runtime-agnostic tests
-4.  Use testing utilities from *packages/testing/* (`@fedify/testing`) or
+3.  Use `node:test` and `node:assert/strict` for tests in most packages—Deno,
+    Node.js, and Bun all support these built-in modules
+4.  **Exception**: `@fedify/fedify` and `@fedify/vocab` must use `test()` from
+    `@fedify/fixture` because those packages include a Cloudflare Workers test
+    harness that consumes the `testDefinitions` registry; using `node:test`
+    directly would bypass that harness
+5.  `mockDocumentLoader()` and `TestSpanExporter`/`createTestTracerProvider()`
+    from `@fedify/fixture` may be imported in any `*.test.ts` file regardless
+    of which test runner is used
+6.  Use testing utilities from *packages/testing/* (`@fedify/testing`) or
     *packages/fedify/src/testing/* (for Fedify-dependent utilities)
-5.  Consider interoperability with other fediverse software
+7.  Consider interoperability with other fediverse software
 
 
 Documentation standards

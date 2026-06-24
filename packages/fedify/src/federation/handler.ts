@@ -74,7 +74,19 @@ import type {
 import { routeActivity } from "./inbox.ts";
 import { KvKeyCache } from "./keycache.ts";
 import type { KvKey, KvStore } from "./kv.ts";
-import { getFederationMetrics, getRemoteHost } from "./metrics.ts";
+import {
+  type CollectionMetricAttributes,
+  type CollectionMetricDispatcher,
+  type CollectionMetricKind,
+  type CollectionMetricResult,
+  getDurationMs,
+  getFederationMetrics,
+  getRemoteHost,
+  recordCollectionDispatchDuration,
+  recordCollectionPageItems,
+  recordCollectionRequest,
+  recordCollectionTotalItems,
+} from "./metrics.ts";
 import type { MessageQueue } from "./mq.ts";
 import { acceptsJsonLd } from "./negotiation.ts";
 import { hasMalformedKnownTemporalLiteral } from "./temporal.ts";
@@ -120,7 +132,7 @@ function isInvalidJsonLdError(error: unknown): error is Error {
 
 function isValidationTypeError(error: unknown): error is TypeError {
   return error instanceof TypeError &&
-    (/^(Invalid JSON-LD:|Invalid type:|Unexpected type:)/
+    (/^(Invalid JSON-LD:|Invalid type:|Unexpected type:|Invalid @id:)/
       .test(error.message) ||
       isInvalidUrlTypeError(error));
 }
@@ -327,8 +339,78 @@ export interface CollectionHandlerParameters<
     TFilter
   >;
   tracerProvider?: TracerProvider;
+  /**
+   * The meter provider for recording collection metrics.
+   * @since 2.3.0
+   */
+  meterProvider?: MeterProvider;
   onUnauthorized(request: Request): Response | Promise<Response>;
   onNotFound(request: Request): Response | Promise<Response>;
+}
+
+type CollectionMetricBase = Pick<
+  CollectionMetricAttributes,
+  "kind" | "page" | "dispatcher"
+>;
+
+const BUILT_IN_COLLECTION_METRIC_KINDS = new Set<string>([
+  "inbox",
+  "outbox",
+  "following",
+  "followers",
+  "liked",
+  "featured",
+  "featured_tags",
+]);
+
+function getCollectionMetricKind(name: string): CollectionMetricKind {
+  const normalized = name.trim()
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+  return BUILT_IN_COLLECTION_METRIC_KINDS.has(normalized)
+    ? normalized as CollectionMetricKind
+    : "custom";
+}
+
+function collectionAttributes(
+  base: CollectionMetricBase,
+  result: CollectionMetricResult,
+  response?: Response,
+): CollectionMetricAttributes {
+  return {
+    ...base,
+    result,
+    ...(response == null ? {} : { statusCode: response.status }),
+  };
+}
+
+function recordCollectionMetrics(
+  meterProvider: MeterProvider | undefined,
+  base: CollectionMetricBase,
+  result: CollectionMetricResult,
+  options: {
+    response?: Response;
+    dispatchDurationMs?: number;
+    itemCount?: number;
+    totalItems?: number;
+  } = {},
+): void {
+  const attrs = collectionAttributes(base, result, options.response);
+  recordCollectionRequest(meterProvider, attrs);
+  if (options.dispatchDurationMs != null) {
+    recordCollectionDispatchDuration(
+      meterProvider,
+      options.dispatchDurationMs,
+      attrs,
+    );
+  }
+  if (options.itemCount != null) {
+    recordCollectionPageItems(meterProvider, options.itemCount, attrs);
+  }
+  if (options.totalItems != null) {
+    recordCollectionTotalItems(meterProvider, options.totalItems, attrs);
+  }
 }
 
 /**
@@ -357,6 +439,7 @@ export async function handleCollection<
     context,
     collectionCallbacks,
     tracerProvider,
+    meterProvider,
     onUnauthorized,
     onNotFound,
   }: CollectionHandlerParameters<TItem, TContext, TContextData, TFilter>,
@@ -366,152 +449,218 @@ export async function handleCollection<
   const tracer = tracerProvider.getTracer(metadata.name, metadata.version);
   const url = new URL(request.url);
   const cursor = url.searchParams.get("cursor");
-  if (collectionCallbacks == null) return await onNotFound(request);
-  let collection: OrderedCollection | OrderedCollectionPage;
-  const baseUri = uriGetter(identifier);
-  if (cursor == null) {
-    const firstCursor = await collectionCallbacks.firstCursor?.(
-      context,
-      identifier,
-    );
-    const totalItems = filter == null
-      ? await collectionCallbacks.counter?.(context, identifier)
-      : undefined;
-    if (firstCursor == null) {
-      const itemsOrResponse = await tracer.startActiveSpan(
-        `activitypub.dispatch_collection ${spanName}`,
+  const metricBase = {
+    kind: getCollectionMetricKind(name),
+    page: cursor != null,
+    dispatcher: "built_in" as CollectionMetricDispatcher,
+  };
+  let dispatchDurationMs: number | undefined;
+  let itemCount: number | undefined;
+  let totalItemCount: number | undefined;
+  const finish = (
+    response: Response,
+    result: CollectionMetricResult,
+  ): Response => {
+    recordCollectionMetrics(meterProvider, metricBase, result, {
+      response,
+      dispatchDurationMs,
+      itemCount,
+      totalItems: totalItemCount,
+    });
+    return response;
+  };
+  try {
+    if (collectionCallbacks == null) {
+      return finish(await onNotFound(request), "not_found");
+    }
+    let collection: OrderedCollection | OrderedCollectionPage;
+    const baseUri = uriGetter(identifier);
+    if (cursor == null) {
+      const firstCursor = await collectionCallbacks.firstCursor?.(
+        context,
+        identifier,
+      );
+      const totalItems = filter == null
+        ? await collectionCallbacks.counter?.(context, identifier)
+        : undefined;
+      totalItemCount = totalItems == null ? undefined : Number(totalItems);
+      if (firstCursor == null) {
+        const itemsOrResponse = await tracer.startActiveSpan(
+          `activitypub.dispatch_collection ${spanName}`,
+          {
+            kind: SpanKind.SERVER,
+            attributes: {
+              "activitypub.collection.id": baseUri.href,
+              "activitypub.collection.type": OrderedCollection.typeId.href,
+            },
+          },
+          async (span) => {
+            if (totalItemCount != null) {
+              span.setAttribute(
+                "activitypub.collection.total_items",
+                totalItemCount,
+              );
+            }
+            const started = performance.now();
+            try {
+              const page = await collectionCallbacks.dispatcher(
+                context,
+                identifier,
+                null,
+                filter,
+              );
+              dispatchDurationMs = getDurationMs(started);
+              if (page == null) {
+                span.setStatus({ code: SpanStatusCode.ERROR });
+                return await onNotFound(request);
+              }
+              const items = filterCollectionItems(
+                page.items,
+                name,
+                filterPredicate,
+              );
+              itemCount = items.length;
+              span.setAttribute("fedify.collection.items", itemCount);
+              return items;
+            } catch (e) {
+              if (dispatchDurationMs == null) {
+                dispatchDurationMs = getDurationMs(started);
+              }
+              span.setStatus({
+                code: SpanStatusCode.ERROR,
+                message: String(e),
+              });
+              throw e;
+            } finally {
+              span.end();
+            }
+          },
+        );
+        if (itemsOrResponse instanceof Response) {
+          return finish(itemsOrResponse, "not_found");
+        }
+        collection = new OrderedCollection({
+          id: baseUri,
+          totalItems: totalItemCount ?? null,
+          items: itemsOrResponse,
+        });
+      } else {
+        const lastCursor = await collectionCallbacks.lastCursor?.(
+          context,
+          identifier,
+        );
+        const first = new URL(context.url);
+        first.searchParams.set("cursor", firstCursor);
+        let last = null;
+        if (lastCursor != null) {
+          last = new URL(context.url);
+          last.searchParams.set("cursor", lastCursor);
+        }
+        collection = new OrderedCollection({
+          id: baseUri,
+          totalItems: totalItemCount ?? null,
+          first,
+          last,
+        });
+      }
+    } else {
+      const uri = new URL(baseUri);
+      uri.searchParams.set("cursor", cursor);
+      const pageOrResponse = await tracer.startActiveSpan(
+        `activitypub.dispatch_collection_page ${name}`,
         {
           kind: SpanKind.SERVER,
           attributes: {
-            "activitypub.collection.id": baseUri.href,
-            "activitypub.collection.type": OrderedCollection.typeId.href,
+            "activitypub.collection.id": uri.href,
+            "activitypub.collection.type": OrderedCollectionPage.typeId.href,
+            "fedify.collection.cursor": cursor,
           },
         },
         async (span) => {
-          if (totalItems != null) {
-            span.setAttribute(
-              "activitypub.collection.total_items",
-              Number(totalItems),
-            );
-          }
+          const started = performance.now();
           try {
             const page = await collectionCallbacks.dispatcher(
               context,
               identifier,
-              null,
+              cursor,
               filter,
             );
+            dispatchDurationMs = getDurationMs(started);
             if (page == null) {
               span.setStatus({ code: SpanStatusCode.ERROR });
               return await onNotFound(request);
             }
-            const { items } = page;
-            span.setAttribute("fedify.collection.items", items.length);
-            return items;
+            const items = filterCollectionItems(
+              page.items,
+              name,
+              filterPredicate,
+            );
+            itemCount = items.length;
+            span.setAttribute("fedify.collection.items", itemCount);
+            return { ...page, items };
           } catch (e) {
-            span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
+            if (dispatchDurationMs == null) {
+              dispatchDurationMs = getDurationMs(started);
+            }
+            span.setStatus({
+              code: SpanStatusCode.ERROR,
+              message: String(e),
+            });
             throw e;
           } finally {
             span.end();
           }
         },
       );
-      if (itemsOrResponse instanceof Response) return itemsOrResponse;
-      collection = new OrderedCollection({
-        id: baseUri,
-        totalItems: totalItems == null ? null : Number(totalItems),
-        items: filterCollectionItems(itemsOrResponse, name, filterPredicate),
-      });
-    } else {
-      const lastCursor = await collectionCallbacks.lastCursor?.(
-        context,
-        identifier,
-      );
-      const first = new URL(context.url);
-      first.searchParams.set("cursor", firstCursor);
-      let last = null;
-      if (lastCursor != null) {
-        last = new URL(context.url);
-        last.searchParams.set("cursor", lastCursor);
+      if (pageOrResponse instanceof Response) {
+        return finish(pageOrResponse, "not_found");
       }
-      collection = new OrderedCollection({
-        id: baseUri,
-        totalItems: totalItems == null ? null : Number(totalItems),
-        first,
-        last,
+      const { items, prevCursor, nextCursor } = pageOrResponse;
+      let prev = null;
+      if (prevCursor != null) {
+        prev = new URL(context.url);
+        prev.searchParams.set("cursor", prevCursor);
+      }
+      let next = null;
+      if (nextCursor != null) {
+        next = new URL(context.url);
+        next.searchParams.set("cursor", nextCursor);
+      }
+      const partOf = new URL(context.url);
+      partOf.searchParams.delete("cursor");
+      collection = new OrderedCollectionPage({
+        id: uri,
+        prev,
+        next,
+        items,
+        partOf,
       });
     }
-  } else {
-    const uri = new URL(baseUri);
-    uri.searchParams.set("cursor", cursor);
-    const pageOrResponse = await tracer.startActiveSpan(
-      `activitypub.dispatch_collection_page ${name}`,
-      {
-        kind: SpanKind.SERVER,
-        attributes: {
-          "activitypub.collection.id": uri.href,
-          "activitypub.collection.type": OrderedCollectionPage.typeId.href,
-          "fedify.collection.cursor": cursor,
+    if (collectionCallbacks.authorizePredicate != null) {
+      if (
+        !await collectionCallbacks.authorizePredicate(context, identifier)
+      ) {
+        return finish(await onUnauthorized(request), "unauthorized");
+      }
+    }
+    const jsonLd = await collection.toJsonLd(context);
+    return finish(
+      new Response(JSON.stringify(jsonLd), {
+        headers: {
+          "Content-Type": "application/activity+json",
+          Vary: "Accept",
         },
-      },
-      async (span) => {
-        try {
-          const page = await collectionCallbacks.dispatcher(
-            context,
-            identifier,
-            cursor,
-            filter,
-          );
-          if (page == null) {
-            span.setStatus({ code: SpanStatusCode.ERROR });
-            return await onNotFound(request);
-          }
-          span.setAttribute("fedify.collection.items", page.items.length);
-          return page;
-        } catch (e) {
-          span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
-          throw e;
-        } finally {
-          span.end();
-        }
-      },
+      }),
+      "served",
     );
-    if (pageOrResponse instanceof Response) return pageOrResponse;
-    const { items, prevCursor, nextCursor } = pageOrResponse;
-    let prev = null;
-    if (prevCursor != null) {
-      prev = new URL(context.url);
-      prev.searchParams.set("cursor", prevCursor);
-    }
-    let next = null;
-    if (nextCursor != null) {
-      next = new URL(context.url);
-      next.searchParams.set("cursor", nextCursor);
-    }
-    const partOf = new URL(context.url);
-    partOf.searchParams.delete("cursor");
-    collection = new OrderedCollectionPage({
-      id: uri,
-      prev,
-      next,
-      items: filterCollectionItems(items, name, filterPredicate),
-      partOf,
+  } catch (e) {
+    recordCollectionMetrics(meterProvider, metricBase, "error", {
+      dispatchDurationMs,
+      itemCount,
+      totalItems: totalItemCount,
     });
+    throw e;
   }
-  if (collectionCallbacks.authorizePredicate != null) {
-    if (
-      !await collectionCallbacks.authorizePredicate(context, identifier)
-    ) {
-      return await onUnauthorized(request);
-    }
-  }
-  const jsonLd = await collection.toJsonLd(context);
-  return new Response(JSON.stringify(jsonLd), {
-    headers: {
-      "Content-Type": "application/activity+json",
-      Vary: "Accept",
-    },
-  });
 }
 
 /**
@@ -1575,6 +1724,11 @@ export interface CustomCollectionHandlerParameters<
     TContextData
   >;
   tracerProvider?: TracerProvider;
+  /**
+   * The meter provider for recording collection metrics.
+   * @since 2.3.0
+   */
+  meterProvider?: MeterProvider;
 }
 
 /**
@@ -1602,6 +1756,54 @@ export const handleCustomCollection: <
     TContextData
   >,
 ) => Promise<Response> = exceptWrapper(_handleCustomCollection);
+
+type CollectionMetricMeasurement = {
+  page: boolean;
+  dispatchDurationMs?: number;
+  itemCount?: number;
+  totalItems?: number;
+};
+
+type PendingCollectionMetricRecorder = (
+  result: CollectionMetricResult,
+  response?: Response,
+) => void;
+
+const pendingCollectionMetricRecorders = new WeakMap<
+  object,
+  PendingCollectionMetricRecorder
+>();
+
+function deferPendingCollectionMetrics(
+  error: unknown,
+  recorder: PendingCollectionMetricRecorder,
+): boolean {
+  if (
+    error == null ||
+    (typeof error !== "object" && typeof error !== "function")
+  ) {
+    return false;
+  }
+  pendingCollectionMetricRecorders.set(error, recorder);
+  return true;
+}
+
+function recordDeferredPendingCollectionMetrics(
+  error: unknown,
+  result: CollectionMetricResult,
+  response?: Response,
+): void {
+  if (
+    error == null ||
+    (typeof error !== "object" && typeof error !== "function")
+  ) {
+    return;
+  }
+  const recorder = pendingCollectionMetricRecorders.get(error);
+  pendingCollectionMetricRecorders.delete(error);
+  recorder?.(result, response);
+}
+
 async function _handleCustomCollection<
   TItem extends URL | Object | Link | Recipient,
   TParam extends string,
@@ -1614,6 +1816,7 @@ async function _handleCustomCollection<
     values,
     context,
     tracerProvider,
+    meterProvider,
     collectionCallbacks: callbacks,
     filterPredicate,
   }: CustomCollectionHandlerParameters<
@@ -1626,18 +1829,31 @@ async function _handleCustomCollection<
   verifyDefined(callbacks);
   await authIfNeeded(context, values, callbacks);
   const cursor = new URL(request.url).searchParams.get("cursor");
-  return await new CustomCollectionHandler(
+  const handler = new CustomCollectionHandler(
     name,
     values,
     context,
     callbacks,
     tracerProvider,
+    meterProvider,
     Collection,
     CollectionPage,
     filterPredicate,
-  ).fetchCollection(cursor)
-    .toJsonLd()
-    .then(respondAsActivity);
+  ).fetchCollection(cursor);
+  try {
+    const response = await handler.toJsonLd().then(respondAsActivity);
+    handler.recordPendingCollectionMetrics("served", response);
+    return response;
+  } catch (e) {
+    if (
+      !deferPendingCollectionMetrics(
+        e,
+        (result, response) =>
+          handler.recordPendingCollectionMetrics(result, response),
+      )
+    ) handler.recordPendingCollectionMetrics("error");
+    throw e;
+  }
 }
 
 /**
@@ -1677,6 +1893,7 @@ async function _handleOrderedCollection<
     values,
     context,
     tracerProvider,
+    meterProvider,
     collectionCallbacks: callbacks,
     filterPredicate,
   }: CustomCollectionHandlerParameters<
@@ -1689,18 +1906,31 @@ async function _handleOrderedCollection<
   verifyDefined(callbacks);
   await authIfNeeded(context, values, callbacks);
   const cursor = new URL(request.url).searchParams.get("cursor");
-  return await new CustomCollectionHandler(
+  const handler = new CustomCollectionHandler(
     name,
     values,
     context,
     callbacks,
     tracerProvider,
+    meterProvider,
     OrderedCollection,
     OrderedCollectionPage,
     filterPredicate,
-  ).fetchCollection(cursor)
-    .toJsonLd()
-    .then(respondAsActivity);
+  ).fetchCollection(cursor);
+  try {
+    const response = await handler.toJsonLd().then(respondAsActivity);
+    handler.recordPendingCollectionMetrics("served", response);
+    return response;
+  } catch (e) {
+    if (
+      !deferPendingCollectionMetrics(
+        e,
+        (result, response) =>
+          handler.recordPendingCollectionMetrics(result, response),
+      )
+    ) handler.recordPendingCollectionMetrics("error");
+    throw e;
+  }
 }
 
 /**
@@ -1752,6 +1982,7 @@ class CustomCollectionHandler<
     TContextData
   >;
   #collection: Promise<TCollection | TCollectionPage> | null = null;
+  #pendingCollectionMetrics: CollectionMetricMeasurement[] = [];
 
   /**
    * Creates a new CustomCollection instance.
@@ -1775,6 +2006,7 @@ class CustomCollectionHandler<
       TContextData
     >,
     private readonly tracerProvider: TracerProvider = trace.getTracerProvider(),
+    private readonly meterProvider: MeterProvider | undefined,
     private readonly Collection: ConstructorWithTypeId<TCollection>,
     private readonly CollectionPage: ConstructorWithTypeId<TCollectionPage>,
     private readonly filterPredicate?: (item: TItem) => boolean,
@@ -1839,10 +2071,12 @@ class CustomCollectionHandler<
     const { prevCursor, nextCursor } = pages;
     const partOf = new URL(id);
     partOf.searchParams.delete("cursor");
+    const items = this.filterItems(pages.items);
+    this.recordPendingCollectionItemCount(true, items.length);
     return {
       id,
       partOf,
-      items: this.filterItems(pages.items),
+      items,
       prev: this.appendToUrl(prevCursor),
       next: this.appendToUrl(nextCursor),
     };
@@ -1859,11 +2093,18 @@ class CustomCollectionHandler<
       this.context,
       this.values,
     );
+    const totalItems = await this.totalItems;
+    if (totalItems != null) {
+      this.#pendingCollectionMetrics.push({
+        page: false,
+        totalItems: Number(totalItems),
+      });
+    }
     return {
       id: this.#id,
       first: this.appendToUrl(firstCursor),
       last: this.appendToUrl(lastCursor),
-      totalItems: await this.totalItems,
+      totalItems,
     };
   }
 
@@ -1874,10 +2115,12 @@ class CustomCollectionHandler<
   async getPropsWithoutCursor() {
     const totalItems = await this.totalItems;
     const pages = await this.getPages({ totalItems });
+    const items = this.filterItems(pages.items);
+    this.recordPendingCollectionItemCount(false, items.length);
     return {
       id: this.#id,
       totalItems,
-      items: this.filterItems(pages.items),
+      items,
     };
   }
 
@@ -1928,14 +2171,26 @@ class CustomCollectionHandler<
     cursor = null,
   }) =>
   async (span: Span): Promise<PageItems<TItem>> => {
+    const pageMetricBase = this.metricBase(cursor !== null);
+    const started = performance.now();
     try {
       if (totalItems !== null) {
         span.setAttribute(this.ATTRS.TOTAL_ITEMS, totalItems);
       }
       const page = await this.dispatch(cursor);
+      const durationMs = getDurationMs(started);
       span.setAttribute(this.ATTRS.ITEMS, page.items.length);
+      this.#pendingCollectionMetrics.push({
+        page: pageMetricBase.page,
+        dispatchDurationMs: durationMs,
+        totalItems: totalItems == null ? undefined : Number(totalItems),
+      });
       return page;
     } catch (e) {
+      this.#pendingCollectionMetrics.push({
+        page: cursor !== null,
+        dispatchDurationMs: getDurationMs(started),
+      });
       const message = e instanceof Error ? e.message : String(e);
       span.setStatus({ code: SpanStatusCode.ERROR, message });
       throw e;
@@ -1966,6 +2221,63 @@ class CustomCollectionHandler<
    */
   filterItems(items: readonly TItem[]): (Object | Link | URL)[] {
     return filterCollectionItems(items, this.name, this.filterPredicate);
+  }
+
+  metricBase(page: boolean): CollectionMetricBase {
+    return { kind: "custom", page, dispatcher: "custom" };
+  }
+
+  metricAttributes(
+    page: boolean,
+    result: CollectionMetricResult,
+    response?: Response,
+  ): CollectionMetricAttributes {
+    return collectionAttributes(this.metricBase(page), result, response);
+  }
+
+  recordPendingCollectionItemCount(page: boolean, itemCount: number): void {
+    for (let i = this.#pendingCollectionMetrics.length - 1; i >= 0; i--) {
+      const measurement = this.#pendingCollectionMetrics[i];
+      if (
+        measurement.page === page &&
+        measurement.dispatchDurationMs != null &&
+        measurement.itemCount == null
+      ) {
+        measurement.itemCount = itemCount;
+        return;
+      }
+    }
+    this.#pendingCollectionMetrics.push({ page, itemCount });
+  }
+
+  recordPendingCollectionMetrics(
+    result: CollectionMetricResult,
+    response?: Response,
+  ): void {
+    for (const measurement of this.#pendingCollectionMetrics.splice(0)) {
+      const attrs = this.metricAttributes(measurement.page, result, response);
+      if (measurement.dispatchDurationMs != null) {
+        recordCollectionDispatchDuration(
+          this.meterProvider,
+          measurement.dispatchDurationMs,
+          attrs,
+        );
+      }
+      if (measurement.itemCount != null) {
+        recordCollectionPageItems(
+          this.meterProvider,
+          measurement.itemCount,
+          attrs,
+        );
+      }
+      if (measurement.totalItems != null) {
+        recordCollectionTotalItems(
+          this.meterProvider,
+          measurement.totalItems,
+          attrs,
+        );
+      }
+    }
   }
 
   /**
@@ -2051,16 +2363,55 @@ function exceptWrapper<TParams extends ErrorHandlers>(
   handler: (request: Request, handleParams: TParams) => Promise<Response>,
 ): (...args: Parameters<typeof handler>) => Promise<Response> {
   return async (request, handlerParams): Promise<Response> => {
+    const page = new URL(request.url).searchParams.get("cursor") != null;
+    const { meterProvider } = handlerParams;
+    const metricBase: CollectionMetricBase = {
+      kind: "custom",
+      page,
+      dispatcher: "custom",
+    };
     try {
-      return await handler(request, handlerParams);
+      const response = await handler(request, handlerParams);
+      recordCollectionRequest(
+        meterProvider,
+        collectionAttributes(metricBase, "served", response),
+      );
+      return response;
     } catch (error) {
       const { onNotFound, onUnauthorized } = handlerParams;
       switch (error?.constructor) {
-        case ItemsNotFoundError:
-          return await onNotFound(request);
-        case UnauthorizedError:
-          return await onUnauthorized(request);
+        case ItemsNotFoundError: {
+          const response = await onNotFound(request);
+          recordDeferredPendingCollectionMetrics(
+            error,
+            "not_found",
+            response,
+          );
+          recordCollectionRequest(
+            meterProvider,
+            collectionAttributes(metricBase, "not_found", response),
+          );
+          return response;
+        }
+        case UnauthorizedError: {
+          const response = await onUnauthorized(request);
+          recordDeferredPendingCollectionMetrics(
+            error,
+            "unauthorized",
+            response,
+          );
+          recordCollectionRequest(
+            meterProvider,
+            collectionAttributes(metricBase, "unauthorized", response),
+          );
+          return response;
+        }
         default:
+          recordDeferredPendingCollectionMetrics(error, "error");
+          recordCollectionRequest(
+            meterProvider,
+            collectionAttributes(metricBase, "error"),
+          );
           throw error;
       }
     }
@@ -2072,6 +2423,7 @@ function exceptWrapper<TParams extends ErrorHandlers>(
  * @since 1.8.0
  */
 interface ErrorHandlers {
+  meterProvider?: MeterProvider;
   onNotFound(request: Request): Response | Promise<Response>;
   onUnauthorized(request: Request): Response | Promise<Response>;
 }

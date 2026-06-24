@@ -1287,6 +1287,17 @@ operations across your infrastructure.  For production:
 
 [OpenTelemetry]: https://opentelemetry.io/
 
+### Benchmarking before production
+
+Before changing queue backends, federation handlers, or signature-related
+configuration, run [`fedify bench`](./benchmarking.md) against a local or
+staging target that enables `benchmarkMode`.  The benchmark command drives
+signed inbox deliveries and WebFinger lookups, reports latency, throughput,
+success rate, and errors, and can gate CI with `expect` thresholds.  Do not
+enable `benchmarkMode` on production servers; for an unfamiliar target, start
+with `--dry-run` to resolve discovery and inspect the planned destinations
+without sending benchmark load.
+
 ### Error reporting
 
 For error aggregation, the pattern most Fedify applications use is a
@@ -1331,6 +1342,13 @@ Any competent metrics backend will also want the usual process-level
 signals: CPU, RSS, event-loop lag, GC pauses, connection pool utilization
 for your KV/MQ backend.  None of these are Fedify-specific, but all of
 them should be in place before you take real traffic.
+
+Fedify exposes each of these federation signals as an [OpenTelemetry
+metric](./opentelemetry.md#instrumented-metrics).  The [*Production
+monitoring* guide](./monitoring.md) turns them into a starter dashboard and
+a set of alert rules, with PromQL examples, guidance on which failures should
+page versus prompt investigation, and notes on keeping metric cardinality
+bounded.
 
 
 ActivityPub-specific operational concerns

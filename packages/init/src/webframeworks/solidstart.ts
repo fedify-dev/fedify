@@ -3,7 +3,7 @@ import deps from "../json/deps.json" with { type: "json" };
 import { PACKAGE_VERSION, readTemplate } from "../lib.ts";
 import type { WebFrameworkDescription } from "../types.ts";
 import { defaultDenoDependencies, defaultDevDependencies } from "./const.ts";
-import { getInstruction, pmToRt } from "./utils.ts";
+import { getInstruction, nodeBunDevToolTasks, pmToRt } from "./utils.ts";
 
 const NPM_SOLIDSTART = `npm:@solidjs/start@${deps["npm:@solidjs/start"]}`;
 const solidstartDescription: WebFrameworkDescription = {
@@ -19,6 +19,9 @@ const solidstartDescription: WebFrameworkDescription = {
     },
     federationFile: "src/federation.ts",
     loggingFile: "src/logging.ts",
+    format: {
+      ignorePatterns: [".solid/**", ".vinxi/**"],
+    },
     files: {
       "app.config.ts": (await readTemplate("solidstart/app.config.ts"))
         .replace(
@@ -38,9 +41,6 @@ const solidstartDescription: WebFrameworkDescription = {
       "src/middleware/index.ts": await readTemplate(
         "solidstart/src/middleware/index.ts",
       ),
-      ...(pm !== "deno" && {
-        "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
-      }),
     },
     compilerOptions: pm === "deno" ? undefined : {
       target: "ESNext",
@@ -99,12 +99,12 @@ const TASKS = {
     dev: "bunx vinxi dev",
     build: "bunx vinxi build",
     start: "bunx vinxi start",
-    lint: "eslint .",
+    ...nodeBunDevToolTasks,
   },
   node: {
     dev: "vinxi dev",
     build: "vinxi build",
     start: "dotenvx run -- vinxi start",
-    lint: "eslint .",
+    ...nodeBunDevToolTasks,
   },
 };

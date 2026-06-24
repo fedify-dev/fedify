@@ -134,6 +134,7 @@ jobs:
     if: inputs.publish_packages
     needs: [get-pr-info, determine-version]
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     permissions:
       id-token: write
       contents: read
@@ -155,16 +156,18 @@ jobs:
       run: |
         set -ex
         mise run codegen
-        max_attempts=5
+        max_attempts=30
+        publish_timeout=60s
+        retry_delay=30s
         attempt=1
-        until deno publish --allow-dirty --allow-slow-types; do
+        until timeout "$publish_timeout" deno publish --allow-dirty --allow-slow-types; do
           exit_code=$?
           if [[ $attempt -ge $max_attempts ]]; then
             echo "deno publish failed after $max_attempts attempts"
             exit $exit_code
           fi
-          echo "deno publish failed (attempt $attempt/$max_attempts), retrying in 30 seconds..."
-          sleep 30
+          echo "deno publish failed or timed out (attempt $attempt/$max_attempts), retrying in $retry_delay..."
+          sleep "$retry_delay"
           ((attempt++))
         done
 

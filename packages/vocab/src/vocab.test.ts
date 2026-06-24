@@ -4,13 +4,13 @@ import {
   LanguageString,
   parseDecimal,
 } from "@fedify/vocab-runtime";
-import { configure, type LogRecord, reset } from "@logtape/logtape";
 import {
   areAllScalarTypes,
   loadSchemaFiles,
   type PropertySchema,
   type TypeSchema,
 } from "@fedify/vocab-tools";
+import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { pascalCase } from "es-toolkit";
 import {
   deepStrictEqual,
@@ -22,27 +22,36 @@ import {
 import { assertInstanceOf } from "./utils.ts";
 import * as vocab from "./vocab.ts";
 import {
+  Accept,
   Activity,
+  Agreement,
   Announce,
   Collection,
+  Commitment,
   Create,
   CryptographicKey,
   type DataIntegrityProof,
   Delete,
+  Document,
   Endpoints,
   Follow,
   Hashtag,
+  Intent,
   InteractionPolicy,
   InteractionRule,
   Link,
+  Measure,
   Note,
   Object,
+  Offer,
   OrderedCollectionPage,
   Person,
   Place,
+  Proposal,
   Question,
   QuoteAuthorization,
   QuoteRequest,
+  Reject,
   Source,
   Tombstone,
 } from "./vocab.ts";
@@ -1844,6 +1853,461 @@ test("Person.fromJsonLd() with relative URLs and baseUrl", async () => {
   );
 });
 
+test("Object.fromJsonLd() normalizes Link icon to Image", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "content": "Hello",
+    "icon": {
+      "type": "Link",
+      "href": "https://example.com/icon.png",
+      "mediaType": "image/png",
+      "name": "Icon",
+      "width": 64,
+      "height": 64,
+    },
+  };
+  const obj = await Object.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  const icon = await obj.getIcon();
+  deepStrictEqual(
+    icon?.url?.href,
+    "https://example.com/icon.png",
+  );
+  deepStrictEqual(icon?.mediaType, "image/png");
+  deepStrictEqual(icon?.names, ["Icon"]);
+  deepStrictEqual(icon?.width, 64);
+  deepStrictEqual(icon?.height, 64);
+});
+
+test("Object.fromJsonLd() normalizes Link image to Image", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "content": "Hello",
+    "image": {
+      "type": "Link",
+      "href": "https://example.com/banner.png",
+      "mediaType": "image/png",
+      "width": 800,
+      "height": 200,
+    },
+  };
+  const obj = await Object.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  const images = [];
+  for await (const img of obj.getImages()) {
+    images.push(img);
+  }
+  deepStrictEqual(images[0]?.url?.href, "https://example.com/banner.png");
+  deepStrictEqual(images[0]?.mediaType, "image/png");
+  deepStrictEqual(images[0]?.width, 800);
+  deepStrictEqual(images[0]?.height, 200);
+});
+
+test("Object.fromJsonLd() normalizes Link icon with relative URL", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "id": "https://example.com/notes/1",
+    "content": "Hello",
+    "icon": {
+      "type": "Link",
+      "href": "/icons/icon.png",
+    },
+  };
+  const obj = await Object.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  const icon = await obj.getIcon();
+  deepStrictEqual(
+    icon?.url?.href,
+    "https://example.com/icons/icon.png",
+  );
+});
+
+test(
+  "Object.fromJsonLd() normalizes Link icon with relative id and baseUrl",
+  async () => {
+    const json = {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "Note",
+      "id": "/notes/1",
+      "content": "Hello",
+      "icon": {
+        "type": "Link",
+        "href": "/icons/icon.png",
+      },
+    };
+    const obj = await Object.fromJsonLd(json, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      baseUrl: new URL("https://example.com/"),
+    });
+    const icon = await obj.getIcon();
+    deepStrictEqual(obj.id?.href, "https://example.com/notes/1");
+    deepStrictEqual(
+      icon?.url?.href,
+      "https://example.com/icons/icon.png",
+    );
+  },
+);
+
+test("Object.fromJsonLd() decodes Image icon with relative id and baseUrl", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "id": "/notes/1",
+    "content": "Hello",
+    "icon": {
+      "type": "Image",
+      "url": "/icons/icon.png",
+    },
+  };
+  const obj = await Object.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+    baseUrl: new URL("https://example.com/"),
+  });
+  const icon = await obj.getIcon();
+  deepStrictEqual(obj.id?.href, "https://example.com/notes/1");
+  deepStrictEqual(
+    icon?.url?.href,
+    "https://example.com/icons/icon.png",
+  );
+});
+
+test("Object.fromJsonLd() decodes compact icon id with relative id and baseUrl", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "id": "/notes/1",
+    "content": "Hello",
+    "icon": "/icons/icon.png",
+  };
+  const obj = await Object.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+    baseUrl: new URL("https://example.com/"),
+  });
+  deepStrictEqual(obj.id?.href, "https://example.com/notes/1");
+  deepStrictEqual(
+    obj.iconId?.href,
+    "https://example.com/icons/icon.png",
+  );
+});
+
+test("Object.fromJsonLd() resolves compact icon id against document base", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "id": "../notes/1",
+    "content": "Hello",
+    "icon": "icon.png",
+  };
+  const obj = await Object.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+    baseUrl: new URL("https://example.com/outbox/page.json"),
+  });
+  deepStrictEqual(obj.id?.href, "https://example.com/outbox/notes/1");
+  deepStrictEqual(
+    obj.iconId?.href,
+    "https://example.com/outbox/icon.png",
+  );
+});
+
+test("Object.fromJsonLd() skips blank node compact icon id", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "id": "/notes/1",
+    "content": "Hello",
+    "icon": { "@id": "_:b0" },
+  };
+  const obj = await Object.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+    baseUrl: new URL("https://example.com/"),
+  });
+  deepStrictEqual(obj.id?.href, "https://example.com/notes/1");
+  deepStrictEqual(obj.iconId, null);
+});
+
+test("Object.fromJsonLd() resolves compact icon id against baseUrl for did id", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "id": "did:plc:example",
+    "content": "Hello",
+    "icon": "/icons/icon.png",
+  };
+  const obj = await Object.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+    baseUrl: new URL("https://example.com/notes/1"),
+  });
+  deepStrictEqual(obj.id?.href, "did:plc:example");
+  deepStrictEqual(
+    obj.iconId?.href,
+    "https://example.com/icons/icon.png",
+  );
+});
+
+test(
+  "Object.getIcon() resolves relative Link href without id via cached re-parse",
+  async () => {
+    const json = {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "Note",
+      "content": "Hello",
+      "icon": {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        "type": "Link",
+        "href": "/icons/star.png",
+        "mediaType": "image/png",
+      },
+    };
+    const obj = await Object.fromJsonLd(json, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      baseUrl: new URL("https://example.com/"),
+    });
+    // getIcon() is called WITHOUT explicit baseUrl — the accessor
+    // should reuse the baseUrl that was set during fromJsonLd().
+    const icon = await obj.getIcon();
+    deepStrictEqual(
+      icon?.url?.href,
+      "https://example.com/icons/star.png",
+    );
+    deepStrictEqual(icon?.mediaType, "image/png");
+  },
+);
+
+test(
+  "Object.fromJsonLd() resolves Link href against document base, not object id",
+  async () => {
+    const json = {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "Note",
+      "id": "../notes/1",
+      "content": "Hello",
+      "icon": {
+        "type": "Link",
+        "href": "icon.png",
+      },
+    };
+    const obj = await Object.fromJsonLd(json, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      baseUrl: new URL("https://example.com/outbox/page.json"),
+    });
+    const icon = await obj.getIcon();
+    deepStrictEqual(obj.id?.href, "https://example.com/outbox/notes/1");
+    deepStrictEqual(
+      icon?.url?.href,
+      "https://example.com/outbox/icon.png",
+    );
+  },
+);
+
+test(
+  "Object.getIcon() resolves cached relative Link href against baseUrl for did id",
+  async () => {
+    const json = {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "Note",
+      "id": "did:plc:example",
+      "content": "Hello",
+      "icon": {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        "type": "Link",
+        "href": "/icons/star.png",
+        "mediaType": "image/png",
+      },
+    };
+    const obj = await Object.fromJsonLd(json, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      baseUrl: new URL("https://example.com/notes/1"),
+    });
+    const icon = await obj.getIcon();
+    deepStrictEqual(obj.id?.href, "did:plc:example");
+    deepStrictEqual(
+      icon?.url?.href,
+      "https://example.com/icons/star.png",
+    );
+    deepStrictEqual(icon?.mediaType, "image/png");
+  },
+);
+
+test(
+  "Object.getIcon() ignores mutation of caller's baseUrl after fromJsonLd()",
+  async () => {
+    const origBaseUrl = new URL("https://example.com/");
+    const json = {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "Note",
+      "content": "Hello",
+      "icon": {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        "type": "Link",
+        "href": "/icons/star.png",
+        "mediaType": "image/png",
+      },
+    };
+    const obj = await Object.fromJsonLd(json, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      baseUrl: origBaseUrl,
+    });
+    // Mutate the caller's URL after construction.
+    origBaseUrl.href = "https://attacker.example/";
+    const icon = await obj.getIcon();
+    deepStrictEqual(
+      icon?.url?.href,
+      "https://example.com/icons/star.png",
+    );
+    deepStrictEqual(icon?.mediaType, "image/png");
+  },
+);
+
+test(
+  "Object.fromJsonLd() does not resolve blank node @id against baseUrl",
+  async () => {
+    const json = {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "Note",
+      "id": "_:b0",
+    };
+    const obj = await Object.fromJsonLd(json, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      baseUrl: new URL("https://example.com/"),
+    });
+    // Blank node identifiers must not be resolved against baseUrl.
+    deepStrictEqual(obj.id, null);
+  },
+);
+
+test(
+  "Object.fromJsonLd() handles blank node @id without baseUrl",
+  () => {
+    const obj = Object.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "Note",
+      "id": "_:b0",
+    }, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    });
+    // Blank node identifier without baseUrl must not throw.
+    return obj.then((o) => deepStrictEqual(o.id, null));
+  },
+);
+
+test(
+  "Object.getAttachments() resolves relative url via stored _baseUrl",
+  async () => {
+    const json = {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "Note",
+      "content": "Hello",
+      "attachment": {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        "type": "Document",
+        "url": "/files/report.pdf",
+        "mediaType": "application/pdf",
+      },
+    };
+    const obj = await Object.fromJsonLd(json, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+      baseUrl: new URL("https://example.com/"),
+    });
+    // getAttachments() without explicit baseUrl should use stored _baseUrl.
+    const attachments = [];
+    for await (const a of obj.getAttachments()) {
+      attachments.push(a);
+    }
+    deepStrictEqual(attachments.length, 1);
+    // deno-lint-ignore no-explicit-any
+    const doc = attachments[0] as any;
+    deepStrictEqual(
+      doc?.url?.href,
+      "https://example.com/files/report.pdf",
+    );
+    deepStrictEqual(doc?.mediaType, "application/pdf");
+  },
+);
+
+test("Object.fromJsonLd() normalizes multiple Link icons", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Note",
+    "content": "Hello",
+    "icon": [
+      { "type": "Link", "href": "https://example.com/a.png" },
+      { "type": "Image", "url": "https://example.com/b.png" },
+    ],
+  };
+  const obj = await Object.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  const icons = [];
+  for await (const i of obj.getIcons()) {
+    icons.push(i);
+  }
+  deepStrictEqual(icons.length, 2);
+  deepStrictEqual(icons[0]?.url?.href, "https://example.com/a.png");
+  deepStrictEqual(icons[1]?.url?.href, "https://example.com/b.png");
+});
+
+test("Object.getIcon() normalizes fetched Link document to Image", async () => {
+  const linkDocUrl = "https://example.com/icons/avatar-link";
+  const linkDoc = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Link",
+    href: "https://example.com/avatars/user.png",
+    mediaType: "image/png",
+    width: 128,
+    height: 128,
+  };
+  const docLoader = async (url: string) => {
+    if (url === linkDocUrl) {
+      return {
+        document: linkDoc,
+        documentUrl: url,
+        contextUrl: null,
+      };
+    }
+    return await mockDocumentLoader(url);
+  };
+
+  const person = new Person({
+    id: new URL("https://example.com/ap/actors/test-user"),
+    icon: new URL(linkDocUrl),
+  });
+
+  const icon = await person.getIcon({
+    documentLoader: docLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  deepStrictEqual(
+    icon?.url?.href,
+    "https://example.com/avatars/user.png",
+  );
+  deepStrictEqual(icon?.mediaType, "image/png");
+  deepStrictEqual(icon?.width, 128);
+  deepStrictEqual(icon?.height, 128);
+});
+
 test("FEP-fe34: Trust tracking in object construction", async () => {
   // Test that objects created with embedded objects have trust set
   const note = new Note({
@@ -2346,6 +2810,338 @@ test(
     );
   },
 );
+
+test("FEP-0837: Commitment roundtrip preserves satisfies and resourceQuantity", async () => {
+  const commitment = new Commitment({
+    id: new URL("https://market.example/agreements/abc#primary"),
+    satisfies: new URL(
+      "https://market.example/proposals/abc#primary",
+    ),
+    resourceQuantity: new Measure({
+      unit: "one",
+      numericalValue: parseDecimal("1"),
+    }),
+  });
+  const jsonLd = await commitment.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  });
+  const restored = await Commitment.fromJsonLd(jsonLd, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  // A finalized Commitment carries a (fragment) id even though Commitment is
+  // not an independently fetchable entity (`entity: false`).
+  deepStrictEqual(restored.id?.href, commitment.id?.href);
+  deepStrictEqual(restored.satisfies, commitment.satisfies);
+  deepStrictEqual(restored.resourceQuantity?.unit, "one");
+  deepStrictEqual(
+    restored.resourceQuantity?.numericalValue,
+    parseDecimal("1"),
+  );
+});
+
+test("FEP-0837: Agreement roundtrip with both commitments", async () => {
+  const agreement = new Agreement({
+    id: new URL(
+      "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2",
+    ),
+    attribution: new URL("https://market.example/users/alice"),
+    stipulates: new Commitment({
+      id: new URL(
+        "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2#primary",
+      ),
+      satisfies: new URL(
+        "https://market.example/proposals/ddde9d6f#primary",
+      ),
+      resourceQuantity: new Measure({
+        unit: "one",
+        numericalValue: parseDecimal("1"),
+      }),
+    }),
+    stipulatesReciprocal: new Commitment({
+      id: new URL(
+        "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2#reciprocal",
+      ),
+      satisfies: new URL(
+        "https://market.example/proposals/ddde9d6f#reciprocal",
+      ),
+      resourceQuantity: new Measure({
+        unit: "currencyAmount",
+        numericalValue: parseDecimal("30.00"),
+      }),
+    }),
+  });
+  const jsonLd = await agreement.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  });
+  const restored = await Agreement.fromJsonLd(jsonLd, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  deepStrictEqual(restored.id?.href, agreement.id?.href);
+  deepStrictEqual(
+    restored.stipulates?.id?.href,
+    agreement.stipulates?.id?.href,
+  );
+  deepStrictEqual(
+    restored.stipulates?.satisfies?.href,
+    agreement.stipulates?.satisfies?.href,
+  );
+  deepStrictEqual(
+    restored.stipulates?.resourceQuantity?.numericalValue,
+    parseDecimal("1"),
+  );
+  deepStrictEqual(
+    restored.stipulatesReciprocal?.id?.href,
+    agreement.stipulatesReciprocal?.id?.href,
+  );
+  deepStrictEqual(
+    restored.stipulatesReciprocal?.satisfies?.href,
+    agreement.stipulatesReciprocal?.satisfies?.href,
+  );
+  deepStrictEqual(
+    restored.stipulatesReciprocal?.resourceQuantity?.unit,
+    "currencyAmount",
+  );
+  deepStrictEqual(
+    restored.stipulatesReciprocal?.resourceQuantity?.numericalValue,
+    parseDecimal("30.00"),
+  );
+});
+
+test("FEP-0837: Agreement parses Accept-result example adapted from spec", async () => {
+  // Adapted from FEP-0837's "Accepting an agreement" example, to Fedify customization
+  const json = {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      {
+        vf: "https://w3id.org/valueflows/ont/vf#",
+        Agreement: "vf:Agreement",
+        stipulates: "vf:stipulates",
+        stipulatesReciprocal: "vf:stipulatesReciprocal",
+        Commitment: "vf:Commitment",
+        satisfies: { "@id": "vf:satisfies", "@type": "@id" },
+        resourceQuantity: "vf:resourceQuantity",
+        hasUnit: "om2:hasUnit",
+        hasNumericalValue: "om2:hasNumericalValue",
+        om2: "http://www.ontology-of-units-of-measure.org/resource/om-2/",
+      },
+    ],
+    type: "Agreement",
+    id:
+      "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2",
+    attributedTo: "https://market.example/users/alice",
+    stipulates: {
+      id:
+        "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2#primary",
+      type: "Commitment",
+      satisfies:
+        "https://market.example/proposals/ddde9d6f-6f3b-4770-a966-3a18ef006930#primary",
+      resourceQuantity: {
+        hasUnit: "one",
+        hasNumericalValue: "1",
+      },
+    },
+    stipulatesReciprocal: {
+      id:
+        "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2#reciprocal",
+      type: "Commitment",
+      satisfies:
+        "https://market.example/proposals/ddde9d6f-6f3b-4770-a966-3a18ef006930#reciprocal",
+      resourceQuantity: {
+        hasUnit: "currencyAmount",
+        hasNumericalValue: "30.00",
+      },
+    },
+  };
+  const agreement = await Agreement.fromJsonLd(json, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  deepStrictEqual(
+    agreement.id?.href,
+    "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2",
+  );
+  deepStrictEqual(
+    agreement.attributionId?.href,
+    "https://market.example/users/alice",
+  );
+  deepStrictEqual(
+    agreement.stipulates?.id?.href,
+    "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2#primary",
+  );
+  deepStrictEqual(
+    agreement.stipulates?.satisfies?.href,
+    "https://market.example/proposals/ddde9d6f-6f3b-4770-a966-3a18ef006930#primary",
+  );
+  deepStrictEqual(
+    agreement.stipulates?.resourceQuantity?.numericalValue,
+    parseDecimal("1"),
+  );
+  deepStrictEqual(
+    agreement.stipulatesReciprocal?.id?.href,
+    "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2#reciprocal",
+  );
+  deepStrictEqual(
+    agreement.stipulatesReciprocal?.satisfies?.href,
+    "https://market.example/proposals/ddde9d6f-6f3b-4770-a966-3a18ef006930#reciprocal",
+  );
+  deepStrictEqual(
+    agreement.stipulatesReciprocal?.resourceQuantity?.numericalValue,
+    parseDecimal("30.00"),
+  );
+});
+
+test("FEP-0837: Full marketplace flow - Proposal => Offer => Accept => Confirmation", async () => {
+  // Stage 1: Alice publishes a Proposal.  Its id anchors the intent fragment
+  // URI (`#primary`) that the downstream commitments satisfy.
+  const proposal = new Proposal({
+    id: new URL(
+      "https://market.example/proposals/ddde9d6f-6f3b-4770-a966-3a18ef006930",
+    ),
+    attribution: new URL("https://market.example/users/alice"),
+    purpose: "offer",
+    publishes: new Intent({
+      action: "transfer",
+      resourceConformsTo: new URL("https://www.wikidata.org/wiki/Q11442"),
+      resourceQuantity: new Measure({
+        unit: "one",
+        numericalValue: parseDecimal("1"),
+      }),
+    }),
+    to: new URL("https://www.w3.org/ns/activitystreams#Public"),
+  });
+  ok(proposal.purpose === "offer");
+  const primaryIntent = new URL(`${proposal.id?.href}#primary`);
+
+  // Stage 2a: Bob sends Offer(Agreement) whose commitment satisfies the
+  // proposal's primary intent.
+  const offerId = new URL(
+    "https://social.example/objects/fc4af0d2-c3a1-409b-947c-3c5be29f49b0/offer",
+  );
+  const offer = new Offer({
+    id: offerId,
+    actor: new URL("https://social.example/users/bob"),
+    object: new Agreement({
+      stipulates: new Commitment({
+        satisfies: primaryIntent,
+        resourceQuantity: new Measure({
+          unit: "one",
+          numericalValue: parseDecimal("1"),
+        }),
+      }),
+    }),
+    to: new URL("https://market.example/users/alice"),
+  });
+  const offerJson = await offer.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  });
+  const offerRestored = await Offer.fromJsonLd(offerJson, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  const restoredAgreement = await offerRestored.getObject({
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  assertInstanceOf(restoredAgreement, Agreement);
+  deepStrictEqual(
+    restoredAgreement.stipulates?.satisfies?.href,
+    primaryIntent.href,
+  );
+  deepStrictEqual(
+    restoredAgreement.stipulates?.resourceQuantity?.numericalValue,
+    parseDecimal("1"),
+  );
+
+  // Stage 2b: Alice sends Accept(Offer) with finalized Agreement in `result`.
+  const agreementId = new URL(
+    "https://market.example/agreements/edc374aa-e580-4a58-9404-f3e8bf8556b2",
+  );
+  const accept = new Accept({
+    id: new URL(
+      "https://market.example/activities/059f08fa-31b1-4136-8d76-5987d705a0ab",
+    ),
+    actor: new URL("https://market.example/users/alice"),
+    object: offerId,
+    result: new Agreement({
+      id: agreementId,
+      attribution: new URL("https://market.example/users/alice"),
+      stipulates: new Commitment({
+        satisfies: primaryIntent,
+        resourceQuantity: new Measure({
+          unit: "one",
+          numericalValue: parseDecimal("1"),
+        }),
+      }),
+    }),
+    to: new URL("https://social.example/users/bob"),
+  });
+  const acceptJson = await accept.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  });
+  const acceptRestored = await Accept.fromJsonLd(acceptJson, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  deepStrictEqual(acceptRestored.objectId?.href, offerId.href);
+  const acceptResult = await acceptRestored.getResult({
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  assertInstanceOf(acceptResult, Agreement);
+  deepStrictEqual(acceptResult.id?.href, agreementId.href);
+
+  // Stage 2 alt: Reject(Offer) with a reason.
+  const reject = new Reject({
+    actor: new URL("https://market.example/users/alice"),
+    object: offerId,
+    content: "Not available",
+    to: new URL("https://social.example/users/bob"),
+  });
+  const rejectJson = await reject.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  });
+  const rejectRestored = await Reject.fromJsonLd(rejectJson, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  deepStrictEqual(rejectRestored.objectId?.href, offerId.href);
+  deepStrictEqual(rejectRestored.content?.toString(), "Not available");
+
+  // Stage 3: Confirmation as Create(Document) with `context` linking to the
+  // finalized Agreement.  The Create activity needs an @id at the same origin
+  // as its embedded Document so cross-origin trust preserves the embedded
+  // form (rather than unwinding to a URL reference that would require a fetch).
+  const receipt = new Create({
+    id: new URL(
+      "https://market.example/receipts/ad2f7ee1-6567-413e-a10b-72650cbdc743/create",
+    ),
+    actor: new URL("https://market.example/users/alice"),
+    object: new Document({
+      id: new URL(
+        "https://market.example/receipts/ad2f7ee1-6567-413e-a10b-72650cbdc743",
+      ),
+      name: "Receipt",
+      contexts: [agreementId],
+      published: Temporal.Instant.from("2023-07-03T14:13:41.843794Z"),
+    }),
+    to: new URL("https://social.example/users/bob"),
+  });
+  const receiptJson = await receipt.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  });
+  const receiptRestored = await Create.fromJsonLd(receiptJson, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  const receiptObject = await receiptRestored.getObject({
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  assertInstanceOf(receiptObject, Document);
+  deepStrictEqual(receiptObject.contextIds[0]?.href, agreementId.href);
+});
 
 function getAllProperties(
   type: TypeSchema,

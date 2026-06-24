@@ -66,6 +66,25 @@ To be released.
     deliberately exclude raw URLs, query strings, and identifier values to
     keep cardinality bounded.  [[#316], [#736], [#757]]
 
+ -  Added OpenTelemetry metrics for ActivityPub collection requests handled
+    by `Federation.fetch()` and custom collection handlers:
+
+     -  `activitypub.collection.request` (counter)
+     -  `activitypub.collection.dispatch.duration` (histogram)
+     -  `activitypub.collection.page.items` (histogram)
+     -  `activitypub.collection.total_items` (histogram)
+
+    The metrics expose bounded collection dimensions:
+    `activitypub.collection.kind`, `activitypub.collection.page`,
+    `activitypub.collection.result`, `fedify.collection.dispatcher`, and
+    optional `http.response.status_code`.  Built-in collections are classified
+    as `inbox`, `outbox`, `following`, `followers`, `liked`, `featured`, or
+    `featured_tags`; application-defined collection routes are collapsed into
+    `custom`.  Collection IDs, cursors, custom route names, actor identifiers,
+    and full URLs are deliberately excluded so dashboards can aggregate
+    collection rate, latency, item counts, and `totalItems` values without
+    attacker-controlled cardinality.  [[#316], [#741], [#777]]
+
  -  Added OpenTelemetry queue task metrics covering Fedify's enqueue and
     worker boundaries for inbox, outbox, and fanout work:
 
@@ -136,10 +155,11 @@ To be released.
     Instruments share an `activitypub.lookup.kind` and (where
     applicable) `activitypub.lookup.result` attribute drawn from small,
     spec-bounded enumerations.  `activitypub.remote.host` records the
-    URL hostname only; `http.response.status_code` is recorded when an
-    HTTP response was observed; `activitypub.cache.enabled` is
-    recorded on the key and document fetch metrics whenever Fedify can
-    confidently report the cache layer's presence.  Key IDs, actor
+    URL host, including any non-default port; `http.response.status_code`
+    is recorded when an HTTP response was observed;
+    `activitypub.cache.enabled` is recorded on the key and document
+    fetch metrics whenever Fedify can confidently report the cache
+    layer's presence.  Key IDs, actor
     IDs, object IDs, JSON-LD context URLs, full URLs, and fediverse
     handles are deliberately excluded so attacker-controlled remotes
     cannot inflate metric cardinality.  The existing
@@ -174,8 +194,9 @@ To be released.
     `webfinger.resource.scheme` is bucketed to a small allow list
     (`acct`, `http`, `https`, `mailto`, or `other`) so an
     attacker-controlled query string cannot inflate metric
-    cardinality; `activitypub.remote.host` records the URL hostname
-    only.  Full resource URIs, lookup URLs, and handle strings are
+    cardinality; `activitypub.remote.host` records the URL host,
+    including any non-default port.  Full resource URIs, lookup URLs,
+    and handle strings are
     deliberately excluded; they remain on the corresponding spans
     (`webfinger.lookup`, `webfinger.handle`,
     `activitypub.get_actor_handle`) for trace-level investigation.
@@ -194,21 +215,64 @@ To be released.
     alias host when cross-origin verification runs).
     [[#316], [#739], [#772]]
 
+ -  Added an outbound delivery circuit breaker for queued outbox delivery.
+    Fedify now tracks consecutive network and HTTP 5xx delivery failures
+    per remote host (including any non-default port), stores the state in
+    the configured `KvStore`, and requeues messages held by an open circuit
+    instead of repeatedly sending to an unreachable server.  The circuit
+    breaker is enabled by default for queued outbox delivery and can be
+    disabled with
+    `circuitBreaker: false`; applications can customize the failure policy,
+    recovery delay, held activity TTL, release interval, and state/drop
+    callbacks.  HTTP 429 responses do not count as circuit failures and
+    `Retry-After` is respected when present.  State changes are exposed
+    through `activitypub.circuit_breaker.state_change` metrics and
+    `activitypub.circuit_breaker.state_change` span events, and expired
+    held activities call the outbox permanent failure handler with
+    `reason: "circuit-breaker-ttl"`.  [[#620], [#778]]
+
+ -  Added `benchmarkMode` to `createFederation()` and
+    `FederationBuilder.build()` for cooperative federation benchmarking.
+    When enabled, Fedify exposes `GET /.well-known/fedify/bench/stats`
+    for in-process OpenTelemetry metric snapshots and
+    `POST /.well-known/fedify/bench/trigger` for driving `sendActivity()`
+    to server-configured benchmark sink recipients.  Benchmark mode also
+    defaults `allowPrivateAddress` to `true` when built-in loaders are used,
+    defaults `signatureTimeWindow` to `false`, reports queue depth through
+    the new `fedify.queue.depth` gauge, and adds explicit low-latency
+    buckets to the signature verification duration histogram.
+    [[#744], [#782], [#787]]
+
  -  Replaced Fedify's internal federation routing with
     *@fedify/uri-template* for stricter RFC 6570 URI Template expansion and
     matching.  The deprecated `Router` export from *@fedify/fedify* remains
     available for compatibility.  [[#418], [#758] by ChanHaeng Lee]
 
+ -  Significantly sped up TypeScript type-checking by simplifying the internal
+    `path` parameter types of the `setObjectDispatcher()`,
+    `setCollectionDispatcher()`, and `setOrderedCollectionDispatcher()` methods.
+    These methods previously expanded `path` into thousands of RFC 6570
+    template-literal variants, which dominated type-checking time; a full
+    codebase type check now completes in roughly 13 seconds instead of around
+    99 seconds.  The public dispatcher method signatures and runtime path
+    validation are unchanged.  This is a partial fix for [#613] that targets
+    the dispatcher overload hot path; other contributors to `check-all` cost
+    may remain.  [[#613], [#800] by ChanHaeng Lee]
+
 [#316]: https://github.com/fedify-dev/fedify/issues/316
 [#418]: https://github.com/fedify-dev/fedify/issues/418
+[#613]: https://github.com/fedify-dev/fedify/issues/613
 [#619]: https://github.com/fedify-dev/fedify/issues/619
+[#620]: https://github.com/fedify-dev/fedify/issues/620
 [#735]: https://github.com/fedify-dev/fedify/issues/735
 [#736]: https://github.com/fedify-dev/fedify/issues/736
 [#737]: https://github.com/fedify-dev/fedify/issues/737
 [#738]: https://github.com/fedify-dev/fedify/issues/738
 [#739]: https://github.com/fedify-dev/fedify/issues/739
 [#740]: https://github.com/fedify-dev/fedify/issues/740
+[#741]: https://github.com/fedify-dev/fedify/issues/741
 [#742]: https://github.com/fedify-dev/fedify/issues/742
+[#744]: https://github.com/fedify-dev/fedify/issues/744
 [#748]: https://github.com/fedify-dev/fedify/pull/748
 [#752]: https://github.com/fedify-dev/fedify/issues/752
 [#753]: https://github.com/fedify-dev/fedify/pull/753
@@ -220,6 +284,67 @@ To be released.
 [#770]: https://github.com/fedify-dev/fedify/pull/770
 [#771]: https://github.com/fedify-dev/fedify/pull/771
 [#772]: https://github.com/fedify-dev/fedify/pull/772
+[#777]: https://github.com/fedify-dev/fedify/pull/777
+[#778]: https://github.com/fedify-dev/fedify/pull/778
+[#782]: https://github.com/fedify-dev/fedify/issues/782
+[#787]: https://github.com/fedify-dev/fedify/pull/787
+[#800]: https://github.com/fedify-dev/fedify/pull/800
+
+### @fedify/cli
+
+ -  Added the `--skip-install` option to `fedify init`, following the
+    corresponding `@fedify/init` update, which skips automatic dependency
+    installation after scaffolding.  [[#720], [#776] by fru1tworld]
+
+ -  Switched Node.js and Bun projects generated by `fedify init` from Biome
+    plus ESLint to Oxfmt plus Oxlint.  New projects now get *.oxfmtrc.json*,
+    *.oxlintrc.json*, Oxc editor recommendations, and package scripts for
+    `format`, `format:check`, and `lint`; the Oxlint config loads Fedify's
+    rules through `@fedify/lint/oxlint`.  [[#703], [#818]]
+
+ -  Added the `fedify bench` command for benchmarking Fedify federation
+    workloads.  It acts as a synthetic remote actor that drives
+    ActivityPub-specific load (signed inbox deliveries and WebFinger lookups)
+    against a cooperative `benchmarkMode` target and reports latency,
+    throughput, success rate, and errors, reading server-side metrics from the
+    target's stats endpoint.  Benchmarks are described by a YAML or JSON
+    scenario suite validated against a published JSON Schema, with an `expect`
+    block per scenario that gates a run for CI.  The command refuses public
+    non-`benchmarkMode` targets without an explicit unsafe override, supports
+    discovery-aware `--dry-run` planning, and ships with a local benchmark
+    fixture used by the scenario tests.  [[#744], [#783], [#784]]
+
+ -  Added `actor`, `object`, `fanout`, `failure`, and `mixed` scenario runners
+    to `fedify bench`.  Read scenarios can now benchmark actor and object
+    document fetches, including authenticated GET requests; fanout scenarios
+    drive the benchmark trigger endpoint and wait for queue task drain; failure
+    scenarios report expected fault outcomes as successes; and mixed scenarios
+    run weighted child scenario blends.  The `collection` scenario type remains
+    reserved but not executable.  Fanout and remote failure scenarios can set
+    `sinkBase` to generate deterministic benchmark sink inbox URLs for targets
+    that keep `triggerSinks` allowlisting enabled.  This change is published
+    as benchmark scenario schema version 2.  [[#744], [#785], [#801], [#802]]
+
+ -  Added `fedify bench compare` for CI-friendly performance regression gates.
+    The command checks out base and head refs into temporary worktrees, starts
+    the benchmark target for each ref, runs the same suite, and fails when the
+    head regresses beyond `--max-regression` plus the measured per-run noise
+    band.  Benchmark scenarios now run three times by default and aggregate
+    repeated runs with median latency/throughput and pessimistic correctness
+    results.  This change is published as benchmark report schema version 3
+    and comparison report schema version 1.  [[#744], [#786], [#804]]
+
+[#703]: https://github.com/fedify-dev/fedify/issues/703
+[#720]: https://github.com/fedify-dev/fedify/issues/720
+[#776]: https://github.com/fedify-dev/fedify/pull/776
+[#783]: https://github.com/fedify-dev/fedify/issues/783
+[#784]: https://github.com/fedify-dev/fedify/issues/784
+[#785]: https://github.com/fedify-dev/fedify/issues/785
+[#786]: https://github.com/fedify-dev/fedify/issues/786
+[#801]: https://github.com/fedify-dev/fedify/pull/801
+[#802]: https://github.com/fedify-dev/fedify/pull/802
+[#804]: https://github.com/fedify-dev/fedify/pull/804
+[#818]: https://github.com/fedify-dev/fedify/pull/818
 
 ### @fedify/backfill
 
@@ -279,6 +404,84 @@ To be released.
  -  Added `SqliteMessageQueue.getDepth()` for reporting queued, ready, and
     delayed message counts.  [[#735], [#748]]
 
+### @fedify/init
+
+ -  Added a `--skip-install` option to `fedify init` that skips automatic
+    dependency installation after scaffolding.  This is useful for CI
+    environments, monorepo workspaces that install dependencies from the
+    root, or when you want to inspect the generated files before
+    installing.  [[#720], [#776] by fru1tworld]
+
+ -  Switched generated Node.js and Bun projects from Biome plus ESLint to
+    Oxfmt plus Oxlint.  New projects now get *.oxfmtrc.json*,
+    *.oxlintrc.json*, Oxc editor recommendations, and package scripts for
+    `format`, `format:check`, and `lint`; the Oxlint config loads Fedify's
+    rules through `@fedify/lint/oxlint`.  [[#703], [#818]]
+
+### @fedify/lint
+
+ -  Added official Oxlint support through a new `@fedify/lint/oxlint` subpath
+    export, which exposes Fedify's lint rules in the shape Oxlint's JS plugin
+    API expects.  Previously, using `@fedify/lint` from Oxlint required a local
+    wrapper module to re-export the plugin object as the default export; the new
+    entrypoint removes that friction.  The rules are reused verbatim from the
+    ESLint plugin, and the existing Deno and ESLint root exports are unchanged.
+    Note that Oxlint's JS plugin support is still alpha upstream.
+    [[#702], [#760] by NyanRus]
+
+[#702]: https://github.com/fedify-dev/fedify/issues/702
+[#760]: https://github.com/fedify-dev/fedify/pull/760
+
+### @fedify/vocab-runtime
+
+ -  Added `PropertyPreprocessor`, `PropertyPreprocessorContext`, and `Json`
+    types for normalizing wire-level JSON-LD property values before the
+    generated range decoder runs.  [[#792]]
+
+[#792]: https://github.com/fedify-dev/fedify/issues/792
+
+### @fedify/vocab
+
+ -  Explicit ActivityStreams `Link` objects in `icon` and `image` properties
+    are now normalized to `Image` during decoding via the new exported
+    `normalizeLinkToImage()` preprocessor.  The public `Image`-oriented
+    TypeScript API is unchanged.  [[#790], [#792]]
+
+ -  The generated `fromJsonLd()` methods no longer resolve blank node
+    identifiers (`_:b0`) against `options.baseUrl`; blank nodes are left
+    as `null` in the resulting instance's `id` field.  [[#792]]
+
+ -  Added the second-stage vocabulary types for [FEP-0837], economic
+    resource coordination in federated networks.
+    [[#775], [#817] by Samuel Brinkmann]
+
+     -  Added `Agreement` class, representing the agreement reached between
+        parties responding to a `Proposal`, wrapped in an `Offer` and
+        finalized as the `result` of an `Accept`.
+     -  Added `Commitment` class, representing a promised economic
+        transaction that references an `Intent` via `satisfies` and carries
+        the committed quantity via `resourceQuantity`.
+
+[FEP-0837]: https://w3id.org/fep/0837
+[#775]: https://github.com/fedify-dev/fedify/issues/775
+[#790]: https://github.com/fedify-dev/fedify/issues/790
+[#817]: https://github.com/fedify-dev/fedify/pull/817
+
+### @fedify/vocab-tools
+
+ -  Property schemas now support a `preprocessors` field that lists
+    module/function pairs.  Generated decoders statically import and run
+    these preprocessors for each expanded JSON-LD property value before
+    falling back to the normal range decoder.  [[#792]]
+
+ -  The generated base class now stores the `baseUrl` from `fromJsonLd()`
+    as a protected `_baseUrl` field.  This URL is used to resolve
+    relative URIs when cached embedded property documents are re-parsed
+    lazily by accessors like `getIcon()`, so that callers do not need to
+    pass an explicit `baseUrl`.  The stored URL is defensively copied so
+    that mutation of the caller's original `URL` object does not affect
+    later resolution.  [[#792]]
+
 ### Claude Code plugin
 
  -  Added a Claude Code plugin at *claude-plugin/*, installable with:
@@ -298,6 +501,40 @@ To be released.
     tarball is self-contained.  [[#489]]
 
 [#489]: https://github.com/fedify-dev/fedify/issues/489
+
+
+Version 2.2.5
+-------------
+
+Released on June 5, 2026.
+
+### @fedify/cli
+
+ -  Fixed `fedify` command failing under Deno 2.8+/TypeScript 6.0 where
+    `setTimeout()` returns `Timeout` instead of `number`.  Used
+    `ReturnType<typeof setTimeout>` for the `signalTimers` WeakMap so it
+    is compatible across all TypeScript/Deno versions.  [[#789] by Rui Chen]
+
+[#789]: https://github.com/fedify-dev/fedify/pull/789
+
+
+Version 2.2.4
+-------------
+
+Released on June 4, 2026.
+
+### @fedify/vocab-runtime
+
+ -  Fixed `validatePublicUrl()` allowing special-use IPv4 ranges, such as
+    shared address space, benchmarking, multicast, reserved, and documentation
+    ranges, which could bypass private network protections in remote document
+    loading.  [[CVE-2026-50131]]
+
+ -  Fixed `validatePublicUrl()` allowing IPv6 translation and tunneling
+    prefixes, including NAT64, Teredo, and 6to4 addresses, which could bypass
+    private network protections in remote document loading.  [[CVE-2026-50131]]
+
+[CVE-2026-50131]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-xw9q-2mv6-9fr8
 
 
 Version 2.2.3
@@ -523,7 +760,6 @@ Released on April 28, 2026.
         measure, with `unit` and `numericalValue` properties.
 
 [FEP-044f]: https://w3id.org/fep/044f
-[FEP-0837]: https://w3id.org/fep/0837
 [#452]: https://github.com/fedify-dev/fedify/issues/452
 [#578]: https://github.com/fedify-dev/fedify/issues/578
 [#645]: https://github.com/fedify-dev/fedify/issues/645
@@ -672,6 +908,36 @@ Released on April 28, 2026.
 [#706]: https://github.com/fedify-dev/fedify/issues/706
 [#715]: https://github.com/fedify-dev/fedify/pull/715
 [#722]: https://github.com/fedify-dev/fedify/pull/722
+
+
+Version 2.1.16
+--------------
+
+Released on June 5, 2026.
+
+### @fedify/cli
+
+ -  Fixed `fedify` command failing under Deno 2.8+/TypeScript 6.0 where
+    `setTimeout()` returns `Timeout` instead of `number`.  Used
+    `ReturnType<typeof setTimeout>` for the `signalTimers` WeakMap so it
+    is compatible across all TypeScript/Deno versions.  [[#789] by Rui Chen]
+
+
+Version 2.1.15
+--------------
+
+Released on June 4, 2026.
+
+### @fedify/vocab-runtime
+
+ -  Fixed `validatePublicUrl()` allowing special-use IPv4 ranges, such as
+    shared address space, benchmarking, multicast, reserved, and documentation
+    ranges, which could bypass private network protections in remote document
+    loading.  [[CVE-2026-50131]]
+
+ -  Fixed `validatePublicUrl()` allowing IPv6 translation and tunneling
+    prefixes, including NAT64, Teredo, and 6to4 addresses, which could bypass
+    private network protections in remote document loading.  [[CVE-2026-50131]]
 
 
 Version 2.1.14
@@ -1213,6 +1479,36 @@ Released on March 24, 2026.
 [#586]: https://github.com/fedify-dev/fedify/issues/586
 [#597]: https://github.com/fedify-dev/fedify/pull/597
 [#599]: https://github.com/fedify-dev/fedify/pull/599
+
+
+Version 2.0.20
+--------------
+
+Released on June 5, 2026.
+
+### @fedify/cli
+
+ -  Fixed `fedify` command failing under Deno 2.8+/TypeScript 6.0 where
+    `setTimeout()` returns `Timeout` instead of `number`.  Used
+    `ReturnType<typeof setTimeout>` for the `signalTimers` WeakMap so it
+    is compatible across all TypeScript/Deno versions.  [[#789] by Rui Chen]
+
+
+Version 2.0.19
+--------------
+
+Released on June 4, 2026.
+
+### @fedify/vocab-runtime
+
+ -  Fixed `validatePublicUrl()` allowing special-use IPv4 ranges, such as
+    shared address space, benchmarking, multicast, reserved, and documentation
+    ranges, which could bypass private network protections in remote document
+    loading.  [[CVE-2026-50131]]
+
+ -  Fixed `validatePublicUrl()` allowing IPv6 translation and tunneling
+    prefixes, including NAT64, Teredo, and 6to4 addresses, which could bypass
+    private network protections in remote document loading.  [[CVE-2026-50131]]
 
 
 Version 2.0.18
@@ -2177,6 +2473,23 @@ Released on February 22, 2026.
 [#351]: https://github.com/fedify-dev/fedify/issues/351
 
 
+Version 1.10.11
+---------------
+
+Released on June 4, 2026.
+
+### @fedify/fedify
+
+ -  Fixed `validatePublicUrl()` allowing special-use IPv4 ranges, such as
+    shared address space, benchmarking, multicast, reserved, and documentation
+    ranges, which could bypass private network protections in remote document
+    loading.  [[CVE-2026-50131]]
+
+ -  Fixed `validatePublicUrl()` allowing IPv6 translation and tunneling
+    prefixes, including NAT64, Teredo, and 6to4 addresses, which could bypass
+    private network protections in remote document loading.  [[CVE-2026-50131]]
+
+
 Version 1.10.10
 ---------------
 
@@ -2422,6 +2735,23 @@ Released on December 24, 2025.
 ### @fedify/cfworkers
 
  -  Implemented `list()` method in `WorkersKvStore`.  [[#498], [#500]]
+
+
+Version 1.9.12
+--------------
+
+Released on June 4, 2026.
+
+### @fedify/fedify
+
+ -  Fixed `validatePublicUrl()` allowing special-use IPv4 ranges, such as
+    shared address space, benchmarking, multicast, reserved, and documentation
+    ranges, which could bypass private network protections in remote document
+    loading.  [[CVE-2026-50131]]
+
+ -  Fixed `validatePublicUrl()` allowing IPv6 translation and tunneling
+    prefixes, including NAT64, Teredo, and 6to4 addresses, which could bypass
+    private network protections in remote document loading.  [[CVE-2026-50131]]
 
 
 Version 1.9.11

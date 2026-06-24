@@ -1,0 +1,9 @@
+# Netlify headers for the published JSON Schemas.
+# Schemas are served cross-origin (editors and online validators fetch them),
+# with the JSON Schema media type and a long immutable cache, since every
+# version file is immutable.
+
+/bench/*
+  Access-Control-Allow-Origin: *
+  Content-Type: application/schema+json
+  Cache-Control: public, max-age=31536000, immutable

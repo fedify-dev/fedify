@@ -2,7 +2,7 @@ import { PACKAGE_MANAGER } from "../const.ts";
 import { PACKAGE_VERSION, readTemplate } from "../lib.ts";
 import type { PackageManager, WebFrameworkDescription } from "../types.ts";
 import { defaultDenoDependencies, defaultDevDependencies } from "./const.ts";
-import { getInstruction } from "./utils.ts";
+import { getInstruction, getNodeBunDevToolTasks } from "./utils.ts";
 
 const nitroDescription: WebFrameworkDescription = {
   label: "Nitro",
@@ -10,6 +10,10 @@ const nitroDescription: WebFrameworkDescription = {
   defaultPort: 3000,
   init: async ({ packageManager: pm, testMode }) => ({
     command: getNitroInitCommand(pm),
+    cleanupFiles: pm === "deno" ? [] : ["server/routes/index.ts"],
+    cleanupPackageJson: pm === "deno" ? {} : {
+      devDependencies: ["eslint", "eslint-config-unjs", "prettier"],
+    },
     dependencies: {
       "@fedify/h3": PACKAGE_VERSION,
       ...(pm === "deno" && defaultDenoDependencies),
@@ -17,6 +21,9 @@ const nitroDescription: WebFrameworkDescription = {
     devDependencies: defaultDevDependencies,
     federationFile: "server/federation.ts",
     loggingFile: "server/logging.ts",
+    format: {
+      ignorePatterns: [".output/**"],
+    },
     env: testMode ? { HOST: "127.0.0.1" } : {} as Record<string, string>,
     files: {
       "server/plugins/logging.ts": await readTemplate(
@@ -27,13 +34,33 @@ const nitroDescription: WebFrameworkDescription = {
       ),
       "server/error.ts": await readTemplate("nitro/server/error.ts"),
       "nitro.config.ts": await readTemplate("nitro/nitro.config.ts"),
-      ...(pm !== "deno" && {
-        "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
+      ...(pm === "deno" ? {} : {
+        "server/routes/index.ts": await readTemplate(
+          "nitro/server/routes/index.ts",
+        ),
       }),
     },
-    tasks: pm !== "deno"
-      ? { "lint": "eslint ." }
-      : {} as Record<string, string>,
+    compilerOptions: pm === "deno" ? undefined : {
+      target: "ESNext",
+      module: "ESNext",
+      moduleResolution: "Bundler",
+      jsx: "preserve",
+      jsxFactory: "h",
+      jsxFragmentFactory: "Fragment",
+      strict: true,
+      noEmit: true,
+      skipLibCheck: true,
+      resolveJsonModule: true,
+      allowSyntheticDefaultImports: true,
+      forceConsistentCasingInFileNames: true,
+      noImplicitReturns: true,
+      noFallthroughCasesInSwitch: true,
+      useUnknownInCatchVariables: true,
+      noUnusedLocals: true,
+      lib: ["ESNext", "DOM"],
+      baseUrl: ".",
+    },
+    tasks: getNodeBunDevToolTasks(pm),
     instruction: getInstruction(pm, 3000),
   }),
 };

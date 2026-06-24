@@ -5,7 +5,7 @@
 
 [![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
-[![Follow @fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
+[![@fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
 
 *This package is available since Fedify 2.0.0.*
 
@@ -44,7 +44,7 @@ advanced setup, see the [Debugging section] of the Fedify manual.
 [JSR]: https://jsr.io/@fedify/debugger
 [npm badge]: https://img.shields.io/npm/v/@fedify/debugger?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/debugger
-[@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
+[@fedify@hollo.social badge]: https://fedi-badge.minhee.org/@fedify@hollo.social/followers.svg
 [@fedify@hollo.social]: https://hollo.social/@fedify
 [`@fedify/hono`]: https://jsr.io/@fedify/hono
 [`@fedify/express`]: https://www.npmjs.com/package/@fedify/express

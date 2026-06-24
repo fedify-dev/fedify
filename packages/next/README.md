@@ -3,7 +3,7 @@
 @fedify/next: Integrate Fedify with Next.js
 ===========================================
 
-[![Follow @fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
+[![@fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
 
 This package provides a simple way to integrate [Fedify] with [Next.js].
 
@@ -19,7 +19,7 @@ This package provides a simple way to integrate [Fedify] with [Next.js].
 > the exported `config`, because Proxy always runs on the Node.js runtime.
 > For more details, refer to the [official documentation of `proxy`].
 
-[@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
+[@fedify@hollo.social badge]: https://fedi-badge.minhee.org/@fedify@hollo.social/followers.svg
 [@fedify@hollo.social]: https://hollo.social/@fedify
 [Fedify]: https://fedify.dev/
 [Next.js]: https://nextjs.org/

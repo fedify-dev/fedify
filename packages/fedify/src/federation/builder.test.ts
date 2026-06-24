@@ -166,6 +166,29 @@ test("FederationBuilder", async (t) => {
     },
   );
 
+  await t.step("passes benchmarkMode to the built federation", async () => {
+    const builder = createFederationBuilder<void>();
+    const federation = await builder.build({
+      kv: new MemoryKvStore(),
+      benchmarkMode: true,
+    });
+    const impl = federation as FederationImpl<void>;
+    assertEquals(impl.benchmarkMode, true);
+    assertEquals(impl.allowPrivateAddress, true);
+    assertEquals(impl.signatureTimeWindow, false);
+
+    const overridden = await builder.build({
+      kv: new MemoryKvStore(),
+      benchmarkMode: true,
+      allowPrivateAddress: false,
+      signatureTimeWindow: { minutes: 10 },
+    });
+    const overriddenImpl = overridden as FederationImpl<void>;
+    assertEquals(overriddenImpl.benchmarkMode, true);
+    assertEquals(overriddenImpl.allowPrivateAddress, false);
+    assertEquals(overriddenImpl.signatureTimeWindow, { minutes: 10 });
+  });
+
   await t.step("should snapshot router state on build", async () => {
     const builder = createFederationBuilder<void>();
     const kv = new MemoryKvStore();

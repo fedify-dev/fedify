@@ -24,12 +24,17 @@ export const loadFederation = async (
   }: InitCommandData & { imports: string },
 ) =>
   pipe(
-    await readTemplate("defaults/federation.ts"),
+    await readTemplate(getFederationTemplate(packageManager)),
     replace(/\/\* imports \*\//, imports),
     replace(/\/\* logger \*\//, JSON.stringify(projectName)),
     replace(/\/\* kv \*\//, convertEnv(kv.object, packageManager)),
     replace(/\/\* queue \*\//, convertEnv(mq.object, packageManager)),
   );
+
+const getFederationTemplate = (packageManager: PackageManager): string =>
+  packageManager === "deno"
+    ? "defaults/federation.ts"
+    : "defaults/federation.oxc.ts";
 
 /**
  * Loads logging configuration file content for the initializer.
@@ -95,12 +100,10 @@ export const getImports = ({ kv, mq, packageManager, env }: InitCommandData) =>
  * @returns A comma-separated string of named imports with aliases where needed
  */
 export const getAlias = (imports: Record<string, string>) =>
-  pipe(
-    imports,
-    entries,
-    map(([name, alias]) => name === alias ? name : `${name} as ${alias}`),
-    join(", "),
-  );
+  Object.entries(imports)
+    .map(([name, alias]) => name === alias ? name : `${name} as ${alias}`)
+    .sort()
+    .join(", ");
 
 const ENV_REG_EXP = /process\.env\.(\w+)/g;
 /**

@@ -310,7 +310,7 @@ async function lookupWebFingerInternal(
   url.searchParams.set("resource", resource.href);
   let redirected = 0;
   while (true) {
-    const remoteHost = url.hostname;
+    const remoteHost = url.host;
     logger.debug(
       "Fetching WebFinger resource descriptor from {url}...",
       { url: url.href },

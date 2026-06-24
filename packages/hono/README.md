@@ -5,7 +5,7 @@
 
 [![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
-[![Follow @fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
+[![@fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
 
 *This package is available since Fedify 1.9.0.*
 
@@ -30,7 +30,7 @@ app.use(federation(fedi, (ctx) => "context data"));
 [JSR]: https://jsr.io/@fedify/hono
 [npm badge]: https://img.shields.io/npm/v/@fedify/hono?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/hono
-[@fedify@hollo.social badge]: https://fedi-badge.deno.dev/@fedify@hollo.social/followers.svg
+[@fedify@hollo.social badge]: https://fedi-badge.minhee.org/@fedify@hollo.social/followers.svg
 [@fedify@hollo.social]: https://hollo.social/@fedify
 [Fedify]: https://fedify.dev/
 [Hono]: https://hono.dev/

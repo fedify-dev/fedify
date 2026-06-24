@@ -1,8 +1,9 @@
-import { ok } from "node:assert/strict";
+import { equal, ok } from "node:assert/strict";
 import test from "node:test";
 import astroDescription from "./webframeworks/astro.ts";
 import nextDescription from "./webframeworks/next.ts";
 import nitroDescription from "./webframeworks/nitro.ts";
+import webFrameworks from "./webframeworks/mod.ts";
 import solidstartDescription from "./webframeworks/solidstart.ts";
 
 test("Nitro template loads LogTape during server startup", async () => {
@@ -17,6 +18,7 @@ test("Nitro template loads LogTape during server startup", async () => {
     testMode: false,
     dryRun: true,
     allowNonEmpty: false,
+    skipInstall: false,
   });
 
   ok(files);
@@ -38,6 +40,7 @@ test("Next.js template loads LogTape through instrumentation", async () => {
     testMode: false,
     dryRun: true,
     allowNonEmpty: false,
+    skipInstall: false,
   });
 
   ok(files);
@@ -61,6 +64,7 @@ test("Astro template loads LogTape through middleware", async () => {
     testMode: false,
     dryRun: true,
     allowNonEmpty: false,
+    skipInstall: false,
   });
 
   ok(files);
@@ -81,10 +85,80 @@ test("SolidStart template loads LogTape through middleware", async () => {
     testMode: false,
     dryRun: true,
     allowNonEmpty: false,
+    skipInstall: false,
   });
 
   ok(files);
   const middleware = files["src/middleware/index.ts"];
   ok(middleware);
   ok(middleware.includes('import "../logging";'));
+});
+
+test("Node.js and Bun templates use Oxfmt and Oxlint", async () => {
+  for (const [webFramework, description] of Object.entries(webFrameworks)) {
+    if (webFramework === "astro") continue;
+    for (const packageManager of ["npm", "bun"] as const) {
+      if (!description.packageManagers.includes(packageManager)) continue;
+      const initializer = await description.init({
+        projectName: "test-app",
+        dir: ".",
+        command: "init",
+        packageManager,
+        kvStore: "in-memory",
+        messageQueue: "in-process",
+        webFramework: webFramework as keyof typeof webFrameworks,
+        testMode: false,
+        dryRun: true,
+        allowNonEmpty: false,
+        skipInstall: false,
+      });
+
+      equal(initializer.tasks?.format, "oxfmt");
+      equal(initializer.tasks?.["format:check"], "oxfmt --check");
+      equal(initializer.tasks?.lint, "oxlint .");
+      equal(initializer.files?.["eslint.config.ts"], undefined);
+      equal(initializer.files?.["eslint.config.mjs"], undefined);
+      equal(initializer.devDependencies?.["@fedify/lint"] != null, true);
+      equal(initializer.devDependencies?.["oxfmt"] != null, true);
+      equal(initializer.devDependencies?.["oxlint"] != null, true);
+      equal(initializer.devDependencies?.["eslint"], undefined);
+      equal(initializer.devDependencies?.["@biomejs/biome"], undefined);
+    }
+  }
+});
+
+test("Astro Node.js and Bun templates use Prettier for Astro files", async () => {
+  for (const packageManager of ["npm", "bun"] as const) {
+    const initializer = await astroDescription.init({
+      projectName: "test-app",
+      dir: ".",
+      command: "init",
+      packageManager,
+      kvStore: "in-memory",
+      messageQueue: "in-process",
+      webFramework: "astro",
+      testMode: false,
+      dryRun: true,
+      allowNonEmpty: false,
+      skipInstall: false,
+    });
+
+    equal(
+      initializer.tasks?.format,
+      "prettier --plugin prettier-plugin-astro --write .",
+    );
+    equal(
+      initializer.tasks?.["format:check"],
+      "prettier --plugin prettier-plugin-astro --check .",
+    );
+    equal(initializer.tasks?.lint, "oxlint .");
+    equal(initializer.devDependencies?.["prettier"] != null, true);
+    equal(
+      initializer.devDependencies?.["prettier-plugin-astro"] != null,
+      true,
+    );
+    equal(initializer.devDependencies?.["oxfmt"], undefined);
+    equal(initializer.devDependencies?.["oxlint"] != null, true);
+    equal(initializer.format?.tool, "prettier");
+  }
 });

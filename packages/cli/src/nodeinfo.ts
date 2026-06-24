@@ -21,9 +21,12 @@ import { print, printError } from "@optique/run";
 import type { ChalkInstance } from "chalk";
 import { isICO, parseICO } from "icojs";
 import { defaultFormats, defaultPlugins, intToRGBA } from "jimp";
+import { Buffer } from "node:buffer";
 import os from "node:os";
 import process from "node:process";
 import ora from "ora";
+// @deno-types="npm:@types/pngjs@^6.0.5"
+import { PNG } from "pngjs";
 import { configContext } from "./config.ts";
 import { userAgentOption } from "./options.ts";
 import { colors, formatObject } from "./utils.ts";
@@ -34,6 +37,49 @@ export const Jimp = createJimp({
   formats: [...defaultFormats, webp],
   plugins: defaultPlugins,
 });
+
+type JimpImage = Awaited<ReturnType<typeof Jimp.read>>;
+type ImageBuffer = ArrayBuffer | Uint8Array;
+
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+function toUint8Array(buffer: ImageBuffer): Uint8Array {
+  return buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+}
+
+function toNodeBuffer(buffer: ImageBuffer): Buffer {
+  return Buffer.from(toUint8Array(buffer));
+}
+
+function isPng(buffer: ImageBuffer): boolean {
+  const bytes = toUint8Array(buffer);
+  return PNG_SIGNATURE.every((byte, index) => bytes[index] === byte);
+}
+
+async function decodePng(
+  buffer: ImageBuffer,
+): Promise<{ width: number; height: number; data: Buffer }> {
+  return await new Promise((resolve, reject) => {
+    new PNG().parse(toNodeBuffer(buffer), (error, png) => {
+      if (error != null) {
+        reject(error);
+      } else {
+        resolve(png);
+      }
+    });
+  });
+}
+
+export async function readImage(buffer: ImageBuffer): Promise<JimpImage> {
+  if (!isPng(buffer)) return await Jimp.read(toNodeBuffer(buffer));
+
+  const png = await decodePng(buffer);
+  return new Jimp({
+    width: png.width,
+    height: png.height,
+    data: png.data,
+  }) as JimpImage;
+}
 
 const nodeInfoOption = merge(
   object("Display options", {
@@ -84,26 +130,30 @@ const nodeInfoOption = merge(
   }),
 );
 
-export const nodeInfoCommand = Command(
-  "nodeinfo",
-  merge(
-    object("Arguments", {
-      command: constant("nodeinfo"),
-      host: argument(string({ metavar: "HOST" }), {
-        description: message`Bare hostname or a full URL of the instance`,
-      }),
+export const nodeInfoOptions = merge(
+  object("Arguments", {
+    command: constant("nodeinfo"),
+    host: argument(string({ metavar: "HOST" }), {
+      description: message`Bare hostname or a full URL of the instance`,
     }),
-    nodeInfoOption,
-    group("Network options", userAgentOption),
-  ),
-  {
-    brief:
-      message`Get information about a remote node using the NodeInfo protocol`,
-    description:
-      message`Get information about a remote node using the NodeInfo protocol.
+  }),
+  nodeInfoOption,
+  group("Network options", userAgentOption),
+);
+
+export const nodeInfoMetadata = {
+  brief:
+    message`Get information about a remote node using the NodeInfo protocol`,
+  description:
+    message`Get information about a remote node using the NodeInfo protocol.
 
 The argument is the hostname of the remote node, or the URL of the remote node.`,
-  },
+};
+
+export const nodeInfoCommand = Command(
+  "nodeinfo",
+  nodeInfoOptions,
+  nodeInfoMetadata,
 );
 
 export async function runNodeInfo(
@@ -178,7 +228,7 @@ export async function runNodeInfo(
           }
           buffer = images[0].buffer;
         }
-        const image = await Jimp.read(buffer);
+        const image = await readImage(buffer);
         const colorSupport = checkTerminalColorSupport();
         layout = getAsciiArt(image, DEFAULT_IMAGE_WIDTH, colorSupport, colors)
           .split("\n").map((line) => ` ${line}  `);

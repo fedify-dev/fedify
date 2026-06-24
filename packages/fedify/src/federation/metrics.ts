@@ -6,6 +6,7 @@ import {
   type Histogram,
   type MeterProvider,
   metrics,
+  type ObservableGauge,
   type UpDownCounter,
 } from "@opentelemetry/api";
 import metadata from "../../deno.json" with { type: "json" };
@@ -76,6 +77,13 @@ export type InboxActivityResult =
 export type OutboxActivityResult = "queued" | "retried" | "abandoned";
 
 /**
+ * The bounded circuit breaker state value recorded on
+ * `activitypub.circuit_breaker.state_change`.
+ * @since 2.3.0
+ */
+export type CircuitBreakerMetricState = "closed" | "open" | "half_open";
+
+/**
  * Common attributes shared by all queue task metrics.
  * @since 2.3.0
  */
@@ -83,6 +91,37 @@ export interface QueueTaskCommonAttributes {
   role: QueueTaskRole;
   queue?: MessageQueue;
   activityType?: string;
+}
+
+/**
+ * An entry for observing one queue role in `fedify.queue.depth`.
+ *
+ * This public API is used by {@link registerQueueDepthGauge()} to associate a
+ * queue depth source with the task role it represents.
+ * @since 2.3.0
+ */
+export interface QueueDepthGaugeEntry {
+  /**
+   * The task role whose queue depth is observed.
+   */
+  role: QueueTaskRole;
+
+  /**
+   * The message queue to observe, or `undefined` when the role has no queue.
+   */
+  queue?: MessageQueue;
+}
+
+/**
+ * Options for observing queue depth metrics.
+ * @since 2.3.0
+ */
+export interface QueueDepthGaugeOptions {
+  /**
+   * An opaque source identifier to distinguish queue depth series registered on
+   * the same meter provider.
+   */
+  sourceId?: string;
 }
 
 /**
@@ -278,9 +317,10 @@ export type KeyLookupResult = Exclude<LookupResult, "miss">;
 
 /**
  * Attributes accepted by {@link recordKeyLookup}.  `remoteUrl` is taken as
- * a `URL` so that the helper can derive the hostname-only
- * `activitypub.remote.host` attribute internally and refuse to record
- * high-cardinality values such as full key IDs or actor URLs.
+ * a `URL` so that the helper can derive the URL host, including any
+ * non-default port, for the `activitypub.remote.host` attribute internally
+ * and refuse to record high-cardinality values such as full key IDs or actor
+ * URLs.
  * @since 2.3.0
  */
 export interface KeyLookupAttributes {
@@ -409,6 +449,51 @@ export interface WebFingerHandleAttributes {
   statusCode?: number;
 }
 
+/**
+ * The bounded collection kind recorded on collection request metrics.
+ * @since 2.3.0
+ */
+export type CollectionMetricKind =
+  | "inbox"
+  | "outbox"
+  | "following"
+  | "followers"
+  | "liked"
+  | "featured"
+  | "featured_tags"
+  | "custom";
+
+/**
+ * The terminal request classification recorded on collection metrics.
+ * @since 2.3.0
+ */
+export type CollectionMetricResult =
+  | "served"
+  | "not_found"
+  | "not_acceptable"
+  | "unauthorized"
+  | "error";
+
+/**
+ * Whether a collection request was handled by one of Fedify's built-in
+ * ActivityPub collection dispatchers or by an application-defined custom
+ * collection dispatcher.
+ * @since 2.3.0
+ */
+export type CollectionMetricDispatcher = "built_in" | "custom";
+
+/**
+ * Common attributes accepted by collection metric helpers.
+ * @since 2.3.0
+ */
+export interface CollectionMetricAttributes {
+  kind: CollectionMetricKind;
+  page: boolean;
+  dispatcher: CollectionMetricDispatcher;
+  result: CollectionMetricResult;
+  statusCode?: number;
+}
+
 class FederationMetrics {
   readonly deliverySent: Counter;
   readonly deliveryPermanentFailure: Counter;
@@ -425,9 +510,11 @@ class FederationMetrics {
   readonly queueTaskFailed: Counter;
   readonly queueTaskDuration: Histogram;
   readonly queueTaskInFlight: UpDownCounter;
+  readonly queueDepth: ObservableGauge;
   readonly fanoutRecipients: Histogram;
   readonly inboxActivity: Counter;
   readonly outboxActivity: Counter;
+  readonly circuitBreakerStateChange: Counter;
   readonly keyLookup: Counter;
   readonly keyLookupDuration: Histogram;
   readonly documentFetch: Counter;
@@ -435,6 +522,10 @@ class FederationMetrics {
   readonly documentCache: Counter;
   readonly webFingerHandle: Counter;
   readonly webFingerHandleDuration: Histogram;
+  readonly collectionRequest: Counter;
+  readonly collectionDispatchDuration: Histogram;
+  readonly collectionPageItems: Histogram;
+  readonly collectionTotalItems: Histogram;
 
   constructor(meterProvider: MeterProvider) {
     const meter = meterProvider.getMeter(metadata.name, metadata.version);
@@ -463,6 +554,23 @@ class FederationMetrics {
           "Duration of ActivityPub signature verification, including local " +
           "key lookup and remote key fetches.",
         unit: "ms",
+        advice: {
+          explicitBucketBoundaries: [
+            0.1,
+            0.25,
+            0.5,
+            1,
+            2.5,
+            5,
+            10,
+            25,
+            50,
+            100,
+            250,
+            500,
+            1000,
+          ],
+        },
       },
     );
     this.signatureKeyFetchDuration = meter.createHistogram(
@@ -577,6 +685,12 @@ class FederationMetrics {
         unit: "{task}",
       },
     );
+    this.queueDepth = meter.createObservableGauge("fedify.queue.depth", {
+      description:
+        "Messages waiting in configured Fedify queues, as reported by the " +
+        "queue backend.",
+      unit: "{message}",
+    });
     this.fanoutRecipients = meter.createHistogram(
       "activitypub.fanout.recipients",
       {
@@ -599,6 +713,13 @@ class FederationMetrics {
         "live on `activitypub.delivery.*`.",
       unit: "{activity}",
     });
+    this.circuitBreakerStateChange = meter.createCounter(
+      "activitypub.circuit_breaker.state_change",
+      {
+        description: "Outbound ActivityPub delivery circuit breaker changes.",
+        unit: "{change}",
+      },
+    );
     this.keyLookup = meter.createCounter("activitypub.key.lookup", {
       description:
         "Public-key lookup attempts performed by Fedify, including both " +
@@ -707,6 +828,56 @@ class FederationMetrics {
             10000,
           ],
         },
+      },
+    );
+    this.collectionRequest = meter.createCounter(
+      "activitypub.collection.request",
+      {
+        description:
+          "ActivityPub collection and collection-page requests handled by " +
+          "Fedify.",
+        unit: "{request}",
+      },
+    );
+    this.collectionDispatchDuration = meter.createHistogram(
+      "activitypub.collection.dispatch.duration",
+      {
+        description: "Duration of ActivityPub collection dispatcher callbacks.",
+        unit: "ms",
+        advice: {
+          explicitBucketBoundaries: [
+            5,
+            10,
+            25,
+            50,
+            75,
+            100,
+            250,
+            500,
+            750,
+            1000,
+            2500,
+            5000,
+            7500,
+            10000,
+          ],
+        },
+      },
+    );
+    this.collectionPageItems = meter.createHistogram(
+      "activitypub.collection.page.items",
+      {
+        description: "Number of items Fedify materialized for an ActivityPub " +
+          "collection response.",
+        unit: "{item}",
+      },
+    );
+    this.collectionTotalItems = meter.createHistogram(
+      "activitypub.collection.total_items",
+      {
+        description:
+          "Total item count reported by ActivityPub collection counters.",
+        unit: "{item}",
       },
     );
   }
@@ -877,6 +1048,16 @@ class FederationMetrics {
     );
   }
 
+  recordCircuitBreakerStateChange(
+    remoteHost: string,
+    state: CircuitBreakerMetricState,
+  ): void {
+    this.circuitBreakerStateChange.add(1, {
+      "activitypub.remote.host": remoteHost,
+      "activitypub.circuit_breaker.state": state,
+    });
+  }
+
   recordKeyLookup(attrs: KeyLookupAttributes): void {
     const attributes: Attributes = {
       "activitypub.lookup.kind": "public_key",
@@ -935,6 +1116,55 @@ class FederationMetrics {
     this.webFingerHandle.add(1, attributes);
     this.webFingerHandleDuration.record(attrs.durationMs, attributes);
   }
+
+  recordCollectionRequest(attrs: CollectionMetricAttributes): void {
+    this.collectionRequest.add(1, buildCollectionAttributes(attrs));
+  }
+
+  recordCollectionDispatchDuration(
+    durationMs: number,
+    attrs: CollectionMetricAttributes,
+  ): void {
+    this.collectionDispatchDuration.record(
+      durationMs,
+      buildCollectionAttributes(attrs),
+    );
+  }
+
+  recordCollectionPageItems(
+    itemCount: number,
+    attrs: CollectionMetricAttributes,
+  ): void {
+    this.collectionPageItems.record(
+      itemCount,
+      buildCollectionAttributes(attrs),
+    );
+  }
+
+  recordCollectionTotalItems(
+    totalItems: number,
+    attrs: CollectionMetricAttributes,
+  ): void {
+    this.collectionTotalItems.record(
+      totalItems,
+      buildCollectionAttributes(attrs),
+    );
+  }
+}
+
+function buildCollectionAttributes(
+  attrs: CollectionMetricAttributes,
+): Attributes {
+  const attributes: Attributes = {
+    "activitypub.collection.kind": attrs.kind,
+    "activitypub.collection.page": attrs.page,
+    "activitypub.collection.result": attrs.result,
+    "fedify.collection.dispatcher": attrs.dispatcher,
+  };
+  if (attrs.statusCode != null) {
+    attributes["http.response.status_code"] = attrs.statusCode;
+  }
+  return attributes;
 }
 
 function buildActivityLifecycleAttributes(
@@ -991,6 +1221,85 @@ export function getQueueBackend(queue?: MessageQueue): string | undefined {
   const name = queue?.constructor?.name;
   if (name == null || name === "" || name === "Object") return undefined;
   return name;
+}
+
+/**
+ * Registers a callback for observing queue backend depth.
+ * @since 2.3.0
+ */
+export function registerQueueDepthGauge(
+  meterProvider: MeterProvider,
+  entries: readonly QueueDepthGaugeEntry[],
+  options: QueueDepthGaugeOptions = {},
+): void {
+  const uniqueQueues = new Map<MessageQueue, QueueTaskRole[]>();
+  for (const { role, queue } of entries) {
+    if (queue?.getDepth == null) continue;
+    const roles = uniqueQueues.get(queue);
+    if (roles == null) {
+      uniqueQueues.set(queue, [role]);
+    } else if (!roles.includes(role)) {
+      roles.push(role);
+    }
+  }
+  if (uniqueQueues.size < 1) return;
+  const queueEntries = Array.from(uniqueQueues.entries());
+  const gauge = getFederationMetrics(meterProvider).queueDepth;
+  gauge.addCallback(async (observableResult) => {
+    await Promise.all(queueEntries.map(async ([queue, roles]) => {
+      let depth;
+      try {
+        depth = await queue.getDepth!();
+      } catch {
+        return;
+      }
+      if (depth == null) return;
+      const attributes = buildQueueDepthAttributes(queue, roles, options);
+      observableResult.observe(depth.queued, {
+        ...attributes,
+        "fedify.queue.depth.state": "queued",
+      });
+      if (depth.ready != null) {
+        observableResult.observe(depth.ready, {
+          ...attributes,
+          "fedify.queue.depth.state": "ready",
+        });
+      }
+      if (depth.delayed != null) {
+        observableResult.observe(depth.delayed, {
+          ...attributes,
+          "fedify.queue.depth.state": "delayed",
+        });
+      }
+    }));
+  });
+}
+
+function buildQueueDepthAttributes(
+  queue: MessageQueue,
+  roles: readonly QueueTaskRole[],
+  options: QueueDepthGaugeOptions,
+): Attributes {
+  const sortedRoles = roles.toSorted();
+  const role = sortedRoles.length === 1 ? sortedRoles[0] : "shared";
+  const attributes: Attributes = {
+    "fedify.queue.role": role,
+  };
+  if (options.sourceId != null) {
+    attributes["fedify.federation.instance_id"] = options.sourceId;
+  }
+  if (role === "shared") {
+    attributes["fedify.queue.roles"] = sortedRoles.join(",");
+  }
+  const backend = getQueueBackend(queue);
+  if (backend != null) {
+    attributes["fedify.queue.backend"] = backend;
+  }
+  const nativeRetrial = queue.nativeRetrial;
+  if (typeof nativeRetrial === "boolean") {
+    attributes["fedify.queue.native_retrial"] = nativeRetrial;
+  }
+  return attributes;
 }
 
 /**
@@ -1078,6 +1387,21 @@ export function recordOutboxActivity(
 }
 
 /**
+ * Records one outbound delivery circuit breaker state transition.
+ * @since 2.3.0
+ */
+export function recordCircuitBreakerStateChange(
+  meterProvider: MeterProvider | undefined,
+  remoteHost: string,
+  state: CircuitBreakerMetricState,
+): void {
+  getFederationMetrics(meterProvider).recordCircuitBreakerStateChange(
+    remoteHost,
+    state,
+  );
+}
+
+/**
  * Records one measurement on `activitypub.key.lookup` (counter) and
  * `activitypub.key.lookup.duration` (histogram) for a public-key lookup.
  *
@@ -1140,6 +1464,66 @@ export function recordWebFingerHandle(
   attrs: WebFingerHandleAttributes,
 ): void {
   getFederationMetrics(meterProvider).recordWebFingerHandle(attrs);
+}
+
+/**
+ * Records one `activitypub.collection.request` measurement for a
+ * collection or collection-page request handled by Fedify.
+ * @since 2.3.0
+ */
+export function recordCollectionRequest(
+  meterProvider: MeterProvider | undefined,
+  attrs: CollectionMetricAttributes,
+): void {
+  getFederationMetrics(meterProvider).recordCollectionRequest(attrs);
+}
+
+/**
+ * Records one `activitypub.collection.dispatch.duration` measurement for a
+ * collection dispatcher callback invocation.
+ * @since 2.3.0
+ */
+export function recordCollectionDispatchDuration(
+  meterProvider: MeterProvider | undefined,
+  durationMs: number,
+  attrs: CollectionMetricAttributes,
+): void {
+  getFederationMetrics(meterProvider).recordCollectionDispatchDuration(
+    durationMs,
+    attrs,
+  );
+}
+
+/**
+ * Records one `activitypub.collection.page.items` measurement when Fedify
+ * has materialized collection items in memory.
+ * @since 2.3.0
+ */
+export function recordCollectionPageItems(
+  meterProvider: MeterProvider | undefined,
+  itemCount: number,
+  attrs: CollectionMetricAttributes,
+): void {
+  getFederationMetrics(meterProvider).recordCollectionPageItems(
+    itemCount,
+    attrs,
+  );
+}
+
+/**
+ * Records one `activitypub.collection.total_items` measurement when a
+ * collection counter has already reported a total item count.
+ * @since 2.3.0
+ */
+export function recordCollectionTotalItems(
+  meterProvider: MeterProvider | undefined,
+  totalItems: number,
+  attrs: CollectionMetricAttributes,
+): void {
+  getFederationMetrics(meterProvider).recordCollectionTotalItems(
+    totalItems,
+    attrs,
+  );
 }
 
 /**
@@ -1215,9 +1599,10 @@ export interface InstrumentDocumentLoaderOptions {
  * and as `fetched` on success.  The wrapper rethrows whatever the
  * wrapped loader throws so caller behavior is unchanged.
  *
- * The wrapper records the hostname of the requested URL on
- * `activitypub.remote.host` when the URL parses; full URLs, paths, and
- * query strings are deliberately excluded to keep cardinality bounded.
+ * The wrapper records the host of the requested URL, including any
+ * non-default port, on `activitypub.remote.host` when the URL parses; full
+ * URLs, paths, and query strings are deliberately excluded to keep
+ * cardinality bounded.
  * HTTP status codes are recorded only when the failure carries a
  * `Response` (currently, when the wrapped loader throws a
  * {@link FetchError} with a non-`null` `response`).
@@ -1354,7 +1739,7 @@ export function getFederationMetrics(
  * @since 2.3.0
  */
 export function getRemoteHost(url: URL): string {
-  return url.hostname;
+  return url.host;
 }
 
 /**

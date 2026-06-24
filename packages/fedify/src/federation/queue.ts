@@ -57,6 +57,17 @@ export interface OutboxMessage {
   readonly attempt: number;
   readonly headers: Readonly<Record<string, string>>;
   readonly orderingKey?: string;
+  /**
+   * Whether this message is currently held by the outbound circuit breaker.
+   * @internal
+   */
+  readonly circuitHeld?: true;
+  /**
+   * When Fedify first held this message because the remote host circuit was
+   * open.
+   * @internal
+   */
+  readonly circuitHeldSince?: string;
   readonly traceContext: Readonly<Record<string, string>>;
 }
 

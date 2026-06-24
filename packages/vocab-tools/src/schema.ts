@@ -122,6 +122,33 @@ export interface PropertySchemaBase {
      */
     inherit: true;
   };
+
+  /**
+   * Preprocessors for this property.  Each preprocessor receives an expanded
+   * JSON-LD property value and may return a vocabulary object matching the
+   * property's declared range, `undefined` when it did not handle the value,
+   * or an `Error` when it recognized the value but failed while converting it.
+   *
+   * `module` is resolved from the generated vocabulary source file
+   * and imported statically at the top of the generated file.
+   */
+  preprocessors?: PropertyPreprocessorSchema[];
+}
+
+/**
+ * A schema for a property preprocessor that normalizes wire-level values
+ * before the generated range decoder runs.
+ */
+export interface PropertyPreprocessorSchema {
+  /**
+   * Module specifier resolved from the generated vocabulary source file.
+   */
+  module: string;
+
+  /**
+   * The name of the exported function in the module.
+   */
+  function: string;
 }
 
 export type PropertySchemaTyping = {

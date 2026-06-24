@@ -5,7 +5,7 @@ import { PACKAGE_VERSION, readTemplate } from "../lib.ts";
 import type { WebFrameworkDescription } from "../types.ts";
 import { replace } from "../utils.ts";
 import { defaultDenoDependencies, defaultDevDependencies } from "./const.ts";
-import { getInstruction, pmToRt } from "./utils.ts";
+import { getInstruction, nodeBunDevToolTasks, pmToRt } from "./utils.ts";
 
 const honoDescription: WebFrameworkDescription = {
   label: "Hono",
@@ -28,11 +28,6 @@ const honoDescription: WebFrameworkDescription = {
       "src/index.ts": await readTemplate(
         `hono/index/${pmToRt(pm)}.ts`,
       ),
-      ...(pm !== "deno"
-        ? {
-          "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
-        }
-        : {}),
     },
     compilerOptions: pm === "deno" ? undefined : {
       "lib": ["ESNext", "DOM"],
@@ -84,11 +79,11 @@ const TASKS = {
   bun: {
     dev: "bun run --hot ./src/index.ts",
     prod: "bun run ./src/index.ts",
-    lint: "eslint .",
+    ...nodeBunDevToolTasks,
   },
   node: {
     dev: "dotenvx run -- tsx watch ./src/index.ts",
     prod: "dotenvx run -- node --import tsx ./src/index.ts",
-    lint: "eslint .",
+    ...nodeBunDevToolTasks,
   },
 };

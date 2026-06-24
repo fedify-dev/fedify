@@ -137,6 +137,9 @@ properties:
     (vertical) and should be suitable for presentation at a small size.
   range:
   - "https://www.w3.org/ns/activitystreams#Image"
+  preprocessors:
+  - module: ./preprocessors.ts
+    function: normalizeLinkToImage
 
 - pluralName: images
   singularName: image
@@ -149,6 +152,9 @@ properties:
     limitations assumed.
   range:
   - "https://www.w3.org/ns/activitystreams#Image"
+  preprocessors:
+  - module: ./preprocessors.ts
+    function: normalizeLinkToImage
 
 - pluralName: replyTargets
   singularName: replyTarget

@@ -35,6 +35,12 @@ import {
   writeSeparator,
 } from "./lookup.ts";
 
+const testRuntime = "Bun" in globalThis ? "bun" : "node";
+
+function getTestOutputDir(name: string): string {
+  return `./test_output_${testRuntime}_${name}`;
+}
+
 async function parseWithConfig<TValue, TState>(
   parser: Parser<"sync", TValue, TState>,
   args: readonly string[],
@@ -54,7 +60,7 @@ async function parseWithConfig<TValue, TState>(
 }
 
 test("writeObjectToStream - writes Note object with default options", async () => {
-  const testDir = "./test_output_note";
+  const testDir = getTestOutputDir("note");
   const testFile = `${testDir}/note.txt`;
 
   await mkdir(testDir, { recursive: true });
@@ -78,7 +84,7 @@ test("writeObjectToStream - writes Note object with default options", async () =
 });
 
 test("writeObjectToStream - writes Activity object in raw JSON-LD format", async () => {
-  const testDir = "./test_output_activity";
+  const testDir = getTestOutputDir("activity");
   const testFile = `${testDir}/raw.json`;
 
   await mkdir(testDir, { recursive: true });
@@ -102,7 +108,7 @@ test("writeObjectToStream - writes Activity object in raw JSON-LD format", async
 });
 
 test("writeObjectToStream - writes object in compact JSON-LD format", async () => {
-  const testDir = "./test_output_compact";
+  const testDir = getTestOutputDir("compact");
   const testFile = `${testDir}/compact.json`;
 
   await mkdir(testDir, { recursive: true });
@@ -125,7 +131,7 @@ test("writeObjectToStream - writes object in compact JSON-LD format", async () =
 });
 
 test("writeObjectToStream - writes object in expanded JSON-LD format", async () => {
-  const testDir = "./test_output_expand";
+  const testDir = getTestOutputDir("expand");
   const testFile = `${testDir}/expand.json`;
 
   await mkdir(testDir, { recursive: true });
@@ -147,7 +153,7 @@ test("writeObjectToStream - writes object in expanded JSON-LD format", async () 
 });
 
 test("writeObjectToStream - supports reusing an output stream", async () => {
-  const testDir = "./test_output_reused_stream";
+  const testDir = getTestOutputDir("reused_stream");
   const testFile = `${testDir}/notes.txt`;
 
   await mkdir(testDir, { recursive: true });
@@ -181,7 +187,7 @@ test("writeObjectToStream - supports reusing an output stream", async () => {
 });
 
 test("writeSeparator - writes to provided output stream", async () => {
-  const testDir = "./test_output_separator";
+  const testDir = getTestOutputDir("separator");
   const testFile = `${testDir}/separator.txt`;
   await mkdir(testDir, { recursive: true });
 
@@ -244,7 +250,7 @@ test("writeObjectToStream - writes to stdout when no output file specified", asy
 });
 
 test("writeObjectToStream - handles empty content properly", async () => {
-  const testDir = "./test_output_empty";
+  const testDir = getTestOutputDir("empty");
   const testFile = `${testDir}/empty.txt`;
 
   await mkdir(testDir, { recursive: true });
@@ -1191,7 +1197,7 @@ async function withRecursiveLookupServer<T>(
 }
 
 test("runLookup - rejects recursive private targets by default", async () => {
-  const testDir = "./test_output_runlookup_recurse_private_default";
+  const testDir = getTestOutputDir("runlookup_recurse_private_default");
   const testFile = `${testDir}/out.jsonl`;
   await mkdir(testDir, { recursive: true });
   try {
@@ -1226,7 +1232,7 @@ test("runLookup - rejects recursive private targets by default", async () => {
 });
 
 test("runLookup - allows recursive private targets with allowPrivateAddress", async () => {
-  const testDir = "./test_output_runlookup_recurse_private_allowed";
+  const testDir = getTestOutputDir("runlookup_recurse_private_allowed");
   const testFile = `${testDir}/out.jsonl`;
   await mkdir(testDir, { recursive: true });
   try {
@@ -1258,7 +1264,7 @@ test("runLookup - allows recursive private targets with allowPrivateAddress", as
 });
 
 test("runLookup - keeps recursive private contexts blocked", async () => {
-  const testDir = "./test_output_runlookup_recurse_private_context";
+  const testDir = getTestOutputDir("runlookup_recurse_private_context");
   const testFile = `${testDir}/out.jsonl`;
   await mkdir(testDir, { recursive: true });
   try {
@@ -1293,7 +1299,7 @@ test("runLookup - keeps recursive private contexts blocked", async () => {
 });
 
 test("runLookup - reverses output order in default multi-input mode", async () => {
-  const testDir = "./test_output_runlookup_default_reverse";
+  const testDir = getTestOutputDir("runlookup_default_reverse");
   const testFile = `${testDir}/out.jsonl`;
   await mkdir(testDir, { recursive: true });
   try {
@@ -1349,7 +1355,7 @@ test("runLookup - reverses output order in default multi-input mode", async () =
 });
 
 test("runLookup - reverses output order in recurse mode", async () => {
-  const testDir = "./test_output_runlookup_recurse_reverse";
+  const testDir = getTestOutputDir("runlookup_recurse_reverse");
   const testFile = `${testDir}/out.jsonl`;
   await mkdir(testDir, { recursive: true });
   try {
@@ -1412,7 +1418,7 @@ test("runLookup - reverses output order in recurse mode", async () => {
 });
 
 test("runLookup - reverses output order in traverse mode", async () => {
-  const testDir = "./test_output_runlookup_traverse_reverse";
+  const testDir = getTestOutputDir("runlookup_traverse_reverse");
   const testFile = `${testDir}/out.jsonl`;
   await mkdir(testDir, { recursive: true });
   try {
@@ -1455,7 +1461,9 @@ test("runLookup - reverses output order in traverse mode", async () => {
 });
 
 test("runLookup - emits reversed partial items on traverse reverse failure", async () => {
-  const testDir = "./test_output_runlookup_traverse_reverse_partial_failure";
+  const testDir = getTestOutputDir(
+    "runlookup_traverse_reverse_partial_failure",
+  );
   const testFile = `${testDir}/out.jsonl`;
   await mkdir(testDir, { recursive: true });
   try {
@@ -1503,7 +1511,7 @@ test("runLookup - emits reversed partial items on traverse reverse failure", asy
 });
 
 test("runLookup - writes separators between adjacent traversed items", async () => {
-  const testDir = "./test_output_runlookup_traverse_separator";
+  const testDir = getTestOutputDir("runlookup_traverse_separator");
   const testFile = `${testDir}/out.jsonl`;
   const separator = "<SEP>";
   await mkdir(testDir, { recursive: true });
@@ -1566,7 +1574,7 @@ test("runLookup - writes separators between adjacent traversed items", async () 
 test(
   "runLookup - writes separators between adjacent traversed items in reverse mode",
   async () => {
-    const testDir = "./test_output_runlookup_traverse_separator_reverse";
+    const testDir = getTestOutputDir("runlookup_traverse_separator_reverse");
     const testFile = `${testDir}/out.jsonl`;
     const separator = "<SEP>";
     await mkdir(testDir, { recursive: true });
@@ -1629,7 +1637,7 @@ test(
 );
 
 test("runLookup - emits root object on recurse reverse failure", async () => {
-  const testDir = "./test_output_runlookup_recurse_reverse_partial_failure";
+  const testDir = getTestOutputDir("runlookup_recurse_reverse_partial_failure");
   const testFile = `${testDir}/out.jsonl`;
   await mkdir(testDir, { recursive: true });
   try {

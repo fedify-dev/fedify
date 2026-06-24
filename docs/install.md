@@ -230,37 +230,21 @@ it as the default formatter for JavaScript and TypeScript:
 Deno's [*Set up your environment*] guide covers other editors and shells.
 
 *For Node.js/Bun projects*, `fedify init` writes a *.vscode/extensions.json*
-that recommends the [Biome extension] and the [ESLint extension]:
+that recommends the [Oxc extension]:
 
 ~~~~ json [.vscode/extensions.json]
-{ "recommendations": ["biomejs.biome", "dbaeumer.vscode-eslint"] }
+{ "recommendations": ["oxc.oxc-vscode"] }
 ~~~~
 
-The matching *.vscode/settings.json* sets Biome as the default formatter and
-runs Biome's import organiser on save:
+The matching *.vscode/settings.json* sets Oxfmt as the default formatter and
+enables Oxc's fix-all action on save:
 
 ~~~~ jsonc [.vscode/settings.json]
 {
   "editor.detectIndentation": false,
   "editor.indentSize": 2,
   "editor.insertSpaces": true,
-  "[typescript]": {
-    "editor.defaultFormatter": "biomejs.biome",
-    "editor.formatOnSave": true,
-    "editor.codeActionsOnSave": {
-      "source.organizeImports.biome": "always"
-    }
-  }
-  // The same block applies to [javascript], [javascriptreact],
-  // [typescriptreact], [json], and [jsonc].
-}
-~~~~
-
-If you prefer [Oxc] over Biome and ESLint, install the [oxc-vscode]
-extension and swap the formatter:
-
-~~~~ jsonc [.vscode/settings.json]
-{
+  "oxc.fmt.configPath": ".oxfmtrc.json",
   "[typescript]": {
     "editor.defaultFormatter": "oxc.oxc-vscode",
     "editor.formatOnSave": true,
@@ -268,15 +252,14 @@ extension and swap the formatter:
       "source.fixAll.oxc": "always"
     }
   }
+  // The same block applies to [javascript], [javascriptreact],
+  // [typescriptreact], [json], and [jsonc].
 }
 ~~~~
 
 [Deno extension]: https://marketplace.visualstudio.com/items?itemName=denoland.vscode-deno
 [*Set up your environment*]: https://docs.deno.com/runtime/getting_started/setup_your_environment/
-[Biome extension]: https://marketplace.visualstudio.com/items?itemName=biomejs.biome
-[ESLint extension]: https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint
-[Oxc]: https://oxc.rs/
-[oxc-vscode]: https://marketplace.visualstudio.com/items?itemName=oxc.oxc-vscode
+[Oxc extension]: https://marketplace.visualstudio.com/items?itemName=oxc.oxc-vscode
 
 ### Zed
 
@@ -319,10 +302,9 @@ Zed's [Deno language docs][zed-deno] cover the available options.
 [Hackers' Pub] is a real-world reference.
 
 *For Node.js/Bun projects*, Zed enables its bundled TypeScript language
-server out of the box; the typical addition is wiring up Biome (or the
-formatter you chose) for `editor.formatOnSave`-style behaviour.  See Zed's
-[TypeScript language docs][zed-ts] for setup.  If you prefer [Oxc] instead,
-set Oxc as the language server and turn on its fix-all action on format:
+server out of the box; the typical addition is wiring up Oxc for formatting
+and lint fixes.  See Zed's [TypeScript language docs][zed-ts] for setup.
+Set Oxc as the language server and turn on its fix-all action on format:
 
 ~~~~ jsonc [.zed/settings.json]
 {
@@ -343,9 +325,9 @@ Linting
 
 `fedify init` configures the [`@fedify/lint`] plugin automatically: Deno
 projects pick it up through `lint.plugins` in *deno.json*, and Node.js/Bun
-projects through a generated *eslint.config.ts*.  For the full rule list,
-configuration options, and how to run the linter, see the
-[*Linting*](./manual/lint.md) chapter.
+projects through a generated *.oxlintrc.json* using `@fedify/lint/oxlint`.
+For the full rule list, configuration options, and how to run the linter, see
+the [*Linting*](./manual/lint.md) chapter.
 
 [`@fedify/lint`]: https://jsr.io/@fedify/lint
 

@@ -18,7 +18,7 @@
     "test": "node --test --experimental-transform-types 'src/**/*.test.ts' '!src/init/test/**'",
     "test-init": "deno task test-init",
     "pretest:bun": "pnpm build",
-    "test:bun": "bun test",
+    "test:bun": "bun test --timeout 60000",
     "run": "pnpm build && node --disable-warning=ExperimentalWarning dist/mod.js",
     "runi": "tsdown && node --disable-warning=ExperimentalWarning dist/mod.js",
     "run:bun": "pnpm build && bun dist/mod.js",
@@ -72,6 +72,7 @@
     }
   },
   "dependencies": {
+    "@cfworker/json-schema": "^4.1.1",
     "@fedify/fedify": "workspace:*",
     "@fedify/init": "workspace:*",
     "@fedify/relay": "workspace:*",
@@ -83,6 +84,7 @@
     "@fxts/core": "catalog:",
     "@optique/config": "catalog:",
     "@optique/core": "catalog:",
+    "@optique/discover": "catalog:",
     "@optique/run": "catalog:",
     "@standard-schema/spec": "catalog:",
     "@hongminhee/localtunnel": "^0.3.0",
@@ -106,14 +108,17 @@
     "inquirer-toggle": "^1.0.1",
     "jimp": "^1.6.1",
     "ora": "^8.2.0",
+    "pngjs": "^7.0.0",
     "shiki": "^1.6.4",
     "smol-toml": "^1.6.1",
     "srvx": "^0.8.7",
-    "valibot": "^1.4.0"
+    "valibot": "^1.4.0",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@types/bun": "catalog:",
     "@types/node": "catalog:",
+    "@types/pngjs": "^6.0.5",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   }

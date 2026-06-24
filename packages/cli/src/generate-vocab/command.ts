@@ -27,16 +27,20 @@ const generatedPath = argument(
   },
 );
 
+export const generateVocabOptions = object("Generation options", {
+  command: constant("generate-vocab"),
+  schemaDir,
+  generatedPath,
+});
+
+export const generateVocabMetadata = {
+  description: message`Generate vocabulary classes from schema files.`,
+};
+
 const generateVocabCommand = command(
   "generate-vocab",
-  object("Generation options", {
-    command: constant("generate-vocab"),
-    schemaDir,
-    generatedPath,
-  }),
-  {
-    description: message`Generate vocabulary classes from schema files.`,
-  },
+  generateVocabOptions,
+  generateVocabMetadata,
 );
 
 export default generateVocabCommand;

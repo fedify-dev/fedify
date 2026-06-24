@@ -109,6 +109,16 @@ const nodeinfoSchema = object({
 });
 
 /**
+ * Schema for the bench command configuration.
+ *
+ * `allowUnsafeTarget` is intentionally absent: the unsafe-target override is a
+ * CLI-only, per-run acknowledgment, never a persisted default.
+ */
+const benchSchema = object({
+  format: optional(picklist(["text", "json", "markdown"])),
+});
+
+/**
  * Schema for the complete configuration file.
  */
 export const configSchema = object({
@@ -125,6 +135,7 @@ export const configSchema = object({
   inbox: optional(inboxSchema),
   relay: optional(relaySchema),
   nodeinfo: optional(nodeinfoSchema),
+  bench: optional(benchSchema),
 });
 
 /**

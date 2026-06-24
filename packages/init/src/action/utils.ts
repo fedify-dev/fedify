@@ -5,6 +5,11 @@ import type { InitCommandData } from "../types.ts";
 /** Returns `true` if the current run is in dry-run mode. */
 export const isDry = ({ dryRun }: InitCommandData) => dryRun;
 
+/** Returns `true` if the current run skips dependency installation. */
+export const isSkipInstall = (
+  { skipInstall }: Pick<InitCommandData, "skipInstall">,
+) => skipInstall;
+
 /** Returns `true` if the framework initializer has a precommand to execute. */
 export const hasCommand = (data: InitCommandData) => !!data.initializer.command;
 

@@ -58,6 +58,13 @@ import { getNodeInfo, type GetNodeInfoOptions } from "../nodeinfo/client.ts";
 import { handleNodeInfo, handleNodeInfoJrd } from "../nodeinfo/handler.ts";
 import type { JsonValue, NodeInfo } from "../nodeinfo/types.ts";
 import {
+  type BenchmarkMetricReader,
+  type BenchmarkTriggerOptions,
+  createBenchmarkMeterProvider,
+  handleBenchmarkStats,
+  handleBenchmarkTrigger,
+} from "./bench.ts";
+import {
   type HttpMessageSignaturesSpec,
   type HttpMessageSignaturesSpecDeterminer,
   verifyRequest,
@@ -82,6 +89,12 @@ import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 import { kvCache } from "../utils/kv-cache.ts";
 import { ACTOR_ALIAS_PREFIX, FederationBuilderImpl } from "./builder.ts";
 import type { OutboxErrorHandler } from "./callback.ts";
+import {
+  CircuitBreaker,
+  type CircuitBreakerBeforeSendDecision,
+  type CircuitBreakerState,
+  type CircuitBreakerStateChange,
+} from "./circuit-breaker.ts";
 import { buildCollectionSynchronizationHeader } from "./collection.ts";
 import type {
   ActorKeyPair,
@@ -99,6 +112,7 @@ import type {
 import type {
   ConstructorWithTypeId,
   Federation,
+  FederationBenchmarkOptions,
   FederationFetchOptions,
   FederationOptions,
   FederationStartQueueOptions,
@@ -118,17 +132,23 @@ import { routeActivity } from "./inbox.ts";
 import { KvKeyCache } from "./keycache.ts";
 import type { KvKey, KvStore } from "./kv.ts";
 import {
+  type CollectionMetricDispatcher,
+  type CollectionMetricKind,
   getDurationMs,
   getFederationMetrics,
   getRemoteHost,
   instrumentDocumentLoader,
   isAbortError,
+  type QueueDepthGaugeEntry,
   type QueueTaskCommonAttributes,
   type QueueTaskResult,
+  recordCircuitBreakerStateChange,
+  recordCollectionRequest,
   recordFanoutRecipients,
   recordInboxActivity,
   recordOutboxActivity,
   recordOutboxEnqueue,
+  registerQueueDepthGauge,
 } from "./metrics.ts";
 import type { MessageQueue } from "./mq.ts";
 import { acceptsJsonLd } from "./negotiation.ts";
@@ -148,6 +168,199 @@ import {
 } from "./send.ts";
 import { handleWebFinger } from "./webfinger.ts";
 import { hasMalformedKnownTemporalLiteral } from "./temporal.ts";
+
+const circuitBreakerCasWarningKvStores = new WeakSet<KvStore>();
+let nextQueueDepthGaugeSourceId = 0;
+const retryAfterHttpDate = new RegExp(
+  "^(?:" +
+    "(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), \\d{2} " +
+    "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) " +
+    "\\d{4} \\d{2}:\\d{2}:\\d{2} GMT" +
+    "|" +
+    "(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), " +
+    "\\d{2}-(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-" +
+    "\\d{2} \\d{2}:\\d{2}:\\d{2} GMT" +
+    "|" +
+    "(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) " +
+    "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) " +
+    "(?: \\d|\\d{2}) \\d{2}:\\d{2}:\\d{2} \\d{4}" +
+    ")$",
+);
+
+function parseRetryAfter(
+  headers: Headers,
+  now: Temporal.Instant = Temporal.Now.instant(),
+): Temporal.Duration | undefined {
+  const value = headers.get("Retry-After");
+  if (value == null) return undefined;
+  const trimmed = value.trim();
+  if (/^\d+$/.test(trimmed)) {
+    const seconds = Number(trimmed);
+    if (!Number.isFinite(seconds)) return undefined;
+    return parseRetryAfterDuration({ seconds });
+  }
+  if (!retryAfterHttpDate.test(trimmed)) return undefined;
+  const httpDate = trimmed.endsWith("GMT") ? trimmed : `${trimmed} GMT`;
+  const retryAtMs = Date.parse(httpDate);
+  if (Number.isNaN(retryAtMs)) return undefined;
+  const nowMs = Number(now.epochMilliseconds);
+  return parseRetryAfterDuration({
+    milliseconds: Math.max(0, retryAtMs - nowMs),
+  });
+}
+
+function parseRetryAfterDuration(
+  durationLike: Temporal.DurationLike,
+): Temporal.Duration | undefined {
+  try {
+    return Temporal.Duration.from(durationLike);
+  } catch (error) {
+    if (error instanceof RangeError) return undefined;
+    throw error;
+  }
+}
+
+function clampNegativeDelay(delay: Temporal.Duration): Temporal.Duration {
+  return delay.sign < 0 ? Temporal.Duration.from({ seconds: 0 }) : delay;
+}
+
+type BenchmarkRelaxation =
+  | {
+    readonly protection: "private_address_checks";
+    readonly effect: "disabled";
+    readonly effectiveValue: true;
+  }
+  | {
+    readonly protection: "http_signature_time_window";
+    readonly effect: "disabled";
+    readonly effectiveValue: false;
+    readonly secureDefaultSeconds: 3600;
+  }
+  | {
+    readonly protection: "http_signature_time_window";
+    readonly effect: "changed";
+    readonly effectiveSeconds: number;
+    readonly secureDefaultSeconds: 3600;
+  };
+
+function getBenchmarkRelaxations(
+  allowPrivateAddress: boolean,
+  signatureTimeWindow: Temporal.Duration | Temporal.DurationLike | false,
+): BenchmarkRelaxation[] {
+  const relaxations: BenchmarkRelaxation[] = [];
+  if (allowPrivateAddress) {
+    relaxations.push({
+      protection: "private_address_checks",
+      effect: "disabled",
+      effectiveValue: true,
+    });
+  }
+  if (signatureTimeWindow === false) {
+    relaxations.push({
+      protection: "http_signature_time_window",
+      effect: "disabled",
+      effectiveValue: false,
+      secureDefaultSeconds: 3600,
+    });
+  } else {
+    try {
+      const seconds = Temporal.Duration.from(signatureTimeWindow).total({
+        unit: "seconds",
+      });
+      if (seconds !== 3600) {
+        relaxations.push({
+          protection: "http_signature_time_window",
+          effect: "changed",
+          effectiveSeconds: seconds,
+          secureDefaultSeconds: 3600,
+        });
+      }
+    } catch {
+      // Keep benchmark warning formatting best-effort for unusual
+      // DurationLike values.
+    }
+  }
+  return relaxations;
+}
+
+function formatBenchmarkRelaxations(
+  relaxations: readonly BenchmarkRelaxation[],
+): string {
+  if (relaxations.length < 1) return "no benchmark-only protections relaxed";
+  return relaxations.map((relaxation) => {
+    switch (relaxation.protection) {
+      case "private_address_checks":
+        return "private address checks disabled (allowPrivateAddress=true)";
+      case "http_signature_time_window":
+        if (relaxation.effect === "disabled") {
+          return `HTTP Signature time window disabled (signatureTimeWindow=false)`;
+        }
+        return `HTTP Signature time window set to ${relaxation.effectiveSeconds}s ` +
+          `(secure default: ${relaxation.secureDefaultSeconds}s)`;
+    }
+  }).join("; ");
+}
+
+function getBenchmarkTriggerOptions(
+  benchmarkOptions: FederationBenchmarkOptions,
+): BenchmarkTriggerOptions {
+  const sinks = benchmarkOptions.triggerSinks?.map((sink) => {
+    try {
+      return new URL(sink).href;
+    } catch {
+      throw new TypeError("benchmarkMode.triggerSinks must contain only URLs.");
+    }
+  });
+  return {
+    sinks: sinks == null ? undefined : new Set(sinks),
+    allowUnsafeRecipients:
+      benchmarkOptions.allowUnsafeTriggerRecipients === true,
+  };
+}
+
+function maxDelay(
+  first: Temporal.Duration,
+  second: Temporal.Duration,
+): Temporal.Duration {
+  return Temporal.Duration.compare(first, second) >= 0 ? first : second;
+}
+
+function isTransportDeliveryError(error: unknown): boolean {
+  return error instanceof FetchError || isAbortError(error);
+}
+
+function toCircuitBreakerMetricState(
+  state: CircuitBreakerState,
+): "closed" | "open" | "half_open" {
+  return state === "half-open" ? "half_open" : state;
+}
+
+function recordCircuitBreakerSpanEvent(
+  span: Span,
+  remoteHost: string,
+  change: CircuitBreakerStateChange,
+): void {
+  span.addEvent("activitypub.circuit_breaker.state_change", {
+    "activitypub.remote.host": remoteHost,
+    "activitypub.circuit_breaker.previous_state": toCircuitBreakerMetricState(
+      change.previousState,
+    ),
+    "activitypub.circuit_breaker.state": toCircuitBreakerMetricState(
+      change.newState,
+    ),
+  });
+}
+
+function recordCircuitBreakerHeldSpanEvent(
+  span: Span,
+  remoteHost: string,
+  state: "open" | "half-open",
+): void {
+  span.addEvent("activitypub.circuit_breaker.held", {
+    "activitypub.remote.host": remoteHost,
+    "activitypub.circuit_breaker.state": toCircuitBreakerMetricState(state),
+  });
+}
 
 function isRemoteContextLoadingFailure(error: unknown): boolean {
   return error instanceof Error &&
@@ -197,7 +410,7 @@ function isPermanentInboxParseError(error: unknown): error is Error {
       (error.name === "jsonld.SyntaxError" &&
         !isRemoteContextLoadingFailure(error)))) ||
     (error instanceof TypeError &&
-      (/^(Invalid JSON-LD:|Invalid type:|Unexpected type:)/
+      (/^(Invalid JSON-LD:|Invalid type:|Unexpected type:|Invalid @id:)/
         .test(error.message) ||
         isInvalidUrlTypeError(error)));
 }
@@ -278,6 +491,13 @@ export interface FederationKvPrefixes {
    * @since 2.1.0
    */
   readonly acceptSignatureNonce: KvKey;
+
+  /**
+   * The key prefix used for storing outbound delivery circuit breaker state.
+   * @default `["_fedify", "circuit"]`
+   * @since 2.3.0
+   */
+  readonly circuitBreaker: KvKey;
 }
 
 /**
@@ -302,8 +522,10 @@ export interface FederationOrigin {
 
 /**
  * Create a new {@link Federation} instance.
- * @param parameters Parameters for initializing the instance.
+ * @param options Parameters for initializing the instance.
  * @returns A new {@link Federation} instance.
+ * @throws {TypeError} If benchmark mode and `meterProvider` are both
+ * specified.
  * @since 0.10.0
  */
 export function createFederation<TContextData>(
@@ -336,14 +558,58 @@ export class FederationImpl<TContextData>
   skipSignatureVerification: boolean;
   outboxRetryPolicy: RetryPolicy;
   inboxRetryPolicy: RetryPolicy;
+  circuitBreaker?: CircuitBreaker;
   activityTransformers: readonly ActivityTransformer<TContextData>[];
   _tracerProvider: TracerProvider | undefined;
   _meterProvider: MeterProvider | undefined;
   firstKnock?: HttpMessageSignaturesSpec;
   inboxChallengePolicy?: InboxChallengePolicy;
+  benchmarkMode: boolean;
+  benchmarkMetricReader?: BenchmarkMetricReader;
+  benchmarkTriggerOptions: BenchmarkTriggerOptions;
+  readonly #queueDepthGaugeSourceId = `fedify-${
+    (++nextQueueDepthGaugeSourceId).toString(36)
+  }`;
+  #queueDepthGaugeEntries: readonly QueueDepthGaugeEntry[] = [];
+  #queueDepthGaugeMeterProvider?: MeterProvider;
 
   constructor(options: FederationOptions<TContextData>) {
     super();
+    const benchmarkMode = options.benchmarkMode != null &&
+      options.benchmarkMode !== false;
+    const benchmarkOptions = typeof options.benchmarkMode === "object"
+      ? options.benchmarkMode
+      : {};
+    const hasCustomLoaderFactory = options.documentLoaderFactory != null ||
+      options.contextLoaderFactory != null;
+    const allowPrivateAddress = options.allowPrivateAddress ??
+      (benchmarkMode && !hasCustomLoaderFactory ? true : false);
+    const signatureTimeWindow = options.signatureTimeWindow ??
+      (benchmarkMode ? false : { hours: 1 });
+    if (benchmarkMode && options.meterProvider != null) {
+      throw new TypeError(
+        "benchmarkMode requires Fedify to own the meterProvider; " +
+          "OpenTelemetry metric readers cannot be added after a " +
+          "MeterProvider is constructed.",
+      );
+    }
+    if (benchmarkMode) {
+      const relaxations = getBenchmarkRelaxations(
+        allowPrivateAddress,
+        signatureTimeWindow,
+      );
+      const relaxationSummary = formatBenchmarkRelaxations(relaxations);
+      getLogger(["fedify", "federation", "benchmark"]).warn(
+        `Fedify benchmarkMode is enabled; ${relaxationSummary}. Benchmark endpoints are active and must not be used in production.`,
+        {
+          relaxations,
+        },
+      );
+    }
+    this.benchmarkMode = benchmarkMode;
+    this.benchmarkTriggerOptions = benchmarkMode
+      ? getBenchmarkTriggerOptions(benchmarkOptions)
+      : {};
     this.kv = options.kv;
     this.kvPrefixes = {
       ...({
@@ -352,6 +618,7 @@ export class FederationImpl<TContextData>
         publicKey: ["_fedify", "publicKey"],
         httpMessageSignaturesSpec: ["_fedify", "httpMessageSignaturesSpec"],
         acceptSignatureNonce: ["_fedify", "acceptSignatureNonce"],
+        circuitBreaker: ["_fedify", "circuit"],
       } satisfies FederationKvPrefixes),
       ...(options.kvPrefixes ?? {}),
     };
@@ -367,6 +634,32 @@ export class FederationImpl<TContextData>
       this.inboxQueue = options.queue.inbox;
       this.outboxQueue = options.queue.outbox;
       this.fanoutQueue = options.queue.fanout;
+    }
+    if (options.circuitBreaker !== false && this.outboxQueue != null) {
+      this.circuitBreaker = new CircuitBreaker({
+        kv: options.kv,
+        prefix: this.kvPrefixes.circuitBreaker,
+        options: options.circuitBreaker,
+        stateChangeObserver: (remoteHost, _previousState, newState) => {
+          const metricState = toCircuitBreakerMetricState(newState);
+          recordCircuitBreakerStateChange(
+            this.meterProvider,
+            remoteHost,
+            metricState,
+          );
+        },
+      });
+      if (
+        options.kv.cas == null &&
+        !circuitBreakerCasWarningKvStores.has(options.kv)
+      ) {
+        circuitBreakerCasWarningKvStores.add(options.kv);
+        getLogger(["fedify", "federation", "circuit"]).warn(
+          "The configured key-value store does not support CAS; outbound " +
+            "delivery circuit breaker updates may race under concurrent " +
+            "workers.",
+        );
+      }
     }
     this.inboxQueueStarted = false;
     this.outboxQueueStarted = false;
@@ -423,7 +716,7 @@ export class FederationImpl<TContextData>
     this.router.trailingSlashInsensitive = options.trailingSlashInsensitive ??
       false;
     this._initializeRouter();
-    if (options.allowPrivateAddress || options.userAgent != null) {
+    if (options.allowPrivateAddress === true || options.userAgent != null) {
       if (options.documentLoaderFactory != null) {
         throw new TypeError(
           "Cannot set documentLoaderFactory with allowPrivateAddress or " +
@@ -443,8 +736,8 @@ export class FederationImpl<TContextData>
         );
       }
     }
-    const { allowPrivateAddress, userAgent } = options;
-    this.allowPrivateAddress = allowPrivateAddress ?? false;
+    const { userAgent } = options;
+    this.allowPrivateAddress = allowPrivateAddress;
     // The loader factory closures below read `this._meterProvider` at
     // call time, not when they are created.  Factories are only invoked
     // after the constructor has assigned `_meterProvider` (see below), so
@@ -542,7 +835,7 @@ export class FederationImpl<TContextData>
     this.onOutboxError = options.onOutboxError;
     this.permanentFailureStatusCodes = options.permanentFailureStatusCodes ??
       [404, 410];
-    this.signatureTimeWindow = options.signatureTimeWindow ?? { hours: 1 };
+    this.signatureTimeWindow = signatureTimeWindow;
     this.skipSignatureVerification = options.skipSignatureVerification ?? false;
     this.inboxChallengePolicy = options.inboxChallengePolicy;
     this.outboxRetryPolicy = options.outboxRetryPolicy ??
@@ -552,7 +845,21 @@ export class FederationImpl<TContextData>
     this.activityTransformers = options.activityTransformers ??
       getDefaultActivityTransformers<TContextData>();
     this._tracerProvider = options.tracerProvider;
-    this._meterProvider = options.meterProvider;
+    if (benchmarkMode) {
+      const benchmarkMetrics = createBenchmarkMeterProvider();
+      this._meterProvider = benchmarkMetrics.meterProvider;
+      this.benchmarkMetricReader = benchmarkMetrics.reader;
+    } else {
+      this._meterProvider = options.meterProvider;
+    }
+    this.#queueDepthGaugeEntries = [
+      { role: "inbox", queue: this.inboxQueue },
+      { role: "outbox", queue: this.outboxQueue },
+      { role: "fanout", queue: this.fanoutQueue },
+    ];
+    this.#registerQueueDepthGauge(
+      this._meterProvider ?? metrics.getMeterProvider(),
+    );
     this.firstKnock = options.firstKnock;
   }
 
@@ -561,12 +868,26 @@ export class FederationImpl<TContextData>
   }
 
   get meterProvider(): MeterProvider {
-    return this._meterProvider ?? metrics.getMeterProvider();
+    const meterProvider = this._meterProvider ?? metrics.getMeterProvider();
+    this.#registerQueueDepthGauge(meterProvider);
+    return meterProvider;
+  }
+
+  #registerQueueDepthGauge(meterProvider: MeterProvider): void {
+    if (meterProvider === this.#queueDepthGaugeMeterProvider) return;
+    registerQueueDepthGauge(meterProvider, this.#queueDepthGaugeEntries, {
+      sourceId: this.#queueDepthGaugeSourceId,
+    });
+    this.#queueDepthGaugeMeterProvider = meterProvider;
   }
 
   _initializeRouter(): void {
     this.router.add("/.well-known/webfinger", "webfinger");
     this.router.add("/.well-known/nodeinfo", "nodeInfoJrd");
+    if (this.benchmarkMode) {
+      this.router.add("/.well-known/fedify/bench/stats", "benchmarkStats");
+      this.router.add("/.well-known/fedify/bench/trigger", "benchmarkTrigger");
+    }
   }
 
   override _getTracer(): Tracer {
@@ -885,13 +1206,155 @@ export class FederationImpl<TContextData>
       }
       keys.push(pair);
     }
+    const loaderOptions = this.#getLoaderOptions(message.baseUrl);
+    let parsedActorIds: URL[] | undefined;
+    const getActorIds = () => {
+      parsedActorIds ??= (message.actorIds ?? []).flatMap((id) => {
+        try {
+          return [new URL(id)];
+        } catch {
+          logger.warn(
+            "Invalid actorId URL in OutboxMessage: {id}",
+            { id },
+          );
+          return [];
+        }
+      });
+      return parsedActorIds;
+    };
+    const parseActivity = () =>
+      Activity.fromJsonLd(message.activity, {
+        contextLoader: this.contextLoaderFactory(loaderOptions),
+        documentLoader: rsaKeyPair == null
+          ? this.documentLoaderFactory(loaderOptions)
+          : this.authenticatedDocumentLoaderFactory(rsaKeyPair, loaderOptions),
+        tracerProvider: this.tracerProvider,
+      });
+    const enqueueHeldOutboxMessage = async (
+      delay: Temporal.Duration,
+      heldSince: Temporal.Instant,
+    ) => {
+      const { outboxQueue } = this;
+      if (outboxQueue == null) return;
+      const heldMessage = {
+        ...message,
+        circuitHeld: true,
+        circuitHeldSince: heldSince.toString(),
+      } satisfies OutboxMessage;
+      await outboxQueue.enqueue(heldMessage, {
+        delay: clampNegativeDelay(delay),
+        orderingKey: message.orderingKey,
+      });
+      getFederationMetrics(this.meterProvider).recordQueueTaskEnqueued(
+        {
+          role: "outbox",
+          queue: outboxQueue,
+          activityType: heldMessage.activityType,
+        },
+        heldMessage.attempt,
+      );
+    };
+    const dropHeldOutboxMessage = async (
+      circuit: CircuitBreaker,
+      remoteHost: string,
+      inbox: URL,
+      heldSince: Temporal.Instant,
+      activity: Awaited<ReturnType<typeof parseActivity>>,
+    ) => {
+      await circuit.dropActivity(remoteHost, {
+        inbox,
+        activity,
+        activityId: message.activityId,
+        activityType: message.activityType,
+        actorIds: getActorIds(),
+        heldSince,
+      });
+      if (this.outboxPermanentFailureHandler != null) {
+        const ctx = this.#createContext(
+          new URL(message.baseUrl),
+          _,
+          {
+            documentLoader: this.documentLoaderFactory(loaderOptions),
+          },
+        );
+        try {
+          await this.outboxPermanentFailureHandler(ctx, {
+            reason: "circuit-breaker-ttl",
+            inbox,
+            activity,
+            error: new SendActivityError(
+              inbox,
+              0,
+              "Circuit breaker held activity expired.",
+              "",
+            ),
+            statusCode: 0,
+            circuitHeldSince: heldSince,
+            actorIds: getActorIds(),
+          });
+        } catch (handlerError) {
+          logger.error(
+            "An unexpected error occurred in " +
+              "outboxPermanentFailureHandler:\n{error}",
+            { ...logData, error: handlerError },
+          );
+        }
+      }
+      recordOutboxActivity(
+        this.meterProvider,
+        "abandoned",
+        message.activityType,
+      );
+    };
     try {
+      const inbox = new URL(message.inbox);
+      const circuit = this.outboxQueue == null
+        ? undefined
+        : this.circuitBreaker;
+      const remoteHost = getRemoteHost(inbox);
+      let decision: CircuitBreakerBeforeSendDecision | undefined;
+      if (circuit != null) {
+        try {
+          decision = await circuit.beforeSend(remoteHost, message);
+        } catch (circuitError) {
+          getLogger(["fedify", "federation", "circuit"]).error(
+            "Failed to check circuit breaker state before sending; " +
+              "proceeding with delivery:\n{error}",
+            { ...logData, remoteHost, error: circuitError },
+          );
+        }
+      }
+      if (decision != null && circuit != null) {
+        if (decision.type === "hold") {
+          recordCircuitBreakerHeldSpanEvent(span, remoteHost, decision.state);
+          await enqueueHeldOutboxMessage(decision.delay, decision.heldSince);
+          return;
+        }
+        if (decision.type === "drop") {
+          const activity = await parseActivity();
+          await dropHeldOutboxMessage(
+            circuit,
+            remoteHost,
+            inbox,
+            decision.heldSince,
+            activity,
+          );
+          return;
+        }
+        if (decision.stateChange != null) {
+          recordCircuitBreakerSpanEvent(
+            span,
+            remoteHost,
+            decision.stateChange,
+          );
+        }
+      }
       await sendActivity({
         keys,
         activity: message.activity,
         activityId: message.activityId,
         activityType: message.activityType,
-        inbox: new URL(message.inbox),
+        inbox,
         sharedInbox: message.sharedInbox,
         headers: new Headers(message.headers),
         specDeterminer: new KvSpecDeterminer(
@@ -902,6 +1365,20 @@ export class FederationImpl<TContextData>
         meterProvider: this.meterProvider,
         tracerProvider: this.tracerProvider,
       });
+      if (circuit != null) {
+        try {
+          const stateChange = await circuit.recordSuccess(remoteHost);
+          if (stateChange != null) {
+            recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
+          }
+        } catch (error) {
+          getLogger(["fedify", "federation", "circuit"]).error(
+            "Failed to record successful delivery in circuit breaker state; " +
+              "the activity was already delivered:\n{error}",
+            { ...logData, remoteHost, error },
+          );
+        }
+      }
     } catch (error) {
       span.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
       const remoteHost = (() => {
@@ -918,26 +1395,111 @@ export class FederationImpl<TContextData>
           return undefined;
         }
       })();
+      let retryAfterDelay: Temporal.Duration | undefined;
+      let circuitHold:
+        | {
+          delay: Temporal.Duration;
+          heldSince: Temporal.Instant;
+          remoteHost: string;
+          state: "open" | "half-open";
+        }
+        | undefined;
+      let circuitDrop:
+        | {
+          circuit: CircuitBreaker;
+          remoteHost: string;
+          inbox: URL;
+          heldSince: Temporal.Instant;
+        }
+        | undefined;
+      let retryPolicyDelay: Temporal.Duration | null | undefined;
+      let policyDelayCalculated = false;
+      const getPolicyDelay = () => {
+        if (!policyDelayCalculated) {
+          retryPolicyDelay = this.outboxRetryPolicy({
+            elapsedTime: Temporal.Instant.from(message.started).until(
+              Temporal.Now.instant(),
+            ),
+            attempts: message.attempt,
+          });
+          policyDelayCalculated = true;
+        }
+        return retryPolicyDelay;
+      };
+      const isPermanentFailure = error instanceof SendActivityError &&
+        this.permanentFailureStatusCodes.includes(error.statusCode);
+      if (
+        !isPermanentFailure &&
+        error instanceof SendActivityError &&
+        (error.statusCode === 429 || error.statusCode === 503)
+      ) {
+        retryAfterDelay = parseRetryAfter(error.responseHeaders);
+      }
+      if (
+        remoteHost != null &&
+        this.outboxQueue != null &&
+        this.circuitBreaker != null
+      ) {
+        try {
+          if (error instanceof SendActivityError) {
+            const { statusCode } = error;
+            const stateChange = isPermanentFailure || statusCode === 429 ||
+                (statusCode >= 400 && statusCode < 500)
+              ? await this.circuitBreaker.recordReachableFailure(remoteHost)
+              : statusCode >= 500
+              ? await this.circuitBreaker.recordFailure(remoteHost)
+              : undefined;
+            if (stateChange != null) {
+              recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
+            }
+          } else if (isTransportDeliveryError(error)) {
+            const stateChange = await this.circuitBreaker.recordFailure(
+              remoteHost,
+            );
+            if (stateChange != null) {
+              recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
+            }
+          }
+          if (!isPermanentFailure) {
+            const circuitDecision = await this.circuitBreaker.beforeSend(
+              remoteHost,
+              message,
+            );
+            if (circuitDecision.type === "hold") {
+              circuitHold = {
+                delay: circuitDecision.delay,
+                heldSince: circuitDecision.heldSince,
+                remoteHost,
+                state: circuitDecision.state,
+              };
+            } else if (circuitDecision.type === "drop") {
+              circuitDrop = {
+                circuit: this.circuitBreaker,
+                remoteHost,
+                inbox: new URL(message.inbox),
+                heldSince: circuitDecision.heldSince,
+              };
+            }
+          }
+        } catch (circuitError) {
+          getLogger(["fedify", "federation", "circuit"]).error(
+            "Failed to update circuit breaker state after delivery failure; " +
+              "falling back to normal failure handling:\n{error}",
+            { ...logData, remoteHost, error: circuitError },
+          );
+        }
+      }
       span.addEvent("activitypub.delivery.failed", {
         ...(remoteHost == null
           ? {}
           : { "activitypub.remote.host": remoteHost }),
         "activitypub.delivery.attempt": message.attempt,
-        "activitypub.delivery.permanent_failure":
-          error instanceof SendActivityError &&
-          this.permanentFailureStatusCodes.includes(error.statusCode),
+        "activitypub.delivery.permanent_failure": isPermanentFailure,
         ...(error instanceof SendActivityError
           ? { "http.response.status_code": error.statusCode }
           : {}),
       });
-      const loaderOptions = this.#getLoaderOptions(message.baseUrl);
-      const activity = await Activity.fromJsonLd(message.activity, {
-        contextLoader: this.contextLoaderFactory(loaderOptions),
-        documentLoader: rsaKeyPair == null
-          ? this.documentLoaderFactory(loaderOptions)
-          : this.authenticatedDocumentLoaderFactory(rsaKeyPair, loaderOptions),
-        tracerProvider: this.tracerProvider,
-      });
+      const activity = await parseActivity();
       try {
         await this.onOutboxError?.(error as Error, activity);
       } catch (error) {
@@ -947,10 +1509,20 @@ export class FederationImpl<TContextData>
         );
       }
 
+      if (circuitDrop != null) {
+        await dropHeldOutboxMessage(
+          circuitDrop.circuit,
+          circuitDrop.remoteHost,
+          circuitDrop.inbox,
+          circuitDrop.heldSince,
+          activity,
+        );
+        return;
+      }
+
       // Check if the error is a permanent delivery failure
       if (
-        error instanceof SendActivityError &&
-        this.permanentFailureStatusCodes.includes(error.statusCode)
+        isPermanentFailure
       ) {
         getFederationMetrics(this.meterProvider).recordPermanentFailure(
           error.inbox,
@@ -974,21 +1546,12 @@ export class FederationImpl<TContextData>
           );
           try {
             await this.outboxPermanentFailureHandler(ctx, {
+              reason: "http",
               inbox: new URL(message.inbox),
               activity,
               error,
               statusCode: error.statusCode,
-              actorIds: (message.actorIds ?? []).flatMap((id) => {
-                try {
-                  return [new URL(id)];
-                } catch {
-                  logger.warn(
-                    "Invalid actorId URL in OutboxMessage: {id}",
-                    { id },
-                  );
-                  return [];
-                }
-              }),
+              actorIds: getActorIds(),
             });
           } catch (handlerError) {
             logger.error(
@@ -1006,8 +1569,33 @@ export class FederationImpl<TContextData>
         return;
       }
 
+      if (circuitHold != null && getPolicyDelay() != null) {
+        logger.error(
+          "Failed to send activity {activityId} to {inbox}; holding because " +
+            "the remote host circuit is open:\n{error}",
+          { ...logData, error },
+        );
+        recordCircuitBreakerHeldSpanEvent(
+          span,
+          circuitHold.remoteHost,
+          circuitHold.state,
+        );
+        const circuit = this.circuitBreaker;
+        const holdDelay = retryAfterDelay == null || circuit == null
+          ? circuitHold.delay
+          : circuit.capHeldDelay(
+            circuitHold.heldSince,
+            maxDelay(circuitHold.delay, retryAfterDelay),
+          );
+        await enqueueHeldOutboxMessage(
+          holdDelay,
+          circuitHold.heldSince,
+        );
+        return;
+      }
+
       // Skip retry logic if the message queue backend handles retries automatically
-      if (this.outboxQueue?.nativeRetrial) {
+      if (this.outboxQueue?.nativeRetrial && retryAfterDelay == null) {
         logger.error(
           "Failed to send activity {activityId} to {inbox}; backend will handle retry:\n{error}",
           { ...logData, error },
@@ -1015,12 +1603,8 @@ export class FederationImpl<TContextData>
         throw error;
       }
 
-      const delay = this.outboxRetryPolicy({
-        elapsedTime: Temporal.Instant.from(message.started).until(
-          Temporal.Now.instant(),
-        ),
-        attempts: message.attempt,
-      });
+      const policyDelay = getPolicyDelay();
+      const delay = policyDelay == null ? null : retryAfterDelay ?? policyDelay;
       if (delay != null) {
         logger.error(
           "Failed to send activity {activityId} to {inbox} (attempt " +
@@ -1036,9 +1620,8 @@ export class FederationImpl<TContextData>
           await outboxQueue.enqueue(
             retryMessage,
             {
-              delay: Temporal.Duration.compare(delay, { seconds: 0 }) < 0
-                ? Temporal.Duration.from({ seconds: 0 })
-                : delay,
+              delay: clampNegativeDelay(delay),
+              orderingKey: message.orderingKey,
             },
           );
           getFederationMetrics(this.meterProvider).recordQueueTaskEnqueued(
@@ -1181,9 +1764,7 @@ export class FederationImpl<TContextData>
             await this.inboxQueue.enqueue(
               retryMessage,
               {
-                delay: Temporal.Duration.compare(delay, { seconds: 0 }) < 0
-                  ? Temporal.Duration.from({ seconds: 0 })
-                  : delay,
+                delay: clampNegativeDelay(delay),
               },
             );
             if (activityType != null) {
@@ -1919,12 +2500,30 @@ export class FederationImpl<TContextData>
           context,
           nodeInfoDispatcher: this.nodeInfoDispatcher!,
         });
+      case "benchmarkStats":
+        return await handleBenchmarkStats(request, this.benchmarkMetricReader!);
+      case "benchmarkTrigger":
+        return await handleBenchmarkTrigger(
+          request,
+          context,
+          this.benchmarkTriggerOptions,
+        );
     }
 
     // Routes that require JSON-LD Accepts header:
     if (request.method !== "POST" && !acceptsJsonLd(request)) {
       metricState.endpoint = "not_acceptable";
-      return await onNotAcceptable(request);
+      const response = await onNotAcceptable(request);
+      const collectionRoute = getCollectionMetricRoute(routeName);
+      if (collectionRoute != null) {
+        recordCollectionRequest(this._meterProvider, {
+          ...collectionRoute,
+          page: url.searchParams.get("cursor") != null,
+          result: "not_acceptable",
+          statusCode: response.status,
+        });
+      }
+      return response;
     }
     switch (routeName) {
       case "actor":
@@ -1991,6 +2590,7 @@ export class FederationImpl<TContextData>
           context,
           collectionCallbacks: this.outboxCallbacks,
           tracerProvider: this.tracerProvider,
+          meterProvider: this._meterProvider,
           onUnauthorized,
           onNotFound,
         });
@@ -2003,6 +2603,7 @@ export class FederationImpl<TContextData>
             context,
             collectionCallbacks: this.inboxCallbacks,
             tracerProvider: this.tracerProvider,
+            meterProvider: this._meterProvider,
             onUnauthorized,
             onNotFound,
           });
@@ -2060,6 +2661,7 @@ export class FederationImpl<TContextData>
           context,
           collectionCallbacks: this.followingCallbacks,
           tracerProvider: this.tracerProvider,
+          meterProvider: this._meterProvider,
           onUnauthorized,
           onNotFound,
         });
@@ -2093,6 +2695,7 @@ export class FederationImpl<TContextData>
             : undefined,
           collectionCallbacks: this.followersCallbacks,
           tracerProvider: this.tracerProvider,
+          meterProvider: this._meterProvider,
           onUnauthorized,
           onNotFound,
         });
@@ -2105,6 +2708,7 @@ export class FederationImpl<TContextData>
           context,
           collectionCallbacks: this.likedCallbacks,
           tracerProvider: this.tracerProvider,
+          meterProvider: this._meterProvider,
           onUnauthorized,
           onNotFound,
         });
@@ -2116,6 +2720,7 @@ export class FederationImpl<TContextData>
           context,
           collectionCallbacks: this.featuredCallbacks,
           tracerProvider: this.tracerProvider,
+          meterProvider: this._meterProvider,
           onUnauthorized,
           onNotFound,
         });
@@ -2127,6 +2732,7 @@ export class FederationImpl<TContextData>
           context,
           collectionCallbacks: this.featuredTagsCallbacks,
           tracerProvider: this.tracerProvider,
+          meterProvider: this._meterProvider,
           onUnauthorized,
           onNotFound,
         });
@@ -2144,6 +2750,7 @@ export class FederationImpl<TContextData>
           values: route.values,
           collectionCallbacks: callbacks,
           tracerProvider: this.tracerProvider,
+          meterProvider: this._meterProvider,
           onUnauthorized,
           onNotFound,
         });
@@ -2162,6 +2769,7 @@ export class FederationImpl<TContextData>
           values: route.values,
           collectionCallbacks: callbacks,
           tracerProvider: this.tracerProvider,
+          meterProvider: this._meterProvider,
           onUnauthorized,
           onNotFound,
         });
@@ -2189,6 +2797,7 @@ type FedifyEndpoint =
   | "featured"
   | "featured_tags"
   | "collection"
+  | "benchmark"
   | "not_found"
   | "not_acceptable"
   | "error";
@@ -2231,8 +2840,35 @@ function getEndpointCategory(routeName: string): FedifyEndpoint {
       return "featured";
     case "featuredTags":
       return "featured_tags";
+    case "benchmarkStats":
+    case "benchmarkTrigger":
+      return "benchmark";
     default:
       return "not_found";
+  }
+}
+
+function getCollectionMetricRoute(routeName: string):
+  | {
+    kind: CollectionMetricKind;
+    dispatcher: CollectionMetricDispatcher;
+  }
+  | undefined {
+  switch (routeName) {
+    case "inbox":
+    case "outbox":
+    case "following":
+    case "followers":
+    case "liked":
+    case "featured":
+      return { kind: routeName, dispatcher: "built_in" };
+    case "featuredTags":
+      return { kind: "featured_tags", dispatcher: "built_in" };
+    case "collection":
+    case "orderedCollection":
+      return { kind: "custom", dispatcher: "custom" };
+    default:
+      return undefined;
   }
 }
 

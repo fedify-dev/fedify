@@ -557,6 +557,27 @@ test("lookupWebFinger() records webfinger.lookup counter and duration", {
       },
     );
 
+    await t.step(
+      "records non-default ports for URL resources",
+      async () => {
+        fetchMock.removeRoutes();
+        fetchMock.get(
+          "https://example.com:8443/.well-known/webfinger?resource=https%3A%2F%2Fexample.com%3A8443%2Ffoo",
+          { body: { subject: "https://example.com:8443/foo", links: [] } },
+        );
+        const [meterProvider, recorder] = createTestMeterProvider();
+        await lookupWebFinger("https://example.com:8443/foo", {
+          meterProvider,
+        });
+        const counter = recorder.getMeasurement("webfinger.lookup");
+        ok(counter != null);
+        deepStrictEqual(
+          counter.attributes["activitypub.remote.host"],
+          "example.com:8443",
+        );
+      },
+    );
+
     await t.step("records result=not_found with status 404", async () => {
       fetchMock.removeRoutes();
       fetchMock.get(

@@ -1,0 +1,522 @@
+---
+description: >-
+  Fedify can run as a cooperative benchmark target, and the fedify bench command
+  drives ActivityPub-specific load against it to measure federation workloads
+  without requiring an external metrics backend.
+---
+
+Benchmarking
+============
+
+*This API is available since Fedify 2.3.0.*
+
+Fedify can run as a cooperative benchmark target by enabling
+`~FederationOptions.benchmarkMode`.  This mode exposes local benchmark
+endpoints under `/.well-known/fedify/bench/` and configures an in-process
+OpenTelemetry metrics reader so benchmark clients can collect server-side
+measurements without a separate metrics backend.
+
+> [!WARNING]
+> Do not enable `benchmarkMode` in production.  It is intended for benchmark
+> targets that you control.
+
+
+Enabling benchmark mode
+-----------------------
+
+Enable `benchmarkMode` when creating the `Federation` object.  If you use the
+benchmark trigger endpoint, configure the sink inboxes on the server:
+
+~~~~ typescript twoslash
+import type { KvStore } from "@fedify/fedify";
+// ---cut-before---
+import { createFederation } from "@fedify/fedify";
+
+const federation = createFederation<void>({
+// ---cut-start---
+  kv: null as unknown as KvStore,
+// ---cut-end---
+  benchmarkMode: {
+    triggerSinks: ["https://sink.example/inbox"],
+  },
+});
+~~~~
+
+When enabled, Fedify changes only benchmark-target defaults:
+
+ -  `~FederationOptions.allowPrivateAddress` defaults to `true`, unless a
+    custom document loader factory is configured.
+ -  `~FederationOptions.signatureTimeWindow` defaults to `false`.
+ -  Explicit `allowPrivateAddress` and `signatureTimeWindow` values still win.
+ -  Inbox idempotency is unchanged.  Benchmark clients that need repeated
+    deliveries should mint unique activity IDs.
+
+If you provide `meterProvider` together with `benchmarkMode`, Fedify throws a
+`TypeError`.  OpenTelemetry metric readers have to be attached when a
+`MeterProvider` is constructed, so benchmark mode owns its in-process provider.
+
+If the same application code sometimes runs with benchmark mode and sometimes
+runs with your normal OpenTelemetry pipeline, pass your application
+`meterProvider` only when benchmark mode is off:
+
+~~~~ typescript twoslash
+import type { KvStore } from "@fedify/fedify";
+import type { MeterProvider } from "@opentelemetry/api";
+// ---cut-start---
+declare const process: { env: Record<string, string | undefined> };
+const kv = null as unknown as KvStore;
+const meterProvider = null as unknown as MeterProvider;
+// ---cut-end---
+import { createFederation } from "@fedify/fedify";
+
+const benchmarkEnabled = process.env.FEDIFY_BENCHMARK === "1";
+
+const federation = createFederation<void>({
+  kv,
+  benchmarkMode: benchmarkEnabled
+    ? { triggerSinks: ["https://sink.example/inbox"] }
+    : false,
+  meterProvider: benchmarkEnabled ? undefined : meterProvider,
+});
+~~~~
+
+
+The `fedify bench` command
+--------------------------
+
+*This command is available since Fedify 2.3.0.*
+
+Once a target runs in benchmark mode, the `fedify bench` command drives
+ActivityPub-specific load against it and reports latency, throughput, success
+rate, and errors.  It acts as a synthetic remote actor: it generates keys,
+serves its own actor and key documents over loopback, and signs every inbox
+delivery with the same `@fedify/fedify` signer a real peer uses, so the measured
+crypto cost is real.
+
+> [!NOTE]
+> This version runs the `inbox`, `webfinger`, `actor`, `object`, `fanout`,
+> `failure`, and `mixed` scenario types.  The `collection` scenario type is
+> reserved by the suite format but is not executed yet.  Within the runnable
+> types, a few options the format accepts are also not implemented yet and are
+> rejected up front with a clear message:
+>
+>  -  An `inbox` `activity` that is not a `Create` carrying an embedded `Note`;
+>     that is, a non-`Create` `type`, a non-`Note` `object.type`, or
+>     `embedObject: false`.
+>  -  A `warmup` that is not shorter than the `duration` (which would leave no
+>     measured window).
+
+### A scenario suite
+
+A benchmark is described by a *suite* file in YAML (JSON works too, since YAML
+is a superset).  The suite declares the `target`, shared `defaults`, the
+`actors` to sign as, and a list of `scenarios`, each with an optional `expect`
+block of pass/fail thresholds:
+
+~~~~ yaml
+# yaml-language-server: $schema=https://json-schema.fedify.dev/bench/scenario-v2.json
+version: 1
+target: http://localhost:3000
+defaults:
+  duration: 30s
+  warmup: 5s            # excluded from results; also warms the key cache
+  load:
+    rate: 200/s         # open-loop; or closed-loop with `concurrency: 50`
+actors:
+- count: 3
+  signatureStandards: [draft-cavage-http-signatures-12, ld-signatures]
+scenarios:
+- name: inbox-shared
+  type: inbox
+  recipient: "http://${{ target.host }}/users/alice"
+  inbox: shared
+  activity:
+    type: Create
+    object:
+      type: Note
+      content: { generate: lorem, size: 2KB }
+  expect:
+    successRate: ">= 99%"
+    latency.p95: "< 100ms"
+~~~~
+
+Run it against the target and read the terminal report:
+
+~~~~ sh
+fedify bench scenario.yaml
+~~~~
+
+The `# yaml-language-server:` line gives editors autocomplete and validation
+against the [published schema].
+Override the file's target with `--target`, choose the output with
+`--format`/`--output`, and inspect a run without sending anything with
+`--dry-run`.  A dry run still probes the target's benchmark stats endpoint and
+resolves scenario discovery, such as WebFinger and actor inbox lookup, so the
+printed plan shows the concrete destinations a real run would use.  It does
+not send benchmark load.
+
+An `inbox` scenario's `recipient` may be a single value or a list.  With a
+list, deliveries are rotated across the recipients (and across the synthetic
+`actors` signing them), modeling a server that receives from many peers into
+many local inboxes.
+
+[published schema]: https://json-schema.fedify.dev/bench/scenario-v2.json
+
+### Scenario types
+
+The runnable scenario types cover the main benchmark surfaces:
+
+ -  `inbox`: discovers recipient inboxes and sends signed `Create(Note)`
+    deliveries through the target's inbound ActivityPub path.
+ -  `webfinger`: drives direct `/.well-known/webfinger` lookups on the target.
+ -  `actor`: resolves actor URLs from the scenario recipients and fetches actor
+    documents.  Set `authenticated: true` to sign those GET requests.
+ -  `object`: fetches object URLs from `source`.  Set `authenticated: true` to
+    sign those GET requests.
+ -  `fanout`: posts to `/.well-known/fedify/bench/trigger` so the target calls
+    `sendActivity()` and drains its fanout/outbox queue to benchmark-owned sink
+    inboxes.  The command starts those sink inboxes locally.  A non-loopback
+    target therefore needs `--advertise-host` unless the scenario sets
+    `sinkBase` to a reachable `http://host:port/` URL.  The target must either
+    allow the generated sink inboxes through `triggerSinks` or run with
+    `allowUnsafeTriggerRecipients` in a controlled benchmark environment.  Use
+    `sinkBase` when you want those inboxes to be deterministic, for example
+    `http://127.0.0.1:9090/inbox/0` through
+    `http://127.0.0.1:9090/inbox/4` for `followers: 5`.
+    `fedify bench` does not switch the target's queue backend; run the same
+    suite against targets configured with the queue implementations you want to
+    compare.  Fanout triggers are serialized while the runner observes queue
+    drain, so client latency includes time spent waiting for earlier fanout
+    drains under high-rate or concurrent load.  Use `deliveryThroughput` and
+    `queueDrain` expectations for delivery performance, and keep request
+    latency expectations conservative for this scenario type.
+ -  `failure`: records expected fault outcomes as successes.  For this
+    scenario type, `successRate` means “the expected failure was observed,”
+    not “the HTTP request succeeded.”  The `invalid-signature` and
+    `missing-actor` faults send malformed signed deliveries to a recipient
+    inbox.  The `remote-404`, `remote-410`, `slow-inbox`, and `network-error`
+    faults post to the benchmark trigger endpoint with `sender`, so the target
+    uses its normal outbound delivery path against controlled benchmark-owned
+    sink inboxes.  Like `fanout`, these remote failure faults need
+    `--advertise-host` for a non-loopback target unless `sinkBase` gives a
+    reachable, fixed sink base URL that the target's `triggerSinks` can
+    preconfigure.  Remote failure deliveries are also serialized while the
+    runner waits for the target's queue to
+    observe the expected failure or retry signal, so request latency can include
+    earlier wait time when the configured load is concurrent or high-rate.
+ -  `mixed`: runs referenced child scenarios concurrently, splitting the
+    `mixed` scenario's load by each entry's `weight`.  The referenced
+    scenarios are named scenarios in the same suite and are still run as normal
+    suite entries when listed.  The mixed result merges client-side request,
+    throughput, delivery throughput, latency, and error measurements;
+    server-side metric snapshots are not merged across child runners.
+
+### Actors
+
+You pick signature *standards*, not key algorithms; the key set is derived,
+because a Fedify actor is inherently multi-key.  An actor uses exactly one HTTP
+request signature scheme, plus any document signature schemes:
+
+| Standard                          | Layer        | Algorithm                  |
+| --------------------------------- | ------------ | -------------------------- |
+| `draft-cavage-http-signatures-12` | HTTP request | RSA                        |
+| `rfc9421`                         | HTTP request | RSA                        |
+| `ld-signatures`                   | document     | RSA (`RsaSignature2017`)   |
+| `fep8b32`                         | document     | Ed25519 (`eddsa-jcs-2022`) |
+
+`draft-cavage-http-signatures-12` and `rfc9421` are mutually exclusive (one HTTP
+scheme per actor).  Several actor groups with different standard sets model a
+heterogeneous fleet, which is what a server actually receives.
+
+### Templating
+
+::: v-pre
+
+Values support GitHub-Actions-style `${{ … }}` templating, kept logic-less
+(references and whitelisted helper calls only).  For example
+`${{ target.host }}` expands to the target's host.  Generated payloads use typed
+directives such as `content: { generate: lorem, size: 2KB }` rather than string
+templates.  The tool owns actor URLs and activity ids, so each request gets a
+unique activity id automatically (which Fedify's always-on inbox idempotency
+requires).
+
+:::
+
+### Load generation and signing
+
+Open-loop (`rate`) is the default and the realistic model for incoming
+federation traffic: requests are launched on schedule regardless of when earlier
+responses return, and each request's latency is measured from its scheduled
+time (the coordinated-omission correction), so a stalled target shows up as
+latency instead of being hidden.  Closed-loop (`concurrency`) runs a fixed
+number of virtual users.  Arrival is `constant` (default) or `poisson`, and
+`maxInFlight` caps concurrent in-flight requests.
+
+Signing is kept off the send critical path, set per scenario with `signing`:
+
+ -  `pipeline` (default): background signers keep a bounded buffer filled, and
+    buffer starvation surfaces the client as the bottleneck.
+ -  `jit`: sign in the send path, for a strict signature-time-window target.
+ -  `presign`: pre-sign an estimated open-loop run before the timed window
+    (open-loop only; Poisson arrivals may still sign a few extra during the
+    run).
+
+### Repeated runs
+
+Each scenario runs three times by default.  Set `runs` in `defaults` to change
+the whole suite, or set `runs` on one scenario to override the default for that
+scenario:
+
+~~~~ yaml
+defaults:
+  runs: 5
+scenarios:
+- name: ci-smoke
+  type: webfinger
+  runs: 1
+  recipient: acct:alice@localhost
+~~~~
+
+Repeated runs are aggregated for stable CI gates.  Latency and throughput
+metrics use the median run, request totals and error buckets are summed, queue
+depth uses the worst observed maximum, and `successRate` uses the worst run so
+one bad run is not hidden by clean neighbors.  The JSON report records
+`runCount` for every scenario and includes per-run measurements in `runs` when
+the scenario ran more than once.
+
+### Output
+
+Choose the format with `--format text` (default), `json`, or `markdown`;
+`--output` only chooses the destination (a file instead of standard output) and
+does not infer the format, so pass both (for example
+`--format json --output report.json`).  JSON is the canonical machine form: it
+validates against the [report schema] and carries
+its own `$schema`; the text and Markdown renderers derive from the same model,
+keeping client-measured and server-reported numbers distinct.  Both sides are
+scoped to a measured window: client latency excludes warm-up samples, and the
+server-reported numbers are the difference between a `stats` snapshot taken when
+the measured window opens and one taken when it closes, so they exclude every
+earlier scenario in the suite and the scenario's own warm-up traffic (apart from
+warm-up requests still in flight at the boundary, a residue no larger than the
+number of requests in flight at that moment).  In GitHub Actions, append the
+Markdown report to the job summary:
+
+~~~~ sh
+fedify bench scenario.yaml --format markdown >> "$GITHUB_STEP_SUMMARY"
+~~~~
+
+An `expect` gate that fails exits the command non-zero, so a suite doubles as a
+CI check.  Keep CI gates on robust signals such as success rate, error counts,
+and gross throughput or latency floors; precise latency-percentile regression
+belongs in a controlled environment, not a shared CI runner.
+
+[report schema]: https://json-schema.fedify.dev/bench/report-v3.json
+
+### Comparing two revisions
+
+Use `fedify bench compare` when a CI job should compare a change against a base
+revision on the same runner instead of relying on an absolute threshold:
+
+~~~~ sh
+fedify bench compare \
+  --base origin/main \
+  --head HEAD \
+  --file scenario.yaml \
+  --start-command "pnpm dev" \
+  --ready-url http://127.0.0.1:3000/health \
+  --max-regression 15%
+~~~~
+
+The command creates temporary detached worktrees for the base and head refs,
+starts the target command inside each worktree, waits for `--ready-url`, then
+runs the same suite from the current checkout against that target.  The two
+targets run sequentially, so they can use the same port.  Dependencies are not
+installed automatically; either prepare both refs in the job before comparing
+or make `--start-command` perform the needed build/start steps.
+
+If `--target` is omitted, the benchmark target defaults to the origin of
+`--ready-url`.  Pass `--target` when readiness and benchmark traffic use
+different URLs.  The comparison report can be written as text, JSON, or
+Markdown with the same `--format` and `--output` options; JSON validates
+against the [comparison report schema].
+
+`--max-regression` accepts either a ratio such as `0.15` or a percentage such
+as `15%`.  For each scenario, `fedify bench compare` compares performance
+metrics from the scenario's `expect` block when they are latency or rate
+metrics; if no such metric is present, it compares `latency.p95` and
+`throughputPerSec`.  A head result passes when the measured regression is
+within `--max-regression` plus the observed per-run noise band.  The command
+exits with status 1 when the head run fails its own `expect` gate or a
+comparison exceeds that allowance; configuration and orchestration failures
+exit with status 2.
+
+Use short, broad suites in shared CI:
+
+~~~~ yaml
+defaults:
+  runs: 3
+  duration: 20s
+  warmup: 5s
+scenarios:
+- name: inbox-ci
+  type: inbox
+  # ...
+  expect:
+    successRate: ">= 99%"
+    latency.p95: "< 500ms"
+~~~~
+
+Use a controlled performance runner for narrower regression checks:
+
+~~~~ yaml
+defaults:
+  runs: 7
+  duration: 2m
+  warmup: 20s
+scenarios:
+- name: inbox-lab
+  type: inbox
+  # ...
+  expect:
+    successRate: ">= 99.9%"
+    latency.p95: "< 120ms"
+    throughputPerSec: "> 250/s"
+~~~~
+
+[comparison report schema]: https://json-schema.fedify.dev/bench/compare-report-v1.json
+
+### Safety
+
+`fedify bench` runs without friction against a loopback or private target, or
+any target that advertises benchmark mode.  Hostnames are classified from their
+resolved addresses when possible, and DNS failures are treated as public so the
+gate stays conservative.  A public target that does not advertise benchmark
+mode is refused unless you pass `--allow-unsafe-target`, which is mandatory
+(never prompted) in CI and any non-interactive context.
+
+The unsafe override is deliberately narrow.  It must be paired with an
+explicit `--target` on the command line, and every scenario must set its load
+(`rate` or `concurrency`) and `duration` explicitly, either in the scenario or
+in suite defaults.  This prevents a public run from falling back to built-in
+defaults by accident.
+
+Use `--dry-run` as the first step against an unfamiliar target.  It performs
+the benchmark-mode probe and discovery requests needed to print the planned
+WebFinger resources and inbox destinations, but it does not send signed inbox
+deliveries or other benchmark load.
+
+### Local targets over HTTP
+
+An `inbox` recipient given as an `acct:` handle is resolved through WebFinger,
+which goes over HTTPS, so against a plain-HTTP loopback target give the
+`recipient` as the actor's URI (for example
+`http://localhost:3000/users/alice`) instead.  The `webfinger` scenario is
+unaffected: it requests `/.well-known/webfinger` on the target directly, so it
+can benchmark `acct:` lookups over plain HTTP.
+
+Signed scenarios such as `inbox` make the target dereference the benchmark's
+synthetic actor server while verifying signatures, so that server must be
+reachable from the target.  A loopback target reaches it automatically (both
+run on the same machine).  For a non-loopback target, pass `--advertise-host`
+with an address the target can reach (for example the client's LAN IP); the
+synthetic server then binds every interface and advertises that host in the
+actor and key URLs.  Without it, a non-loopback signed scenario is refused
+(use a read scenario such as `webfinger`, which needs no synthetic server).
+
+
+Benchmark stats endpoint
+------------------------
+
+`GET /.well-known/fedify/bench/stats` returns a versioned JSON snapshot of the
+server-side metrics collected by the benchmark mode reader:
+
+~~~~ json
+{
+  "version": 1,
+  "source": "server",
+  "generatedAt": "2026-06-02T00:00:00.000Z",
+  "scopeMetrics": [],
+  "errors": []
+}
+~~~~
+
+The `scopeMetrics` field contains serialized OpenTelemetry scope metrics.
+Observable queue depth is included when configured queues implement
+`MessageQueue.getDepth()`.
+
+
+Benchmark trigger endpoint
+--------------------------
+
+`POST /.well-known/fedify/bench/trigger` asks the target application to call
+`Context.sendActivity()` with an explicit sender, recipients, and activity.
+This exercises the target's normal outbox and queue path.
+
+The request body has this shape:
+
+~~~~ json
+{
+  "sender": { "identifier": "alice" },
+  "recipients": [
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "type": "Service",
+      "id": "https://sink.example/actors/bob",
+      "inbox": "https://sink.example/inbox"
+    }
+  ],
+  "activity": {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "type": "Create",
+    "id": "https://example.com/activities/bench-1",
+    "actor": "https://example.com/users/alice",
+    "object": {
+      "type": "Note",
+      "id": "https://example.com/notes/bench-1",
+      "content": "benchmark"
+    }
+  }
+}
+~~~~
+
+The `sender` must be either `{ "identifier": string }` or
+`{ "username": string }`.  Recipients are parsed as ActivityPub actors and must
+have `id` and `inbox` properties.  The activity is parsed as an ActivityPub
+`Activity`.
+
+By default, every recipient inbox must appear in the server-configured
+`~FederationBenchmarkOptions.triggerSinks` list.  This keeps benchmark traffic
+pointed at benchmark sink inboxes and prevents callers from choosing their own
+allowlist.  To bypass this guard for a controlled run, set
+`~FederationBenchmarkOptions.allowUnsafeTriggerRecipients` to `true` in the
+application configuration.
+
+For `fanout` and remote `failure` scenarios, set a `sinkBase` value such as
+`http://host:port/` in the scenario when the target keeps the safe default and
+you need stable sink URLs for `triggerSinks`.  With `followers: 5`, the runner
+generates `/inbox/0` through `/inbox/4` under that base.
+
+A successful trigger returns `202 Accepted`:
+
+~~~~ json
+{
+  "version": 1,
+  "activityId": "https://example.com/activities/bench-1",
+  "queueCorrelationId": "https://example.com/activities/bench-1",
+  "recipientCount": 1,
+  "inboxCount": 1
+}
+~~~~
+
+The `queueCorrelationId` is the activity ID preserved on the queued fanout or
+outbox work.
+
+
+Metrics
+-------
+
+Benchmark mode uses the same Fedify metrics documented in
+[*OpenTelemetry*](./opentelemetry.md), including queue task metrics, queue
+depth, HTTP server metrics, and signature verification histograms.  The
+benchmark endpoints themselves are classified as `fedify.endpoint=benchmark`
+in `fedify.http.server.request.*` metrics.

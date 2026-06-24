@@ -1,11 +1,11 @@
 [tools]
 bun = "1.2.22"
-deno = "2.7.13"
+deno = "2.8.3"
 node = "22"
 pnpm = "10.28.0"
 
 [tools."github:dahlia/hongdown"]
-version = "0.3.11"
+version = "0.4.3"
 
 [tools."github:dahlia/hongdown".platforms]
 linux-x64 = "hongdown-*-x86_64-unknown-linux-musl.tar.bz2"
@@ -181,7 +181,15 @@ done
 
 [tasks."test:examples"]
 description = "Run tests for all example projects"
+# `prepare` builds @fedify/lint's dist/oxlint.js loader (via build:self) and,
+# through its `install` dependency, provisions the prebuilt oxlint native
+# binary into node_modules — both are needed by the lint/oxlint example.
+depends = ["prepare"]
 run = "deno run -A examples/test-examples/mod.ts"
+
+[tasks."test:monitoring"]
+description = "Validate the monitoring example configuration"
+run = "deno run -A examples/monitoring/validate.ts"
 
 [tasks."test:init"]
 description = "Run tests for the init package"

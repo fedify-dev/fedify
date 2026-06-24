@@ -1,6 +1,6 @@
 import metadata from "../deno.json" with { type: "json" };
 import { generateField, getFieldName } from "./field.ts";
-import type { TypeSchema } from "./schema.ts";
+import type { PropertyPreprocessorSchema, TypeSchema } from "./schema.ts";
 import { isNonFunctionalProperty } from "./schema.ts";
 import {
   areAllScalarTypes,
@@ -10,8 +10,56 @@ import {
   getDecoders,
   getEncoders,
   getSubtypes,
+  getTypeNames,
   isCompactableType,
 } from "./type.ts";
+
+function* generatePreprocessorBlock(
+  property: { preprocessors?: PropertyPreprocessorSchema[] },
+  rangeTypeName: string,
+  variable: string,
+  baseUrlExpr: string,
+  moduleVarNames: ReadonlyMap<string, string>,
+): Iterable<string> {
+  if (property.preprocessors == null || property.preprocessors.length === 0) {
+    return;
+  }
+  yield `
+      {
+        let _handled: ${rangeTypeName} | undefined;
+      `;
+  for (const pp of property.preprocessors) {
+    const varName = moduleVarNames.get(pp.module);
+    if (varName == null) {
+      throw new Error(
+        `Preprocessor module "${pp.module}" is not registered ` +
+          `in the generated imports. Ensure all preprocessor ` +
+          `modules used in property schemas are available.`,
+      );
+    }
+    yield `
+        if (_handled === undefined) {
+          const _result = await ${varName}[${JSON.stringify(pp.function)}](v, {
+            documentLoader: options.documentLoader,
+            contextLoader: options.contextLoader,
+            tracerProvider: options.tracerProvider,
+            baseUrl: ${baseUrlExpr},
+          });
+          if (_result instanceof Error) throw _result;
+          if (_result !== undefined) {
+            _handled = _result as ${rangeTypeName};
+          }
+        }
+      `;
+  }
+  yield `
+        if (_handled !== undefined) {
+          ${variable}.push(_handled);
+          continue;
+        }
+      }
+      `;
+}
 
 export async function* generateEncoder(
   typeUri: string,
@@ -271,6 +319,7 @@ export async function* generateEncoder(
 export async function* generateDecoder(
   typeUri: string,
   types: Record<string, TypeSchema>,
+  moduleVarNames: ReadonlyMap<string, string>,
 ): AsyncIterable<string> {
   const type = types[typeUri];
   yield `
@@ -355,7 +404,10 @@ export async function* generateDecoder(
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (options.baseUrl == null && values["@id"] != null) {
+    if (values["@id"] != null && !values["@id"].startsWith("_:") && !URL.canParse(values["@id"], options.baseUrl)) {
+      throw new TypeError("Invalid @id: " + values["@id"]);
+    }
+    if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && URL.canParse(values["@id"])) {
       options = { ...options, baseUrl: new URL(values["@id"]) };
     }
   `;
@@ -383,7 +435,7 @@ export async function* generateDecoder(
   if (type.extends == null) {
     yield `
     const instance = new this(
-      { id: "@id" in values ? new URL(values["@id"] as string) : undefined },
+      { id: values["@id"] != null && !values["@id"].startsWith("_:") && URL.canParse(values["@id"], options.baseUrl) ? new URL(values["@id"], options.baseUrl) : undefined },
       options,
     );
     `;
@@ -426,14 +478,23 @@ export async function* generateDecoder(
     ) {
       if (v == null) continue;
     `;
+    const propertyBaseUrl = "options.baseUrl";
+    yield* generatePreprocessorBlock(
+      property,
+      getTypeNames(property.range, types),
+      variable,
+      propertyBaseUrl,
+      moduleVarNames,
+    );
     if (!areAllScalarTypes(property.range, types)) {
       yield `
       if (typeof v === "object" && "@id" in v && !("@type" in v)
           && globalThis.Object.keys(v).length === 1) {
+        if (v["@id"].startsWith("_:")) continue;
         ${variable}.push(
-          !URL.canParse(v["@id"]) && v["@id"].startsWith("at://")
+          !URL.canParse(v["@id"], ${propertyBaseUrl}) && v["@id"].startsWith("at://")
             ? new URL("at://" + encodeURIComponent(v["@id"].substring(5)))
-            : new URL(v["@id"])
+            : new URL(v["@id"], ${propertyBaseUrl})
         );
         continue;
       }
@@ -447,7 +508,7 @@ export async function* generateDecoder(
           types,
           "v",
           "options",
-          `(values["@id"] == null ? options.baseUrl : new URL(values["@id"]))`,
+          propertyBaseUrl,
         )
       };
       if (typeof decoded === "undefined") continue;
@@ -461,7 +522,7 @@ export async function* generateDecoder(
         types,
         "v",
         "options",
-        `(values["@id"] == null ? options.baseUrl : new URL(values["@id"]))`,
+        propertyBaseUrl,
       );
       for (const code of decoders) yield code;
       yield `

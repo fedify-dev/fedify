@@ -1,0 +1,6 @@
+# The top-level version field is required.
+target: http://localhost:3000
+scenarios:
+  - name: inbox-shared
+    type: inbox
+    recipient: "acct:alice@example.com"

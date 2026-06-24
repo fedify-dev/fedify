@@ -13,6 +13,7 @@ import {
   Person,
   Service,
 } from "@fedify/vocab";
+import { FetchError } from "@fedify/vocab-runtime";
 import {
   assert,
   assertEquals,
@@ -243,6 +244,7 @@ test("sendActivity()", async (t) => {
 
   fetchMock.post("https://example.com/inbox2", {
     status: 500,
+    headers: { "Retry-After": "120" },
     body: "something went wrong",
   });
 
@@ -288,8 +290,56 @@ test("sendActivity()", async (t) => {
       assertEquals(e.statusCode, 500);
       assertEquals(e.inbox, new URL("https://example.com/inbox2"));
       assertEquals(e.responseBody, "something went wrong");
+      assertEquals(e.responseHeaders.get("Retry-After"), "120");
     }
   });
+
+  await t.step(
+    "signed challenge retry transport errors throw FetchError",
+    async () => {
+      const activity: unknown = {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        "type": "Create",
+        "id": "https://example.com/activity",
+        "actor": "https://example.com/person",
+      };
+      const failure = new TypeError("challenge retry connection reset");
+      let requestCount = 0;
+      fetchMock.post("https://example.com/inbox-challenge-reset", () => {
+        requestCount++;
+        if (requestCount === 1) {
+          return new Response("Unauthorized", {
+            status: 401,
+            headers: {
+              "Accept-Signature":
+                'sig1=("@method" "@target-uri" "@authority" ' +
+                '"content-digest");created;nonce="retry-nonce"',
+            },
+          });
+        }
+        throw failure;
+      });
+
+      const error = await assertRejects(
+        () =>
+          sendActivity({
+            activity,
+            activityId: "https://example.com/activity",
+            keys: [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+            inbox: new URL("https://example.com/inbox-challenge-reset"),
+          }),
+        FetchError,
+        "challenge retry connection reset",
+      );
+
+      assertEquals(
+        error.url.href,
+        "https://example.com/inbox-challenge-reset",
+      );
+      assertEquals(error.cause, failure);
+      assertEquals(requestCount, 2);
+    },
+  );
 
   fetchMock.post("https://example.com/inbox-gone", {
     status: 410,
@@ -544,7 +594,7 @@ test("sendActivity() records OpenTelemetry delivery metrics", async (t) => {
     assertEquals(sent[0].value, 1);
     assertEquals(
       sent[0].attributes["activitypub.remote.host"],
-      "metrics.example",
+      "metrics.example:8443",
     );
     assertEquals(
       sent[0].attributes["activitypub.activity.type"],
@@ -560,7 +610,7 @@ test("sendActivity() records OpenTelemetry delivery metrics", async (t) => {
     assertGreaterOrEqual(durations[0].value, 0);
     assertEquals(
       durations[0].attributes["activitypub.remote.host"],
-      "metrics.example",
+      "metrics.example:8443",
     );
     assertEquals(
       durations[0].attributes["activitypub.activity.type"],
