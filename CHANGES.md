@@ -356,7 +356,6 @@ To be released.
 
 [#275]: https://github.com/fedify-dev/fedify/issues/275
 [#779]: https://github.com/fedify-dev/fedify/pull/779
-[#801]: https://github.com/fedify-dev/fedify/pull/801
 [#807]: https://github.com/fedify-dev/fedify/pull/807
 [#816]: https://github.com/fedify-dev/fedify/pull/816
 
