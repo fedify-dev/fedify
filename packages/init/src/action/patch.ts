@@ -327,6 +327,7 @@ const parseJsoncObject = (
 ): Record<PropertyKey, unknown> => {
   const errors: ParseError[] = [];
   const value = parseJsonc(jsonString, errors, { allowTrailingComma: true });
+  if (value === undefined && isEmptyJsonc(errors)) return {};
   if (errors.length > 0) {
     throw new SyntaxError(
       errors
@@ -341,6 +342,10 @@ const parseJsoncObject = (
   }
   return value as Record<PropertyKey, unknown>;
 };
+
+const isEmptyJsonc = (errors: readonly ParseError[]): boolean =>
+  errors.length > 0 &&
+  errors.every(({ error }) => printParseErrorCode(error) === "ValueExpected");
 
 /**
  * Appends new text content to existing text content line by line.

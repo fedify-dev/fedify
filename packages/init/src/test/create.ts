@@ -1,7 +1,7 @@
 import $ from "@david/dax";
 import { filter, isEmpty, pipe, toArray } from "@fxts/core";
 import { values } from "@optique/core";
-import { appendFile, mkdir } from "node:fs/promises";
+import { appendFile, mkdir, stat } from "node:fs/promises";
 import { join, sep } from "node:path";
 import process from "node:process";
 import packageManagers from "../json/pm.json" with { type: "json" };
@@ -130,6 +130,7 @@ async function validateDevToolScripts(
     MessageQueue,
   ];
   if (packageManager === "deno") return true;
+  if (!(await hasInstalledNodeDependencies(dir))) return true;
 
   for (const script of ["format:check", "lint"]) {
     const result = await $`${[packageManager, "run", script]}`
@@ -143,6 +144,14 @@ async function validateDevToolScripts(
     if (result.code !== 0) return false;
   }
   return true;
+}
+
+async function hasInstalledNodeDependencies(dir: string): Promise<boolean> {
+  try {
+    return (await stat(join(dir, "node_modules"))).isDirectory();
+  } catch {
+    return false;
+  }
 }
 
 export function filterOptions(

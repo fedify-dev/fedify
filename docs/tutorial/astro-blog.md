@@ -198,9 +198,8 @@ After a moment, you'll have a working project with the following structure:
      -  *middleware.ts* — Connects Fedify to Astro's request pipeline
  -  *public/* — Files served as-is (favicon, etc.)
  -  *astro.config.ts* — Astro configuration
- -  *.oxfmtrc.json* — Code formatter settings
  -  *.oxlintrc.json* — Code linter settings
- -  *package.json* — Package metadata and scripts
+ -  *package.json* — Package metadata, scripts, and Prettier formatter setup
  -  *tsconfig.json* — TypeScript settings
 
 Because we're using TypeScript instead of plain JavaScript, source files have
