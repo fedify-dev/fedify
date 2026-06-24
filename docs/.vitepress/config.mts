@@ -142,6 +142,7 @@ const MANUAL = {
     { text: "Outbox listeners", link: "/manual/outbox.md" },
     { text: "Sending activities", link: "/manual/send.md" },
     { text: "Collections", link: "/manual/collections.md" },
+    { text: "Conversation backfill", link: "/manual/backfill.md" },
     { text: "Object dispatcher", link: "/manual/object.md" },
     { text: "Access control", link: "/manual/access-control.md" },
     { text: "WebFinger", link: "/manual/webfinger.md" },

@@ -205,6 +205,9 @@ importers:
       '@fedify/astro':
         specifier: workspace:^
         version: link:../packages/astro
+      '@fedify/backfill':
+        specifier: workspace:^
+        version: link:../packages/backfill
       '@fedify/cfworkers':
         specifier: workspace:^
         version: link:../packages/cfworkers
@@ -890,6 +893,19 @@ importers:
       astro:
         specifier: 'catalog:'
         version: 5.18.1(@types/node@24.3.0)(db0@0.3.4(better-sqlite3@12.9.0)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260511.1)(@opentelemetry/api@1.9.1)(@types/better-sqlite3@7.6.13)(@types/pg@8.6.1)(better-sqlite3@12.9.0)(bun-types@1.3.3)(mysql2@3.22.3(@types/node@24.3.0))(postgres@3.4.7))(mysql2@3.22.3(@types/node@24.3.0)))(ioredis@5.10.1)(jiti@2.6.1)(lightningcss@1.30.1)(rollup@4.60.2)(terser@5.46.1)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.9.0)
+    devDependencies:
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+
+  packages/backfill:
+    dependencies:
+      '@fedify/vocab':
+        specifier: workspace:*
+        version: link:../vocab
     devDependencies:
       tsdown:
         specifier: 'catalog:'

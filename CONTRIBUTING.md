@@ -442,6 +442,8 @@ The repository is organized as a monorepo with the following packages:
     creating new Fedify projects.  Wraps @fedify/init.
  -  *packages/amqp/*: AMQP/RabbitMQ driver (@fedify/amqp) for Fedify.
  -  *packages/astro/*: Astro integration (@fedify/astro) for Fedify.
+ -  *packages/backfill/*: ActivityPub conversation backfill support
+    (@fedify/backfill) for Fedify.
  -  *packages/cfworkers/*: Cloudflare Workers integration (@fedify/cfworkers)
     for Fedify.
  -  *packages/debugger/*: Embedded ActivityPub debug dashboard
