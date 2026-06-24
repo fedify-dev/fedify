@@ -280,6 +280,23 @@ test("patchFiles omits Oxfmt config for Astro npm projects", async () => {
       "editor.defaultFormatter": "esbenp.prettier-vscode",
       "editor.formatOnSave": true,
     });
+    for (
+      const language of [
+        "[javascript]",
+        "[javascriptreact]",
+        "[json]",
+        "[jsonc]",
+        "[typescript]",
+        "[typescriptreact]",
+      ]
+    ) {
+      assert.equal(
+        (vscodeSettings[language] as Record<string, unknown>)[
+          "editor.defaultFormatter"
+        ],
+        "esbenp.prettier-vscode",
+      );
+    }
     assert.deepEqual(vscodeExtensions.recommendations, [
       "astro-build.astro-vscode",
       "esbenp.prettier-vscode",

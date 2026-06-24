@@ -225,8 +225,19 @@ const withFormatIgnorePatterns = <
 
 function getVscodeSettingsForPrettier(): object {
   const { "oxc.fmt.configPath": _configPath, ...settings } = vscodeSettings;
+  const prettierSettings: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(settings)) {
+    if (key.startsWith("[") && typeof value === "object" && value != null) {
+      prettierSettings[key] = {
+        ...value,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+      };
+    } else {
+      prettierSettings[key] = value;
+    }
+  }
   return {
-    ...settings,
+    ...prettierSettings,
     "[astro]": {
       "editor.defaultFormatter": "esbenp.prettier-vscode",
       "editor.formatOnSave": true,
