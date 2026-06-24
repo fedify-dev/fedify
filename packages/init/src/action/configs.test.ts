@@ -9,6 +9,7 @@ import { message } from "@optique/core";
 import { kvStores, messageQueues } from "../lib.ts";
 import type { InitCommandData } from "../types.ts";
 import bareBonesDescription from "../webframeworks/bare-bones.ts";
+import astroDescription from "../webframeworks/astro.ts";
 import nextDescription from "../webframeworks/next.ts";
 import nitroDescription from "../webframeworks/nitro.ts";
 import nuxtDescription from "../webframeworks/nuxt.ts";
@@ -237,6 +238,59 @@ test("patchFiles adds framework-specific Oxc ignore patterns", async () => {
   }
 });
 
+test("patchFiles omits Oxfmt config for Astro npm projects", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fedify-init-astro-prettier-"));
+
+  try {
+    const data = await createAstroNpmInitData(dir);
+    await patchFiles(data);
+
+    const packageJson = JSON.parse(
+      await readFile(join(dir, "package.json"), "utf8"),
+    ) as {
+      scripts?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+    const vscodeSettings = JSON.parse(
+      await readFile(join(dir, ".vscode", "settings.json"), "utf8"),
+    ) as Record<string, unknown>;
+    const vscodeExtensions = JSON.parse(
+      await readFile(join(dir, ".vscode", "extensions.json"), "utf8"),
+    ) as {
+      recommendations?: string[];
+    };
+    assert.equal(
+      packageJson.scripts?.format,
+      "prettier --plugin prettier-plugin-astro --write .",
+    );
+    assert.equal(
+      packageJson.scripts?.["format:check"],
+      "prettier --plugin prettier-plugin-astro --check .",
+    );
+    assert.equal(packageJson.scripts?.lint, "oxlint .");
+    assert.ok(packageJson.devDependencies?.["prettier"]);
+    assert.ok(packageJson.devDependencies?.["prettier-plugin-astro"]);
+    assert.equal(packageJson.devDependencies?.["oxfmt"], undefined);
+    assert.ok(packageJson.devDependencies?.["oxlint"]);
+    await assert.rejects(readFile(join(dir, ".oxfmtrc.json"), "utf8"), {
+      code: "ENOENT",
+    });
+    assert.equal(vscodeSettings["oxc.fmt.configPath"], undefined);
+    assert.deepEqual(vscodeSettings["[astro]"], {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+      "editor.formatOnSave": true,
+    });
+    assert.deepEqual(vscodeExtensions.recommendations, [
+      "astro-build.astro-vscode",
+      "esbenp.prettier-vscode",
+      "oxc.oxc-vscode",
+    ]);
+    await readFile(join(dir, ".oxlintrc.json"), "utf8");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("cleanupScaffoldedFiles removes Next.js ESLint artifacts", async () => {
   const dir = await mkdtemp(join(tmpdir(), "fedify-init-next-cleanup-"));
 
@@ -322,6 +376,24 @@ test("cleanupScaffoldedFiles rejects cleanup path traversal", async () => {
     );
   } finally {
     await rm(parent, { recursive: true, force: true });
+  }
+});
+
+test("cleanupScaffoldedFiles rejects project directory cleanup", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fedify-init-cleanup-root-"));
+
+  try {
+    const data = await createNpmInitData(dir);
+    data.initializer.cleanupFiles = ["."];
+    await writeFile(join(dir, "keep.txt"), "keep\n");
+
+    await assert.rejects(
+      cleanupScaffoldedFiles(data),
+      new Error("Cleanup path escapes project directory: ."),
+    );
+    assert.equal(await readFile(join(dir, "keep.txt"), "utf8"), "keep\n");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
   }
 });
 
@@ -456,6 +528,41 @@ async function createNpmInitData(dir: string): Promise<InitCommandData> {
     projectName: "example",
     packageManager: "npm",
     webFramework: "bare-bones",
+    kvStore: "in-memory",
+    messageQueue: "in-process",
+    dryRun: false,
+    allowNonEmpty: false,
+    skipInstall: false,
+    testMode: false,
+    dir,
+    initializer,
+    kv: kvStores["in-memory"],
+    mq: messageQueues["in-process"],
+    env: {},
+  } satisfies InitCommandData;
+  return data;
+}
+
+async function createAstroNpmInitData(dir: string): Promise<InitCommandData> {
+  const initializer = await astroDescription.init({
+    command: "init",
+    projectName: "example",
+    packageManager: "npm",
+    webFramework: "astro",
+    kvStore: "in-memory",
+    messageQueue: "in-process",
+    dryRun: false,
+    allowNonEmpty: false,
+    skipInstall: false,
+    testMode: false,
+    dir,
+  });
+
+  const data = {
+    command: "init",
+    projectName: "example",
+    packageManager: "npm",
+    webFramework: "astro",
     kvStore: "in-memory",
     messageQueue: "in-process",
     dryRun: false,

@@ -26,7 +26,7 @@ function resolveCleanupPath(dir: string, path: string): string {
   const baseDir = resolvePath(dir);
   const targetPath = resolvePath(baseDir, path);
   const relative = relativePath(baseDir, targetPath);
-  if (relative.startsWith("..") || isAbsolute(relative)) {
+  if (relative === "" || relative.startsWith("..") || isAbsolute(relative)) {
     throw new Error(`Cleanup path escapes project directory: ${path}`);
   }
   return targetPath;

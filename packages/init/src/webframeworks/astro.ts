@@ -2,8 +2,21 @@ import { PACKAGE_MANAGER } from "../const.ts";
 import deps from "../json/deps.json" with { type: "json" };
 import { PACKAGE_VERSION, readTemplate } from "../lib.ts";
 import type { PackageManager, WebFrameworkDescription } from "../types.ts";
-import { defaultDenoDependencies, defaultDevDependencies } from "./const.ts";
-import { getInstruction, nodeBunDevToolTasks, pmToRt } from "./utils.ts";
+import { defaultDenoDependencies } from "./const.ts";
+import { getInstruction, pmToRt } from "./utils.ts";
+
+const astroNodeBunDevDependencies = {
+  "@fedify/lint": PACKAGE_VERSION,
+  "oxlint": deps["npm:oxlint"],
+  "prettier": deps["npm:prettier"],
+  "prettier-plugin-astro": deps["npm:prettier-plugin-astro"],
+};
+
+const astroNodeBunDevToolTasks = {
+  format: "prettier --plugin prettier-plugin-astro --write .",
+  "format:check": "prettier --plugin prettier-plugin-astro --check .",
+  lint: "oxlint .",
+} as const;
 
 const astroDescription: WebFrameworkDescription = {
   label: "Astro",
@@ -33,7 +46,7 @@ const astroDescription: WebFrameworkDescription = {
       command: Array.from(getAstroInitCommand(pm)),
       dependencies,
       devDependencies: {
-        ...defaultDevDependencies,
+        ...(pm === "deno" ? {} : astroNodeBunDevDependencies),
         ...(pm !== "deno"
           ? {
             typescript: deps["npm:typescript"],
@@ -43,6 +56,7 @@ const astroDescription: WebFrameworkDescription = {
       },
       federationFile: "src/federation.ts",
       loggingFile: "src/logging.ts",
+      format: pm === "deno" ? undefined : { tool: "prettier" },
       files: {
         "astro.config.ts": await readTemplate(
           `astro/astro.config.${pmToRt(pm)}.ts`,
@@ -93,12 +107,12 @@ const TASKS = {
     dev: "bunx --bun astro dev",
     build: "bunx --bun astro build",
     preview: "bun ./dist/server/entry.mjs",
-    ...nodeBunDevToolTasks,
+    ...astroNodeBunDevToolTasks,
   },
   "node": {
     dev: "dotenvx run -- astro dev",
     build: "dotenvx run -- astro build",
     preview: "dotenvx run -- astro preview",
-    ...nodeBunDevToolTasks,
+    ...astroNodeBunDevToolTasks,
   },
 };

@@ -100,6 +100,7 @@ export interface WebFrameworkInitializer {
   env?: Record<string, string>;
   /** Formatter and linter options to merge into generated tool configs. */
   format?: {
+    tool?: "oxfmt" | "prettier";
     ignorePatterns?: string[];
   };
   /** TypeScript compiler options to include in `tsconfig.json`. */

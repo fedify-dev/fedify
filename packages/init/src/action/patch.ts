@@ -17,6 +17,8 @@ import {
   loadOxlintConfig,
   loadPackageJson,
   loadTsConfig,
+  loadVscodeExtensions,
+  loadVscodeSettings,
 } from "./configs.ts";
 import {
   displayFile,
@@ -162,10 +164,12 @@ const getJsons = <
         ? { "tsconfig.json": loadTsConfig(data).data }
         : {}),
       "package.json": loadPackageJson(data).data,
-      [devToolConfigs["oxfmt"].path]: loadOxfmtConfig(data).data,
+      ...(data.initializer.format?.tool !== "prettier"
+        ? { [devToolConfigs["oxfmt"].path]: loadOxfmtConfig(data).data }
+        : {}),
       [devToolConfigs["oxlint"].path]: loadOxlintConfig(data).data,
-      [devToolConfigs["vscSet"].path]: devToolConfigs["vscSet"].data,
-      [devToolConfigs["vscExt"].path]: devToolConfigs["vscExt"].data,
+      [devToolConfigs["vscSet"].path]: loadVscodeSettings(data).data,
+      [devToolConfigs["vscExt"].path]: loadVscodeExtensions(data).data,
     };
   jsonsCache.set(cacheKey, jsons);
   return jsons;

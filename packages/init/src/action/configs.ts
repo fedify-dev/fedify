@@ -184,6 +184,30 @@ export const loadOxlintConfig = (
   data: withFormatIgnorePatterns(oxlint, data),
 });
 
+export const loadVscodeSettings = (
+  data: InitCommandData,
+) => ({
+  path: devToolConfigs.vscSet.path,
+  data: data.initializer.format?.tool === "prettier"
+    ? getVscodeSettingsForPrettier()
+    : vscodeSettings,
+});
+
+export const loadVscodeExtensions = (
+  data: InitCommandData,
+) => ({
+  path: devToolConfigs.vscExt.path,
+  data: data.initializer.format?.tool === "prettier"
+    ? {
+      recommendations: [
+        "astro-build.astro-vscode",
+        "esbenp.prettier-vscode",
+        "oxc.oxc-vscode",
+      ],
+    }
+    : devToolConfigs.vscExt.data,
+});
+
 const withFormatIgnorePatterns = <
   T extends { ignorePatterns?: string[] },
 >(
@@ -198,6 +222,17 @@ const withFormatIgnorePatterns = <
     ]),
   ].sort(),
 });
+
+function getVscodeSettingsForPrettier(): object {
+  const { "oxc.fmt.configPath": _configPath, ...settings } = vscodeSettings;
+  return {
+    ...settings,
+    "[astro]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+      "editor.formatOnSave": true,
+    },
+  };
+}
 
 /**
  * Configuration objects for various development tool setup files.
