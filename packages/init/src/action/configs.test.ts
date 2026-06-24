@@ -373,6 +373,26 @@ test("cleanupScaffoldedFiles ignores empty cleanup file paths", async () => {
   }
 });
 
+test("cleanupScaffoldedFiles ignores empty package.json cleanup", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fedify-init-cleanup-empty-pkg-"));
+
+  try {
+    const data = await createNpmInitData(dir);
+    data.initializer.cleanupPackageJson = {};
+    const originalPackageJson = '{ "scripts": { "dev": "vite" } }\n';
+    await writeFile(join(dir, "package.json"), originalPackageJson);
+
+    await cleanupScaffoldedFiles(data);
+
+    assert.equal(
+      await readFile(join(dir, "package.json"), "utf8"),
+      originalPackageJson,
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("cleanupScaffoldedFiles rejects cleanup path traversal", async () => {
   const parent = await mkdtemp(join(tmpdir(), "fedify-init-cleanup-parent-"));
   const dir = join(parent, "project");

@@ -36,7 +36,7 @@ async function cleanupPackageJson(
   dir: string,
   cleanup: WebFrameworkInitializer["cleanupPackageJson"],
 ): Promise<void> {
-  if (cleanup == null) return;
+  if (cleanup == null || isEmptyPackageJsonCleanup(cleanup)) return;
   const path = joinPath(dir, "package.json");
   const packageJson = await readPackageJson(path);
   if (packageJson == null) return;
@@ -46,6 +46,16 @@ async function cleanupPackageJson(
   deleteKeys(packageJson.devDependencies, cleanup.devDependencies);
 
   await writeFile(path, formatJson(packageJson));
+}
+
+function isEmptyPackageJsonCleanup(
+  cleanup: NonNullable<WebFrameworkInitializer["cleanupPackageJson"]>,
+): boolean {
+  return (
+    (cleanup.scripts?.length ?? 0) === 0 &&
+    (cleanup.dependencies?.length ?? 0) === 0 &&
+    (cleanup.devDependencies?.length ?? 0) === 0
+  );
 }
 
 async function readPackageJson(
