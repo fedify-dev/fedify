@@ -1,0 +1,47 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Commitment
+compactName: Commitment
+uri: "https://w3id.org/valueflows/ont/vf#Commitment"
+entity: false
+description: |
+  A promised economic transaction, referenced by an {@link Agreement}.
+
+  A commitment satisfies an {@link Intent} of a {@link Proposal} and
+  specifies the actual amount of the economic resource being committed.
+defaultContext:
+- "https://www.w3.org/ns/activitystreams"
+- vf: "https://w3id.org/valueflows/ont/vf#"
+  om2: "http://www.ontology-of-units-of-measure.org/resource/om-2/"
+  Commitment: "vf:Commitment"
+  satisfies:
+    "@id": "vf:satisfies"
+    "@type": "@id"
+  resourceQuantity: "vf:resourceQuantity"
+  hasUnit: "om2:hasUnit"
+  hasNumericalValue: "om2:hasNumericalValue"
+
+properties:
+- singularName: satisfies
+  functional: true
+  compactName: satisfies
+  uri: "https://w3id.org/valueflows/ont/vf#satisfies"
+  description: |
+    The {@link Intent} of a {@link Proposal} that this commitment
+    satisfies.  The value is the proposal's URI with a
+    [fragment](https://developer.mozilla.org/en-US/docs/Web/URI/Reference/Fragment)
+    appended to identify the intent. Recommended fragments are
+    `primary` and `reciprocal`.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#anyURI"
+
+- singularName: resourceQuantity
+  functional: true
+  compactName: resourceQuantity
+  uri: "https://w3id.org/valueflows/ont/vf#resourceQuantity"
+  untyped: true
+  description: |
+    The amount and unit of the economic resource being committed.  The
+    unit must match the unit specified in the corresponding {@link Intent}
+    of the proposal.
+  range:
+  - "http://www.ontology-of-units-of-measure.org/resource/om-2/Measure"
