@@ -56,7 +56,8 @@
     "@optique/run": "catalog:",
     "chalk": "catalog:",
     "es-toolkit": "catalog:",
-    "inquirer-toggle": "^1.0.1"
+    "inquirer-toggle": "^1.0.1",
+    "jsonc-parser": "^3.3.1"
   },
   "devDependencies": {
     "@types/node": "catalog:",

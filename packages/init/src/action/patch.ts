@@ -1,15 +1,24 @@
 import { always, apply, entries, map, pipe, pipeLazy, tap } from "@fxts/core";
 import { toMerged } from "es-toolkit";
+import {
+  parse as parseJsonc,
+  type ParseError,
+  printParseErrorCode,
+} from "jsonc-parser";
 import { access, readFile } from "node:fs/promises";
 import { join as joinPath } from "node:path";
 import { createFile, throwUnlessNotExists } from "../lib.ts";
 import type { InitCommandData } from "../types.ts";
-import { formatJson, merge, replaceAll, set } from "../utils.ts";
+import { formatJson, merge, set } from "../utils.ts";
 import {
   devToolConfigs,
   loadDenoConfig,
+  loadOxfmtConfig,
+  loadOxlintConfig,
   loadPackageJson,
   loadTsConfig,
+  loadVscodeExtensions,
+  loadVscodeSettings,
 } from "./configs.ts";
 import {
   displayFile,
@@ -44,6 +53,7 @@ export const getJsonsCacheKey = (data: JsonConfigData): string =>
       compilerOptions: data.initializer.compilerOptions ?? {},
       dependencies: data.initializer.dependencies ?? {},
       devDependencies: data.initializer.devDependencies ?? {},
+      format: data.initializer.format ?? {},
       tasks: data.initializer.tasks ?? {},
     },
     kv: {
@@ -86,8 +96,8 @@ export const recommendPatchFiles = (data: InitCommandData) =>
 /**
  * Verifies that `--allow-non-empty` will not modify files that already
  * existed before any framework scaffolding command runs.  This only covers
- * files that Fedify writes itself; framework scaffolders may still reject
- * unrelated pre-existing files independently.
+ * files that Fedify writes or deletes itself; framework scaffolders may still
+ * reject unrelated pre-existing files independently.
  */
 export async function assertNoGeneratedFileConflicts(
   data: InitCommandData,
@@ -154,9 +164,12 @@ const getJsons = <
         ? { "tsconfig.json": loadTsConfig(data).data }
         : {}),
       "package.json": loadPackageJson(data).data,
-      [devToolConfigs["biome"].path]: devToolConfigs["biome"].data,
-      [devToolConfigs["vscSet"].path]: devToolConfigs["vscSet"].data,
-      [devToolConfigs["vscExt"].path]: devToolConfigs["vscExt"].data,
+      ...(data.initializer.format?.tool !== "prettier"
+        ? { [devToolConfigs["oxfmt"].path]: loadOxfmtConfig(data).data }
+        : {}),
+      [devToolConfigs["oxlint"].path]: loadOxlintConfig(data).data,
+      [devToolConfigs["vscSet"].path]: loadVscodeSettings(data).data,
+      [devToolConfigs["vscExt"].path]: loadVscodeExtensions(data).data,
     };
   jsonsCache.set(cacheKey, jsons);
   return jsons;
@@ -173,6 +186,7 @@ const getGeneratedFilePaths = (data: InitCommandData): string[] => [
   ".env",
   ...Object.keys(data.initializer.files ?? {}),
   ...Object.keys(getJsons(data)),
+  ...(data.initializer.cleanupFiles ?? []).filter((path) => path.trim() !== ""),
 ];
 
 const getExistingGeneratedFiles = async (
@@ -200,7 +214,7 @@ const pathExists = async (path: string): Promise<boolean> => {
 
 const formatConflictMessage = (conflicts: readonly string[]): string =>
   [
-    "Cannot initialize in a non-empty directory because these generated files",
+    "Cannot initialize in a non-empty directory because these files",
     "already exist:",
     ...conflicts.map((path) => ` - ${path}`),
     "Remove the conflicting files or choose another directory.",
@@ -294,32 +308,45 @@ async function patchContent(
  * Merges new JSON data with existing JSON content and formats the result.
  * Parses existing JSON content (if any) and deep merges it with new data,
  * then formats the result for consistent output.
- * Supports JSONC (JSON with Comments) by removing comments before parsing.
+ * Supports JSONC by removing comments and trailing commas before parsing.
  *
  * @param prev - The previous JSON content as string
  * @param data - The new data object to merge
  * @returns Formatted JSON string with merged content
  */
 const mergeJson = (prev: string, data: object): string =>
-  pipe(
-    prev ? JSON.parse(removeJsonComments(prev)) : {},
-    merge(data),
-    formatJson,
-  );
+  formatJson(merge(data)(prev ? parseJsoncObject(prev) : {}));
 
 /**
- * Removes single-line (//) and multi-line (/* *\/) comments from JSON string.
- * This allows parsing JSONC (JSON with Comments) files.
+ * Parses a JSONC string, accepting comments and trailing commas.
  *
- * @param jsonString - The JSON string potentially containing comments
- * @returns JSON string with comments removed
+ * @param jsonString - The JSON string potentially containing JSONC syntax
+ * @returns Parsed JSON value
  */
-const removeJsonComments = (jsonString: string): string =>
-  pipe(
-    jsonString,
-    replaceAll(/\/\/.*$/gm, ""),
-    replaceAll(/\/\*[\s\S]*?\*\//g, ""),
-  );
+const parseJsoncObject = (
+  jsonString: string,
+): Record<PropertyKey, unknown> => {
+  const errors: ParseError[] = [];
+  const value = parseJsonc(jsonString, errors, { allowTrailingComma: true });
+  if (value === undefined && isEmptyJsonc(errors)) return {};
+  if (errors.length > 0) {
+    throw new SyntaxError(
+      errors
+        .map(({ error, offset }) =>
+          `${printParseErrorCode(error)} at ${offset}`
+        )
+        .join("; "),
+    );
+  }
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new SyntaxError("Expected a JSON object.");
+  }
+  return value as Record<PropertyKey, unknown>;
+};
+
+const isEmptyJsonc = (errors: readonly ParseError[]): boolean =>
+  errors.length > 0 &&
+  errors.every(({ error }) => printParseErrorCode(error) === "ValueExpected");
 
 /**
  * Appends new text content to existing text content line by line.

@@ -3,7 +3,7 @@ import deps from "../json/deps.json" with { type: "json" };
 import { PACKAGE_VERSION, readTemplate } from "../lib.ts";
 import type { WebFrameworkDescription } from "../types.ts";
 import { defaultDenoDependencies, defaultDevDependencies } from "./const.ts";
-import { getInstruction, pmToRt } from "./utils.ts";
+import { getInstruction, nodeBunDevToolTasks, pmToRt } from "./utils.ts";
 
 const elysiaDescription: WebFrameworkDescription = {
   label: "ElysiaJS",
@@ -45,9 +45,6 @@ const elysiaDescription: WebFrameworkDescription = {
       "src/index.ts": (await readTemplate(
         `elysia/index/${pmToRt(pm)}.ts`,
       )).replace(/\/\* logger \*\//, projectName),
-      ...(pm !== "deno" && {
-        "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
-      }),
     },
     compilerOptions: pm === "deno" || pm === "bun" ? undefined : {
       "lib": ["ESNext", "DOM"],
@@ -75,13 +72,13 @@ const TASKS = {
   bun: {
     dev: "bun run --hot ./src/index.ts",
     prod: "bun run ./src/index.ts",
-    lint: "eslint .",
+    ...nodeBunDevToolTasks,
   },
   node: {
     dev: "dotenvx run -- tsx watch src/index.ts",
     build: "tsc src/index.ts --outDir dist",
     start: "NODE_ENV=production dotenvx run -- node dist/index.js",
-    lint: "eslint .",
+    ...nodeBunDevToolTasks,
   },
 };
 

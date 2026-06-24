@@ -77,7 +77,7 @@ const convertFedifyToLocal = (name: string): string =>
 
 /** Gathers all devDependencies required for the project based on the
  * initializer, key-value store, and message queue configurations,
- * including Biome for linting/formatting.
+ * including Oxfmt and Oxlint for formatting and linting.
  *
  * @param data - Web Framework initializer, key-value store
  *               and message queue descriptions

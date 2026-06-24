@@ -250,8 +250,8 @@ project.  It will ask you a few questions to set up the project:
 > [!TIP]
 > Projects created with `fedify init` automatically include [`@fedify/lint`]
 > for consistent code linting.  Deno projects get a lint plugin configured in
-> *deno.json*, while Node.js and Bun projects get an *eslint.config.ts* with
-> `@fedify/lint`.
+> *deno.json*, while Node.js and Bun projects get an *.oxlintrc.json* with
+> `@fedify/lint/oxlint`.
 
 > [!NOTE]
 > If you find the full `@fedify/cli` toolchain too heavy for your needs, you

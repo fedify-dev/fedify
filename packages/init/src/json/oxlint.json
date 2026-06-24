@@ -1,0 +1,37 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+  "ignorePatterns": [
+    "**/*.md",
+    "build/**",
+    "coverage/**",
+    "dist/**",
+    "node_modules/**"
+  ],
+  "jsPlugins": [
+    "@fedify/lint/oxlint"
+  ],
+  "rules": {
+    "@fedify/lint/actor-id-mismatch": "error",
+    "@fedify/lint/actor-id-required": "error",
+    "@fedify/lint/actor-following-property-required": "warn",
+    "@fedify/lint/actor-following-property-mismatch": "warn",
+    "@fedify/lint/actor-followers-property-required": "warn",
+    "@fedify/lint/actor-followers-property-mismatch": "warn",
+    "@fedify/lint/actor-outbox-property-required": "warn",
+    "@fedify/lint/actor-outbox-property-mismatch": "warn",
+    "@fedify/lint/actor-liked-property-required": "warn",
+    "@fedify/lint/actor-liked-property-mismatch": "warn",
+    "@fedify/lint/actor-featured-property-required": "warn",
+    "@fedify/lint/actor-featured-property-mismatch": "warn",
+    "@fedify/lint/actor-featured-tags-property-required": "warn",
+    "@fedify/lint/actor-featured-tags-property-mismatch": "warn",
+    "@fedify/lint/actor-inbox-property-required": "warn",
+    "@fedify/lint/actor-inbox-property-mismatch": "warn",
+    "@fedify/lint/actor-shared-inbox-property-required": "warn",
+    "@fedify/lint/actor-shared-inbox-property-mismatch": "warn",
+    "@fedify/lint/actor-public-key-required": "warn",
+    "@fedify/lint/actor-assertion-method-required": "warn",
+    "@fedify/lint/collection-filtering-not-implemented": "warn",
+    "@fedify/lint/outbox-listener-delivery-required": "warn"
+  }
+}

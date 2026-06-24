@@ -3,7 +3,7 @@ import deps from "../json/deps.json" with { type: "json" };
 import { PACKAGE_VERSION, readTemplate } from "../lib.ts";
 import type { WebFrameworkDescription } from "../types.ts";
 import { defaultDenoDependencies, defaultDevDependencies } from "./const.ts";
-import { getInstruction, pmToRt } from "./utils.ts";
+import { getInstruction, nodeBunDevToolTasks, pmToRt } from "./utils.ts";
 
 const expressDescription: WebFrameworkDescription = {
   label: "Express",
@@ -30,11 +30,6 @@ const expressDescription: WebFrameworkDescription = {
       "src/app.ts": (await readTemplate("express/app.ts"))
         .replace(/\/\* logger \*\//, projectName),
       "src/index.ts": await readTemplate("express/index.ts"),
-      ...(pm !== "deno"
-        ? {
-          "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
-        }
-        : {}),
     },
     compilerOptions: pm === "deno" ? undefined : {
       "lib": ["ESNext", "DOM"],
@@ -63,11 +58,11 @@ const TASKS = {
   bun: {
     dev: "bun run --hot ./src/index.ts",
     prod: "bun run ./src/index.ts",
-    lint: "eslint .",
+    ...nodeBunDevToolTasks,
   },
   node: {
     dev: "dotenvx run -- tsx watch ./src/index.ts",
     prod: "dotenvx run -- node --import tsx ./src/index.ts",
-    lint: "eslint .",
+    ...nodeBunDevToolTasks,
   },
 };
