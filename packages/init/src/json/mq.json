@@ -25,7 +25,7 @@
       "pnpm"
     ],
     "dependencies": {
-      "npm:ioredis": "^5.10.1"
+      "npm:ioredis": "^5.11.1"
     },
     "imports": {
       "@fedify/redis": {
@@ -50,7 +50,7 @@
       "pnpm"
     ],
     "dependencies": {
-      "npm:postgres": "^3.4.8"
+      "npm:postgres": "^3.4.9"
     },
     "imports": {
       "@fedify/postgres": {
@@ -75,7 +75,7 @@
       "pnpm"
     ],
     "dependencies": {
-      "npm:mysql2": "^3.22.3"
+      "npm:mysql2": "^3.22.5"
     },
     "imports": {
       "@fedify/mysql": {
