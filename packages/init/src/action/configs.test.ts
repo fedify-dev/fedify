@@ -257,14 +257,16 @@ test("patchFiles preserves Nitro's generated tsconfig extends", async () => {
   // https://nitro.build/guide/typescript
   "extends": "./.nitro/types/tsconfig.json",
   "compilerOptions": {
-    "types": ["node"],
+    "types": [
+      "node", // runtime types
+    ],
     "paths": {
       "~/api/*": ["./server/api/*"],
-    },
+    }, /* aliases */
   },
   "metadata": {
     "homepage": "https://example.com/docs",
-    "commentPattern": "keep // this and /* this */ text",
+    "commentPattern": "keep // this and /* this */ text", // string remains
   },
 }
 `,

@@ -1,5 +1,10 @@
 import { always, apply, entries, map, pipe, pipeLazy, tap } from "@fxts/core";
 import { toMerged } from "es-toolkit";
+import {
+  parse as parseJsonc,
+  type ParseError,
+  printParseErrorCode,
+} from "jsonc-parser";
 import { access, readFile } from "node:fs/promises";
 import { join as joinPath } from "node:path";
 import { createFile, throwUnlessNotExists } from "../lib.ts";
@@ -302,90 +307,32 @@ async function patchContent(
  * @returns Formatted JSON string with merged content
  */
 const mergeJson = (prev: string, data: object): string =>
-  pipe(
-    prev ? JSON.parse(removeJsoncSyntax(prev)) : {},
-    merge(data),
-    formatJson,
-  );
+  formatJson(merge(data)(prev ? parseJsoncObject(prev) : {}));
 
 /**
- * Removes single-line (//) comments, multi-line (/* *\/) comments, and
- * trailing commas from a JSONC string.
+ * Parses a JSONC string, accepting comments and trailing commas.
  *
  * @param jsonString - The JSON string potentially containing JSONC syntax
- * @returns JSON string with JSONC-only syntax removed
+ * @returns Parsed JSON value
  */
-const removeJsoncSyntax = (jsonString: string): string => {
-  let output = "";
-  let index = 0;
-  let inString = false;
-  let escaped = false;
-
-  while (index < jsonString.length) {
-    const char = jsonString[index]!;
-    const next = jsonString[index + 1];
-
-    if (inString) {
-      output += char;
-      if (escaped) {
-        escaped = false;
-      } else if (char === "\\") {
-        escaped = true;
-      } else if (char === '"') {
-        inString = false;
-      }
-      index++;
-      continue;
-    }
-
-    if (char === '"') {
-      inString = true;
-      output += char;
-      index++;
-      continue;
-    }
-
-    if (char === "/" && next === "/") {
-      index += 2;
-      while (
-        index < jsonString.length &&
-        jsonString[index] !== "\n" &&
-        jsonString[index] !== "\r"
-      ) {
-        index++;
-      }
-      continue;
-    }
-
-    if (char === "/" && next === "*") {
-      index += 2;
-      while (index < jsonString.length) {
-        const blockChar = jsonString[index]!;
-        const blockNext = jsonString[index + 1];
-        if (blockChar === "*" && blockNext === "/") {
-          index += 2;
-          break;
-        }
-        if (blockChar === "\n" || blockChar === "\r") output += blockChar;
-        index++;
-      }
-      continue;
-    }
-
-    if (char === ",") {
-      let lookahead = index + 1;
-      while (/\s/.test(jsonString[lookahead] ?? "")) lookahead++;
-      if (jsonString[lookahead] === "}" || jsonString[lookahead] === "]") {
-        index++;
-        continue;
-      }
-    }
-
-    output += char;
-    index++;
+const parseJsoncObject = (
+  jsonString: string,
+): Record<PropertyKey, unknown> => {
+  const errors: ParseError[] = [];
+  const value = parseJsonc(jsonString, errors, { allowTrailingComma: true });
+  if (errors.length > 0) {
+    throw new SyntaxError(
+      errors
+        .map(({ error, offset }) =>
+          `${printParseErrorCode(error)} at ${offset}`
+        )
+        .join("; "),
+    );
   }
-
-  return output;
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new SyntaxError("Expected a JSON object.");
+  }
+  return value as Record<PropertyKey, unknown>;
 };
 
 /**
