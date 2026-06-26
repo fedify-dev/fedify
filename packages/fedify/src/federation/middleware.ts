@@ -184,24 +184,34 @@ function isLinkedDataSignatureJsonLdProcessingError(
   error: unknown,
 ): error is Error {
   if (!(error instanceof Error)) return false;
-  if (error.message.startsWith("Maximum deep iterations exceeded")) {
+  const errorName = (error as Error & { name?: unknown }).name;
+  const errorMessage = (error as Error & { message?: unknown }).message;
+  if (
+    typeof errorMessage === "string" &&
+    errorMessage.startsWith("Maximum deep iterations exceeded")
+  ) {
     return true;
   }
   const details = (error as Error & {
     details?: { code?: unknown; cause?: unknown };
   }).details;
+  const errorCause = (error as Error & { cause?: unknown }).cause;
+  const cause = errorCause instanceof Error ? errorCause : details?.cause;
   if (
-    error.name === "jsonld.InvalidUrl" &&
+    errorName === "jsonld.InvalidUrl" &&
     details?.code === "loading remote context failed" &&
-    details.cause instanceof Error
+    cause instanceof Error
   ) {
-    return details.cause.message.startsWith(
-      "Maximum deep iterations exceeded",
-    ) || details.cause.name.startsWith("jsonld.") ||
-      details.cause.name === "UnsafeJsonLdError";
+    const causeName = (cause as Error & { name?: unknown }).name;
+    const causeMessage = (cause as Error & { message?: unknown }).message;
+    return (
+      typeof causeMessage === "string" &&
+      causeMessage.startsWith("Maximum deep iterations exceeded")
+    ) || (typeof causeName === "string" && causeName.startsWith("jsonld."));
   }
-  return error.name.startsWith("jsonld.") ||
-    error.name === "UnsafeJsonLdError";
+  return errorName !== "jsonld.InvalidUrl" &&
+    typeof errorName === "string" &&
+    errorName.startsWith("jsonld.");
 }
 
 /**
