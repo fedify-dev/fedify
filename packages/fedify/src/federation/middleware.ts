@@ -180,38 +180,39 @@ function isPermanentInboxParseError(error: unknown): error is Error {
         isInvalidUrlTypeError(error)));
 }
 
-function isLinkedDataSignatureJsonLdProcessingError(
-  error: unknown,
-): error is Error {
-  if (!(error instanceof Error)) return false;
-  const errorName = (error as Error & { name?: unknown }).name;
-  const errorMessage = (error as Error & { message?: unknown }).message;
+type LinkedDataSignatureJsonLdProcessingError = Error & {
+  details?: { code?: unknown; cause?: unknown };
+  cause?: unknown;
+};
+
+function hasLinkedDataSignatureJsonLdProcessingError(
+  error: LinkedDataSignatureJsonLdProcessingError,
+): boolean {
   if (
-    typeof errorMessage === "string" &&
-    errorMessage.startsWith("Maximum deep iterations exceeded")
+    error.message.startsWith("Maximum deep iterations exceeded")
   ) {
     return true;
   }
-  const details = (error as Error & {
-    details?: { code?: unknown; cause?: unknown };
-  }).details;
-  const errorCause = (error as Error & { cause?: unknown }).cause;
-  const cause = errorCause instanceof Error ? errorCause : details?.cause;
+  const cause = error.cause instanceof Error
+    ? error.cause
+    : error.details?.cause;
   if (
-    errorName === "jsonld.InvalidUrl" &&
-    details?.code === "loading remote context failed" &&
+    error.name === "jsonld.InvalidUrl" &&
+    error.details?.code === "loading remote context failed" &&
     cause instanceof Error
   ) {
-    const causeName = (cause as Error & { name?: unknown }).name;
-    const causeMessage = (cause as Error & { message?: unknown }).message;
     return (
-      typeof causeMessage === "string" &&
-      causeMessage.startsWith("Maximum deep iterations exceeded")
-    ) || (typeof causeName === "string" && causeName.startsWith("jsonld."));
+      cause.message.startsWith("Maximum deep iterations exceeded")
+    ) || cause.name.startsWith("jsonld.");
   }
-  return errorName !== "jsonld.InvalidUrl" &&
-    typeof errorName === "string" &&
-    errorName.startsWith("jsonld.");
+  return error.name !== "jsonld.InvalidUrl" && error.name.startsWith("jsonld.");
+}
+
+function isLinkedDataSignatureJsonLdProcessingError(
+  error: unknown,
+): error is LinkedDataSignatureJsonLdProcessingError {
+  return error instanceof Error &&
+    hasLinkedDataSignatureJsonLdProcessingError(error);
 }
 
 /**
