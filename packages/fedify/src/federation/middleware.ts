@@ -180,6 +180,30 @@ function isPermanentInboxParseError(error: unknown): error is Error {
         isInvalidUrlTypeError(error)));
 }
 
+function isLinkedDataSignatureJsonLdProcessingError(
+  error: unknown,
+): error is Error {
+  if (!(error instanceof Error)) return false;
+  if (error.message.startsWith("Maximum deep iterations exceeded")) {
+    return true;
+  }
+  const details = (error as Error & {
+    details?: { code?: unknown; cause?: unknown };
+  }).details;
+  if (
+    error.name === "jsonld.InvalidUrl" &&
+    details?.code === "loading remote context failed" &&
+    details.cause instanceof Error
+  ) {
+    return details.cause.message.startsWith(
+      "Maximum deep iterations exceeded",
+    ) || details.cause.name.startsWith("jsonld.") ||
+      details.cause.name === "UnsafeJsonLdError";
+  }
+  return error.name.startsWith("jsonld.") ||
+    error.name === "UnsafeJsonLdError";
+}
+
 /**
  * Options for {@link createFederation} function.
  * @template TContextData The type of the context data.
@@ -1325,10 +1349,20 @@ export class FederationImpl<TContextData>
         },
       );
     } else {
-      jsonLd = await signJsonLd(jsonLd, rsaKey.privateKey, rsaKey.keyId, {
-        contextLoader,
-        tracerProvider: this.tracerProvider,
-      });
+      try {
+        jsonLd = await signJsonLd(jsonLd, rsaKey.privateKey, rsaKey.keyId, {
+          contextLoader,
+          tracerProvider: this.tracerProvider,
+        });
+      } catch (error) {
+        if (!isLinkedDataSignatureJsonLdProcessingError(error)) throw error;
+        logger.warn(
+          "Failed to create a Linked Data signature for the activity " +
+            "{activityId}.  The activity will be sent without a Linked " +
+            "Data signature.",
+          { activityId, error },
+        );
+      }
     }
     if (!proofCreated) {
       logger.warn(
