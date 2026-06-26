@@ -8,6 +8,17 @@ Version 2.0.21
 
 To be released.
 
+### @fedify/fedify
+
+ -  Fixed outbound activity delivery aborting when Linked Data Signatures
+    creation fails during JSON-LD canonicalization.  Fedify now logs the
+    signing failure and continues delivery without the Linked Data Signature
+    for JSON-LD processing failures, while still surfacing key, configuration,
+    and programming errors from signing.  [[#824], [#842] by Lee ByeongJun]
+
+[#824]: https://github.com/fedify-dev/fedify/issues/824
+[#842]: https://github.com/fedify-dev/fedify/pull/842
+
 
 Version 2.0.20
 --------------
