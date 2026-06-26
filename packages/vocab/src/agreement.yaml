@@ -1,0 +1,68 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Agreement
+compactName: Agreement
+uri: "https://w3id.org/valueflows/ont/vf#Agreement"
+extends: "https://www.w3.org/ns/activitystreams#Object"
+entity: true
+description: |
+  The agreement reached between parties responding to a {@link Proposal}.
+
+  An interested party sends an `Agreement` wrapped in an {@link Offer}
+  activity.  The proposing party then either finalizes the agreement by
+  sending an {@link Accept} activity with the finalized `Agreement` as
+  its `result`, or sends a {@link Reject} activity.
+
+  Note: This type extends ActivityStreams `Object` for practical
+  interoperability within ActivityPub federation, even though FEP-0837
+  defines `Agreement` as a pure ValueFlows type.  Extending `Object`
+  provides useful inherited properties such as `id`, `attributedTo`,
+  `url`, `to`, and `published` without needing to redefine them.
+# NOTE: The context includes mappings for Commitment and Measure properties
+# (satisfies, resourceQuantity, hasUnit, hasNumericalValue) because the
+# code generator does not automatically merge contexts from referenced
+# types.  Agreement must declare all mappings needed for correct JSON-LD
+# serialization of its embedded Commitment and Measure objects.
+defaultContext:
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+- "https://gotosocial.org/ns"
+- vf: "https://w3id.org/valueflows/ont/vf#"
+  om2: "http://www.ontology-of-units-of-measure.org/resource/om-2/"
+  fedibird: "http://fedibird.com/ns#"
+  sensitive: "as:sensitive"
+  emojiReactions:
+    "@id": "fedibird:emojiReactions"
+    "@type": "@id"
+  Agreement: "vf:Agreement"
+  Commitment: "vf:Commitment"
+  stipulates: "vf:stipulates"
+  stipulatesReciprocal: "vf:stipulatesReciprocal"
+  satisfies:
+    "@id": "vf:satisfies"
+    "@type": "@id"
+  resourceQuantity: "vf:resourceQuantity"
+  hasUnit: "om2:hasUnit"
+  hasNumericalValue: "om2:hasNumericalValue"
+
+properties:
+- singularName: stipulates
+  functional: true
+  compactName: stipulates
+  uri: "https://w3id.org/valueflows/ont/vf#stipulates"
+  description: |
+    The primary {@link Commitment} associated with the agreement.  This
+    commitment satisfies the primary {@link Intent} of the corresponding
+    {@link Proposal}.
+  range:
+  - "https://w3id.org/valueflows/ont/vf#Commitment"
+
+- singularName: stipulatesReciprocal
+  functional: true
+  compactName: stipulatesReciprocal
+  uri: "https://w3id.org/valueflows/ont/vf#stipulatesReciprocal"
+  description: |
+    The reciprocal {@link Commitment} associated with the agreement.
+    Required if the corresponding {@link Proposal} has a reciprocal
+    {@link Intent}.
+  range:
+  - "https://w3id.org/valueflows/ont/vf#Commitment"

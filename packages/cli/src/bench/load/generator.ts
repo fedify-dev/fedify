@@ -72,10 +72,11 @@ export function runLoad(
   plan: LoadPlan,
   send: SendFunction,
   clock: Clock = systemClock(),
+  signal?: AbortSignal,
 ): Promise<LoadResult> {
   return plan.load.kind === "open"
-    ? runOpenLoop(plan, plan.load, send, clock)
-    : runClosedLoop(plan, plan.load, send, clock);
+    ? runOpenLoop(plan, plan.load, send, clock, signal)
+    : runClosedLoop(plan, plan.load, send, clock, signal);
 }
 
 async function runOpenLoop(
@@ -83,6 +84,7 @@ async function runOpenLoop(
   load: Extract<LoadModel, { kind: "open" }>,
   send: SendFunction,
   clock: Clock,
+  signal: AbortSignal | undefined,
 ): Promise<LoadResult> {
   const arrivals = scheduleArrivals({
     ratePerSec: load.ratePerSec,
@@ -98,8 +100,13 @@ async function runOpenLoop(
   // bounded by the in-flight count rather than the total request count.
   const active = new Set<Promise<void>>();
   for (const offset of arrivals) {
-    await clock.sleepUntil(start + offset);
-    if (await slots.acquire()) saturated = true;
+    throwIfAborted(signal);
+    await clock.sleepUntil(start + offset, signal);
+    if (await slots.acquire(signal)) saturated = true;
+    if (signal?.aborted) {
+      slots.release();
+      throw abortReason(signal);
+    }
     const dispatched = dispatch(
       send,
       offset,
@@ -123,6 +130,7 @@ async function runClosedLoop(
   load: Extract<LoadModel, { kind: "closed" }>,
   send: SendFunction,
   clock: Clock,
+  signal: AbortSignal | undefined,
 ): Promise<LoadResult> {
   const samples: Sample[] = [];
   const slots = createSemaphore(load.maxInFlight);
@@ -131,7 +139,12 @@ async function runClosedLoop(
   const deadline = start + plan.durationMs;
   async function worker(): Promise<void> {
     while (clock.now() < deadline) {
-      if (await slots.acquire()) saturated = true;
+      throwIfAborted(signal);
+      if (await slots.acquire(signal)) saturated = true;
+      if (signal?.aborted) {
+        slots.release();
+        throw abortReason(signal);
+      }
       if (clock.now() >= deadline) {
         slots.release();
         break;
@@ -176,7 +189,7 @@ async function dispatch(
 
 interface Semaphore {
   /** Acquires a slot; resolves `true` if it had to wait (backpressure). */
-  acquire(): Promise<boolean>;
+  acquire(signal?: AbortSignal): Promise<boolean>;
   /** Releases a slot, transferring it to the next waiter if any. */
   release(): void;
 }
@@ -188,7 +201,8 @@ function createSemaphore(max: number | undefined): Semaphore {
   let count = 0;
   const queue: Array<() => void> = [];
   return {
-    acquire(): Promise<boolean> {
+    acquire(signal?: AbortSignal): Promise<boolean> {
+      throwIfAborted(signal);
       if (count < max) {
         count++;
         return Promise.resolve(false);
@@ -196,7 +210,23 @@ function createSemaphore(max: number | undefined): Semaphore {
       // Wait in FIFO order; release() transfers the slot to us directly
       // (count is not decremented), so an active worker cannot barge ahead of
       // a queued one.
-      return new Promise<boolean>((resolve) => queue.push(() => resolve(true)));
+      return new Promise<boolean>((resolve, reject) => {
+        const waiter = () => {
+          cleanup();
+          resolve(true);
+        };
+        const onAbort = () => {
+          const index = queue.indexOf(waiter);
+          if (index >= 0) queue.splice(index, 1);
+          cleanup();
+          reject(abortReason(signal!));
+        };
+        const cleanup = () => {
+          signal?.removeEventListener("abort", onAbort);
+        };
+        signal?.addEventListener("abort", onAbort, { once: true });
+        queue.push(waiter);
+      });
     },
     release(): void {
       const next = queue.shift();
@@ -204,4 +234,12 @@ function createSemaphore(max: number | undefined): Semaphore {
       else count--;
     },
   };
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) throw abortReason(signal);
+}
+
+function abortReason(signal: AbortSignal): unknown {
+  return signal.reason ?? new Error("Benchmark load aborted.");
 }

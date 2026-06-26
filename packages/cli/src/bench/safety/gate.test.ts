@@ -73,6 +73,7 @@ test("assertUnsafeOverrideAllowed - unsafe flag needs an explicit CLI target", (
           name: "wf",
           explicitDuration: true,
           explicitLoad: true,
+          explicitRuns: true,
         }],
       }),
     (error: unknown) =>
@@ -92,6 +93,7 @@ test("assertUnsafeOverrideAllowed - unsafe public defaults need explicit load", 
           name: "wf",
           explicitDuration: true,
           explicitLoad: false,
+          explicitRuns: true,
         }],
       }),
     (error: unknown) =>
@@ -111,10 +113,31 @@ test("assertUnsafeOverrideAllowed - unsafe public defaults need explicit duratio
           name: "wf",
           explicitDuration: false,
           explicitLoad: true,
+          explicitRuns: true,
         }],
       }),
     (error: unknown) =>
       error instanceof UnsafeTargetError && /duration/.test(error.message),
+  );
+});
+
+test("assertUnsafeOverrideAllowed - unsafe public defaults need explicit runs", () => {
+  assert.throws(
+    () =>
+      assertUnsafeOverrideAllowed({
+        tier: "public",
+        benchmarkMode: false,
+        allowUnsafe: true,
+        explicitCliTarget: true,
+        scenarios: [{
+          name: "wf",
+          explicitDuration: true,
+          explicitLoad: true,
+          explicitRuns: false,
+        }],
+      }),
+    (error: unknown) =>
+      error instanceof UnsafeTargetError && /runs/.test(error.message),
   );
 });
 

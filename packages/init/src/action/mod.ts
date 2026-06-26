@@ -4,6 +4,7 @@ import askOptions from "../ask/mod.ts";
 import type { InitCommand } from "../command.ts";
 import type { InitCommandData } from "../types.ts";
 import { set } from "../utils.ts";
+import { cleanupScaffoldedFiles } from "./cleanup.ts";
 import { makeDirIfHyd } from "./dir.ts";
 import recommendConfigEnv from "./env.ts";
 import {
@@ -79,6 +80,7 @@ const handleHydRun = (data: InitCommandData) =>
     tap(makeDirIfHyd),
     tap(assertNoGeneratedFileConflicts),
     tap(when(hasCommand, runPrecommand)),
+    tap(cleanupScaffoldedFiles),
     tap(patchFiles),
     tap(unless(isSkipInstall, installDependencies)),
     tap(when(isSkipInstall, noticeSkippedInstall)),

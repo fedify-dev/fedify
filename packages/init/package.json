@@ -1,6 +1,6 @@
 {
   "name": "@fedify/init",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Project initializer for Fedify",
   "keywords": [
     "fedify",
@@ -56,7 +56,8 @@
     "@optique/run": "catalog:",
     "chalk": "catalog:",
     "es-toolkit": "catalog:",
-    "inquirer-toggle": "^1.0.1"
+    "inquirer-toggle": "^1.0.1",
+    "jsonc-parser": "^3.3.1"
   },
   "devDependencies": {
     "@types/node": "catalog:",

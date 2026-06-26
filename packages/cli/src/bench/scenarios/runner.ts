@@ -17,6 +17,8 @@ import type { SyntheticServer } from "../server/synthetic.ts";
 /** The context a scenario runner needs to execute. */
 export interface RunContext {
   readonly scenario: ResolvedScenario;
+  /** Every scenario in the resolved suite, for composite runners. */
+  readonly scenarios?: readonly ResolvedScenario[];
   readonly target: URL;
   readonly documentLoader: DocumentLoader;
   readonly contextLoader: DocumentLoader;
@@ -29,13 +31,43 @@ export interface RunContext {
   readonly rng?: Rng;
   /** Fetch implementation (overridable for tests). */
   readonly fetch?: typeof fetch;
+  /** Aborts in-flight benchmark work when the orchestrator is interrupted. */
+  readonly signal?: AbortSignal;
+  /** Host advertised for local benchmark-owned servers. */
+  readonly advertiseHost?: string;
   /**
    * Gates a resolved load destination (a discovered or explicit inbox URL)
    * before any load is sent to it, throwing or rejecting if it is not allowed.
    * The suite `target` is gated by the orchestrator; this covers destinations
    * that differ from it.  Optional so direct runner tests need not supply it.
    */
-  readonly assertDestinationAllowed?: (url: URL) => void | Promise<void>;
+  readonly assertDestinationAllowed?: (
+    url: URL,
+    scenario?: ResolvedScenario,
+  ) => void | Promise<void>;
+  /**
+   * Gates a resolved read-only destination before unauthenticated GET load is
+   * sent.  Unlike signed inbox delivery, these reads do not require a
+   * reachable synthetic actor server.
+   */
+  readonly assertReadDestinationAllowed?: (
+    url: URL,
+    scenario?: ResolvedScenario,
+  ) => void | Promise<void>;
+  /**
+   * Gates a destination for benchmark load that does not require remote
+   * dereferencing of benchmark-owned synthetic actors.
+   */
+  readonly assertActorlessDestinationAllowed?: (
+    url: URL,
+    scenario?: ResolvedScenario,
+  ) => void | Promise<void>;
+}
+
+/** Context available during runner preflight validation. */
+export interface ValidateContext {
+  /** Every scenario in the resolved suite, for composite runners. */
+  readonly scenarios?: readonly ResolvedScenario[];
 }
 
 /** A runner for one scenario type. */
@@ -46,7 +78,7 @@ export interface ScenarioRunner {
    * probe or load.  Called during preflight; throwing here surfaces as a
    * configuration error (exit 2) with the thrown message.
    */
-  validate?(scenario: ResolvedScenario): void;
+  validate?(scenario: ResolvedScenario, context?: ValidateContext): void;
 }
 
 /** Performs one HTTP send and classifies the result as a send outcome. */
@@ -105,6 +137,43 @@ export function measuredWindowMs(scenario: ResolvedScenario): number {
 export function estimateTotal(scenario: ResolvedScenario): number | undefined {
   if (scenario.load.kind !== "open") return undefined;
   return Math.ceil(scenario.load.ratePerSec * (scenario.durationMs / 1000));
+}
+
+/** Returns whether a URL is fetchable by benchmark runners without surprises. */
+export function isBareHttpUrl(url: URL): boolean {
+  return (url.protocol === "http:" || url.protocol === "https:") &&
+    url.hostname !== "" && url.username === "" && url.password === "";
+}
+
+/** Rejects URLs that are not bare http(s) URLs with a host and no credentials. */
+export function assertBareHttpUrl(
+  scenarioName: string,
+  label: string,
+  url: URL,
+): void {
+  if (isBareHttpUrl(url)) return;
+  throw new Error(
+    `Scenario "${scenarioName}": ${label} must be a bare http(s) URL with ` +
+      `a host and no credentials; got ${JSON.stringify(url.href)}.`,
+  );
+}
+
+/** Validates an inbox selector or explicit inbox URL. */
+export function validateInboxSelector(
+  scenarioName: string,
+  inbox: string | undefined,
+): void {
+  if (inbox == null || inbox === "shared" || inbox === "personal") return;
+  let url: URL;
+  try {
+    url = new URL(inbox);
+  } catch {
+    throw new Error(
+      `Scenario "${scenarioName}": inbox must be "shared", "personal", or an ` +
+        `http(s) URL; got ${JSON.stringify(inbox)}.`,
+    );
+  }
+  assertBareHttpUrl(scenarioName, "inbox URL", url);
 }
 
 /**

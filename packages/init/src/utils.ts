@@ -85,7 +85,31 @@ export const replaceAll = (
 (text: string): string => text.replaceAll(pattern, replacement as string);
 
 /** Serializes a value to a pretty-printed JSON string with a trailing newline. */
-export const formatJson = (obj: unknown) => JSON.stringify(obj, null, 2) + "\n";
+export const formatJson = (obj: unknown) =>
+  JSON.stringify(obj, createJsonDepthGuard(), 2) + "\n";
+
+const MAX_JSON_FORMAT_DEPTH = 100;
+
+const createJsonDepthGuard = (): (
+  this: unknown,
+  key: string,
+  value: unknown,
+) => unknown => {
+  const depths = new WeakMap<object, number>();
+  return function (_key, value) {
+    if (value !== null && typeof value === "object") {
+      const parentDepth = this !== null && typeof this === "object"
+        ? depths.get(this) ?? 0
+        : 0;
+      const depth = parentDepth + 1;
+      if (depth > MAX_JSON_FORMAT_DEPTH) {
+        throw new RangeError("Maximum depth exceeded while formatting JSON.");
+      }
+      depths.set(value, depth);
+    }
+    return value;
+  };
+};
 
 /** Checks whether a string or array-like value has a length greater than zero. */
 export const notEmpty = <T extends string | { length: number }>(s: T) =>

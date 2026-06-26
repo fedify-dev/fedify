@@ -2,7 +2,7 @@ import { fedifyWith } from "@fedify/next";
 import federation from "./federation";
 
 export default fedifyWith(federation)(
-/*
+  /*
   function (request: Request) {
     // If you need to handle other requests besides federation
     // requests in middleware, you can do it here.
@@ -11,7 +11,7 @@ export default fedifyWith(federation)(
     return NextResponse.next();
   },
 */
-)
+);
 
 // This config needs because middleware process only requests with the
 // "Accept" header matching the federation accept regex.

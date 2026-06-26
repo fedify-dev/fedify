@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -9,6 +9,7 @@ import {
   assertNoGeneratedFileConflicts,
   GeneratedFileConflictError,
   getJsonsCacheKey,
+  patchFiles,
 } from "./patch.ts";
 
 test("assertNoGeneratedFileConflicts allows unrelated files", async () => {
@@ -40,6 +41,23 @@ test("assertNoGeneratedFileConflicts rejects existing generated files", async ()
   });
 });
 
+test("assertNoGeneratedFileConflicts rejects existing cleanup files", async () => {
+  await withTempDir(async (dir) => {
+    await mkdir(join(dir, "server", "routes"), { recursive: true });
+    await writeFile(join(dir, "server", "routes", "index.ts"), "");
+
+    await assert.rejects(
+      () => assertNoGeneratedFileConflicts(createInitData(dir, true)),
+      (error) => {
+        assert.ok(error instanceof GeneratedFileConflictError);
+        assert.deepEqual(error.conflicts, ["server/routes/index.ts"]);
+        assert.match(error.message, /server\/routes\/index\.ts/);
+        return true;
+      },
+    );
+  });
+});
+
 test("assertNoGeneratedFileConflicts skips checks without allowNonEmpty", async () => {
   await withTempDir(async (dir) => {
     await writeFile(join(dir, "package.json"), "{}\n");
@@ -59,6 +77,19 @@ test("getJsonsCacheKey stays stable across pipeline clones", () => {
   };
 
   assert.equal(getJsonsCacheKey(cloned), getJsonsCacheKey(data));
+});
+
+test("patchFiles merges JSONC files containing only comments", async () => {
+  await withTempDir(async (dir) => {
+    await writeFile(join(dir, "package.json"), "// generated scaffold\n");
+
+    await patchFiles(createInitData(dir, false));
+
+    const packageJson = JSON.parse(
+      await readFile(join(dir, "package.json"), "utf8"),
+    ) as { type?: string };
+    assert.equal(packageJson.type, "module");
+  });
 });
 
 function createInitData(
@@ -86,6 +117,7 @@ function createInitData(
       files: {
         "src/main.ts": "",
       },
+      cleanupFiles: ["server/routes/index.ts"],
     },
     kv: {
       label: "In-Memory",

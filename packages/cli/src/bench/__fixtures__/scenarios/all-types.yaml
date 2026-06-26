@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://json-schema.fedify.dev/bench/scenario-v1.json
-# Exercises every scenario type the format can express, even though only
-# `inbox` and `webfinger` have runners in this version.
+# Exercises every scenario type the format can express; `collection` is still
+# reserved but not executable in this version.
 version: 1
 target: http://localhost:3000
 defaults:

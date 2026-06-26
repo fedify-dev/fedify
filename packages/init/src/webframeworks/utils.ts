@@ -3,6 +3,16 @@ import { commandLine, message } from "@optique/core/message";
 import { getDevCommand } from "../lib.ts";
 import type { PackageManager } from "../types.ts";
 
+export const nodeBunDevToolTasks = {
+  format: "oxfmt",
+  "format:check": "oxfmt --check",
+  lint: "oxlint .",
+} as const satisfies Record<string, string>;
+
+export const getNodeBunDevToolTasks = (
+  pm: PackageManager,
+): Record<string, string> => pm === "deno" ? {} : nodeBunDevToolTasks;
+
 /**
  * Generates the post-initialization instruction message that shows
  * the user how to start the dev server and look up an actor.

@@ -210,7 +210,8 @@ the following structure:
      -  *federation.ts* — ActivityPub server
      -  *index.ts* — Entry point
      -  *logging.ts* — Logging configuration
- -  *biome.json* — Formatter and linter settings
+ -  *.oxfmtrc.json* — Formatter settings
+ -  *.oxlintrc.json* — Linter settings
  -  *package.json* — Package metadata
  -  *tsconfig.json* — TypeScript settings
 
@@ -297,11 +298,11 @@ linters.
 After [installing Visual Studio Code], open the working directory by selecting
 *File* → *Open Folder…* from the menu.
 
-If you see a popup in the bottom right asking <q>Do you want to install
-the recommended ‘Biome’ extension from biomejs for this repository?</q>,
-click the *Install* button to install the extension. Installing this extension
-will automatically format your TypeScript code, so you don't have to wrestle
-with code styles like indentation or spacing when writing TypeScript code.
+If you see a popup in the bottom right asking you to install the recommended
+Oxc extension for this repository, click the *Install* button to install the
+extension. Installing this extension will automatically format your TypeScript
+code, so you don't have to wrestle with code styles like indentation or
+spacing when writing TypeScript code.
 
 > [!TIP]
 > If you're a loyal Emacs or Vim user, we won't discourage you from using your
@@ -2417,7 +2418,7 @@ app.get("/users/:username", async (c) => {
   // ... omitted ...
   if (user == null) return c.notFound();
 
-  // biome-ignore lint/style/noNonNullAssertion: Always returns a single record
+  // oxlint-disable-next-line typescript/no-non-null-assertion -- Always returns a single record
   const { followers } = db
     .prepare<unknown[], { followers: number }>(
       `
@@ -3025,7 +3026,7 @@ export const PostView: FC<PostViewProps> = ({ post }) => (
     <header>
       <ActorLink actor={post} />
     </header>
-    {/* biome-ignore lint/security/noDangerouslySetInnerHtml: */}
+    {/* oxlint-disable-next-line react/no-danger -- The post content is sanitized before storage */}
     <div dangerouslySetInnerHTML={{ __html: post.content }} />
     <footer>
       <a href={post.url ?? post.uri}>
@@ -3090,7 +3091,7 @@ app.get("/users/:username/posts/:id", (c) => {
     .get(c.req.param("username"), c.req.param("id"));
   if (post == null) return c.notFound();
 
-  // biome-ignore lint/style/noNonNullAssertion: Always returns a single record
+  // oxlint-disable-next-line typescript/no-non-null-assertion -- Always returns a single record
   const { followers } = db
     .prepare<unknown[], { followers: number }>(
       `
@@ -3494,7 +3495,7 @@ export const Home: FC<HomeProps> = ({ user }) => (
       {/* ... omitted ... */}
     </hgroup>
     <form method="post" action={`/users/${user.username}/following`}>
-      {/* biome-ignore lint/a11y/noRedundantRoles: PicoCSS requires role=group */}
+      {/* oxlint-disable-next-line jsx-a11y/no-redundant-roles -- PicoCSS requires role=group */}
       <fieldset role="group">
         <input
           type="text"
@@ -4026,7 +4027,7 @@ app.get("/users/:username", async (c) => {
   // ... omitted ...
   if (user == null) return c.notFound();
 
-  // biome-ignore lint/style/noNonNullAssertion: Always returns a single record
+  // oxlint-disable-next-line typescript/no-non-null-assertion -- Always returns a single record
   const { following } = db
     .prepare<unknown[], { following: number }>(
       `
@@ -4081,7 +4082,7 @@ app.get("/users/:username/posts/:id", (c) => {
   // ... omitted ...
   if (post == null) return c.notFound();
 
-  // biome-ignore lint/style/noNonNullAssertion: Always returns a single record
+  // oxlint-disable-next-line typescript/no-non-null-assertion -- Always returns a single record
   const { following, followers } = db
     .prepare<unknown[], { following: number; followers: number }>(
       `

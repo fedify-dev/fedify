@@ -1,13 +1,15 @@
 {
   "name": "@fedify/lint",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "license": "MIT",
   "exports": {
-    ".": "./src/mod.ts"
+    ".": "./src/mod.ts",
+    "./oxlint": "./src/oxlint.ts"
   },
   "imports": {
     "eslint": "npm:eslint@^9.0.0",
-    "estree": "npm:@types/estree@^1.0.8"
+    "estree": "npm:@types/estree@^1.0.8",
+    "oxlint": "npm:oxlint@^1.66.0"
   },
   "publish": {
     "exclude": [
@@ -16,6 +18,6 @@
     ]
   },
   "tasks": {
-    "test": "deno test --allow-env"
+    "test": "deno test --allow-env --allow-read --allow-run --allow-sys --allow-write"
   }
 }

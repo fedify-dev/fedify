@@ -1,0 +1,68 @@
+{
+  "name": "@fedify/backfill",
+  "version": "2.4.0",
+  "description": "ActivityPub backfill support for Fedify",
+  "keywords": [
+    "Fedify",
+    "ActivityPub",
+    "Fediverse",
+    "Backfill"
+  ],
+  "author": {
+    "name": "Jiwon Kwon",
+    "email": "work@kwonjiwon.org"
+  },
+  "homepage": "https://fedify.dev/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fedify-dev/fedify.git",
+    "directory": "packages/backfill"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/fedify-dev/fedify/issues"
+  },
+  "funding": [
+    "https://opencollective.com/fedify",
+    "https://github.com/sponsors/dahlia"
+  ],
+  "type": "module",
+  "main": "./dist/mod.cjs",
+  "module": "./dist/mod.js",
+  "types": "./dist/mod.d.ts",
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/mod.d.ts",
+        "require": "./dist/mod.d.cts",
+        "default": "./dist/mod.d.ts"
+      },
+      "import": "./dist/mod.js",
+      "require": "./dist/mod.cjs",
+      "default": "./dist/mod.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "package.json",
+    "README.md"
+  ],
+  "dependencies": {
+    "@fedify/vocab": "workspace:*"
+  },
+  "devDependencies": {
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  },
+  "scripts": {
+    "build:self": "tsdown",
+    "build": "pnpm --filter @fedify/backfill... run build:self",
+    "prepack": "pnpm build",
+    "prepublish": "pnpm build",
+    "pretest": "pnpm build",
+    "test": "cd dist/ && node --test",
+    "pretest:bun": "pnpm build",
+    "test:bun": "cd dist/ && bun test --timeout 60000"
+  }
+}

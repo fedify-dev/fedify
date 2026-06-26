@@ -7,9 +7,9 @@ const server = Bun.serve({
   fetch: behindProxy((req) =>
     new URL(req.url).pathname === "/"
       ? new Response("Hello, this is a Fedify server!", {
-        headers: { "Content-Type": "text/plain" },
-      })
-      : federation.fetch(req, { contextData: undefined })
+          headers: { "Content-Type": "text/plain" },
+        })
+      : federation.fetch(req, { contextData: undefined }),
   ),
 });
 

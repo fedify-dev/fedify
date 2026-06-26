@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: Fedify dashboards
+    orgId: 1
+    folder: Fedify
+    type: file
+    disableDeletion: false
+    editable: true
+    updateIntervalSeconds: 10
+    options:
+      path: /var/lib/grafana/dashboards

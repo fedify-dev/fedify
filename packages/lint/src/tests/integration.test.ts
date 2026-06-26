@@ -12,6 +12,11 @@ import { Linter } from "eslint";
 import { equal, ok } from "node:assert/strict";
 import { test } from "node:test";
 import { plugin as eslintPlugin } from "../index.ts";
+import {
+  oxlintUnavailable,
+  runOxlint,
+  warnOxlintSkipped,
+} from "../lib/oxlint.ts";
 import { replace } from "../lib/utils.ts";
 import denoPlugin from "../mod.ts";
 
@@ -24,9 +29,16 @@ type Diagnostic = {
 
 /**
  * Run all lint rules on the given code and return diagnostics.
+ *
+ * The in-process linter for the current runtime (Deno Lint or ESLint) always
+ * runs.  When the built oxlint loader and the oxlint binary are available,
+ * the same code additionally goes through oxlint, so every rule is exercised
+ * end-to-end through the oxlint JS plugin adapter as well.
  */
-const lintTest = (code: string): Diagnostic[] =>
-  "Deno" in globalThis ? testDenoLint(code) : testEslint(code);
+const lintTest = (code: string): Diagnostic[] => [
+  ...("Deno" in globalThis ? testDenoLint(code) : testEslint(code)),
+  ...(oxlintUnavailable ? [] : testOxlint(code)),
+];
 
 const testDenoLint = (code: string) =>
   Deno.lint.runPlugin(
@@ -55,6 +67,27 @@ function testEslint(code: string) {
   return results.map((msg) => ({
     id: msg.ruleId ?? "unknown",
     message: msg.message,
+  }));
+}
+
+// oxlint is a Rust binary, so it is exercised as a subprocess against a real
+// config file — the setup lives in ../lib/oxlint.ts and is shared with
+// oxlint.test.ts.  When the built loader or the binary is missing, the oxlint
+// lane is skipped with a warning.
+if (oxlintUnavailable) warnOxlintSkipped();
+
+function testOxlint(code: string): Diagnostic[] {
+  const { diagnostics } = runOxlint(code, {
+    // Turn off oxlint's built-in rules so that only the diagnostics of this
+    // plugin surface.
+    categories: { correctness: "off" },
+    rules: eslintPlugin.configs.recommended.rules,
+  });
+  return diagnostics.map((d) => ({
+    // Normalize oxlint's "@fedify/lint(rule-name)" code into the same
+    // "<plugin>/rule-name" shape the other lanes report.
+    id: (d.code ?? "").replace(/^@fedify\/lint\((.+)\)$/, `${PLUGIN_NAME}/$1`),
+    message: d.message ?? "",
   }));
 }
 

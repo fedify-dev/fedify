@@ -5,14 +5,14 @@
  */
 
 import { type Schema, Validator } from "@cfworker/json-schema";
-import { scenarioSchemaV1 } from "./schema.ts";
+import { scenarioSchemaV2 } from "./schema.ts";
 import { type RawValidationError, SuiteValidationError } from "./errors.ts";
 import type { Suite } from "./types.ts";
 
 let validator: Validator | undefined;
 
 function getValidator(): Validator {
-  validator ??= new Validator(scenarioSchemaV1 as unknown as Schema, "2020-12");
+  validator ??= new Validator(scenarioSchemaV2 as unknown as Schema, "2020-12");
   return validator;
 }
 

@@ -3,7 +3,7 @@ import deps from "../json/deps.json" with { type: "json" };
 import { readTemplate } from "../lib.ts";
 import type { WebFrameworkDescription } from "../types.ts";
 import { defaultDenoDependencies, defaultDevDependencies } from "./const.ts";
-import { getInstruction, pmToRt } from "./utils.ts";
+import { getInstruction, nodeBunDevToolTasks, pmToRt } from "./utils.ts";
 
 const bareBonesDescription: WebFrameworkDescription = {
   label: "Bare-bones",
@@ -21,9 +21,6 @@ const bareBonesDescription: WebFrameworkDescription = {
     loggingFile: "src/logging.ts",
     files: {
       "src/main.ts": await readTemplate(`bare-bones/main/${pmToRt(pm)}.ts`),
-      ...(pm !== "deno" && {
-        "eslint.config.ts": await readTemplate("defaults/eslint.config.ts"),
-      }),
     },
     compilerOptions: (pm === "deno"
       ? {
@@ -70,11 +67,11 @@ const TASKS = {
   bun: {
     dev: "bun run --hot ./src/main.ts",
     prod: "bun run ./src/main.ts",
-    lint: "eslint .",
+    ...nodeBunDevToolTasks,
   },
   node: {
     dev: "dotenvx run -- tsx watch ./src/main.ts",
     prod: "dotenvx run -- node --import tsx ./src/main.ts",
-    lint: "eslint .",
+    ...nodeBunDevToolTasks,
   },
 };

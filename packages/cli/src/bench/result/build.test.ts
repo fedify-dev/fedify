@@ -9,7 +9,8 @@ import {
   detectEnvironment,
   type ScenarioMeasurement,
 } from "./build.ts";
-import { reportSchemaV1 } from "./schema.ts";
+import { LogLinearHistogram } from "../metrics/histogram.ts";
+import { reportSchemaV3 } from "./schema.ts";
 
 function resolvedInbox() {
   return normalizeSuite({
@@ -50,6 +51,7 @@ test("buildScenarioResult - summarizes load and evaluates expect", () => {
   assert.strictEqual(result.expectations.length, 2);
   assert.ok(result.expectations.every((e) => e.pass));
   assert.strictEqual(result.passed, true);
+  assert.strictEqual(result.runCount, 1);
 });
 
 test("buildScenarioResult - a run that measured nothing never passes", () => {
@@ -60,6 +62,155 @@ test("buildScenarioResult - a run that measured nothing never passes", () => {
     requests: { total: 0, ok: 0, failed: 0, successRate: 1 },
   });
   assert.strictEqual(result.passed, false);
+});
+
+test("buildScenarioResult - preserves delivery throughput", () => {
+  const result = buildScenarioResult(resolvedInbox(), {
+    ...measurement(),
+    deliveryThroughputPerSec: 42,
+  });
+  assert.strictEqual(result.deliveryThroughputPerSec, 42);
+});
+
+test("buildScenarioResult - aggregates repeated runs for CI gates", () => {
+  const scenario = normalizeSuite({
+    version: 1,
+    target: "http://localhost:3000",
+    defaults: {
+      load: { concurrency: 50 },
+      duration: "60s",
+      warmup: "10s",
+      runs: 3,
+    },
+    scenarios: [{
+      name: "inbox-shared",
+      type: "inbox",
+      recipient: "acct:a@x",
+      expect: {
+        successRate: ">= 95%",
+        "latency.p95": "< 250ms",
+        throughputPerSec: ">= 100/s",
+      },
+    }],
+  }).scenarios[0];
+  const result = buildScenarioResult(scenario, [
+    {
+      ...measurement(),
+      requests: { total: 10, ok: 10, failed: 0, successRate: 1 },
+      throughputPerSec: 90,
+      client: {
+        latencyMs: { p50: 10, p95: 100, p99: 110, mean: 20, max: 120 },
+      },
+    },
+    {
+      ...measurement(),
+      requests: { total: 10, ok: 9, failed: 1, successRate: 0.9 },
+      throughputPerSec: 100,
+      client: {
+        latencyMs: { p50: 20, p95: 200, p99: 210, mean: 30, max: 220 },
+      },
+    },
+    {
+      ...measurement(),
+      requests: { total: 10, ok: 10, failed: 0, successRate: 1 },
+      throughputPerSec: 200,
+      client: {
+        latencyMs: { p50: 30, p95: 300, p99: 310, mean: 40, max: 320 },
+      },
+    },
+  ]);
+  assert.strictEqual(result.runCount, 3);
+  assert.strictEqual(result.runs?.length, 3);
+  assert.strictEqual(result.client.latencyMs.p95, 200);
+  assert.strictEqual(result.throughputPerSec, 100);
+  assert.strictEqual(result.requests.successRate, 0.9);
+  assert.strictEqual(result.expectations[0].actual, 0.9);
+  assert.strictEqual(result.expectations[1].actual, 200);
+  assert.strictEqual(result.expectations[2].actual, 100);
+  assert.strictEqual(result.passed, false);
+});
+
+test("buildScenarioResult - fails repeated server gates with missing stats", () => {
+  const scenario = normalizeSuite({
+    version: 1,
+    target: "http://localhost:3000",
+    defaults: {
+      load: { concurrency: 50 },
+      duration: "60s",
+      warmup: "10s",
+      runs: 3,
+    },
+    scenarios: [{
+      name: "inbox-shared",
+      type: "inbox",
+      recipient: "acct:a@x",
+      expect: { "signatureVerification.p95": "< 20ms" },
+    }],
+  }).scenarios[0];
+  const result = buildScenarioResult(scenario, [
+    measurement(),
+    { ...measurement(), server: null },
+    measurement(),
+  ]);
+  assert.strictEqual(result.server, null);
+  assert.strictEqual(result.expectations[0].actual, null);
+  assert.strictEqual(result.expectations[0].pass, false);
+  assert.strictEqual(result.passed, false);
+});
+
+test("buildScenarioResult - keeps present by-standard repeated metrics", () => {
+  const first = measurement();
+  const missingStandard = measurement();
+  const third = measurement();
+  const result = buildScenarioResult(resolvedInbox(), [
+    {
+      ...first,
+      server: {
+        signatureVerificationMs: {
+          overall: first.server!.signatureVerificationMs!.overall,
+          byStandard: {
+            "rfc9421": { p50: 1, p95: 10, p99: 100 },
+          },
+        },
+      },
+    },
+    {
+      ...missingStandard,
+      server: {
+        signatureVerificationMs: {
+          overall: missingStandard.server!.signatureVerificationMs!.overall,
+        },
+      },
+    },
+    {
+      ...third,
+      server: {
+        signatureVerificationMs: {
+          overall: third.server!.signatureVerificationMs!.overall,
+          byStandard: {
+            "rfc9421": { p50: 3, p95: 30, p99: 300 },
+          },
+        },
+      },
+    },
+  ]);
+  assert.deepEqual(
+    result.server?.signatureVerificationMs?.byStandard?.["rfc9421"],
+    { p50: 2, p95: 20, p99: 200 },
+  );
+});
+
+test("buildScenarioResult - omits aggregate repeated-run histogram", () => {
+  const first = new LogLinearHistogram();
+  first.record(10);
+  const second = new LogLinearHistogram();
+  second.record(100);
+  const result = buildScenarioResult(resolvedInbox(), [
+    { ...measurement(), histogram: first.toJSON() },
+    { ...measurement(), histogram: second.toJSON() },
+  ]);
+  assert.strictEqual(result.histogram, undefined);
+  assert.ok(result.runs?.every((run) => run.histogram != null));
 });
 
 test("buildReport - gate passes only when all scenarios pass", () => {
@@ -93,7 +244,7 @@ test("buildReport - output validates against the report schema", () => {
     suite: { name: "suite", configHash: configHash({ a: 1 }) },
   });
   const validator = new Validator(
-    reportSchemaV1 as unknown as Schema,
+    reportSchemaV3 as unknown as Schema,
     "2020-12",
   );
   const result = validator.validate(JSON.parse(JSON.stringify(report)));
