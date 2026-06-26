@@ -351,3 +351,54 @@ test("fetchKey()", async () => {
     },
   );
 });
+
+test("fetchKey() returns null for a malformed actor publicKey", async () => {
+  const keyId = "https://example.com/malformed-public-key#main-key";
+  const cache: Record<string, CryptographicKey | Multikey | null> = {};
+  const options: FetchKeyOptions = {
+    async documentLoader(resource) {
+      if (resource === keyId) {
+        return {
+          contextUrl: null,
+          documentUrl: resource,
+          document: {
+            "@context": [
+              "https://www.w3.org/ns/activitystreams",
+              "https://w3id.org/security/v1",
+            ],
+            id: "https://example.com/malformed-public-key",
+            type: "Person",
+            publicKey: {
+              "@context": "https://w3id.org/security/v1",
+              id: keyId,
+              type: "Key",
+              owner: "https://example.com/malformed-public-key",
+              publicKeyPem: "not a public key",
+            },
+          },
+        };
+      }
+      return await mockDocumentLoader(resource);
+    },
+    contextLoader: mockDocumentLoader,
+    keyCache: {
+      get(keyId) {
+        return Promise.resolve(cache[keyId.href]);
+      },
+      set(keyId, key) {
+        cache[keyId.href] = key;
+        return Promise.resolve();
+      },
+    } satisfies KeyCache,
+  };
+
+  assertEquals(await fetchKey(keyId, CryptographicKey, options), {
+    key: null,
+    cached: false,
+  });
+  assertEquals(cache, { [keyId]: null });
+  assertEquals(await fetchKey(keyId, CryptographicKey, options), {
+    key: null,
+    cached: true,
+  });
+});

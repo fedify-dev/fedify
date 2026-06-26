@@ -16,7 +16,13 @@ To be released.
     for JSON-LD processing failures, while still surfacing key, configuration,
     and programming errors from signing.  [[#824], [#842] by Lee ByeongJun]
 
+ -  Fixed inbox verification crashing when a remote actor document contains a
+    malformed `publicKey` entry.  Fedify now treats the malformed key as a
+    failed key lookup so HTTP signature verification fails normally instead of
+    returning a server error.  [[#825] by Lee ByeongJun]
+
 [#824]: https://github.com/fedify-dev/fedify/issues/824
+[#825]: https://github.com/fedify-dev/fedify/issues/825
 [#842]: https://github.com/fedify-dev/fedify/pull/842
 
 

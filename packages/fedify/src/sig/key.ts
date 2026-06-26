@@ -325,23 +325,34 @@ async function fetchKeyInternal<T extends CryptographicKey | Multikey>(
   let key: T | null = null;
   if (object instanceof cls) key = object;
   else if (isActor(object)) {
+    // Treat malformed remote actor keys as missing keys.
     // @ts-ignore: cls is either CryptographicKey or Multikey
     const keys = cls === CryptographicKey
-      ? object.getPublicKeys({ documentLoader, contextLoader, tracerProvider })
+      ? object.getPublicKeys({
+        documentLoader,
+        contextLoader,
+        suppressError: true,
+        tracerProvider,
+      })
       : object.getAssertionMethods({
         documentLoader,
         contextLoader,
+        suppressError: true,
         tracerProvider,
       });
     let length = 0;
     let lastKey: T | null = null;
-    for await (const k of keys) {
-      length++;
-      lastKey = k as T;
-      if (k.id?.href === keyId) {
-        key = k as T;
-        break;
+    try {
+      for await (const k of keys) {
+        length++;
+        lastKey = k as T;
+        if (k.id?.href === keyId) {
+          key = k as T;
+          break;
+        }
       }
+    } catch (e) {
+      if (!(e instanceof TypeError)) throw e;
     }
     const keyIdUrl = new URL(keyId);
     if (key == null && keyIdUrl.hash === "" && length === 1) {
