@@ -353,11 +353,12 @@ test("fetchKey()", async () => {
 });
 
 test("fetchKey() returns null for a malformed actor publicKey", async () => {
+  const actorId = "https://example.com/malformed-public-key";
   const keyId = "https://example.com/malformed-public-key#main-key";
   const cache: Record<string, CryptographicKey | Multikey | null> = {};
   const options: FetchKeyOptions = {
     async documentLoader(resource) {
-      if (resource === keyId) {
+      if (resource === actorId) {
         return {
           contextUrl: null,
           documentUrl: resource,
@@ -366,15 +367,22 @@ test("fetchKey() returns null for a malformed actor publicKey", async () => {
               "https://www.w3.org/ns/activitystreams",
               "https://w3id.org/security/v1",
             ],
-            id: "https://example.com/malformed-public-key",
+            id: actorId,
             type: "Person",
-            publicKey: {
-              "@context": "https://w3id.org/security/v1",
-              id: keyId,
-              type: "Key",
-              owner: "https://example.com/malformed-public-key",
-              publicKeyPem: "not a public key",
-            },
+            publicKey: keyId,
+          },
+        };
+      }
+      if (resource === keyId) {
+        return {
+          contextUrl: null,
+          documentUrl: resource,
+          document: {
+            "@context": "https://w3id.org/security/v1",
+            id: keyId,
+            type: "Key",
+            owner: actorId,
+            publicKeyPem: "not a public key",
           },
         };
       }
@@ -392,12 +400,12 @@ test("fetchKey() returns null for a malformed actor publicKey", async () => {
     } satisfies KeyCache,
   };
 
-  assertEquals(await fetchKey(keyId, CryptographicKey, options), {
+  assertEquals(await fetchKey(actorId, CryptographicKey, options), {
     key: null,
     cached: false,
   });
-  assertEquals(cache, { [keyId]: null });
-  assertEquals(await fetchKey(keyId, CryptographicKey, options), {
+  assertEquals(cache, { [actorId]: null });
+  assertEquals(await fetchKey(actorId, CryptographicKey, options), {
     key: null,
     cached: true,
   });
