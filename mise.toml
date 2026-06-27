@@ -53,7 +53,14 @@ run = "deno task -f @fedify/vocab compile"
 [deps.deno-cache]
 auto = true
 depends = ["codegen"]
-sources = ["deno.lock", "deno.json", "packages/*/deno.json"]
+sources = [
+  "deno.lock",
+  "deno.json",
+  "packages/*/deno.json",
+  "examples/*/deno.json",
+  "examples/*/*/deno.json",
+  "test/smoke/harness/deno.json",
+]
 outputs = ["node_modules/.cache/fedify-deno-precache.stamp"]
 run = "deno run --allow-read --allow-env --allow-run --allow-write scripts/install.ts"
 
