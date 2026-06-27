@@ -143,19 +143,21 @@ async function codegen() {
   const realPath = schemaDir.join("vocab.ts");
   const lockPath = packageDir.join(".vocab-codegen.lock");
 
-  // The generated vocab.ts depends not only on the YAML schemas but on the
-  // generator itself: @fedify/vocab-tools and this codegen script.
-  const generatorMtime = Math.max(
-    await getLatestMtimeUnder(
-      packageDir.parent()!.join("vocab-tools", "src"),
-      [".ts", ".yaml"],
-    ),
-    await getLatestMtimeUnder(scriptsDir, [".ts"]),
-  );
-
   // Acquire lock to prevent concurrent codegen
   const lock = await acquireLock(lockPath);
   try {
+    // The generated vocab.ts depends not only on the YAML schemas but on the
+    // generator itself: @fedify/vocab-tools and this codegen script.  Sample
+    // its mtime inside the lock so that a generator edit made while we were
+    // waiting for the lock is not missed by the freshness check below.
+    const generatorMtime = Math.max(
+      await getLatestMtimeUnder(
+        packageDir.parent()!.join("vocab-tools", "src"),
+        [".ts", ".yaml"],
+      ),
+      await getLatestMtimeUnder(scriptsDir, [".ts"]),
+    );
+
     // Check if regeneration is needed (after acquiring lock)
     if (await isUpToDate(schemaDir, realPath, generatorMtime)) {
       $.log("vocab.ts is up to date, skipping codegen");
