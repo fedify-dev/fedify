@@ -57,15 +57,31 @@ sources = ["deno.lock", "deno.json", "packages/*/deno.json"]
 outputs = ["node_modules/.cache/fedify-deno-precache.stamp"]
 run = "deno run --allow-read --allow-env --allow-run --allow-write scripts/install.ts"
 
-# Install Node.js dependencies with pnpm (built-in provider).  pnpm's root
-# `prepare` lifecycle script builds all packages, so this also produces the
-# initial dist/ output.  Depend on `deno-cache` (which depends on `codegen`) so
-# the providers run serially (codegen, then the Deno pre-cache, then pnpm
-# install) instead of pnpm racing codegen over node_modules under Deno's
-# `nodeModulesDir: auto`.
-[deps.pnpm]
+# Install Node.js dependencies with pnpm.  pnpm's root `prepare` lifecycle
+# script builds all packages, so this also produces the initial dist/ output.
+# Depend on `deno-cache` (which depends on `codegen`) so the providers run
+# serially (codegen, then the Deno pre-cache, then pnpm install) instead of pnpm
+# racing codegen over node_modules under Deno's `nodeModulesDir: auto`.
+#
+# This is a custom provider (not named `pnpm`, which is a reserved built-in
+# provider whose freshness only watches the root package.json and lockfile) so
+# its freshness tracks every workspace manifest.  Otherwise a change to a
+# `packages/*/package.json` or to `pnpm-workspace.yaml` (e.g. before the lockfile
+# is regenerated) would be missed and `mise deps` would wrongly skip the install.
+[deps.pnpm-install]
 auto = true
 depends = ["deno-cache"]
+sources = [
+  "package.json",
+  "pnpm-workspace.yaml",
+  "pnpm-lock.yaml",
+  "packages/*/package.json",
+  "docs/package.json",
+  "examples/*/package.json",
+  "examples/*/*/package.json",
+]
+outputs = ["node_modules/.modules.yaml"]
+run = "pnpm install"
 
 # Hooks <https://mise.jdx.dev/hooks.html>
 #
