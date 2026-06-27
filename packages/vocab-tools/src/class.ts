@@ -138,6 +138,17 @@ export async function* generateClasses(
     isTemporalDuration,
     isTemporalInstant,
 } from "@fedify/vocab-runtime/temporal";\n`;
+  yield `
+function isValidLanguageTag(language: string): boolean {
+  try {
+    new Intl.Locale(language);
+    return true;
+  } catch (error) {
+    if (error instanceof RangeError) return false;
+    throw error;
+  }
+}
+`;
   yield "\n\n";
   const sorted = sortTopologically(types);
   for (const typeUri of sorted) {

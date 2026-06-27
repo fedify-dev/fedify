@@ -21,6 +21,16 @@ import {
     isTemporalInstant,
 } from \\"@fedify/vocab-runtime/temporal\\";
 
+function isValidLanguageTag(language: string): boolean {
+  try {
+    new Intl.Locale(language);
+    return true;
+  } catch (error) {
+    if (error instanceof RangeError) return false;
+    throw error;
+  }
+}
+
 
 /** Describes an object of any kind. The Object type serves as the base type for
  * most of the other kinds of objects defined in the Activity Vocabulary,
@@ -9536,7 +9546,8 @@ get urls(): ((URL | Link))[] {
       typeof v === \\"object\\" && \\"@value\\" in v
         && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : typeof v === \\"object\\" && \\"@language\\" in v && \\"@value\\" in v
         && typeof v[\\"@language\\"] === \\"string\\"
-        && typeof v[\\"@value\\"] === \\"string\\" ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
+        && typeof v[\\"@value\\"] === \\"string\\"
+        && isValidLanguageTag(v[\\"@language\\"]) ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
       ;
       if (typeof decoded === \\"undefined\\") continue;
       _4HuuRSdSrXq8Jj2J9gcdYfoCzeuz_content.push(decoded);
@@ -9603,7 +9614,8 @@ get urls(): ((URL | Link))[] {
       typeof v === \\"object\\" && \\"@value\\" in v
         && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : typeof v === \\"object\\" && \\"@language\\" in v && \\"@value\\" in v
         && typeof v[\\"@language\\"] === \\"string\\"
-        && typeof v[\\"@value\\"] === \\"string\\" ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
+        && typeof v[\\"@value\\"] === \\"string\\"
+        && isValidLanguageTag(v[\\"@language\\"]) ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
       ;
       if (typeof decoded === \\"undefined\\") continue;
       _4ZHbBuK7PrsvGgrjM8wgc6KMWjav_name.push(decoded);
@@ -10036,7 +10048,8 @@ get urls(): ((URL | Link))[] {
       typeof v === \\"object\\" && \\"@value\\" in v
         && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : typeof v === \\"object\\" && \\"@language\\" in v && \\"@value\\" in v
         && typeof v[\\"@language\\"] === \\"string\\"
-        && typeof v[\\"@value\\"] === \\"string\\" ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
+        && typeof v[\\"@value\\"] === \\"string\\"
+        && isValidLanguageTag(v[\\"@language\\"]) ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
       ;
       if (typeof decoded === \\"undefined\\") continue;
       _4LqirZspQbFWWQEbFcXAxm7tTDN1_summary.push(decoded);
@@ -16121,7 +16134,8 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
       typeof v === \\"object\\" && \\"@value\\" in v
         && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : typeof v === \\"object\\" && \\"@language\\" in v && \\"@value\\" in v
         && typeof v[\\"@language\\"] === \\"string\\"
-        && typeof v[\\"@value\\"] === \\"string\\" ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
+        && typeof v[\\"@value\\"] === \\"string\\"
+        && isValidLanguageTag(v[\\"@language\\"]) ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
       ;
       if (typeof decoded === \\"undefined\\") continue;
       _4ZHbBuK7PrsvGgrjM8wgc6KMWjav_name.push(decoded);
@@ -16145,7 +16159,8 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
       typeof v === \\"object\\" && \\"@value\\" in v
         && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : typeof v === \\"object\\" && \\"@language\\" in v && \\"@value\\" in v
         && typeof v[\\"@language\\"] === \\"string\\"
-        && typeof v[\\"@value\\"] === \\"string\\" ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
+        && typeof v[\\"@value\\"] === \\"string\\"
+        && isValidLanguageTag(v[\\"@language\\"]) ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
       ;
       if (typeof decoded === \\"undefined\\") continue;
       _2cSy2magg4iZ7zLaG8U7DiJMoCkx_value.push(decoded);
@@ -26303,7 +26318,8 @@ get preferredUsernames(): ((string | LanguageString))[] {
       typeof v === \\"object\\" && \\"@value\\" in v
         && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : typeof v === \\"object\\" && \\"@language\\" in v && \\"@value\\" in v
         && typeof v[\\"@language\\"] === \\"string\\"
-        && typeof v[\\"@value\\"] === \\"string\\" ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
+        && typeof v[\\"@value\\"] === \\"string\\"
+        && isValidLanguageTag(v[\\"@language\\"]) ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
       ;
       if (typeof decoded === \\"undefined\\") continue;
       _3isuDgRAKSntq9XdbjiNxjwyPZAf_preferredUsername.push(decoded);
@@ -44538,7 +44554,8 @@ get preferredUsernames(): ((string | LanguageString))[] {
       typeof v === \\"object\\" && \\"@value\\" in v
         && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : typeof v === \\"object\\" && \\"@language\\" in v && \\"@value\\" in v
         && typeof v[\\"@language\\"] === \\"string\\"
-        && typeof v[\\"@value\\"] === \\"string\\" ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
+        && typeof v[\\"@value\\"] === \\"string\\"
+        && isValidLanguageTag(v[\\"@language\\"]) ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
       ;
       if (typeof decoded === \\"undefined\\") continue;
       _3isuDgRAKSntq9XdbjiNxjwyPZAf_preferredUsername.push(decoded);
@@ -46979,7 +46996,8 @@ get names(): ((string | LanguageString))[] {
       typeof v === \\"object\\" && \\"@value\\" in v
         && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : typeof v === \\"object\\" && \\"@language\\" in v && \\"@value\\" in v
         && typeof v[\\"@language\\"] === \\"string\\"
-        && typeof v[\\"@value\\"] === \\"string\\" ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
+        && typeof v[\\"@value\\"] === \\"string\\"
+        && isValidLanguageTag(v[\\"@language\\"]) ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
       ;
       if (typeof decoded === \\"undefined\\") continue;
       _4ZHbBuK7PrsvGgrjM8wgc6KMWjav_name.push(decoded);
@@ -58078,7 +58096,8 @@ get preferredUsernames(): ((string | LanguageString))[] {
       typeof v === \\"object\\" && \\"@value\\" in v
         && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : typeof v === \\"object\\" && \\"@language\\" in v && \\"@value\\" in v
         && typeof v[\\"@language\\"] === \\"string\\"
-        && typeof v[\\"@value\\"] === \\"string\\" ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
+        && typeof v[\\"@value\\"] === \\"string\\"
+        && isValidLanguageTag(v[\\"@language\\"]) ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
       ;
       if (typeof decoded === \\"undefined\\") continue;
       _3isuDgRAKSntq9XdbjiNxjwyPZAf_preferredUsername.push(decoded);
@@ -65005,7 +65024,8 @@ get preferredUsernames(): ((string | LanguageString))[] {
       typeof v === \\"object\\" && \\"@value\\" in v
         && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : typeof v === \\"object\\" && \\"@language\\" in v && \\"@value\\" in v
         && typeof v[\\"@language\\"] === \\"string\\"
-        && typeof v[\\"@value\\"] === \\"string\\" ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
+        && typeof v[\\"@value\\"] === \\"string\\"
+        && isValidLanguageTag(v[\\"@language\\"]) ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
       ;
       if (typeof decoded === \\"undefined\\") continue;
       _3isuDgRAKSntq9XdbjiNxjwyPZAf_preferredUsername.push(decoded);
@@ -77267,7 +77287,8 @@ get preferredUsernames(): ((string | LanguageString))[] {
       typeof v === \\"object\\" && \\"@value\\" in v
         && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : typeof v === \\"object\\" && \\"@language\\" in v && \\"@value\\" in v
         && typeof v[\\"@language\\"] === \\"string\\"
-        && typeof v[\\"@value\\"] === \\"string\\" ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
+        && typeof v[\\"@value\\"] === \\"string\\"
+        && isValidLanguageTag(v[\\"@language\\"]) ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
       ;
       if (typeof decoded === \\"undefined\\") continue;
       _3isuDgRAKSntq9XdbjiNxjwyPZAf_preferredUsername.push(decoded);
@@ -78885,7 +78906,8 @@ get contents(): ((string | LanguageString))[] {
       typeof v === \\"object\\" && \\"@value\\" in v
         && typeof v[\\"@value\\"] === \\"string\\" && !(\\"@language\\" in v) ? v[\\"@value\\"] : typeof v === \\"object\\" && \\"@language\\" in v && \\"@value\\" in v
         && typeof v[\\"@language\\"] === \\"string\\"
-        && typeof v[\\"@value\\"] === \\"string\\" ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
+        && typeof v[\\"@value\\"] === \\"string\\"
+        && isValidLanguageTag(v[\\"@language\\"]) ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
       ;
       if (typeof decoded === \\"undefined\\") continue;
       _4HuuRSdSrXq8Jj2J9gcdYfoCzeuz_content.push(decoded);

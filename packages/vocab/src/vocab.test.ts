@@ -267,6 +267,19 @@ test("Object.toJsonLd()", async () => {
   });
 });
 
+test("Note.fromJsonLd() ignores malformed language tags", async () => {
+  const note = await Note.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Note",
+    contentMap: {
+      invalid_tag: "Hello",
+      en: "Hi",
+    },
+  });
+
+  deepStrictEqual(note.contents, [new LanguageString("Hi", "en")]);
+});
+
 test("Note.toJsonLd()", async () => {
   const note = new Note({
     tags: [
