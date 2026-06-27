@@ -24,11 +24,39 @@ async function getLatestSourceMtime(schemaDir: Path): Promise<number> {
 }
 
 /**
- * Check if the generated file is up to date compared to source files.
+ * Get the latest mtime among files under a directory tree (recursively),
+ * limited to the given file extensions.  Returns 0 if the directory is absent.
+ */
+async function getLatestMtimeUnder(
+  dir: Path,
+  exts: readonly string[],
+): Promise<number> {
+  if (!(await dir.exists())) return 0;
+  let latestMtime = 0;
+  for await (const entry of Deno.readDir(dir.toString())) {
+    const child = dir.join(entry.name);
+    if (entry.isDirectory) {
+      const mtime = await getLatestMtimeUnder(child, exts);
+      if (mtime > latestMtime) latestMtime = mtime;
+    } else if (entry.isFile && exts.some((ext) => entry.name.endsWith(ext))) {
+      const fileStat = await child.stat();
+      const mtime = fileStat?.mtime?.getTime() ?? 0;
+      if (mtime > latestMtime) latestMtime = mtime;
+    }
+  }
+  return latestMtime;
+}
+
+/**
+ * Check if the generated file is up to date compared to its source files,
+ * including the generator itself (`@fedify/vocab-tools` and this codegen
+ * script): changing the generator changes the generated output, so the
+ * generated file must be at least as new as those too.
  */
 async function isUpToDate(
   schemaDir: Path,
   generatedPath: Path,
+  generatorMtime: number,
 ): Promise<boolean> {
   try {
     const [sourceMtime, generatedStat] = await Promise.all([
@@ -36,7 +64,8 @@ async function isUpToDate(
       generatedPath.stat(),
     ]);
     if (!generatedStat?.mtime) return false;
-    return generatedStat.mtime.getTime() >= sourceMtime;
+    return generatedStat.mtime.getTime() >=
+      Math.max(sourceMtime, generatorMtime);
   } catch {
     // If generated file doesn't exist, it's not up to date
     return false;
@@ -114,11 +143,21 @@ async function codegen() {
   const realPath = schemaDir.join("vocab.ts");
   const lockPath = packageDir.join(".vocab-codegen.lock");
 
+  // The generated vocab.ts depends not only on the YAML schemas but on the
+  // generator itself: @fedify/vocab-tools and this codegen script.
+  const generatorMtime = Math.max(
+    await getLatestMtimeUnder(
+      packageDir.parent()!.join("vocab-tools", "src"),
+      [".ts", ".yaml"],
+    ),
+    await getLatestMtimeUnder(scriptsDir, [".ts"]),
+  );
+
   // Acquire lock to prevent concurrent codegen
   const lock = await acquireLock(lockPath);
   try {
     // Check if regeneration is needed (after acquiring lock)
-    if (await isUpToDate(schemaDir, realPath)) {
+    if (await isUpToDate(schemaDir, realPath, generatorMtime)) {
       $.log("vocab.ts is up to date, skipping codegen");
       return;
     }
