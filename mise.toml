@@ -76,11 +76,16 @@ auto = true
 shell = "nu -c"
 run = '''
 mise deps
-if (git rev-parse --is-inside-work-tree | complete | get exit_code) == 0 {
-  let hook = (git rev-parse --git-path hooks/pre-commit | str trim)
-  if not ($hook | path exists) {
-    print "Installing Git pre-commit hook..."
-    mise generate git-pre-commit --write --task=check
+# Only touch the Git hook when git is actually available; in minimal
+# environments (e.g. some containers) git may be missing, and invoking it
+# unguarded would fail the whole postinstall hook.
+if (which git | is-not-empty) {
+  if (git rev-parse --is-inside-work-tree | complete | get exit_code) == 0 {
+    let hook = (git rev-parse --git-path hooks/pre-commit | str trim)
+    if not ($hook | path exists) {
+      print "Installing Git pre-commit hook..."
+      mise generate git-pre-commit --write --task=check
+    }
   }
 }
 '''
