@@ -208,7 +208,11 @@ for pkg in ($env.usage_packages | split row " ") {
   }
   deno fmt --check $dir
   deno lint $dir
-  deno check ...(glob $"($dir)/**/*.ts")
+  # Guard against an empty glob: `deno check` with no file arguments would
+  # fall back to type-checking the whole workspace, which is slow and not
+  # what a per-package check intends.
+  let ts_files = ((glob $"($dir)/**/*.ts") ++ (glob $"($dir)/**/*.tsx"))
+  if ($ts_files | is-not-empty) { deno check ...$ts_files }
 }
 '''
 
