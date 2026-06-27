@@ -122,8 +122,10 @@ env = { CI = "true" } # Prevent pnpm from prompting for confirmation
 # projects, and turn the build into a silent no-op.
 shell = "nu -c"
 sources = [
-  "packages/*/src/**/*.ts",
-  "packages/*/src/**/*.tsx",
+  # Everything under src/, not just *.ts(x): some packages copy non-TypeScript
+  # assets into dist (e.g. @fedify/init's templates and @fedify/fixture's JSON
+  # fixtures), and those are real build inputs too.
+  "packages/*/src/**/*",
   "packages/*/tsdown.config.ts",
   "packages/*/package.json",
   "packages/*/deno.json",
