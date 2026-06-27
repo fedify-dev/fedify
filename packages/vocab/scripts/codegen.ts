@@ -7,23 +7,6 @@ const LOCK_RETRY_MS = 100;
 const LOCK_TIMEOUT_MS = 60 * 1000; // 1 minute
 
 /**
- * Get the latest mtime from all YAML files in the schema directory.
- */
-async function getLatestSourceMtime(schemaDir: Path): Promise<number> {
-  let latestMtime = 0;
-  for await (const entry of schemaDir.readDir()) {
-    if (!entry.isFile) continue;
-    if (!entry.name.match(/\.ya?ml$/i)) continue;
-    if (entry.name === "schema.yaml") continue;
-    const fileStat = await schemaDir.join(entry.name).stat();
-    if (fileStat?.mtime && fileStat.mtime.getTime() > latestMtime) {
-      latestMtime = fileStat.mtime.getTime();
-    }
-  }
-  return latestMtime;
-}
-
-/**
  * Get the latest mtime among files under a directory tree (recursively),
  * limited to the given file extensions.  Returns 0 if the directory is absent.
  */
@@ -60,7 +43,7 @@ async function isUpToDate(
 ): Promise<boolean> {
   try {
     const [sourceMtime, generatedStat] = await Promise.all([
-      getLatestSourceMtime(schemaDir),
+      getLatestMtimeUnder(schemaDir, [".yaml"]),
       generatedPath.stat(),
     ]);
     if (!generatedStat?.mtime) return false;
