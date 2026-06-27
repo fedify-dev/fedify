@@ -59,9 +59,13 @@ run = "deno run --allow-read --allow-env --allow-run --allow-write scripts/insta
 
 # Install Node.js dependencies with pnpm (built-in provider).  pnpm's root
 # `prepare` lifecycle script builds all packages, so this also produces the
-# initial dist/ output.
+# initial dist/ output.  Depend on `deno-cache` (which depends on `codegen`) so
+# the providers run serially (codegen, then the Deno pre-cache, then pnpm
+# install) instead of pnpm racing codegen over node_modules under Deno's
+# `nodeModulesDir: auto`.
 [deps.pnpm]
 auto = true
+depends = ["deno-cache"]
 
 # Hooks <https://mise.jdx.dev/hooks.html>
 #
