@@ -13,7 +13,6 @@ import type {
 import type { MeterProvider, TracerProvider } from "@opentelemetry/api";
 import type { ActivityTransformer } from "../compat/types.ts";
 import type { HttpMessageSignaturesSpec } from "../sig/http.ts";
-import type { CircuitBreakerOptions } from "./circuit-breaker.ts";
 import type {
   ActorAliasMapper,
   ActorDispatcher,
@@ -39,6 +38,7 @@ import type {
   UnverifiedActivityHandler,
   WebFingerLinksDispatcher,
 } from "./callback.ts";
+import type { CircuitBreakerOptions } from "./circuit-breaker.ts";
 import type { Context, InboxContext, RequestContext } from "./context.ts";
 import type { KvStore } from "./kv.ts";
 import type {
@@ -1086,7 +1086,7 @@ export interface FederationOptions<TContextData> {
    * this uses an exponential backoff strategy with a maximum of 10 attempts
    * and a maximum delay of 12 hours.  A per-task retry policy
    * ({@link TaskDefinitionOptions.retryPolicy}) overrides this.
-   * @since 2.x.x
+   * @since 2.4.0
    */
   taskRetryPolicy?: RetryPolicy;
 
@@ -1099,7 +1099,7 @@ export interface FederationOptions<TContextData> {
    * - `"strict"`: no fallback; enqueuing the task throws instead of
    *   silently sharing the outbox queue.
    * @default `"fallback"`
-   * @since 2.x.x
+   * @since 2.4.0
    */
   taskQueueResolution?: "fallback" | "strict";
 
@@ -1110,7 +1110,7 @@ export interface FederationOptions<TContextData> {
    * enqueue again.  Ignored when the task's queue declares
    * {@link MessageQueue.nativeDeduplication} (the backend owns the window).
    * @default `{ hours: 1 }`
-   * @since 2.x.x
+   * @since 2.4.0
    */
   taskDeduplicationTtl?: Temporal.DurationLike;
 
@@ -1125,7 +1125,7 @@ export interface FederationOptions<TContextData> {
    * - `"closed"`: rejects with a `TypeError` before enqueuing.
    *
    * @default `"open"`
-   * @since 2.x.x
+   * @since 2.4.0
    */
   taskDeduplicationFallback?: "open" | "closed";
 

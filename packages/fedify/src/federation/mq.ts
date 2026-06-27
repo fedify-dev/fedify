@@ -36,7 +36,7 @@ export interface MessageQueueEnqueueOptions {
    * best-effort deduplication before reaching them on the paths that support
    * it.
    *
-   * @since 2.x.x
+   * @since 2.4.0
    */
   readonly deduplicationKey?: string;
 }
@@ -109,7 +109,7 @@ export interface MessageQueue {
    * key–value deduplication on the paths that request it.
    *
    * @default `false`
-   * @since 2.x.x
+   * @since 2.4.0
    */
   readonly nativeDeduplication?: boolean;
 
@@ -204,7 +204,7 @@ export class InProcessMessageQueue implements MessageQueue {
 
   /**
    * In-process message queue does not deduplicate messages natively.
-   * @since 2.x.x
+   * @since 2.4.0
    */
   readonly nativeDeduplication = false;
 
@@ -400,7 +400,7 @@ export class ParallelMessageQueue implements MessageQueue {
 
   /**
    * Inherits the native deduplication capability from the wrapped queue.
-   * @since 2.x.x
+   * @since 2.4.0
    */
   readonly nativeDeduplication?: boolean;
   readonly getDepth?: () => Promise<MessageQueueDepth>;

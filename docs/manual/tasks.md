@@ -3,7 +3,7 @@
 Background tasks
 ================
 
-*This API is available since Fedify 2.x.x.*
+*This API is available since Fedify 2.4.0.*
 
 Fedify already processes outgoing and incoming activities on background
 workers through its [message queue](./mq.md).  The custom background task API
