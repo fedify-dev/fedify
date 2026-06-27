@@ -123,6 +123,7 @@ env = { CI = "true" } # Prevent pnpm from prompting for confirmation
 shell = "nu -c"
 sources = [
   "packages/*/src/**/*.ts",
+  "packages/*/src/**/*.tsx",
   "packages/*/tsdown.config.ts",
   "packages/*/package.json",
   "packages/*/deno.json",
