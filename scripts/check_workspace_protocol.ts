@@ -9,7 +9,7 @@
  * runs identically on Windows, macOS, and Linux without external tools.
  */
 import { walk } from "@std/fs/walk";
-import { dirname, fromFileUrl, relative, resolve, SEPARATOR } from "@std/path";
+import { dirname, fromFileUrl, relative, resolve } from "@std/path";
 
 const DEPENDENCY_FIELDS = [
   "dependencies",
@@ -24,8 +24,11 @@ let found = false;
 for await (
   const entry of walk(projectRoot, {
     includeDirs: false,
-    match: [new RegExp(`(?:^|${SEPARATOR})package\\.json$`)],
-    skip: [new RegExp(`(?:^|${SEPARATOR})node_modules(?:${SEPARATOR}|$)`)],
+    // Match the path separator with a character class so these patterns stay
+    // valid on Windows too, where @std/path's SEPARATOR is a backslash and
+    // would corrupt a dynamically built RegExp (e.g. `(?:^|\)package\.json$`).
+    match: [/(?:^|[/\\])package\.json$/],
+    skip: [/(?:^|[/\\])node_modules(?:[/\\]|$)/],
   })
 ) {
   let manifest: Record<string, unknown>;
