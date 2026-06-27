@@ -120,16 +120,12 @@ if (which git | is-not-empty) {
 # Code generation
 [tasks.codegen]
 description = "Generate ActivityPub vocabulary types from YAML definitions"
-sources = [
-  "packages/vocab/src/**/*.yaml",
-  "packages/vocab/scripts/codegen.ts",
-  # The generator itself: changes to @fedify/vocab-tools (its code or its
-  # schema) change the generated vocab.ts, so track its sources too.
-  "packages/vocab-tools/src/**/*.ts",
-  "packages/vocab-tools/src/**/*.yaml",
-]
-outputs = ["packages/vocab/src/vocab.ts"]
-run = "deno task -f @fedify/vocab compile"
+# Delegate to the [deps.codegen] provider above rather than repeating its
+# sources/outputs here, so the freshness inputs live in one place.  --force
+# re-runs the provider even when mise considers it fresh; the codegen script
+# itself still self-skips when vocab.ts is already up to date, so an explicit
+# `mise run codegen` stays fast.
+run = "mise deps --force codegen"
 
 # Build
 #
