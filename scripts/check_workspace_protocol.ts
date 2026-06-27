@@ -52,7 +52,10 @@ for await (
   const invalid: string[] = [];
   for (const field of DEPENDENCY_FIELDS) {
     const deps = manifest[field];
-    if (deps == null || typeof deps !== "object") continue;
+    // typeof [] is "object", so exclude arrays explicitly before iterating.
+    if (deps == null || typeof deps !== "object" || Array.isArray(deps)) {
+      continue;
+    }
     for (
       const [name, spec] of Object.entries(deps as Record<string, unknown>)
     ) {
