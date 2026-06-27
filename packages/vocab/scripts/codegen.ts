@@ -43,7 +43,8 @@ async function isUpToDate(
 ): Promise<boolean> {
   try {
     const [sourceMtime, generatedStat] = await Promise.all([
-      getLatestMtimeUnder(schemaDir, [".yaml"]),
+      // Match loadSchemaFiles()'s /\.ya?ml$/i: a .yml schema is a real input.
+      getLatestMtimeUnder(schemaDir, [".yaml", ".yml"]),
       generatedPath.stat(),
     ]);
     if (!generatedStat?.mtime) return false;
@@ -136,7 +137,7 @@ async function codegen() {
     const generatorMtime = Math.max(
       await getLatestMtimeUnder(
         packageDir.parent()!.join("vocab-tools", "src"),
-        [".ts", ".yaml"],
+        [".ts", ".yaml", ".yml"],
       ),
       await getLatestMtimeUnder(scriptsDir, [".ts"]),
     );

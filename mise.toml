@@ -39,12 +39,16 @@ linux-arm64 = "hongdown-*-aarch64-unknown-linux-musl.tar.bz2"
 [deps.codegen]
 auto = true
 sources = [
+  # loadSchemaFiles() matches /\.ya?ml$/i, so track both extensions: a schema
+  # added or renamed with the .yml spelling must still invalidate this cache.
   "packages/vocab/src/**/*.yaml",
+  "packages/vocab/src/**/*.yml",
   "packages/vocab/scripts/codegen.ts",
   # The generator itself: changes to @fedify/vocab-tools (its code or its
   # schema) change the generated vocab.ts, so track its sources too.
   "packages/vocab-tools/src/**/*.ts",
   "packages/vocab-tools/src/**/*.yaml",
+  "packages/vocab-tools/src/**/*.yml",
 ]
 outputs = ["packages/vocab/src/vocab.ts"]
 run = "deno task -f @fedify/vocab compile"
