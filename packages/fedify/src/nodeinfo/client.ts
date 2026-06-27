@@ -3,6 +3,7 @@ import {
   getUserAgent,
   type GetUserAgentOptions,
 } from "../runtime/docloader.ts";
+import { UrlError, validatePublicUrl } from "../runtime/url.ts";
 import type { ResourceDescriptor } from "../webfinger/jrd.ts";
 import { parseSemVer, type SemVer } from "./semver.ts";
 import type {
@@ -17,6 +18,71 @@ import type {
 } from "./types.ts";
 
 const logger = getLogger(["fedify", "nodeinfo", "client"]);
+
+const DEFAULT_MAX_REDIRECTION = 5;
+
+/**
+ * Fetches a URL while guarding against SSRF.  Before every request—including
+ * each redirect hop—the destination is validated with
+ * {@link validatePublicUrl}, so that loopback, link-local, and private
+ * addresses, as well as non-HTTP(S) schemes such as `data:`, are rejected.
+ * Redirects are followed manually with a cap, so that a public URL cannot
+ * bounce the request to an internal address.
+ * @param url The URL to fetch.
+ * @param headers The request headers.
+ * @returns The final response, or `null` if the URL is disallowed or there
+ *          are too many redirects.
+ */
+async function fetchPublicUrl(
+  url: URL | string,
+  headers: Record<string, string>,
+): Promise<Response | null> {
+  let current = url instanceof URL ? url : new URL(url);
+  let redirected = 0;
+  while (true) {
+    try {
+      await validatePublicUrl(current.href);
+    } catch (e) {
+      if (e instanceof UrlError) {
+        logger.error(
+          "Refused to fetch a private or invalid URL {url}: {error}",
+          { url: current.href, error: e },
+        );
+        return null;
+      }
+      throw e;
+    }
+    const response = await fetch(current, { headers, redirect: "manual" });
+    if (
+      response.status >= 300 && response.status < 400 &&
+      response.headers.has("Location")
+    ) {
+      redirected++;
+      if (redirected >= DEFAULT_MAX_REDIRECTION) {
+        logger.error(
+          "Too many redirections ({redirections}) while fetching {url}.",
+          { redirections: redirected, url: current.href },
+        );
+        return null;
+      }
+      const next = new URL(
+        response.headers.get("Location")!,
+        response.url == null || response.url === "" ? current : response.url,
+      );
+      if (next.protocol !== current.protocol) {
+        logger.error(
+          "Refused a redirect to a different protocol ({protocol} to " +
+            "{redirectedProtocol}) while fetching NodeInfo.",
+          { protocol: current.protocol, redirectedProtocol: next.protocol },
+        );
+        return null;
+      }
+      current = next;
+      continue;
+    }
+    return response;
+  }
+}
 
 /**
  * Options for {@link getNodeInfo} function.
@@ -96,14 +162,13 @@ export async function getNodeInfo(
     let nodeInfoUrl: URL | string = url;
     if (!options.direct) {
       const wellKnownUrl = new URL("/.well-known/nodeinfo", url);
-      const wellKnownResponse = await fetch(wellKnownUrl, {
-        headers: {
-          Accept: "application/json",
-          "User-Agent": typeof options.userAgent === "string"
-            ? options.userAgent
-            : getUserAgent(options.userAgent),
-        },
+      const wellKnownResponse = await fetchPublicUrl(wellKnownUrl, {
+        Accept: "application/json",
+        "User-Agent": typeof options.userAgent === "string"
+          ? options.userAgent
+          : getUserAgent(options.userAgent),
       });
+      if (wellKnownResponse == null) return undefined;
       if (!wellKnownResponse.ok) {
         logger.error("Failed to fetch {url}: {status} {statusText}", {
           url: wellKnownUrl.href,
@@ -130,14 +195,13 @@ export async function getNodeInfo(
       }
       nodeInfoUrl = link.href;
     }
-    const response = await fetch(nodeInfoUrl, {
-      headers: {
-        Accept: "application/json",
-        "User-Agent": typeof options.userAgent === "string"
-          ? options.userAgent
-          : getUserAgent(options.userAgent),
-      },
+    const response = await fetchPublicUrl(nodeInfoUrl, {
+      Accept: "application/json",
+      "User-Agent": typeof options.userAgent === "string"
+        ? options.userAgent
+        : getUserAgent(options.userAgent),
     });
+    if (response == null) return undefined;
     if (!response.ok) {
       logger.error(
         "Failed to fetch NodeInfo document from {url}: {status} {statusText}",
