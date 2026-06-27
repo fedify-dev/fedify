@@ -1,3 +1,10 @@
+# Require a mise new enough for the [deps] providers and the [hooks.postinstall]
+# table form used below; older versions fail to parse this file.  Environments
+# that intentionally ship an older mise and don't need this tooling (e.g. the
+# Netlify build for the static schema site) opt out by setting
+# MISE_IGNORED_CONFIG_PATHS to this file's path; see schema/netlify.toml.
+min_version = "2026.6.12"
+
 [settings]
 # Required by the [deps] dependency providers below, which are still an
 # experimental mise feature.
