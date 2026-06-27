@@ -139,7 +139,7 @@ usage = 'arg "<packages>" help="Package name(s) (without @fedify/ prefix)" var=#
 env = { CI = "true" }
 shell = "nu -c"
 run = '''
-for pkg in ($env.usage_packages | split row " ") {
+for pkg in ($env.usage_packages | split row " " | where ($it | is-not-empty)) {
   print $"Preparing package: ($pkg)"
   pnpm --filter $"@fedify/($pkg)" build
 }
@@ -201,7 +201,7 @@ description = "Check code quality for specific package(s)"
 usage = 'arg "<packages>" help="Package name(s) (without @fedify/ prefix)" var=#true var_min=1'
 shell = "nu -c"
 run = '''
-for pkg in ($env.usage_packages | split row " ") {
+for pkg in ($env.usage_packages | split row " " | where ($it | is-not-empty)) {
   print $"Checking package: ($pkg)"
   let dir = $"packages/($pkg)"
   if not ($dir | path exists) {
@@ -247,7 +247,7 @@ description = "Run tests for a specific package across all environments"
 usage = 'arg "<packages>" help="Package name(s) (without @fedify/ prefix)" var=#true var_min=1'
 shell = "nu -c"
 run = '''
-let pkgs = ($env.usage_packages | split row " ")
+let pkgs = ($env.usage_packages | split row " " | where ($it | is-not-empty))
 mise run prepare-each ...$pkgs
 mise run check-each ...$pkgs
 for pkg in $pkgs {
