@@ -1,6 +1,6 @@
 {
   "name": "@fedify/h3",
-  "version": "2.1.17",
+  "version": "2.1.18",
   "license": "MIT",
   "exports": {
     ".": "./src/index.ts"
