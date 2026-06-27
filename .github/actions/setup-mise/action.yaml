@@ -6,6 +6,9 @@ runs:
   steps:
   - uses: jdx/mise-action@v4
     with:
-      version: 2025.12.12
-  - run: mise run install
+      version: 2026.6.12
+  # Install project dependencies (codegen, Deno pre-cache, and `pnpm install`,
+  # whose `prepare` lifecycle script builds all packages) via mise's deps
+  # providers.  See the [deps.*] sections in mise.toml.
+  - run: mise deps
     shell: bash

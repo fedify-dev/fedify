@@ -18,4 +18,7 @@ cat << 'EOF' >> ~/.bashrc
 eval "$(mise activate bash)"
 EOF
 
-mise run install
+# Install project dependencies via mise's deps providers (codegen, Deno
+# pre-cache, and `pnpm install`, which builds all packages through its
+# `prepare` lifecycle script).
+mise deps

@@ -72,22 +72,16 @@ scaffolding logic.  It tests the project initialization by running
 `fedify init` across all combinations of supported options on temporary
 directories, verifying that the generated projects are valid.
 
-To run the test using Deno:
+To run the test, use the mise task from the repository root:
 
 ~~~~ sh
-deno task test-init
-~~~~
-
-Or using pnpm:
-
-~~~~ sh
-pnpm test-init
+mise run test:init
 ~~~~
 
 You can also filter specific options to test a subset of combinations:
 
 ~~~~ sh
-deno task test-init -w hono -p deno
+mise run test:init -w hono -p deno
 ~~~~
 
 Use `--no-dry-run` to test with actual file creation and dependency

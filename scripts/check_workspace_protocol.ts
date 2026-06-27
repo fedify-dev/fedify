@@ -1,0 +1,68 @@
+/**
+ * This script flags `workspace:` dependency specifiers that omit a version
+ * range marker (`*`, `^`, or `~`).  A bare `workspace:` is invalid for
+ * publishing because pnpm cannot rewrite it to a concrete version on `pnpm
+ * pack`/`publish`, so every workspace dependency must use `workspace:*`,
+ * `workspace:^`, or `workspace:~`.
+ *
+ * It replaces the previous Bash + `find` + `jq` implementation so the check
+ * runs identically on Windows, macOS, and Linux without external tools.
+ */
+import { walk } from "@std/fs/walk";
+import { dirname, fromFileUrl, relative, resolve, SEPARATOR } from "@std/path";
+
+const DEPENDENCY_FIELDS = [
+  "dependencies",
+  "devDependencies",
+  "peerDependencies",
+  "optionalDependencies",
+] as const;
+
+const projectRoot = resolve(dirname(fromFileUrl(import.meta.url)), "..");
+
+let found = false;
+for await (
+  const entry of walk(projectRoot, {
+    includeDirs: false,
+    match: [new RegExp(`(?:^|${SEPARATOR})package\\.json$`)],
+    skip: [new RegExp(`(?:^|${SEPARATOR})node_modules(?:${SEPARATOR}|$)`)],
+  })
+) {
+  let manifest: Record<string, unknown>;
+  try {
+    manifest = JSON.parse(await Deno.readTextFile(entry.path));
+  } catch {
+    continue;
+  }
+
+  const invalid: string[] = [];
+  for (const field of DEPENDENCY_FIELDS) {
+    const deps = manifest[field];
+    if (deps == null || typeof deps !== "object") continue;
+    for (
+      const [name, spec] of Object.entries(deps as Record<string, unknown>)
+    ) {
+      if (spec === "workspace:") invalid.push(name);
+    }
+  }
+
+  if (invalid.length > 0) {
+    if (!found) {
+      console.error(
+        "Error: Found invalid workspace: specifiers (missing *, ^, or ~):",
+      );
+      console.error("");
+      found = true;
+    }
+    console.error(`${relative(projectRoot, entry.path)}:`);
+    for (const name of invalid) console.error(`  ${name}`);
+  }
+}
+
+if (found) {
+  console.error("");
+  console.error("Valid formats: workspace:*, workspace:^, workspace:~");
+  Deno.exit(1);
+}
+
+console.log("All workspace: specifiers are valid");

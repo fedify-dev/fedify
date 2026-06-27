@@ -78,6 +78,9 @@ jobs:
     - uses: ./.github/actions/setup-mise
     - name: Enable RabbitMQ consistent hash exchange plugin
       run: docker exec ${{ job.services.rabbitmq.id }} rabbitmq-plugins enable rabbitmq_consistent_hash_exchange
+    # Dependencies (codegen, install, and the build via pnpm's `prepare`) are
+    # already provisioned by the setup-mise action's `mise deps`; `--skip-deps`
+    # runs only the test task itself.
     - run: mise run --skip-deps test:deno -- --coverage=.cov --junit-path=.test-report.xml
       env:
         RUST_BACKTRACE: ${{ runner.debug }}

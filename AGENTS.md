@@ -45,10 +45,14 @@ Development environment
  -  Primary environment: [Deno]
  -  Additional test environments: [Node.js] and [Bun]
  -  Recommended editor: [Visual Studio Code] with [Deno extension]
- -  **CRITICAL**: Run `mise run install` (or `pnpm install`) after checkout.
-    This automatically runs code generation and builds all packages.
- -  Lockfiles: Both *deno.lock* and *pnpm-lock.yaml* are committed.
-    Update them when changing dependencies.
+ -  **CRITICAL**: Run `mise install` once after checkout.  A `postinstall` hook
+    then runs `mise deps`, which generates code, installs dependencies, and
+    builds all packages, so the checkout is ready to use.
+ -  Run development scripts through mise (`mise tasks` to list,
+    `mise run <task>` to invoke).  Don't call `pnpm` or `npm` directly for dev
+    workflows.
+ -  Lockfiles: Both *deno.lock* and *pnpm-lock.yaml* are committed.  Run
+    `mise deps` to update them when changing dependencies.
 
 [mise]: https://mise.jdx.dev/
 [Deno]: https://deno.com/
@@ -124,11 +128,14 @@ Code patterns and principles
 Development workflow
 --------------------
 
- -  **Code Generation**: Run `mise run codegen` whenever vocabulary YAML files
-    or code generation scripts change.
- -  **Building Packages**: After installation, all packages are automatically
-    built. To rebuild a specific package and its dependencies, run `pnpm build`
-    in that package's directory.
+ -  **Code Generation**: Vocabulary types are regenerated automatically before
+    any mise task (a `mise deps` provider watches the vocab YAML and
+    `@fedify/vocab-tools`).  Run `mise run codegen` to force it, e.g. to refresh
+    the editor/LSP after editing YAML.
+ -  **Building Packages**: All packages are built automatically as part of
+    setup.  Run `mise run build` to rebuild everything, or
+    `mise run prepare-each <pkg>` to rebuild just one (without the `@fedify/`
+    prefix).
  -  **Checking Code**: Run `mise run check` before committing.
  -  **Running Tests**: Use `mise run test:deno` for Deno tests or
     `mise run test` for all environments.

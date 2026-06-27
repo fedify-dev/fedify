@@ -4,7 +4,7 @@ import workspaceMetadata from "../deno.json" with { type: "json" };
 import fedifyMetadata from "../packages/fedify/deno.json" with { type: "json" };
 
 if (Deno.args.includes("--help") || Deno.args.includes("-h")) {
-  console.log("Usage: deno task check-versions [--help|-h] [--fix|-f]");
+  console.log("Usage: mise run check-versions [--help|-h] [--fix|-f]");
   console.log("Checks that all workspace members have the same version.");
   console.log(
     "If --fix or -f is provided, it will attempt to fix version mismatches.",
