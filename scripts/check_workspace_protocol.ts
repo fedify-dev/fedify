@@ -33,7 +33,15 @@ for await (
 ) {
   let manifest: Record<string, unknown>;
   try {
-    manifest = JSON.parse(await Deno.readTextFile(entry.path));
+    const parsed = JSON.parse(await Deno.readTextFile(entry.path));
+    // A package.json could be `null`, a string, a number, or an array; skip
+    // anything that is not a plain object so the field lookups below are safe.
+    if (
+      parsed === null || typeof parsed !== "object" || Array.isArray(parsed)
+    ) {
+      continue;
+    }
+    manifest = parsed as Record<string, unknown>;
   } catch {
     continue;
   }
