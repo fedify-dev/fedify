@@ -461,7 +461,7 @@ export interface FederationQueueOptions {
    * The message queue for custom background tasks.  If not provided,
    * tasks are routed to the outbox queue (unless
    * {@link FederationOptions.taskQueueResolution} is `"strict"`).
-   * @since 2.x.x
+   * @since 2.4.0
    */
   readonly task?: MessageQueue;
 }
@@ -519,7 +519,7 @@ export interface FederationKvPrefixes {
    * markers.  Kept separate from {@link activityIdempotence} so the two key
    * spaces never collide.
    * @default `["_fedify", "taskDeduplication"]`
-   * @since 2.x.x
+   * @since 2.4.0
    */
   readonly taskDeduplication: KvKey;
 }

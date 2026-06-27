@@ -10,7 +10,7 @@ import type { RetryPolicy } from "../retry.ts";
  *                 schema.
  * @param ctx The context for the worker processing the task.
  * @param data The decoded and validated task payload.
- * @since 2.x.x
+ * @since 2.4.0
  */
 export type TaskHandler<TContextData, TData> = (
   ctx: Context<TContextData>,
@@ -22,7 +22,7 @@ export type TaskHandler<TContextData, TData> = (
  * @template TContextData The context data to pass to the {@link Context}.
  * @template TSchema The [Standard Schema](https://standardschema.dev/) that
  *                   validates the task payload.
- * @since 2.x.x
+ * @since 2.4.0
  */
 export interface TaskDefinitionOptions<
   TContextData,
@@ -91,7 +91,7 @@ declare const contextDataBrand: unique symbol;
  * @template TContextData The context data to pass to the {@link Context}.
  * @template TData The type of the task payload, inferred from the task's
  *                 schema.
- * @since 2.x.x
+ * @since 2.4.0
  */
 export interface TaskDefinition<TContextData, TData> {
   /**
@@ -115,7 +115,7 @@ export interface TaskDefinition<TContextData, TData> {
  * Registration of custom background tasks.  Both {@link Federation} and
  * {@link FederationBuilder} implement this interface.
  * @template TContextData The context data to pass to the {@link Context}.
- * @since 2.x.x
+ * @since 2.4.0
  */
 export interface TaskRegistry<TContextData> {
   /**
@@ -146,7 +146,7 @@ export interface TaskRegistry<TContextData> {
 
 /**
  * Options for {@link Context.enqueueTask} and {@link Context.enqueueTaskMany}.
- * @since 2.x.x
+ * @since 2.4.0
  */
 export interface TaskEnqueueOptions {
   /**
@@ -176,7 +176,7 @@ export interface TaskEnqueueOptions {
    * throws a `TypeError`.  Under the `"open"` fallback with no `cas`, no marker
    * is taken, so such a batch instead fans out without deduplication.
    *
-   * @since 2.x.x
+   * @since 2.4.0
    */
   readonly deduplicationKey?: string;
 }

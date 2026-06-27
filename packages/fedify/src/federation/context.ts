@@ -449,7 +449,7 @@ export interface Context<TContextData> {
    * @throws {TypeError} If the task is not defined on this federation,
    *                     if no message queue is configured for tasks, or if
    *                     the payload fails schema validation.
-   * @since 2.x.x
+   * @since 2.4.0
    */
   enqueueTask<TData>(
     task: TaskDefinition<TContextData, TData>,
@@ -474,7 +474,7 @@ export interface Context<TContextData> {
    *                     deduplicated multi-item batch cannot be enqueued
    *                     atomically because the queue does not implement
    *                     bulk enqueue.
-   * @since 2.x.x
+   * @since 2.4.0
    */
   enqueueTaskMany<TData>(
     task: TaskDefinition<TContextData, TData>,
