@@ -9,6 +9,30 @@ Version 2.4.0
 To be released.
 
 
+Version 2.3.1
+-------------
+
+Released on June 27, 2026.
+
+### @fedify/fedify
+
+ -  Fixed outbound activity delivery aborting when Linked Data Signatures
+    creation fails during JSON-LD canonicalization.  Fedify now logs the
+    signing failure and continues delivery without the Linked Data Signature
+    for JSON-LD processing failures, while still surfacing key, configuration,
+    and programming errors from signing.  [[#824], [#842] by Lee ByeongJun]
+
+ -  Fixed inbox verification crashing when a remote actor document contains a
+    malformed `publicKey` entry.  Fedify now treats the malformed key as a
+    failed key lookup so HTTP Signatures verification fails normally instead of
+    returning a server error.  [[#825], [#844] by Lee ByeongJun]
+
+[#824]: https://github.com/fedify-dev/fedify/issues/824
+[#825]: https://github.com/fedify-dev/fedify/issues/825
+[#842]: https://github.com/fedify-dev/fedify/pull/842
+[#844]: https://github.com/fedify-dev/fedify/pull/844
+
+
 Version 2.3.0
 -------------
 
@@ -541,6 +565,25 @@ Released on June 25, 2026.
 [#756]: https://github.com/fedify-dev/fedify/pull/756
 
 
+Version 2.2.6
+-------------
+
+Released on June 27, 2026.
+
+### @fedify/fedify
+
+ -  Fixed outbound activity delivery aborting when Linked Data Signatures
+    creation fails during JSON-LD canonicalization.  Fedify now logs the
+    signing failure and continues delivery without the Linked Data Signature
+    for JSON-LD processing failures, while still surfacing key, configuration,
+    and programming errors from signing.  [[#824], [#842] by Lee ByeongJun]
+
+ -  Fixed inbox verification crashing when a remote actor document contains a
+    malformed `publicKey` entry.  Fedify now treats the malformed key as a
+    failed key lookup so HTTP Signatures verification fails normally instead of
+    returning a server error.  [[#825], [#844] by Lee ByeongJun]
+
+
 Version 2.2.5
 -------------
 
@@ -946,6 +989,25 @@ Released on April 28, 2026.
 [#706]: https://github.com/fedify-dev/fedify/issues/706
 [#715]: https://github.com/fedify-dev/fedify/pull/715
 [#722]: https://github.com/fedify-dev/fedify/pull/722
+
+
+Version 2.1.17
+--------------
+
+Released on June 27, 2026.
+
+### @fedify/fedify
+
+ -  Fixed outbound activity delivery aborting when Linked Data Signatures
+    creation fails during JSON-LD canonicalization.  Fedify now logs the
+    signing failure and continues delivery without the Linked Data Signature
+    for JSON-LD processing failures, while still surfacing key, configuration,
+    and programming errors from signing.  [[#824], [#842] by Lee ByeongJun]
+
+ -  Fixed inbox verification crashing when a remote actor document contains a
+    malformed `publicKey` entry.  Fedify now treats the malformed key as a
+    failed key lookup so HTTP Signatures verification fails normally instead of
+    returning a server error.  [[#825], [#844] by Lee ByeongJun]
 
 
 Version 2.1.16
@@ -1517,6 +1579,25 @@ Released on March 24, 2026.
 [#586]: https://github.com/fedify-dev/fedify/issues/586
 [#597]: https://github.com/fedify-dev/fedify/pull/597
 [#599]: https://github.com/fedify-dev/fedify/pull/599
+
+
+Version 2.0.21
+--------------
+
+Released on June 27, 2026.
+
+### @fedify/fedify
+
+ -  Fixed outbound activity delivery aborting when Linked Data Signatures
+    creation fails during JSON-LD canonicalization.  Fedify now logs the
+    signing failure and continues delivery without the Linked Data Signature
+    for JSON-LD processing failures, while still surfacing key, configuration,
+    and programming errors from signing.  [[#824], [#842] by Lee ByeongJun]
+
+ -  Fixed inbox verification crashing when a remote actor document contains a
+    malformed `publicKey` entry.  Fedify now treats the malformed key as a
+    failed key lookup so HTTP Signatures verification fails normally instead of
+    returning a server error.  [[#825], [#844] by Lee ByeongJun]
 
 
 Version 2.0.20
