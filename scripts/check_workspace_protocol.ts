@@ -28,7 +28,10 @@ for await (
     // valid on Windows too, where @std/path's SEPARATOR is a backslash and
     // would corrupt a dynamically built RegExp (e.g. `(?:^|\)package\.json$`).
     match: [/(?:^|[/\\])package\.json$/],
-    skip: [/(?:^|[/\\])node_modules(?:[/\\]|$)/],
+    skip: [
+      /(?:^|[/\\])node_modules(?:[/\\]|$)/,
+      /(?:^|[/\\])\.git(?:[/\\]|$)/,
+    ],
   })
 ) {
   let manifest: Record<string, unknown>;
