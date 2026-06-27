@@ -111,6 +111,11 @@ run = "deno task -f @fedify/vocab compile"
 [tasks.build]
 description = "Build all packages"
 env = { CI = "true" } # Prevent pnpm from prompting for confirmation
+# Run through Nushell so the single-quoted pnpm filter is parsed consistently on
+# every platform.  With the default shell, Windows `cmd` does not strip the
+# single quotes, so pnpm would receive the literal `'!./examples/**'`, match no
+# projects, and turn the build into a silent no-op.
+shell = "nu -c"
 sources = [
   "packages/*/src/**/*.ts",
   "packages/*/tsdown.config.ts",
@@ -210,11 +215,15 @@ run = "deno test --check --doc --allow-all --unstable-kv --trace-leaks --paralle
 [tasks."test:node"]
 description = "Run the test suite using Node.js"
 depends = ["build"]
+# See the note on `build`: Nushell keeps the single-quoted pnpm filter working
+# on Windows, where `cmd` would otherwise pass it through literally.
+shell = "nu -c"
 run = "pnpm run --recursive --parallel --filter '!{docs}' --config.enable-pre-post-scripts=false test"
 
 [tasks."test:bun"]
 description = "Run the test suite using Bun"
 depends = ["build"]
+shell = "nu -c"
 run = "pnpm run --recursive --parallel --filter '!{docs}' --config.enable-pre-post-scripts=false test:bun"
 
 [tasks.test]
