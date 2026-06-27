@@ -38,6 +38,7 @@ import {
   type RunContext,
   type ScenarioRunner,
   sendRequest,
+  validateInboxSelector,
   withMeasuredWindowStart,
 } from "./runner.ts";
 
@@ -136,6 +137,7 @@ export const inboxRunner: ScenarioRunner = {
         loadPlanOf(scenario, context.rng),
         send,
         context.clock,
+        context.signal,
       );
       const measurement = aggregateSamples(result.samples, {
         measuredWindowMs: measuredWindowMs(scenario),
@@ -163,26 +165,7 @@ export const inboxRunner: ScenarioRunner = {
  * mid-run, and a non-http URL would slip through to the send path.
  */
 function validateInbox(scenario: ResolvedScenario): void {
-  const mode = scenario.inbox;
-  if (mode == null || mode === "shared" || mode === "personal") return;
-  let url: URL;
-  try {
-    url = new URL(mode);
-  } catch {
-    throw new Error(
-      `Scenario "${scenario.name}": inbox must be "shared", "personal", or an ` +
-        `http(s) URL; got ${JSON.stringify(mode)}.`,
-    );
-  }
-  if (
-    (url.protocol !== "http:" && url.protocol !== "https:") ||
-    url.hostname === "" || url.username !== "" || url.password !== ""
-  ) {
-    throw new Error(
-      `Scenario "${scenario.name}": inbox URL must be a bare http(s) URL with ` +
-        `a host and no credentials; got ${JSON.stringify(mode)}.`,
-    );
-  }
+  validateInboxSelector(scenario.name, scenario.inbox);
 }
 
 /**

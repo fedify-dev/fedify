@@ -1,6 +1,7 @@
 packages:
 - packages/amqp
 - packages/astro
+- packages/backfill
 - packages/cfworkers
 - packages/cli
 - packages/debugger
@@ -37,6 +38,7 @@ packages:
 - examples/elysia
 - examples/express
 - examples/koa
+- examples/lint/oxlint
 - examples/next-integration
 - examples/fastify
 - examples/next14-app-router
@@ -57,8 +59,8 @@ catalog:
   "@cloudflare/workers-types": ^4.20260511.1
   "@fxts/core": ^1.20.0
   "@js-temporal/polyfill": ^0.5.1
-  "@logtape/file": ^2.1.0
-  "@logtape/logtape": ^2.1.0
+  "@logtape/file": ^2.2.0
+  "@logtape/logtape": ^2.2.0
   "@multiformats/base-x": ^4.0.1
   "@opentelemetry/api": ^1.9.1
   "@opentelemetry/exporter-trace-otlp-proto": ^0.211.0
@@ -68,9 +70,10 @@ catalog:
   "@opentelemetry/sdk-metrics": 2.7.1
   "@opentelemetry/sdk-trace-base": ^2.7.1
   "@opentelemetry/semantic-conventions": ^1.40.0
-  "@optique/config": ^1.0.2
-  "@optique/core": ^1.0.2
-  "@optique/run": ^1.0.2
+  "@optique/config": ^1.1.0
+  "@optique/core": ^1.1.0
+  "@optique/discover": ^1.1.0
+  "@optique/run": ^1.1.0
   "@standard-schema/spec": ^1.1.0
   "@std/assert": "jsr:^1.0.13"
   "@std/async": "jsr:^1.0.13"
@@ -107,7 +110,16 @@ catalog:
   pkijs: ^3.3.3
   mysql2: ^3.22.3
   nuxt: ^4.4.2
+  oxlint: ^1.66.0
   postgres: ^3.4.7
   tsdown: ^0.22.0
   typescript: ^6.0.0
   urlpattern-polyfill: "^10.1.0"
+
+# vitepress-plugin-mermaid hasn't published a VitePress 2 compatible release yet;
+# it only declares `vitepress: ^1` as a peer.  The `withMermaid()` wrapper merely
+# augments the config object, so it works under VitePress 2 — this rule silences
+# the otherwise-spurious peer warning.
+peerDependencyRules:
+  allowedVersions:
+    "vitepress-plugin-mermaid>vitepress": "2"

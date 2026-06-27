@@ -64,6 +64,13 @@ function renderScenario(scenario: ScenarioResult): string[] {
       })`,
   );
   lines.push(`  Throughput: ${formatNumber(scenario.throughputPerSec)} req/s`);
+  if (scenario.deliveryThroughputPerSec != null) {
+    lines.push(
+      `  Delivery throughput: ${
+        formatNumber(scenario.deliveryThroughputPerSec)
+      } deliveries/s`,
+    );
+  }
   const l = scenario.client.latencyMs;
   lines.push(
     `  Client latency (ms): p50 ${formatNumber(l.p50)}  p95 ${

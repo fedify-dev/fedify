@@ -1,0 +1,157 @@
+/**
+ * The embedded JSON Schema (draft 2020-12) for benchmark comparison output.
+ *
+ * The comparison report embeds the two benchmark reports it compares; this
+ * schema validates the comparison envelope and checks that the embedded reports
+ * look like current benchmark reports without duplicating the complete report
+ * schema in two published files.
+ * @since 2.3.0
+ * @module
+ */
+
+/** The hosted URL that serves the comparison report schema. */
+export const COMPARE_REPORT_SCHEMA_ID =
+  "https://json-schema.fedify.dev/bench/compare-report-v1.json";
+
+/** The benchmark comparison report JSON Schema (draft 2020-12). */
+export const compareReportSchemaV1 = {
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  $id: COMPARE_REPORT_SCHEMA_ID,
+  title: "Fedify benchmark comparison report",
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "schemaVersion",
+    "tool",
+    "environment",
+    "startedAt",
+    "finishedAt",
+    "suite",
+    "maxRegression",
+    "base",
+    "head",
+    "comparisons",
+    "passed",
+  ],
+  properties: {
+    $schema: { type: "string" },
+    schemaVersion: { const: 1 },
+    tool: { $ref: "#/$defs/tool" },
+    environment: { $ref: "#/$defs/environment" },
+    startedAt: { type: "string" },
+    finishedAt: { type: "string" },
+    suite: { $ref: "#/$defs/suite" },
+    maxRegression: { type: "number", minimum: 0 },
+    base: { $ref: "#/$defs/compareSide" },
+    head: { $ref: "#/$defs/compareSide" },
+    comparisons: {
+      type: "array",
+      items: { $ref: "#/$defs/comparisonResult" },
+    },
+    passed: { type: "boolean" },
+  },
+  $defs: {
+    tool: {
+      type: "object",
+      additionalProperties: false,
+      required: ["name", "version"],
+      properties: {
+        name: { type: "string" },
+        version: { type: "string" },
+      },
+    },
+    environment: {
+      type: "object",
+      additionalProperties: false,
+      required: ["runtime", "runtimeVersion", "os", "cpuCount"],
+      properties: {
+        runtime: { type: "string" },
+        runtimeVersion: { type: "string" },
+        os: { type: "string" },
+        cpuCount: { type: "integer", minimum: 0 },
+      },
+    },
+    suite: {
+      type: "object",
+      additionalProperties: false,
+      required: ["configHash"],
+      properties: {
+        name: { type: "string" },
+        configHash: { type: "string" },
+      },
+    },
+    benchmarkReport: {
+      type: "object",
+      additionalProperties: true,
+      required: [
+        "$schema",
+        "schemaVersion",
+        "tool",
+        "environment",
+        "target",
+        "suite",
+        "passed",
+        "scenarios",
+      ],
+      properties: {
+        $schema: {
+          const: "https://json-schema.fedify.dev/bench/report-v3.json",
+        },
+        schemaVersion: { const: 3 },
+        tool: { $ref: "#/$defs/tool" },
+        environment: { $ref: "#/$defs/environment" },
+        target: { $ref: "#/$defs/target" },
+        suite: { $ref: "#/$defs/suite" },
+        passed: { type: "boolean" },
+        scenarios: { type: "array" },
+      },
+    },
+    target: {
+      type: "object",
+      additionalProperties: false,
+      required: ["url", "statsAvailable"],
+      properties: {
+        url: { type: "string" },
+        fedifyVersion: { type: ["string", "null"] },
+        statsAvailable: { type: "boolean" },
+      },
+    },
+    compareSide: {
+      type: "object",
+      additionalProperties: false,
+      required: ["ref", "report"],
+      properties: {
+        ref: { type: "string" },
+        report: { $ref: "#/$defs/benchmarkReport" },
+      },
+    },
+    comparisonResult: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "scenario",
+        "metric",
+        "direction",
+        "base",
+        "head",
+        "regression",
+        "noiseBand",
+        "allowedRegression",
+        "pass",
+      ],
+      properties: {
+        scenario: { type: "string" },
+        metric: { type: "string" },
+        direction: {
+          enum: ["lower-is-better", "higher-is-better"],
+        },
+        base: { type: ["number", "null"] },
+        head: { type: ["number", "null"] },
+        regression: { type: ["number", "null"] },
+        noiseBand: { type: "number", minimum: 0 },
+        allowedRegression: { type: "number", minimum: 0 },
+        pass: { type: "boolean" },
+      },
+    },
+  },
+} as const;

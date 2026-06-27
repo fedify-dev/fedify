@@ -21,7 +21,8 @@ import { getLogger } from "@logtape/logtape";
 import { execFileSync } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { join as joinPath, relative } from "node:path";
-import biome from "../json/biome.json" with { type: "json" };
+import oxfmt from "../json/oxfmt.json" with { type: "json" };
+import oxlint from "../json/oxlint.json" with { type: "json" };
 import vscodeSettingsForDeno from "../json/vscode-settings-for-deno.json" with {
   type: "json",
 };
@@ -169,19 +170,98 @@ export const loadPackageJson = (
   },
 });
 
+export const loadOxfmtConfig = (
+  data: InitCommandData,
+) => ({
+  path: joinPath(".oxfmtrc.json"),
+  data: withFormatIgnorePatterns(oxfmt, data),
+});
+
+export const loadOxlintConfig = (
+  data: InitCommandData,
+) => ({
+  path: joinPath(".oxlintrc.json"),
+  data: withFormatIgnorePatterns(oxlint, data),
+});
+
+export const loadVscodeSettings = (
+  data: InitCommandData,
+) => ({
+  path: devToolConfigs.vscSet.path,
+  data: data.initializer.format?.tool === "prettier"
+    ? getVscodeSettingsForPrettier()
+    : vscodeSettings,
+});
+
+export const loadVscodeExtensions = (
+  data: InitCommandData,
+) => ({
+  path: devToolConfigs.vscExt.path,
+  data: data.initializer.format?.tool === "prettier"
+    ? {
+      recommendations: [
+        "astro-build.astro-vscode",
+        "esbenp.prettier-vscode",
+        "oxc.oxc-vscode",
+      ],
+    }
+    : devToolConfigs.vscExt.data,
+});
+
+const withFormatIgnorePatterns = <
+  T extends { ignorePatterns?: string[] },
+>(
+  config: T,
+  data: InitCommandData,
+): T => ({
+  ...config,
+  ignorePatterns: [
+    ...new Set([
+      ...(config.ignorePatterns ?? []),
+      ...(data.initializer.format?.ignorePatterns ?? []),
+    ]),
+  ].sort(),
+});
+
+function getVscodeSettingsForPrettier(): object {
+  const { "oxc.fmt.configPath": _configPath, ...settings } = vscodeSettings;
+  const prettierSettings: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(settings)) {
+    if (key.startsWith("[") && typeof value === "object" && value != null) {
+      prettierSettings[key] = {
+        ...value,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+      };
+    } else {
+      prettierSettings[key] = value;
+    }
+  }
+  return {
+    ...prettierSettings,
+    "[astro]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+      "editor.formatOnSave": true,
+    },
+  };
+}
+
 /**
  * Configuration objects for various development tool setup files.
  * Contains predefined configurations for code formatting, VS Code settings, and extensions
  * based on the project type (Node.js/Bun or Deno).
  */
 export const devToolConfigs = {
-  biome: {
-    path: joinPath("biome.json"),
-    data: biome,
+  oxfmt: {
+    path: joinPath(".oxfmtrc.json"),
+    data: oxfmt,
+  },
+  oxlint: {
+    path: joinPath(".oxlintrc.json"),
+    data: oxlint,
   },
   vscExt: {
     path: joinPath(".vscode", "extensions.json"),
-    data: { recommendations: ["biomejs.biome", "dbaeumer.vscode-eslint"] },
+    data: { recommendations: ["oxc.oxc-vscode"] },
   },
   vscSet: {
     path: joinPath(".vscode", "settings.json"),

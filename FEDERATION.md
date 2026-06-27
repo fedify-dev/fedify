@@ -25,6 +25,7 @@ Supported FEPs
 --------------
 
  -  [FEP-67ff][]: FEDERATION.md
+ -  [FEP-f228][]: Backfilling conversations
  -  [FEP-8fcf][]: Followers collection synchronization across servers
  -  [FEP-9091][]: Export Actor Service Endpoint
  -  [FEP-f1d5][]: NodeInfo in Fediverse Software
@@ -40,6 +41,7 @@ Supported FEPs
  -  [FEP-ae0c][]: Fediverse Relay Protocols: Mastodon and LitePub
 
 [FEP-67ff]: https://w3id.org/fep/67ff
+[FEP-f228]: https://w3id.org/fep/f228
 [FEP-8fcf]: https://w3id.org/fep/8fcf
 [FEP-9091]: https://w3id.org/fep/9091
 [FEP-f1d5]: https://w3id.org/fep/f1d5

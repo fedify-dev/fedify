@@ -223,7 +223,8 @@ The most interesting files and directories are:
  -  *nuxt.config.ts*: Nuxt's configuration file; already has `@fedify/nuxt`
     wired up as a module.
  -  *package.json*: npm metadata and dependencies.
- -  *biome.json*: [Biome] formatter and import-sorting configuration.
+ -  *.oxfmtrc.json*: [Oxfmt] formatter configuration.
+ -  *.oxlintrc.json*: [Oxlint] configuration, including Fedify lint rules.
  -  *tsconfig.json*: TypeScript compiler references to the generated Nuxt
     type files.
 
@@ -233,7 +234,8 @@ TypeScript in their `<script>` blocks).
 
 [LogTape]: https://logtape.org/
 [Nitro server plugin]: https://nitro.build/guide/plugins
-[Biome]: https://biomejs.dev/
+[Oxfmt]: https://oxc.rs/docs/guide/usage/formatter/
+[Oxlint]: https://oxc.rs/docs/guide/usage/linter/
 
 ### Running the dev server for the first time
 
@@ -313,7 +315,7 @@ That tells us a few important things at once:
 while following this tutorial.  We are about to write a lot of TypeScript
 and Vue, and VS Code is currently the smoothest editor for both.  The
 scaffolded project even ships with a *.vscode/* directory that recommends
-the right extensions (Biome for formatting, Volar for Vue).
+the right extensions (Oxc for formatting and linting, Volar for Vue).
 
 > [!WARNING]
 > Don't confuse Visual Studio Code with Visual Studio.  The two share a
@@ -772,7 +774,9 @@ to type the tool's name directly.  Edit *package.json*:
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "lint": "eslint .",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "lint": "oxlint .",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
   }

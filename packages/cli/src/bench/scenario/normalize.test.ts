@@ -28,7 +28,7 @@ test("normalizeSuite - applies defaults and parses units", () => {
     maxInFlight: undefined,
   });
   assert.strictEqual(s.signing, "pipeline");
-  assert.strictEqual(s.runs, 1);
+  assert.strictEqual(s.runs, 3);
   assert.deepEqual(s.recipients, ["acct:alice@x"]);
 });
 
@@ -240,10 +240,20 @@ test("normalizeSuite - allows warmup shorter than duration", () => {
   assert.strictEqual(s.warmupMs, 9000);
 });
 
-test("normalizeSuite - rejects multiple runs (runs > 1)", () => {
-  assert.throws(
-    () => normalizeSuite(suite({ defaults: { runs: 3 } })),
-    (error: unknown) =>
-      error instanceof SuiteNormalizeError && /runs/.test(error.message),
-  );
+test("normalizeSuite - allows multiple runs", () => {
+  const s = normalizeSuite(suite({ defaults: { runs: 5 } })).scenarios[0];
+  assert.strictEqual(s.runs, 5);
+});
+
+test("normalizeSuite - scenario runs override defaults", () => {
+  const s = normalizeSuite(suite({
+    defaults: { runs: 5 },
+    scenarios: [{
+      name: "wf",
+      type: "webfinger",
+      recipient: "acct:a@x",
+      runs: 2,
+    }],
+  })).scenarios[0];
+  assert.strictEqual(s.runs, 2);
 });

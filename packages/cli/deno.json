@@ -1,6 +1,6 @@
 {
   "name": "@fedify/cli",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "license": "MIT",
   "exports": "./src/mod.ts",
   "imports": {
@@ -17,6 +17,7 @@
     "icojs": "npm:icojs@^0.19.5",
     "inquirer-toggle": "npm:inquirer-toggle@^1.0.1",
     "ora": "npm:ora@^8.2.0",
+    "pngjs": "npm:pngjs@^7.0.0",
     "shiki": "npm:shiki@^1.6.4",
     "smol-toml": "npm:smol-toml@^1.6.1",
     "srvx": "npm:srvx@^0.8.7",

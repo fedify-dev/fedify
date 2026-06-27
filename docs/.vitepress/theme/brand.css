@@ -1,0 +1,64 @@
+/*
+ * Fedify brand theming for the VitePress default theme.
+ *
+ * The palette is derived from the Fedify logo, whose blues are Tailwind's `sky`
+ * scale (#bae6fd = sky-200, #0284c7 = sky-600, #0c4a6e = sky-900).  Brand tokens
+ * below are contrast-checked against WCAG AA.  The home page uses a fully custom
+ * landing layout (see theme/components/HomeLanding.vue); this file only carries
+ * the global tokens and the documentation-page typography.
+ */
+
+/* ------------------------------------------------------------------ *
+ * Brand color tokens                                                  *
+ * ------------------------------------------------------------------ */
+
+:root {
+  --vp-c-brand-1: #075985; /* sky-800 — links / active text (~7.4:1 on white) */
+  --vp-c-brand-2: #0369a1; /* sky-700 — hover                                 */
+  --vp-c-brand-3: #0284c7; /* sky-600 — solid button bg (AA-large on white)   */
+  --vp-c-brand-soft: rgba(2, 132, 199, 0.14);
+
+  /* Legacy alias still referenced by a few default-theme rules. */
+  --vp-c-brand: var(--vp-c-brand-1);
+}
+
+.dark {
+  --vp-c-brand-1: #7dd3fc; /* sky-300 */
+  --vp-c-brand-2: #38bdf8; /* sky-400 */
+  --vp-c-brand-3: #0284c7; /* sky-600 */
+  --vp-c-brand-soft: rgba(56, 189, 248, 0.16);
+}
+
+/* ------------------------------------------------------------------ *
+ * Display typography (documentation headings; the landing component   *
+ * applies the same family to its own headings via the variable)       *
+ * ------------------------------------------------------------------ */
+
+:root {
+  --vp-font-family-display:
+    "Bricolage Grotesque Variable", "Bricolage Grotesque",
+    var(--vp-font-family-base);
+}
+
+.vp-doc h1,
+.vp-doc h2,
+.vp-doc h3 {
+  font-family: var(--vp-font-family-display);
+  font-optical-sizing: auto;
+}
+
+.vp-doc h1,
+.vp-doc h2 {
+  letter-spacing: -0.02em;
+}
+
+/* ------------------------------------------------------------------ *
+ * Custom landing layout                                               *
+ * ------------------------------------------------------------------ */
+
+/* The landing uses `isHome: true`, so VPContent gets `.is-home`.  Neutralize
+   its nav-height top padding so HomeLanding's hero owns the offset (consistent
+   across breakpoints). */
+.VPContent.is-home {
+  padding-top: 0;
+}

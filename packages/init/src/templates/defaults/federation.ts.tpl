@@ -13,6 +13,7 @@ const federation = createFederation({
 federation.setActorDispatcher(
   "/users/{identifier}",
   async (ctx, identifier) => {
+    logger.info("Dispatching actor {identifier}", { identifier });
     return new Person({
       id: ctx.getActorUri(identifier),
       preferredUsername: identifier,

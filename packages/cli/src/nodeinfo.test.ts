@@ -2,7 +2,13 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Chalk } from "chalk";
 import fetchMock from "fetch-mock";
-import { getAsciiArt, getFaviconUrl, Jimp, rgbTo256Color } from "./nodeinfo.ts";
+import {
+  getAsciiArt,
+  getFaviconUrl,
+  Jimp,
+  readImage,
+  rgbTo256Color,
+} from "./nodeinfo.ts";
 
 const HTML_WITH_SMALL_ICON = `
 <!DOCTYPE html>
@@ -159,7 +165,7 @@ async function createTestImage(
 ): Promise<Awaited<ReturnType<typeof Jimp.read>>> {
   const image = new Jimp({ width: 1, height: 1, color });
   const imageBuffer = await image.getBuffer("image/png");
-  return Jimp.read(imageBuffer);
+  return readImage(imageBuffer);
 }
 
 test("getAsciiArt - Darkest Letter without color support", async () => {

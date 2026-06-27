@@ -9,8 +9,13 @@
  * @module
  */
 
-import { reportSchemaV1 } from "./result/schema.ts";
-import { scenarioSchemaV1 } from "./scenario/schema.ts";
+import { compareReportSchemaV1 } from "./compare/schema.ts";
+import {
+  reportSchemaV1,
+  reportSchemaV2,
+  reportSchemaV3,
+} from "./result/schema.ts";
+import { scenarioSchemaV1, scenarioSchemaV2 } from "./scenario/schema.ts";
 
 /** A published JSON Schema and where it is hosted. */
 export interface PublishedSchema {
@@ -26,12 +31,32 @@ export interface PublishedSchema {
 export const PUBLISHED_SCHEMAS: readonly PublishedSchema[] = [
   {
     name: "scenario",
+    fileName: "scenario-v2.json",
+    schema: scenarioSchemaV2 as unknown as Record<string, unknown>,
+  },
+  {
+    name: "scenario-v1",
     fileName: "scenario-v1.json",
     schema: scenarioSchemaV1 as unknown as Record<string, unknown>,
   },
   {
     name: "report",
+    fileName: "report-v3.json",
+    schema: reportSchemaV3 as unknown as Record<string, unknown>,
+  },
+  {
+    name: "report-v2",
+    fileName: "report-v2.json",
+    schema: reportSchemaV2 as unknown as Record<string, unknown>,
+  },
+  {
+    name: "report-v1",
     fileName: "report-v1.json",
     schema: reportSchemaV1 as unknown as Record<string, unknown>,
+  },
+  {
+    name: "compare-report",
+    fileName: "compare-report-v1.json",
+    schema: compareReportSchemaV1 as unknown as Record<string, unknown>,
   },
 ];
