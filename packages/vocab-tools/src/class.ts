@@ -95,6 +95,12 @@ async function* generateClass(
     protected set _shouldCacheJsonLd(value: boolean) {
       this.#shouldCacheJsonLd = value;
     }
+
+    protected static _shouldCacheDecodedJsonLd(value: unknown): boolean {
+      if (value == null || typeof value !== "object") return true;
+      if (!("_shouldCacheJsonLd" in value)) return true;
+      return (value as { _shouldCacheJsonLd: boolean })._shouldCacheJsonLd;
+    }
     `;
   }
   yield `

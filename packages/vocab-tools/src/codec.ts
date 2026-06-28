@@ -438,20 +438,18 @@ export async function* generateDecoder(
       }
       `;
     }
-    if (property.range.length == 1) {
-      yield `${variable}.push(${
-        getDecoder(
-          property.range[0],
-          types,
-          "v",
-          "options",
-          `(values["@id"] == null ? options.baseUrl : new URL(values["@id"]))`,
-        )
-      })`;
-    } else {
-      yield `
+    yield `
       const decoded =
-      `;
+    `;
+    if (property.range.length == 1) {
+      yield getDecoder(
+        property.range[0],
+        types,
+        "v",
+        "options",
+        `(values["@id"] == null ? options.baseUrl : new URL(values["@id"]))`,
+      );
+    } else {
       const decoders = getDecoders(
         property.range,
         types,
@@ -460,15 +458,24 @@ export async function* generateDecoder(
         `(values["@id"] == null ? options.baseUrl : new URL(values["@id"]))`,
       );
       for (const code of decoders) yield code;
-      yield `
+    }
+    yield `
       ;
+    `;
+    if (property.range.length > 1) {
+      yield `
       if (typeof decoded === "undefined") {
         shouldCacheJsonLd = false;
         continue;
       }
-      ${variable}.push(decoded);
       `;
     }
+    yield `
+      if (!this._shouldCacheDecodedJsonLd(decoded)) {
+        shouldCacheJsonLd = false;
+      }
+      ${variable}.push(decoded);
+    `;
     yield `
     }
     instance.${await getFieldName(property.uri)} = ${variable};

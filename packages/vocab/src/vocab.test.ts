@@ -31,6 +31,7 @@ import {
   OrderedCollectionPage,
   Person,
   Place,
+  PropertyValue,
   Question,
   Source,
 } from "./vocab.ts";
@@ -280,6 +281,26 @@ test("Note.fromJsonLd() ignores malformed language tags", async () => {
   deepStrictEqual(note.contents, [new LanguageString("Hi", "en")]);
   const jsonLd = await note.toJsonLd() as Record<string, unknown>;
   deepStrictEqual(jsonLd.contentMap, { en: "Hi" });
+});
+
+test("Note.fromJsonLd() ignores malformed language tags in nested objects", async () => {
+  const note = await Note.fromJsonLd({
+    "@type": ["https://www.w3.org/ns/activitystreams#Note"],
+    "https://www.w3.org/ns/activitystreams#attachment": [{
+      "@type": ["http://schema.org#PropertyValue"],
+      "https://www.w3.org/ns/activitystreams#name": [
+        { "@value": "Malformed", "@language": "invalid_tag" },
+        { "@value": "Valid", "@language": "en" },
+      ],
+    }],
+  });
+
+  deepStrictEqual(await Array.fromAsync(note.getAttachments()), [
+    new PropertyValue({ name: new LanguageString("Valid", "en") }),
+  ]);
+  const jsonLd = await note.toJsonLd() as Record<string, unknown>;
+  const attachment = jsonLd.attachment as Record<string, unknown>;
+  deepStrictEqual(attachment.nameMap, { en: "Valid" });
 });
 
 test("Note.toJsonLd()", async () => {
