@@ -20,7 +20,7 @@ The script demonstrates three patterns:
 Run it from this directory:
 
 ~~~~ sh
-deno task codegen  # Only the first time
+mise run codegen  # Only the first time
 deno run -A ./main.ts
 ~~~~
 

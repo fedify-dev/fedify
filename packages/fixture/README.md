@@ -40,8 +40,8 @@ dependency to the package that needs it:
 For Deno, the `imports` entry resolves to the in-tree source through the
 workspace at the repository root, so you don't need to add it to *deno.json*.
 For Node.js and Bun, pnpm links the local package by virtue of the `workspace:`
-specifier; remember to run `mise run install` (or `pnpm install`) at the
-repository root after the edit.
+specifier; remember to run `mise install` at the repository root after the
+edit.
 
 
 Usage
@@ -162,7 +162,7 @@ test("lookupObject() resolves a fixture", async () => {
     [`src/fixtures/<host>/<path>.json`](src/fixtures/).  The path must mirror
     the URL exactly: e.g. `https://w3id.org/security/v1` becomes
     *src/fixtures/w3id.org/security/v1.json*.
-2.  Run `pnpm --filter @fedify/fixture build` once so that the fixture is
+2.  Run `mise run prepare-each fixture` once so that the fixture is
     copied into *dist/fixtures/* — Node.js and Bun consumers import the file
     through the `./fixtures/*` subpath export, which points at the *dist/*
     copy.  (The `pretest` and `prepack` scripts do this automatically.)

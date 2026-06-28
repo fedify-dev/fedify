@@ -9,6 +9,15 @@
 [build]
   publish = "."
 
+[build.environment]
+  # This site serves static JSON Schema files and needs no build tooling, but
+  # Netlify's build image bundles an older mise that reads the repository's root
+  # mise.toml during dependency installation and fails to parse its newer
+  # `[deps]`/`[hooks]` features.  Tell that mise to ignore the root config
+  # entirely so the install step is a no-op.  Netlify checks the repo out at
+  # /opt/build/repo, so the root config lives at /opt/build/repo/mise.toml.
+  MISE_IGNORED_CONFIG_PATHS = "/opt/build/repo/mise.toml"
+
 [[headers]]
   for = "/bench/*"
   [headers.values]

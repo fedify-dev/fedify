@@ -88,12 +88,7 @@
       ]
     },
     "pnpm:install": "pnpm install --silent",
-    "pnpm:build": {
-      "command": "pnpm exec tsdown",
-      "dependencies": [
-        "pnpm:build-vocab"
-      ]
-    },
+    "pnpm:build": "pnpm --filter @fedify/fedify... run build:self",
     "test:node": {
       "command": "cd dist/ && node --test",
       "dependencies": [

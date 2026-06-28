@@ -302,7 +302,7 @@ changes.
 To update both lockfiles at once, run:
 
 ~~~~ bash
-mise run install
+mise deps
 ~~~~
 
 When reviewing pull requests, please check that lockfile changes are included
@@ -500,8 +500,10 @@ mise trust
 mise install
 ~~~~
 
-This will install [Deno], [Node.js], and [Bun] with the correct versions
-specified in *mise.toml*.
+This installs [Deno], [Node.js], [Bun], and the other tools with the correct
+versions specified in *mise.toml*.  A `postinstall` hook then runs `mise deps`,
+which generates code, installs dependencies, builds all packages, and (on first
+setup) installs the Git pre-commit hook, so the checkout is ready to use.
 
 The recommended editor for Fedify is [Visual Studio Code] with
 the [Deno extension] installed.  Or you can use any editor that supports Deno;
@@ -510,35 +512,28 @@ see the [*Set Up Your Environment* section][1] in the Deno manual.
 > [!CAUTION]
 >
 > Fedify heavily depends on code generation and all packages must be built
-> before coding or testing. Running `mise run install` (or `pnpm install`)
-> automatically handles code generation and builds all packages.
+> before coding or testing. The `mise install` step above handles code
+> generation and builds all packages for you.
 
-Assuming you have Deno and Visual Studio Code installed, you can open
-the repository in Visual Studio Code and get ready to hack on Fedify by running
-the following commands at the *root* of the repository:
+With the tools and dependencies installed by the setup commands above, open the
+repository in Visual Studio Code to get ready to hack on Fedify:
 
 ~~~~ bash
-mise run install  # This runs codegen and builds all packages
 code .
 ~~~~
 
 > [!TIP]
-> It is recommended to install Git pre-commit hooks after cloning the
-> repository to ensure code quality checks run automatically before each
-> commit:
+> The Git pre-commit hook, which runs `mise run check` before each commit, is
+> installed automatically by `mise install` (unless one is already present).
+> To (re)install it explicitly, run:
 >
 > ~~~~ bash
 > mise run hooks:install
 > ~~~~
 
-Note that the `mise run install` command is required to run only once at
-the very first time after checkout. When you update dependencies or code
-generation scripts, run `mise run install` again. Otherwise, you can skip
-the command and just run:
-
-~~~~ bash
-code .
-~~~~
+You only need to run `mise install` once, right after checkout. When you change
+dependencies or code generation inputs, mise's deps providers pick the change
+up automatically before the next task runs (or run `mise deps` explicitly).
 
 Since this is a monorepo, you can also work on individual packages by
 navigating to their directories and using package-specific tasks.
@@ -679,7 +674,7 @@ in the browser.  To do that, you need to install [Node.js] and [pnpm] first.
 Then you can run the following commands at the repository root:
 
 ~~~~ bash
-mise run install
+mise install
 mise run docs
 ~~~~
 

@@ -24,7 +24,7 @@ Running the example
 
     ~~~~ sh
     cd fedify
-    deno task build
+    mise install
     ~~~~
 
 3.  Move to example folder
