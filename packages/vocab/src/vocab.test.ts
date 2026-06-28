@@ -278,6 +278,8 @@ test("Note.fromJsonLd() ignores malformed language tags", async () => {
   });
 
   deepStrictEqual(note.contents, [new LanguageString("Hi", "en")]);
+  const jsonLd = await note.toJsonLd() as Record<string, unknown>;
+  deepStrictEqual(jsonLd.contentMap, { en: "Hi" });
 });
 
 test("Note.toJsonLd()", async () => {

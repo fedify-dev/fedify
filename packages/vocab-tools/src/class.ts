@@ -57,6 +57,7 @@ async function* generateClass(
       values?: Record<string, unknown>;
     };
     #cachedJsonLd?: unknown;
+    #shouldCacheJsonLd = true;
     readonly id: URL | null;
 
     protected get _documentLoader(): DocumentLoader | undefined {
@@ -85,6 +86,14 @@ async function* generateClass(
 
     protected set _cachedJsonLd(value: unknown | undefined) {
       this.#cachedJsonLd = value;
+    }
+
+    protected get _shouldCacheJsonLd(): boolean {
+      return this.#shouldCacheJsonLd;
+    }
+
+    protected set _shouldCacheJsonLd(value: boolean) {
+      this.#shouldCacheJsonLd = value;
     }
     `;
   }

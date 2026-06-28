@@ -396,6 +396,9 @@ export async function* generateDecoder(
     }
     `;
   }
+  yield `
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  `;
   for (const property of type.properties) {
     const variable = await getFieldName(property.uri, "");
     yield await generateField(property, types, "const ");
@@ -459,7 +462,10 @@ export async function* generateDecoder(
       for (const code of decoders) yield code;
       yield `
       ;
-      if (typeof decoded === "undefined") continue;
+      if (typeof decoded === "undefined") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       ${variable}.push(decoded);
       `;
     }
@@ -469,7 +475,11 @@ export async function* generateDecoder(
     `;
   }
   yield `
-    if (!("_fromSubclass" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!("_fromSubclass" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {

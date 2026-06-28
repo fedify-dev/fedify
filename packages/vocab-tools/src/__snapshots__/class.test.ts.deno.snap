@@ -52,6 +52,7 @@ export class Object {
       values?: Record<string, unknown>;
     };
     #cachedJsonLd?: unknown;
+    #shouldCacheJsonLd = true;
     readonly id: URL | null;
 
     protected get _documentLoader(): DocumentLoader | undefined {
@@ -80,6 +81,14 @@ export class Object {
 
     protected set _cachedJsonLd(value: unknown | undefined) {
       this.#cachedJsonLd = value;
+    }
+
+    protected get _shouldCacheJsonLd(): boolean {
+      return this.#shouldCacheJsonLd;
+    }
+
+    protected set _shouldCacheJsonLd(value: boolean) {
+      this.#shouldCacheJsonLd = value;
     }
     
     /**
@@ -9402,6 +9411,8 @@ get urls(): ((URL | Link))[] {
       options,
     );
     
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
       const _49BipA5dq9eoH8LX8xdsVumveTca_attachment: (Object | Link | PropertyValue | URL)[] = [];
       const _trust_49BipA5dq9eoH8LX8xdsVumveTca_attachment: Set<number> = new Set();
     
@@ -9443,7 +9454,10 @@ get urls(): ((URL | Link))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _49BipA5dq9eoH8LX8xdsVumveTca_attachment.push(decoded);
       
     }
@@ -9496,7 +9510,10 @@ get urls(): ((URL | Link))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _42CGqJ94zgQ3ZBbfHwD8Hrr2L5Py_attributedTo.push(decoded);
       
     }
@@ -9551,7 +9568,10 @@ get urls(): ((URL | Link))[] {
         && typeof v[\\"@value\\"] === \\"string\\"
         && isValidLanguageTag(v[\\"@language\\"]) ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _4HuuRSdSrXq8Jj2J9gcdYfoCzeuz_content.push(decoded);
       
     }
@@ -9594,7 +9614,10 @@ get urls(): ((URL | Link))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _3mhZzGXSpQ431mBSz2kvych22v4e_context.push(decoded);
       
     }
@@ -9619,7 +9642,10 @@ get urls(): ((URL | Link))[] {
         && typeof v[\\"@value\\"] === \\"string\\"
         && isValidLanguageTag(v[\\"@language\\"]) ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _4ZHbBuK7PrsvGgrjM8wgc6KMWjav_name.push(decoded);
       
     }
@@ -9681,7 +9707,10 @@ get urls(): ((URL | Link))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _86xFhmgBapoMvYqjbjRuDPayTrS_generator.push(decoded);
       
     }
@@ -9784,7 +9813,10 @@ get urls(): ((URL | Link))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _3fpbDrvZgf3Kq1a5V9aByFn8kx3s_inReplyTo.push(decoded);
       
     }
@@ -9827,7 +9859,10 @@ get urls(): ((URL | Link))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _31k5MUZJsnsPNg8dQQJieWaXTFnR_location.push(decoded);
       
     }
@@ -9870,7 +9905,10 @@ get urls(): ((URL | Link))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _gCVTegXxWWCw6wWRxa1QF65zusg_preview.push(decoded);
       
     }
@@ -10053,7 +10091,10 @@ get urls(): ((URL | Link))[] {
         && typeof v[\\"@value\\"] === \\"string\\"
         && isValidLanguageTag(v[\\"@language\\"]) ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _4LqirZspQbFWWQEbFcXAxm7tTDN1_summary.push(decoded);
       
     }
@@ -10096,7 +10137,10 @@ get urls(): ((URL | Link))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _5chuqj6s95p5gg2sk1HntGfarRf_tag.push(decoded);
       
     }
@@ -10158,7 +10202,10 @@ get urls(): ((URL | Link))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _2oPEH9MQ3aj8JVwyYuWkqoVwV865_url.push(decoded);
       
     }
@@ -10377,7 +10424,11 @@ get urls(): ((URL | Link))[] {
     }
     instance.#_42rPnotok1ivQ2RNCKNbeFJgx8b8_proof = _42rPnotok1ivQ2RNCKNbeFJgx8b8_proof;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -11473,7 +11524,13 @@ proofs?: (DataIntegrityProof | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -11909,7 +11966,9 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
     if (!(instance instanceof ChatMessage)) {
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
-    const _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl: (URL)[] = [];
+    
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  const _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl: (URL)[] = [];
 
     let _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl__array = values[\\"https://www.w3.org/ns/activitystreams#quoteUrl\\"];
     
@@ -11933,7 +11992,11 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
     }
     instance.#_K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl = _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -14930,6 +14993,8 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
       const _2DjTTboo3CNHU2a2JQqUSE2dbv9D_actor: (Application | Group | Organization | Person | Service | URL)[] = [];
       const _trust_2DjTTboo3CNHU2a2JQqUSE2dbv9D_actor: Set<number> = new Set();
     
@@ -14977,7 +15042,10 @@ instruments?: (Object | URL)[];}
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _2DjTTboo3CNHU2a2JQqUSE2dbv9D_actor.push(decoded);
       
     }
@@ -15133,7 +15201,11 @@ instruments?: (Object | URL)[];}
     }
     instance.#_3c5t2x7DYRo2shwTxpkd4kYSS5WQ_instrument = _3c5t2x7DYRo2shwTxpkd4kYSS5WQ_instrument;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -15622,7 +15694,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -15677,6 +15755,7 @@ export class PropertyValue {
       values?: Record<string, unknown>;
     };
     #cachedJsonLd?: unknown;
+    #shouldCacheJsonLd = true;
     readonly id: URL | null;
 
     protected get _documentLoader(): DocumentLoader | undefined {
@@ -15705,6 +15784,14 @@ export class PropertyValue {
 
     protected set _cachedJsonLd(value: unknown | undefined) {
       this.#cachedJsonLd = value;
+    }
+
+    protected get _shouldCacheJsonLd(): boolean {
+      return this.#shouldCacheJsonLd;
+    }
+
+    protected set _shouldCacheJsonLd(value: boolean) {
+      this.#shouldCacheJsonLd = value;
     }
     
     /**
@@ -16119,7 +16206,9 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
       { id: \\"@id\\" in values ? new URL(values[\\"@id\\"] as string) : undefined },
       options,
     );
-    const _4ZHbBuK7PrsvGgrjM8wgc6KMWjav_name: ((string | LanguageString))[] = [];
+    
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  const _4ZHbBuK7PrsvGgrjM8wgc6KMWjav_name: ((string | LanguageString))[] = [];
 
     let _4ZHbBuK7PrsvGgrjM8wgc6KMWjav_name__array = values[\\"https://www.w3.org/ns/activitystreams#name\\"];
     
@@ -16139,7 +16228,10 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
         && typeof v[\\"@value\\"] === \\"string\\"
         && isValidLanguageTag(v[\\"@language\\"]) ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _4ZHbBuK7PrsvGgrjM8wgc6KMWjav_name.push(decoded);
       
     }
@@ -16164,13 +16256,20 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
         && typeof v[\\"@value\\"] === \\"string\\"
         && isValidLanguageTag(v[\\"@language\\"]) ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _2cSy2magg4iZ7zLaG8U7DiJMoCkx_value.push(decoded);
       
     }
     instance.#_2cSy2magg4iZ7zLaG8U7DiJMoCkx_value = _2cSy2magg4iZ7zLaG8U7DiJMoCkx_value;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -16284,6 +16383,7 @@ export class DidService {
       values?: Record<string, unknown>;
     };
     #cachedJsonLd?: unknown;
+    #shouldCacheJsonLd = true;
     readonly id: URL | null;
 
     protected get _documentLoader(): DocumentLoader | undefined {
@@ -16312,6 +16412,14 @@ export class DidService {
 
     protected set _cachedJsonLd(value: unknown | undefined) {
       this.#cachedJsonLd = value;
+    }
+
+    protected get _shouldCacheJsonLd(): boolean {
+      return this.#shouldCacheJsonLd;
+    }
+
+    protected set _shouldCacheJsonLd(value: boolean) {
+      this.#shouldCacheJsonLd = value;
     }
     
     /**
@@ -16668,7 +16776,9 @@ get endpoints(): (URL)[] {
       { id: \\"@id\\" in values ? new URL(values[\\"@id\\"] as string) : undefined },
       options,
     );
-    const _2KM4fetG6FTJ1cphj76rzJ8Dyv7p_serviceEndpoint: (URL)[] = [];
+    
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  const _2KM4fetG6FTJ1cphj76rzJ8Dyv7p_serviceEndpoint: (URL)[] = [];
 
     let _2KM4fetG6FTJ1cphj76rzJ8Dyv7p_serviceEndpoint__array = values[\\"https://www.w3.org/ns/did#serviceEndpoint\\"];
     
@@ -16699,7 +16809,11 @@ get endpoints(): (URL)[] {
     }
     instance.#_2KM4fetG6FTJ1cphj76rzJ8Dyv7p_serviceEndpoint = _2KM4fetG6FTJ1cphj76rzJ8Dyv7p_serviceEndpoint;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -17020,7 +17134,13 @@ endpoints?: (URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -17077,6 +17197,7 @@ export class DataIntegrityProof {
       values?: Record<string, unknown>;
     };
     #cachedJsonLd?: unknown;
+    #shouldCacheJsonLd = true;
     readonly id: URL | null;
 
     protected get _documentLoader(): DocumentLoader | undefined {
@@ -17105,6 +17226,14 @@ export class DataIntegrityProof {
 
     protected set _cachedJsonLd(value: unknown | undefined) {
       this.#cachedJsonLd = value;
+    }
+
+    protected get _shouldCacheJsonLd(): boolean {
+      return this.#shouldCacheJsonLd;
+    }
+
+    protected set _shouldCacheJsonLd(value: boolean) {
+      this.#shouldCacheJsonLd = value;
     }
     
     /**
@@ -17832,7 +17961,9 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
       { id: \\"@id\\" in values ? new URL(values[\\"@id\\"] as string) : undefined },
       options,
     );
-    const _3RurJsa7tnptyqMFR5hDGcP9pMs5_cryptosuite: (\\"eddsa-jcs-2022\\")[] = [];
+    
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  const _3RurJsa7tnptyqMFR5hDGcP9pMs5_cryptosuite: (\\"eddsa-jcs-2022\\")[] = [];
 
     let _3RurJsa7tnptyqMFR5hDGcP9pMs5_cryptosuite__array = values[\\"https://w3id.org/security#cryptosuite\\"];
     
@@ -17927,7 +18058,11 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
     }
     instance.#_3qzP3ukEZoUziK5FEiA1RhU4aqac = _3qzP3ukEZoUziK5FEiA1RhU4aqac;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -18097,6 +18232,7 @@ export class CryptographicKey {
       values?: Record<string, unknown>;
     };
     #cachedJsonLd?: unknown;
+    #shouldCacheJsonLd = true;
     readonly id: URL | null;
 
     protected get _documentLoader(): DocumentLoader | undefined {
@@ -18125,6 +18261,14 @@ export class CryptographicKey {
 
     protected set _cachedJsonLd(value: unknown | undefined) {
       this.#cachedJsonLd = value;
+    }
+
+    protected get _shouldCacheJsonLd(): boolean {
+      return this.#shouldCacheJsonLd;
+    }
+
+    protected set _shouldCacheJsonLd(value: boolean) {
+      this.#shouldCacheJsonLd = value;
     }
     
     /**
@@ -18783,6 +18927,8 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
       options,
     );
     
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
       const _5UJq9NDh3ZHgswFwwdVxQvJxdx2_owner: (Application | Group | Organization | Person | Service | URL)[] = [];
       const _trust_5UJq9NDh3ZHgswFwwdVxQvJxdx2_owner: Set<number> = new Set();
     
@@ -18830,7 +18976,10 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _5UJq9NDh3ZHgswFwwdVxQvJxdx2_owner.push(decoded);
       
     }
@@ -18851,7 +19000,11 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
     }
     instance.#_2fE2QMDdg6KFGqa4NEC3TmjApSAD_publicKeyPem = _2fE2QMDdg6KFGqa4NEC3TmjApSAD_publicKeyPem;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -18965,6 +19118,7 @@ export class Multikey {
       values?: Record<string, unknown>;
     };
     #cachedJsonLd?: unknown;
+    #shouldCacheJsonLd = true;
     readonly id: URL | null;
 
     protected get _documentLoader(): DocumentLoader | undefined {
@@ -18993,6 +19147,14 @@ export class Multikey {
 
     protected set _cachedJsonLd(value: unknown | undefined) {
       this.#cachedJsonLd = value;
+    }
+
+    protected get _shouldCacheJsonLd(): boolean {
+      return this.#shouldCacheJsonLd;
+    }
+
+    protected set _shouldCacheJsonLd(value: boolean) {
+      this.#shouldCacheJsonLd = value;
     }
     
     /**
@@ -19658,6 +19820,8 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
       options,
     );
     
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
       const _2yr3eUBTP6cNcyaxKzAXWjFsnGzN_controller: (Application | Group | Organization | Person | Service | URL)[] = [];
       const _trust_2yr3eUBTP6cNcyaxKzAXWjFsnGzN_controller: Set<number> = new Set();
     
@@ -19705,7 +19869,10 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _2yr3eUBTP6cNcyaxKzAXWjFsnGzN_controller.push(decoded);
       
     }
@@ -19726,7 +19893,11 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
     }
     instance.#_4XLHbsR2gLVWU3NpEqKt9wANzn4F_publicKeyMultibase = _4XLHbsR2gLVWU3NpEqKt9wANzn4F_publicKeyMultibase;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -20120,7 +20291,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -20456,7 +20633,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -20791,7 +20974,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -26303,7 +26492,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
     if (!(instance instanceof Application)) {
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
-    const _3isuDgRAKSntq9XdbjiNxjwyPZAf_preferredUsername: ((string | LanguageString))[] = [];
+    
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  const _3isuDgRAKSntq9XdbjiNxjwyPZAf_preferredUsername: ((string | LanguageString))[] = [];
 
     let _3isuDgRAKSntq9XdbjiNxjwyPZAf_preferredUsername__array = values[\\"https://www.w3.org/ns/activitystreams#preferredUsername\\"];
     
@@ -26323,7 +26514,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         && typeof v[\\"@value\\"] === \\"string\\"
         && isValidLanguageTag(v[\\"@language\\"]) ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _3isuDgRAKSntq9XdbjiNxjwyPZAf_preferredUsername.push(decoded);
       
     }
@@ -26439,7 +26633,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox.push(decoded);
       
     }
@@ -26480,7 +26677,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _41QwhqJouoLg3h8dRPKat21brynC_outbox.push(decoded);
       
     }
@@ -26791,7 +26991,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo.push(decoded);
       
     }
@@ -26844,7 +27047,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.push(decoded);
       
     }
@@ -26910,7 +27116,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
     }
     instance.#_2xEU4QtkC53RAun67T81Egqt9vmL_isCat = _2xEU4QtkC53RAun67T81Egqt9vmL_isCat;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -27729,7 +27939,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -28064,7 +28280,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -28495,7 +28717,9 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
     if (!(instance instanceof Article)) {
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
-    const _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl: (URL)[] = [];
+    
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  const _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl: (URL)[] = [];
 
     let _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl__array = values[\\"https://www.w3.org/ns/activitystreams#quoteUrl\\"];
     
@@ -28519,7 +28743,11 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
     }
     instance.#_K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl = _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -29043,7 +29271,9 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
     if (!(instance instanceof Document)) {
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
-    const _2e9AP7WdHBJYAgXG6GEyq7nSkNMe_width: (number)[] = [];
+    
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  const _2e9AP7WdHBJYAgXG6GEyq7nSkNMe_width: (number)[] = [];
 
     let _2e9AP7WdHBJYAgXG6GEyq7nSkNMe_width__array = values[\\"https://www.w3.org/ns/activitystreams#width\\"];
     
@@ -29074,7 +29304,11 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
     }
     instance.#_2cGKFeFJMmiNpGZFEF75mCwFQsKb_height = _2cGKFeFJMmiNpGZFEF75mCwFQsKb_height;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -29451,7 +29685,13 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -29789,7 +30029,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -30125,7 +30371,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -33935,7 +34187,9 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
     if (!(instance instanceof Collection)) {
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
-    const _XDbmNDuWHmrhqH712zqtecdbv1V_totalItems: (number)[] = [];
+    
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  const _XDbmNDuWHmrhqH712zqtecdbv1V_totalItems: (number)[] = [];
 
     let _XDbmNDuWHmrhqH712zqtecdbv1V_totalItems__array = values[\\"https://www.w3.org/ns/activitystreams#totalItems\\"];
     
@@ -34078,7 +34332,10 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _2JPCKWTcfBmTCcW8Tv3TpRaLVaqg_items.push(decoded);
       
     }
@@ -34324,7 +34581,11 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
     }
     instance.#_2bsySzmT3qEZcrnoe3tZ5xBjXSju_likedOf = _2bsySzmT3qEZcrnoe3tZ5xBjXSju_likedOf;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -35767,6 +36028,8 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
       const _2kWgBhQKjEauxx8C6qF3ZQamK4Le_partOf: (Collection | URL)[] = [];
       const _trust_2kWgBhQKjEauxx8C6qF3ZQamK4Le_partOf: Set<number> = new Set();
     
@@ -35857,7 +36120,11 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
     }
     instance.#_3b8yG8tDNzQFFEnWhCc13G8eHooA_prev = _3b8yG8tDNzQFFEnWhCc13G8eHooA_prev;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -36249,7 +36516,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -36583,7 +36856,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -36915,7 +37194,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -36970,6 +37255,7 @@ export class Endpoints {
       values?: Record<string, unknown>;
     };
     #cachedJsonLd?: unknown;
+    #shouldCacheJsonLd = true;
     readonly id: URL | null;
 
     protected get _documentLoader(): DocumentLoader | undefined {
@@ -36998,6 +37284,14 @@ export class Endpoints {
 
     protected set _cachedJsonLd(value: unknown | undefined) {
       this.#cachedJsonLd = value;
+    }
+
+    protected get _shouldCacheJsonLd(): boolean {
+      return this.#shouldCacheJsonLd;
+    }
+
+    protected set _shouldCacheJsonLd(value: boolean) {
+      this.#shouldCacheJsonLd = value;
     }
     
     /**
@@ -37703,7 +37997,9 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
       { id: \\"@id\\" in values ? new URL(values[\\"@id\\"] as string) : undefined },
       options,
     );
-    const _2JCYDbSxEHCCLdBYed33cCETfGyR_proxyUrl: (URL)[] = [];
+    
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  const _2JCYDbSxEHCCLdBYed33cCETfGyR_proxyUrl: (URL)[] = [];
 
     let _2JCYDbSxEHCCLdBYed33cCETfGyR_proxyUrl__array = values[\\"https://www.w3.org/ns/activitystreams#proxyUrl\\"];
     
@@ -37884,7 +38180,11 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
     }
     instance.#_3JprUSDLVqqX4dwHRi37qGZZCRCc_sharedInbox = _3JprUSDLVqqX4dwHRi37qGZZCRCc_sharedInbox;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -38356,7 +38656,13 @@ proofs?: (DataIntegrityProof | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -38691,7 +38997,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -39027,7 +39339,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -44539,7 +44857,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
     if (!(instance instanceof Group)) {
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
-    const _3isuDgRAKSntq9XdbjiNxjwyPZAf_preferredUsername: ((string | LanguageString))[] = [];
+    
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  const _3isuDgRAKSntq9XdbjiNxjwyPZAf_preferredUsername: ((string | LanguageString))[] = [];
 
     let _3isuDgRAKSntq9XdbjiNxjwyPZAf_preferredUsername__array = values[\\"https://www.w3.org/ns/activitystreams#preferredUsername\\"];
     
@@ -44559,7 +44879,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         && typeof v[\\"@value\\"] === \\"string\\"
         && isValidLanguageTag(v[\\"@language\\"]) ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _3isuDgRAKSntq9XdbjiNxjwyPZAf_preferredUsername.push(decoded);
       
     }
@@ -44675,7 +44998,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox.push(decoded);
       
     }
@@ -44716,7 +45042,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _41QwhqJouoLg3h8dRPKat21brynC_outbox.push(decoded);
       
     }
@@ -45027,7 +45356,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo.push(decoded);
       
     }
@@ -45080,7 +45412,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.push(decoded);
       
     }
@@ -45146,7 +45481,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
     }
     instance.#_2xEU4QtkC53RAun67T81Egqt9vmL_isCat = _2xEU4QtkC53RAun67T81Egqt9vmL_isCat;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -45681,6 +46020,7 @@ export class Link {
       values?: Record<string, unknown>;
     };
     #cachedJsonLd?: unknown;
+    #shouldCacheJsonLd = true;
     readonly id: URL | null;
 
     protected get _documentLoader(): DocumentLoader | undefined {
@@ -45709,6 +46049,14 @@ export class Link {
 
     protected set _cachedJsonLd(value: unknown | undefined) {
       this.#cachedJsonLd = value;
+    }
+
+    protected get _shouldCacheJsonLd(): boolean {
+      return this.#shouldCacheJsonLd;
+    }
+
+    protected set _shouldCacheJsonLd(value: boolean) {
+      this.#shouldCacheJsonLd = value;
     }
     
     /**
@@ -46921,7 +47269,9 @@ get names(): ((string | LanguageString))[] {
       { id: \\"@id\\" in values ? new URL(values[\\"@id\\"] as string) : undefined },
       options,
     );
-    const _pVjLsybKQdmkjuU7MHjiVmNnuj7_href: (URL)[] = [];
+    
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  const _pVjLsybKQdmkjuU7MHjiVmNnuj7_href: (URL)[] = [];
 
     let _pVjLsybKQdmkjuU7MHjiVmNnuj7_href__array = values[\\"https://www.w3.org/ns/activitystreams#href\\"];
     
@@ -47001,7 +47351,10 @@ get names(): ((string | LanguageString))[] {
         && typeof v[\\"@value\\"] === \\"string\\"
         && isValidLanguageTag(v[\\"@language\\"]) ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _4ZHbBuK7PrsvGgrjM8wgc6KMWjav_name.push(decoded);
       
     }
@@ -47089,13 +47442,20 @@ get names(): ((string | LanguageString))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _gCVTegXxWWCw6wWRxa1QF65zusg_preview.push(decoded);
       
     }
     instance.#_gCVTegXxWWCw6wWRxa1QF65zusg_preview = _gCVTegXxWWCw6wWRxa1QF65zusg_preview;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -47585,7 +47945,13 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -47922,7 +48288,13 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -48261,7 +48633,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -48595,7 +48973,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -48929,7 +49313,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -49263,7 +49653,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -49597,7 +49993,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -49929,7 +50331,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -50227,7 +50635,13 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -50562,7 +50976,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -50995,7 +51415,9 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
     if (!(instance instanceof Note)) {
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
-    const _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl: (URL)[] = [];
+    
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  const _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl: (URL)[] = [];
 
     let _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl__array = values[\\"https://www.w3.org/ns/activitystreams#quoteUrl\\"];
     
@@ -51019,7 +51441,11 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
     }
     instance.#_K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl = _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -51683,6 +52109,8 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
       const _2JPCKWTcfBmTCcW8Tv3TpRaLVaqg_items: (Object | Link | URL)[] = [];
       const _trust_2JPCKWTcfBmTCcW8Tv3TpRaLVaqg_items: Set<number> = new Set();
     
@@ -51720,13 +52148,20 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _2JPCKWTcfBmTCcW8Tv3TpRaLVaqg_items.push(decoded);
       
     }
     instance.#_2JPCKWTcfBmTCcW8Tv3TpRaLVaqg_items = _2JPCKWTcfBmTCcW8Tv3TpRaLVaqg_items;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -52469,6 +52904,8 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
       const _2JPCKWTcfBmTCcW8Tv3TpRaLVaqg_items: (Object | Link | URL)[] = [];
       const _trust_2JPCKWTcfBmTCcW8Tv3TpRaLVaqg_items: Set<number> = new Set();
     
@@ -52506,7 +52943,10 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _2JPCKWTcfBmTCcW8Tv3TpRaLVaqg_items.push(decoded);
       
     }
@@ -52527,7 +52967,11 @@ proofs?: (DataIntegrityProof | URL)[];totalItems?: number | null;current?: Colle
     }
     instance.#_2W4yinFwqmpneu2h4m1mZ3pcLADd_startIndex = _2W4yinFwqmpneu2h4m1mZ3pcLADd_startIndex;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -58081,7 +58525,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
     if (!(instance instanceof Organization)) {
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
-    const _3isuDgRAKSntq9XdbjiNxjwyPZAf_preferredUsername: ((string | LanguageString))[] = [];
+    
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  const _3isuDgRAKSntq9XdbjiNxjwyPZAf_preferredUsername: ((string | LanguageString))[] = [];
 
     let _3isuDgRAKSntq9XdbjiNxjwyPZAf_preferredUsername__array = values[\\"https://www.w3.org/ns/activitystreams#preferredUsername\\"];
     
@@ -58101,7 +58547,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         && typeof v[\\"@value\\"] === \\"string\\"
         && isValidLanguageTag(v[\\"@language\\"]) ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _3isuDgRAKSntq9XdbjiNxjwyPZAf_preferredUsername.push(decoded);
       
     }
@@ -58217,7 +58666,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox.push(decoded);
       
     }
@@ -58258,7 +58710,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _41QwhqJouoLg3h8dRPKat21brynC_outbox.push(decoded);
       
     }
@@ -58569,7 +59024,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo.push(decoded);
       
     }
@@ -58622,7 +59080,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.push(decoded);
       
     }
@@ -58688,7 +59149,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
     }
     instance.#_2xEU4QtkC53RAun67T81Egqt9vmL_isCat = _2xEU4QtkC53RAun67T81Egqt9vmL_isCat;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -59497,7 +59962,13 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -65009,7 +65480,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
     if (!(instance instanceof Person)) {
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
-    const _3isuDgRAKSntq9XdbjiNxjwyPZAf_preferredUsername: ((string | LanguageString))[] = [];
+    
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  const _3isuDgRAKSntq9XdbjiNxjwyPZAf_preferredUsername: ((string | LanguageString))[] = [];
 
     let _3isuDgRAKSntq9XdbjiNxjwyPZAf_preferredUsername__array = values[\\"https://www.w3.org/ns/activitystreams#preferredUsername\\"];
     
@@ -65029,7 +65502,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         && typeof v[\\"@value\\"] === \\"string\\"
         && isValidLanguageTag(v[\\"@language\\"]) ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _3isuDgRAKSntq9XdbjiNxjwyPZAf_preferredUsername.push(decoded);
       
     }
@@ -65145,7 +65621,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox.push(decoded);
       
     }
@@ -65186,7 +65665,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _41QwhqJouoLg3h8dRPKat21brynC_outbox.push(decoded);
       
     }
@@ -65497,7 +65979,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo.push(decoded);
       
     }
@@ -65550,7 +66035,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.push(decoded);
       
     }
@@ -65616,7 +66104,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
     }
     instance.#_2xEU4QtkC53RAun67T81Egqt9vmL_isCat = _2xEU4QtkC53RAun67T81Egqt9vmL_isCat;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -66880,7 +67372,9 @@ proofs?: (DataIntegrityProof | URL)[];accuracy?: number | null;altitude?: number
     if (!(instance instanceof Place)) {
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
-    const _3UCsHnBHvDAXJnBuzw3zw1VVs3Ne_accuracy: (number)[] = [];
+    
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  const _3UCsHnBHvDAXJnBuzw3zw1VVs3Ne_accuracy: (number)[] = [];
 
     let _3UCsHnBHvDAXJnBuzw3zw1VVs3Ne_accuracy__array = values[\\"https://www.w3.org/ns/activitystreams#accuracy\\"];
     
@@ -66989,13 +67483,20 @@ proofs?: (DataIntegrityProof | URL)[];accuracy?: number | null;altitude?: number
           ? new URL(v[\\"@id\\"])
           : new URL(v[\\"@id\\"], (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"]))) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _oKrwxU4V8wiKhMW1QEYQibcJh8c_units.push(decoded);
       
     }
     instance.#_oKrwxU4V8wiKhMW1QEYQibcJh8c_units = _oKrwxU4V8wiKhMW1QEYQibcJh8c_units;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -67737,6 +68238,8 @@ proofs?: (DataIntegrityProof | URL)[];describes?: Object | URL | null;}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
       const _3CLQ1PLSXrhSQbTGGHuxNyaEFKM1_describes: (Object | URL)[] = [];
       const _trust_3CLQ1PLSXrhSQbTGGHuxNyaEFKM1_describes: Set<number> = new Set();
     
@@ -67767,7 +68270,11 @@ proofs?: (DataIntegrityProof | URL)[];describes?: Object | URL | null;}
     }
     instance.#_3CLQ1PLSXrhSQbTGGHuxNyaEFKM1_describes = _3CLQ1PLSXrhSQbTGGHuxNyaEFKM1_describes;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -68868,6 +69375,8 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
       const _2N5scKaVEcdYHFmfKYYacAwUhUgQ_oneOf: (Object | URL)[] = [];
       const _trust_2N5scKaVEcdYHFmfKYYacAwUhUgQ_oneOf: Set<number> = new Set();
     
@@ -68953,7 +69462,10 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
       ) : typeof v === \\"object\\" && \\"@value\\" in v
         && typeof v[\\"@value\\"] === \\"boolean\\" ? v[\\"@value\\"] : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _3KronwL8DiiKBRcJFKQPiEHm8xb6_closed.push(decoded);
       
     }
@@ -68997,7 +69509,11 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
     }
     instance.#_K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl = _K1zrMQkQjmciFAmGdGLfaDbG925_quoteUrl;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -69434,7 +69950,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -69772,7 +70294,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -71264,6 +71792,8 @@ relationships?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
       const _2Zqdmi46ZnDQsECS6mzwhrv3rUKq_subject: (Object | URL)[] = [];
       const _trust_2Zqdmi46ZnDQsECS6mzwhrv3rUKq_subject: Set<number> = new Set();
     
@@ -71354,7 +71884,11 @@ relationships?: (Object | URL)[];}
     }
     instance.#_4Lzz89F9qipAQSGkWyX9DGWiUojG_relationship = _4Lzz89F9qipAQSGkWyX9DGWiUojG_relationship;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -71760,7 +72294,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -77272,7 +77812,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
     if (!(instance instanceof Service)) {
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
-    const _3isuDgRAKSntq9XdbjiNxjwyPZAf_preferredUsername: ((string | LanguageString))[] = [];
+    
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  const _3isuDgRAKSntq9XdbjiNxjwyPZAf_preferredUsername: ((string | LanguageString))[] = [];
 
     let _3isuDgRAKSntq9XdbjiNxjwyPZAf_preferredUsername__array = values[\\"https://www.w3.org/ns/activitystreams#preferredUsername\\"];
     
@@ -77292,7 +77834,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         && typeof v[\\"@value\\"] === \\"string\\"
         && isValidLanguageTag(v[\\"@language\\"]) ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _3isuDgRAKSntq9XdbjiNxjwyPZAf_preferredUsername.push(decoded);
       
     }
@@ -77408,7 +77953,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox.push(decoded);
       
     }
@@ -77449,7 +77997,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _41QwhqJouoLg3h8dRPKat21brynC_outbox.push(decoded);
       
     }
@@ -77760,7 +78311,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo.push(decoded);
       
     }
@@ -77813,7 +78367,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
       { ...options, baseUrl: (values[\\"@id\\"] == null ? options.baseUrl : new URL(values[\\"@id\\"])) }
     ) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.push(decoded);
       
     }
@@ -77879,7 +78436,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
     }
     instance.#_2xEU4QtkC53RAun67T81Egqt9vmL_isCat = _2xEU4QtkC53RAun67T81Egqt9vmL_isCat;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -78406,6 +78967,7 @@ export class Source {
       values?: Record<string, unknown>;
     };
     #cachedJsonLd?: unknown;
+    #shouldCacheJsonLd = true;
     readonly id: URL | null;
 
     protected get _documentLoader(): DocumentLoader | undefined {
@@ -78434,6 +78996,14 @@ export class Source {
 
     protected set _cachedJsonLd(value: unknown | undefined) {
       this.#cachedJsonLd = value;
+    }
+
+    protected get _shouldCacheJsonLd(): boolean {
+      return this.#shouldCacheJsonLd;
+    }
+
+    protected set _shouldCacheJsonLd(value: boolean) {
+      this.#shouldCacheJsonLd = value;
     }
     
     /**
@@ -78891,7 +79461,9 @@ get contents(): ((string | LanguageString))[] {
       { id: \\"@id\\" in values ? new URL(values[\\"@id\\"] as string) : undefined },
       options,
     );
-    const _4HuuRSdSrXq8Jj2J9gcdYfoCzeuz_content: ((string | LanguageString))[] = [];
+    
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  const _4HuuRSdSrXq8Jj2J9gcdYfoCzeuz_content: ((string | LanguageString))[] = [];
 
     let _4HuuRSdSrXq8Jj2J9gcdYfoCzeuz_content__array = values[\\"https://www.w3.org/ns/activitystreams#content\\"];
     
@@ -78911,7 +79483,10 @@ get contents(): ((string | LanguageString))[] {
         && typeof v[\\"@value\\"] === \\"string\\"
         && isValidLanguageTag(v[\\"@language\\"]) ? new LanguageString(v[\\"@value\\"], v[\\"@language\\"]) : undefined
       ;
-      if (typeof decoded === \\"undefined\\") continue;
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       _4HuuRSdSrXq8Jj2J9gcdYfoCzeuz_content.push(decoded);
       
     }
@@ -78932,7 +79507,11 @@ get contents(): ((string | LanguageString))[] {
     }
     instance.#_3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType = _3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -79327,7 +79906,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -79661,7 +80246,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -80076,7 +80667,9 @@ proofs?: (DataIntegrityProof | URL)[];deleted?: Temporal.Instant | null;}
     if (!(instance instanceof Tombstone)) {
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
-    const _8g8g4LiVMhFTXskuDEqx4ascxUr_deleted: (Temporal.Instant)[] = [];
+    
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  const _8g8g4LiVMhFTXskuDEqx4ascxUr_deleted: (Temporal.Instant)[] = [];
 
     let _8g8g4LiVMhFTXskuDEqx4ascxUr_deleted__array = values[\\"https://www.w3.org/ns/activitystreams#deleted\\"];
     
@@ -80096,7 +80689,11 @@ proofs?: (DataIntegrityProof | URL)[];deleted?: Temporal.Instant | null;}
     }
     instance.#_8g8g4LiVMhFTXskuDEqx4ascxUr_deleted = _8g8g4LiVMhFTXskuDEqx4ascxUr_deleted;
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -80452,7 +81049,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -80791,7 +81394,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -81128,7 +81737,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -81465,7 +82080,13 @@ proofs?: (DataIntegrityProof | URL)[];width?: number | null;height?: number | nu
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
@@ -81798,7 +82419,13 @@ instruments?: (Object | URL)[];}
       throw new TypeError(\\"Unexpected type: \\" + instance.constructor.name);
     }
     
-    if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!(\\"_fromSubclass\\" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
