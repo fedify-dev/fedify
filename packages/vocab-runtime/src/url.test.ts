@@ -40,6 +40,14 @@ test("parseIri() preserves existing URL parsing behavior", () => {
   ok(!canParseIri("ap://not-a-did/actor"));
 });
 
+test("parseIri() normalizes portable URL instances", () => {
+  deepStrictEqual(
+    parseIri(new URL("ap+ef61://did%3Aexample%3Aabc%2Fdef/actor")),
+    new URL("ap+ef61://did%3Aexample%3Aabc%252Fdef/actor"),
+  );
+  ok(!canParseIri("ap+ef61://not-a-did/actor"));
+});
+
 test("formatIri() emits canonical portable ActivityPub URI syntax", () => {
   const cases = [
     new URL("ap://did%3Akey%3Az6Mkabc/actor"),
@@ -71,6 +79,18 @@ test("formatIri() preserves DID authority pct-encoded delimiters", () => {
   deepStrictEqual(
     formatIri(new URL("ap+ef61://did%3Aexample%3Aabc%2Fdef/actor")),
     "ap+ef61://did:example:abc%2Fdef/actor",
+  );
+});
+
+test("formatIri() preserves DID-internal pct-encoded authority characters", () => {
+  const parsed = parseIri("ap://did:web:example.com%3A3000/actor");
+  deepStrictEqual(
+    parsed,
+    new URL("ap+ef61://did%3Aweb%3Aexample.com%253A3000/actor"),
+  );
+  deepStrictEqual(
+    formatIri(parsed),
+    "ap+ef61://did:web:example.com%3A3000/actor",
   );
 });
 

@@ -66,7 +66,7 @@ function parsePortableIri(iri: string): URL | null {
 
 function normalizePortableUrl(iri: URL): URL | null {
   if (iri.protocol !== "ap:" && iri.protocol !== "ap+ef61:") return null;
-  return new URL(
+  return parsePortableIri(
     `ap+ef61://${iri.host}${iri.pathname}${iri.search}${iri.hash}`,
   );
 }
@@ -75,17 +75,15 @@ function decodePortableAuthority(authority: string): string {
   if (INVALID_PERCENT_ENCODING_PATTERN.test(authority)) {
     throw new TypeError("Invalid portable ActivityPub IRI authority.");
   }
+  if (authority.startsWith("did:")) return authority;
   return authority.replace(/%3A/gi, ":").replace(/%25/gi, "%");
 }
 
 function parseAtUri(uri: string): URL {
-  return new URL(
-    "at://" +
-      encodeURIComponent(
-        uri.includes("/", 5) ? uri.slice(5, uri.indexOf("/", 5)) : uri.slice(5),
-      ) +
-      (uri.includes("/", 5) ? uri.slice(uri.indexOf("/", 5)) : ""),
-  );
+  const index = uri.indexOf("/", 5);
+  const authority = index >= 0 ? uri.slice(5, index) : uri.slice(5);
+  const path = index >= 0 ? uri.slice(index) : "";
+  return new URL("at://" + encodeURIComponent(authority) + path);
 }
 
 /**

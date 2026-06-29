@@ -11,6 +11,7 @@ import {
 import { emitOverride } from "./type.ts";
 
 const XSD_ANY_URI = "http://www.w3.org/2001/XMLSchema#anyURI";
+const FEDIFY_URL = "fedify:url";
 
 /**
  * Sorts the given types topologically so that the base types come before the
@@ -180,7 +181,7 @@ function canContainIriValue(
   types: Record<string, TypeSchema>,
 ): boolean {
   return property.range.some((typeUri) =>
-    typeUri === XSD_ANY_URI || typeUri in types && types[typeUri].entity
+    typeUri === XSD_ANY_URI || typeUri === FEDIFY_URL || types[typeUri]?.entity
   );
 }
 
@@ -253,19 +254,22 @@ export async function* generateClasses(
   yield `const PORTABLE_IRI_KEYS: ReadonlySet<string> = new Set(${
     JSON.stringify([...portableIriKeys].sort())
   });\n\n`;
-  yield `function hasPortableIri(value: unknown, key?: string, depth = 0): boolean {
+  yield `function hasPortableIri(value: unknown, key?: string, depth = 0, parentKey?: string): boolean {
   if (depth > 32 || key === "@context") return false;
   if (typeof value === "string") {
-    return key != null && PORTABLE_IRI_KEYS.has(key) &&
+    return key != null &&
+      (PORTABLE_IRI_KEYS.has(key) ||
+        key === "@value" && parentKey != null &&
+          PORTABLE_IRI_KEYS.has(parentKey)) &&
       PORTABLE_IRI_PATTERN.test(value);
   }
   if (Array.isArray(value)) {
-    return value.some((item) => hasPortableIri(item, key, depth + 1));
+    return value.some((item) => hasPortableIri(item, key, depth + 1, parentKey));
   }
   if (value == null || typeof value !== "object") return false;
   const object = value as Record<string, unknown>;
   return globalThis.Object.keys(object).some((entryKey) =>
-    hasPortableIri(object[entryKey], entryKey, depth + 1)
+    hasPortableIri(object[entryKey], entryKey, depth + 1, key)
   );
 }\n\n`;
   const moduleVarNames = new Map<string, string>();
