@@ -410,6 +410,7 @@ export async function* generateDecoder(
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   `;
   const subtypes = getSubtypes(typeUri, types, true);
   yield `
@@ -535,15 +536,19 @@ export async function* generateDecoder(
   yield `
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(

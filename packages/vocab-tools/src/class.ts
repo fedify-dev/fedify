@@ -254,8 +254,6 @@ export async function* generateClasses(
   yield `const PORTABLE_IRI_KEYS: ReadonlySet<string> = new Set(${
     JSON.stringify([...portableIriKeys].sort())
   });\n\n`;
-  yield `const ACTIVITYSTREAMS_CONTEXT = "https://www.w3.org/ns/activitystreams";
-const ACTIVITYSTREAMS_IRI_PREFIX = "https://www.w3.org/ns/activitystreams#";\n\n`;
   yield `function isPortableIriPosition(
   key: string,
   parentKey?: string,
@@ -264,142 +262,6 @@ const ACTIVITYSTREAMS_IRI_PREFIX = "https://www.w3.org/ns/activitystreams#";\n\n
   return portableIriKeys.has(key) ||
     ((key === "@value" || key === "@list" || key === "@set") &&
       parentKey != null && portableIriKeys.has(parentKey));
-}\n\n`;
-  yield `function addContextIriPrefix(
-  prefixes: Map<string, string>,
-  term: string,
-  iri: string,
-): void {
-  if (!iri.endsWith("#") && !iri.endsWith("/") && !iri.endsWith(":")) return;
-  prefixes.set(term, iri);
-}\n\n`;
-  yield `function expandContextIri(
-  iri: string,
-  prefixes: ReadonlyMap<string, string>,
-): string {
-  const separatorIndex = iri.indexOf(":");
-  if (separatorIndex < 1) return iri;
-  const prefix = prefixes.get(iri.slice(0, separatorIndex));
-  if (prefix == null) return iri;
-  return prefix + iri.slice(separatorIndex + 1);
-}\n\n`;
-  yield `function addPortableIriContextAliases(
-  aliases: Set<string>,
-  context: unknown,
-  prefixes: Map<string, string>,
-  depth = 0,
-): void {
-  if (depth > 32 || context == null) return;
-  if (context === ACTIVITYSTREAMS_CONTEXT) {
-    prefixes.set("as", ACTIVITYSTREAMS_IRI_PREFIX);
-    return;
-  }
-  if (Array.isArray(context)) {
-    for (const entry of context) {
-      addPortableIriContextAliases(aliases, entry, prefixes, depth + 1);
-    }
-    return;
-  }
-  if (typeof context !== "object") return;
-  const object = context as Record<string, unknown>;
-  for (const [term, definition] of globalThis.Object.entries(object)) {
-    if (typeof definition === "string") {
-      const expandedDefinition = expandContextIri(definition, prefixes);
-      if (PORTABLE_IRI_KEYS.has(expandedDefinition)) aliases.add(term);
-      addContextIriPrefix(prefixes, term, expandedDefinition);
-      continue;
-    }
-    if (definition == null || typeof definition !== "object") continue;
-    if ((definition as Record<string, unknown>)["@type"] === "@id") {
-      aliases.add(term);
-    }
-    const id = (definition as Record<string, unknown>)["@id"];
-    if (typeof id === "string") {
-      const expandedId = expandContextIri(id, prefixes);
-      if (PORTABLE_IRI_KEYS.has(expandedId)) aliases.add(term);
-      if ((definition as Record<string, unknown>)["@prefix"] === true) {
-        addContextIriPrefix(prefixes, term, expandedId);
-      }
-    }
-  }
-}\n\n`;
-  yield `async function addRemotePortableIriContextAliases(
-  aliases: Set<string>,
-  context: unknown,
-  prefixes: Map<string, string>,
-  contextLoader: DocumentLoader,
-  loadedContexts: Map<string, unknown>,
-  depth = 0,
-): Promise<void> {
-  if (depth > 32 || context == null) return;
-  if (typeof context === "string") {
-    if (context === ACTIVITYSTREAMS_CONTEXT) return;
-    let remoteContext: unknown;
-    if (loadedContexts.has(context)) {
-      remoteContext = loadedContexts.get(context);
-    } else {
-      const remoteDocument = await contextLoader(context);
-      const document = remoteDocument?.document;
-      remoteContext = document != null && typeof document === "object" &&
-          "@context" in document
-        ? (document as Record<string, unknown>)["@context"]
-        : document;
-      loadedContexts.set(context, remoteContext);
-    }
-    addPortableIriContextAliases(aliases, remoteContext, prefixes, depth + 1);
-    await addRemotePortableIriContextAliases(
-      aliases,
-      remoteContext,
-      prefixes,
-      contextLoader,
-      loadedContexts,
-      depth + 1,
-    );
-    return;
-  }
-  if (Array.isArray(context)) {
-    for (const entry of context) {
-      await addRemotePortableIriContextAliases(
-        aliases,
-        entry,
-        prefixes,
-        contextLoader,
-        loadedContexts,
-        depth + 1,
-      );
-    }
-  }
-}\n\n`;
-  yield `function getPortableIriKeys(
-  object: Record<string, unknown>,
-  portableIriKeys: ReadonlySet<string>,
-): ReadonlySet<string> {
-  if (!("@context" in object)) return portableIriKeys;
-  const aliases = new Set<string>();
-  const prefixes = new Map<string, string>();
-  addPortableIriContextAliases(aliases, object["@context"], prefixes);
-  if (aliases.size < 1) return portableIriKeys;
-  return new Set([...portableIriKeys, ...aliases]);
-}\n\n`;
-  yield `async function getPortableIriKeysWithLoader(
-  object: Record<string, unknown>,
-  portableIriKeys: ReadonlySet<string>,
-  contextLoader: DocumentLoader,
-  loadedContexts = new Map<string, unknown>(),
-): Promise<ReadonlySet<string>> {
-  if (!("@context" in object)) return portableIriKeys;
-  const aliases = new Set<string>();
-  const prefixes = new Map<string, string>();
-  addPortableIriContextAliases(aliases, object["@context"], prefixes);
-  await addRemotePortableIriContextAliases(
-    aliases,
-    object["@context"],
-    prefixes,
-    contextLoader,
-    loadedContexts,
-  );
-  if (aliases.size < 1) return portableIriKeys;
-  return new Set([...portableIriKeys, ...aliases]);
 }\n\n`;
   yield `function hasPortableIri(
   value: unknown,
@@ -420,14 +282,13 @@ const ACTIVITYSTREAMS_IRI_PREFIX = "https://www.w3.org/ns/activitystreams#";\n\n
   }
   if (value == null || typeof value !== "object") return false;
   const object = value as Record<string, unknown>;
-  const nextPortableIriKeys = getPortableIriKeys(object, portableIriKeys);
   return globalThis.Object.keys(object).some((entryKey) =>
     hasPortableIri(
       object[entryKey],
       entryKey,
       depth + 1,
       key,
-      nextPortableIriKeys,
+      portableIriKeys,
     )
   );
 }\n\n`;
@@ -460,119 +321,13 @@ const ACTIVITYSTREAMS_IRI_PREFIX = "https://www.w3.org/ns/activitystreams#";\n\n
   }
   if (value == null || typeof value !== "object") return value;
   const object = value as Record<string, unknown>;
-  const nextPortableIriKeys = getPortableIriKeys(object, portableIriKeys);
   for (const entryKey of globalThis.Object.keys(object)) {
     object[entryKey] = normalizePortableIris(
       object[entryKey],
       entryKey,
       depth + 1,
       key,
-      nextPortableIriKeys,
-    );
-  }
-  return object;
-}\n\n`;
-  yield `async function hasPortableIriWithLoader(
-  value: unknown,
-  contextLoader: DocumentLoader,
-  key?: string,
-  depth = 0,
-  parentKey?: string,
-  portableIriKeys: ReadonlySet<string> = PORTABLE_IRI_KEYS,
-  loadedContexts = new Map<string, unknown>(),
-): Promise<boolean> {
-  if (depth > 32 || key === "@context") return false;
-  if (typeof value === "string") {
-    return key != null && isPortableIriPosition(key, parentKey, portableIriKeys) &&
-      PORTABLE_IRI_PATTERN.test(value);
-  }
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      if (
-        await hasPortableIriWithLoader(
-          item,
-          contextLoader,
-          key,
-          depth + 1,
-          parentKey,
-          portableIriKeys,
-          loadedContexts,
-        )
-      ) return true;
-    }
-    return false;
-  }
-  if (value == null || typeof value !== "object") return false;
-  const object = value as Record<string, unknown>;
-  const nextPortableIriKeys = await getPortableIriKeysWithLoader(
-    object,
-    portableIriKeys,
-    contextLoader,
-    loadedContexts,
-  );
-  for (const entryKey of globalThis.Object.keys(object)) {
-    if (
-      await hasPortableIriWithLoader(
-        object[entryKey],
-        contextLoader,
-        entryKey,
-        depth + 1,
-        key,
-        nextPortableIriKeys,
-        loadedContexts,
-      )
-    ) return true;
-  }
-  return false;
-}\n\n`;
-  yield `async function normalizePortableIrisWithLoader(
-  value: unknown,
-  contextLoader: DocumentLoader,
-  key?: string,
-  depth = 0,
-  parentKey?: string,
-  portableIriKeys: ReadonlySet<string> = PORTABLE_IRI_KEYS,
-  loadedContexts = new Map<string, unknown>(),
-): Promise<unknown> {
-  if (depth > 32 || key === "@context") return value;
-  if (typeof value === "string") {
-    return key != null &&
-        isPortableIriPosition(key, parentKey, portableIriKeys) &&
-        PORTABLE_IRI_PATTERN.test(value)
-      ? formatIri(value)
-      : value;
-  }
-  if (Array.isArray(value)) {
-    for (let i = 0; i < value.length; i++) {
-      value[i] = await normalizePortableIrisWithLoader(
-        value[i],
-        contextLoader,
-        key,
-        depth + 1,
-        parentKey,
-        portableIriKeys,
-        loadedContexts,
-      );
-    }
-    return value;
-  }
-  if (value == null || typeof value !== "object") return value;
-  const object = value as Record<string, unknown>;
-  const nextPortableIriKeys = await getPortableIriKeysWithLoader(
-    object,
-    portableIriKeys,
-    contextLoader,
-    loadedContexts,
-  );
-  for (const entryKey of globalThis.Object.keys(object)) {
-    object[entryKey] = await normalizePortableIrisWithLoader(
-      object[entryKey],
-      contextLoader,
-      entryKey,
-      depth + 1,
-      key,
-      nextPortableIriKeys,
-      loadedContexts,
+      portableIriKeys,
     );
   }
   return object;

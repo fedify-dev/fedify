@@ -34,9 +34,6 @@ import {
 const PORTABLE_IRI_PATTERN = /^ap(?:\\+ef61)?:\\/\\//i;
 const PORTABLE_IRI_KEYS: ReadonlySet<string> = new Set(["@id","_misskey_quote","actor","alsoKnownAs","announceAuthorization","anyOf","approvedBy","assertionMethod","attachment","attributedTo","audience","automaticApproval","bcc","bto","cc","context","controller","current","describes","emojiReactions","featured","featuredTags","first","followers","followersOf","following","followingOf","generator","href","http://fedibird.com/ns#emojiReactions","http://fedibird.com/ns#quoteUri","http://joinmastodon.org/ns#featured","http://joinmastodon.org/ns#featuredTags","http://www.w3.org/ns/ldp#inbox","https://gotosocial.org/ns#announceAuthorization","https://gotosocial.org/ns#approvedBy","https://gotosocial.org/ns#automaticApproval","https://gotosocial.org/ns#interactingObject","https://gotosocial.org/ns#interactionTarget","https://gotosocial.org/ns#likeAuthorization","https://gotosocial.org/ns#manualApproval","https://gotosocial.org/ns#replyAuthorization","https://misskey-hub.net/ns#_misskey_quote","https://w3id.org/fep/044f#quote","https://w3id.org/fep/044f#quoteAuthorization","https://w3id.org/fep/5711#followersOf","https://w3id.org/fep/5711#followingOf","https://w3id.org/fep/5711#inboxOf","https://w3id.org/fep/5711#likedOf","https://w3id.org/fep/5711#likesOf","https://w3id.org/fep/5711#outboxOf","https://w3id.org/fep/5711#repliesOf","https://w3id.org/fep/5711#sharesOf","https://w3id.org/security#assertionMethod","https://w3id.org/security#controller","https://w3id.org/security#owner","https://w3id.org/security#proof","https://w3id.org/security#publicKey","https://w3id.org/security#verificationMethod","https://w3id.org/valueflows/ont/vf#resourceConformsTo","https://w3id.org/valueflows/ont/vf#satisfies","https://www.w3.org/ns/activitystreams#actor","https://www.w3.org/ns/activitystreams#alsoKnownAs","https://www.w3.org/ns/activitystreams#anyOf","https://www.w3.org/ns/activitystreams#attachment","https://www.w3.org/ns/activitystreams#attributedTo","https://www.w3.org/ns/activitystreams#audience","https://www.w3.org/ns/activitystreams#bcc","https://www.w3.org/ns/activitystreams#bto","https://www.w3.org/ns/activitystreams#cc","https://www.w3.org/ns/activitystreams#context","https://www.w3.org/ns/activitystreams#current","https://www.w3.org/ns/activitystreams#describes","https://www.w3.org/ns/activitystreams#first","https://www.w3.org/ns/activitystreams#followers","https://www.w3.org/ns/activitystreams#following","https://www.w3.org/ns/activitystreams#generator","https://www.w3.org/ns/activitystreams#href","https://www.w3.org/ns/activitystreams#icon","https://www.w3.org/ns/activitystreams#image","https://www.w3.org/ns/activitystreams#inReplyTo","https://www.w3.org/ns/activitystreams#instrument","https://www.w3.org/ns/activitystreams#items","https://www.w3.org/ns/activitystreams#last","https://www.w3.org/ns/activitystreams#liked","https://www.w3.org/ns/activitystreams#likes","https://www.w3.org/ns/activitystreams#location","https://www.w3.org/ns/activitystreams#movedTo","https://www.w3.org/ns/activitystreams#next","https://www.w3.org/ns/activitystreams#oauthAuthorizationEndpoint","https://www.w3.org/ns/activitystreams#oauthTokenEndpoint","https://www.w3.org/ns/activitystreams#object","https://www.w3.org/ns/activitystreams#oneOf","https://www.w3.org/ns/activitystreams#origin","https://www.w3.org/ns/activitystreams#outbox","https://www.w3.org/ns/activitystreams#partOf","https://www.w3.org/ns/activitystreams#prev","https://www.w3.org/ns/activitystreams#preview","https://www.w3.org/ns/activitystreams#provideClientKey","https://www.w3.org/ns/activitystreams#proxyUrl","https://www.w3.org/ns/activitystreams#quoteUrl","https://www.w3.org/ns/activitystreams#relationship","https://www.w3.org/ns/activitystreams#replies","https://www.w3.org/ns/activitystreams#result","https://www.w3.org/ns/activitystreams#sharedInbox","https://www.w3.org/ns/activitystreams#shares","https://www.w3.org/ns/activitystreams#signClientKey","https://www.w3.org/ns/activitystreams#streams","https://www.w3.org/ns/activitystreams#subject","https://www.w3.org/ns/activitystreams#tag","https://www.w3.org/ns/activitystreams#target","https://www.w3.org/ns/activitystreams#to","https://www.w3.org/ns/activitystreams#units","https://www.w3.org/ns/activitystreams#url","https://www.w3.org/ns/did#service","https://www.w3.org/ns/did#serviceEndpoint","icon","id","image","inReplyTo","inbox","inboxOf","instrument","interactingObject","interactionTarget","items","last","likeAuthorization","liked","likedOf","likes","likesOf","location","manualApproval","movedTo","next","oauthAuthorizationEndpoint","oauthTokenEndpoint","object","oneOf","orderedItems","origin","outbox","outboxOf","owner","partOf","prev","preview","proof","provideClientKey","proxyUrl","publicKey","quote","quoteAuthorization","quoteUri","quoteUrl","relationship","replies","repliesOf","replyAuthorization","resourceConformsTo","result","satisfies","service","sharedInbox","shares","sharesOf","signClientKey","streams","subject","tag","target","to","units","url"]);
 
-const ACTIVITYSTREAMS_CONTEXT = "https://www.w3.org/ns/activitystreams";
-const ACTIVITYSTREAMS_IRI_PREFIX = "https://www.w3.org/ns/activitystreams#";
-
 function isPortableIriPosition(
   key: string,
   parentKey?: string,
@@ -45,148 +42,6 @@ function isPortableIriPosition(
   return portableIriKeys.has(key) ||
     ((key === "@value" || key === "@list" || key === "@set") &&
       parentKey != null && portableIriKeys.has(parentKey));
-}
-
-function addContextIriPrefix(
-  prefixes: Map<string, string>,
-  term: string,
-  iri: string,
-): void {
-  if (!iri.endsWith("#") && !iri.endsWith("/") && !iri.endsWith(":")) return;
-  prefixes.set(term, iri);
-}
-
-function expandContextIri(
-  iri: string,
-  prefixes: ReadonlyMap<string, string>,
-): string {
-  const separatorIndex = iri.indexOf(":");
-  if (separatorIndex < 1) return iri;
-  const prefix = prefixes.get(iri.slice(0, separatorIndex));
-  if (prefix == null) return iri;
-  return prefix + iri.slice(separatorIndex + 1);
-}
-
-function addPortableIriContextAliases(
-  aliases: Set<string>,
-  context: unknown,
-  prefixes: Map<string, string>,
-  depth = 0,
-): void {
-  if (depth > 32 || context == null) return;
-  if (context === ACTIVITYSTREAMS_CONTEXT) {
-    prefixes.set("as", ACTIVITYSTREAMS_IRI_PREFIX);
-    return;
-  }
-  if (Array.isArray(context)) {
-    for (const entry of context) {
-      addPortableIriContextAliases(aliases, entry, prefixes, depth + 1);
-    }
-    return;
-  }
-  if (typeof context !== "object") return;
-  const object = context as Record<string, unknown>;
-  for (const [term, definition] of globalThis.Object.entries(object)) {
-    if (typeof definition === "string") {
-      const expandedDefinition = expandContextIri(definition, prefixes);
-      if (PORTABLE_IRI_KEYS.has(expandedDefinition)) aliases.add(term);
-      addContextIriPrefix(prefixes, term, expandedDefinition);
-      continue;
-    }
-    if (definition == null || typeof definition !== "object") continue;
-    if ((definition as Record<string, unknown>)["@type"] === "@id") {
-      aliases.add(term);
-    }
-    const id = (definition as Record<string, unknown>)["@id"];
-    if (typeof id === "string") {
-      const expandedId = expandContextIri(id, prefixes);
-      if (PORTABLE_IRI_KEYS.has(expandedId)) aliases.add(term);
-      if ((definition as Record<string, unknown>)["@prefix"] === true) {
-        addContextIriPrefix(prefixes, term, expandedId);
-      }
-    }
-  }
-}
-
-async function addRemotePortableIriContextAliases(
-  aliases: Set<string>,
-  context: unknown,
-  prefixes: Map<string, string>,
-  contextLoader: DocumentLoader,
-  loadedContexts: Map<string, unknown>,
-  depth = 0,
-): Promise<void> {
-  if (depth > 32 || context == null) return;
-  if (typeof context === "string") {
-    if (context === ACTIVITYSTREAMS_CONTEXT) return;
-    let remoteContext: unknown;
-    if (loadedContexts.has(context)) {
-      remoteContext = loadedContexts.get(context);
-    } else {
-      const remoteDocument = await contextLoader(context);
-      const document = remoteDocument?.document;
-      remoteContext = document != null && typeof document === "object" &&
-          "@context" in document
-        ? (document as Record<string, unknown>)["@context"]
-        : document;
-      loadedContexts.set(context, remoteContext);
-    }
-    addPortableIriContextAliases(aliases, remoteContext, prefixes, depth + 1);
-    await addRemotePortableIriContextAliases(
-      aliases,
-      remoteContext,
-      prefixes,
-      contextLoader,
-      loadedContexts,
-      depth + 1,
-    );
-    return;
-  }
-  if (Array.isArray(context)) {
-    for (const entry of context) {
-      await addRemotePortableIriContextAliases(
-        aliases,
-        entry,
-        prefixes,
-        contextLoader,
-        loadedContexts,
-        depth + 1,
-      );
-    }
-  }
-}
-
-function getPortableIriKeys(
-  object: Record<string, unknown>,
-  portableIriKeys: ReadonlySet<string>,
-): ReadonlySet<string> {
-  if (!("@context" in object)) return portableIriKeys;
-  const aliases = new Set<string>();
-  const prefixes = new Map<string, string>();
-  addPortableIriContextAliases(aliases, object["@context"], prefixes);
-  if (aliases.size < 1) return portableIriKeys;
-  return new Set([...portableIriKeys, ...aliases]);
-}
-
-async function getPortableIriKeysWithLoader(
-  object: Record<string, unknown>,
-  portableIriKeys: ReadonlySet<string>,
-  contextLoader: DocumentLoader,
-  loadedContexts = new Map<string, unknown>(),
-): Promise<ReadonlySet<string>> {
-  if (!("@context" in object)) return portableIriKeys;
-  const aliases = new Set<string>();
-  const prefixes = new Map<string, string>();
-  addPortableIriContextAliases(aliases, object["@context"], prefixes);
-  await addRemotePortableIriContextAliases(
-    aliases,
-    object["@context"],
-    prefixes,
-    contextLoader,
-    loadedContexts,
-  );
-  if (aliases.size < 1) return portableIriKeys;
-  return new Set([...portableIriKeys, ...aliases]);
 }
 
 function hasPortableIri(
@@ -208,14 +63,13 @@ function hasPortableIri(
   }
   if (value == null || typeof value !== "object") return false;
   const object = value as Record<string, unknown>;
-  const nextPortableIriKeys = getPortableIriKeys(object, portableIriKeys);
   return globalThis.Object.keys(object).some((entryKey) =>
     hasPortableIri(
       object[entryKey],
       entryKey,
       depth + 1,
       key,
-      nextPortableIriKeys,
+      portableIriKeys,
     )
   );
 }
@@ -249,121 +103,13 @@ function normalizePortableIris(
   }
   if (value == null || typeof value !== "object") return value;
   const object = value as Record<string, unknown>;
-  const nextPortableIriKeys = getPortableIriKeys(object, portableIriKeys);
   for (const entryKey of globalThis.Object.keys(object)) {
     object[entryKey] = normalizePortableIris(
       object[entryKey],
       entryKey,
       depth + 1,
       key,
-      nextPortableIriKeys,
-    );
-  }
-  return object;
-}
-
-async function hasPortableIriWithLoader(
-  value: unknown,
-  contextLoader: DocumentLoader,
-  key?: string,
-  depth = 0,
-  parentKey?: string,
-  portableIriKeys: ReadonlySet<string> = PORTABLE_IRI_KEYS,
-  loadedContexts = new Map<string, unknown>(),
-): Promise<boolean> {
-  if (depth > 32 || key === "@context") return false;
-  if (typeof value === "string") {
-    return key != null && isPortableIriPosition(key, parentKey, portableIriKeys) &&
-      PORTABLE_IRI_PATTERN.test(value);
-  }
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      if (
-        await hasPortableIriWithLoader(
-          item,
-          contextLoader,
-          key,
-          depth + 1,
-          parentKey,
-          portableIriKeys,
-          loadedContexts,
-        )
-      ) return true;
-    }
-    return false;
-  }
-  if (value == null || typeof value !== "object") return false;
-  const object = value as Record<string, unknown>;
-  const nextPortableIriKeys = await getPortableIriKeysWithLoader(
-    object,
-    portableIriKeys,
-    contextLoader,
-    loadedContexts,
-  );
-  for (const entryKey of globalThis.Object.keys(object)) {
-    if (
-      await hasPortableIriWithLoader(
-        object[entryKey],
-        contextLoader,
-        entryKey,
-        depth + 1,
-        key,
-        nextPortableIriKeys,
-        loadedContexts,
-      )
-    ) return true;
-  }
-  return false;
-}
-
-async function normalizePortableIrisWithLoader(
-  value: unknown,
-  contextLoader: DocumentLoader,
-  key?: string,
-  depth = 0,
-  parentKey?: string,
-  portableIriKeys: ReadonlySet<string> = PORTABLE_IRI_KEYS,
-  loadedContexts = new Map<string, unknown>(),
-): Promise<unknown> {
-  if (depth > 32 || key === "@context") return value;
-  if (typeof value === "string") {
-    return key != null &&
-        isPortableIriPosition(key, parentKey, portableIriKeys) &&
-        PORTABLE_IRI_PATTERN.test(value)
-      ? formatIri(value)
-      : value;
-  }
-  if (Array.isArray(value)) {
-    for (let i = 0; i < value.length; i++) {
-      value[i] = await normalizePortableIrisWithLoader(
-        value[i],
-        contextLoader,
-        key,
-        depth + 1,
-        parentKey,
-        portableIriKeys,
-        loadedContexts,
-      );
-    }
-    return value;
-  }
-  if (value == null || typeof value !== "object") return value;
-  const object = value as Record<string, unknown>;
-  const nextPortableIriKeys = await getPortableIriKeysWithLoader(
-    object,
-    portableIriKeys,
-    contextLoader,
-    loadedContexts,
-  );
-  for (const entryKey of globalThis.Object.keys(object)) {
-    object[entryKey] = await normalizePortableIrisWithLoader(
-      object[entryKey],
-      contextLoader,
-      entryKey,
-      depth + 1,
-      key,
-      nextPortableIriKeys,
-      loadedContexts,
+      portableIriKeys,
     );
   }
   return object;
@@ -10947,6 +10693,7 @@ get urls(): ((URL | Link))[] {
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -12352,15 +12099,19 @@ get urls(): ((URL | Link))[] {
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -13536,6 +13287,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -13560,15 +13312,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -14568,6 +14324,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -14678,15 +14435,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -17715,6 +17476,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -18075,15 +17837,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -18552,6 +18318,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -18576,15 +18343,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -19074,6 +18845,7 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -19141,15 +18913,19 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -19679,6 +19455,7 @@ unit?: string | null;numericalValue?: Decimal | null;}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -19734,15 +19511,19 @@ unit?: string | null;numericalValue?: Decimal | null;}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -20704,6 +20485,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -20788,15 +20570,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -21159,6 +20945,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -21183,15 +20970,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -21769,6 +21560,7 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -21872,15 +21664,19 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -22536,6 +22332,7 @@ get manualApprovals(): (URL)[] {
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -22591,15 +22388,19 @@ get manualApprovals(): (URL)[] {
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -23572,6 +23373,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -23656,15 +23458,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -24026,6 +23832,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -24050,15 +23857,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -24964,6 +24775,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -25048,15 +24860,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -25418,6 +25234,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -25442,15 +25259,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -26355,6 +26176,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -26439,15 +26261,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -26809,6 +26635,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -26833,15 +26660,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -27273,6 +27104,7 @@ get endpoints(): (URL)[] {
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -27314,15 +27146,19 @@ get endpoints(): (URL)[] {
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -27623,6 +27459,7 @@ endpoints?: (URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -27647,15 +27484,19 @@ endpoints?: (URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -28460,6 +28301,7 @@ cryptosuite?: "eddsa-jcs-2022" | null;verificationMethod?: Multikey | URL | null
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -28585,15 +28427,19 @@ cryptosuite?: "eddsa-jcs-2022" | null;verificationMethod?: Multikey | URL | null
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -29452,6 +29298,7 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -29539,15 +29386,19 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -30357,6 +30208,7 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -30444,15 +30296,19 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -30992,6 +30848,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -31058,15 +30915,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -31590,6 +31451,7 @@ satisfies?: URL | null;resourceQuantity?: Measure | null;}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -31648,15 +31510,19 @@ satisfies?: URL | null;resourceQuantity?: Measure | null;}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -32412,6 +32278,7 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -32530,15 +32397,19 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -33281,6 +33152,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -33383,15 +33255,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -33786,6 +33662,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -33814,15 +33691,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -34138,6 +34019,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -34162,15 +34044,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -34485,6 +34371,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -34509,15 +34396,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -40197,6 +40088,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -40838,15 +40730,19 @@ get preferredUsernames(): ((string | LanguageString))[] {
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -41633,6 +41529,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -41669,15 +41566,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -41992,6 +41893,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -42016,15 +41918,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -43019,6 +42925,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -43129,15 +43036,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -43666,6 +43577,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -43742,15 +43654,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -44107,6 +44023,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -44131,15 +44048,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -44453,6 +44374,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -44481,15 +44403,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -44805,6 +44731,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -44829,15 +44756,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -48748,6 +48679,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -49172,15 +49104,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -50632,6 +50568,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -50750,15 +50687,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -51130,6 +51071,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -51154,15 +51096,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -51476,6 +51422,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -51500,15 +51447,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -51820,6 +51771,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -51844,15 +51796,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -52633,6 +52589,7 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -52760,15 +52717,19 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -53220,6 +53181,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -53244,15 +53206,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -53567,6 +53533,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -53591,15 +53558,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -53915,6 +53886,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -53939,15 +53911,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -59627,6 +59603,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -60268,15 +60245,19 @@ get preferredUsernames(): ((string | LanguageString))[] {
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -62047,6 +62028,7 @@ get names(): ((string | LanguageString))[] {
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -62246,15 +62228,19 @@ get names(): ((string | LanguageString))[] {
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -62724,6 +62710,7 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -62748,15 +62735,19 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -63073,6 +63064,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -63097,15 +63089,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -63420,6 +63416,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -63448,15 +63445,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -63770,6 +63771,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -63794,15 +63796,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -64116,6 +64122,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -64140,15 +64147,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -64462,6 +64473,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -64486,15 +64498,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -64808,6 +64824,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -64832,15 +64849,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -65152,6 +65173,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -65176,15 +65198,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -65462,6 +65488,7 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -65486,15 +65513,19 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -65809,6 +65840,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -65833,15 +65865,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -66838,6 +66874,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -66948,15 +66985,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -67651,6 +67692,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -67715,15 +67757,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -68457,6 +68503,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -68539,15 +68586,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -74269,6 +74320,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -74910,15 +74962,19 @@ get preferredUsernames(): ((string | LanguageString))[] {
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -75707,6 +75763,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -75731,15 +75788,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -81419,6 +81480,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -82060,15 +82122,19 @@ get preferredUsernames(): ((string | LanguageString))[] {
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -83313,6 +83379,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -83451,15 +83518,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -84192,6 +84263,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -84246,15 +84318,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -85900,6 +85976,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -86119,15 +86196,19 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -86584,6 +86665,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -86608,15 +86690,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -86930,6 +87016,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -86958,15 +87045,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -88493,6 +88584,7 @@ relationships?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -88607,15 +88699,19 @@ relationships?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -89001,6 +89097,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -89025,15 +89122,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -94713,6 +94814,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -95354,15 +95456,19 @@ get preferredUsernames(): ((string | LanguageString))[] {
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -96367,6 +96473,7 @@ get contents(): ((string | LanguageString))[] {
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -96428,15 +96535,19 @@ get contents(): ((string | LanguageString))[] {
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -96811,6 +96922,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -96835,15 +96947,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -97157,6 +97273,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -97181,15 +97298,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -97719,6 +97840,7 @@ get formerTypes(): ($EntityType)[] {
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -97796,15 +97918,19 @@ get formerTypes(): ($EntityType)[] {
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -98166,6 +98292,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -98190,15 +98317,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -98517,6 +98648,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -98541,15 +98673,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -98866,6 +99002,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -98890,15 +99027,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -99215,6 +99356,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -99239,15 +99381,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
@@ -99560,6 +99706,7 @@ instruments?: (Object | URL)[];}
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
+    const cacheValues = structuredClone(values);
   
   if ("@type" in values) {
     span.setAttribute("activitypub.object.type", values["@type"]);
@@ -99584,15 +99731,19 @@ instruments?: (Object | URL)[];}
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const cachedJsonLd = structuredClone(json);
-        const contextLoader = options.contextLoader ?? getDocumentLoader();
-        if (await hasPortableIriWithLoader(cachedJsonLd, contextLoader)) {
-          instance._cachedJsonLd = await normalizePortableIrisWithLoader(
-            cachedJsonLd,
-            contextLoader,
-          );
-        } else if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = cachedJsonLd;
+        if (hasPortableIri(cacheValues)) {
+          const normalizedValues = normalizePortableIris(cacheValues);
+          const context = json != null && typeof json === "object" &&
+              "@context" in json
+            ? (json as Record<string, unknown>)["@context"]
+            : undefined;
+          instance._cachedJsonLd = context == null
+            ? normalizedValues
+            : await jsonld.compact(normalizedValues, context, {
+              documentLoader: options.contextLoader,
+            });
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(

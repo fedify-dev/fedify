@@ -654,9 +654,7 @@ test("fromJsonLd() formats portable IRIs in JSON-LD containers", async () => {
   deepStrictEqual(jsonLd.attributedTo, {
     "@list": ["ap+ef61://did:key:z6Mkabc/actor"],
   });
-  deepStrictEqual(jsonLd.to, {
-    "@set": ["ap+ef61://did:key:z6Mkabc/followers"],
-  });
+  deepStrictEqual(jsonLd.to, "ap+ef61://did:key:z6Mkabc/followers");
 });
 
 test("fromJsonLd() formats portable IRIs hidden behind JSON-LD aliases", async () => {
@@ -702,8 +700,8 @@ test("fromJsonLd() formats portable IRIs hidden behind JSON-LD aliases", async (
   const jsonLd = await activity.toJsonLd({
     contextLoader: mockDocumentLoader,
   }) as Record<string, unknown>;
-  deepStrictEqual(jsonLd.actorRef, "ap+ef61://did:key:z6Mkabc/actor");
-  deepStrictEqual(jsonLd.targetRef, "ap+ef61://did:key:z6Mkabc/target");
+  deepStrictEqual(jsonLd.actor, "ap+ef61://did:key:z6Mkabc/actor");
+  deepStrictEqual(jsonLd.target, "ap+ef61://did:key:z6Mkabc/target");
   deepStrictEqual(jsonLd.extra, "This extension property should stay cached.");
   deepStrictEqual(jsonLd.extraRef, "ap+ef61://did:key:z6Mkabc/extra");
 });
@@ -800,7 +798,7 @@ test("fromJsonLd() preserves portable IRIs hidden behind remote contexts", async
   deepStrictEqual(jsonLd.extraRef, "ap+ef61://did:key:z6Mkabc/extra");
 });
 
-test("fromJsonLd() preserves portable IRIs hidden behind nested remote contexts", async () => {
+test("fromJsonLd() formats portable IRIs hidden behind nested remote contexts", async () => {
   const rootContextUrl = "https://example.com/contexts/nested-portable-iris";
   const nestedContextUrl = "https://example.com/contexts/nested-portable-ref";
   const contextLoader: DocumentLoader = async (
@@ -854,14 +852,13 @@ test("fromJsonLd() preserves portable IRIs hidden behind nested remote contexts"
     unknown
   >;
   deepStrictEqual(jsonLd.extraContainer, {
-    "@context": nestedContextUrl,
     content: "This text mentions ap://did:key:z6Mkabc/text.",
     extra: "This nested extension object should stay cached.",
-    extraRef: "ap+ef61://did:key:z6Mkabc/extra",
+    extraRef: { id: "ap+ef61://did:key:z6Mkabc/extra" },
   });
 });
 
-test("fromJsonLd() reuses remote context aliases for sibling extension objects", async () => {
+test("fromJsonLd() formats portable IRIs in sibling remote-context objects", async () => {
   const rootContextUrl = "https://example.com/contexts/sibling-containers";
   const nestedContextUrl = "https://example.com/contexts/sibling-extra-ref";
   const contextLoader: DocumentLoader = async (
@@ -918,12 +915,10 @@ test("fromJsonLd() reuses remote context aliases for sibling extension objects",
     unknown
   >;
   deepStrictEqual(jsonLd.firstExtraContainer, {
-    "@context": nestedContextUrl,
     content: "No portable IRI here.",
   });
   deepStrictEqual(jsonLd.secondExtraContainer, {
-    "@context": nestedContextUrl,
-    extraRef: "ap+ef61://did:key:z6Mkabc/second",
+    extraRef: { id: "ap+ef61://did:key:z6Mkabc/second" },
   });
 });
 
