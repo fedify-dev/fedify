@@ -92,18 +92,60 @@ function addPortableIriContextAliases(
       continue;
     }
     if (definition == null || typeof definition !== \\"object\\") continue;
+    if ((definition as Record<string, unknown>)[\\"@type\\"] === \\"@id\\") {
+      aliases.add(term);
+    }
     const id = (definition as Record<string, unknown>)[\\"@id\\"];
     if (typeof id === \\"string\\") {
       const expandedId = expandContextIri(id, prefixes);
-      if (
-        PORTABLE_IRI_KEYS.has(expandedId) ||
-        (definition as Record<string, unknown>)[\\"@type\\"] === \\"@id\\"
-      ) {
-        aliases.add(term);
-      }
+      if (PORTABLE_IRI_KEYS.has(expandedId)) aliases.add(term);
       if ((definition as Record<string, unknown>)[\\"@prefix\\"] === true) {
         addContextIriPrefix(prefixes, term, expandedId);
       }
+    }
+  }
+}
+
+async function addRemotePortableIriContextAliases(
+  aliases: Set<string>,
+  context: unknown,
+  prefixes: Map<string, string>,
+  contextLoader: DocumentLoader,
+  loadedContexts: Set<string>,
+  depth = 0,
+): Promise<void> {
+  if (depth > 32 || context == null) return;
+  if (typeof context === \\"string\\") {
+    if (context === ACTIVITYSTREAMS_CONTEXT) return;
+    if (loadedContexts.has(context)) return;
+    loadedContexts.add(context);
+    const remoteDocument = await contextLoader(context);
+    const document = remoteDocument.document;
+    const remoteContext = document != null && typeof document === \\"object\\" &&
+        \\"@context\\" in document
+      ? (document as Record<string, unknown>)[\\"@context\\"]
+      : document;
+    addPortableIriContextAliases(aliases, remoteContext, prefixes, depth + 1);
+    await addRemotePortableIriContextAliases(
+      aliases,
+      remoteContext,
+      prefixes,
+      contextLoader,
+      loadedContexts,
+      depth + 1,
+    );
+    return;
+  }
+  if (Array.isArray(context)) {
+    for (const entry of context) {
+      await addRemotePortableIriContextAliases(
+        aliases,
+        entry,
+        prefixes,
+        contextLoader,
+        loadedContexts,
+        depth + 1,
+      );
     }
   }
 }
@@ -116,6 +158,26 @@ function getPortableIriKeys(
   const aliases = new Set<string>();
   const prefixes = new Map<string, string>();
   addPortableIriContextAliases(aliases, object[\\"@context\\"], prefixes);
+  if (aliases.size < 1) return portableIriKeys;
+  return new Set([...portableIriKeys, ...aliases]);
+}
+
+async function getPortableIriKeysWithLoader(
+  object: Record<string, unknown>,
+  portableIriKeys: ReadonlySet<string>,
+  contextLoader: DocumentLoader,
+): Promise<ReadonlySet<string>> {
+  if (!(\\"@context\\" in object)) return portableIriKeys;
+  const aliases = new Set<string>();
+  const prefixes = new Map<string, string>();
+  addPortableIriContextAliases(aliases, object[\\"@context\\"], prefixes);
+  await addRemotePortableIriContextAliases(
+    aliases,
+    object[\\"@context\\"],
+    prefixes,
+    contextLoader,
+    new Set(),
+  );
   if (aliases.size < 1) return portableIriKeys;
   return new Set([...portableIriKeys, ...aliases]);
 }
@@ -12177,8 +12239,28 @@ get urls(): ((URL | Link))[] {
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -13381,8 +13463,28 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -14495,8 +14597,28 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -17888,8 +18010,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -18385,8 +18527,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -18946,8 +19108,28 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -19535,8 +19717,28 @@ unit?: string | null;numericalValue?: Decimal | null;}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -20585,8 +20787,28 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -20976,8 +21198,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -21661,8 +21903,28 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -22376,8 +22638,28 @@ get manualApprovals(): (URL)[] {
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -23437,8 +23719,28 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -23827,8 +24129,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -24821,8 +25143,28 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -25211,8 +25553,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -26204,8 +26566,28 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -26594,8 +26976,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -27071,8 +27473,28 @@ get endpoints(): (URL)[] {
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -27400,8 +27822,28 @@ endpoints?: (URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -28334,8 +28776,28 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -29284,8 +29746,28 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -30185,8 +30667,28 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -30795,8 +31297,28 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -31381,8 +31903,28 @@ satisfies?: URL | null;resourceQuantity?: Measure | null;}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -32259,8 +32801,28 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -33108,8 +33670,28 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -33535,8 +34117,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -33879,8 +34481,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -34222,8 +34844,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -40547,8 +41189,28 @@ get preferredUsernames(): ((string | LanguageString))[] {
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -41374,8 +42036,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -41717,8 +42399,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -42826,8 +43528,28 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -43435,8 +44157,28 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -43820,8 +44562,28 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -44166,8 +44928,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -44510,8 +45292,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -48849,8 +49651,28 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -50423,8 +51245,28 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -50823,8 +51665,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -51165,8 +52027,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -51505,8 +52387,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -52417,8 +53319,28 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -52897,8 +53819,28 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -53240,8 +54182,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -53584,8 +54546,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -59909,8 +60891,28 @@ get preferredUsernames(): ((string | LanguageString))[] {
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -61883,8 +62885,28 @@ get names(): ((string | LanguageString))[] {
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -62381,8 +63403,28 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -62726,8 +63768,28 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -63073,8 +64135,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -63415,8 +64497,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -63757,8 +64859,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -64099,8 +65221,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -64441,8 +65583,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -64781,8 +65943,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -65087,8 +66269,28 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -65430,8 +66632,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -66541,8 +67763,28 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -67304,8 +68546,28 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -68124,8 +69386,28 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -74491,8 +75773,28 @@ get preferredUsernames(): ((string | LanguageString))[] {
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -75308,8 +76610,28 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -81633,8 +82955,28 @@ get preferredUsernames(): ((string | LanguageString))[] {
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -83020,8 +84362,28 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -83811,8 +85173,28 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -85680,8 +87062,28 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -86165,8 +87567,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -86511,8 +87933,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -88156,8 +89598,28 @@ relationships?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -88570,8 +90032,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -94895,8 +96377,28 @@ get preferredUsernames(): ((string | LanguageString))[] {
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -95965,8 +97467,28 @@ get contents(): ((string | LanguageString))[] {
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -96368,8 +97890,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -96710,8 +98252,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -97321,8 +98883,28 @@ get formerTypes(): ($EntityType)[] {
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -97711,8 +99293,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -98058,8 +99660,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -98403,8 +100025,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -98748,8 +100390,28 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }
@@ -99089,8 +100751,28 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === \\"object\\"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }

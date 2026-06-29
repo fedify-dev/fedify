@@ -1,8 +1,10 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
 import {
   decodeMultibase,
+  type DocumentLoader,
   LanguageString,
   parseDecimal,
+  type RemoteDocument,
 } from "@fedify/vocab-runtime";
 import {
   areAllScalarTypes,
@@ -725,6 +727,76 @@ test("fromJsonLd() preserves portable IRIs in @id extension terms", async () => 
   const jsonLd = await note.toJsonLd({
     contextLoader: mockDocumentLoader,
   }) as Record<string, unknown>;
+  deepStrictEqual(jsonLd.extraRef, "ap+ef61://did:key:z6Mkabc/extra");
+});
+
+test("fromJsonLd() preserves portable IRIs in @id typed terms", async () => {
+  const note = await Note.fromJsonLd({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      {
+        "@vocab": "https://example.com/ns#",
+        extraRef: { "@type": "@id" },
+      },
+    ],
+    type: "Note",
+    id: "https://example.com/notes/1",
+    content: "This text mentions ap://did:key:z6Mkabc/text.",
+    extraRef: "ap://did:key:z6Mkabc/extra",
+  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+
+  const jsonLd = await note.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  deepStrictEqual(
+    jsonLd.content,
+    "This text mentions ap://did:key:z6Mkabc/text.",
+  );
+  deepStrictEqual(jsonLd.extraRef, "ap+ef61://did:key:z6Mkabc/extra");
+});
+
+test("fromJsonLd() preserves portable IRIs hidden behind remote contexts", async () => {
+  const contextUrl = "https://example.com/contexts/portable-iris";
+  const contextLoader: DocumentLoader = async (
+    resource: string,
+    options,
+  ): Promise<RemoteDocument> => {
+    if (resource === contextUrl) {
+      return {
+        contextUrl: null,
+        documentUrl: resource,
+        document: {
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            {
+              "@vocab": "https://example.com/ns#",
+              extra: "https://example.com/ns#extra",
+              extraRef: { "@type": "@id" },
+            },
+          ],
+        },
+      };
+    }
+    return await mockDocumentLoader(resource, options);
+  };
+  const note = await Note.fromJsonLd({
+    "@context": contextUrl,
+    type: "Note",
+    id: "https://example.com/notes/1",
+    content: "This text mentions ap://did:key:z6Mkabc/text.",
+    extra: "This extension property should stay cached.",
+    extraRef: "ap://did:key:z6Mkabc/extra",
+  }, { documentLoader: mockDocumentLoader, contextLoader });
+
+  const jsonLd = await note.toJsonLd({ contextLoader }) as Record<
+    string,
+    unknown
+  >;
+  deepStrictEqual(
+    jsonLd.content,
+    "This text mentions ap://did:key:z6Mkabc/text.",
+  );
+  deepStrictEqual(jsonLd.extra, "This extension property should stay cached.");
   deepStrictEqual(jsonLd.extraRef, "ap+ef61://did:key:z6Mkabc/extra");
 });
 

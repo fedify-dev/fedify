@@ -536,8 +536,28 @@ export async function* generateDecoder(
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         const cachedJsonLd = structuredClone(json);
-        if (hasPortableIri(cachedJsonLd)) {
-          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        const cachedPortableIriKeys =
+          cachedJsonLd != null && typeof cachedJsonLd === "object"
+            ? await getPortableIriKeysWithLoader(
+              cachedJsonLd as Record<string, unknown>,
+              PORTABLE_IRI_KEYS,
+              options.contextLoader ?? getDocumentLoader(),
+            )
+            : PORTABLE_IRI_KEYS;
+        if (hasPortableIri(
+          cachedJsonLd,
+          undefined,
+          0,
+          undefined,
+          cachedPortableIriKeys,
+        )) {
+          instance._cachedJsonLd = normalizePortableIris(
+            cachedJsonLd,
+            undefined,
+            0,
+            undefined,
+            cachedPortableIriKeys,
+          );
         } else if (!hasPortableIri(values)) {
           instance._cachedJsonLd = cachedJsonLd;
         }

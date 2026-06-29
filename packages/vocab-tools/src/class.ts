@@ -310,18 +310,59 @@ const ACTIVITYSTREAMS_IRI_PREFIX = "https://www.w3.org/ns/activitystreams#";\n\n
       continue;
     }
     if (definition == null || typeof definition !== "object") continue;
+    if ((definition as Record<string, unknown>)["@type"] === "@id") {
+      aliases.add(term);
+    }
     const id = (definition as Record<string, unknown>)["@id"];
     if (typeof id === "string") {
       const expandedId = expandContextIri(id, prefixes);
-      if (
-        PORTABLE_IRI_KEYS.has(expandedId) ||
-        (definition as Record<string, unknown>)["@type"] === "@id"
-      ) {
-        aliases.add(term);
-      }
+      if (PORTABLE_IRI_KEYS.has(expandedId)) aliases.add(term);
       if ((definition as Record<string, unknown>)["@prefix"] === true) {
         addContextIriPrefix(prefixes, term, expandedId);
       }
+    }
+  }
+}\n\n`;
+  yield `async function addRemotePortableIriContextAliases(
+  aliases: Set<string>,
+  context: unknown,
+  prefixes: Map<string, string>,
+  contextLoader: DocumentLoader,
+  loadedContexts: Set<string>,
+  depth = 0,
+): Promise<void> {
+  if (depth > 32 || context == null) return;
+  if (typeof context === "string") {
+    if (context === ACTIVITYSTREAMS_CONTEXT) return;
+    if (loadedContexts.has(context)) return;
+    loadedContexts.add(context);
+    const remoteDocument = await contextLoader(context);
+    const document = remoteDocument.document;
+    const remoteContext = document != null && typeof document === "object" &&
+        "@context" in document
+      ? (document as Record<string, unknown>)["@context"]
+      : document;
+    addPortableIriContextAliases(aliases, remoteContext, prefixes, depth + 1);
+    await addRemotePortableIriContextAliases(
+      aliases,
+      remoteContext,
+      prefixes,
+      contextLoader,
+      loadedContexts,
+      depth + 1,
+    );
+    return;
+  }
+  if (Array.isArray(context)) {
+    for (const entry of context) {
+      await addRemotePortableIriContextAliases(
+        aliases,
+        entry,
+        prefixes,
+        contextLoader,
+        loadedContexts,
+        depth + 1,
+      );
     }
   }
 }\n\n`;
@@ -333,6 +374,25 @@ const ACTIVITYSTREAMS_IRI_PREFIX = "https://www.w3.org/ns/activitystreams#";\n\n
   const aliases = new Set<string>();
   const prefixes = new Map<string, string>();
   addPortableIriContextAliases(aliases, object["@context"], prefixes);
+  if (aliases.size < 1) return portableIriKeys;
+  return new Set([...portableIriKeys, ...aliases]);
+}\n\n`;
+  yield `async function getPortableIriKeysWithLoader(
+  object: Record<string, unknown>,
+  portableIriKeys: ReadonlySet<string>,
+  contextLoader: DocumentLoader,
+): Promise<ReadonlySet<string>> {
+  if (!("@context" in object)) return portableIriKeys;
+  const aliases = new Set<string>();
+  const prefixes = new Map<string, string>();
+  addPortableIriContextAliases(aliases, object["@context"], prefixes);
+  await addRemotePortableIriContextAliases(
+    aliases,
+    object["@context"],
+    prefixes,
+    contextLoader,
+    new Set(),
+  );
   if (aliases.size < 1) return portableIriKeys;
   return new Set([...portableIriKeys, ...aliases]);
 }\n\n`;
