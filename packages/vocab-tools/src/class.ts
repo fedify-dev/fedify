@@ -3,8 +3,14 @@ import { generateCloner, generateConstructor } from "./constructor.ts";
 import { generateFields } from "./field.ts";
 import { generateInspector, generateInspectorPostClass } from "./inspector.ts";
 import { generateProperties } from "./property.ts";
-import { type TypeSchema, validateTypeSchemas } from "./schema.ts";
+import {
+  type PropertySchema,
+  type TypeSchema,
+  validateTypeSchemas,
+} from "./schema.ts";
 import { emitOverride } from "./type.ts";
+
+const XSD_ANY_URI = "http://www.w3.org/2001/XMLSchema#anyURI";
 
 /**
  * Sorts the given types topologically so that the base types come before the
@@ -169,6 +175,33 @@ export function getEntityTypeById(id: string | URL): $EntityType | undefined {
 `;
 }
 
+function canContainIriValue(
+  property: PropertySchema,
+  types: Record<string, TypeSchema>,
+): boolean {
+  return property.range.some((typeUri) =>
+    typeUri === XSD_ANY_URI || typeUri in types && types[typeUri].entity
+  );
+}
+
+function addPortableIriKeys(
+  keys: Set<string>,
+  property: PropertySchema,
+  types: Record<string, TypeSchema>,
+): void {
+  if (!canContainIriValue(property, types)) return;
+  keys.add(property.uri);
+  if (property.compactName != null) keys.add(property.compactName);
+  if (property.functional && property.redundantProperties != null) {
+    for (const redundantProperty of property.redundantProperties) {
+      keys.add(redundantProperty.uri);
+      if (redundantProperty.compactName != null) {
+        keys.add(redundantProperty.compactName);
+      }
+    }
+  }
+}
+
 /**
  * Generates the TypeScript classes from the given types.
  * @param types The types to generate classes from.
@@ -210,7 +243,30 @@ export async function* generateClasses(
     isTemporalInstant,
 } from "@fedify/vocab-runtime/temporal";\n`;
   yield "\n\n";
-  yield "const PORTABLE_IRI_PATTERN = /ap(?:\\+ef61)?:\\/\\//i;\n\n";
+  const portableIriKeys = new Set(["@id", "id"]);
+  for (const type of Object.values(types)) {
+    for (const property of type.properties) {
+      addPortableIriKeys(portableIriKeys, property, types);
+    }
+  }
+  yield "const PORTABLE_IRI_PATTERN = /^ap(?:\\+ef61)?:\\/\\//i;\n";
+  yield `const PORTABLE_IRI_KEYS: ReadonlySet<string> = new Set(${
+    JSON.stringify([...portableIriKeys].sort())
+  });\n\n`;
+  yield `function hasPortableIri(value: unknown, key?: string): boolean {
+  if (typeof value === "string") {
+    return key != null && PORTABLE_IRI_KEYS.has(key) &&
+      PORTABLE_IRI_PATTERN.test(value);
+  }
+  if (Array.isArray(value)) {
+    return value.some((item) => hasPortableIri(item, key));
+  }
+  if (value == null || typeof value !== "object") return false;
+  const object = value as Record<string, unknown>;
+  return globalThis.Object.keys(object).some((entryKey) =>
+    hasPortableIri(object[entryKey], entryKey)
+  );
+}\n\n`;
   const moduleVarNames = new Map<string, string>();
   const sorted = sortTopologically(types);
   for (const typeUri of sorted) {

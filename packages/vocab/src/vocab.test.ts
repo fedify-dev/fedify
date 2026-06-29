@@ -599,6 +599,26 @@ test("fromJsonLd() handles portable ActivityPub IRIs", async () => {
   );
 });
 
+test("fromJsonLd() caches text that mentions portable ActivityPub IRIs", async () => {
+  const noteJson = {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      { extra: "https://example.com/ns#extra" },
+    ],
+    type: "Note",
+    id: "https://example.com/notes/1",
+    content: "This is text about ap://did:key:z6Mkabc/actor.",
+    extra: "This extension property should stay cached.",
+  };
+
+  const note = await Note.fromJsonLd(noteJson, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+
+  deepStrictEqual(await note.toJsonLd(), noteJson);
+});
+
 test({
   name: "Activity.getObject()",
   permissions: { env: true, read: true },
