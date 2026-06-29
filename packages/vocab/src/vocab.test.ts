@@ -667,6 +667,10 @@ test("fromJsonLd() formats portable IRIs hidden behind JSON-LD aliases", async (
           "@prefix": true,
         },
         extra: "https://example.com/ns#extra",
+        extraRef: {
+          "@id": "https://example.com/ns#extraRef",
+          "@type": "@id",
+        },
         actorRef: {
           "@id": "as:actor",
           "@type": "@id",
@@ -682,6 +686,7 @@ test("fromJsonLd() formats portable IRIs hidden behind JSON-LD aliases", async (
     object: "https://example.com/objects/1",
     targetRef: "ap://did:key:z6Mkabc/target",
     extra: "This extension property should stay cached.",
+    extraRef: "ap://did:key:z6Mkabc/extra",
   }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
 
   deepStrictEqual(
@@ -698,6 +703,29 @@ test("fromJsonLd() formats portable IRIs hidden behind JSON-LD aliases", async (
   deepStrictEqual(jsonLd.actorRef, "ap+ef61://did:key:z6Mkabc/actor");
   deepStrictEqual(jsonLd.targetRef, "ap+ef61://did:key:z6Mkabc/target");
   deepStrictEqual(jsonLd.extra, "This extension property should stay cached.");
+  deepStrictEqual(jsonLd.extraRef, "ap+ef61://did:key:z6Mkabc/extra");
+});
+
+test("fromJsonLd() preserves portable IRIs in @id extension terms", async () => {
+  const note = await Note.fromJsonLd({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      {
+        extraRef: {
+          "@id": "https://example.com/ns#extraRef",
+          "@type": "@id",
+        },
+      },
+    ],
+    type: "Note",
+    id: "https://example.com/notes/1",
+    extraRef: "ap://did:key:z6Mkabc/extra",
+  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+
+  const jsonLd = await note.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  deepStrictEqual(jsonLd.extraRef, "ap+ef61://did:key:z6Mkabc/extra");
 });
 
 test("fromJsonLd() formats portable IRIs in scalar URL values", async () => {

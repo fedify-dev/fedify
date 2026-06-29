@@ -313,7 +313,12 @@ const ACTIVITYSTREAMS_IRI_PREFIX = "https://www.w3.org/ns/activitystreams#";\n\n
     const id = (definition as Record<string, unknown>)["@id"];
     if (typeof id === "string") {
       const expandedId = expandContextIri(id, prefixes);
-      if (PORTABLE_IRI_KEYS.has(expandedId)) aliases.add(term);
+      if (
+        PORTABLE_IRI_KEYS.has(expandedId) ||
+        (definition as Record<string, unknown>)["@type"] === "@id"
+      ) {
+        aliases.add(term);
+      }
       if ((definition as Record<string, unknown>)["@prefix"] === true) {
         addContextIriPrefix(prefixes, term, expandedId);
       }
