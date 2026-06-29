@@ -9,6 +9,9 @@ export class UrlError extends Error {
   }
 }
 
+const PORTABLE_IRI_PATTERN =
+  /^(ap|ap\+ef61):\/\/([^/?#]*)([^?#]*)(\?[^#]*)?(#.*)?$/i;
+
 /**
  * Checks whether the given string can be parsed as an IRI.
  */
@@ -47,9 +50,7 @@ export function formatIri(iri: string | URL): string {
 }
 
 function parsePortableIri(iri: string): URL | null {
-  const match = iri.match(
-    /^(ap|ap\+ef61):\/\/([^/?#]*)([^?#]*)(\?[^#]*)?(#.*)?$/i,
-  );
+  const match = iri.match(PORTABLE_IRI_PATTERN);
   if (match == null) return null;
   const authority = decodePortableAuthority(match[2]);
   if (!authority.startsWith("did:")) {

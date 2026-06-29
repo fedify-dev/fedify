@@ -210,6 +210,7 @@ export async function* generateClasses(
     isTemporalInstant,
 } from "@fedify/vocab-runtime/temporal";\n`;
   yield "\n\n";
+  yield "const PORTABLE_IRI_PATTERN = /ap(?:\\+ef61)?:\\/\\//i;\n\n";
   const moduleVarNames = new Map<string, string>();
   const sorted = sortTopologically(types);
   for (const typeUri of sorted) {

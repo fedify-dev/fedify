@@ -31,6 +31,8 @@ import {
 } from \\"@fedify/vocab-runtime/temporal\\";
 
 
+const PORTABLE_IRI_PATTERN = /ap(?:\\\\+ef61)?:\\\\/\\\\//i;
+
 import * as _ppM0 from \\"./preprocessors.ts\\";
 
 /** Describes an object of any kind. The Object type serves as the base type for
@@ -12015,7 +12017,7 @@ get urls(): ((URL | Link))[] {
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -13217,7 +13219,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -14329,7 +14331,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -17720,7 +17722,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -18215,7 +18217,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -18774,7 +18776,7 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -19361,7 +19363,7 @@ unit?: string | null;numericalValue?: Decimal | null;}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -20409,7 +20411,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -20798,7 +20800,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -21481,7 +21483,7 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -22194,7 +22196,7 @@ get manualApprovals(): (URL)[] {
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -23253,7 +23255,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -23641,7 +23643,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -24633,7 +24635,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -25021,7 +25023,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -26012,7 +26014,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -26400,7 +26402,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -26875,7 +26877,7 @@ get endpoints(): (URL)[] {
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -27202,7 +27204,7 @@ endpoints?: (URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -28134,7 +28136,7 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -29082,7 +29084,7 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -29981,7 +29983,7 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -30589,7 +30591,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -31173,7 +31175,7 @@ satisfies?: URL | null;resourceQuantity?: Measure | null;}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -32049,7 +32051,7 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -32896,7 +32898,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -33321,7 +33323,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -33663,7 +33665,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -34004,7 +34006,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -40327,7 +40329,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -41152,7 +41154,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -41493,7 +41495,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -42600,7 +42602,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -43207,7 +43209,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -43590,7 +43592,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -43934,7 +43936,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -44276,7 +44278,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -48613,7 +48615,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -50185,7 +50187,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -50583,7 +50585,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -50923,7 +50925,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -51261,7 +51263,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -52171,7 +52173,7 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -52649,7 +52651,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -52990,7 +52992,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -53332,7 +53334,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -59655,7 +59657,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -61627,7 +61629,7 @@ get names(): ((string | LanguageString))[] {
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -62123,7 +62125,7 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -62466,7 +62468,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -62811,7 +62813,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -63151,7 +63153,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -63491,7 +63493,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -63831,7 +63833,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -64171,7 +64173,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -64509,7 +64511,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -64813,7 +64815,7 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -65154,7 +65156,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -66263,7 +66265,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -67024,7 +67026,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -67842,7 +67844,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -74207,7 +74209,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -75022,7 +75024,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -81345,7 +81347,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -82730,7 +82732,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -83519,7 +83521,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -85386,7 +85388,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -85869,7 +85871,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -86213,7 +86215,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -87856,7 +87858,7 @@ relationships?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -88268,7 +88270,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -94591,7 +94593,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -95659,7 +95661,7 @@ get contents(): ((string | LanguageString))[] {
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -96060,7 +96062,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -96400,7 +96402,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -97009,7 +97011,7 @@ get formerTypes(): (\$EntityType)[] {
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -97397,7 +97399,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -97742,7 +97744,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -98085,7 +98087,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -98428,7 +98430,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
@@ -98767,7 +98769,7 @@ instruments?: (Object | URL)[];}
     if (!(\\"_fromSubclass\\" in options) || !options._fromSubclass) {
       try {
         const jsonText = JSON.stringify(json);
-        if (jsonText == null || !/ap(?:\\\\+ef61)?:\\\\/\\\\//i.test(jsonText)) {
+        if (jsonText == null || !PORTABLE_IRI_PATTERN.test(jsonText)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
