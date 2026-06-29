@@ -535,8 +535,11 @@ export async function* generateDecoder(
   yield `
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        if (!hasPortableIri(values)) {
-          instance._cachedJsonLd = structuredClone(json);
+        const cachedJsonLd = structuredClone(json);
+        if (hasPortableIri(cachedJsonLd)) {
+          instance._cachedJsonLd = normalizePortableIris(cachedJsonLd);
+        } else if (!hasPortableIri(values)) {
+          instance._cachedJsonLd = cachedJsonLd;
         }
       } catch {
         getLogger(["fedify", "vocab"]).warn(

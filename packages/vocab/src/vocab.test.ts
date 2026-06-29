@@ -619,6 +619,44 @@ test("fromJsonLd() caches text that mentions portable ActivityPub IRIs", async (
   deepStrictEqual(await note.toJsonLd(), noteJson);
 });
 
+test("fromJsonLd() preserves extensions with portable ActivityPub IRIs", async () => {
+  const note = await Note.fromJsonLd({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      { extra: "https://example.com/ns#extra" },
+    ],
+    type: "Note",
+    id: "ap://did:key:z6Mkabc/objects/1",
+    extra: "This extension property should stay cached.",
+  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+
+  const jsonLd = await note.toJsonLd() as Record<string, unknown>;
+  deepStrictEqual(jsonLd.extra, "This extension property should stay cached.");
+  deepStrictEqual(jsonLd.id, "ap+ef61://did:key:z6Mkabc/objects/1");
+});
+
+test("fromJsonLd() formats portable IRIs in JSON-LD containers", async () => {
+  const note = await Note.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Note",
+    id: "https://example.com/notes/1",
+    attributedTo: {
+      "@list": ["ap://did:key:z6Mkabc/actor"],
+    },
+    to: {
+      "@set": ["ap://did:key:z6Mkabc/followers"],
+    },
+  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+
+  const jsonLd = await note.toJsonLd() as Record<string, unknown>;
+  deepStrictEqual(jsonLd.attributedTo, {
+    "@list": ["ap+ef61://did:key:z6Mkabc/actor"],
+  });
+  deepStrictEqual(jsonLd.to, {
+    "@set": ["ap+ef61://did:key:z6Mkabc/followers"],
+  });
+});
+
 test("fromJsonLd() formats portable IRIs hidden behind JSON-LD aliases", async () => {
   const activity = await Activity.fromJsonLd({
     "@context": [

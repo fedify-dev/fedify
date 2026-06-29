@@ -254,13 +254,15 @@ export async function* generateClasses(
   yield `const PORTABLE_IRI_KEYS: ReadonlySet<string> = new Set(${
     JSON.stringify([...portableIriKeys].sort())
   });\n\n`;
+  yield `function isPortableIriPosition(key: string, parentKey?: string): boolean {
+  return PORTABLE_IRI_KEYS.has(key) ||
+    ((key === "@value" || key === "@list" || key === "@set") &&
+      parentKey != null && PORTABLE_IRI_KEYS.has(parentKey));
+}\n\n`;
   yield `function hasPortableIri(value: unknown, key?: string, depth = 0, parentKey?: string): boolean {
   if (depth > 32 || key === "@context") return false;
   if (typeof value === "string") {
-    return key != null &&
-      (PORTABLE_IRI_KEYS.has(key) ||
-        key === "@value" && parentKey != null &&
-          PORTABLE_IRI_KEYS.has(parentKey)) &&
+    return key != null && isPortableIriPosition(key, parentKey) &&
       PORTABLE_IRI_PATTERN.test(value);
   }
   if (Array.isArray(value)) {
@@ -271,6 +273,32 @@ export async function* generateClasses(
   return globalThis.Object.keys(object).some((entryKey) =>
     hasPortableIri(object[entryKey], entryKey, depth + 1, key)
   );
+}\n\n`;
+  yield `function normalizePortableIris(value: unknown, key?: string, depth = 0, parentKey?: string): unknown {
+  if (depth > 32 || key === "@context") return value;
+  if (typeof value === "string") {
+    return key != null && isPortableIriPosition(key, parentKey) &&
+        PORTABLE_IRI_PATTERN.test(value)
+      ? formatIri(value)
+      : value;
+  }
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i++) {
+      value[i] = normalizePortableIris(value[i], key, depth + 1, parentKey);
+    }
+    return value;
+  }
+  if (value == null || typeof value !== "object") return value;
+  const object = value as Record<string, unknown>;
+  for (const entryKey of globalThis.Object.keys(object)) {
+    object[entryKey] = normalizePortableIris(
+      object[entryKey],
+      entryKey,
+      depth + 1,
+      key,
+    );
+  }
+  return object;
 }\n\n`;
   const moduleVarNames = new Map<string, string>();
   const sorted = sortTopologically(types);
