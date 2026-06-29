@@ -50,9 +50,12 @@ export {
   type PropertyPreprocessorContext,
 } from "./preprocessor.ts";
 export {
+  canParseIri,
   expandIPv6Address,
+  formatIri,
   isValidPublicIPv4Address,
   isValidPublicIPv6Address,
+  parseIri,
   UrlError,
   validatePublicUrl,
 } from "./url.ts";

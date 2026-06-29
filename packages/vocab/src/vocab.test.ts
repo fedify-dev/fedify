@@ -479,6 +479,126 @@ test("Activity.fromJsonLd()", async () => {
   );
 });
 
+test("fromJsonLd() handles portable ActivityPub IRIs", async () => {
+  const did = "did:key:z6Mkabc";
+  const portableActor =
+    `ap://${did}/actor?gateways=https%3A%2F%2Fserver.example`;
+  const portableObject =
+    `ap://${did}/objects/1?gateways=https%3A%2F%2Fserver.example`;
+  const uppercasePortableObject =
+    `AP://${did}/objects/1?gateways=https%3A%2F%2Fserver.example`;
+  const portablePage = `ap://${did}/actor/outbox?page=2`;
+
+  const note = await Note.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Note",
+    id: uppercasePortableObject,
+    attributedTo: `ap+ef61://${
+      encodeURIComponent(did)
+    }/actor?gateways=https%3A%2F%2Fserver.example`,
+  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+  deepStrictEqual(
+    note.id,
+    new URL(
+      "ap+ef61://did%3Akey%3Az6Mkabc/objects/1?gateways=https%3A%2F%2Fserver.example",
+    ),
+  );
+  deepStrictEqual(
+    note.attributionId,
+    new URL(
+      "ap+ef61://did%3Akey%3Az6Mkabc/actor?gateways=https%3A%2F%2Fserver.example",
+    ),
+  );
+  const noteJson = await note.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  deepStrictEqual(noteJson.type, "Note");
+  deepStrictEqual(
+    noteJson.id,
+    "ap+ef61://did:key:z6Mkabc/objects/1?gateways=https%3A%2F%2Fserver.example",
+  );
+  deepStrictEqual(
+    noteJson.attributedTo,
+    "ap+ef61://did:key:z6Mkabc/actor?gateways=https%3A%2F%2Fserver.example",
+  );
+
+  const activity = await Activity.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Create",
+    actor: portableActor,
+    object: portableObject,
+  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+  deepStrictEqual(
+    activity.actorId,
+    new URL(
+      "ap+ef61://did%3Akey%3Az6Mkabc/actor?gateways=https%3A%2F%2Fserver.example",
+    ),
+  );
+  const activityJson = await activity.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  deepStrictEqual(activityJson.type, "Create");
+  deepStrictEqual(
+    activityJson.actor,
+    "ap+ef61://did:key:z6Mkabc/actor?gateways=https%3A%2F%2Fserver.example",
+  );
+  deepStrictEqual(
+    activityJson.object,
+    "ap+ef61://did:key:z6Mkabc/objects/1?gateways=https%3A%2F%2Fserver.example",
+  );
+
+  const person = await Person.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Person",
+    inbox: `ap+ef61://${did}/actor/inbox`,
+    outbox: `ap+ef61://${did}/actor/outbox`,
+  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+  deepStrictEqual(
+    person.inboxId,
+    new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor/inbox"),
+  );
+  deepStrictEqual(
+    person.outboxId,
+    new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor/outbox"),
+  );
+  const personJson = await person.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  deepStrictEqual(personJson.type, "Person");
+  deepStrictEqual(personJson.inbox, "ap+ef61://did:key:z6Mkabc/actor/inbox");
+  deepStrictEqual(
+    personJson.outbox,
+    "ap+ef61://did:key:z6Mkabc/actor/outbox",
+  );
+
+  const page = await OrderedCollectionPage.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "OrderedCollectionPage",
+    next: portablePage,
+    prev: `ap+ef61://${encodeURIComponent(did)}/actor/outbox?page=1`,
+  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+  deepStrictEqual(
+    page.nextId,
+    new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor/outbox?page=2"),
+  );
+  deepStrictEqual(
+    page.prevId,
+    new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor/outbox?page=1"),
+  );
+  const pageJson = await page.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  deepStrictEqual(pageJson.type, "OrderedCollectionPage");
+  deepStrictEqual(
+    pageJson.next,
+    "ap+ef61://did:key:z6Mkabc/actor/outbox?page=2",
+  );
+  deepStrictEqual(
+    pageJson.prev,
+    "ap+ef61://did:key:z6Mkabc/actor/outbox?page=1",
+  );
+});
+
 test({
   name: "Activity.getObject()",
   permissions: { env: true, read: true },

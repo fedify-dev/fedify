@@ -180,17 +180,20 @@ export async function* generateClasses(
   validateTypeSchemas(types);
   const runtimeImports = [
     "canParseDecimal",
+    "canParseIri",
     "decodeMultibase",
     "type Decimal",
     "type DocumentLoader",
     "encodeMultibase",
     "exportMultibaseKey",
     "exportSpki",
+    "formatIri",
     "getDocumentLoader",
     "importMultibaseKey",
     "importPem",
     "isDecimal",
     "LanguageString",
+    "parseIri",
     "parseDecimal",
     "type RemoteDocument",
   ];

@@ -1,12 +1,58 @@
 import { deepStrictEqual, ok, rejects } from "node:assert";
 import { test } from "node:test";
 import {
+  canParseIri,
   expandIPv6Address,
+  formatIri,
   isValidPublicIPv4Address,
   isValidPublicIPv6Address,
+  parseIri,
   UrlError,
   validatePublicUrl,
 } from "./url.ts";
+
+test("parseIri() accepts portable ActivityPub URI schemes", () => {
+  const cases = [
+    "ap://did:key:z6Mkabc/actor",
+    "ap://did%3Akey%3Az6Mkabc/actor",
+    "ap+ef61://did:key:z6Mkabc/actor",
+    "ap+ef61://did%3Akey%3Az6Mkabc/actor",
+    "AP+EF61://did:key:z6Mkabc/actor",
+  ];
+  for (const iri of cases) {
+    ok(canParseIri(iri));
+    deepStrictEqual(
+      parseIri(iri),
+      new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
+    );
+  }
+});
+
+test("parseIri() preserves existing URL parsing behavior", () => {
+  deepStrictEqual(
+    parseIri("/actor", new URL("https://example.com/users/alice")),
+    new URL("https://example.com/actor"),
+  );
+  deepStrictEqual(
+    parseIri("at://did:plc:example/record"),
+    new URL("at://did%3Aplc%3Aexample/record"),
+  );
+  ok(!canParseIri("ap://not-a-did/actor"));
+});
+
+test("formatIri() emits canonical portable ActivityPub URI syntax", () => {
+  const cases = [
+    new URL("ap://did%3Akey%3Az6Mkabc/actor"),
+    new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
+  ];
+  for (const iri of cases) {
+    deepStrictEqual(formatIri(iri), "ap+ef61://did:key:z6Mkabc/actor");
+  }
+  deepStrictEqual(
+    formatIri(new URL("https://example.com/actor")),
+    "https://example.com/actor",
+  );
+});
 
 test("validatePublicUrl()", async () => {
   await rejects(() => validatePublicUrl("ftp://localhost"), UrlError);

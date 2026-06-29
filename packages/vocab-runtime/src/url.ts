@@ -10,6 +10,77 @@ export class UrlError extends Error {
 }
 
 /**
+ * Checks whether the given string can be parsed as an IRI.
+ */
+export function canParseIri(iri: string, base?: string | URL): boolean {
+  try {
+    parseIri(iri, base);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Parses an IRI as a URL, including FEP-ef61 portable ActivityPub IRIs.
+ */
+export function parseIri(iri: string | URL, base?: string | URL): URL {
+  if (iri instanceof URL) {
+    return parsePortableIri(iri.href) ?? new URL(iri.href);
+  }
+  const portable = parsePortableIri(iri);
+  if (portable != null) return portable;
+  if (!URL.canParse(iri, base) && iri.startsWith("at://")) {
+    return parseAtUri(iri);
+  }
+  return new URL(iri, base);
+}
+
+/**
+ * Formats a URL as an IRI, including FEP-ef61 portable ActivityPub IRIs.
+ */
+export function formatIri(iri: string | URL): string {
+  const parsed = parsePortableIri(iri instanceof URL ? iri.href : iri);
+  if (parsed == null) return iri instanceof URL ? iri.href : new URL(iri).href;
+  const authority = decodePortableAuthority(parsed.host);
+  return `ap+ef61://${authority}${parsed.pathname}${parsed.search}${parsed.hash}`;
+}
+
+function parsePortableIri(iri: string): URL | null {
+  const match = iri.match(
+    /^(ap|ap\+ef61):\/\/([^/?#]*)([^?#]*)(\?[^#]*)?(#.*)?$/i,
+  );
+  if (match == null) return null;
+  const authority = decodePortableAuthority(match[2]);
+  if (!authority.startsWith("did:")) {
+    throw new TypeError("Invalid portable ActivityPub IRI authority.");
+  }
+  return new URL(
+    `ap+ef61://${encodeURIComponent(authority)}${match[3]}${match[4] ?? ""}${
+      match[5] ?? ""
+    }`,
+  );
+}
+
+function decodePortableAuthority(authority: string): string {
+  try {
+    return decodeURIComponent(authority);
+  } catch {
+    throw new TypeError("Invalid portable ActivityPub IRI authority.");
+  }
+}
+
+function parseAtUri(uri: string): URL {
+  return new URL(
+    "at://" +
+      encodeURIComponent(
+        uri.includes("/", 5) ? uri.slice(5, uri.indexOf("/", 5)) : uri.slice(5),
+      ) +
+      (uri.includes("/", 5) ? uri.slice(uri.indexOf("/", 5)) : ""),
+  );
+}
+
+/**
  * Validates a URL to prevent SSRF attacks.
  */
 export async function validatePublicUrl(url: string): Promise<void> {
