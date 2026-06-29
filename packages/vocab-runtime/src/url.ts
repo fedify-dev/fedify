@@ -12,6 +12,7 @@ export class UrlError extends Error {
 const PORTABLE_IRI_PATTERN =
   /^(ap|ap\+ef61):\/\/([^/?#]*)([^?#]*)(\?[^#]*)?(#.*)?$/i;
 const INVALID_PERCENT_ENCODING_PATTERN = /%(?![0-9A-Fa-f]{2})/;
+const DID_SCHEME_PATTERN = /^did:/i;
 
 /**
  * Checks whether the given string can be parsed as an IRI.
@@ -60,7 +61,7 @@ function parsePortableIri(iri: string): URL | null {
   const match = iri.match(PORTABLE_IRI_PATTERN);
   if (match == null) return null;
   const authority = decodePortableAuthority(match[2]);
-  if (!authority.startsWith("did:")) {
+  if (!DID_SCHEME_PATTERN.test(authority)) {
     throw new TypeError("Invalid portable ActivityPub IRI authority.");
   }
   if (match[3] === "") {
@@ -84,7 +85,7 @@ function decodePortableAuthority(authority: string): string {
   if (INVALID_PERCENT_ENCODING_PATTERN.test(authority)) {
     throw new TypeError("Invalid portable ActivityPub IRI authority.");
   }
-  if (authority.startsWith("did:")) return authority;
+  if (DID_SCHEME_PATTERN.test(authority)) return authority;
   return authority.replace(/%3A/gi, ":").replace(/%25/gi, "%");
 }
 

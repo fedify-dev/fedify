@@ -28,6 +28,20 @@ test("parseIri() accepts portable ActivityPub URI schemes", () => {
   }
 });
 
+test("parseIri() accepts DID schemes case-insensitively", () => {
+  const cases = [
+    "ap://DID:key:z6Mkabc/actor",
+    "ap://DID%3Akey%3Az6Mkabc/actor",
+  ];
+  for (const iri of cases) {
+    ok(canParseIri(iri));
+    deepStrictEqual(
+      parseIri(iri),
+      new URL("ap+ef61://DID%3Akey%3Az6Mkabc/actor"),
+    );
+  }
+});
+
 test("parseIri() preserves existing URL parsing behavior", () => {
   deepStrictEqual(
     parseIri("/actor", new URL("https://example.com/users/alice")),
