@@ -11,6 +11,7 @@ export class UrlError extends Error {
 
 const PORTABLE_IRI_PATTERN =
   /^(ap|ap\+ef61):\/\/([^/?#]*)([^?#]*)(\?[^#]*)?(#.*)?$/i;
+const INVALID_PERCENT_ENCODING_PATTERN = /%(?![0-9A-Fa-f]{2})/;
 
 /**
  * Checks whether the given string can be parsed as an IRI.
@@ -29,7 +30,7 @@ export function canParseIri(iri: string, base?: string | URL): boolean {
  */
 export function parseIri(iri: string | URL, base?: string | URL): URL {
   if (iri instanceof URL) {
-    return parsePortableIri(iri.href) ?? new URL(iri.href);
+    return normalizePortableUrl(iri) ?? new URL(iri.href);
   }
   const portable = parsePortableIri(iri);
   if (portable != null) return portable;
@@ -63,12 +64,18 @@ function parsePortableIri(iri: string): URL | null {
   );
 }
 
+function normalizePortableUrl(iri: URL): URL | null {
+  if (iri.protocol !== "ap:" && iri.protocol !== "ap+ef61:") return null;
+  return new URL(
+    `ap+ef61://${iri.host}${iri.pathname}${iri.search}${iri.hash}`,
+  );
+}
+
 function decodePortableAuthority(authority: string): string {
-  try {
-    return decodeURIComponent(authority);
-  } catch {
+  if (INVALID_PERCENT_ENCODING_PATTERN.test(authority)) {
     throw new TypeError("Invalid portable ActivityPub IRI authority.");
   }
+  return authority.replace(/%3A/gi, ":").replace(/%25/gi, "%");
 }
 
 function parseAtUri(uri: string): URL {

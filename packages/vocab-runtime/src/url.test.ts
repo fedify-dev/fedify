@@ -54,6 +54,26 @@ test("formatIri() emits canonical portable ActivityPub URI syntax", () => {
   );
 });
 
+test("formatIri() preserves DID authority pct-encoded delimiters", () => {
+  const parsed = parseIri("ap://did:example:abc%2Fdef/actor");
+  deepStrictEqual(
+    parsed,
+    new URL("ap+ef61://did%3Aexample%3Aabc%252Fdef/actor"),
+  );
+  deepStrictEqual(
+    formatIri(parsed),
+    "ap+ef61://did:example:abc%2Fdef/actor",
+  );
+  deepStrictEqual(
+    parseIri(formatIri(parsed)),
+    parsed,
+  );
+  deepStrictEqual(
+    formatIri(new URL("ap+ef61://did%3Aexample%3Aabc%2Fdef/actor")),
+    "ap+ef61://did:example:abc%2Fdef/actor",
+  );
+});
+
 test("validatePublicUrl()", async () => {
   await rejects(() => validatePublicUrl("ftp://localhost"), UrlError);
   await rejects(

@@ -253,18 +253,19 @@ export async function* generateClasses(
   yield `const PORTABLE_IRI_KEYS: ReadonlySet<string> = new Set(${
     JSON.stringify([...portableIriKeys].sort())
   });\n\n`;
-  yield `function hasPortableIri(value: unknown, key?: string): boolean {
+  yield `function hasPortableIri(value: unknown, key?: string, depth = 0): boolean {
+  if (depth > 32 || key === "@context") return false;
   if (typeof value === "string") {
     return key != null && PORTABLE_IRI_KEYS.has(key) &&
       PORTABLE_IRI_PATTERN.test(value);
   }
   if (Array.isArray(value)) {
-    return value.some((item) => hasPortableIri(item, key));
+    return value.some((item) => hasPortableIri(item, key, depth + 1));
   }
   if (value == null || typeof value !== "object") return false;
   const object = value as Record<string, unknown>;
   return globalThis.Object.keys(object).some((entryKey) =>
-    hasPortableIri(object[entryKey], entryKey)
+    hasPortableIri(object[entryKey], entryKey, depth + 1)
   );
 }\n\n`;
   const moduleVarNames = new Map<string, string>();

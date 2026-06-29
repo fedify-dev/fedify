@@ -619,6 +619,32 @@ test("fromJsonLd() caches text that mentions portable ActivityPub IRIs", async (
   deepStrictEqual(await note.toJsonLd(), noteJson);
 });
 
+test("fromJsonLd() formats portable IRIs hidden behind JSON-LD aliases", async () => {
+  const activity = await Activity.fromJsonLd({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      {
+        actorRef: {
+          "@id": "https://www.w3.org/ns/activitystreams#actor",
+          "@type": "@id",
+        },
+      },
+    ],
+    type: "Create",
+    actorRef: "ap://did:key:z6Mkabc/actor",
+    object: "https://example.com/objects/1",
+  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+
+  deepStrictEqual(
+    activity.actorId,
+    new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
+  );
+  const jsonLd = await activity.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  deepStrictEqual(jsonLd.actor, "ap+ef61://did:key:z6Mkabc/actor");
+});
+
 test({
   name: "Activity.getObject()",
   permissions: { env: true, read: true },

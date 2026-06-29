@@ -535,7 +535,7 @@ export async function* generateDecoder(
   yield `
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        if (!hasPortableIri(json)) {
+        if (!hasPortableIri(values)) {
           instance._cachedJsonLd = structuredClone(json);
         }
       } catch {
