@@ -45,7 +45,13 @@ export function parseIri(iri: string | URL, base?: string | URL): URL {
  */
 export function formatIri(iri: string | URL): string {
   const parsed = parsePortableIri(iri instanceof URL ? iri.href : iri);
-  if (parsed == null) return iri instanceof URL ? iri.href : new URL(iri).href;
+  if (parsed == null) {
+    return iri instanceof URL
+      ? iri.href
+      : URL.canParse(iri)
+      ? new URL(iri).href
+      : iri;
+  }
   const authority = decodePortableAuthority(parsed.host);
   return `ap+ef61://${authority}${parsed.pathname}${parsed.search}${parsed.hash}`;
 }
@@ -56,6 +62,9 @@ function parsePortableIri(iri: string): URL | null {
   const authority = decodePortableAuthority(match[2]);
   if (!authority.startsWith("did:")) {
     throw new TypeError("Invalid portable ActivityPub IRI authority.");
+  }
+  if (match[3] === "") {
+    throw new TypeError("Invalid portable ActivityPub IRI path.");
   }
   return new URL(
     `ap+ef61://${encodeURIComponent(authority)}${match[3]}${match[4] ?? ""}${

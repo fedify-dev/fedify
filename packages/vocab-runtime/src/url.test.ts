@@ -40,6 +40,14 @@ test("parseIri() preserves existing URL parsing behavior", () => {
   ok(!canParseIri("ap://not-a-did/actor"));
 });
 
+test("parseIri() rejects portable IRIs without paths", () => {
+  ok(!canParseIri("ap://did:key:z6Mkabc"));
+  ok(
+    !canParseIri("ap://did:key:z6Mkabc?gateways=https%3A%2F%2Fserver.example"),
+  );
+  ok(!canParseIri("ap://did:key:z6Mkabc#actor"));
+});
+
 test("parseIri() normalizes portable URL instances", () => {
   deepStrictEqual(
     parseIri(new URL("ap+ef61://did%3Aexample%3Aabc%2Fdef/actor")),
@@ -60,6 +68,7 @@ test("formatIri() emits canonical portable ActivityPub URI syntax", () => {
     formatIri(new URL("https://example.com/actor")),
     "https://example.com/actor",
   );
+  deepStrictEqual(formatIri("/actor"), "/actor");
 });
 
 test("formatIri() preserves DID authority pct-encoded delimiters", () => {
