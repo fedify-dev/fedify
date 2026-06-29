@@ -800,6 +800,67 @@ test("fromJsonLd() preserves portable IRIs hidden behind remote contexts", async
   deepStrictEqual(jsonLd.extraRef, "ap+ef61://did:key:z6Mkabc/extra");
 });
 
+test("fromJsonLd() preserves portable IRIs hidden behind nested remote contexts", async () => {
+  const rootContextUrl = "https://example.com/contexts/nested-portable-iris";
+  const nestedContextUrl = "https://example.com/contexts/nested-portable-ref";
+  const contextLoader: DocumentLoader = async (
+    resource: string,
+    options,
+  ): Promise<RemoteDocument> => {
+    if (resource === rootContextUrl) {
+      return {
+        contextUrl: null,
+        documentUrl: resource,
+        document: {
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            {
+              "@vocab": "https://example.com/ns#",
+              extraContainer: "https://example.com/ns#extraContainer",
+            },
+          ],
+        },
+      };
+    }
+    if (resource === nestedContextUrl) {
+      return {
+        contextUrl: null,
+        documentUrl: resource,
+        document: {
+          "@context": {
+            "@vocab": "https://example.com/ns#",
+            extra: "https://example.com/ns#extra",
+            extraRef: { "@type": "@id" },
+          },
+        },
+      };
+    }
+    return await mockDocumentLoader(resource, options);
+  };
+  const note = await Note.fromJsonLd({
+    "@context": rootContextUrl,
+    type: "Note",
+    id: "https://example.com/notes/1",
+    extraContainer: {
+      "@context": nestedContextUrl,
+      content: "This text mentions ap://did:key:z6Mkabc/text.",
+      extra: "This nested extension object should stay cached.",
+      extraRef: "ap://did:key:z6Mkabc/extra",
+    },
+  }, { documentLoader: mockDocumentLoader, contextLoader });
+
+  const jsonLd = await note.toJsonLd({ contextLoader }) as Record<
+    string,
+    unknown
+  >;
+  deepStrictEqual(jsonLd.extraContainer, {
+    "@context": nestedContextUrl,
+    content: "This text mentions ap://did:key:z6Mkabc/text.",
+    extra: "This nested extension object should stay cached.",
+    extraRef: "ap+ef61://did:key:z6Mkabc/extra",
+  });
+});
+
 test("fromJsonLd() formats portable IRIs in scalar URL values", async () => {
   const note = await Note.fromJsonLd({
     "@context": [

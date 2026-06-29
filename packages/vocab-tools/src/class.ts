@@ -381,6 +381,7 @@ const ACTIVITYSTREAMS_IRI_PREFIX = "https://www.w3.org/ns/activitystreams#";\n\n
   object: Record<string, unknown>,
   portableIriKeys: ReadonlySet<string>,
   contextLoader: DocumentLoader,
+  loadedContexts = new Set<string>(),
 ): Promise<ReadonlySet<string>> {
   if (!("@context" in object)) return portableIriKeys;
   const aliases = new Set<string>();
@@ -391,7 +392,7 @@ const ACTIVITYSTREAMS_IRI_PREFIX = "https://www.w3.org/ns/activitystreams#";\n\n
     object["@context"],
     prefixes,
     contextLoader,
-    new Set(),
+    loadedContexts,
   );
   if (aliases.size < 1) return portableIriKeys;
   return new Set([...portableIriKeys, ...aliases]);
@@ -463,6 +464,111 @@ const ACTIVITYSTREAMS_IRI_PREFIX = "https://www.w3.org/ns/activitystreams#";\n\n
       depth + 1,
       key,
       nextPortableIriKeys,
+    );
+  }
+  return object;
+}\n\n`;
+  yield `async function hasPortableIriWithLoader(
+  value: unknown,
+  contextLoader: DocumentLoader,
+  key?: string,
+  depth = 0,
+  parentKey?: string,
+  portableIriKeys: ReadonlySet<string> = PORTABLE_IRI_KEYS,
+  loadedContexts = new Set<string>(),
+): Promise<boolean> {
+  if (depth > 32 || key === "@context") return false;
+  if (typeof value === "string") {
+    return key != null && isPortableIriPosition(key, parentKey, portableIriKeys) &&
+      PORTABLE_IRI_PATTERN.test(value);
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      if (
+        await hasPortableIriWithLoader(
+          item,
+          contextLoader,
+          key,
+          depth + 1,
+          parentKey,
+          portableIriKeys,
+          loadedContexts,
+        )
+      ) return true;
+    }
+    return false;
+  }
+  if (value == null || typeof value !== "object") return false;
+  const object = value as Record<string, unknown>;
+  const nextPortableIriKeys = await getPortableIriKeysWithLoader(
+    object,
+    portableIriKeys,
+    contextLoader,
+    loadedContexts,
+  );
+  for (const entryKey of globalThis.Object.keys(object)) {
+    if (
+      await hasPortableIriWithLoader(
+        object[entryKey],
+        contextLoader,
+        entryKey,
+        depth + 1,
+        key,
+        nextPortableIriKeys,
+        loadedContexts,
+      )
+    ) return true;
+  }
+  return false;
+}\n\n`;
+  yield `async function normalizePortableIrisWithLoader(
+  value: unknown,
+  contextLoader: DocumentLoader,
+  key?: string,
+  depth = 0,
+  parentKey?: string,
+  portableIriKeys: ReadonlySet<string> = PORTABLE_IRI_KEYS,
+  loadedContexts = new Set<string>(),
+): Promise<unknown> {
+  if (depth > 32 || key === "@context") return value;
+  if (typeof value === "string") {
+    return key != null &&
+        isPortableIriPosition(key, parentKey, portableIriKeys) &&
+        PORTABLE_IRI_PATTERN.test(value)
+      ? formatIri(value)
+      : value;
+  }
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i++) {
+      value[i] = await normalizePortableIrisWithLoader(
+        value[i],
+        contextLoader,
+        key,
+        depth + 1,
+        parentKey,
+        portableIriKeys,
+        loadedContexts,
+      );
+    }
+    return value;
+  }
+  if (value == null || typeof value !== "object") return value;
+  const object = value as Record<string, unknown>;
+  const nextPortableIriKeys = await getPortableIriKeysWithLoader(
+    object,
+    portableIriKeys,
+    contextLoader,
+    loadedContexts,
+  );
+  for (const entryKey of globalThis.Object.keys(object)) {
+    object[entryKey] = await normalizePortableIrisWithLoader(
+      object[entryKey],
+      contextLoader,
+      entryKey,
+      depth + 1,
+      key,
+      nextPortableIriKeys,
+      loadedContexts,
     );
   }
   return object;
