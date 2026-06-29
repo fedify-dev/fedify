@@ -113,20 +113,24 @@ async function addRemotePortableIriContextAliases(
   context: unknown,
   prefixes: Map<string, string>,
   contextLoader: DocumentLoader,
-  loadedContexts: Set<string>,
+  loadedContexts: Map<string, unknown>,
   depth = 0,
 ): Promise<void> {
   if (depth > 32 || context == null) return;
   if (typeof context === "string") {
     if (context === ACTIVITYSTREAMS_CONTEXT) return;
-    if (loadedContexts.has(context)) return;
-    loadedContexts.add(context);
-    const remoteDocument = await contextLoader(context);
-    const document = remoteDocument.document;
-    const remoteContext = document != null && typeof document === "object" &&
-        "@context" in document
-      ? (document as Record<string, unknown>)["@context"]
-      : document;
+    let remoteContext: unknown;
+    if (loadedContexts.has(context)) {
+      remoteContext = loadedContexts.get(context);
+    } else {
+      const remoteDocument = await contextLoader(context);
+      const document = remoteDocument?.document;
+      remoteContext = document != null && typeof document === "object" &&
+          "@context" in document
+        ? (document as Record<string, unknown>)["@context"]
+        : document;
+      loadedContexts.set(context, remoteContext);
+    }
     addPortableIriContextAliases(aliases, remoteContext, prefixes, depth + 1);
     await addRemotePortableIriContextAliases(
       aliases,
@@ -168,7 +172,7 @@ async function getPortableIriKeysWithLoader(
   object: Record<string, unknown>,
   portableIriKeys: ReadonlySet<string>,
   contextLoader: DocumentLoader,
-  loadedContexts = new Set<string>(),
+  loadedContexts = new Map<string, unknown>(),
 ): Promise<ReadonlySet<string>> {
   if (!("@context" in object)) return portableIriKeys;
   const aliases = new Set<string>();
@@ -265,7 +269,7 @@ async function hasPortableIriWithLoader(
   depth = 0,
   parentKey?: string,
   portableIriKeys: ReadonlySet<string> = PORTABLE_IRI_KEYS,
-  loadedContexts = new Set<string>(),
+  loadedContexts = new Map<string, unknown>(),
 ): Promise<boolean> {
   if (depth > 32 || key === "@context") return false;
   if (typeof value === "string") {
@@ -319,7 +323,7 @@ async function normalizePortableIrisWithLoader(
   depth = 0,
   parentKey?: string,
   portableIriKeys: ReadonlySet<string> = PORTABLE_IRI_KEYS,
-  loadedContexts = new Set<string>(),
+  loadedContexts = new Map<string, unknown>(),
 ): Promise<unknown> {
   if (depth > 32 || key === "@context") return value;
   if (typeof value === "string") {

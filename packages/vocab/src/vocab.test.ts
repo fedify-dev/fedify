@@ -861,6 +861,72 @@ test("fromJsonLd() preserves portable IRIs hidden behind nested remote contexts"
   });
 });
 
+test("fromJsonLd() reuses remote context aliases for sibling extension objects", async () => {
+  const rootContextUrl = "https://example.com/contexts/sibling-containers";
+  const nestedContextUrl = "https://example.com/contexts/sibling-extra-ref";
+  const contextLoader: DocumentLoader = async (
+    resource: string,
+    options,
+  ): Promise<RemoteDocument> => {
+    if (resource === rootContextUrl) {
+      return {
+        contextUrl: null,
+        documentUrl: resource,
+        document: {
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            {
+              "@vocab": "https://example.com/ns#",
+              firstExtraContainer: "https://example.com/ns#firstExtraContainer",
+              secondExtraContainer:
+                "https://example.com/ns#secondExtraContainer",
+            },
+          ],
+        },
+      };
+    }
+    if (resource === nestedContextUrl) {
+      return {
+        contextUrl: null,
+        documentUrl: resource,
+        document: {
+          "@context": {
+            "@vocab": "https://example.com/ns#",
+            extraRef: { "@type": "@id" },
+          },
+        },
+      };
+    }
+    return await mockDocumentLoader(resource, options);
+  };
+  const note = await Note.fromJsonLd({
+    "@context": rootContextUrl,
+    type: "Note",
+    id: "https://example.com/notes/1",
+    firstExtraContainer: {
+      "@context": nestedContextUrl,
+      content: "No portable IRI here.",
+    },
+    secondExtraContainer: {
+      "@context": nestedContextUrl,
+      extraRef: "ap://did:key:z6Mkabc/second",
+    },
+  }, { documentLoader: mockDocumentLoader, contextLoader });
+
+  const jsonLd = await note.toJsonLd({ contextLoader }) as Record<
+    string,
+    unknown
+  >;
+  deepStrictEqual(jsonLd.firstExtraContainer, {
+    "@context": nestedContextUrl,
+    content: "No portable IRI here.",
+  });
+  deepStrictEqual(jsonLd.secondExtraContainer, {
+    "@context": nestedContextUrl,
+    extraRef: "ap+ef61://did:key:z6Mkabc/second",
+  });
+});
+
 test("fromJsonLd() formats portable IRIs in scalar URL values", async () => {
   const note = await Note.fromJsonLd({
     "@context": [
