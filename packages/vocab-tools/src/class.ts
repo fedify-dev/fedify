@@ -254,6 +254,8 @@ export async function* generateClasses(
   yield `const PORTABLE_IRI_KEYS: ReadonlySet<string> = new Set(${
     JSON.stringify([...portableIriKeys].sort())
   });\n\n`;
+  yield `const ACTIVITYSTREAMS_CONTEXT = "https://www.w3.org/ns/activitystreams";
+const ACTIVITYSTREAMS_IRI_PREFIX = "https://www.w3.org/ns/activitystreams#";\n\n`;
   yield `function isPortableIriPosition(
   key: string,
   parentKey?: string,
@@ -263,15 +265,38 @@ export async function* generateClasses(
     ((key === "@value" || key === "@list" || key === "@set") &&
       parentKey != null && portableIriKeys.has(parentKey));
 }\n\n`;
+  yield `function addContextIriPrefix(
+  prefixes: Map<string, string>,
+  term: string,
+  iri: string,
+): void {
+  if (!iri.endsWith("#") && !iri.endsWith("/") && !iri.endsWith(":")) return;
+  prefixes.set(term, iri);
+}\n\n`;
+  yield `function expandContextIri(
+  iri: string,
+  prefixes: ReadonlyMap<string, string>,
+): string {
+  const separatorIndex = iri.indexOf(":");
+  if (separatorIndex < 1) return iri;
+  const prefix = prefixes.get(iri.slice(0, separatorIndex));
+  if (prefix == null) return iri;
+  return prefix + iri.slice(separatorIndex + 1);
+}\n\n`;
   yield `function addPortableIriContextAliases(
   aliases: Set<string>,
   context: unknown,
+  prefixes: Map<string, string>,
   depth = 0,
 ): void {
   if (depth > 32 || context == null) return;
+  if (context === ACTIVITYSTREAMS_CONTEXT) {
+    prefixes.set("as", ACTIVITYSTREAMS_IRI_PREFIX);
+    return;
+  }
   if (Array.isArray(context)) {
     for (const entry of context) {
-      addPortableIriContextAliases(aliases, entry, depth + 1);
+      addPortableIriContextAliases(aliases, entry, prefixes, depth + 1);
     }
     return;
   }
@@ -279,13 +304,19 @@ export async function* generateClasses(
   const object = context as Record<string, unknown>;
   for (const [term, definition] of globalThis.Object.entries(object)) {
     if (typeof definition === "string") {
-      if (PORTABLE_IRI_KEYS.has(definition)) aliases.add(term);
+      const expandedDefinition = expandContextIri(definition, prefixes);
+      if (PORTABLE_IRI_KEYS.has(expandedDefinition)) aliases.add(term);
+      addContextIriPrefix(prefixes, term, expandedDefinition);
       continue;
     }
     if (definition == null || typeof definition !== "object") continue;
     const id = (definition as Record<string, unknown>)["@id"];
-    if (typeof id === "string" && PORTABLE_IRI_KEYS.has(id)) {
-      aliases.add(term);
+    if (typeof id === "string") {
+      const expandedId = expandContextIri(id, prefixes);
+      if (PORTABLE_IRI_KEYS.has(expandedId)) aliases.add(term);
+      if ((definition as Record<string, unknown>)["@prefix"] === true) {
+        addContextIriPrefix(prefixes, term, expandedId);
+      }
     }
   }
 }\n\n`;
@@ -295,7 +326,8 @@ export async function* generateClasses(
 ): ReadonlySet<string> {
   if (!("@context" in object)) return portableIriKeys;
   const aliases = new Set<string>();
-  addPortableIriContextAliases(aliases, object["@context"]);
+  const prefixes = new Map<string, string>();
+  addPortableIriContextAliases(aliases, object["@context"], prefixes);
   if (aliases.size < 1) return portableIriKeys;
   return new Set([...portableIriKeys, ...aliases]);
 }\n\n`;

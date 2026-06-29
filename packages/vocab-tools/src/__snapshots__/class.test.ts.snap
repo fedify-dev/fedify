@@ -34,6 +34,9 @@ import {
 const PORTABLE_IRI_PATTERN = /^ap(?:\\+ef61)?:\\/\\//i;
 const PORTABLE_IRI_KEYS: ReadonlySet<string> = new Set(["@id","_misskey_quote","actor","alsoKnownAs","announceAuthorization","anyOf","approvedBy","assertionMethod","attachment","attributedTo","audience","automaticApproval","bcc","bto","cc","context","controller","current","describes","emojiReactions","featured","featuredTags","first","followers","followersOf","following","followingOf","generator","href","http://fedibird.com/ns#emojiReactions","http://fedibird.com/ns#quoteUri","http://joinmastodon.org/ns#featured","http://joinmastodon.org/ns#featuredTags","http://www.w3.org/ns/ldp#inbox","https://gotosocial.org/ns#announceAuthorization","https://gotosocial.org/ns#approvedBy","https://gotosocial.org/ns#automaticApproval","https://gotosocial.org/ns#interactingObject","https://gotosocial.org/ns#interactionTarget","https://gotosocial.org/ns#likeAuthorization","https://gotosocial.org/ns#manualApproval","https://gotosocial.org/ns#replyAuthorization","https://misskey-hub.net/ns#_misskey_quote","https://w3id.org/fep/044f#quote","https://w3id.org/fep/044f#quoteAuthorization","https://w3id.org/fep/5711#followersOf","https://w3id.org/fep/5711#followingOf","https://w3id.org/fep/5711#inboxOf","https://w3id.org/fep/5711#likedOf","https://w3id.org/fep/5711#likesOf","https://w3id.org/fep/5711#outboxOf","https://w3id.org/fep/5711#repliesOf","https://w3id.org/fep/5711#sharesOf","https://w3id.org/security#assertionMethod","https://w3id.org/security#controller","https://w3id.org/security#owner","https://w3id.org/security#proof","https://w3id.org/security#publicKey","https://w3id.org/security#verificationMethod","https://w3id.org/valueflows/ont/vf#resourceConformsTo","https://w3id.org/valueflows/ont/vf#satisfies","https://www.w3.org/ns/activitystreams#actor","https://www.w3.org/ns/activitystreams#alsoKnownAs","https://www.w3.org/ns/activitystreams#anyOf","https://www.w3.org/ns/activitystreams#attachment","https://www.w3.org/ns/activitystreams#attributedTo","https://www.w3.org/ns/activitystreams#audience","https://www.w3.org/ns/activitystreams#bcc","https://www.w3.org/ns/activitystreams#bto","https://www.w3.org/ns/activitystreams#cc","https://www.w3.org/ns/activitystreams#context","https://www.w3.org/ns/activitystreams#current","https://www.w3.org/ns/activitystreams#describes","https://www.w3.org/ns/activitystreams#first","https://www.w3.org/ns/activitystreams#followers","https://www.w3.org/ns/activitystreams#following","https://www.w3.org/ns/activitystreams#generator","https://www.w3.org/ns/activitystreams#href","https://www.w3.org/ns/activitystreams#icon","https://www.w3.org/ns/activitystreams#image","https://www.w3.org/ns/activitystreams#inReplyTo","https://www.w3.org/ns/activitystreams#instrument","https://www.w3.org/ns/activitystreams#items","https://www.w3.org/ns/activitystreams#last","https://www.w3.org/ns/activitystreams#liked","https://www.w3.org/ns/activitystreams#likes","https://www.w3.org/ns/activitystreams#location","https://www.w3.org/ns/activitystreams#movedTo","https://www.w3.org/ns/activitystreams#next","https://www.w3.org/ns/activitystreams#oauthAuthorizationEndpoint","https://www.w3.org/ns/activitystreams#oauthTokenEndpoint","https://www.w3.org/ns/activitystreams#object","https://www.w3.org/ns/activitystreams#oneOf","https://www.w3.org/ns/activitystreams#origin","https://www.w3.org/ns/activitystreams#outbox","https://www.w3.org/ns/activitystreams#partOf","https://www.w3.org/ns/activitystreams#prev","https://www.w3.org/ns/activitystreams#preview","https://www.w3.org/ns/activitystreams#provideClientKey","https://www.w3.org/ns/activitystreams#proxyUrl","https://www.w3.org/ns/activitystreams#quoteUrl","https://www.w3.org/ns/activitystreams#relationship","https://www.w3.org/ns/activitystreams#replies","https://www.w3.org/ns/activitystreams#result","https://www.w3.org/ns/activitystreams#sharedInbox","https://www.w3.org/ns/activitystreams#shares","https://www.w3.org/ns/activitystreams#signClientKey","https://www.w3.org/ns/activitystreams#streams","https://www.w3.org/ns/activitystreams#subject","https://www.w3.org/ns/activitystreams#tag","https://www.w3.org/ns/activitystreams#target","https://www.w3.org/ns/activitystreams#to","https://www.w3.org/ns/activitystreams#units","https://www.w3.org/ns/activitystreams#url","https://www.w3.org/ns/did#service","https://www.w3.org/ns/did#serviceEndpoint","icon","id","image","inReplyTo","inbox","inboxOf","instrument","interactingObject","interactionTarget","items","last","likeAuthorization","liked","likedOf","likes","likesOf","location","manualApproval","movedTo","next","oauthAuthorizationEndpoint","oauthTokenEndpoint","object","oneOf","orderedItems","origin","outbox","outboxOf","owner","partOf","prev","preview","proof","provideClientKey","proxyUrl","publicKey","quote","quoteAuthorization","quoteUri","quoteUrl","relationship","replies","repliesOf","replyAuthorization","resourceConformsTo","result","satisfies","service","sharedInbox","shares","sharesOf","signClientKey","streams","subject","tag","target","to","units","url"]);
 
+const ACTIVITYSTREAMS_CONTEXT = "https://www.w3.org/ns/activitystreams";
+const ACTIVITYSTREAMS_IRI_PREFIX = "https://www.w3.org/ns/activitystreams#";
+
 function isPortableIriPosition(
   key: string,
   parentKey?: string,
@@ -44,15 +47,40 @@ function isPortableIriPosition(
       parentKey != null && portableIriKeys.has(parentKey));
 }
 
+function addContextIriPrefix(
+  prefixes: Map<string, string>,
+  term: string,
+  iri: string,
+): void {
+  if (!iri.endsWith("#") && !iri.endsWith("/") && !iri.endsWith(":")) return;
+  prefixes.set(term, iri);
+}
+
+function expandContextIri(
+  iri: string,
+  prefixes: ReadonlyMap<string, string>,
+): string {
+  const separatorIndex = iri.indexOf(":");
+  if (separatorIndex < 1) return iri;
+  const prefix = prefixes.get(iri.slice(0, separatorIndex));
+  if (prefix == null) return iri;
+  return prefix + iri.slice(separatorIndex + 1);
+}
+
 function addPortableIriContextAliases(
   aliases: Set<string>,
   context: unknown,
+  prefixes: Map<string, string>,
   depth = 0,
 ): void {
   if (depth > 32 || context == null) return;
+  if (context === ACTIVITYSTREAMS_CONTEXT) {
+    prefixes.set("as", ACTIVITYSTREAMS_IRI_PREFIX);
+    return;
+  }
   if (Array.isArray(context)) {
     for (const entry of context) {
-      addPortableIriContextAliases(aliases, entry, depth + 1);
+      addPortableIriContextAliases(aliases, entry, prefixes, depth + 1);
     }
     return;
   }
@@ -60,13 +88,19 @@ function addPortableIriContextAliases(
   const object = context as Record<string, unknown>;
   for (const [term, definition] of globalThis.Object.entries(object)) {
     if (typeof definition === "string") {
-      if (PORTABLE_IRI_KEYS.has(definition)) aliases.add(term);
+      const expandedDefinition = expandContextIri(definition, prefixes);
+      if (PORTABLE_IRI_KEYS.has(expandedDefinition)) aliases.add(term);
+      addContextIriPrefix(prefixes, term, expandedDefinition);
       continue;
     }
     if (definition == null || typeof definition !== "object") continue;
     const id = (definition as Record<string, unknown>)["@id"];
-    if (typeof id === "string" && PORTABLE_IRI_KEYS.has(id)) {
-      aliases.add(term);
+    if (typeof id === "string") {
+      const expandedId = expandContextIri(id, prefixes);
+      if (PORTABLE_IRI_KEYS.has(expandedId)) aliases.add(term);
+      if ((definition as Record<string, unknown>)["@prefix"] === true) {
+        addContextIriPrefix(prefixes, term, expandedId);
+      }
     }
   }
 }
@@ -77,7 +111,8 @@ function getPortableIriKeys(
 ): ReadonlySet<string> {
   if (!("@context" in object)) return portableIriKeys;
   const aliases = new Set<string>();
-  addPortableIriContextAliases(aliases, object["@context"]);
+  const prefixes = new Map<string, string>();
+  addPortableIriContextAliases(aliases, object["@context"], prefixes);
   if (aliases.size < 1) return portableIriKeys;
   return new Set([...portableIriKeys, ...aliases]);
 }

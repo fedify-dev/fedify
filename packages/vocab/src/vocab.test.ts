@@ -662,9 +662,17 @@ test("fromJsonLd() formats portable IRIs hidden behind JSON-LD aliases", async (
     "@context": [
       "https://www.w3.org/ns/activitystreams",
       {
+        as: {
+          "@id": "https://www.w3.org/ns/activitystreams#",
+          "@prefix": true,
+        },
         extra: "https://example.com/ns#extra",
         actorRef: {
-          "@id": "https://www.w3.org/ns/activitystreams#actor",
+          "@id": "as:actor",
+          "@type": "@id",
+        },
+        targetRef: {
+          "@id": "as:target",
           "@type": "@id",
         },
       },
@@ -672,6 +680,7 @@ test("fromJsonLd() formats portable IRIs hidden behind JSON-LD aliases", async (
     type: "Create",
     actorRef: "ap://did:key:z6Mkabc/actor",
     object: "https://example.com/objects/1",
+    targetRef: "ap://did:key:z6Mkabc/target",
     extra: "This extension property should stay cached.",
   }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
 
@@ -679,10 +688,15 @@ test("fromJsonLd() formats portable IRIs hidden behind JSON-LD aliases", async (
     activity.actorId,
     new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
   );
+  deepStrictEqual(
+    activity.targetId,
+    new URL("ap+ef61://did%3Akey%3Az6Mkabc/target"),
+  );
   const jsonLd = await activity.toJsonLd({
     contextLoader: mockDocumentLoader,
   }) as Record<string, unknown>;
   deepStrictEqual(jsonLd.actorRef, "ap+ef61://did:key:z6Mkabc/actor");
+  deepStrictEqual(jsonLd.targetRef, "ap+ef61://did:key:z6Mkabc/target");
   deepStrictEqual(jsonLd.extra, "This extension property should stay cached.");
 });
 
