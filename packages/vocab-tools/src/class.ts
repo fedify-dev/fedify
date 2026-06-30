@@ -57,6 +57,7 @@ async function* generateClass(
       values?: Record<string, unknown>;
     };
     #cachedJsonLd?: unknown;
+    #shouldCacheJsonLd = true;
     readonly id: URL | null;
 
     protected get _documentLoader(): DocumentLoader | undefined {
@@ -85,6 +86,20 @@ async function* generateClass(
 
     protected set _cachedJsonLd(value: unknown | undefined) {
       this.#cachedJsonLd = value;
+    }
+
+    protected get _shouldCacheJsonLd(): boolean {
+      return this.#shouldCacheJsonLd;
+    }
+
+    protected set _shouldCacheJsonLd(value: boolean) {
+      this.#shouldCacheJsonLd = value;
+    }
+
+    protected static _shouldCacheDecodedJsonLd(value: unknown): boolean {
+      if (value == null || typeof value !== "object") return true;
+      if (!("_shouldCacheJsonLd" in value)) return true;
+      return (value as { _shouldCacheJsonLd: boolean })._shouldCacheJsonLd;
     }
     `;
   }
@@ -146,6 +161,17 @@ export async function* generateClasses(
     isTemporalDuration,
     isTemporalInstant,
 } from "@fedify/vocab-runtime/temporal";\n`;
+  yield `
+function isValidLanguageTag(language: string): boolean {
+  try {
+    new Intl.Locale(language);
+    return true;
+  } catch (error) {
+    if (error instanceof RangeError) return false;
+    throw error;
+  }
+}
+`;
   yield "\n\n";
   const sorted = sortTopologically(types);
   for (const typeUri of sorted) {
