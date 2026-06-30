@@ -202,13 +202,19 @@ export async function getRemoteDocument(
   ) {
     // Security: Limit HTML response size to mitigate ReDoS attacks
     const MAX_HTML_SIZE = 1024 * 1024; // 1MB
+    const errorResponse = response.clone();
     const html = await response.text();
     if (html.length > MAX_HTML_SIZE) {
       logger.warn(
         "HTML response too large, skipping alternate link discovery: {url}",
         { url: documentUrl, size: html.length },
       );
-      document = JSON.parse(html);
+      throw new FetchError(
+        documentUrl,
+        `HTML document is too large to scan for an ActivityPub alternate link ` +
+          `(Content-Type: ${contentType})`,
+        errorResponse,
+      );
     } else {
       // Safe regex patterns without nested quantifiers to prevent ReDoS
       // (CVE-2025-68475)
@@ -247,7 +253,12 @@ export async function getRemoteDocument(
           return await fetch(new URL(attribs.href, docUrl).href);
         }
       }
-      document = JSON.parse(html);
+      throw new FetchError(
+        documentUrl,
+        `HTML document has no ActivityPub alternate link ` +
+          `(Content-Type: ${contentType})`,
+        errorResponse,
+      );
     }
   } else {
     document = await response.json();
