@@ -10,8 +10,8 @@ catalogs:
       specifier: ^4.20250906.0
       version: 4.20251221.0
     '@fxts/core':
-      specifier: ^1.20.0
-      version: 1.20.0
+      specifier: ^1.21.1
+      version: 1.26.0
     '@js-temporal/polyfill':
       specifier: ^0.5.1
       version: 0.5.1
@@ -917,7 +917,7 @@ importers:
         version: link:../webfinger
       '@fxts/core':
         specifier: 'catalog:'
-        version: 1.20.0
+        version: 1.26.0
       '@hongminhee/localtunnel':
         specifier: ^0.3.0
         version: 0.3.0
@@ -1296,7 +1296,7 @@ importers:
         version: dax@0.45.0
       '@fxts/core':
         specifier: 'catalog:'
-        version: 1.20.0
+        version: 1.26.0
       '@inquirer/prompts':
         specifier: ^7.8.4
         version: 7.10.1(@types/node@22.19.1)
@@ -1358,7 +1358,7 @@ importers:
         version: link:../fedify
       '@fxts/core':
         specifier: 'catalog:'
-        version: 1.20.0
+        version: 1.26.0
       '@typescript-eslint/parser':
         specifier: ^8.49.0
         version: 8.50.0(eslint@9.32.0(jiti@2.6.1))(typescript@6.0.3)
@@ -3020,8 +3020,8 @@ packages:
   '@floating-ui/utils@0.2.10':
     resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
 
-  '@fxts/core@1.20.0':
-    resolution: {integrity: sha512-f6NNS0pu7K72sYKf85GKnkTNGpQsWUNJ3VH8qMTofiRWAksa491Yvne8v0extMjBnI3+aPs4m3OKITgvVyZbeg==}
+  '@fxts/core@1.26.0':
+    resolution: {integrity: sha512-ONaza1CGr8dLKmJ0HQgi0h4XuyDJMr0P70M7o/My/YeeRxuYoSANHjE2nSY7xO4WHgxUD5ojd5dpxlFOzAEJsA==}
 
   '@grpc/grpc-js@1.13.4':
     resolution: {integrity: sha512-GsFaMXCkMqkKIvwCQjCrwH+GHbPKBjhwo/8ZuUkWHqbI73Kky9I+pQltrlT0+MWpedCoosda53lgjYfyEPgxBg==}
@@ -14167,7 +14167,7 @@ snapshots:
 
   '@floating-ui/utils@0.2.10': {}
 
-  '@fxts/core@1.20.0':
+  '@fxts/core@1.26.0':
     dependencies:
       tslib: 2.8.1
 
