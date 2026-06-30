@@ -1,4 +1,4 @@
-import { deepStrictEqual, ok, rejects } from "node:assert";
+import { deepStrictEqual, ok, rejects, throws } from "node:assert";
 import { test } from "node:test";
 import {
   canParseIri,
@@ -60,6 +60,18 @@ test("parseIri() rejects portable IRIs without paths", () => {
     !canParseIri("ap://did:key:z6Mkabc?gateways=https%3A%2F%2Fserver.example"),
   );
   ok(!canParseIri("ap://did:key:z6Mkabc#actor"));
+});
+
+test("parseIri() rejects malformed portable DID authorities", () => {
+  const cases = [
+    "ap://did:/actor",
+    "ap://did:key/actor",
+    "ap://did:123:abc/actor",
+  ];
+  for (const iri of cases) {
+    ok(!canParseIri(iri));
+    throws(() => parseIri(iri), TypeError);
+  }
 });
 
 test("parseIri() normalizes portable URL instances", () => {

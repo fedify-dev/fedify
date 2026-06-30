@@ -13,6 +13,8 @@ const PORTABLE_IRI_PATTERN =
   /^(ap|ap\+ef61):\/\/([^/?#]*)([^?#]*)(\?[^#]*)?(#.*)?$/i;
 const INVALID_PERCENT_ENCODING_PATTERN = /%(?![0-9A-Fa-f]{2})/;
 const DID_SCHEME_PATTERN = /^did:/i;
+const DID_PATTERN =
+  /^did:[a-z][a-z0-9]*:[A-Za-z0-9._:%-]+(?::[A-Za-z0-9._:%-]+)*$/i;
 
 /**
  * Checks whether the given string can be parsed as an IRI.
@@ -61,7 +63,7 @@ function parsePortableIri(iri: string): URL | null {
   const match = iri.match(PORTABLE_IRI_PATTERN);
   if (match == null) return null;
   const authority = decodePortableAuthority(match[2]);
-  if (!DID_SCHEME_PATTERN.test(authority)) {
+  if (!DID_PATTERN.test(authority)) {
     throw new TypeError("Invalid portable ActivityPub IRI authority.");
   }
   if (match[3] === "") {
