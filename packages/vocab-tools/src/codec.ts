@@ -435,11 +435,11 @@ export async function* generateDecoder(
   }
   `;
   yield `
-    const cacheJsonLd = !("_fromSubclass" in options) || !options._fromSubclass
+    let cacheJsonLd = !("_fromSubclass" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
-    if (cacheJsonLd?.changed) {
-      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    if (cacheJsonLd != null && cacheJsonLd !== expanded) {
+      cacheJsonLd = structuredClone(cacheJsonLd);
     }
   `;
   if (type.extends == null) {
@@ -545,14 +545,14 @@ export async function* generateDecoder(
   yield `
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        if (cacheJsonLd?.changed) {
+        if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
           const context = jsonLd != null && typeof jsonLd === "object" &&
               !Array.isArray(jsonLd) && "@context" in jsonLd
             ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
-          const normalized = cacheJsonLd.value;
+          const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(

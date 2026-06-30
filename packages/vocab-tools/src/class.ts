@@ -269,18 +269,17 @@ export async function* generateClasses(
   depth = 0,
   parentKey?: string,
   portableIriKeys: ReadonlySet<string> = PORTABLE_IRI_KEYS,
-): { value: unknown; changed: boolean } {
-  if (depth > 32 || key === "@context") return { value, changed: false };
+): unknown {
+  if (depth > 32 || key === "@context") return value;
   if (typeof value === "string") {
     if (
       key != null &&
       isPortableIriValuePosition(key, parentKey, portableIriKeys) &&
       PORTABLE_IRI_PATTERN.test(value)
     ) {
-      const normalized = formatIri(value);
-      return { value: normalized, changed: normalized !== value };
+      return formatIri(value);
     }
-    return { value, changed: false };
+    return value;
   }
   if (Array.isArray(value)) {
     let clone: unknown[] | undefined;
@@ -292,17 +291,17 @@ export async function* generateClasses(
         parentKey,
         portableIriKeys,
       );
-      if (result.changed) {
+      if (result !== value[i]) {
         clone ??= value.slice(0, i);
-        clone.push(result.value);
+        clone.push(result);
       } else if (clone != null) {
         clone.push(value[i]);
       }
     }
-    return { value: clone ?? value, changed: clone != null };
+    return clone ?? value;
   }
   if (value == null || typeof value !== "object") {
-    return { value, changed: false };
+    return value;
   }
   const object = value as Record<string, unknown>;
   let clone: Record<string, unknown> | undefined;
@@ -314,12 +313,12 @@ export async function* generateClasses(
       key,
       portableIriKeys,
     );
-    if (result.changed) {
+    if (result !== object[entryKey]) {
       clone ??= { ...object };
-      clone[entryKey] = result.value;
+      clone[entryKey] = result;
     }
   }
-  return { value: clone ?? object, changed: clone != null };
+  return clone ?? object;
 }\n\n`;
   yield `function getTopLevelJsonLdTerms(value: unknown): ReadonlySet<string> {
   const terms = new Set<string>();

@@ -76,6 +76,10 @@ test("parseIri() resolves relative IRIs against at:// string bases", () => {
     parseIri("reply", "at://did:plc:example/collection/item"),
     new URL("at://did%3Aplc%3Aexample/collection/reply"),
   );
+  deepStrictEqual(
+    parseIri("reply", "at://did%3Aplc%3Aexample/collection/item"),
+    new URL("at://did%3Aplc%3Aexample/collection/reply"),
+  );
 });
 
 test("parseIri() rejects portable IRIs without paths", () => {
