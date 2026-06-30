@@ -116,23 +116,6 @@ function getTopLevelJsonLdTerms(value: unknown): ReadonlySet<string> {
   return terms;
 }
 
-async function isJsonLdTermRepresented(
-  key: string,
-  value: unknown,
-  context: unknown,
-  compactedTerms: ReadonlySet<string>,
-  documentLoader?: DocumentLoader,
-): Promise<boolean> {
-  if (key === \\"@context\\") return true;
-  const expanded = await jsonld.expand({ \\"@context\\": context, [key]: value }, {
-    documentLoader,
-  });
-  for (const term of getTopLevelJsonLdTerms(expanded)) {
-    if (compactedTerms.has(term)) return true;
-  }
-  return false;
-}
-
 async function mergeUnmappedJsonLdTerms(
   compacted: unknown,
   original: unknown,
@@ -148,15 +131,38 @@ async function mergeUnmappedJsonLdTerms(
     return compacted;
   }
   const result = compacted as Record<string, unknown>;
+  const unmappedKeys = globalThis.Object.keys(original).filter((key) =>
+    key !== \\"@context\\" && !(key in result)
+  );
+  if (unmappedKeys.length < 1) return result;
   const compactedTerms = getTopLevelJsonLdTerms(await jsonld.expand(compacted, {
     documentLoader,
   }));
-  for (const key of globalThis.Object.keys(original)) {
-    const value = (original as Record<string, unknown>)[key];
-    if (
-      !(key in result) &&
-      !await isJsonLdTermRepresented(key, value, context, compactedTerms, documentLoader)
-    ) {
+  const dummyPrefix = \\"urn:fedify:dummy:\\";
+  const dummy: Record<string, unknown> = { \\"@context\\": context };
+  for (let i = 0; i < unmappedKeys.length; i++) {
+    dummy[unmappedKeys[i]] = \`\${dummyPrefix}\${i}\`;
+  }
+  const expanded = await jsonld.expand(dummy, { documentLoader });
+  const representedKeys = new Set<string>();
+  const nodes = Array.isArray(expanded) ? expanded : [expanded];
+  for (const node of nodes) {
+    if (node == null || typeof node !== \\"object\\" || Array.isArray(node)) {
+      continue;
+    }
+    for (const [term, termValue] of globalThis.Object.entries(node)) {
+      if (!compactedTerms.has(term)) continue;
+      const value = JSON.stringify(termValue);
+      for (let i = 0; i < unmappedKeys.length; i++) {
+        if (value.includes(\`\${dummyPrefix}\${i}\`)) {
+          representedKeys.add(unmappedKeys[i]);
+        }
+      }
+    }
+  }
+  for (const key of unmappedKeys) {
+    if (!representedKeys.has(key)) {
+      const value = (original as Record<string, unknown>)[key];
       result[key] = structuredClone(value);
     }
   }
@@ -12160,7 +12166,7 @@ get urls(): ((URL | Link))[] {
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -13389,7 +13395,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -14528,7 +14534,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -17946,7 +17952,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -18468,7 +18474,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -19054,7 +19060,7 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -19668,7 +19674,7 @@ unit?: string | null;numericalValue?: Decimal | null;}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -20743,7 +20749,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -21159,7 +21165,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -21869,7 +21875,7 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -22609,7 +22615,7 @@ get manualApprovals(): (URL)[] {
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -23695,7 +23701,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -24110,7 +24116,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -25129,7 +25135,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -25544,7 +25550,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -26562,7 +26568,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -26977,7 +26983,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -27479,7 +27485,7 @@ get endpoints(): (URL)[] {
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -27833,7 +27839,7 @@ endpoints?: (URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -28792,7 +28798,7 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -29767,7 +29773,7 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -30693,7 +30699,7 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -31328,7 +31334,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -31939,7 +31945,7 @@ satisfies?: URL | null;resourceQuantity?: Measure | null;}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -32842,7 +32848,7 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -33716,7 +33722,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -34168,7 +34174,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -34537,7 +34543,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -34905,7 +34911,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -41255,7 +41261,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -42107,7 +42113,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -42475,7 +42481,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -43609,7 +43615,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -44243,7 +44249,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -44653,7 +44659,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -45024,7 +45030,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -45393,7 +45399,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -49757,7 +49763,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -51356,7 +51362,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -51781,7 +51787,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -52148,7 +52154,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -52513,7 +52519,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -53450,7 +53456,7 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -53955,7 +53961,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -54323,7 +54329,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -54692,7 +54698,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -61042,7 +61048,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -63041,7 +63047,7 @@ get names(): ((string | LanguageString))[] {
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -63564,7 +63570,7 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -63934,7 +63940,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -64306,7 +64312,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -64673,7 +64679,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -65040,7 +65046,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -65407,7 +65413,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -65774,7 +65780,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -66139,7 +66145,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -66470,7 +66476,7 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -66838,7 +66844,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -67974,7 +67980,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -68762,7 +68768,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -69607,7 +69613,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -75999,7 +76005,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -76841,7 +76847,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -83191,7 +83197,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -84603,7 +84609,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -85419,7 +85425,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -87313,7 +87319,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -87823,7 +87829,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -88194,7 +88200,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -89864,7 +89870,7 @@ relationships?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -90303,7 +90309,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -96653,7 +96659,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -97748,7 +97754,7 @@ get contents(): ((string | LanguageString))[] {
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -98176,7 +98182,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -98543,7 +98549,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -99179,7 +99185,7 @@ get formerTypes(): ($EntityType)[] {
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -99594,7 +99600,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -99966,7 +99972,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -100336,7 +100342,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -100706,7 +100712,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
@@ -101072,7 +101078,7 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]

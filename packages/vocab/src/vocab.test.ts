@@ -994,6 +994,98 @@ test("fromJsonLd() formats portable IRIs in sibling remote-context objects", asy
   });
 });
 
+test("fromJsonLd() batches unmapped portable IRI term checks", async () => {
+  const contextUrl = "https://example.com/contexts/batched-portable-aliases";
+  let contextLoads = 0;
+  const contextLoader: DocumentLoader = async (
+    resource: string,
+    options,
+  ): Promise<RemoteDocument> => {
+    if (resource === contextUrl) {
+      contextLoads++;
+      return {
+        contextUrl: null,
+        documentUrl: resource,
+        document: {
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            {
+              as: {
+                "@id": "https://www.w3.org/ns/activitystreams#",
+                "@prefix": true,
+              },
+              actorRef0: { "@id": "as:actor", "@type": "@id" },
+              actorRef1: { "@id": "as:actor", "@type": "@id" },
+              targetRef0: { "@id": "as:target", "@type": "@id" },
+              targetRef1: { "@id": "as:target", "@type": "@id" },
+              objectRef0: { "@id": "as:object", "@type": "@id" },
+              objectRef1: { "@id": "as:object", "@type": "@id" },
+            },
+          ],
+        },
+      };
+    }
+    return await mockDocumentLoader(resource, options);
+  };
+
+  const activity = await Activity.fromJsonLd({
+    "@context": contextUrl,
+    type: "Create",
+    actorRef0: "ap://did:key:z6Mkabc/actor0",
+    actorRef1: "ap://did:key:z6Mkabc/actor1",
+    targetRef0: "ap://did:key:z6Mkabc/target0",
+    targetRef1: "ap://did:key:z6Mkabc/target1",
+    objectRef0: "https://example.com/objects/0",
+    objectRef1: "https://example.com/objects/1",
+  }, { documentLoader: mockDocumentLoader, contextLoader });
+
+  await activity.toJsonLd({ contextLoader });
+
+  ok(contextLoads <= 5);
+});
+
+test("fromJsonLd() falls back when portable IRI cache merge fails", async () => {
+  const contextUrl = "https://example.com/contexts/failing-cache-merge";
+  let contextLoads = 0;
+  const contextLoader: DocumentLoader = async (
+    resource: string,
+    options,
+  ): Promise<RemoteDocument> => {
+    if (resource === contextUrl) {
+      contextLoads++;
+      if (contextLoads > 1) throw new Error("merge context unavailable");
+      return {
+        contextUrl: null,
+        documentUrl: resource,
+        document: {
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            {
+              "@vocab": "https://example.com/ns#",
+              extraRef: { "@type": "@id" },
+            },
+          ],
+        },
+      };
+    }
+    return await mockDocumentLoader(resource, options);
+  };
+
+  const note = await Note.fromJsonLd({
+    "@context": contextUrl,
+    type: "Note",
+    id: "ap://did:key:z6Mkabc/objects/1",
+    extraRef: "ap://did:key:z6Mkabc/extra",
+  }, { documentLoader: mockDocumentLoader, contextLoader });
+
+  const jsonLd = await note.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+
+  deepStrictEqual(jsonLd.type, "Note");
+  deepStrictEqual(jsonLd.id, "ap+ef61://did:key:z6Mkabc/objects/1");
+});
+
 test("fromJsonLd() formats portable IRIs in scalar URL values", async () => {
   const note = await Note.fromJsonLd({
     "@context": [

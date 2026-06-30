@@ -335,22 +335,6 @@ export async function* generateClasses(
   }
   return terms;
 }\n\n`;
-  yield `async function isJsonLdTermRepresented(
-  key: string,
-  value: unknown,
-  context: unknown,
-  compactedTerms: ReadonlySet<string>,
-  documentLoader?: DocumentLoader,
-): Promise<boolean> {
-  if (key === "@context") return true;
-  const expanded = await jsonld.expand({ "@context": context, [key]: value }, {
-    documentLoader,
-  });
-  for (const term of getTopLevelJsonLdTerms(expanded)) {
-    if (compactedTerms.has(term)) return true;
-  }
-  return false;
-}\n\n`;
   yield `async function mergeUnmappedJsonLdTerms(
   compacted: unknown,
   original: unknown,
@@ -366,15 +350,38 @@ export async function* generateClasses(
     return compacted;
   }
   const result = compacted as Record<string, unknown>;
+  const unmappedKeys = globalThis.Object.keys(original).filter((key) =>
+    key !== "@context" && !(key in result)
+  );
+  if (unmappedKeys.length < 1) return result;
   const compactedTerms = getTopLevelJsonLdTerms(await jsonld.expand(compacted, {
     documentLoader,
   }));
-  for (const key of globalThis.Object.keys(original)) {
-    const value = (original as Record<string, unknown>)[key];
-    if (
-      !(key in result) &&
-      !await isJsonLdTermRepresented(key, value, context, compactedTerms, documentLoader)
-    ) {
+  const dummyPrefix = "urn:fedify:dummy:";
+  const dummy: Record<string, unknown> = { "@context": context };
+  for (let i = 0; i < unmappedKeys.length; i++) {
+    dummy[unmappedKeys[i]] = \`\${dummyPrefix}\${i}\`;
+  }
+  const expanded = await jsonld.expand(dummy, { documentLoader });
+  const representedKeys = new Set<string>();
+  const nodes = Array.isArray(expanded) ? expanded : [expanded];
+  for (const node of nodes) {
+    if (node == null || typeof node !== "object" || Array.isArray(node)) {
+      continue;
+    }
+    for (const [term, termValue] of globalThis.Object.entries(node)) {
+      if (!compactedTerms.has(term)) continue;
+      const value = JSON.stringify(termValue);
+      for (let i = 0; i < unmappedKeys.length; i++) {
+        if (value.includes(\`\${dummyPrefix}\${i}\`)) {
+          representedKeys.add(unmappedKeys[i]);
+        }
+      }
+    }
+  }
+  for (const key of unmappedKeys) {
+    if (!representedKeys.has(key)) {
+      const value = (original as Record<string, unknown>)[key];
       result[key] = structuredClone(value);
     }
   }

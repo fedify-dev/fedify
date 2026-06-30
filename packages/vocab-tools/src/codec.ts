@@ -550,7 +550,7 @@ export async function* generateDecoder(
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : mergeUnmappedJsonLdTerms(
+            : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
                 Array.isArray(normalized) && normalized.length === 1
                   ? normalized[0]
