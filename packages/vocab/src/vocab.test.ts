@@ -707,6 +707,56 @@ test("fromJsonLd() preserves expanded arrays with portable IRIs", async () => {
   ]);
 });
 
+test("fromJsonLd() preserves expanded subtype cache types", async () => {
+  const expanded = [
+    {
+      "@id": "https://example.com/activities/1",
+      "@type": ["https://www.w3.org/ns/activitystreams#Create"],
+      "https://www.w3.org/ns/activitystreams#actor": [
+        { "@id": "https://example.com/actors/alice" },
+      ],
+      "https://www.w3.org/ns/activitystreams#object": [
+        { "@id": "https://example.com/objects/1" },
+      ],
+    },
+    {
+      "@id": "https://example.com/objects/1",
+      "@type": ["https://www.w3.org/ns/activitystreams#Note"],
+      "https://www.w3.org/ns/activitystreams#attributedTo": [
+        { "@id": "ap://did:key:z6Mkabc/actor" },
+      ],
+    },
+  ];
+
+  const activity = await Activity.fromJsonLd(expanded, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+
+  deepStrictEqual(await activity.toJsonLd(), [
+    {
+      "@id": "https://example.com/activities/1",
+      "@type": ["https://www.w3.org/ns/activitystreams#Create"],
+      "https://www.w3.org/ns/activitystreams#actor": [
+        { "@id": "https://example.com/actors/alice" },
+      ],
+      "https://www.w3.org/ns/activitystreams#object": [
+        { "@id": "https://example.com/objects/1" },
+      ],
+    },
+    {
+      "@id": "https://example.com/objects/1",
+      "@type": ["https://www.w3.org/ns/activitystreams#Note"],
+      "https://www.w3.org/ns/activitystreams#attributedTo": [
+        { "@id": "ap+ef61://did:key:z6Mkabc/actor" },
+      ],
+    },
+  ]);
+  deepStrictEqual(expanded[0]["@type"], [
+    "https://www.w3.org/ns/activitystreams#Create",
+  ]);
+});
+
 test("fromJsonLd() formats portable IRIs in JSON-LD containers", async () => {
   const note = await Note.fromJsonLd({
     "@context": "https://www.w3.org/ns/activitystreams",

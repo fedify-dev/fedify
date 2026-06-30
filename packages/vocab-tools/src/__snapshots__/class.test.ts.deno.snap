@@ -132,7 +132,7 @@ async function mergeUnmappedJsonLdTerms(
   ) {
     return compacted;
   }
-  const result = compacted as Record<string, unknown>;
+  const result = { ...compacted as Record<string, unknown> };
   const unmappedKeys = globalThis.Object.keys(original).filter((key) =>
     key !== \\"@context\\" && !(key in result)
   );
@@ -11022,6 +11022,9 @@ get urls(): ((URL | Link))[] {
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     const instance = new this(
       { id: values[\\"@id\\"] != null && !values[\\"@id\\"].startsWith(\\"_:\\") && canParseIri(values[\\"@id\\"], options.baseUrl) ? parseIri(values[\\"@id\\"], options.baseUrl) : undefined },
@@ -13376,6 +13379,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -14429,6 +14435,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -17733,6 +17742,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -18455,6 +18467,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -18998,6 +19013,9 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     const instance = new this(
       { id: values[\\"@id\\"] != null && !values[\\"@id\\"].startsWith(\\"_:\\") && canParseIri(values[\\"@id\\"], options.baseUrl) ? parseIri(values[\\"@id\\"], options.baseUrl) : undefined },
@@ -19624,6 +19642,9 @@ unit?: string | null;numericalValue?: Decimal | null;}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     const instance = new this(
       { id: values[\\"@id\\"] != null && !values[\\"@id\\"].startsWith(\\"_:\\") && canParseIri(values[\\"@id\\"], options.baseUrl) ? parseIri(values[\\"@id\\"], options.baseUrl) : undefined },
@@ -20670,6 +20691,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -21146,6 +21170,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -21777,6 +21804,9 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     const instance = new this(
       { id: values[\\"@id\\"] != null && !values[\\"@id\\"].startsWith(\\"_:\\") && canParseIri(values[\\"@id\\"], options.baseUrl) ? parseIri(values[\\"@id\\"], options.baseUrl) : undefined },
@@ -22565,6 +22595,9 @@ get manualApprovals(): (URL)[] {
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     const instance = new this(
       { id: values[\\"@id\\"] != null && !values[\\"@id\\"].startsWith(\\"_:\\") && canParseIri(values[\\"@id\\"], options.baseUrl) ? parseIri(values[\\"@id\\"], options.baseUrl) : undefined },
@@ -23622,6 +23655,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -24097,6 +24133,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -25056,6 +25095,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -25531,6 +25573,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -26489,6 +26534,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -26964,6 +27012,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -27453,6 +27504,9 @@ get endpoints(): (URL)[] {
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     const instance = new this(
       { id: values[\\"@id\\"] != null && !values[\\"@id\\"].startsWith(\\"_:\\") && canParseIri(values[\\"@id\\"], options.baseUrl) ? parseIri(values[\\"@id\\"], options.baseUrl) : undefined },
@@ -27820,6 +27874,9 @@ endpoints?: (URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -28678,6 +28735,9 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     const instance = new this(
       { id: values[\\"@id\\"] != null && !values[\\"@id\\"].startsWith(\\"_:\\") && canParseIri(values[\\"@id\\"], options.baseUrl) ? parseIri(values[\\"@id\\"], options.baseUrl) : undefined },
@@ -29691,6 +29751,9 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     const instance = new this(
       { id: values[\\"@id\\"] != null && !values[\\"@id\\"].startsWith(\\"_:\\") && canParseIri(values[\\"@id\\"], options.baseUrl) ? parseIri(values[\\"@id\\"], options.baseUrl) : undefined },
@@ -30617,6 +30680,9 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     const instance = new this(
       { id: values[\\"@id\\"] != null && !values[\\"@id\\"].startsWith(\\"_:\\") && canParseIri(values[\\"@id\\"], options.baseUrl) ? parseIri(values[\\"@id\\"], options.baseUrl) : undefined },
@@ -31273,6 +31339,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -31892,6 +31961,9 @@ satisfies?: URL | null;resourceQuantity?: Measure | null;}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     const instance = new this(
       { id: values[\\"@id\\"] != null && !values[\\"@id\\"].startsWith(\\"_:\\") && canParseIri(values[\\"@id\\"], options.baseUrl) ? parseIri(values[\\"@id\\"], options.baseUrl) : undefined },
@@ -32735,6 +32807,9 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     const instance = new this(
       { id: values[\\"@id\\"] != null && !values[\\"@id\\"].startsWith(\\"_:\\") && canParseIri(values[\\"@id\\"], options.baseUrl) ? parseIri(values[\\"@id\\"], options.baseUrl) : undefined },
@@ -33625,6 +33700,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -34155,6 +34233,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -34524,6 +34605,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -34892,6 +34976,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -40625,6 +40712,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -42094,6 +42184,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -42462,6 +42555,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -43510,6 +43606,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -44194,6 +44293,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -44640,6 +44742,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -45011,6 +45116,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -45380,6 +45488,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -49356,6 +49467,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -51253,6 +51367,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -51768,6 +51885,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -52135,6 +52255,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -52500,6 +52623,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -53334,6 +53460,9 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     const instance = new this(
       { id: values[\\"@id\\"] != null && !values[\\"@id\\"].startsWith(\\"_:\\") && canParseIri(values[\\"@id\\"], options.baseUrl) ? parseIri(values[\\"@id\\"], options.baseUrl) : undefined },
@@ -53942,6 +54071,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -54310,6 +54442,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -54679,6 +54814,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -60412,6 +60550,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -62861,6 +63002,9 @@ get names(): ((string | LanguageString))[] {
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     const instance = new this(
       { id: values[\\"@id\\"] != null && !values[\\"@id\\"].startsWith(\\"_:\\") && canParseIri(values[\\"@id\\"], options.baseUrl) ? parseIri(values[\\"@id\\"], options.baseUrl) : undefined },
@@ -63551,6 +63695,9 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -63921,6 +64068,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -64293,6 +64443,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -64660,6 +64813,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -65027,6 +65183,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -65394,6 +65553,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -65761,6 +65923,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -66126,6 +66291,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -66457,6 +66625,9 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -66825,6 +66996,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -67875,6 +68049,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -68709,6 +68886,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -69536,6 +69716,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -75369,6 +75552,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -76828,6 +77014,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -82561,6 +82750,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -84476,6 +84668,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -85376,6 +85571,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -87105,6 +87303,9 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -87810,6 +88011,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -88181,6 +88385,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -89761,6 +89968,9 @@ relationships?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -90290,6 +90500,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -96023,6 +96236,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -97698,6 +97914,9 @@ get contents(): ((string | LanguageString))[] {
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     const instance = new this(
       { id: values[\\"@id\\"] != null && !values[\\"@id\\"].startsWith(\\"_:\\") && canParseIri(values[\\"@id\\"], options.baseUrl) ? parseIri(values[\\"@id\\"], options.baseUrl) : undefined },
@@ -98163,6 +98382,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -98530,6 +98752,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -99113,6 +99338,9 @@ get formerTypes(): (\$EntityType)[] {
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -99581,6 +99809,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -99953,6 +100184,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -100323,6 +100557,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -100693,6 +100930,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {
@@ -101059,6 +101299,9 @@ instruments?: (Object | URL)[];}
     const cacheJsonLd = !(\\"_fromSubclass\\" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   
     delete values[\\"@type\\"];
     const instance = await super.fromJsonLd(values, {

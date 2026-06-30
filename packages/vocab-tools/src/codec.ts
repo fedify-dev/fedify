@@ -438,6 +438,9 @@ export async function* generateDecoder(
     const cacheJsonLd = !("_fromSubclass" in options) || !options._fromSubclass
       ? normalizePortableIris(expanded)
       : undefined;
+    if (cacheJsonLd?.changed) {
+      cacheJsonLd.value = structuredClone(cacheJsonLd.value);
+    }
   `;
   if (type.extends == null) {
     yield `

@@ -94,7 +94,13 @@ function decodePortableAuthority(authority: string): string {
   if (INVALID_PERCENT_ENCODING_PATTERN.test(authority)) {
     throw new TypeError("Invalid portable ActivityPub IRI authority.");
   }
-  if (DID_SCHEME_PATTERN.test(authority)) return authority;
+  if (DID_SCHEME_PATTERN.test(authority)) {
+    const decoded = authority.replace(/%25/gi, "%");
+    if (INVALID_PERCENT_ENCODING_PATTERN.test(decoded)) {
+      throw new TypeError("Invalid portable ActivityPub IRI authority.");
+    }
+    return authority;
+  }
   const decoded = authority.replace(/%3A/gi, ":").replace(/%25/gi, "%");
   if (INVALID_PERCENT_ENCODING_PATTERN.test(decoded)) {
     throw new TypeError("Invalid portable ActivityPub IRI authority.");

@@ -349,7 +349,7 @@ export async function* generateClasses(
   ) {
     return compacted;
   }
-  const result = compacted as Record<string, unknown>;
+  const result = { ...compacted as Record<string, unknown> };
   const unmappedKeys = globalThis.Object.keys(original).filter((key) =>
     key !== "@context" && !(key in result)
   );

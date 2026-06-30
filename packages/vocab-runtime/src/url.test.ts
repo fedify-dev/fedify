@@ -80,6 +80,7 @@ test("parseIri() rejects malformed portable DID authorities", () => {
     "ap://did:key/actor",
     "ap://did:123:abc/actor",
     "ap://did%3Akey%3Aabc%25zz/actor",
+    "ap://did:key:abc%25zz/actor",
   ];
   for (const iri of cases) {
     ok(!canParseIri(iri));
