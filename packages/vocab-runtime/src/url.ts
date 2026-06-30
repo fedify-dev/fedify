@@ -75,6 +75,11 @@ function getComparableIriOrigin(iri: URL): string {
 function parsePortableIri(iri: string): URL | null {
   const match = iri.match(PORTABLE_IRI_PATTERN);
   if (match == null) return null;
+  // The readable ap://did:... authority form is not RFC 3986 compliant:
+  // colons are not valid in a URI reg-name authority.  Keep accepting it for
+  // current FEP-ef61 interoperability, but normalize it to a percent-encoded
+  // URL authority internally.  The ap: URI syntax may change later; see:
+  // https://bnewbold.leaflet.pub/3mph4hzvbdc2v
   const authority = decodePortableAuthority(match[2]);
   if (!DID_PATTERN.test(authority)) {
     throw new TypeError("Invalid portable ActivityPub IRI authority.");
