@@ -121,6 +121,7 @@
   },
   "test": {
     "include": [
+      "./examples/test-examples",
       "./packages"
     ],
     "exclude": [
