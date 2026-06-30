@@ -707,6 +707,40 @@ test("fromJsonLd() preserves expanded arrays with portable IRIs", async () => {
   ]);
 });
 
+test("fromJsonLd() preserves single-node expanded arrays with portable IRIs", async () => {
+  const expanded = [
+    {
+      "@id": "ap://did:key:z6Mkabc/objects/1",
+      "@type": ["https://www.w3.org/ns/activitystreams#Note"],
+      "https://www.w3.org/ns/activitystreams#attributedTo": [
+        { "@id": "ap://did:key:z6Mkabc/actor" },
+      ],
+      "https://www.w3.org/ns/activitystreams#content": [
+        { "@value": "Single expanded node should stay cached as an array." },
+      ],
+    },
+  ];
+
+  const note = await Note.fromJsonLd(expanded, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+
+  deepStrictEqual(await note.toJsonLd(), [
+    {
+      "@id": "ap+ef61://did:key:z6Mkabc/objects/1",
+      "@type": ["https://www.w3.org/ns/activitystreams#Note"],
+      "https://www.w3.org/ns/activitystreams#attributedTo": [
+        { "@id": "ap+ef61://did:key:z6Mkabc/actor" },
+      ],
+      "https://www.w3.org/ns/activitystreams#content": [
+        { "@value": "Single expanded node should stay cached as an array." },
+      ],
+    },
+  ]);
+  deepStrictEqual(expanded[0]["@id"], "ap://did:key:z6Mkabc/objects/1");
+});
+
 test("fromJsonLd() preserves expanded subtype cache types", async () => {
   const expanded = [
     {

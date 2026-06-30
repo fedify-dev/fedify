@@ -569,7 +569,9 @@ export async function* generateDecoder(
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }

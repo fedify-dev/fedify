@@ -19,8 +19,8 @@ import {
     importPem,
     isDecimal,
     LanguageString,
-    parseIri,
     parseDecimal,
+    parseIri,
     type RemoteDocument
 } from \\"@fedify/vocab-runtime\\";
 import {
@@ -12184,7 +12184,9 @@ get urls(): ((URL | Link))[] {
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -13419,7 +13421,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -14564,7 +14568,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -17988,7 +17994,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -18516,7 +18524,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -19108,7 +19118,9 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -19728,7 +19740,9 @@ unit?: string | null;numericalValue?: Decimal | null;}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -20809,7 +20823,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -21231,7 +21247,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -21947,7 +21965,9 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -22693,7 +22713,9 @@ get manualApprovals(): (URL)[] {
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -23785,7 +23807,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -24206,7 +24230,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -25231,7 +25257,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -25652,7 +25680,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -26676,7 +26706,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -27097,7 +27129,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -27605,7 +27639,9 @@ get endpoints(): (URL)[] {
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -27965,7 +28001,9 @@ endpoints?: (URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -28930,7 +28968,9 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -29911,7 +29951,9 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -30843,7 +30885,9 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -31484,7 +31528,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -32101,7 +32147,9 @@ satisfies?: URL | null;resourceQuantity?: Measure | null;}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -33010,7 +33058,9 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -33890,7 +33940,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -34348,7 +34400,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -34723,7 +34777,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -35097,7 +35153,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -41453,7 +41511,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -42311,7 +42371,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -42685,7 +42747,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -43825,7 +43889,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -44465,7 +44531,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -44881,7 +44949,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -45258,7 +45328,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -45633,7 +45705,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -50003,7 +50077,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -51608,7 +51684,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -52039,7 +52117,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -52412,7 +52492,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -52783,7 +52865,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -53726,7 +53810,9 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -54237,7 +54323,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -54611,7 +54699,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -54986,7 +55076,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -61342,7 +61434,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -63347,7 +63441,9 @@ get names(): ((string | LanguageString))[] {
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -63876,7 +63972,9 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -64252,7 +64350,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -64630,7 +64730,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -65003,7 +65105,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -65376,7 +65480,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -65749,7 +65855,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -66122,7 +66230,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -66493,7 +66603,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -66830,7 +66942,9 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -67204,7 +67318,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -68346,7 +68462,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -69140,7 +69258,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -69991,7 +70111,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -76389,7 +76511,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -77237,7 +77361,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -83593,7 +83719,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -85011,7 +85139,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -85833,7 +85963,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -87733,7 +87865,9 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -88249,7 +88383,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -88626,7 +88762,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -90302,7 +90440,9 @@ relationships?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -90747,7 +90887,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -97103,7 +97245,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -98204,7 +98348,9 @@ get contents(): ((string | LanguageString))[] {
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -98638,7 +98784,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -99011,7 +99159,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -99653,7 +99803,9 @@ get formerTypes(): ($EntityType)[] {
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -100074,7 +100226,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -100452,7 +100606,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -100828,7 +100984,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -101204,7 +101362,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -101576,7 +101736,9 @@ instruments?: (Object | URL)[];}
               context,
               options.contextLoader,
             );
-          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+          instance._cachedJsonLd = compactArray && context != null
+            ? [cachedJsonLd]
+            : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }

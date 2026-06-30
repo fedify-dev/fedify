@@ -193,7 +193,10 @@ function addPortableIriKeys(
   if (!canContainIriValue(property, types)) return;
   keys.add(property.uri);
   if (property.compactName != null) keys.add(property.compactName);
-  if (property.functional && property.redundantProperties != null) {
+  if (
+    "redundantProperties" in property &&
+    property.redundantProperties != null
+  ) {
     for (const redundantProperty of property.redundantProperties) {
       keys.add(redundantProperty.uri);
       if (redundantProperty.compactName != null) {
@@ -227,8 +230,8 @@ export async function* generateClasses(
     "importPem",
     "isDecimal",
     "LanguageString",
-    "parseIri",
     "parseDecimal",
+    "parseIri",
     "type RemoteDocument",
   ];
   yield "// deno-lint-ignore-file ban-unused-ignore no-explicit-any no-unused-vars prefer-const verbatim-module-syntax\n";
