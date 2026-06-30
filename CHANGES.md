@@ -24,6 +24,16 @@ To be released.
 
 [GHSA-hqph-j65v-8cq5]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-hqph-j65v-8cq5
 
+### @fedify/vocab
+
+ -  Fixed Activity Vocabulary parsing so malformed language tags in remote
+    JSON-LD language maps no longer abort parsing with a `RangeError`.  Fedify
+    now ignores only the malformed language-tagged value and continues parsing
+    the rest of the object.  [[#847], [#848]]
+
+[#847]: https://github.com/fedify-dev/fedify/issues/847
+[#848]: https://github.com/fedify-dev/fedify/pull/848
+
 
 Version 2.3.1
 -------------
@@ -600,6 +610,13 @@ To be released.
     already applied to WebFinger lookups and the built-in document loader.
     [[GHSA-hqph-j65v-8cq5]]
 
+### @fedify/vocab
+
+ -  Fixed Activity Vocabulary parsing so malformed language tags in remote
+    JSON-LD language maps no longer abort parsing with a `RangeError`.  Fedify
+    now ignores only the malformed language-tagged value and continues parsing
+    the rest of the object.  [[#847], [#848]]
+
 
 Version 2.2.6
 -------------
@@ -1045,6 +1062,13 @@ To be released.
     against private and non-public addresses, consistent with the protections
     already applied to WebFinger lookups and the built-in document loader.
     [[GHSA-hqph-j65v-8cq5]]
+
+### @fedify/vocab
+
+ -  Fixed Activity Vocabulary parsing so malformed language tags in remote
+    JSON-LD language maps no longer abort parsing with a `RangeError`.  Fedify
+    now ignores only the malformed language-tagged value and continues parsing
+    the rest of the object.  [[#847], [#848]]
 
 
 Version 2.1.17
@@ -1655,6 +1679,13 @@ To be released.
     against private and non-public addresses, consistent with the protections
     already applied to WebFinger lookups and the built-in document loader.
     [[GHSA-hqph-j65v-8cq5]]
+
+### @fedify/vocab
+
+ -  Fixed Activity Vocabulary parsing so malformed language tags in remote
+    JSON-LD language maps no longer abort parsing with a `RangeError`.  Fedify
+    now ignores only the malformed language-tagged value and continues parsing
+    the rest of the object.  [[#847], [#848]]
 
 
 Version 2.0.21

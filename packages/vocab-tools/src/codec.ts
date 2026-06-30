@@ -452,6 +452,9 @@ export async function* generateDecoder(
     }
     `;
   }
+  yield `
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  `;
   for (const property of type.properties) {
     const variable = await getFieldName(property.uri, "");
     yield await generateField(property, types, "const ");
@@ -500,23 +503,18 @@ export async function* generateDecoder(
       }
       `;
     }
-    if (property.range.length == 1) {
-      yield `
-      const decoded = ${
-        getDecoder(
-          property.range[0],
-          types,
-          "v",
-          "options",
-          propertyBaseUrl,
-        )
-      };
-      if (typeof decoded === "undefined") continue;
-      ${variable}.push(decoded);`;
-    } else {
-      yield `
+    yield `
       const decoded =
-      `;
+    `;
+    if (property.range.length == 1) {
+      yield getDecoder(
+        property.range[0],
+        types,
+        "v",
+        "options",
+        propertyBaseUrl,
+      );
+    } else {
       const decoders = getDecoders(
         property.range,
         types,
@@ -525,19 +523,33 @@ export async function* generateDecoder(
         propertyBaseUrl,
       );
       for (const code of decoders) yield code;
-      yield `
-      ;
-      if (typeof decoded === "undefined") continue;
-      ${variable}.push(decoded);
-      `;
     }
+    yield `
+      ;
+    `;
+    yield `
+      if (typeof decoded === "undefined") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
+    `;
+    yield `
+      if (!this._shouldCacheDecodedJsonLd(decoded)) {
+        shouldCacheJsonLd = false;
+      }
+      ${variable}.push(decoded);
+    `;
     yield `
     }
     instance.${await getFieldName(property.uri)} = ${variable};
     `;
   }
   yield `
-    if (!("_fromSubclass" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!("_fromSubclass" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {

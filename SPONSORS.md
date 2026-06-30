@@ -5,7 +5,7 @@ This project exists thanks to all the people who contribute, donate, and sponsor
 it.  We are grateful for their support.  We would like to thank the following
 financial contributors:[^1]
 
-[^1]: Those lists are automatically updated every hour.
+[^1]: Those lists are automatically updated twice a day.
 
 <!-- hongdown-disable -->
 
@@ -18,27 +18,28 @@ Corporate sponsors
 ------------------
 
 - [<img src="https://images.opencollective.com/ghost/avatar/128.png" width="64" height="64"> Ghost](https://ghost.org)
+- [<img src="https://images.opencollective.com/altstore/avatar/128.png" width="64" height="64"> AltStore](https://altstore.io)
 
 
 Supporters
 ----------
 
-- [Daniel Supernault](https://pixelfed.org/)
 - [tkgka](https://opencollective.com/tkgka)
 - [Blaine](https://opencollective.com/blaine)
 - [Erick González Aguilar](https://opencollective.com/erick-gonzalez-aguilar)
+- [Daniel Supernault](https://pixelfed.org/)
 
 
 Backers
 -------
 
-Robin Riley, Encyclia, taye, yamanoku, okin, box464, Evan Prodromou, Rafael Goulart, malte, Andy Piper
+Robin Riley, Encyclia, taye, box464, Evan Prodromou, okin, yamanoku, malte, Rafael Goulart, Andy Piper
 
 
 One-time donations
 ------------------
 
-Robin Riley, Markus P, Nils Bergmann, Rameez
+Robin Riley, malte, Nils Bergmann, Markus P, Rameez
 
 <!-- /DO NOT EDIT -->
 
