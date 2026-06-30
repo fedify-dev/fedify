@@ -389,6 +389,46 @@ export async function* generateClasses(
   }
   return result;
 }\n\n`;
+  yield `function preserveJsonLdArrayShape(
+  compacted: unknown,
+  original: unknown,
+): unknown {
+  if (
+    original == null || typeof original !== "object" ||
+    compacted == null || typeof compacted !== "object"
+  ) {
+    return compacted;
+  }
+  if (Array.isArray(original)) {
+    if (!Array.isArray(compacted)) return compacted;
+    let clone: unknown[] | undefined;
+    for (let i = 0; i < compacted.length; i++) {
+      const value = preserveJsonLdArrayShape(compacted[i], original[i]);
+      if (value !== compacted[i]) {
+        clone ??= compacted.slice(0, i);
+        clone.push(value);
+      } else if (clone != null) {
+        clone.push(compacted[i]);
+      }
+    }
+    return clone ?? compacted;
+  }
+  if (Array.isArray(compacted)) return compacted;
+  let clone: Record<string, unknown> | undefined;
+  const compactedObject = compacted as Record<string, unknown>;
+  const originalObject = original as Record<string, unknown>;
+  for (const key of globalThis.Object.keys(compactedObject)) {
+    const value = preserveJsonLdArrayShape(compactedObject[key], originalObject[key]);
+    const shaped = Array.isArray(originalObject[key]) && !Array.isArray(value)
+      ? [value]
+      : value;
+    if (shaped !== compactedObject[key]) {
+      clone ??= { ...compactedObject };
+      clone[key] = shaped;
+    }
+  }
+  return clone ?? compactedObject;
+}\n\n`;
   const moduleVarNames = new Map<string, string>();
   const sorted = sortTopologically(types);
   for (const typeUri of sorted) {

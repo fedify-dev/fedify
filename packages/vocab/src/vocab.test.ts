@@ -808,6 +808,28 @@ test("fromJsonLd() preserves compact array contexts with portable IRIs", async (
   }]);
 });
 
+test("fromJsonLd() preserves compact single-item arrays with portable IRIs", async () => {
+  const createJson = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Create",
+    actor: ["ap://did:key:z6Mkabc/actor"],
+    object: "https://example.com/objects/1",
+  };
+
+  const create = await Create.fromJsonLd(createJson, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+
+  deepStrictEqual(await create.toJsonLd(), {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Create",
+    actor: ["ap+ef61://did:key:z6Mkabc/actor"],
+    object: "https://example.com/objects/1",
+  });
+  deepStrictEqual(createJson.actor, ["ap://did:key:z6Mkabc/actor"]);
+});
+
 test("fromJsonLd() formats portable IRIs in JSON-LD containers", async () => {
   const note = await Note.fromJsonLd({
     "@context": "https://www.w3.org/ns/activitystreams",

@@ -555,19 +555,22 @@ export async function* generateDecoder(
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]

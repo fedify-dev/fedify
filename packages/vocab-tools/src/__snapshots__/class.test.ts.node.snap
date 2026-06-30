@@ -168,6 +168,47 @@ async function mergeUnmappedJsonLdTerms(
   return result;
 }
 
+function preserveJsonLdArrayShape(
+  compacted: unknown,
+  original: unknown,
+): unknown {
+  if (
+    original == null || typeof original !== \\"object\\" ||
+    compacted == null || typeof compacted !== \\"object\\"
+  ) {
+    return compacted;
+  }
+  if (Array.isArray(original)) {
+    if (!Array.isArray(compacted)) return compacted;
+    let clone: unknown[] | undefined;
+    for (let i = 0; i < compacted.length; i++) {
+      const value = preserveJsonLdArrayShape(compacted[i], original[i]);
+      if (value !== compacted[i]) {
+        clone ??= compacted.slice(0, i);
+        clone.push(value);
+      } else if (clone != null) {
+        clone.push(compacted[i]);
+      }
+    }
+    return clone ?? compacted;
+  }
+  if (Array.isArray(compacted)) return compacted;
+  let clone: Record<string, unknown> | undefined;
+  const compactedObject = compacted as Record<string, unknown>;
+  const originalObject = original as Record<string, unknown>;
+  for (const key of globalThis.Object.keys(compactedObject)) {
+    const value = preserveJsonLdArrayShape(compactedObject[key], originalObject[key]);
+    const shaped = Array.isArray(originalObject[key]) && !Array.isArray(value)
+      ? [value]
+      : value;
+    if (shaped !== compactedObject[key]) {
+      clone ??= { ...compactedObject };
+      clone[key] = shaped;
+    }
+  }
+  return clone ?? compactedObject;
+}
+
 import * as _ppM0 from \\"./preprocessors.ts\\";
 
 /** Describes an object of any kind. The Object type serves as the base type for
@@ -12170,19 +12211,22 @@ get urls(): ((URL | Link))[] {
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -13407,19 +13451,22 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -14554,19 +14601,22 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -17980,19 +18030,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -18510,19 +18563,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -19104,19 +19160,22 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -19726,19 +19785,22 @@ unit?: string | null;numericalValue?: Decimal | null;}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -20809,19 +20871,22 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -21233,19 +21298,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -21951,19 +22019,22 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -22699,19 +22770,22 @@ get manualApprovals(): (URL)[] {
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -23793,19 +23867,22 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -24216,19 +24293,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -25243,19 +25323,22 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -25666,19 +25749,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -26692,19 +26778,22 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -27115,19 +27204,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -27625,19 +27717,22 @@ get endpoints(): (URL)[] {
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -27987,19 +28082,22 @@ endpoints?: (URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -28954,19 +29052,22 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -29937,19 +30038,22 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -30871,19 +30975,22 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -31514,19 +31621,22 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -32133,19 +32243,22 @@ satisfies?: URL | null;resourceQuantity?: Measure | null;}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -33044,19 +33157,22 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -33926,19 +34042,22 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -34386,19 +34505,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -34763,19 +34885,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -35139,19 +35264,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -41497,19 +41625,22 @@ get preferredUsernames(): ((string | LanguageString))[] {
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -42357,19 +42488,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -42733,19 +42867,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -43875,19 +44012,22 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -44517,19 +44657,22 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -44935,19 +45078,22 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -45314,19 +45460,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -45691,19 +45840,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -50063,19 +50215,22 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -51670,19 +51825,22 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -52103,19 +52261,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -52478,19 +52639,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -52851,19 +53015,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -53796,19 +53963,22 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -54309,19 +54479,22 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -54685,19 +54858,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -55062,19 +55238,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -61420,19 +61599,22 @@ get preferredUsernames(): ((string | LanguageString))[] {
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -63427,19 +63609,22 @@ get names(): ((string | LanguageString))[] {
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -63958,19 +64143,22 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -64336,19 +64524,22 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -64716,19 +64907,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -65091,19 +65285,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -65466,19 +65663,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -65841,19 +66041,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -66216,19 +66419,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -66589,19 +66795,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -66928,19 +67137,22 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -67304,19 +67516,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -68448,19 +68663,22 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -69244,19 +69462,22 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -70097,19 +70318,22 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -76497,19 +76721,22 @@ get preferredUsernames(): ((string | LanguageString))[] {
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -77347,19 +77574,22 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -83705,19 +83935,22 @@ get preferredUsernames(): ((string | LanguageString))[] {
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -85125,19 +85358,22 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -85949,19 +86185,22 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -87851,19 +88090,22 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -88369,19 +88611,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -88748,19 +88993,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -90426,19 +90674,22 @@ relationships?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -90873,19 +91124,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -97231,19 +97485,22 @@ get preferredUsernames(): ((string | LanguageString))[] {
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -98334,19 +98591,22 @@ get contents(): ((string | LanguageString))[] {
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -98770,19 +99030,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -99145,19 +99408,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -99789,19 +100055,22 @@ get formerTypes(): ($EntityType)[] {
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -100212,19 +100481,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -100592,19 +100864,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -100970,19 +101245,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -101348,19 +101626,22 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
@@ -101722,19 +102003,22 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized
-            : await mergeUnmappedJsonLdTerms(
-              await jsonld.compact(
-                Array.isArray(normalized) && normalized.length === 1
-                  ? normalized[0]
-                  : normalized,
+            : preserveJsonLdArrayShape(
+              await mergeUnmappedJsonLdTerms(
+                await jsonld.compact(
+                  Array.isArray(normalized) && normalized.length === 1
+                    ? normalized[0]
+                    : normalized,
+                  context,
+                  {
+                  documentLoader: options.contextLoader,
+                  },
+                ),
+                jsonLd,
                 context,
-                {
-                documentLoader: options.contextLoader,
-                },
+                options.contextLoader,
               ),
               jsonLd,
-              context,
-              options.contextLoader,
             );
           instance._cachedJsonLd = compactArray && context != null
             ? [cachedJsonLd]
