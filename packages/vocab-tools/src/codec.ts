@@ -393,10 +393,12 @@ export async function* generateDecoder(
     };
     // deno-lint-ignore no-explicit-any
     let values: Record<string, any[]> & { "@id"?: string };
+    let expanded: unknown[];
     if (globalThis.Object.keys(json).length == 0) {
       values = {};
+      expanded = [values];
     } else {
-      const expanded = await jsonld.expand(json, {
+      expanded = await jsonld.expand(json, {
         documentLoader: options.contextLoader,
         keepFreeFloatingNodes: true,
       });
@@ -410,7 +412,6 @@ export async function* generateDecoder(
     if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
-    const cacheValues = structuredClone(values);
   `;
   const subtypes = getSubtypes(typeUri, types, true);
   yield `
@@ -432,6 +433,11 @@ export async function* generateDecoder(
       throw new TypeError("Invalid type: " + values["@type"]);
     }
   }
+  `;
+  yield `
+    const cacheJsonLd = !("_fromSubclass" in options) || !options._fromSubclass
+      ? normalizePortableIris(expanded)
+      : undefined;
   `;
   if (type.extends == null) {
     yield `
@@ -536,17 +542,23 @@ export async function* generateDecoder(
   yield `
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        const normalizedValues = normalizePortableIris(cacheValues);
-        if (normalizedValues.changed) {
+        if (cacheJsonLd?.changed) {
           const context = json != null && typeof json === "object" &&
               "@context" in json
             ? (json as Record<string, unknown>)["@context"]
             : undefined;
+          const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
-            ? normalizedValues.value
-            : await jsonld.compact(normalizedValues.value, context, {
+            ? normalized
+            : await jsonld.compact(
+              Array.isArray(normalized) && normalized.length === 1
+                ? normalized[0]
+                : normalized,
+              context,
+              {
               documentLoader: options.contextLoader,
-            });
+              },
+            );
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }

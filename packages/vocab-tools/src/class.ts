@@ -283,7 +283,7 @@ export async function* generateClasses(
     return { value, changed: false };
   }
   if (Array.isArray(value)) {
-    let changed = false;
+    let clone: unknown[] | undefined;
     for (let i = 0; i < value.length; i++) {
       const result = normalizePortableIris(
         value[i],
@@ -292,16 +292,20 @@ export async function* generateClasses(
         parentKey,
         portableIriKeys,
       );
-      value[i] = result.value;
-      changed ||= result.changed;
+      if (result.changed) {
+        clone ??= value.slice(0, i);
+        clone.push(result.value);
+      } else if (clone != null) {
+        clone.push(value[i]);
+      }
     }
-    return { value, changed };
+    return { value: clone ?? value, changed: clone != null };
   }
   if (value == null || typeof value !== "object") {
     return { value, changed: false };
   }
   const object = value as Record<string, unknown>;
-  let changed = false;
+  let clone: Record<string, unknown> | undefined;
   for (const entryKey of globalThis.Object.keys(object)) {
     const result = normalizePortableIris(
       object[entryKey],
@@ -310,10 +314,12 @@ export async function* generateClasses(
       key,
       portableIriKeys,
     );
-    object[entryKey] = result.value;
-    changed ||= result.changed;
+    if (result.changed) {
+      clone ??= { ...object };
+      clone[entryKey] = result.value;
+    }
   }
-  return { value: object, changed };
+  return { value: clone ?? object, changed: clone != null };
 }\n\n`;
   const moduleVarNames = new Map<string, string>();
   const sorted = sortTopologically(types);

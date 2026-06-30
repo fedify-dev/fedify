@@ -637,6 +637,60 @@ test("fromJsonLd() preserves extensions with portable ActivityPub IRIs", async (
   deepStrictEqual(jsonLd.id, "ap+ef61://did:key:z6Mkabc/objects/1");
 });
 
+test("fromJsonLd() preserves expanded arrays with portable IRIs", async () => {
+  const expanded = [
+    {
+      "@id": "https://example.com/activities/1",
+      "@type": ["https://www.w3.org/ns/activitystreams#Create"],
+      "https://www.w3.org/ns/activitystreams#actor": [
+        { "@id": "ap://did:key:z6Mkabc/actor" },
+      ],
+      "https://www.w3.org/ns/activitystreams#object": [
+        { "@id": "https://example.com/objects/1" },
+      ],
+    },
+    {
+      "@id": "https://example.com/objects/1",
+      "@type": ["https://www.w3.org/ns/activitystreams#Note"],
+      "https://www.w3.org/ns/activitystreams#content": [
+        { "@value": "Sibling node should stay cached." },
+      ],
+    },
+  ];
+
+  const activity = await Activity.fromJsonLd(expanded, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+
+  deepStrictEqual(
+    activity.actorId,
+    new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
+  );
+  deepStrictEqual(await activity.toJsonLd(), [
+    {
+      "@id": "https://example.com/activities/1",
+      "@type": ["https://www.w3.org/ns/activitystreams#Create"],
+      "https://www.w3.org/ns/activitystreams#actor": [
+        { "@id": "ap+ef61://did:key:z6Mkabc/actor" },
+      ],
+      "https://www.w3.org/ns/activitystreams#object": [
+        { "@id": "https://example.com/objects/1" },
+      ],
+    },
+    {
+      "@id": "https://example.com/objects/1",
+      "@type": ["https://www.w3.org/ns/activitystreams#Note"],
+      "https://www.w3.org/ns/activitystreams#content": [
+        { "@value": "Sibling node should stay cached." },
+      ],
+    },
+  ]);
+  deepStrictEqual(expanded[0]["https://www.w3.org/ns/activitystreams#actor"], [
+    { "@id": "ap://did:key:z6Mkabc/actor" },
+  ]);
+});
+
 test("fromJsonLd() formats portable IRIs in JSON-LD containers", async () => {
   const note = await Note.fromJsonLd({
     "@context": "https://www.w3.org/ns/activitystreams",
