@@ -32,4 +32,18 @@ describe("parseCliArgs", () => {
     strictEqual(options.debugMode, true);
     deepStrictEqual([...options.filterNames], ["express", "koa"]);
   });
+
+  it("ignores invalid timeout values without skipping flags", () => {
+    const options = parseCliArgs([
+      "--timeout",
+      "--debug",
+      "--timeout=",
+      "--timeout=-1",
+      "express",
+    ]);
+
+    strictEqual(options.defaultTimeoutMs, 10_000);
+    strictEqual(options.debugMode, true);
+    deepStrictEqual([...options.filterNames], ["express"]);
+  });
 });

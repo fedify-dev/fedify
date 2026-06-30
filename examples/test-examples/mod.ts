@@ -128,6 +128,13 @@ interface CliOptions {
   filterNames: Set<string>;
 }
 
+function parseTimeoutMs(value: string | undefined): number | undefined {
+  if (value == null || value.trim() === "") return undefined;
+  const timeoutMs = Number(value);
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return undefined;
+  return timeoutMs;
+}
+
 export function parseCliArgs(args: readonly string[]): CliOptions {
   let defaultTimeoutMs = 10_000;
   let debugMode = false;
@@ -135,10 +142,14 @@ export function parseCliArgs(args: readonly string[]): CliOptions {
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    if (arg === "--timeout" && i + 1 < args.length) {
-      defaultTimeoutMs = Number(args[++i]);
+    if (arg === "--timeout") {
+      const timeoutMs = parseTimeoutMs(args[i + 1]);
+      if (timeoutMs == null) continue;
+      defaultTimeoutMs = timeoutMs;
+      i++;
     } else if (arg.startsWith("--timeout=")) {
-      defaultTimeoutMs = Number(arg.slice("--timeout=".length));
+      const timeoutMs = parseTimeoutMs(arg.slice("--timeout=".length));
+      if (timeoutMs != null) defaultTimeoutMs = timeoutMs;
     } else if (arg === "--debug" || arg === "-d") {
       debugMode = true;
     } else if (!arg.startsWith("--")) {
