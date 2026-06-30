@@ -18,8 +18,8 @@
 *                                                         @dahlia
 
 # Make changes to review routing themselves require the project lead's
-# approval, per the GitHub security guidance.
-/.github/CODEOWNERS                                       @dahlia
+# approval, per the GitHub security guidance.  The /.github/ rule owns
+# the CODEOWNERS file itself as well as the rest of the directory.
 /.github/                                                 @dahlia
 
 # Project-wide configuration and metadata, owned by the project lead.
@@ -100,10 +100,7 @@
 /packages/solidstart/                                     @2chanhaeng @dahlia
 /packages/sveltekit/                                      @dahlia @2chanhaeng
 
-# Example applications, owned by ChanHaeng Lee (see #788).
+# Example applications, owned by ChanHaeng Lee (see #788).  The
+# /examples/ rule covers every subdirectory recursively, so newly
+# added examples are automatically owned by @2chanhaeng.
 /examples/                                                @2chanhaeng
-/examples/nuxt/                                           @2chanhaeng
-/examples/sveltekit-sample/                               @2chanhaeng
-/examples/next14-app-router/                              @2chanhaeng
-/examples/next15-app-router/                              @2chanhaeng
-/examples/next-integration/                               @2chanhaeng
