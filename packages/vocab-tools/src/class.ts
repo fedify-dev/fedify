@@ -266,6 +266,13 @@ export async function* generateClasses(
     ((key === "@value" || key === "@list" || key === "@set") &&
       parentKey != null && portableIriKeys.has(parentKey));
 }\n\n`;
+  yield `function formatPortableIriForCache(value: string): string {
+  try {
+    return formatIri(value);
+  } catch {
+    return value;
+  }
+}\n\n`;
   yield `function normalizePortableIris(
   value: unknown,
   key?: string,
@@ -280,7 +287,7 @@ export async function* generateClasses(
       isPortableIriValuePosition(key, parentKey, portableIriKeys) &&
       PORTABLE_IRI_PATTERN.test(value)
     ) {
-      return formatIri(value);
+      return formatPortableIriForCache(value);
     }
     return value;
   }
@@ -338,6 +345,56 @@ export async function* generateClasses(
     return undefined;
   }
   return (value as Record<string, unknown>)["@context"];
+}\n\n`;
+  yield `async function compactJsonLdCache(
+  normalized: unknown,
+  original: unknown,
+  documentLoader?: DocumentLoader,
+): Promise<unknown> {
+  if (Array.isArray(original)) {
+    const normalizedArray = Array.isArray(normalized)
+      ? normalized
+      : normalized != null && typeof normalized === "object" &&
+          "@graph" in normalized &&
+          Array.isArray((normalized as Record<string, unknown>)["@graph"])
+      ? (normalized as Record<string, unknown>)["@graph"] as unknown[]
+      : undefined;
+    if (normalizedArray == null) return normalized;
+    let clone: unknown[] | undefined;
+    for (let i = 0; i < normalizedArray.length; i++) {
+      const item = await compactJsonLdCache(
+        normalizedArray[i],
+        original[i],
+        documentLoader,
+      );
+      if (item !== normalizedArray[i]) {
+        clone ??= normalizedArray.slice(0, i);
+        clone.push(item);
+      } else if (clone != null) {
+        clone.push(normalizedArray[i]);
+      }
+    }
+    return clone ?? (Array.isArray(normalized) ? normalized : normalizedArray);
+  }
+  const context = getJsonLdContext(original);
+  if (context == null) return normalized;
+  return preserveJsonLdArrayShape(
+    await mergeUnmappedJsonLdTerms(
+      await jsonld.compact(
+        Array.isArray(normalized) && normalized.length === 1
+          ? normalized[0]
+          : normalized,
+        context,
+        {
+        documentLoader,
+        },
+      ),
+      original,
+      context,
+      documentLoader,
+    ),
+    original,
+  );
 }\n\n`;
   yield `function getTopLevelJsonLdTerms(value: unknown): ReadonlySet<string> {
   const terms = new Set<string>();

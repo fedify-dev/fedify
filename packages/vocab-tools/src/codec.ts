@@ -548,28 +548,13 @@ export async function* generateDecoder(
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {

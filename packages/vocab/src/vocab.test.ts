@@ -869,6 +869,61 @@ test("fromJsonLd() preserves compact multi-node arrays with portable IRIs", asyn
   ]);
 });
 
+test("fromJsonLd() preserves compact array item extension contexts with portable IRIs", async () => {
+  const activityJson = [
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Create",
+      id: "https://example.com/activities/1",
+      actor: "https://example.com/actors/alice",
+      object: "https://example.com/objects/1",
+    },
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        {
+          extraRef: {
+            "@id": "https://example.com/ns#extraRef",
+            "@type": "@id",
+          },
+        },
+      ],
+      type: "Note",
+      id: "https://example.com/objects/1",
+      extraRef: "ap://did:key:z6Mkabc/extra",
+    },
+  ];
+
+  const activity = await Activity.fromJsonLd(activityJson, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+
+  deepStrictEqual(await activity.toJsonLd(), [
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Create",
+      id: "https://example.com/activities/1",
+      actor: "https://example.com/actors/alice",
+      object: "https://example.com/objects/1",
+    },
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        {
+          extraRef: {
+            "@id": "https://example.com/ns#extraRef",
+            "@type": "@id",
+          },
+        },
+      ],
+      type: "Note",
+      id: "https://example.com/objects/1",
+      extraRef: "ap+ef61://did:key:z6Mkabc/extra",
+    },
+  ]);
+});
+
 test("fromJsonLd() formats portable IRIs in JSON-LD containers", async () => {
   const note = await Note.fromJsonLd({
     "@context": "https://www.w3.org/ns/activitystreams",
@@ -960,6 +1015,30 @@ test("fromJsonLd() preserves portable IRIs in @id extension terms", async () => 
     contextLoader: mockDocumentLoader,
   }) as Record<string, unknown>;
   deepStrictEqual(jsonLd.extraRef, "ap+ef61://did:key:z6Mkabc/extra");
+});
+
+test("fromJsonLd() ignores malformed portable IRIs in extension cache terms", async () => {
+  const noteJson = {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      {
+        extraRef: {
+          "@id": "https://example.com/ns#extraRef",
+          "@type": "@id",
+        },
+      },
+    ],
+    type: "Note",
+    id: "https://example.com/notes/1",
+    extraRef: "ap://example.com/not-portable",
+  };
+
+  const note = await Note.fromJsonLd(noteJson, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+
+  deepStrictEqual(await note.toJsonLd(), noteJson);
 });
 
 test("fromJsonLd() preserves portable IRIs in @id typed terms", async () => {

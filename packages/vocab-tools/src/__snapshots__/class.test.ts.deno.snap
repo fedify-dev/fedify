@@ -44,6 +44,14 @@ function isPortableIriValuePosition(
       parentKey != null && portableIriKeys.has(parentKey));
 }
 
+function formatPortableIriForCache(value: string): string {
+  try {
+    return formatIri(value);
+  } catch {
+    return value;
+  }
+}
+
 function normalizePortableIris(
   value: unknown,
   key?: string,
@@ -58,7 +66,7 @@ function normalizePortableIris(
       isPortableIriValuePosition(key, parentKey, portableIriKeys) &&
       PORTABLE_IRI_PATTERN.test(value)
     ) {
-      return formatIri(value);
+      return formatPortableIriForCache(value);
     }
     return value;
   }
@@ -117,6 +125,57 @@ function getJsonLdContext(value: unknown): unknown {
     return undefined;
   }
   return (value as Record<string, unknown>)[\\"@context\\"];
+}
+
+async function compactJsonLdCache(
+  normalized: unknown,
+  original: unknown,
+  documentLoader?: DocumentLoader,
+): Promise<unknown> {
+  if (Array.isArray(original)) {
+    const normalizedArray = Array.isArray(normalized)
+      ? normalized
+      : normalized != null && typeof normalized === \\"object\\" &&
+          \\"@graph\\" in normalized &&
+          Array.isArray((normalized as Record<string, unknown>)[\\"@graph\\"])
+      ? (normalized as Record<string, unknown>)[\\"@graph\\"] as unknown[]
+      : undefined;
+    if (normalizedArray == null) return normalized;
+    let clone: unknown[] | undefined;
+    for (let i = 0; i < normalizedArray.length; i++) {
+      const item = await compactJsonLdCache(
+        normalizedArray[i],
+        original[i],
+        documentLoader,
+      );
+      if (item !== normalizedArray[i]) {
+        clone ??= normalizedArray.slice(0, i);
+        clone.push(item);
+      } else if (clone != null) {
+        clone.push(normalizedArray[i]);
+      }
+    }
+    return clone ?? (Array.isArray(normalized) ? normalized : normalizedArray);
+  }
+  const context = getJsonLdContext(original);
+  if (context == null) return normalized;
+  return preserveJsonLdArrayShape(
+    await mergeUnmappedJsonLdTerms(
+      await jsonld.compact(
+        Array.isArray(normalized) && normalized.length === 1
+          ? normalized[0]
+          : normalized,
+        context,
+        {
+        documentLoader,
+        },
+      ),
+      original,
+      context,
+      documentLoader,
+    ),
+    original,
+  );
 }
 
 function getTopLevelJsonLdTerms(value: unknown): ReadonlySet<string> {
@@ -12250,28 +12309,13 @@ get urls(): ((URL | Link))[] {
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -13487,28 +13531,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -14634,28 +14663,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -18060,28 +18074,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -18590,28 +18589,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -19184,28 +19168,13 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -19806,28 +19775,13 @@ unit?: string | null;numericalValue?: Decimal | null;}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -20889,28 +20843,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -21313,28 +21252,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -22031,28 +21955,13 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -22779,28 +22688,13 @@ get manualApprovals(): (URL)[] {
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -23873,28 +23767,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -24296,28 +24175,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -25323,28 +25187,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -25746,28 +25595,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -26772,28 +26606,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -27195,28 +27014,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -27705,28 +27509,13 @@ get endpoints(): (URL)[] {
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -28067,28 +27856,13 @@ endpoints?: (URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -29034,28 +28808,13 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -30017,28 +29776,13 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -30951,28 +30695,13 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -31594,28 +31323,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -32213,28 +31927,13 @@ satisfies?: URL | null;resourceQuantity?: Measure | null;}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -33124,28 +32823,13 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -34006,28 +33690,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -34466,28 +34135,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -34843,28 +34497,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -35219,28 +34858,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -41577,28 +41201,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -42437,28 +42046,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -42813,28 +42407,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -43955,28 +43534,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -44597,28 +44161,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -45015,28 +44564,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -45394,28 +44928,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -45771,28 +45290,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -50143,28 +49647,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -51750,28 +51239,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -52183,28 +51657,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -52558,28 +52017,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -52931,28 +52375,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -53876,28 +53305,13 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -54389,28 +53803,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -54765,28 +54164,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -55142,28 +54526,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -61500,28 +60869,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -63507,28 +62861,13 @@ get names(): ((string | LanguageString))[] {
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -64038,28 +63377,13 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -64416,28 +63740,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -64796,28 +64105,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -65171,28 +64465,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -65546,28 +64825,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -65921,28 +65185,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -66296,28 +65545,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -66669,28 +65903,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -67008,28 +66227,13 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -67384,28 +66588,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -68528,28 +67717,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -69324,28 +68498,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -70177,28 +69336,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -76577,28 +75721,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -77427,28 +76556,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -83785,28 +82899,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -85205,28 +84304,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -86029,28 +85113,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -87931,28 +87000,13 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -88449,28 +87503,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -88828,28 +87867,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -90506,28 +89530,13 @@ relationships?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -90953,28 +89962,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -97311,28 +96305,13 @@ get preferredUsernames(): ((string | LanguageString))[] {
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -98414,28 +97393,13 @@ get contents(): ((string | LanguageString))[] {
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -98850,28 +97814,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -99225,28 +98174,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -99869,28 +98803,13 @@ get formerTypes(): (\$EntityType)[] {
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -100292,28 +99211,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -100672,28 +99576,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -101050,28 +99939,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -101428,28 +100302,13 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
@@ -101802,28 +100661,13 @@ instruments?: (Object | URL)[];}
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
-          const cachedJsonLd = context == null
-            ? normalized
-            : preserveJsonLdArrayShape(
-              await mergeUnmappedJsonLdTerms(
-                await jsonld.compact(
-                  Array.isArray(normalized) && normalized.length === 1
-                    ? normalized[0]
-                    : normalized,
-                  context,
-                  {
-                  documentLoader: options.contextLoader,
-                  },
-                ),
-                jsonLd,
-                context,
-                options.contextLoader,
-              ),
-              jsonLd,
-            );
-          instance._cachedJsonLd = compactArray && context != null
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray && getJsonLdContext(jsonLd) != null
             ? [cachedJsonLd]
             : cachedJsonLd;
         } else {
