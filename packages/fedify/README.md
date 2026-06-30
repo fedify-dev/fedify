@@ -205,7 +205,7 @@ This project exists thanks to all the people who contribute, donate, and sponsor
 it.  We are grateful for their support.  We would like to thank the following
 financial contributors:[^2]
 
-[^2]: Those lists are automatically updated every hour.
+[^2]: Those lists are automatically updated twice a day.
 
 <!-- hongdown-disable -->
 

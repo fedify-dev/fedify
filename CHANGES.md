@@ -9,6 +9,48 @@ Version 2.4.0
 To be released.
 
 
+Version 2.3.2
+-------------
+
+To be released.
+
+### @fedify/fedify
+
+ -  Fixed a server-side request forgery (SSRF) vulnerability in the
+    `getNodeInfo()` function and the `Context.lookupNodeInfo()` method, where
+    the NodeInfo document URL advertised in a remote server's
+    `/.well-known/nodeinfo` response was fetched without checking that it
+    points to a public address.  A malicious server could direct the link to
+    a loopback, link-local, or private address—or to a `data:` URL—causing
+    Fedify to fetch internal resources and return their contents to the
+    caller.  Both requests, including any redirect hops, are now validated
+    against private and non-public addresses, consistent with the protections
+    already applied to WebFinger lookups and the built-in document loader.
+    [[GHSA-hqph-j65v-8cq5]]
+
+ -  Fixed custom collection dispatchers registered through
+    `FederationBuilder.setCollectionDispatcher()` and
+    `setOrderedCollectionDispatcher()` returning `404 Not Found` after
+    `build()`.  `build()` now copies the collection callbacks and item types
+    onto the built federation, so the registered routes dispatch their
+    collections instead of being treated as unknown routes.
+    [[#849], [#851] by ChanHaeng Lee]
+
+[GHSA-hqph-j65v-8cq5]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-hqph-j65v-8cq5
+[#849]: https://github.com/fedify-dev/fedify/issues/849
+[#851]: https://github.com/fedify-dev/fedify/pull/851
+
+### @fedify/vocab
+
+ -  Fixed Activity Vocabulary parsing so malformed language tags in remote
+    JSON-LD language maps no longer abort parsing with a `RangeError`.  Fedify
+    now ignores only the malformed language-tagged value and continues parsing
+    the rest of the object.  [[#847], [#848]]
+
+[#847]: https://github.com/fedify-dev/fedify/issues/847
+[#848]: https://github.com/fedify-dev/fedify/pull/848
+
+
 Version 2.3.1
 -------------
 
@@ -565,6 +607,41 @@ Released on June 25, 2026.
 [#756]: https://github.com/fedify-dev/fedify/pull/756
 
 
+Version 2.2.7
+-------------
+
+To be released.
+
+### @fedify/fedify
+
+ -  Fixed a server-side request forgery (SSRF) vulnerability in the
+    `getNodeInfo()` function and the `Context.lookupNodeInfo()` method, where
+    the NodeInfo document URL advertised in a remote server's
+    `/.well-known/nodeinfo` response was fetched without checking that it
+    points to a public address.  A malicious server could direct the link to
+    a loopback, link-local, or private address—or to a `data:` URL—causing
+    Fedify to fetch internal resources and return their contents to the
+    caller.  Both requests, including any redirect hops, are now validated
+    against private and non-public addresses, consistent with the protections
+    already applied to WebFinger lookups and the built-in document loader.
+    [[GHSA-hqph-j65v-8cq5]]
+
+ -  Fixed custom collection dispatchers registered through
+    `FederationBuilder.setCollectionDispatcher()` and
+    `setOrderedCollectionDispatcher()` returning `404 Not Found` after
+    `build()`.  `build()` now copies the collection callbacks and item types
+    onto the built federation, so the registered routes dispatch their
+    collections instead of being treated as unknown routes.
+    [[#849], [#851] by ChanHaeng Lee]
+
+### @fedify/vocab
+
+ -  Fixed Activity Vocabulary parsing so malformed language tags in remote
+    JSON-LD language maps no longer abort parsing with a `RangeError`.  Fedify
+    now ignores only the malformed language-tagged value and continues parsing
+    the rest of the object.  [[#847], [#848]]
+
+
 Version 2.2.6
 -------------
 
@@ -989,6 +1066,41 @@ Released on April 28, 2026.
 [#706]: https://github.com/fedify-dev/fedify/issues/706
 [#715]: https://github.com/fedify-dev/fedify/pull/715
 [#722]: https://github.com/fedify-dev/fedify/pull/722
+
+
+Version 2.1.18
+--------------
+
+To be released.
+
+### @fedify/fedify
+
+ -  Fixed a server-side request forgery (SSRF) vulnerability in the
+    `getNodeInfo()` function and the `Context.lookupNodeInfo()` method, where
+    the NodeInfo document URL advertised in a remote server's
+    `/.well-known/nodeinfo` response was fetched without checking that it
+    points to a public address.  A malicious server could direct the link to
+    a loopback, link-local, or private address—or to a `data:` URL—causing
+    Fedify to fetch internal resources and return their contents to the
+    caller.  Both requests, including any redirect hops, are now validated
+    against private and non-public addresses, consistent with the protections
+    already applied to WebFinger lookups and the built-in document loader.
+    [[GHSA-hqph-j65v-8cq5]]
+
+ -  Fixed custom collection dispatchers registered through
+    `FederationBuilder.setCollectionDispatcher()` and
+    `setOrderedCollectionDispatcher()` returning `404 Not Found` after
+    `build()`.  `build()` now copies the collection callbacks and item types
+    onto the built federation, so the registered routes dispatch their
+    collections instead of being treated as unknown routes.
+    [[#849], [#851] by ChanHaeng Lee]
+
+### @fedify/vocab
+
+ -  Fixed Activity Vocabulary parsing so malformed language tags in remote
+    JSON-LD language maps no longer abort parsing with a `RangeError`.  Fedify
+    now ignores only the malformed language-tagged value and continues parsing
+    the rest of the object.  [[#847], [#848]]
 
 
 Version 2.1.17
@@ -1579,6 +1691,41 @@ Released on March 24, 2026.
 [#586]: https://github.com/fedify-dev/fedify/issues/586
 [#597]: https://github.com/fedify-dev/fedify/pull/597
 [#599]: https://github.com/fedify-dev/fedify/pull/599
+
+
+Version 2.0.22
+--------------
+
+To be released.
+
+### @fedify/fedify
+
+ -  Fixed a server-side request forgery (SSRF) vulnerability in the
+    `getNodeInfo()` function and the `Context.lookupNodeInfo()` method, where
+    the NodeInfo document URL advertised in a remote server's
+    `/.well-known/nodeinfo` response was fetched without checking that it
+    points to a public address.  A malicious server could direct the link to
+    a loopback, link-local, or private address—or to a `data:` URL—causing
+    Fedify to fetch internal resources and return their contents to the
+    caller.  Both requests, including any redirect hops, are now validated
+    against private and non-public addresses, consistent with the protections
+    already applied to WebFinger lookups and the built-in document loader.
+    [[GHSA-hqph-j65v-8cq5]]
+
+ -  Fixed custom collection dispatchers registered through
+    `FederationBuilder.setCollectionDispatcher()` and
+    `setOrderedCollectionDispatcher()` returning `404 Not Found` after
+    `build()`.  `build()` now copies the collection callbacks and item types
+    onto the built federation, so the registered routes dispatch their
+    collections instead of being treated as unknown routes.
+    [[#849], [#851] by ChanHaeng Lee]
+
+### @fedify/vocab
+
+ -  Fixed Activity Vocabulary parsing so malformed language tags in remote
+    JSON-LD language maps no longer abort parsing with a `RangeError`.  Fedify
+    now ignores only the malformed language-tagged value and continues parsing
+    the rest of the object.  [[#847], [#848]]
 
 
 Version 2.0.21
@@ -2592,6 +2739,26 @@ Released on February 22, 2026.
 [#351]: https://github.com/fedify-dev/fedify/issues/351
 
 
+Version 1.10.12
+---------------
+
+To be released.
+
+### @fedify/fedify
+
+ -  Fixed a server-side request forgery (SSRF) vulnerability in the
+    `getNodeInfo()` function and the `Context.lookupNodeInfo()` method, where
+    the NodeInfo document URL advertised in a remote server's
+    `/.well-known/nodeinfo` response was fetched without checking that it
+    points to a public address.  A malicious server could direct the link to
+    a loopback, link-local, or private address—or to a `data:` URL—causing
+    Fedify to fetch internal resources and return their contents to the
+    caller.  Both requests, including any redirect hops, are now validated
+    against private and non-public addresses, consistent with the protections
+    already applied to WebFinger lookups and the built-in document loader.
+    [[GHSA-hqph-j65v-8cq5]]
+
+
 Version 1.10.11
 ---------------
 
@@ -2854,6 +3021,26 @@ Released on December 24, 2025.
 ### @fedify/cfworkers
 
  -  Implemented `list()` method in `WorkersKvStore`.  [[#498], [#500]]
+
+
+Version 1.9.13
+--------------
+
+To be released.
+
+### @fedify/fedify
+
+ -  Fixed a server-side request forgery (SSRF) vulnerability in the
+    `getNodeInfo()` function and the `Context.lookupNodeInfo()` method, where
+    the NodeInfo document URL advertised in a remote server's
+    `/.well-known/nodeinfo` response was fetched without checking that it
+    points to a public address.  A malicious server could direct the link to
+    a loopback, link-local, or private address—or to a `data:` URL—causing
+    Fedify to fetch internal resources and return their contents to the
+    caller.  Both requests, including any redirect hops, are now validated
+    against private and non-public addresses, consistent with the protections
+    already applied to WebFinger lookups and the built-in document loader.
+    [[GHSA-hqph-j65v-8cq5]]
 
 
 Version 1.9.12
