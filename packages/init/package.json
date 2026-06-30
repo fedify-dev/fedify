@@ -18,10 +18,7 @@
     "email": "2chanhaeng@gmail.com",
     "url": "https://chomu.dev/"
   },
-  "funding": [
-    "https://opencollective.com/fedify",
-    "https://github.com/sponsors/dahlia"
-  ],
+  "funding": "https://opencollective.com/fedify",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/fedify-dev/fedify.git",

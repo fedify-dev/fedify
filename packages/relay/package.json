@@ -22,10 +22,7 @@
   "bugs": {
     "url": "https://github.com/fedify-dev/fedify/issues"
   },
-  "funding": [
-    "https://opencollective.com/fedify",
-    "https://github.com/sponsors/dahlia"
-  ],
+  "funding": "https://opencollective.com/fedify",
   "type": "module",
   "main": "./dist/mod.cjs",
   "module": "./dist/mod.js",

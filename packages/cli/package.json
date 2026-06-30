@@ -55,10 +55,7 @@
     "email": "hong@minhee.org",
     "url": "https://hongminhee.org/"
   },
-  "funding": [
-    "https://opencollective.com/fedify",
-    "https://github.com/sponsors/dahlia"
-  ],
+  "funding": "https://opencollective.com/fedify",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/fedify-dev/fedify.git",
