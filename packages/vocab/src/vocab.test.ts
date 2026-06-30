@@ -771,7 +771,9 @@ test("fromJsonLd() formats portable IRIs hidden behind JSON-LD aliases", async (
     contextLoader: mockDocumentLoader,
   }) as Record<string, unknown>;
   deepStrictEqual(jsonLd.actor, "ap+ef61://did:key:z6Mkabc/actor");
+  deepStrictEqual("actorRef" in jsonLd, false);
   deepStrictEqual(jsonLd.target, "ap+ef61://did:key:z6Mkabc/target");
+  deepStrictEqual("targetRef" in jsonLd, false);
   deepStrictEqual(jsonLd.extra, "This extension property should stay cached.");
   deepStrictEqual(jsonLd.extraRef, "ap+ef61://did:key:z6Mkabc/extra");
 });

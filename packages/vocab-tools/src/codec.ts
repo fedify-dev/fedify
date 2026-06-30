@@ -561,6 +561,8 @@ export async function* generateDecoder(
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);

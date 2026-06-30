@@ -101,10 +101,44 @@ function normalizePortableIris(
   return { value: clone ?? object, changed: clone != null };
 }
 
-function mergeUnmappedJsonLdTerms(
+function getTopLevelJsonLdTerms(value: unknown): ReadonlySet<string> {
+  const terms = new Set<string>();
+  const nodes = Array.isArray(value) ? value : [value];
+  for (const node of nodes) {
+    if (node == null || typeof node !== \\"object\\" || Array.isArray(node)) {
+      continue;
+    }
+    for (const key of globalThis.Object.keys(node)) {
+      if (key.startsWith(\\"@\\")) continue;
+      terms.add(key);
+    }
+  }
+  return terms;
+}
+
+async function isJsonLdTermRepresented(
+  key: string,
+  value: unknown,
+  context: unknown,
+  compactedTerms: ReadonlySet<string>,
+  documentLoader?: DocumentLoader,
+): Promise<boolean> {
+  if (key === \\"@context\\") return true;
+  const expanded = await jsonld.expand({ \\"@context\\": context, [key]: value }, {
+    documentLoader,
+  });
+  for (const term of getTopLevelJsonLdTerms(expanded)) {
+    if (compactedTerms.has(term)) return true;
+  }
+  return false;
+}
+
+async function mergeUnmappedJsonLdTerms(
   compacted: unknown,
   original: unknown,
-): unknown {
+  context: unknown,
+  documentLoader?: DocumentLoader,
+): Promise<unknown> {
   if (
     original == null || typeof original !== \\"object\\" ||
     Array.isArray(original) ||
@@ -114,9 +148,16 @@ function mergeUnmappedJsonLdTerms(
     return compacted;
   }
   const result = compacted as Record<string, unknown>;
+  const compactedTerms = getTopLevelJsonLdTerms(await jsonld.expand(compacted, {
+    documentLoader,
+  }));
   for (const key of globalThis.Object.keys(original)) {
-    if (!(key in result)) {
-      result[key] = structuredClone((original as Record<string, unknown>)[key]);
+    const value = (original as Record<string, unknown>)[key];
+    if (
+      !(key in result) &&
+      !await isJsonLdTermRepresented(key, value, context, compactedTerms, documentLoader)
+    ) {
+      result[key] = structuredClone(value);
     }
   }
   return result;
@@ -12130,6 +12171,8 @@ get urls(): ((URL | Link))[] {
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -13357,6 +13400,8 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -14494,6 +14539,8 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -17910,6 +17957,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -18430,6 +18479,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -19014,6 +19065,8 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -19626,6 +19679,8 @@ unit?: string | null;numericalValue?: Decimal | null;}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -20699,6 +20754,8 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -21113,6 +21170,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -21821,6 +21880,8 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -22559,6 +22620,8 @@ get manualApprovals(): (URL)[] {
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -23643,6 +23706,8 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -24056,6 +24121,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -25073,6 +25140,8 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -25486,6 +25555,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -26502,6 +26573,8 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -26915,6 +26988,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -27415,6 +27490,8 @@ get endpoints(): (URL)[] {
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -27767,6 +27844,8 @@ endpoints?: (URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -28724,6 +28803,8 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -29697,6 +29778,8 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -30621,6 +30704,8 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -31254,6 +31339,8 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -31863,6 +31950,8 @@ satisfies?: URL | null;resourceQuantity?: Measure | null;}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -32764,6 +32853,8 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -33636,6 +33727,8 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -34086,6 +34179,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -34453,6 +34548,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -34819,6 +34916,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -41167,6 +41266,8 @@ get preferredUsernames(): ((string | LanguageString))[] {
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -42017,6 +42118,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -42383,6 +42486,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -43515,6 +43620,8 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -44147,6 +44254,8 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -44555,6 +44664,8 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -44924,6 +45035,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -45291,6 +45404,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -49653,6 +49768,8 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -51250,6 +51367,8 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -51673,6 +51792,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -52038,6 +52159,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -52401,6 +52524,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -53336,6 +53461,8 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -53839,6 +53966,8 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -54205,6 +54334,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -54572,6 +54703,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -60920,6 +61053,8 @@ get preferredUsernames(): ((string | LanguageString))[] {
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -62917,6 +63052,8 @@ get names(): ((string | LanguageString))[] {
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -63438,6 +63575,8 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -63806,6 +63945,8 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -64176,6 +64317,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -64541,6 +64684,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -64906,6 +65051,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -65271,6 +65418,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -65636,6 +65785,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -65999,6 +66150,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -66328,6 +66481,8 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -66694,6 +66849,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -67828,6 +67985,8 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -68614,6 +68773,8 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -69457,6 +69618,8 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -75847,6 +76010,8 @@ get preferredUsernames(): ((string | LanguageString))[] {
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -76687,6 +76852,8 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -83035,6 +83202,8 @@ get preferredUsernames(): ((string | LanguageString))[] {
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -84445,6 +84614,8 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -85259,6 +85430,8 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -87151,6 +87324,8 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -87659,6 +87834,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -88028,6 +88205,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -89696,6 +89875,8 @@ relationships?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -90133,6 +90314,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -96481,6 +96664,8 @@ get preferredUsernames(): ((string | LanguageString))[] {
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -97574,6 +97759,8 @@ get contents(): ((string | LanguageString))[] {
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -98000,6 +98187,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -98365,6 +98554,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -98999,6 +99190,8 @@ get formerTypes(): ($EntityType)[] {
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -99412,6 +99605,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -99782,6 +99977,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -100150,6 +100347,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -100518,6 +100717,8 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -100882,6 +101083,8 @@ instruments?: (Object | URL)[];}
                 },
               ),
               json,
+              context,
+              options.contextLoader,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);

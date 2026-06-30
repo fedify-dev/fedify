@@ -321,10 +321,42 @@ export async function* generateClasses(
   }
   return { value: clone ?? object, changed: clone != null };
 }\n\n`;
-  yield `function mergeUnmappedJsonLdTerms(
+  yield `function getTopLevelJsonLdTerms(value: unknown): ReadonlySet<string> {
+  const terms = new Set<string>();
+  const nodes = Array.isArray(value) ? value : [value];
+  for (const node of nodes) {
+    if (node == null || typeof node !== "object" || Array.isArray(node)) {
+      continue;
+    }
+    for (const key of globalThis.Object.keys(node)) {
+      if (key.startsWith("@")) continue;
+      terms.add(key);
+    }
+  }
+  return terms;
+}\n\n`;
+  yield `async function isJsonLdTermRepresented(
+  key: string,
+  value: unknown,
+  context: unknown,
+  compactedTerms: ReadonlySet<string>,
+  documentLoader?: DocumentLoader,
+): Promise<boolean> {
+  if (key === "@context") return true;
+  const expanded = await jsonld.expand({ "@context": context, [key]: value }, {
+    documentLoader,
+  });
+  for (const term of getTopLevelJsonLdTerms(expanded)) {
+    if (compactedTerms.has(term)) return true;
+  }
+  return false;
+}\n\n`;
+  yield `async function mergeUnmappedJsonLdTerms(
   compacted: unknown,
   original: unknown,
-): unknown {
+  context: unknown,
+  documentLoader?: DocumentLoader,
+): Promise<unknown> {
   if (
     original == null || typeof original !== "object" ||
     Array.isArray(original) ||
@@ -334,9 +366,16 @@ export async function* generateClasses(
     return compacted;
   }
   const result = compacted as Record<string, unknown>;
+  const compactedTerms = getTopLevelJsonLdTerms(await jsonld.expand(compacted, {
+    documentLoader,
+  }));
   for (const key of globalThis.Object.keys(original)) {
-    if (!(key in result)) {
-      result[key] = structuredClone((original as Record<string, unknown>)[key]);
+    const value = (original as Record<string, unknown>)[key];
+    if (
+      !(key in result) &&
+      !await isJsonLdTermRepresented(key, value, context, compactedTerms, documentLoader)
+    ) {
+      result[key] = structuredClone(value);
     }
   }
   return result;
