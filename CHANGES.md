@@ -8,6 +8,16 @@ Version 2.0.22
 
 To be released.
 
+### @fedify/vocab
+
+ -  Fixed Activity Vocabulary parsing so malformed language tags in remote
+    JSON-LD language maps no longer abort parsing with a `RangeError`.  Fedify
+    now ignores only the malformed language-tagged value and continues parsing
+    the rest of the object.  [[#847], [#848]]
+
+[#847]: https://github.com/fedify-dev/fedify/issues/847
+[#848]: https://github.com/fedify-dev/fedify/pull/848
+
 
 Version 2.0.21
 --------------
