@@ -8,15 +8,6 @@ Version 2.4.0
 
 To be released.
 
-### Documentation and examples
-
- -  Added focused coverage for the example test runner's documented
-    `--timeout` option so contributor checks catch regressions in its CLI
-    parsing.  [[#887], [#910] by Matteo Stella]
-
-[#887]: https://github.com/fedify-dev/fedify/issues/887
-[#910]: https://github.com/fedify-dev/fedify/pull/910
-
 
 Version 2.3.1
 -------------
