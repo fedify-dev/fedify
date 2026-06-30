@@ -12,7 +12,7 @@ To be released.
 
  -  Fixed custom collection dispatchers registered through
     `FederationBuilder.setCollectionDispatcher()` and
-    `setOrderedCollectionDispatcher()` returning 404 Not Found after
+    `setOrderedCollectionDispatcher()` returning `404 Not Found` after
     `build()`.  `build()` now copies the collection callbacks and item types
     onto the built federation, so the registered routes dispatch their
     collections instead of being treated as unknown routes.
