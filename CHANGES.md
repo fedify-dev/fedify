@@ -22,7 +22,17 @@ To be released.
     already applied to WebFinger lookups and the built-in document loader.
     [[GHSA-hqph-j65v-8cq5]]
 
+ -  Fixed custom collection dispatchers registered through
+    `FederationBuilder.setCollectionDispatcher()` and
+    `setOrderedCollectionDispatcher()` returning `404 Not Found` after
+    `build()`.  `build()` now copies the collection callbacks and item types
+    onto the built federation, so the registered routes dispatch their
+    collections instead of being treated as unknown routes.
+    [[#849], [#851] by ChanHaeng Lee]
+
 [GHSA-hqph-j65v-8cq5]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-hqph-j65v-8cq5
+[#849]: https://github.com/fedify-dev/fedify/issues/849
+[#851]: https://github.com/fedify-dev/fedify/pull/851
 
 ### @fedify/vocab
 
@@ -610,6 +620,14 @@ To be released.
     already applied to WebFinger lookups and the built-in document loader.
     [[GHSA-hqph-j65v-8cq5]]
 
+ -  Fixed custom collection dispatchers registered through
+    `FederationBuilder.setCollectionDispatcher()` and
+    `setOrderedCollectionDispatcher()` returning `404 Not Found` after
+    `build()`.  `build()` now copies the collection callbacks and item types
+    onto the built federation, so the registered routes dispatch their
+    collections instead of being treated as unknown routes.
+    [[#849], [#851] by ChanHaeng Lee]
+
 ### @fedify/vocab
 
  -  Fixed Activity Vocabulary parsing so malformed language tags in remote
@@ -1062,6 +1080,14 @@ To be released.
     against private and non-public addresses, consistent with the protections
     already applied to WebFinger lookups and the built-in document loader.
     [[GHSA-hqph-j65v-8cq5]]
+
+ -  Fixed custom collection dispatchers registered through
+    `FederationBuilder.setCollectionDispatcher()` and
+    `setOrderedCollectionDispatcher()` returning `404 Not Found` after
+    `build()`.  `build()` now copies the collection callbacks and item types
+    onto the built federation, so the registered routes dispatch their
+    collections instead of being treated as unknown routes.
+    [[#849], [#851] by ChanHaeng Lee]
 
 ### @fedify/vocab
 
@@ -1679,6 +1705,14 @@ To be released.
     against private and non-public addresses, consistent with the protections
     already applied to WebFinger lookups and the built-in document loader.
     [[GHSA-hqph-j65v-8cq5]]
+
+ -  Fixed custom collection dispatchers registered through
+    `FederationBuilder.setCollectionDispatcher()` and
+    `setOrderedCollectionDispatcher()` returning `404 Not Found` after
+    `build()`.  `build()` now copies the collection callbacks and item types
+    onto the built federation, so the registered routes dispatch their
+    collections instead of being treated as unknown routes.
+    [[#849], [#851] by ChanHaeng Lee]
 
 ### @fedify/vocab
 
