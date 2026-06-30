@@ -95,7 +95,11 @@ function decodePortableAuthority(authority: string): string {
     throw new TypeError("Invalid portable ActivityPub IRI authority.");
   }
   if (DID_SCHEME_PATTERN.test(authority)) return authority;
-  return authority.replace(/%3A/gi, ":").replace(/%25/gi, "%");
+  const decoded = authority.replace(/%3A/gi, ":").replace(/%25/gi, "%");
+  if (INVALID_PERCENT_ENCODING_PATTERN.test(decoded)) {
+    throw new TypeError("Invalid portable ActivityPub IRI authority.");
+  }
+  return decoded;
 }
 
 function parseAtUri(uri: string): URL {
