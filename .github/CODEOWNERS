@@ -1,0 +1,109 @@
+# CODEOWNERS for the Fedify monorepo
+#
+# GitHub automatically requests reviews from the people or teams listed
+# here whenever a pull request touches a matching path.  Later patterns
+# take precedence over earlier ones, so the catch-all appears first and
+# is followed by progressively more specific paths.
+#
+# See the following page for the full syntax and behaviour:
+#   https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# The owner assignments are derived from git-history: each area is owned
+# by the maintainer(s) who authored or maintain the bulk of its changes.
+# They should be confirmed with the maintainers before branch protection
+# rules enforce Code Owner review (see #788).
+
+# Default owner for the entire repository.  Any path not matched by a
+# more specific rule below falls back to the project lead.
+*                                                         @dahlia
+
+# Make changes to review routing themselves require the project lead's
+# approval, per the GitHub security guidance.
+/.github/CODEOWNERS                                       @dahlia
+/.github/                                                 @dahlia
+
+# Project-wide configuration and metadata, owned by the project lead.
+/mise.toml                                                @dahlia
+/.hongdown.toml                                           @dahlia
+/deno.json                                                @dahlia
+/deno.lock                                                @dahlia
+/package.json                                             @dahlia
+/pnpm-lock.yaml                                           @dahlia
+/pnpm-workspace.yaml                                      @dahlia
+/AGENTS.md                                                @dahlia
+/AI_POLICY.md                                             @dahlia
+/CHANGES.md                                               @dahlia
+/CONTRIBUTING.md                                          @dahlia
+/README.md                                                @dahlia
+
+# Documentation site (VitePress).  Hong Minhee owns the bulk of it,
+# with ChanHaeng Lee contributing across several pages.
+/docs/                                                    @dahlia @2chanhaeng
+
+# Core federation library, vocabulary, and tooling.  Hong Minhee leads;
+# ChanHaeng Lee co-maintains the core and vocabulary packages.
+/packages/fedify/                                         @dahlia @2chanhaeng
+/packages/vocab/                                          @dahlia @2chanhaeng
+/packages/vocab-runtime/                                  @dahlia @2chanhaeng
+/packages/vocab-tools/                                    @dahlia @2chanhaeng
+/packages/webfinger/                                      @dahlia @2chanhaeng
+
+# URI template and router ("@fedify/uri-template"), primarily
+# authored and maintained by ChanHaeng Lee.
+/packages/uri-template/                                   @2chanhaeng @dahlia
+
+# CLI and project scaffolding.  Hong Minhee leads, ChanHaeng Lee
+# co-maintains the CLI and init, and Jiwon Kwon contributes to the CLI.
+/packages/cli/                                            @dahlia @2chanhaeng @sij411
+/packages/init/                                           @dahlia @2chanhaeng
+/packages/create/                                         @dahlia @2chanhaeng
+
+# Lint plugin ("@fedify/lint"), co-led by ChanHaeng Lee and
+# Hong Minhee.  Debugger is Hong Minhee's.
+/packages/lint/                                           @2chanhaeng @dahlia
+/packages/debugger/                                       @dahlia
+
+# Relay server and backfill tooling, primarily authored and maintained
+# by Jiwon Kwon ("@fedify/relay", "@fedify/backfill").
+/packages/relay/                                          @sij411 @dahlia
+/packages/backfill/                                       @sij411 @dahlia
+
+# Testing utilities and fixtures, owned by Hong Minhee with
+# ChanHaeng Lee contributing.
+/packages/testing/                                        @dahlia @2chanhaeng
+/packages/fixture/                                        @dahlia @2chanhaeng
+
+# Database adapters.  Hong Minhee maintains all of them; ChanHaeng Lee
+# co-maintains several where he contributed substantially.
+/packages/amqp/                                           @dahlia
+/packages/denokv/                                         @dahlia @2chanhaeng
+/packages/mysql/                                          @dahlia
+/packages/postgres/                                       @dahlia @2chanhaeng
+/packages/redis/                                          @dahlia @2chanhaeng
+/packages/sqlite/                                         @dahlia @2chanhaeng
+/packages/cfworkers/                                      @dahlia @2chanhaeng
+
+# Framework integrations.  Hong Minhee maintains all of them;
+# ChanHaeng Lee co-maintains the ones he contributed to, and leads
+# the Nuxt integration.
+/packages/astro/                                          @2chanhaeng @dahlia
+/packages/elysia/                                         @dahlia
+/packages/express/                                        @dahlia @2chanhaeng
+/packages/fastify/                                        @dahlia @2chanhaeng
+/packages/fresh/                                          @dahlia @2chanhaeng
+/packages/h3/                                             @dahlia
+/packages/hono/                                           @dahlia @2chanhaeng
+/packages/koa/                                            @dahlia
+/packages/nestjs/                                         @dahlia
+/packages/next/                                           @2chanhaeng @dahlia
+/packages/nuxt/                                           @2chanhaeng @dahlia
+/packages/solidstart/                                     @2chanhaeng @dahlia
+/packages/sveltekit/                                      @dahlia @2chanhaeng
+
+# Example applications, owned by ChanHaeng Lee (see #788).
+/examples/                                                @2chanhaeng
+/examples/nuxt/                                           @2chanhaeng
+/examples/sveltekit-sample/                               @2chanhaeng
+/examples/next14-app-router/                              @2chanhaeng
+/examples/next15-app-router/                              @2chanhaeng
+/examples/next-integration/                               @2chanhaeng
