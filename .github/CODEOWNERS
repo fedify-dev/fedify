@@ -73,20 +73,21 @@
 /packages/testing/                                        @dahlia @2chanhaeng
 /packages/fixture/                                        @dahlia @2chanhaeng
 
-# Database adapters.  Hong Minhee maintains all of them; ChanHaeng Lee
-# co-maintains several where he contributed substantially.
+# Database adapters and message queues.  Hong Minhee maintains all of
+# them; ChanHaeng Lee co-maintains several where he contributed
+# substantially.
 /packages/amqp/                                           @dahlia
 /packages/denokv/                                         @dahlia @2chanhaeng
 /packages/mysql/                                          @dahlia
 /packages/postgres/                                       @dahlia @2chanhaeng
 /packages/redis/                                          @dahlia @2chanhaeng
 /packages/sqlite/                                         @dahlia @2chanhaeng
-/packages/cfworkers/                                      @dahlia @2chanhaeng
 
-# Framework integrations.  Hong Minhee maintains all of them;
-# ChanHaeng Lee co-maintains the ones he contributed to, and leads
-# the Nuxt integration.
+# Framework and platform integrations.  Hong Minhee maintains all of
+# them; ChanHaeng Lee co-maintains the ones he contributed to, and
+# leads the Nuxt integration.
 /packages/astro/                                          @2chanhaeng @dahlia
+/packages/cfworkers/                                      @dahlia @2chanhaeng
 /packages/elysia/                                         @dahlia
 /packages/express/                                        @dahlia @2chanhaeng
 /packages/fastify/                                        @dahlia @2chanhaeng
