@@ -165,6 +165,8 @@ export class FederationBuilderImpl<TContextData>
     f.webFingerLinksDispatcher = this.webFingerLinksDispatcher;
     f.objectCallbacks = { ...this.objectCallbacks };
     f.objectTypeIds = { ...this.objectTypeIds };
+    f.collectionCallbacks = { ...this.collectionCallbacks };
+    f.collectionTypeIds = { ...this.collectionTypeIds };
     f.inboxPath = this.inboxPath;
     f.inboxCallbacks = this.inboxCallbacks == null
       ? undefined

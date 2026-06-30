@@ -310,4 +310,37 @@ test("FederationBuilder", async (t) => {
       );
     },
   );
+
+  await t.step(
+    "propagates custom collection dispatchers to the built federation",
+    async () => {
+      const kv = new MemoryKvStore();
+      const builder = createFederationBuilder<void>();
+      builder.setCollectionDispatcher(
+        "test",
+        Note,
+        "/c/{id}",
+        () => ({ items: [] }),
+      );
+
+      const impl = (await builder.build({
+        kv,
+        origin: "https://example.com",
+      })) as FederationImpl<void>;
+
+      // The dispatcher callback and item type must reach the built
+      // federation, not just the route.
+      assertExists(impl.collectionCallbacks["test"]);
+      assertEquals(impl.collectionTypeIds["test"], Note);
+
+      // End-to-end: the registered route must dispatch instead of 404ing.
+      const response = await impl.fetch(
+        new Request("https://example.com/c/x", {
+          headers: { accept: "application/activity+json" },
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 200);
+    },
+  );
 });
