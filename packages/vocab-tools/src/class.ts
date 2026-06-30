@@ -254,7 +254,7 @@ export async function* generateClasses(
   yield `const PORTABLE_IRI_KEYS: ReadonlySet<string> = new Set(${
     JSON.stringify([...portableIriKeys].sort())
   });\n\n`;
-  yield `function isPortableIriPosition(
+  yield `function isPortableIriValuePosition(
   key: string,
   parentKey?: string,
   portableIriKeys: ReadonlySet<string> = PORTABLE_IRI_KEYS,
@@ -263,74 +263,57 @@ export async function* generateClasses(
     ((key === "@value" || key === "@list" || key === "@set") &&
       parentKey != null && portableIriKeys.has(parentKey));
 }\n\n`;
-  yield `function hasPortableIri(
-  value: unknown,
-  key?: string,
-  depth = 0,
-  parentKey?: string,
-  portableIriKeys: ReadonlySet<string> = PORTABLE_IRI_KEYS,
-): boolean {
-  if (depth > 32 || key === "@context") return false;
-  if (typeof value === "string") {
-    return key != null && isPortableIriPosition(key, parentKey, portableIriKeys) &&
-      PORTABLE_IRI_PATTERN.test(value);
-  }
-  if (Array.isArray(value)) {
-    return value.some((item) =>
-      hasPortableIri(item, key, depth + 1, parentKey, portableIriKeys)
-    );
-  }
-  if (value == null || typeof value !== "object") return false;
-  const object = value as Record<string, unknown>;
-  return globalThis.Object.keys(object).some((entryKey) =>
-    hasPortableIri(
-      object[entryKey],
-      entryKey,
-      depth + 1,
-      key,
-      portableIriKeys,
-    )
-  );
-}\n\n`;
   yield `function normalizePortableIris(
   value: unknown,
   key?: string,
   depth = 0,
   parentKey?: string,
   portableIriKeys: ReadonlySet<string> = PORTABLE_IRI_KEYS,
-): unknown {
-  if (depth > 32 || key === "@context") return value;
+): { value: unknown; changed: boolean } {
+  if (depth > 32 || key === "@context") return { value, changed: false };
   if (typeof value === "string") {
-    return key != null &&
-        isPortableIriPosition(key, parentKey, portableIriKeys) &&
-        PORTABLE_IRI_PATTERN.test(value)
-      ? formatIri(value)
-      : value;
+    if (
+      key != null &&
+      isPortableIriValuePosition(key, parentKey, portableIriKeys) &&
+      PORTABLE_IRI_PATTERN.test(value)
+    ) {
+      const normalized = formatIri(value);
+      return { value: normalized, changed: normalized !== value };
+    }
+    return { value, changed: false };
   }
   if (Array.isArray(value)) {
+    let changed = false;
     for (let i = 0; i < value.length; i++) {
-      value[i] = normalizePortableIris(
+      const result = normalizePortableIris(
         value[i],
         key,
         depth + 1,
         parentKey,
         portableIriKeys,
       );
+      value[i] = result.value;
+      changed ||= result.changed;
     }
-    return value;
+    return { value, changed };
   }
-  if (value == null || typeof value !== "object") return value;
+  if (value == null || typeof value !== "object") {
+    return { value, changed: false };
+  }
   const object = value as Record<string, unknown>;
+  let changed = false;
   for (const entryKey of globalThis.Object.keys(object)) {
-    object[entryKey] = normalizePortableIris(
+    const result = normalizePortableIris(
       object[entryKey],
       entryKey,
       depth + 1,
       key,
       portableIriKeys,
     );
+    object[entryKey] = result.value;
+    changed ||= result.changed;
   }
-  return object;
+  return { value: object, changed };
 }\n\n`;
   const moduleVarNames = new Map<string, string>();
   const sorted = sortTopologically(types);

@@ -536,15 +536,15 @@ export async function* generateDecoder(
   yield `
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        if (hasPortableIri(cacheValues)) {
-          const normalizedValues = normalizePortableIris(cacheValues);
+        const normalizedValues = normalizePortableIris(cacheValues);
+        if (normalizedValues.changed) {
           const context = json != null && typeof json === "object" &&
               "@context" in json
             ? (json as Record<string, unknown>)["@context"]
             : undefined;
           instance._cachedJsonLd = context == null
-            ? normalizedValues
-            : await jsonld.compact(normalizedValues, context, {
+            ? normalizedValues.value
+            : await jsonld.compact(normalizedValues.value, context, {
               documentLoader: options.contextLoader,
             });
         } else {
