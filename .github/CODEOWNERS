@@ -37,8 +37,8 @@
 /README.md                                                @dahlia
 
 # Documentation site (VitePress).  Hong Minhee owns the bulk of it,
-# with ChanHaeng Lee contributing across several pages.
-/docs/                                                    @dahlia @2chanhaeng
+# with ChanHaeng Lee and Jiwon Kwon contributing across several pages.
+/docs/                                                    @dahlia @2chanhaeng @sij411
 
 # Core federation library, vocabulary, and tooling.  Hong Minhee leads;
 # ChanHaeng Lee co-maintains the core and vocabulary packages.
