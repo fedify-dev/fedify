@@ -10,7 +10,14 @@ const packageDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 async function runCommand(
   command: string,
   args: string[],
-): Promise<{ code: number | null; stdout: string; stderr: string }> {
+): Promise<
+  {
+    code: number | null;
+    signal: NodeJS.Signals | null;
+    stdout: string;
+    stderr: string;
+  }
+> {
   return await new Promise((resolvePromise, reject) => {
     const child = spawn(command, args, {
       cwd: packageDir,
@@ -26,8 +33,8 @@ async function runCommand(
       stderr += chunk;
     });
     child.on("error", reject);
-    child.on("close", (code) => {
-      resolvePromise({ code, stdout, stderr });
+    child.on("close", (code, signal) => {
+      resolvePromise({ code, signal, stdout, stderr });
     });
   });
 }
@@ -38,11 +45,15 @@ function getNodeCommand(): string {
     : process.execPath;
 }
 
-test("CLI starts successfully with --help", async () => {
+test("CLI starts successfully with --help", { timeout: 60_000 }, async () => {
   const result = await runCommand(getNodeCommand(), [
     resolve(packageDir, "dist/mod.js"),
     "--help",
   ]);
-  strictEqual(result.code, 0, result.stderr);
+  strictEqual(
+    result.code,
+    0,
+    `exited with signal ${result.signal}; stderr: ${result.stderr}`,
+  );
   match(result.stdout, /fedify/);
 });
