@@ -8,6 +8,19 @@ Version 2.0.22
 
 To be released.
 
+### @fedify/fedify
+
+ -  Fixed custom collection dispatchers registered through
+    `FederationBuilder.setCollectionDispatcher()` and
+    `setOrderedCollectionDispatcher()` returning 404 Not Found after
+    `build()`.  `build()` now copies the collection callbacks and item types
+    onto the built federation, so the registered routes dispatch their
+    collections instead of being treated as unknown routes.
+    [[#849], [#851] by ChanHaeng Lee]
+
+[#849]: https://github.com/fedify-dev/fedify/issues/849
+[#851]: https://github.com/fedify-dev/fedify/pull/851
+
 ### @fedify/vocab
 
  -  Fixed Activity Vocabulary parsing so malformed language tags in remote
