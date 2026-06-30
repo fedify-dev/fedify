@@ -14,7 +14,7 @@ const PORTABLE_IRI_PATTERN =
 const INVALID_PERCENT_ENCODING_PATTERN = /%(?![0-9A-Fa-f]{2})/;
 const DID_SCHEME_PATTERN = /^did:/i;
 const DID_PATTERN =
-  /^did:[a-z][a-z0-9]*:[A-Za-z0-9._:%-]+(?::[A-Za-z0-9._:%-]+)*$/i;
+  /^did:[a-z][a-z0-9]*:[A-Za-z0-9._%-]+(?::[A-Za-z0-9._%-]+)*$/i;
 
 /**
  * Checks whether the given string can be parsed as an IRI.
@@ -37,6 +37,7 @@ export function parseIri(iri: string | URL, base?: string | URL): URL {
   }
   const portable = parsePortableIri(iri);
   if (portable != null) return portable;
+  base = normalizeBaseIri(base);
   if (!URL.canParse(iri, base) && iri.startsWith("at://")) {
     return parseAtUri(iri);
   }
@@ -81,6 +82,12 @@ function normalizePortableUrl(iri: URL): URL | null {
   return parsePortableIri(
     `ap+ef61://${iri.host}${iri.pathname}${iri.search}${iri.hash}`,
   );
+}
+
+function normalizeBaseIri(base?: string | URL): string | URL | undefined {
+  if (base == null) return undefined;
+  if (base instanceof URL) return normalizePortableUrl(base) ?? base;
+  return parsePortableIri(base) ?? base;
 }
 
 function decodePortableAuthority(authority: string): string {

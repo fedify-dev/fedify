@@ -54,6 +54,18 @@ test("parseIri() preserves existing URL parsing behavior", () => {
   ok(!canParseIri("ap://not-a-did/actor"));
 });
 
+test("parseIri() resolves relative IRIs against portable string bases", () => {
+  ok(canParseIri("/actor", "ap://did:key:z6Mkabc/objects/1"));
+  deepStrictEqual(
+    parseIri("/actor", "ap://did:key:z6Mkabc/objects/1"),
+    new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
+  );
+  deepStrictEqual(
+    parseIri("attachments/1", "ap://did:key:z6Mkabc/objects/1"),
+    new URL("ap+ef61://did%3Akey%3Az6Mkabc/objects/attachments/1"),
+  );
+});
+
 test("parseIri() rejects portable IRIs without paths", () => {
   ok(!canParseIri("ap://did:key:z6Mkabc"));
   ok(
