@@ -103,6 +103,27 @@ function normalizePortableIris(
   return { value: clone ?? object, changed: clone != null };
 }
 
+function mergeUnmappedJsonLdTerms(
+  compacted: unknown,
+  original: unknown,
+): unknown {
+  if (
+    original == null || typeof original !== "object" ||
+    Array.isArray(original) ||
+    compacted == null || typeof compacted !== "object" ||
+    Array.isArray(compacted)
+  ) {
+    return compacted;
+  }
+  const result = compacted as Record<string, unknown>;
+  for (const key of globalThis.Object.keys(original)) {
+    if (!(key in result)) {
+      result[key] = structuredClone((original as Record<string, unknown>)[key]);
+    }
+  }
+  return result;
+}
+
 import * as _ppM0 from "./preprocessors.ts";
 
 /** Describes an object of any kind. The Object type serves as the base type for
@@ -12100,14 +12121,17 @@ get urls(): ((URL | Link))[] {
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -13324,14 +13348,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -14458,14 +14485,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -17871,14 +17901,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -18388,14 +18421,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -18969,14 +19005,17 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -19578,14 +19617,17 @@ unit?: string | null;numericalValue?: Decimal | null;}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -20648,14 +20690,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -21059,14 +21104,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -21764,14 +21812,17 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -22499,14 +22550,17 @@ get manualApprovals(): (URL)[] {
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -23580,14 +23634,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -23990,14 +24047,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -25004,14 +25064,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -25414,14 +25477,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -26427,14 +26493,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -26837,14 +26906,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -27334,14 +27406,17 @@ get endpoints(): (URL)[] {
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -27683,14 +27758,17 @@ endpoints?: (URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -28637,14 +28715,17 @@ cryptosuite?: "eddsa-jcs-2022" | null;verificationMethod?: Multikey | URL | null
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -29607,14 +29688,17 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -30528,14 +30612,17 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -31158,14 +31245,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -31764,14 +31854,17 @@ satisfies?: URL | null;resourceQuantity?: Measure | null;}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -32662,14 +32755,17 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -33531,14 +33627,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -33978,14 +34077,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -34342,14 +34444,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -34705,14 +34810,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -41050,14 +41158,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -41897,14 +42008,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -42260,14 +42374,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -43389,14 +43506,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -44018,14 +44138,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -44423,14 +44546,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -44789,14 +44915,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -45153,14 +45282,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -49512,14 +49644,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -51106,14 +51241,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -51526,14 +51664,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -51888,14 +52029,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -52248,14 +52392,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -53180,14 +53327,17 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -53680,14 +53830,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -54043,14 +54196,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -54407,14 +54563,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -60752,14 +60911,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -62746,14 +62908,17 @@ get names(): ((string | LanguageString))[] {
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -63264,14 +63429,17 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -63629,14 +63797,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -63996,14 +64167,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -64358,14 +64532,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -64720,14 +64897,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -65082,14 +65262,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -65444,14 +65627,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -65804,14 +65990,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -66130,14 +66319,17 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -66493,14 +66685,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -67624,14 +67819,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -68407,14 +68605,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -69247,14 +69448,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -75634,14 +75838,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -76471,14 +76678,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -82816,14 +83026,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -84223,14 +84436,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -85034,14 +85250,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -86923,14 +87142,17 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -87428,14 +87650,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -87794,14 +88019,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -89459,14 +89687,17 @@ relationships?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -89893,14 +90124,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -96238,14 +96472,17 @@ get preferredUsernames(): ((string | LanguageString))[] {
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -97328,14 +97565,17 @@ get contents(): ((string | LanguageString))[] {
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -97751,14 +97991,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -98113,14 +98356,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -98744,14 +98990,17 @@ get formerTypes(): ($EntityType)[] {
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -99154,14 +99403,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -99521,14 +99773,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -99886,14 +100141,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -100251,14 +100509,17 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);
@@ -100612,14 +100873,17 @@ instruments?: (Object | URL)[];}
           const normalized = cacheJsonLd.value;
           instance._cachedJsonLd = context == null
             ? normalized
-            : await jsonld.compact(
-              Array.isArray(normalized) && normalized.length === 1
-                ? normalized[0]
-                : normalized,
-              context,
-              {
-              documentLoader: options.contextLoader,
-              },
+            : mergeUnmappedJsonLdTerms(
+              await jsonld.compact(
+                Array.isArray(normalized) && normalized.length === 1
+                  ? normalized[0]
+                  : normalized,
+                context,
+                {
+                documentLoader: options.contextLoader,
+                },
+              ),
+              json,
             );
         } else {
           instance._cachedJsonLd = structuredClone(json);

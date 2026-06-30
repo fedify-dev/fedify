@@ -321,6 +321,26 @@ export async function* generateClasses(
   }
   return { value: clone ?? object, changed: clone != null };
 }\n\n`;
+  yield `function mergeUnmappedJsonLdTerms(
+  compacted: unknown,
+  original: unknown,
+): unknown {
+  if (
+    original == null || typeof original !== "object" ||
+    Array.isArray(original) ||
+    compacted == null || typeof compacted !== "object" ||
+    Array.isArray(compacted)
+  ) {
+    return compacted;
+  }
+  const result = compacted as Record<string, unknown>;
+  for (const key of globalThis.Object.keys(original)) {
+    if (!(key in result)) {
+      result[key] = structuredClone((original as Record<string, unknown>)[key]);
+    }
+  }
+  return result;
+}\n\n`;
   const moduleVarNames = new Map<string, string>();
   const sorted = sortTopologically(types);
   for (const typeUri of sorted) {

@@ -637,6 +637,22 @@ test("fromJsonLd() preserves extensions with portable ActivityPub IRIs", async (
   deepStrictEqual(jsonLd.id, "ap+ef61://did:key:z6Mkabc/objects/1");
 });
 
+test("fromJsonLd() preserves unmapped terms with portable IRIs", async () => {
+  const note = await Note.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Note",
+    id: "ap://did:key:z6Mkabc/objects/1",
+    extra: "This unmapped property should stay cached.",
+  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+
+  const jsonLd = await note.toJsonLd() as Record<string, unknown>;
+  deepStrictEqual(
+    jsonLd.extra,
+    "This unmapped property should stay cached.",
+  );
+  deepStrictEqual(jsonLd.id, "ap+ef61://did:key:z6Mkabc/objects/1");
+});
+
 test("fromJsonLd() preserves expanded arrays with portable IRIs", async () => {
   const expanded = [
     {
