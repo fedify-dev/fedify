@@ -37,6 +37,8 @@ describe("parseCliArgs", () => {
     const options = parseCliArgs([
       "--timeout",
       "--debug",
+      "--timeout",
+      "-d",
       "--timeout=",
       "--timeout=-1",
       "express",
@@ -44,6 +46,20 @@ describe("parseCliArgs", () => {
 
     strictEqual(options.defaultTimeoutMs, 10_000);
     strictEqual(options.debugMode, true);
+    deepStrictEqual([...options.filterNames], ["express"]);
+  });
+
+  it("consumes invalid timeout values without treating them as filters", () => {
+    const options = parseCliArgs([
+      "--timeout",
+      "abc",
+      "--timeout",
+      "-1",
+      "express",
+    ]);
+
+    strictEqual(options.defaultTimeoutMs, 10_000);
+    strictEqual(options.debugMode, false);
     deepStrictEqual([...options.filterNames], ["express"]);
   });
 });
