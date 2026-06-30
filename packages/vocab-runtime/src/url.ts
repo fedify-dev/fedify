@@ -87,7 +87,8 @@ function normalizePortableUrl(iri: URL): URL | null {
 function normalizeBaseIri(base?: string | URL): string | URL | undefined {
   if (base == null) return undefined;
   if (base instanceof URL) return normalizePortableUrl(base) ?? base;
-  return parsePortableIri(base) ?? base;
+  return parsePortableIri(base) ??
+    (base.startsWith("at://") ? parseAtUri(base) : base);
 }
 
 function decodePortableAuthority(authority: string): string {

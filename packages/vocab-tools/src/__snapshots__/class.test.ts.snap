@@ -12164,12 +12164,14 @@ get urls(): ((URL | Link))[] {
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -12181,10 +12183,11 @@ get urls(): ((URL | Link))[] {
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -13396,12 +13399,14 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -13413,10 +13418,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -14538,12 +14544,14 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -14555,10 +14563,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -17959,12 +17968,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -17976,10 +17987,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -18484,12 +18496,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -18501,10 +18515,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -19073,12 +19088,14 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -19090,10 +19107,11 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -19690,12 +19708,14 @@ unit?: string | null;numericalValue?: Decimal | null;}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -19707,10 +19727,11 @@ unit?: string | null;numericalValue?: Decimal | null;}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -20768,12 +20789,14 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -20785,10 +20808,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -21187,12 +21211,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -21204,10 +21230,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -21900,12 +21927,14 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -21917,10 +21946,11 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -22643,12 +22673,14 @@ get manualApprovals(): (URL)[] {
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -22660,10 +22692,11 @@ get manualApprovals(): (URL)[] {
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -23732,12 +23765,14 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -23749,10 +23784,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -24150,12 +24186,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -24167,10 +24205,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -25172,12 +25211,14 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -25189,10 +25230,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -25590,12 +25632,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -25607,10 +25651,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -26611,12 +26656,14 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -26628,10 +26675,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -27029,12 +27077,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -27046,10 +27096,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -27534,12 +27585,14 @@ get endpoints(): (URL)[] {
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -27551,10 +27604,11 @@ get endpoints(): (URL)[] {
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -27891,12 +27945,14 @@ endpoints?: (URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -27908,10 +27964,11 @@ endpoints?: (URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -28853,12 +28910,14 @@ cryptosuite?: "eddsa-jcs-2022" | null;verificationMethod?: Multikey | URL | null
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -28870,10 +28929,11 @@ cryptosuite?: "eddsa-jcs-2022" | null;verificationMethod?: Multikey | URL | null
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -29831,12 +29891,14 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -29848,10 +29910,11 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -30760,12 +30823,14 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -30777,10 +30842,11 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -31398,12 +31464,14 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -31415,10 +31483,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -32012,12 +32081,14 @@ satisfies?: URL | null;resourceQuantity?: Measure | null;}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -32029,10 +32100,11 @@ satisfies?: URL | null;resourceQuantity?: Measure | null;}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -32918,12 +32990,14 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -32935,10 +33009,11 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -33795,12 +33870,14 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -33812,10 +33889,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -34250,12 +34328,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -34267,10 +34347,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -34622,12 +34703,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -34639,10 +34722,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -34993,12 +35077,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -35010,10 +35096,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -41346,12 +41433,14 @@ get preferredUsernames(): ((string | LanguageString))[] {
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -41363,10 +41452,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -42201,12 +42291,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -42218,10 +42310,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -42572,12 +42665,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -42589,10 +42684,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -43709,12 +43805,14 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -43726,10 +43824,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -44346,12 +44445,14 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -44363,10 +44464,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -44759,12 +44861,14 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -44776,10 +44880,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -45133,12 +45238,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -45150,10 +45257,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -45505,12 +45613,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -45522,10 +45632,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -49872,12 +49983,14 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -49889,10 +50002,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -51474,12 +51588,14 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -51491,10 +51607,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -51902,12 +52019,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -51919,10 +52038,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -52272,12 +52392,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -52289,10 +52411,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -52640,12 +52763,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -52657,10 +52782,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -53580,12 +53706,14 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -53597,10 +53725,11 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -54088,12 +54217,14 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -54105,10 +54236,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -54459,12 +54591,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -54476,10 +54610,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -54831,12 +54966,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -54848,10 +54985,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -61184,12 +61322,14 @@ get preferredUsernames(): ((string | LanguageString))[] {
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -61201,10 +61341,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -63186,12 +63327,14 @@ get names(): ((string | LanguageString))[] {
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -63203,10 +63346,11 @@ get names(): ((string | LanguageString))[] {
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -63712,12 +63856,14 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -63729,10 +63875,11 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -64085,12 +64232,14 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -64102,10 +64251,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -64460,12 +64610,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -64477,10 +64629,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -64830,12 +64983,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -64847,10 +65002,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -65200,12 +65356,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -65217,10 +65375,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -65570,12 +65729,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -65587,10 +65748,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -65940,12 +66102,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -65957,10 +66121,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -66308,12 +66473,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -66325,10 +66492,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -66642,12 +66810,14 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -66659,10 +66829,11 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -67013,12 +67184,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -67030,10 +67203,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -68152,12 +68326,14 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -68169,10 +68345,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -68943,12 +69120,14 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -68960,10 +69139,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -69791,12 +69971,14 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -69808,10 +69990,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -76186,12 +76369,14 @@ get preferredUsernames(): ((string | LanguageString))[] {
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -76203,10 +76388,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -77031,12 +77217,14 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -77048,10 +77236,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -83384,12 +83573,14 @@ get preferredUsernames(): ((string | LanguageString))[] {
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -83401,10 +83592,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -84799,12 +84991,14 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -84816,10 +85010,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -85618,12 +85813,14 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -85635,10 +85832,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -87515,12 +87713,14 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -87532,10 +87732,11 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -88028,12 +88229,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -88045,10 +88248,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -88402,12 +88606,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -88419,10 +88625,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -90075,12 +90282,14 @@ relationships?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -90092,10 +90301,11 @@ relationships?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -90517,12 +90727,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -90534,10 +90746,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -96870,12 +97083,14 @@ get preferredUsernames(): ((string | LanguageString))[] {
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -96887,10 +97102,11 @@ get preferredUsernames(): ((string | LanguageString))[] {
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -97968,12 +98184,14 @@ get contents(): ((string | LanguageString))[] {
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -97985,10 +98203,11 @@ get contents(): ((string | LanguageString))[] {
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -98399,12 +98618,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -98416,10 +98637,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -98769,12 +98991,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -98786,10 +99010,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -99408,12 +99633,14 @@ get formerTypes(): ($EntityType)[] {
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -99425,10 +99652,11 @@ get formerTypes(): ($EntityType)[] {
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -99826,12 +100054,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -99843,10 +100073,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -100201,12 +100432,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -100218,10 +100451,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -100574,12 +100808,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -100591,10 +100827,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -100947,12 +101184,14 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -100964,10 +101203,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }
@@ -101316,12 +101556,14 @@ instruments?: (Object | URL)[];}
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -101333,10 +101575,11 @@ instruments?: (Object | URL)[];}
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }

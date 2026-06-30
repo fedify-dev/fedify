@@ -546,12 +546,14 @@ export async function* generateDecoder(
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
         if (cacheJsonLd?.changed) {
-          const context = json != null && typeof json === "object" &&
-              "@context" in json
-            ? (json as Record<string, unknown>)["@context"]
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const context = jsonLd != null && typeof jsonLd === "object" &&
+              !Array.isArray(jsonLd) && "@context" in jsonLd
+            ? (jsonLd as Record<string, unknown>)["@context"]
             : undefined;
           const normalized = cacheJsonLd.value;
-          instance._cachedJsonLd = context == null
+          const cachedJsonLd = context == null
             ? normalized
             : await mergeUnmappedJsonLdTerms(
               await jsonld.compact(
@@ -563,10 +565,11 @@ export async function* generateDecoder(
                 documentLoader: options.contextLoader,
                 },
               ),
-              json,
+              jsonLd,
               context,
               options.contextLoader,
             );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
         } else {
           instance._cachedJsonLd = structuredClone(json);
         }

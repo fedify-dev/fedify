@@ -757,6 +757,23 @@ test("fromJsonLd() preserves expanded subtype cache types", async () => {
   ]);
 });
 
+test("fromJsonLd() preserves compact array contexts with portable IRIs", async () => {
+  const note = await Note.fromJsonLd([{
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Note",
+    id: "ap://did:key:z6Mkabc/objects/1",
+  }], {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+
+  deepStrictEqual(await note.toJsonLd(), [{
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Note",
+    id: "ap+ef61://did:key:z6Mkabc/objects/1",
+  }]);
+});
+
 test("fromJsonLd() formats portable IRIs in JSON-LD containers", async () => {
   const note = await Note.fromJsonLd({
     "@context": "https://www.w3.org/ns/activitystreams",
