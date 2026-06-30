@@ -260,6 +260,9 @@ When adding a new package to the monorepo, the following files must be updated:
     This is required for provenance information when publishing to npm.
 4.  Root *deno.json*: Add the package path to the `workspace` array.
 5.  *pnpm-workspace.yaml*: Add the package path to the `packages` array.
+6.  *.github/CODEOWNERS*: Add the package path under the section that
+    matches its category (e.g., framework integration, database
+    adapter) and list its owner(s).
 
 **Conditional updates:**
 
