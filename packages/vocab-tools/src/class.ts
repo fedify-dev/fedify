@@ -226,6 +226,7 @@ export async function* generateClasses(
     "exportSpki",
     "formatIri",
     "getDocumentLoader",
+    "haveSameIriOrigin",
     "importMultibaseKey",
     "importPem",
     "isDecimal",

@@ -3479,6 +3479,44 @@ test("FEP-fe34: Constructor vs JSON-LD parsing trust difference", async () => {
   deepStrictEqual(jsonLdResult?.content, "Fetched from origin");
 });
 
+test(
+  "FEP-fe34: Portable DID authorities are cross-origin boundaries",
+  async () => {
+    const create = await Create.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      "@type": "Create",
+      "@id": "ap://did:key:z6MkOwner/create",
+      "actor": "ap://did:key:z6MkOwner/actor",
+      "object": {
+        "@type": "Note",
+        "@id": "ap://did:key:z6MkOther/note",
+        "content": "Embedded portable note",
+      },
+    });
+
+    // deno-lint-ignore require-await
+    const documentLoader = async (url: string) => {
+      if (url === "ap+ef61://did%3Akey%3Az6MkOther/note") {
+        return {
+          documentUrl: url,
+          contextUrl: null,
+          document: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            "@type": "Note",
+            "@id": "ap://did:key:z6MkOther/note",
+            "content": "Fetched portable note",
+          },
+        };
+      }
+      throw new Error("Document not found");
+    };
+
+    const result = await create.getObject({ documentLoader });
+    assertInstanceOf(result, Note);
+    deepStrictEqual(result.content, "Fetched portable note");
+  },
+);
+
 test("FEP-fe34: Array properties respect cross-origin policy", async () => {
   // deno-lint-ignore require-await
   const crossOriginDocumentLoader = async (url: string) => {

@@ -53,6 +53,7 @@ export {
   canParseIri,
   expandIPv6Address,
   formatIri,
+  haveSameIriOrigin,
   isValidPublicIPv4Address,
   isValidPublicIPv6Address,
   parseIri,

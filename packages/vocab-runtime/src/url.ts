@@ -13,8 +13,7 @@ const PORTABLE_IRI_PATTERN =
   /^(ap|ap\+ef61):\/\/([^/?#]*)([^?#]*)(\?[^#]*)?(#.*)?$/i;
 const INVALID_PERCENT_ENCODING_PATTERN = /%(?![0-9A-Fa-f]{2})/;
 const DID_SCHEME_PATTERN = /^did:/i;
-const DID_PATTERN =
-  /^did:[a-z][a-z0-9]*:[A-Za-z0-9._%-]+(?::[A-Za-z0-9._%-]+)*$/i;
+const DID_PATTERN = /^did:[a-z0-9]+:[A-Za-z0-9._%-]+(?::[A-Za-z0-9._%-]+)*$/i;
 
 /**
  * Checks whether the given string can be parsed as an IRI.
@@ -58,6 +57,19 @@ export function formatIri(iri: string | URL): string {
   }
   const authority = decodePortableAuthority(parsed.host);
   return `ap+ef61://${authority}${parsed.pathname}${parsed.search}${parsed.hash}`;
+}
+
+/**
+ * Checks whether two IRIs have the same origin.
+ */
+export function haveSameIriOrigin(left: URL, right: URL): boolean {
+  return getComparableIriOrigin(left) === getComparableIriOrigin(right);
+}
+
+function getComparableIriOrigin(iri: URL): string {
+  if (iri.origin !== "null") return iri.origin;
+  if (iri.host !== "") return `${iri.protocol}//${iri.host}`;
+  return iri.href;
 }
 
 function parsePortableIri(iri: string): URL | null {

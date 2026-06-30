@@ -4,6 +4,7 @@ import {
   canParseIri,
   expandIPv6Address,
   formatIri,
+  haveSameIriOrigin,
   isValidPublicIPv4Address,
   isValidPublicIPv6Address,
   parseIri,
@@ -40,6 +41,13 @@ test("parseIri() accepts DID schemes case-insensitively", () => {
       new URL("ap+ef61://DID%3Akey%3Az6Mkabc/actor"),
     );
   }
+});
+
+test("parseIri() accepts DID method names that start with digits", () => {
+  deepStrictEqual(
+    parseIri("ap://did:3:abc/actor"),
+    new URL("ap+ef61://did%3A3%3Aabc/actor"),
+  );
 });
 
 test("parseIri() preserves existing URL parsing behavior", () => {
@@ -94,7 +102,6 @@ test("parseIri() rejects malformed portable DID authorities", () => {
   const cases = [
     "ap://did:/actor",
     "ap://did:key/actor",
-    "ap://did:123:abc/actor",
     "ap://did%3Akey%3Aabc%25zz/actor",
     "ap://did:key:abc%25zz/actor",
   ];
@@ -102,6 +109,19 @@ test("parseIri() rejects malformed portable DID authorities", () => {
     ok(!canParseIri(iri));
     throws(() => parseIri(iri), TypeError);
   }
+});
+
+test("haveSameIriOrigin() compares portable IRI authorities", () => {
+  ok(haveSameIriOrigin(
+    parseIri("ap://did:key:z6Mkabc/actor"),
+    parseIri("ap://did:key:z6Mkabc/outbox"),
+  ));
+  ok(
+    !haveSameIriOrigin(
+      parseIri("ap://did:key:z6Mkabc/actor"),
+      parseIri("ap://did:key:z6Mkdef/actor"),
+    ),
+  );
 });
 
 test("parseIri() normalizes portable URL instances", () => {
