@@ -176,7 +176,8 @@ const scalarTypes: Record<string, ScalarType> = {
     dataCheck(v) {
       return `typeof ${v} === "object" && "@language" in ${v} && "@value" in ${v}
         && typeof ${v}["@language"] === "string"
-        && typeof ${v}["@value"] === "string"`;
+        && typeof ${v}["@value"] === "string"
+        && isValidLanguageTag(${v}["@language"])`;
     },
     decoder(v) {
       return `new LanguageString(${v}["@value"], ${v}["@language"])`;

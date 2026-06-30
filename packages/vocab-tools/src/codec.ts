@@ -396,6 +396,9 @@ export async function* generateDecoder(
     }
     `;
   }
+  yield `
+    let shouldCacheJsonLd = instance._shouldCacheJsonLd;
+  `;
   for (const property of type.properties) {
     const variable = await getFieldName(property.uri, "");
     yield await generateField(property, types, "const ");
@@ -435,20 +438,18 @@ export async function* generateDecoder(
       }
       `;
     }
-    if (property.range.length == 1) {
-      yield `${variable}.push(${
-        getDecoder(
-          property.range[0],
-          types,
-          "v",
-          "options",
-          `(values["@id"] == null ? options.baseUrl : new URL(values["@id"]))`,
-        )
-      })`;
-    } else {
-      yield `
+    yield `
       const decoded =
-      `;
+    `;
+    if (property.range.length == 1) {
+      yield getDecoder(
+        property.range[0],
+        types,
+        "v",
+        "options",
+        `(values["@id"] == null ? options.baseUrl : new URL(values["@id"]))`,
+      );
+    } else {
       const decoders = getDecoders(
         property.range,
         types,
@@ -457,19 +458,35 @@ export async function* generateDecoder(
         `(values["@id"] == null ? options.baseUrl : new URL(values["@id"]))`,
       );
       for (const code of decoders) yield code;
-      yield `
+    }
+    yield `
       ;
-      if (typeof decoded === "undefined") continue;
-      ${variable}.push(decoded);
+    `;
+    if (property.range.length > 1) {
+      yield `
+      if (typeof decoded === "undefined") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
       `;
     }
+    yield `
+      if (!this._shouldCacheDecodedJsonLd(decoded)) {
+        shouldCacheJsonLd = false;
+      }
+      ${variable}.push(decoded);
+    `;
     yield `
     }
     instance.${await getFieldName(property.uri)} = ${variable};
     `;
   }
   yield `
-    if (!("_fromSubclass" in options) || !options._fromSubclass) {
+    instance._shouldCacheJsonLd = shouldCacheJsonLd;
+    if (
+      shouldCacheJsonLd &&
+      (!("_fromSubclass" in options) || !options._fromSubclass)
+    ) {
       try {
         instance._cachedJsonLd = structuredClone(json);
       } catch {
