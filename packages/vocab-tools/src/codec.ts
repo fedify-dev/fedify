@@ -548,10 +548,7 @@ export async function* generateDecoder(
         if (cacheJsonLd != null && cacheJsonLd !== expanded) {
           const compactArray = Array.isArray(json) && json.length === 1;
           const jsonLd = compactArray ? json[0] : json;
-          const context = jsonLd != null && typeof jsonLd === "object" &&
-              !Array.isArray(jsonLd) && "@context" in jsonLd
-            ? (jsonLd as Record<string, unknown>)["@context"]
-            : undefined;
+          const context = getJsonLdContext(jsonLd);
           const normalized = cacheJsonLd;
           const cachedJsonLd = context == null
             ? normalized

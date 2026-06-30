@@ -830,6 +830,45 @@ test("fromJsonLd() preserves compact single-item arrays with portable IRIs", asy
   deepStrictEqual(createJson.actor, ["ap://did:key:z6Mkabc/actor"]);
 });
 
+test("fromJsonLd() preserves compact multi-node arrays with portable IRIs", async () => {
+  const activityJson = [
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Create",
+      id: "https://example.com/activities/1",
+      actor: "https://example.com/actors/alice",
+      object: "https://example.com/objects/1",
+    },
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Note",
+      id: "https://example.com/objects/1",
+      attributedTo: "ap://did:key:z6Mkabc/actor",
+    },
+  ];
+
+  const activity = await Activity.fromJsonLd(activityJson, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+
+  deepStrictEqual(await activity.toJsonLd(), [
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Create",
+      id: "https://example.com/activities/1",
+      actor: "https://example.com/actors/alice",
+      object: "https://example.com/objects/1",
+    },
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Note",
+      id: "https://example.com/objects/1",
+      attributedTo: "ap+ef61://did:key:z6Mkabc/actor",
+    },
+  ]);
+});
+
 test("fromJsonLd() formats portable IRIs in JSON-LD containers", async () => {
   const note = await Note.fromJsonLd({
     "@context": "https://www.w3.org/ns/activitystreams",

@@ -323,6 +323,22 @@ export async function* generateClasses(
   }
   return clone ?? object;
 }\n\n`;
+  yield `function getJsonLdContext(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const context = getJsonLdContext(item);
+      if (context !== undefined) return context;
+    }
+    return undefined;
+  }
+  if (
+    value == null || typeof value !== "object" ||
+    !("@context" in value)
+  ) {
+    return undefined;
+  }
+  return (value as Record<string, unknown>)["@context"];
+}\n\n`;
   yield `function getTopLevelJsonLdTerms(value: unknown): ReadonlySet<string> {
   const terms = new Set<string>();
   const nodes = Array.isArray(value) ? value : [value];
@@ -392,7 +408,9 @@ export async function* generateClasses(
   yield `function preserveJsonLdArrayShape(
   compacted: unknown,
   original: unknown,
+  depth = 0,
 ): unknown {
+  if (depth > 32) return compacted;
   if (
     original == null || typeof original !== "object" ||
     compacted == null || typeof compacted !== "object"
@@ -400,25 +418,50 @@ export async function* generateClasses(
     return compacted;
   }
   if (Array.isArray(original)) {
-    if (!Array.isArray(compacted)) return compacted;
+    const compactedArray = Array.isArray(compacted)
+      ? compacted
+      : "@graph" in compacted &&
+          Array.isArray((compacted as Record<string, unknown>)["@graph"])
+      ? (compacted as Record<string, unknown>)["@graph"] as unknown[]
+      : undefined;
+    if (compactedArray == null) return compacted;
     let clone: unknown[] | undefined;
-    for (let i = 0; i < compacted.length; i++) {
-      const value = preserveJsonLdArrayShape(compacted[i], original[i]);
-      if (value !== compacted[i]) {
-        clone ??= compacted.slice(0, i);
-        clone.push(value);
+    for (let i = 0; i < compactedArray.length; i++) {
+      const value = preserveJsonLdArrayShape(
+        compactedArray[i],
+        original[i],
+        depth + 1,
+      );
+      const originalContext = original[i] != null &&
+          typeof original[i] === "object" && !Array.isArray(original[i]) &&
+          "@context" in original[i]
+        ? (original[i] as Record<string, unknown>)["@context"]
+        : undefined;
+      const shaped = originalContext !== undefined &&
+          value != null && typeof value === "object" &&
+          !Array.isArray(value) && !("@context" in value)
+        ? { "@context": originalContext, ...value as Record<string, unknown> }
+        : value;
+      if (shaped !== compactedArray[i]) {
+        clone ??= compactedArray.slice(0, i);
+        clone.push(shaped);
       } else if (clone != null) {
-        clone.push(compacted[i]);
+        clone.push(compactedArray[i]);
       }
     }
-    return clone ?? compacted;
+    return clone ?? (Array.isArray(compacted) ? compacted : compactedArray);
   }
   if (Array.isArray(compacted)) return compacted;
   let clone: Record<string, unknown> | undefined;
   const compactedObject = compacted as Record<string, unknown>;
   const originalObject = original as Record<string, unknown>;
   for (const key of globalThis.Object.keys(compactedObject)) {
-    const value = preserveJsonLdArrayShape(compactedObject[key], originalObject[key]);
+    if (key === "@context") continue;
+    const value = preserveJsonLdArrayShape(
+      compactedObject[key],
+      originalObject[key],
+      depth + 1,
+    );
     const shaped = Array.isArray(originalObject[key]) && !Array.isArray(value)
       ? [value]
       : value;
