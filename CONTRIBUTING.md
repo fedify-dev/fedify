@@ -603,7 +603,7 @@ If you want to test your changes in the Fedify CLI, you can run
 the `fedify lookup` subcommand, you can run the following command:
 
 ~~~~ bash
-mise run cli -- lookup @fedify@hollo.social
+mise run cli -- lookup @fedify@hackers.pub
 ~~~~
 
 > [!NOTE]
