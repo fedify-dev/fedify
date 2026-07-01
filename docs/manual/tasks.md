@@ -268,9 +268,10 @@ Deduplication
 
 A task often needs *at-most-once-per-key* enqueue: a digest mailer must not
 send twice when a request is retried, and a cleanup job should coalesce
-duplicate triggers.  Passing a `deduplicationKey` requests this—a second
-enqueue with the same key is dropped while the first is still within the
-deduplication window:
+duplicate triggers.  Passing a `deduplicationKey` requests this—while the
+first enqueue is still within the deduplication window, a second enqueue
+with the same key is dropped.  Whether that drop actually happens depends
+on the queue and key–value store, as the fallback rules below decide:
 
 ~~~~ typescript
 await ctx.enqueueTask(sendDigest, payload, {
