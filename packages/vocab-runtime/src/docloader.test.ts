@@ -285,6 +285,61 @@ test("getDocumentLoader()", async (t) => {
     );
   });
 
+  fetchMock.get("https://example.com/wrong-content-type", {
+    body: {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: "https://example.com/wrong-content-type",
+      name: "Fetched object",
+      type: "Object",
+    },
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+
+  await t.test("wrong Content-Type with JSON body", async () => {
+    deepStrictEqual(
+      await fetchDocumentLoader("https://example.com/wrong-content-type"),
+      {
+        contextUrl: null,
+        documentUrl: "https://example.com/wrong-content-type",
+        document: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          id: "https://example.com/wrong-content-type",
+          name: "Fetched object",
+          type: "Object",
+        },
+      },
+    );
+  });
+
+  fetchMock.get("https://example.com/large-html", {
+    body: "<!DOCTYPE html>",
+    headers: {
+      "Content-Length": String(1024 * 1024 + 1),
+      "Content-Type": "text/html; charset=utf-8",
+    },
+  });
+
+  await t.test("HTML Content-Length over limit", async () => {
+    await rejects(
+      () => fetchDocumentLoader("https://example.com/large-html"),
+      (error) => {
+        ok(error instanceof FetchError);
+        ok(
+          error.message.includes(
+            "HTML document is too large to scan for an ActivityPub alternate link",
+          ),
+        );
+        ok(error.response != null);
+        deepStrictEqual(error.response.status, 200);
+        deepStrictEqual(
+          error.response.headers.get("Content-Type"),
+          "text/html; charset=utf-8",
+        );
+        return true;
+      },
+    );
+  });
+
   fetchMock.get("https://example.com/404", { status: 404 });
 
   await t.test("not ok", async () => {

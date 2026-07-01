@@ -13,6 +13,7 @@ import { UrlError, validatePublicUrl } from "./url.ts";
 
 const logger = getLogger(["fedify", "runtime", "docloader"]);
 const DEFAULT_MAX_REDIRECTION = 20;
+const MAX_HTML_SIZE = 1024 * 1024; // 1MB
 
 /**
  * A remote JSON-LD document and its context fetched by
@@ -112,6 +113,52 @@ export type AuthenticatedDocumentLoaderFactory = (
   options?: DocumentLoaderFactoryOptions,
 ) => DocumentLoader;
 
+function createResponseMetadata(response: Response): Response {
+  return new Response(null, {
+    headers: response.headers,
+    status: response.status,
+    statusText: response.statusText,
+  });
+}
+
+async function readBoundedText(
+  response: Response,
+  maxBytes: number,
+): Promise<{ text: string; size: number; tooLarge: boolean }> {
+  const contentLength = response.headers.get("Content-Length");
+  if (contentLength != null) {
+    const size = Number(contentLength);
+    if (Number.isFinite(size) && size > maxBytes) {
+      return { text: "", size, tooLarge: true };
+    }
+  }
+
+  if (response.body == null) return { text: "", size: 0, tooLarge: false };
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  let size = 0;
+  try {
+    while (true) {
+      const result = await reader.read();
+      if (result.done) break;
+      const chunkSize = result.value.byteLength;
+      if (size + chunkSize > maxBytes) {
+        size += chunkSize;
+        await reader.cancel();
+        return { text: "", size, tooLarge: true };
+      }
+      size += chunkSize;
+      text += decoder.decode(result.value, { stream: true });
+    }
+    text += decoder.decode();
+    return { text, size, tooLarge: false };
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 /**
  * Gets a {@link RemoteDocument} from the given response.
  * @param url The URL of the document to load.
@@ -200,14 +247,12 @@ export async function getRemoteDocument(
       contentType === "application/xhtml+xml" ||
       contentType?.startsWith("application/xhtml+xml;"))
   ) {
-    // Security: Limit HTML response size to mitigate ReDoS attacks
-    const MAX_HTML_SIZE = 1024 * 1024; // 1MB
-    const errorResponse = response.clone();
-    const html = await response.text();
-    if (html.length > MAX_HTML_SIZE) {
+    const errorResponse = createResponseMetadata(response);
+    const html = await readBoundedText(response, MAX_HTML_SIZE);
+    if (html.tooLarge) {
       logger.warn(
         "HTML response too large, skipping alternate link discovery: {url}",
-        { url: documentUrl, size: html.length },
+        { url: documentUrl, size: html.size },
       );
       throw new FetchError(
         documentUrl,
@@ -225,7 +270,7 @@ export async function getRemoteDocument(
         /([a-z][a-z:_-]*)=(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi;
 
       let tagMatch: RegExpExecArray | null;
-      while ((tagMatch = tagPattern.exec(html)) !== null) {
+      while ((tagMatch = tagPattern.exec(html.text)) !== null) {
         const tagContent = tagMatch[2];
         let attrMatch: RegExpExecArray | null;
         const attribs: Record<string, string> = {};
@@ -253,12 +298,17 @@ export async function getRemoteDocument(
           return await fetch(new URL(attribs.href, docUrl).href);
         }
       }
-      throw new FetchError(
-        documentUrl,
-        `HTML document has no ActivityPub alternate link ` +
-          `(Content-Type: ${contentType})`,
-        errorResponse,
-      );
+      const trimmed = html.text.trimStart();
+      if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+        document = JSON.parse(html.text);
+      } else {
+        throw new FetchError(
+          documentUrl,
+          `HTML document has no ActivityPub alternate link ` +
+            `(Content-Type: ${contentType})`,
+          errorResponse,
+        );
+      }
     }
   } else {
     document = await response.json();
