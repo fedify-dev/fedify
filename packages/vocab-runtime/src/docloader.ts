@@ -121,6 +121,13 @@ function createResponseMetadata(response: Response): Response {
   });
 }
 
+async function cancelResponseBody(response: Response): Promise<void> {
+  const body = response.body as { cancel?: unknown } | null;
+  if (body != null && typeof body.cancel === "function") {
+    await body.cancel();
+  }
+}
+
 async function readBoundedText(
   response: Response,
   maxBytes: number,
@@ -129,13 +136,27 @@ async function readBoundedText(
   if (contentLength != null) {
     const size = Number(contentLength);
     if (Number.isFinite(size) && size > maxBytes) {
+      await cancelResponseBody(response);
       return { text: "", size, tooLarge: true };
     }
   }
 
   if (response.body == null) return { text: "", size: 0, tooLarge: false };
 
-  const reader = response.body.getReader();
+  const body = response.body as ReadableStream<Uint8Array> & {
+    getReader?: unknown;
+  };
+  if (typeof body.getReader !== "function") {
+    const text = await response.text();
+    const size = new TextEncoder().encode(text).byteLength;
+    return {
+      text: size <= maxBytes ? text : "",
+      size,
+      tooLarge: size > maxBytes,
+    };
+  }
+
+  const reader = body.getReader();
   const decoder = new TextDecoder();
   let text = "";
   let size = 0;
