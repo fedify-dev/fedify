@@ -369,38 +369,6 @@ test("getDocumentLoader()", async (t) => {
     deepStrictEqual(canceled, true);
   });
 
-  await t.test("HTML body without getReader falls back to text", async () => {
-    const response = new Response(
-      JSON.stringify({
-        "@context": "https://www.w3.org/ns/activitystreams",
-        id: "https://example.com/body-without-get-reader",
-        name: "Fetched object",
-        type: "Object",
-      }),
-      { headers: { "Content-Type": "text/html; charset=utf-8" } },
-    );
-    Object.defineProperty(response, "body", { value: {} });
-    deepStrictEqual(
-      await getRemoteDocument(
-        "https://example.com/body-without-get-reader",
-        response,
-        () => {
-          throw new Error("unexpected alternate fetch");
-        },
-      ),
-      {
-        contextUrl: null,
-        documentUrl: "https://example.com/body-without-get-reader",
-        document: {
-          "@context": "https://www.w3.org/ns/activitystreams",
-          id: "https://example.com/body-without-get-reader",
-          name: "Fetched object",
-          type: "Object",
-        },
-      },
-    );
-  });
-
   fetchMock.get("https://example.com/404", { status: 404 });
 
   await t.test("not ok", async () => {

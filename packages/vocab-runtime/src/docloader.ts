@@ -122,9 +122,8 @@ function createResponseMetadata(response: Response): Response {
 }
 
 async function cancelResponseBody(response: Response): Promise<void> {
-  const body = response.body as { cancel?: unknown } | null;
-  if (body != null && typeof body.cancel === "function") {
-    await body.cancel();
+  if (response.body != null) {
+    await response.body.cancel();
   }
 }
 
@@ -135,7 +134,7 @@ async function readBoundedText(
   const contentLength = response.headers.get("Content-Length");
   if (contentLength != null) {
     const size = Number(contentLength);
-    if (Number.isFinite(size) && size > maxBytes) {
+    if (size > maxBytes) {
       await cancelResponseBody(response);
       return { text: "", size, tooLarge: true };
     }
@@ -143,20 +142,7 @@ async function readBoundedText(
 
   if (response.body == null) return { text: "", size: 0, tooLarge: false };
 
-  const body = response.body as ReadableStream<Uint8Array> & {
-    getReader?: unknown;
-  };
-  if (typeof body.getReader !== "function") {
-    const text = await response.text();
-    const size = new TextEncoder().encode(text).byteLength;
-    return {
-      text: size <= maxBytes ? text : "",
-      size,
-      tooLarge: size > maxBytes,
-    };
-  }
-
-  const reader = body.getReader();
+  const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let text = "";
   let size = 0;
@@ -319,10 +305,10 @@ export async function getRemoteDocument(
           return await fetch(new URL(attribs.href, docUrl).href);
         }
       }
-      const trimmed = html.text.trimStart();
-      if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      try {
         document = JSON.parse(html.text);
-      } else {
+      } catch (error) {
+        if (!(error instanceof SyntaxError)) throw error;
         throw new FetchError(
           documentUrl,
           `HTML document has no ActivityPub alternate link ` +
