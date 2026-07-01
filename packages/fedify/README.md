@@ -215,8 +215,10 @@ financial contributors:[^2]
 
 ### Corporate sponsors
 
-- [<img src="https://images.opencollective.com/ghost/avatar/128.png" width="64" height="64"> Ghost](https://ghost.org)
-- [<img src="https://images.opencollective.com/altstore/avatar/128.png" width="64" height="64"> AltStore](https://altstore.io)
+| Avatar | Name | Description |
+| ------ | ---- | ----------- |
+| <img src="https://images.opencollective.com/ghost/avatar/128.png" width="64" height="64"> | [Ghost](https://ghost.org) | Fiercely independent, professional publishing |
+| <img src="https://images.opencollective.com/altstore/avatar/128.png" width="64" height="64"> | [AltStore](https://altstore.io) |  |
 
 ### Supporters
 

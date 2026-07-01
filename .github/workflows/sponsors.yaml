@@ -16,20 +16,25 @@ jobs:
         ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
         persist-credentials: true
         fetch-depth: 0
-    - uses: ./.github/actions/setup-deno
+    - uses: ./.github/actions/setup-mise
     - uses: qoomon/actions--setup-git@v1
     - run: |
         set -e
         deno run \
           --allow-net=opencollective.com \
-          --allow-read=README.md,SPONSORS.md \
-          --allow-write=README.md,SPONSORS.md \
+          --allow-read=README.md,SPONSORS.md,packages/fedify/README.md \
+          --allow-write=README.md,SPONSORS.md,packages/fedify/README.md \
           scripts/sponsors.ts \
           README.md \
-          SPONSORS.md
+          SPONSORS.md \
+          packages/fedify/README.md
+        hongdown --write \
+          README.md \
+          SPONSORS.md \
+          packages/fedify/README.md
         cat SPONSORS.md
         if ! git diff-index --quiet HEAD --; then
-          git add README.md SPONSORS.md
+          git add README.md SPONSORS.md packages/fedify/README.md
           git commit -m "Update sponsors" || true
         fi
     - uses: ad-m/github-push-action@master
