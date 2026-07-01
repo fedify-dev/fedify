@@ -1137,6 +1137,43 @@ test(
 );
 
 test(
+  "a deduplicated batch over a ParallelMessageQueue wrapping a non-native, " +
+    "no-enqueueMany backend is rejected on the cas path",
+  async () => {
+    const backend = new MockQueue();
+    const queue = new ParallelMessageQueue(backend, 5);
+    const kv = new MemoryKvStore();
+    const federation = createFederation<void>({
+      ...baseOptions,
+      kv,
+      queue: { task: queue },
+    });
+    const task = federation.defineTask("parallel-cas-no-bulk", {
+      schema: stringSchema,
+      handler: () => {},
+    });
+    const ctx = federation.createContext(
+      new URL("https://example.com/"),
+      undefined,
+    );
+
+    await rejects(
+      () =>
+        ctx.enqueueTaskMany(task, ["a", "b", "c"], {
+          deduplicationKey: "batch",
+        }),
+      { name: "TypeError", message: /enqueueMany/ },
+    );
+    strictEqual(backend.enqueued.length, 0);
+    deepStrictEqual(await collectKeys(kv, TASK_DEDUP_PREFIX), []);
+
+    // A single-item batch needs no bulk path, so it still enqueues.
+    await ctx.enqueueTaskMany(task, ["solo"], { deduplicationKey: "solo" });
+    strictEqual(backend.enqueued.length, 1);
+  },
+);
+
+test(
   "a deduplicated batch over a ParallelMessageQueue wrapping a native " +
     "enqueueMany backend forwards the key atomically",
   async () => {
