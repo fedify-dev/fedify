@@ -10,7 +10,7 @@ import { getLogger } from "@logtape/logtape";
 import { context, propagation } from "@opentelemetry/api";
 import type { KvKey } from "../kv.ts";
 import type { FederationImpl } from "../middleware.ts";
-import type { MessageQueue } from "../mq.ts";
+import { type MessageQueue, ParallelMessageQueue } from "../mq.ts";
 import type { TaskMessage } from "../queue.ts";
 import type TaskCodec from "./codec.ts";
 import type { TaskDefinition, TaskEnqueueOptions } from "./task.ts";
@@ -149,7 +149,9 @@ function planDeduplication<TContextData>(
   const key = options.deduplicationKey;
   const native = queue.nativeDeduplication === true;
   const canCas = ctx.federation.kv.cas != null;
-  if (itemCount > 1 && queue.enqueueMany == null && (native || canCas)) {
+  const canBatchAtomically = queue.enqueueMany != null &&
+    !(queue instanceof ParallelMessageQueue && queue.queue.enqueueMany == null);
+  if (itemCount > 1 && !canBatchAtomically && (native || canCas)) {
     throw new TypeError(
       `Task ${
         JSON.stringify(taskName)
