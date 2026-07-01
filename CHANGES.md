@@ -8,6 +8,23 @@ Version 2.4.0
 
 To be released.
 
+### @fedify/vocab
+
+ -  Added vocabulary support for [FEP-7aa9], including
+    `FeaturedCollection`, `FeaturedItem`, `FeatureRequest`, and
+    `FeatureAuthorization`, plus actor `featuredCollections` and
+    `InteractionPolicy.canFeature` properties.  [[#810], [#914]]
+
+[FEP-7aa9]: https://w3id.org/fep/7aa9
+[#810]: https://github.com/fedify-dev/fedify/issues/810
+[#914]: https://github.com/fedify-dev/fedify/pull/914
+
+### @fedify/vocab-runtime
+
+ -  Added the [FEP-7aa9] JSON-LD context to the preloaded context registry so
+    FEP-7aa9 documents can be compacted and expanded without fetching the
+    context remotely.  [[#810], [#914]]
+
 
 Version 2.3.1
 -------------

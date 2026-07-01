@@ -175,9 +175,14 @@ test("handleActor()", async () => {
       "https://www.w3.org/ns/did/v1",
       "https://w3id.org/security/multikey/v1",
       "https://gotosocial.org/ns",
+      "https://w3id.org/fep/7aa9",
       {
         alsoKnownAs: {
           "@id": "as:alsoKnownAs",
+          "@type": "@id",
+        },
+        featuredCollections: {
+          "@id": "https://w3id.org/fep/7aa9#featuredCollections",
           "@type": "@id",
         },
         manuallyApprovesFollowers: "as:manuallyApprovesFollowers",
@@ -278,9 +283,14 @@ test("handleActor()", async () => {
       "https://www.w3.org/ns/did/v1",
       "https://w3id.org/security/multikey/v1",
       "https://gotosocial.org/ns",
+      "https://w3id.org/fep/7aa9",
       {
         alsoKnownAs: {
           "@id": "as:alsoKnownAs",
+          "@type": "@id",
+        },
+        featuredCollections: {
+          "@id": "https://w3id.org/fep/7aa9#featuredCollections",
           "@type": "@id",
         },
         manuallyApprovesFollowers: "as:manuallyApprovesFollowers",
