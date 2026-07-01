@@ -33735,7 +33735,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       result["type"] = "FeaturedCollection";
       if (this.id != null) result["id"] = this.id.href;
-      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"toot":"http://joinmastodon.org/ns#","sensitive":"as:sensitive","discoverable":"toot:discoverable","Hashtag":"as:Hashtag"}];
+      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"toot":"http://joinmastodon.org/ns#","discoverable":"toot:discoverable","Hashtag":"as:Hashtag"}];
       return result;
     }
     
@@ -33791,7 +33791,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       );
     }
     const docContext = options.context ??
-      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"toot":"http://joinmastodon.org/ns#","sensitive":"as:sensitive","discoverable":"toot:discoverable","Hashtag":"as:Hashtag"}];
+      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"toot":"http://joinmastodon.org/ns#","discoverable":"toot:discoverable","Hashtag":"as:Hashtag"}];
     const compacted = await jsonld.compact(
       values,
       docContext,
