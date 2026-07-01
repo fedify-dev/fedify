@@ -50,6 +50,13 @@ test("parseIri() accepts DID method names that start with digits", () => {
   );
 });
 
+test("parseIri() accepts hyphens in DID method-specific IDs", () => {
+  deepStrictEqual(
+    parseIri("ap+ef61://did:web:foo-bar.example/actor"),
+    new URL("ap+ef61://did%3Aweb%3Afoo-bar.example/actor"),
+  );
+});
+
 test("parseIri() preserves existing URL parsing behavior", () => {
   deepStrictEqual(
     parseIri("/actor", new URL("https://example.com/users/alice")),

@@ -442,7 +442,8 @@ function hasTrustedIriOrigin(
   }
   const result = { ...compacted as Record<string, unknown> };
   const unmappedKeys = globalThis.Object.keys(original).filter((key) =>
-    key !== "@context" && !(key in result)
+    key !== "@context" &&
+    !globalThis.Object.prototype.hasOwnProperty.call(result, key)
   );
   if (unmappedKeys.length < 1) return result;
   const compactedTerms = getTopLevelJsonLdTerms(await jsonld.expand(compacted, {

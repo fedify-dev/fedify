@@ -13,7 +13,7 @@ const PORTABLE_IRI_PATTERN =
   /^(ap|ap\+ef61):\/\/([^/?#]*)([^?#]*)(\?[^#]*)?(#.*)?$/i;
 const INVALID_PERCENT_ENCODING_PATTERN = /%(?![0-9A-Fa-f]{2})/;
 const DID_SCHEME_PATTERN = /^did:/i;
-const DID_PATTERN = /^did:[a-z0-9]+:[A-Za-z0-9._%-]+(?::[A-Za-z0-9._%-]+)*$/i;
+const DID_PATTERN = /^did:[a-z0-9]+:[-A-Za-z0-9._%]+(?::[-A-Za-z0-9._%]+)*$/i;
 
 /**
  * Checks whether the given string can be parsed as an IRI.
