@@ -346,10 +346,11 @@ function hasTrustedIriOrigin(
   }
   return clone ?? object;
 }\n\n`;
-  yield `function getJsonLdContext(value: unknown): unknown {
+  yield `function getJsonLdContext(value: unknown, depth = 0): unknown {
+  if (depth > 32) return undefined;
   if (Array.isArray(value)) {
     for (const item of value) {
-      const context = getJsonLdContext(item);
+      const context = getJsonLdContext(item, depth + 1);
       if (context !== undefined) return context;
     }
     return undefined;
@@ -366,7 +367,9 @@ function hasTrustedIriOrigin(
   normalized: unknown,
   original: unknown,
   documentLoader?: DocumentLoader,
+  depth = 0,
 ): Promise<unknown> {
+  if (depth > 32) return normalized;
   if (Array.isArray(original)) {
     const normalizedArray = Array.isArray(normalized)
       ? normalized
@@ -382,6 +385,7 @@ function hasTrustedIriOrigin(
         normalizedArray[i],
         original[i],
         documentLoader,
+        depth + 1,
       );
       if (item !== normalizedArray[i]) {
         clone ??= normalizedArray.slice(0, i);

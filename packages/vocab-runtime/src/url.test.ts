@@ -174,6 +174,13 @@ test("formatIri() preserves DID authority pct-encoded delimiters", () => {
   );
 });
 
+test("parseIri() normalizes equivalent encoded DID authorities", () => {
+  deepStrictEqual(
+    parseIri("ap://did:example:abc%252Fdef/actor"),
+    parseIri("ap://did%3Aexample%3Aabc%252Fdef/actor"),
+  );
+});
+
 test("formatIri() preserves DID-internal pct-encoded authority characters", () => {
   const parsed = parseIri("ap://did:web:example.com%3A3000/actor");
   deepStrictEqual(
