@@ -12,10 +12,6 @@
       "@id": "https://w3id.org/fep/7aa9#featuredObject",
       "@type": "@id"
     },
-    "featuredCollections": {
-      "@id": "https://w3id.org/fep/7aa9#featuredCollections",
-      "@type": "@id"
-    },
     "canFeature": {
       "@id": "https://w3id.org/fep/7aa9#canFeature",
       "@type": "@id"
