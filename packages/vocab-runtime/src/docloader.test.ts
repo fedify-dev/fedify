@@ -2,7 +2,7 @@ import fetchMock from "fetch-mock";
 import { deepStrictEqual, ok, rejects } from "node:assert";
 import { test } from "node:test";
 import preloadedContexts from "./contexts.ts";
-import { getDocumentLoader } from "./docloader.ts";
+import { getDocumentLoader, getRemoteDocument } from "./docloader.ts";
 import { FetchError } from "./request.ts";
 import { UrlError } from "./url.ts";
 
@@ -90,7 +90,7 @@ test("getDocumentLoader()", async (t) => {
       type: "Object",
     },
     headers: {
-      "Content-Type": "text/html; charset=utf-8",
+      "Content-Type": "application/activity+json",
       Link: '<https://example.com/object>; rel="alternate"; ' +
         'type="application/ld+json; profile="https://www.w3.org/ns/activitystreams""',
     },
@@ -247,6 +247,44 @@ test("getDocumentLoader()", async (t) => {
     });
   });
 
+  fetchMock.get("https://example.com/html-no-alternate", {
+    body: `<!DOCTYPE html>
+      <html>
+        <head>
+          <title>Not an ActivityPub document</title>
+        </head>
+        <body>Not found</body>
+      </html>`,
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+
+  await t.test("HTML without ActivityPub alternate link", async () => {
+    await rejects(
+      () => fetchDocumentLoader("https://example.com/html-no-alternate"),
+      (error) => {
+        ok(error instanceof FetchError);
+        ok(
+          error.message.includes(
+            "HTML document has no ActivityPub alternate link",
+          ),
+        );
+        ok(
+          error.message.includes("Content-Type: text/html; charset=utf-8"),
+        );
+        deepStrictEqual(
+          error.url,
+          new URL("https://example.com/html-no-alternate"),
+        );
+        ok(error.response != null);
+        deepStrictEqual(
+          error.response.headers.get("Content-Type"),
+          "text/html; charset=utf-8",
+        );
+        return true;
+      },
+    );
+  });
+
   fetchMock.get("https://example.com/wrong-content-type", {
     body: {
       "@context": "https://www.w3.org/ns/activitystreams",
@@ -257,7 +295,7 @@ test("getDocumentLoader()", async (t) => {
     headers: { "Content-Type": "text/html; charset=utf-8" },
   });
 
-  await t.test("Wrong Content-Type", async () => {
+  await t.test("wrong Content-Type with JSON body", async () => {
     deepStrictEqual(
       await fetchDocumentLoader("https://example.com/wrong-content-type"),
       {
@@ -271,6 +309,64 @@ test("getDocumentLoader()", async (t) => {
         },
       },
     );
+  });
+
+  fetchMock.get("https://example.com/large-html", {
+    body: "<!DOCTYPE html>",
+    headers: {
+      "Content-Length": String(1024 * 1024 + 1),
+      "Content-Type": "text/html; charset=utf-8",
+    },
+  });
+
+  await t.test("HTML Content-Length over limit", async () => {
+    await rejects(
+      () => fetchDocumentLoader("https://example.com/large-html"),
+      (error) => {
+        ok(error instanceof FetchError);
+        ok(
+          error.message.includes(
+            "HTML document is too large to scan for an ActivityPub alternate link",
+          ),
+        );
+        ok(error.response != null);
+        deepStrictEqual(error.response.status, 200);
+        deepStrictEqual(
+          error.response.headers.get("Content-Type"),
+          "text/html; charset=utf-8",
+        );
+        return true;
+      },
+    );
+  });
+
+  await t.test("HTML Content-Length over limit cancels body", async () => {
+    let canceled = false;
+    const response = new Response("<!DOCTYPE html>", {
+      headers: {
+        "Content-Length": String(1024 * 1024 + 1),
+        "Content-Type": "text/html; charset=utf-8",
+      },
+    });
+    Object.defineProperty(response, "body", {
+      value: {
+        cancel: () => {
+          canceled = true;
+        },
+      },
+    });
+    await rejects(
+      () =>
+        getRemoteDocument(
+          "https://example.com/large-html-cancel",
+          response,
+          () => {
+            throw new Error("unexpected alternate fetch");
+          },
+        ),
+      FetchError,
+    );
+    deepStrictEqual(canceled, true);
   });
 
   fetchMock.get("https://example.com/404", { status: 404 });
@@ -459,11 +555,11 @@ test("getDocumentLoader()", async (t) => {
 
   await t.test("ReDoS resistance (CVE-2025-68475)", async () => {
     const start = performance.now();
-    // The malicious HTML will fail JSON parsing, but the important thing is
-    // that it should complete quickly (not hang due to ReDoS)
+    // The malicious HTML will fail alternate discovery, but the important
+    // thing is that it should complete quickly (not hang due to ReDoS).
     await rejects(
       () => fetchDocumentLoader("https://example.com/redos"),
-      SyntaxError,
+      FetchError,
     );
     const elapsed = performance.now() - start;
 
