@@ -111,8 +111,7 @@ async function* generateProperty(
             document,
             { documentLoader, contextLoader, tracerProvider, baseUrl }
           );
-          if (options.crossOrigin !== "trust" && obj?.id != null &&
-              !haveSameIriOrigin(obj.id, baseUrl)) {
+          if (obj?.id != null && !hasTrustedIriOrigin(options, obj.id, baseUrl)) {
             if (options.crossOrigin === "throw") {
               throw new Error(
                 "The object's @id (" + obj.id.href + ") has a different origin " +
@@ -275,9 +274,9 @@ async function* generateProperty(
         }
         if (this.${await getFieldName(property.uri)}.length < 1) return null;
         let v = this.${await getFieldName(property.uri)}[0];
-        if (options.crossOrigin !== "trust" && !(v instanceof URL) &&
+        if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !haveSameIriOrigin(v.id, this.id)) &&
+            (this.id == null || !hasTrustedIriOrigin(options, v.id, this.id)) &&
             !this.${await getFieldName(property.uri, "#_trust")}.has(0)) {
           v = v.id;
         }
@@ -316,8 +315,8 @@ async function* generateProperty(
         `;
       }
       yield `
-        if (options.crossOrigin !== "trust" && v?.id != null &&
-            this.id != null && !haveSameIriOrigin(v.id, this.id) &&
+        if (v?.id != null &&
+            this.id != null && !hasTrustedIriOrigin(options, v.id, this.id) &&
             !this.${await getFieldName(property.uri, "#_trust")}.has(0)) {
           if (options.crossOrigin === "throw") {
             throw new Error(
@@ -381,9 +380,10 @@ async function* generateProperty(
         const vs = this.${await getFieldName(property.uri)};
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
-          if (options.crossOrigin !== "trust" && !(v instanceof URL) &&
+          if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null || !haveSameIriOrigin(v.id, this.id)) &&
+              (this.id == null ||
+                !hasTrustedIriOrigin(options, v.id, this.id)) &&
               !this.${await getFieldName(property.uri, "#_trust")}.has(i)) {
             v = v.id;
           }
@@ -423,8 +423,8 @@ async function* generateProperty(
         `;
       }
       yield `
-          if (options.crossOrigin !== "trust" && v?.id != null &&
-              this.id != null && !haveSameIriOrigin(v.id, this.id) &&
+          if (v?.id != null &&
+              this.id != null && !hasTrustedIriOrigin(options, v.id, this.id) &&
               !this.${await getFieldName(property.uri, "#_trust")}.has(0)) {
             if (options.crossOrigin === "throw") {
               throw new Error(

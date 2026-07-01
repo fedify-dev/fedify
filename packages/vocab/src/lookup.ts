@@ -314,8 +314,9 @@ async function lookupObjectInternal(
   }
   if (remoteDoc == null) return null;
   let object: Object;
-  const documentUrl = parseIri(remoteDoc.documentUrl);
+  let documentUrl: URL;
   try {
+    documentUrl = parseIri(remoteDoc.documentUrl);
     object = await Object.fromJsonLd(remoteDoc.document, {
       documentLoader,
       contextLoader: options.contextLoader,

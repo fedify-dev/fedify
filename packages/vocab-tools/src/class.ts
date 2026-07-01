@@ -12,6 +12,26 @@ import { emitOverride } from "./type.ts";
 
 const XSD_ANY_URI = "http://www.w3.org/2001/XMLSchema#anyURI";
 const FEDIFY_URL = "fedify:url";
+const RUNTIME_IMPORTS = [
+  "canParseDecimal",
+  "canParseIri",
+  "decodeMultibase",
+  "type Decimal",
+  "type DocumentLoader",
+  "encodeMultibase",
+  "exportMultibaseKey",
+  "exportSpki",
+  "formatIri",
+  "getDocumentLoader",
+  "haveSameIriOrigin",
+  "importMultibaseKey",
+  "importPem",
+  "isDecimal",
+  "LanguageString",
+  "parseDecimal",
+  "parseIri",
+  "type RemoteDocument",
+];
 
 /**
  * Sorts the given types topologically so that the base types come before the
@@ -185,23 +205,27 @@ function canContainIriValue(
   );
 }
 
+function addKeys(
+  keys: Set<string>,
+  property: { uri: string; compactName?: string },
+): void {
+  keys.add(property.uri);
+  if (property.compactName != null) keys.add(property.compactName);
+}
+
 function addPortableIriKeys(
   keys: Set<string>,
   property: PropertySchema,
   types: Record<string, TypeSchema>,
 ): void {
   if (!canContainIriValue(property, types)) return;
-  keys.add(property.uri);
-  if (property.compactName != null) keys.add(property.compactName);
+  addKeys(keys, property);
   if (
     "redundantProperties" in property &&
     property.redundantProperties != null
   ) {
     for (const redundantProperty of property.redundantProperties) {
-      keys.add(redundantProperty.uri);
-      if (redundantProperty.compactName != null) {
-        keys.add(redundantProperty.compactName);
-      }
+      addKeys(keys, redundantProperty);
     }
   }
 }
@@ -215,39 +239,30 @@ export async function* generateClasses(
   types: Record<string, TypeSchema>,
 ): AsyncIterable<string> {
   validateTypeSchemas(types);
-  const runtimeImports = [
-    "canParseDecimal",
-    "canParseIri",
-    "decodeMultibase",
-    "type Decimal",
-    "type DocumentLoader",
-    "encodeMultibase",
-    "exportMultibaseKey",
-    "exportSpki",
-    "formatIri",
-    "getDocumentLoader",
-    "haveSameIriOrigin",
-    "importMultibaseKey",
-    "importPem",
-    "isDecimal",
-    "LanguageString",
-    "parseDecimal",
-    "parseIri",
-    "type RemoteDocument",
-  ];
   yield "// deno-lint-ignore-file ban-unused-ignore no-explicit-any no-unused-vars prefer-const verbatim-module-syntax\n";
   yield 'import jsonld from "@fedify/vocab-runtime/jsonld";\n';
   yield 'import { getLogger } from "@logtape/logtape";\n';
   yield `import { type Span, SpanStatusCode, type TracerProvider, trace }
     from "@opentelemetry/api";\n`;
   yield `import {\n    ${
-    runtimeImports.join(",\n    ")
+    RUNTIME_IMPORTS.join(",\n    ")
   }\n} from "@fedify/vocab-runtime";\n`;
   yield `import {
     isTemporalDuration,
     isTemporalInstant,
 } from "@fedify/vocab-runtime/temporal";\n`;
-  yield "\n\n";
+  yield `
+
+function hasTrustedIriOrigin(
+  options: { crossOrigin?: "ignore" | "throw" | "trust" },
+  left: URL | null | undefined,
+  right: URL | null | undefined,
+): boolean {
+  return options.crossOrigin === "trust" || left == null ||
+    (right != null && haveSameIriOrigin(left, right));
+}
+
+`;
   const portableIriKeys = new Set(["@id", "id"]);
   for (const type of Object.values(types)) {
     for (const property of type.properties) {

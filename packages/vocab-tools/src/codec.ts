@@ -406,10 +406,19 @@ export async function* generateDecoder(
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (values["@id"] != null && !values["@id"].startsWith("_:") && !canParseIri(values["@id"], options.baseUrl)) {
+    if (
+      values["@id"] != null &&
+      !values["@id"].startsWith("_:") &&
+      !canParseIri(values["@id"], options.baseUrl)
+    ) {
       throw new TypeError("Invalid @id: " + values["@id"]);
     }
-    if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"])) {
+    if (
+      options.baseUrl == null &&
+      values["@id"] != null &&
+      !values["@id"].startsWith("_:") &&
+      canParseIri(values["@id"])
+    ) {
       options = { ...options, baseUrl: parseIri(values["@id"]) };
     }
   `;
@@ -445,7 +454,13 @@ export async function* generateDecoder(
   if (type.extends == null) {
     yield `
     const instance = new this(
-      { id: values["@id"] != null && !values["@id"].startsWith("_:") && canParseIri(values["@id"], options.baseUrl) ? parseIri(values["@id"], options.baseUrl) : undefined },
+      {
+        id: values["@id"] != null &&
+            !values["@id"].startsWith("_:") &&
+            canParseIri(values["@id"], options.baseUrl)
+          ? parseIri(values["@id"], options.baseUrl)
+          : undefined
+      },
       options,
     );
     `;

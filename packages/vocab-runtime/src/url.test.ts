@@ -179,6 +179,18 @@ test("formatIri() preserves DID-internal pct-encoded authority characters", () =
   );
 });
 
+test("parseIri() accepts portable DID URLs with encoded DID delimiters", () => {
+  const parsed = parseIri("ap://did:web:example.com%3A3000/u/1");
+  deepStrictEqual(
+    parsed,
+    new URL("ap+ef61://did%3Aweb%3Aexample.com%253A3000/u/1"),
+  );
+  deepStrictEqual(
+    formatIri(parsed),
+    "ap+ef61://did:web:example.com%3A3000/u/1",
+  );
+});
+
 test("validatePublicUrl()", async () => {
   await rejects(() => validatePublicUrl("ftp://localhost"), UrlError);
   await rejects(
