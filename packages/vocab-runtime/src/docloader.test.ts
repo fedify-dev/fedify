@@ -2,7 +2,7 @@ import fetchMock from "fetch-mock";
 import { deepStrictEqual, ok, rejects } from "node:assert";
 import { test } from "node:test";
 import preloadedContexts from "./contexts.ts";
-import { getDocumentLoader } from "./docloader.ts";
+import { getDocumentLoader, getRemoteDocument } from "./docloader.ts";
 import { FetchError } from "./request.ts";
 import { UrlError } from "./url.ts";
 
@@ -336,6 +336,67 @@ test("getDocumentLoader()", async (t) => {
           "text/html; charset=utf-8",
         );
         return true;
+      },
+    );
+  });
+
+  await t.test("HTML Content-Length over limit cancels body", async () => {
+    let canceled = false;
+    const response = new Response("<!DOCTYPE html>", {
+      headers: {
+        "Content-Length": String(1024 * 1024 + 1),
+        "Content-Type": "text/html; charset=utf-8",
+      },
+    });
+    Object.defineProperty(response, "body", {
+      value: {
+        cancel: () => {
+          canceled = true;
+        },
+      },
+    });
+    await rejects(
+      () =>
+        getRemoteDocument(
+          "https://example.com/large-html-cancel",
+          response,
+          () => {
+            throw new Error("unexpected alternate fetch");
+          },
+        ),
+      FetchError,
+    );
+    deepStrictEqual(canceled, true);
+  });
+
+  await t.test("HTML body without getReader falls back to text", async () => {
+    const response = new Response(
+      JSON.stringify({
+        "@context": "https://www.w3.org/ns/activitystreams",
+        id: "https://example.com/body-without-get-reader",
+        name: "Fetched object",
+        type: "Object",
+      }),
+      { headers: { "Content-Type": "text/html; charset=utf-8" } },
+    );
+    Object.defineProperty(response, "body", { value: {} });
+    deepStrictEqual(
+      await getRemoteDocument(
+        "https://example.com/body-without-get-reader",
+        response,
+        () => {
+          throw new Error("unexpected alternate fetch");
+        },
+      ),
+      {
+        contextUrl: null,
+        documentUrl: "https://example.com/body-without-get-reader",
+        document: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          id: "https://example.com/body-without-get-reader",
+          name: "Fetched object",
+          type: "Object",
+        },
       },
     );
   });
