@@ -1581,6 +1581,12 @@ test("InteractionPolicy.canFeature", async () => {
       "https://www.w3.org/ns/activitystreams",
       "https://gotosocial.org/ns",
       "https://w3id.org/fep/7aa9",
+      {
+        featuredCollections: {
+          "@id": "https://w3id.org/fep/7aa9#featuredCollections",
+          "@type": "@id",
+        },
+      },
     ],
     type: "Person",
     id: "https://example.com/users/alice",
