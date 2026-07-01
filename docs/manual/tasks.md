@@ -280,12 +280,12 @@ await ctx.enqueueTask(sendDigest, payload, {
 
 How the key is resolved depends on the queue and the key–value store:
 
-1.  **Native backend.**  When the task's queue declares
+1.  *Native backend.*  When the task's queue declares
     `~MessageQueue.nativeDeduplication`, Fedify forwards the key in the
     message queue's `~MessageQueueEnqueueOptions.deduplicationKey` and the
     backend owns the check.  Fedify does not touch the key–value store.
 
-2.  **Key–value fallback.**  Otherwise, if the configured `~KvStore` exposes
+2.  *Key–value fallback.*  Otherwise, if the configured `KvStore` exposes
     the optional compare-and-swap (`~KvStore.cas`) primitive, Fedify records
     the key under a dedicated `taskDeduplication` prefix with a TTL and skips
     the enqueue while a marker is present.  The TTL defaults to one hour and is
@@ -298,7 +298,7 @@ How the key is resolved depends on the queue and the key–value store:
     });
     ~~~~
 
-3.  **No conditional write.**  When neither applies—no native deduplication and
+3.  *No conditional write.*  When neither applies—no native deduplication and
     a key–value store without `~KvStore.cas`—the behavior is governed by
     `~FederationOptions.taskDeduplicationFallback`.  `"open"` (the default)
     lets the enqueue proceed without deduplication after a debug-level log;
@@ -331,13 +331,13 @@ key–value store with `~KvStore.cas`—Fedify rejects a multi-item batch with a
 risking duplicates.  Under the `"open"` fallback (no native deduplication and no
 `cas`), no marker is taken, so the batch simply fans out without deduplication.
 
-This applies through `~ParallelMessageQueue` as well: wrapping a queue that
+This applies through `ParallelMessageQueue` as well: wrapping a queue that
 lacks `~MessageQueue.enqueueMany()` does not make batch enqueue atomic, so a
 deduplicated multi-item batch on such a wrapper is likewise rejected rather than
 collapsed onto one message.
 
 > [!WARNING]
-> The key–value fallback is **best-effort, not transactional**.  The marker
+> The key–value fallback is *best-effort, not transactional*.  The marker
 > write and the enqueue are separate operations.  Fedify rolls the marker back
 > when an enqueue fails, so a transient failure does not suppress the retry, but
 > a crash before that rollback, the `"open"` fallback under concurrency, a
