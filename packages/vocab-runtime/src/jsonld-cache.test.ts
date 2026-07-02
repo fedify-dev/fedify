@@ -52,6 +52,39 @@ test("normalizeJsonLdIris() normalizes selected JSON-LD IRI positions", () => {
   });
 });
 
+test("normalizeJsonLdIris() preserves IRI context in list/set wrappers", () => {
+  const iriKeys = new Set(["https://example.com/ns#ref"]);
+  const value = {
+    "https://example.com/ns#ref": [
+      {
+        "@list": [
+          { "@value": "ap://did:key:z6Mkabc/listed" },
+        ],
+      },
+      {
+        "@set": [
+          { "@value": "ap://did:key:z6Mkabc/set" },
+        ],
+      },
+    ],
+  };
+
+  deepStrictEqual(normalizeJsonLdIris(value, iriKeys), {
+    "https://example.com/ns#ref": [
+      {
+        "@list": [
+          { "@value": "ap+ef61://did:key:z6Mkabc/listed" },
+        ],
+      },
+      {
+        "@set": [
+          { "@value": "ap+ef61://did:key:z6Mkabc/set" },
+        ],
+      },
+    ],
+  });
+});
+
 test("normalizeJsonLdIris() defines prototype-like keys safely", () => {
   const iriKeys = new Set(["__proto__"]);
   const value: Record<string, unknown> = {};

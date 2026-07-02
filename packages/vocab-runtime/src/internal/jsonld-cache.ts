@@ -49,6 +49,22 @@ export function normalizeJsonLdIris(
         parentKey != null && iriKeys.has(parentKey));
   }
 
+  function arrayItemParentKey(
+    key?: string,
+    parentKey?: string,
+  ): string | undefined {
+    return key === "@list" || key === "@set" ? parentKey : key;
+  }
+
+  function entryParentKey(
+    entryKey: string,
+    key?: string,
+    parentKey?: string,
+  ): string | undefined {
+    if (entryKey === "@list" || entryKey === "@set") return parentKey ?? key;
+    return key === "@list" || key === "@set" ? parentKey : key;
+  }
+
   function normalize(
     value: unknown,
     key?: string,
@@ -70,8 +86,9 @@ export function normalizeJsonLdIris(
     }
     if (Array.isArray(value)) {
       let clone: unknown[] | undefined;
+      const itemParentKey = arrayItemParentKey(key, parentKey);
       for (let i = 0; i < value.length; i++) {
-        const result = normalize(value[i], key, depth + 1, parentKey);
+        const result = normalize(value[i], key, depth + 1, itemParentKey);
         if (result !== value[i]) {
           clone ??= value.slice(0, i);
           clone.push(result);
@@ -85,7 +102,12 @@ export function normalizeJsonLdIris(
     const object = value as Record<string, unknown>;
     let clone: Record<string, unknown> | undefined;
     for (const entryKey of globalThis.Object.keys(object)) {
-      const result = normalize(object[entryKey], entryKey, depth + 1, key);
+      const result = normalize(
+        object[entryKey],
+        entryKey,
+        depth + 1,
+        entryParentKey(entryKey, key, parentKey),
+      );
       if (result !== object[entryKey]) {
         clone ??= { ...object };
         defineJsonLdProperty(clone, entryKey, result);

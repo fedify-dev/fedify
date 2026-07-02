@@ -1411,6 +1411,36 @@ test("fromJsonLd() formats portable IRIs in scalar URL values", async () => {
   deepStrictEqual(jsonLd.quoteUrl, "ap+ef61://did:key:z6Mkabc/objects/1");
 });
 
+test("fromJsonLd() formats portable IRIs in URL value lists", async () => {
+  const note = await Note.fromJsonLd({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://gotosocial.org/ns",
+      { quoteUrl: "as:quoteUrl" },
+    ],
+    type: "Note",
+    id: "https://example.com/notes/1",
+    quoteUrl: {
+      "@list": [
+        { "@value": "ap://did:key:z6Mkabc/objects/1" },
+      ],
+    },
+  }, { documentLoader: mockDocumentLoader, contextLoader: mockDocumentLoader });
+
+  deepStrictEqual(
+    note.quoteUrl,
+    new URL("ap+ef61://did%3Akey%3Az6Mkabc/objects/1"),
+  );
+  const jsonLd = await note.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  deepStrictEqual(jsonLd.quoteUrl, {
+    "@list": [
+      "ap+ef61://did:key:z6Mkabc/objects/1",
+    ],
+  });
+});
+
 test({
   name: "Activity.getObject()",
   permissions: { env: true, read: true },
