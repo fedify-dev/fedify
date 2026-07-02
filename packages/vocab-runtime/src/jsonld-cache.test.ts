@@ -52,6 +52,28 @@ test("normalizeJsonLdIris() normalizes selected JSON-LD IRI positions", () => {
   });
 });
 
+test("normalizeJsonLdIris() defines prototype-like keys safely", () => {
+  const iriKeys = new Set(["__proto__"]);
+  const value: Record<string, unknown> = {};
+  globalThis.Object.defineProperty(value, "__proto__", {
+    value: "ap://did:key:z6Mkabc/object",
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  });
+
+  const normalized = normalizeJsonLdIris(value, iriKeys) as Record<
+    string,
+    unknown
+  >;
+
+  strictEqual(
+    globalThis.Object.getOwnPropertyDescriptor(normalized, "__proto__")?.value,
+    "ap+ef61://did:key:z6Mkabc/object",
+  );
+  strictEqual(globalThis.Object.getPrototypeOf(normalized), Object.prototype);
+});
+
 test("getJsonLdContext() finds nested contexts", () => {
   const context = { name: "https://example.com/ns#name" };
   deepStrictEqual(
@@ -90,6 +112,38 @@ test("compactJsonLdCache() preserves no-context object shape", async () => {
       { "@value": "No-context object shape should stay cached." },
     ],
   });
+});
+
+test("compactJsonLdCache() defines no-context prototype-like keys safely", async () => {
+  const original: Record<string, unknown> = {
+    "@id": "ap://did:key:z6Mkabc/objects/1",
+  };
+  globalThis.Object.defineProperty(original, "__proto__", {
+    value: "ap://did:key:z6Mkabc/proto",
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  });
+  const normalized: Record<string, unknown> = {
+    "@id": "ap+ef61://did:key:z6Mkabc/objects/1",
+  };
+  globalThis.Object.defineProperty(normalized, "__proto__", {
+    value: "ap+ef61://did:key:z6Mkabc/proto",
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  });
+
+  const compacted = await compactJsonLdCache([normalized], original) as Record<
+    string,
+    unknown
+  >;
+
+  strictEqual(
+    globalThis.Object.getOwnPropertyDescriptor(compacted, "__proto__")?.value,
+    "ap+ef61://did:key:z6Mkabc/proto",
+  );
+  strictEqual(globalThis.Object.getPrototypeOf(compacted), Object.prototype);
 });
 
 test("compactJsonLdCache() preserves nested unmapped terms", async () => {

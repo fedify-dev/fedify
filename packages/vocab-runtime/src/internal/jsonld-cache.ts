@@ -88,7 +88,7 @@ export function normalizeJsonLdIris(
       const result = normalize(object[entryKey], entryKey, depth + 1, key);
       if (result !== object[entryKey]) {
         clone ??= { ...object };
-        clone[entryKey] = result;
+        defineJsonLdProperty(clone, entryKey, result);
       }
     }
     return clone ?? object;
@@ -222,7 +222,7 @@ function preserveNoContextJsonLdShape(
     );
     if (value !== originalObject[key]) {
       clone ??= { ...originalObject };
-      clone[key] = value;
+      defineJsonLdProperty(clone, key, value);
     }
   }
   return clone ?? original;
@@ -453,7 +453,7 @@ async function preserveJsonLdShape(
       : value;
     if (shaped !== compactedObject[key]) {
       clone ??= { ...compactedObject };
-      clone[key] = shaped;
+      defineJsonLdProperty(clone, key, shaped);
     }
   }
   if (depth > 0) {
