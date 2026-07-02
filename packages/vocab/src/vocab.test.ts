@@ -869,6 +869,35 @@ test("fromJsonLd() preserves compact multi-node arrays with portable IRIs", asyn
   ]);
 });
 
+test("fromJsonLd() preserves nested unmapped terms with portable IRIs", async () => {
+  const noteJson = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Note",
+    id: "ap://did:key:z6Mkabc/objects/1",
+    attachment: {
+      type: "Object",
+      name: "Attachment with an unmapped extension.",
+      extra: "This nested unmapped property should stay cached.",
+    },
+  };
+
+  const note = await Note.fromJsonLd(noteJson, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+
+  deepStrictEqual(await note.toJsonLd(), {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Note",
+    id: "ap+ef61://did:key:z6Mkabc/objects/1",
+    attachment: {
+      type: "Object",
+      name: "Attachment with an unmapped extension.",
+      extra: "This nested unmapped property should stay cached.",
+    },
+  });
+});
+
 test("fromJsonLd() preserves compact array item extension contexts with portable IRIs", async () => {
   const activityJson = [
     {

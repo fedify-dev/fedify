@@ -546,6 +546,18 @@ function hasTrustedIriOrigin(
       clone[key] = shaped;
     }
   }
+  if (depth > 0) {
+    for (const key of globalThis.Object.keys(originalObject)) {
+      if (
+        key.startsWith("@") ||
+        globalThis.Object.prototype.hasOwnProperty.call(compactedObject, key)
+      ) {
+        continue;
+      }
+      clone ??= { ...compactedObject };
+      clone[key] = structuredClone(originalObject[key]);
+    }
+  }
   return clone ?? compactedObject;
 }\n\n`;
   const moduleVarNames = new Map<string, string>();

@@ -141,6 +141,10 @@ test("haveSameIriOrigin() compares portable IRI authorities", () => {
     parseIri("ap://did:key:z6Mkabc/actor"),
     parseIri("ap://did:key:z6Mkabc/outbox"),
   ));
+  ok(haveSameIriOrigin(
+    new URL("ap://did%3Akey%3Az6Mkabc/actor"),
+    new URL("ap+ef61://did%3Akey%3Az6Mkabc/outbox"),
+  ));
   ok(
     !haveSameIriOrigin(
       parseIri("ap://did:key:z6Mkabc/actor"),

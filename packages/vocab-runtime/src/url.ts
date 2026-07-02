@@ -82,6 +82,7 @@ export function haveSameIriOrigin(left: URL, right: URL): boolean {
 }
 
 function getComparableIriOrigin(iri: URL): string {
+  iri = normalizePortableUrl(iri) ?? iri;
   if (iri.origin !== "null") return iri.origin;
   if (iri.host !== "") return `${iri.protocol}//${iri.host}`;
   return iri.href;
