@@ -92,3 +92,49 @@ test("compactJsonLdCache() preserves nested unmapped terms", async () => {
     },
   });
 });
+
+test("compactJsonLdCache() does not confuse dummy marker prefixes", async () => {
+  const context = {
+    ex: "https://example.com/ns#",
+    id: "@id",
+    represented: "ex:represented",
+    key10: "ex:represented",
+  };
+  const original = {
+    "@context": context,
+    id: "ap://did:key:z6Mkabc/objects/1",
+    represented: "Compacted term already present.",
+    key0: "Extension 0",
+    key1: "Extension 1",
+    key2: "Extension 2",
+    key3: "Extension 3",
+    key4: "Extension 4",
+    key5: "Extension 5",
+    key6: "Extension 6",
+    key7: "Extension 7",
+    key8: "Extension 8",
+    key9: "Extension 9",
+    key10: "Alias represented by the compacted term.",
+  };
+  const expanded = await jsonld.expand(original);
+  const normalized = normalizeJsonLdIris(expanded, new Set(["@id"]));
+
+  deepStrictEqual(await compactJsonLdCache(normalized, original), {
+    "@context": context,
+    id: "ap+ef61://did:key:z6Mkabc/objects/1",
+    key0: "Extension 0",
+    key1: "Extension 1",
+    key2: "Extension 2",
+    key3: "Extension 3",
+    key4: "Extension 4",
+    key5: "Extension 5",
+    key6: "Extension 6",
+    key7: "Extension 7",
+    key8: "Extension 8",
+    key9: "Extension 9",
+    key10: [
+      "Alias represented by the compacted term.",
+      "Compacted term already present.",
+    ],
+  });
+});

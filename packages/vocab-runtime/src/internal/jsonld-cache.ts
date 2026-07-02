@@ -233,9 +233,8 @@ async function mergeUnmappedTerms(
     }
     for (const [term, termValue] of globalThis.Object.entries(node)) {
       if (!compactedTerms.has(term)) continue;
-      const value = JSON.stringify(termValue);
       for (let i = 0; i < unmappedKeys.length; i++) {
-        if (value.includes(`${dummyPrefix}${i}`)) {
+        if (containsValue(termValue, `${dummyPrefix}${i}`)) {
           representedKeys.add(unmappedKeys[i]);
         }
       }
@@ -249,6 +248,17 @@ async function mergeUnmappedTerms(
     }
   }
   return result;
+}
+
+function containsValue(value: unknown, expected: string): boolean {
+  if (value === expected) return true;
+  if (Array.isArray(value)) {
+    return value.some((item) => containsValue(item, expected));
+  }
+  if (value == null || typeof value !== "object") return false;
+  return globalThis.Object.values(value).some((item) =>
+    containsValue(item, expected)
+  );
 }
 
 function preserveJsonLdShape(
