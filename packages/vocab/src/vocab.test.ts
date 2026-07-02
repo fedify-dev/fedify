@@ -3455,6 +3455,31 @@ test("FEP-fe34: crossOrigin trust behavior", async () => {
   deepStrictEqual(result?.content, "This is a spoofed note");
 });
 
+test("FEP-fe34: id-less owners honor crossOrigin trust", async () => {
+  const create = await Create.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "@type": "Create",
+    "actor": "https://example.com/actor",
+    "object": {
+      "@type": "Note",
+      "@id": "https://different-origin.com/note",
+      "content": "Embedded note",
+    },
+  });
+
+  const result = await create.getObject({
+    crossOrigin: "trust",
+    // deno-lint-ignore require-await
+    documentLoader: async (url) => {
+      throw new Error(`Unexpected fetch: ${url}`);
+    },
+  });
+
+  assertInstanceOf(result, Note);
+  deepStrictEqual(result.id, new URL("https://different-origin.com/note"));
+  deepStrictEqual(result.content, "Embedded note");
+});
+
 test("FEP-fe34: Same origin objects are trusted", async () => {
   // deno-lint-ignore require-await
   const sameOriginDocumentLoader = async (url: string) => {
@@ -3745,6 +3770,44 @@ test("FEP-fe34: Array properties with crossOrigin trust option", async () => {
   assertInstanceOf(items[1], Note);
   deepStrictEqual((items[0] as Note).content, "Fake note 1");
   deepStrictEqual((items[1] as Note).content, "Legitimate note 2");
+});
+
+test("FEP-fe34: id-less arrays honor crossOrigin trust", async () => {
+  const collection = await Collection.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "@type": "Collection",
+    "items": [
+      {
+        "@type": "Note",
+        "@id": "https://different-origin.com/note1",
+        "content": "Embedded note 1",
+      },
+      {
+        "@type": "Note",
+        "@id": "https://different-origin.com/note2",
+        "content": "Embedded note 2",
+      },
+    ],
+  });
+
+  const items = [];
+  for await (
+    const item of collection.getItems({
+      crossOrigin: "trust",
+      // deno-lint-ignore require-await
+      documentLoader: async (url) => {
+        throw new Error(`Unexpected fetch: ${url}`);
+      },
+    })
+  ) {
+    items.push(item);
+  }
+
+  deepStrictEqual(items.length, 2);
+  assertInstanceOf(items[0], Note);
+  assertInstanceOf(items[1], Note);
+  deepStrictEqual((items[0] as Note).content, "Embedded note 1");
+  deepStrictEqual((items[1] as Note).content, "Embedded note 2");
 });
 
 test("FEP-fe34: Array properties track trust per item", async () => {

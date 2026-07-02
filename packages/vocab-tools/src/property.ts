@@ -277,7 +277,7 @@ async function* generateProperty(
         let v = this.${await getFieldName(property.uri)}[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.${await getFieldName(property.uri, "#_trust")}.has(0)) {
           v = v.id;
         }
@@ -383,8 +383,7 @@ async function* generateProperty(
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.${await getFieldName(property.uri, "#_trust")}.has(i)) {
             v = v.id;
           }

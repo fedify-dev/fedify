@@ -2327,8 +2327,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_49BipA5dq9eoH8LX8xdsVumveTca_attachment.has(i)) {
             v = v.id;
           }
@@ -2595,7 +2594,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_42CGqJ94zgQ3ZBbfHwD8Hrr2L5Py_attributedTo[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_42CGqJ94zgQ3ZBbfHwD8Hrr2L5Py_attributedTo.has(0)) {
           v = v.id;
         }
@@ -2702,8 +2701,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_42CGqJ94zgQ3ZBbfHwD8Hrr2L5Py_attributedTo.has(i)) {
             v = v.id;
           }
@@ -2933,7 +2931,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_3ocC3VVi88cEd5sPWL8djkZsvTN6_audience[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3ocC3VVi88cEd5sPWL8djkZsvTN6_audience.has(0)) {
           v = v.id;
         }
@@ -3039,8 +3037,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_3ocC3VVi88cEd5sPWL8djkZsvTN6_audience.has(i)) {
             v = v.id;
           }
@@ -3313,8 +3310,7 @@ get contents(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_3mhZzGXSpQ431mBSz2kvych22v4e_context.has(i)) {
             v = v.id;
           }
@@ -3594,8 +3590,7 @@ get names(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_86xFhmgBapoMvYqjbjRuDPayTrS_generator.has(i)) {
             v = v.id;
           }
@@ -3847,7 +3842,7 @@ get names(): ((string | LanguageString))[] {
         let v = this.#_33CjRLy5ujtsUrwRSCrsggvGdKuR_icon[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_33CjRLy5ujtsUrwRSCrsggvGdKuR_icon.has(0)) {
           v = v.id;
         }
@@ -3954,8 +3949,7 @@ get names(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_33CjRLy5ujtsUrwRSCrsggvGdKuR_icon.has(i)) {
             v = v.id;
           }
@@ -4207,7 +4201,7 @@ get names(): ((string | LanguageString))[] {
         let v = this.#_3dXrUdkARxwyJLtJcYi1AJ92H41U_image[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3dXrUdkARxwyJLtJcYi1AJ92H41U_image.has(0)) {
           v = v.id;
         }
@@ -4314,8 +4308,7 @@ get names(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_3dXrUdkARxwyJLtJcYi1AJ92H41U_image.has(i)) {
             v = v.id;
           }
@@ -4554,7 +4547,7 @@ get names(): ((string | LanguageString))[] {
         let v = this.#_3fpbDrvZgf3Kq1a5V9aByFn8kx3s_inReplyTo[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3fpbDrvZgf3Kq1a5V9aByFn8kx3s_inReplyTo.has(0)) {
           v = v.id;
         }
@@ -4660,8 +4653,7 @@ get names(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_3fpbDrvZgf3Kq1a5V9aByFn8kx3s_inReplyTo.has(i)) {
             v = v.id;
           }
@@ -4900,7 +4892,7 @@ get names(): ((string | LanguageString))[] {
         let v = this.#_31k5MUZJsnsPNg8dQQJieWaXTFnR_location[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_31k5MUZJsnsPNg8dQQJieWaXTFnR_location.has(0)) {
           v = v.id;
         }
@@ -5006,8 +4998,7 @@ get names(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_31k5MUZJsnsPNg8dQQJieWaXTFnR_location.has(i)) {
             v = v.id;
           }
@@ -5245,7 +5236,7 @@ get names(): ((string | LanguageString))[] {
         let v = this.#_gCVTegXxWWCw6wWRxa1QF65zusg_preview[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_gCVTegXxWWCw6wWRxa1QF65zusg_preview.has(0)) {
           v = v.id;
         }
@@ -5350,8 +5341,7 @@ get names(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_gCVTegXxWWCw6wWRxa1QF65zusg_preview.has(i)) {
             v = v.id;
           }
@@ -5594,7 +5584,7 @@ get names(): ((string | LanguageString))[] {
         let v = this.#_7UpwM3JWcXhADcscukEehBorf6k_replies[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_7UpwM3JWcXhADcscukEehBorf6k_replies.has(0)) {
           v = v.id;
         }
@@ -5828,7 +5818,7 @@ get names(): ((string | LanguageString))[] {
         let v = this.#_3kAfck9PcEYt2L7xug5y99YPbANs_shares[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3kAfck9PcEYt2L7xug5y99YPbANs_shares.has(0)) {
           v = v.id;
         }
@@ -6062,7 +6052,7 @@ get names(): ((string | LanguageString))[] {
         let v = this.#_S3ceDnpMdzoTRCccB9FkJWrEzYW_likes[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_S3ceDnpMdzoTRCccB9FkJWrEzYW_likes.has(0)) {
           v = v.id;
         }
@@ -6290,7 +6280,7 @@ get names(): ((string | LanguageString))[] {
         let v = this.#_kMatyyNAuxoTD8GQMBfA5ogThMR_emojiReactions[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_kMatyyNAuxoTD8GQMBfA5ogThMR_emojiReactions.has(0)) {
           v = v.id;
         }
@@ -6569,8 +6559,7 @@ get summaries(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_5chuqj6s95p5gg2sk1HntGfarRf_tag.has(i)) {
             v = v.id;
           }
@@ -6834,7 +6823,7 @@ get urls(): ((URL | Link))[] {
         let v = this.#_3hFbw7DTpHhq3cvVhkY8njhcsXbd_to[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3hFbw7DTpHhq3cvVhkY8njhcsXbd_to.has(0)) {
           v = v.id;
         }
@@ -6940,8 +6929,7 @@ get urls(): ((URL | Link))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_3hFbw7DTpHhq3cvVhkY8njhcsXbd_to.has(i)) {
             v = v.id;
           }
@@ -7171,7 +7159,7 @@ get urls(): ((URL | Link))[] {
         let v = this.#_aLZupjwL8XB7tzdLgCMXdjZ6qej_bto[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_aLZupjwL8XB7tzdLgCMXdjZ6qej_bto.has(0)) {
           v = v.id;
         }
@@ -7277,8 +7265,7 @@ get urls(): ((URL | Link))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_aLZupjwL8XB7tzdLgCMXdjZ6qej_bto.has(i)) {
             v = v.id;
           }
@@ -7508,7 +7495,7 @@ get urls(): ((URL | Link))[] {
         let v = this.#_42a1SvBs24QSLzKcfjCyNTjW5a1g_cc[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_42a1SvBs24QSLzKcfjCyNTjW5a1g_cc.has(0)) {
           v = v.id;
         }
@@ -7614,8 +7601,7 @@ get urls(): ((URL | Link))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_42a1SvBs24QSLzKcfjCyNTjW5a1g_cc.has(i)) {
             v = v.id;
           }
@@ -7845,7 +7831,7 @@ get urls(): ((URL | Link))[] {
         let v = this.#_3qvegKUB8YLgTXRpEf8E6JZSkz2H_bcc[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3qvegKUB8YLgTXRpEf8E6JZSkz2H_bcc.has(0)) {
           v = v.id;
         }
@@ -7951,8 +7937,7 @@ get urls(): ((URL | Link))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_3qvegKUB8YLgTXRpEf8E6JZSkz2H_bcc.has(i)) {
             v = v.id;
           }
@@ -8245,7 +8230,7 @@ get urls(): ((URL | Link))[] {
         let v = this.#_42rPnotok1ivQ2RNCKNbeFJgx8b8_proof[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_42rPnotok1ivQ2RNCKNbeFJgx8b8_proof.has(0)) {
           v = v.id;
         }
@@ -8350,8 +8335,7 @@ get urls(): ((URL | Link))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_42rPnotok1ivQ2RNCKNbeFJgx8b8_proof.has(i)) {
             v = v.id;
           }
@@ -8620,7 +8604,7 @@ get urls(): ((URL | Link))[] {
         let v = this.#_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3fCeb5aXaDDd4fvkQ96BLWifBUBa_likeAuthorization.has(0)) {
           v = v.id;
         }
@@ -8848,7 +8832,7 @@ get urls(): ((URL | Link))[] {
         let v = this.#_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_YA4wdUW7rYztAQ6SjhMnJCmcmtP_replyAuthorization.has(0)) {
           v = v.id;
         }
@@ -9076,7 +9060,7 @@ get urls(): ((URL | Link))[] {
         let v = this.#_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_446xEaDBs3Fz6MyzP3PSBaLupkbJ_announceAuthorization.has(0)) {
           v = v.id;
         }
@@ -13704,7 +13688,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote.has(0)) {
           v = v.id;
         }
@@ -13955,7 +13939,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization.has(0)) {
           v = v.id;
         }
@@ -15365,7 +15349,7 @@ instruments?: (Object | URL)[];}
         let v = this.#_2DjTTboo3CNHU2a2JQqUSE2dbv9D_actor[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2DjTTboo3CNHU2a2JQqUSE2dbv9D_actor.has(0)) {
           v = v.id;
         }
@@ -15472,8 +15456,7 @@ instruments?: (Object | URL)[];}
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_2DjTTboo3CNHU2a2JQqUSE2dbv9D_actor.has(i)) {
             v = v.id;
           }
@@ -15704,7 +15687,7 @@ instruments?: (Object | URL)[];}
         let v = this.#_2MH19yxjn1wnHsNfa5n4JBhJzxyc_object[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2MH19yxjn1wnHsNfa5n4JBhJzxyc_object.has(0)) {
           v = v.id;
         }
@@ -15811,8 +15794,7 @@ instruments?: (Object | URL)[];}
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_2MH19yxjn1wnHsNfa5n4JBhJzxyc_object.has(i)) {
             v = v.id;
           }
@@ -16046,7 +16028,7 @@ instruments?: (Object | URL)[];}
         let v = this.#_3JQCmF2Ww56Ag9EWRYoSZRDNCYtF_target[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3JQCmF2Ww56Ag9EWRYoSZRDNCYtF_target.has(0)) {
           v = v.id;
         }
@@ -16156,8 +16138,7 @@ instruments?: (Object | URL)[];}
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_3JQCmF2Ww56Ag9EWRYoSZRDNCYtF_target.has(i)) {
             v = v.id;
           }
@@ -16388,7 +16369,7 @@ instruments?: (Object | URL)[];}
         let v = this.#_u4QGFbRFcYmPEKGbPv1hpBR9r5G_result[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_u4QGFbRFcYmPEKGbPv1hpBR9r5G_result.has(0)) {
           v = v.id;
         }
@@ -16495,8 +16476,7 @@ instruments?: (Object | URL)[];}
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_u4QGFbRFcYmPEKGbPv1hpBR9r5G_result.has(i)) {
             v = v.id;
           }
@@ -16728,7 +16708,7 @@ instruments?: (Object | URL)[];}
         let v = this.#_25zu2s3VxVujgEKqrDycjE284XQR_origin[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_25zu2s3VxVujgEKqrDycjE284XQR_origin.has(0)) {
           v = v.id;
         }
@@ -16836,8 +16816,7 @@ instruments?: (Object | URL)[];}
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_25zu2s3VxVujgEKqrDycjE284XQR_origin.has(i)) {
             v = v.id;
           }
@@ -17067,7 +17046,7 @@ instruments?: (Object | URL)[];}
         let v = this.#_3c5t2x7DYRo2shwTxpkd4kYSS5WQ_instrument[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3c5t2x7DYRo2shwTxpkd4kYSS5WQ_instrument.has(0)) {
           v = v.id;
         }
@@ -17173,8 +17152,7 @@ instruments?: (Object | URL)[];}
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_3c5t2x7DYRo2shwTxpkd4kYSS5WQ_instrument.has(i)) {
             v = v.id;
           }
@@ -20003,7 +19981,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject.has(0)) {
           v = v.id;
         }
@@ -20230,7 +20208,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget.has(0)) {
           v = v.id;
         }
@@ -22933,7 +22911,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject.has(0)) {
           v = v.id;
         }
@@ -23160,7 +23138,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget.has(0)) {
           v = v.id;
         }
@@ -24355,7 +24333,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject.has(0)) {
           v = v.id;
         }
@@ -24582,7 +24560,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget.has(0)) {
           v = v.id;
         }
@@ -25776,7 +25754,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2114kRKbujWhxEUghdkRYYKbXTGi_interactingObject.has(0)) {
           v = v.id;
         }
@@ -26003,7 +25981,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2wHyG75YnN15CDMaFk3VNjByu4aL_interactionTarget.has(0)) {
           v = v.id;
         }
@@ -28171,7 +28149,7 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
         let v = this.#_2mHVKxqA7zncjveJrDEo3pWpMZqg_verificationMethod[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2mHVKxqA7zncjveJrDEo3pWpMZqg_verificationMethod.has(0)) {
           v = v.id;
         }
@@ -29178,7 +29156,7 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
         let v = this.#_5UJq9NDh3ZHgswFwwdVxQvJxdx2_owner[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_5UJq9NDh3ZHgswFwwdVxQvJxdx2_owner.has(0)) {
           v = v.id;
         }
@@ -30093,7 +30071,7 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
         let v = this.#_2yr3eUBTP6cNcyaxKzAXWjFsnGzN_controller[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2yr3eUBTP6cNcyaxKzAXWjFsnGzN_controller.has(0)) {
           v = v.id;
         }
@@ -35921,7 +35899,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_axq166E2eZADq34V4MYUc8KMZdC_publicKey[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_axq166E2eZADq34V4MYUc8KMZdC_publicKey.has(0)) {
           v = v.id;
         }
@@ -36025,8 +36003,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_axq166E2eZADq34V4MYUc8KMZdC_publicKey.has(i)) {
             v = v.id;
           }
@@ -36258,7 +36235,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.has(0)) {
           v = v.id;
         }
@@ -36366,8 +36343,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.has(i)) {
             v = v.id;
           }
@@ -36636,7 +36612,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox.has(0)) {
           v = v.id;
         }
@@ -36881,7 +36857,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_41QwhqJouoLg3h8dRPKat21brynC_outbox[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_41QwhqJouoLg3h8dRPKat21brynC_outbox.has(0)) {
           v = v.id;
         }
@@ -37112,7 +37088,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_3yAv8jymNfNuJUDuBzJ1NQhdbAee_following[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3yAv8jymNfNuJUDuBzJ1NQhdbAee_following.has(0)) {
           v = v.id;
         }
@@ -37346,7 +37322,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_BBCTgfphhsFzpVfKTykGSpBNwoA_followers[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_BBCTgfphhsFzpVfKTykGSpBNwoA_followers.has(0)) {
           v = v.id;
         }
@@ -37578,7 +37554,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_3bgkPwJanyTCoVFM9ovRcus8tKkU_liked[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3bgkPwJanyTCoVFM9ovRcus8tKkU_liked.has(0)) {
           v = v.id;
         }
@@ -37808,7 +37784,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_4N1vBJzXDf8NbBumeECQMFvKetja_featured[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_4N1vBJzXDf8NbBumeECQMFvKetja_featured.has(0)) {
           v = v.id;
         }
@@ -38038,7 +38014,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags.has(0)) {
           v = v.id;
         }
@@ -38265,8 +38241,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.has(i)) {
             v = v.id;
           }
@@ -38605,7 +38580,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo.has(0)) {
           v = v.id;
         }
@@ -38871,7 +38846,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.has(0)) {
           v = v.id;
         }
@@ -38979,8 +38954,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.has(i)) {
             v = v.id;
           }
@@ -39212,7 +39186,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.has(0)) {
           v = v.id;
         }
@@ -39320,8 +39294,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.has(i)) {
             v = v.id;
           }
@@ -42648,7 +42621,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote.has(0)) {
           v = v.id;
         }
@@ -42899,7 +42872,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization.has(0)) {
           v = v.id;
         }
@@ -45856,7 +45829,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_3UyUdxnyn6cDn53QKrh4MBiearma_current[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3UyUdxnyn6cDn53QKrh4MBiearma_current.has(0)) {
           v = v.id;
         }
@@ -46084,7 +46057,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_J52RqweMe6hhv7RnLJMC8BExTE5_first[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_J52RqweMe6hhv7RnLJMC8BExTE5_first.has(0)) {
           v = v.id;
         }
@@ -46312,7 +46285,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_gyJJnyEFnuNVi1HFZKfAn3Hfn26_last[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_gyJJnyEFnuNVi1HFZKfAn3Hfn26_last.has(0)) {
           v = v.id;
         }
@@ -46549,8 +46522,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_2JPCKWTcfBmTCcW8Tv3TpRaLVaqg_items.has(i)) {
             v = v.id;
           }
@@ -46779,7 +46751,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_4TB9Qd9ddtcZEpMfzbHhzafE6jaJ_likesOf[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_4TB9Qd9ddtcZEpMfzbHhzafE6jaJ_likesOf.has(0)) {
           v = v.id;
         }
@@ -47006,7 +46978,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_3manzgeKiPsugpztKGiaUUwJ3ito_sharesOf[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3manzgeKiPsugpztKGiaUUwJ3ito_sharesOf.has(0)) {
           v = v.id;
         }
@@ -47233,7 +47205,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_3T3oGm3twpcQUcrnMisXQtmDZ32X_repliesOf[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3T3oGm3twpcQUcrnMisXQtmDZ32X_repliesOf.has(0)) {
           v = v.id;
         }
@@ -47460,7 +47432,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_2bvRkAFZjMfVD8jiUWZJr5YokSeN_inboxOf[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2bvRkAFZjMfVD8jiUWZJr5YokSeN_inboxOf.has(0)) {
           v = v.id;
         }
@@ -47687,7 +47659,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_4AHzVZDxHjK6uEWa9UiKHGK34yYm_outboxOf[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_4AHzVZDxHjK6uEWa9UiKHGK34yYm_outboxOf.has(0)) {
           v = v.id;
         }
@@ -47914,7 +47886,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_41aoZ5M6yRUHy3Zx8q6iuZQxtopb_followersOf[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_41aoZ5M6yRUHy3Zx8q6iuZQxtopb_followersOf.has(0)) {
           v = v.id;
         }
@@ -48141,7 +48113,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_2nXT2Ah42UjEEQF5oJQ39CbKB1xj_followingOf[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2nXT2Ah42UjEEQF5oJQ39CbKB1xj_followingOf.has(0)) {
           v = v.id;
         }
@@ -48368,7 +48340,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_2bsySzmT3qEZcrnoe3tZ5xBjXSju_likedOf[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2bsySzmT3qEZcrnoe3tZ5xBjXSju_likedOf.has(0)) {
           v = v.id;
         }
@@ -50169,7 +50141,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_2kWgBhQKjEauxx8C6qF3ZQamK4Le_partOf[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2kWgBhQKjEauxx8C6qF3ZQamK4Le_partOf.has(0)) {
           v = v.id;
         }
@@ -50395,7 +50367,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_3BT4kQLcXhHx7TAWaNDKh8nFn9eY_next[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3BT4kQLcXhHx7TAWaNDKh8nFn9eY_next.has(0)) {
           v = v.id;
         }
@@ -50622,7 +50594,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_3b8yG8tDNzQFFEnWhCc13G8eHooA_prev[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3b8yG8tDNzQFFEnWhCc13G8eHooA_prev.has(0)) {
           v = v.id;
         }
@@ -55631,7 +55603,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_axq166E2eZADq34V4MYUc8KMZdC_publicKey[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_axq166E2eZADq34V4MYUc8KMZdC_publicKey.has(0)) {
           v = v.id;
         }
@@ -55735,8 +55707,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_axq166E2eZADq34V4MYUc8KMZdC_publicKey.has(i)) {
             v = v.id;
           }
@@ -55968,7 +55939,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.has(0)) {
           v = v.id;
         }
@@ -56076,8 +56047,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.has(i)) {
             v = v.id;
           }
@@ -56346,7 +56316,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox.has(0)) {
           v = v.id;
         }
@@ -56591,7 +56561,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_41QwhqJouoLg3h8dRPKat21brynC_outbox[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_41QwhqJouoLg3h8dRPKat21brynC_outbox.has(0)) {
           v = v.id;
         }
@@ -56822,7 +56792,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_3yAv8jymNfNuJUDuBzJ1NQhdbAee_following[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3yAv8jymNfNuJUDuBzJ1NQhdbAee_following.has(0)) {
           v = v.id;
         }
@@ -57056,7 +57026,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_BBCTgfphhsFzpVfKTykGSpBNwoA_followers[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_BBCTgfphhsFzpVfKTykGSpBNwoA_followers.has(0)) {
           v = v.id;
         }
@@ -57288,7 +57258,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_3bgkPwJanyTCoVFM9ovRcus8tKkU_liked[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3bgkPwJanyTCoVFM9ovRcus8tKkU_liked.has(0)) {
           v = v.id;
         }
@@ -57518,7 +57488,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_4N1vBJzXDf8NbBumeECQMFvKetja_featured[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_4N1vBJzXDf8NbBumeECQMFvKetja_featured.has(0)) {
           v = v.id;
         }
@@ -57748,7 +57718,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags.has(0)) {
           v = v.id;
         }
@@ -57975,8 +57945,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.has(i)) {
             v = v.id;
           }
@@ -58315,7 +58284,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo.has(0)) {
           v = v.id;
         }
@@ -58581,7 +58550,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.has(0)) {
           v = v.id;
         }
@@ -58689,8 +58658,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.has(i)) {
             v = v.id;
           }
@@ -58922,7 +58890,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.has(0)) {
           v = v.id;
         }
@@ -59030,8 +58998,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.has(i)) {
             v = v.id;
           }
@@ -62045,8 +62012,7 @@ get names(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_gCVTegXxWWCw6wWRxa1QF65zusg_preview.has(i)) {
             v = v.id;
           }
@@ -66877,7 +66843,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote.has(0)) {
           v = v.id;
         }
@@ -67128,7 +67094,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization.has(0)) {
           v = v.id;
         }
@@ -68033,8 +67999,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_2JPCKWTcfBmTCcW8Tv3TpRaLVaqg_items.has(i)) {
             v = v.id;
           }
@@ -68806,8 +68771,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_2JPCKWTcfBmTCcW8Tv3TpRaLVaqg_items.has(i)) {
             v = v.id;
           }
@@ -70515,7 +70479,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_axq166E2eZADq34V4MYUc8KMZdC_publicKey[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_axq166E2eZADq34V4MYUc8KMZdC_publicKey.has(0)) {
           v = v.id;
         }
@@ -70619,8 +70583,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_axq166E2eZADq34V4MYUc8KMZdC_publicKey.has(i)) {
             v = v.id;
           }
@@ -70852,7 +70815,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.has(0)) {
           v = v.id;
         }
@@ -70960,8 +70923,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.has(i)) {
             v = v.id;
           }
@@ -71230,7 +71192,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox.has(0)) {
           v = v.id;
         }
@@ -71475,7 +71437,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_41QwhqJouoLg3h8dRPKat21brynC_outbox[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_41QwhqJouoLg3h8dRPKat21brynC_outbox.has(0)) {
           v = v.id;
         }
@@ -71706,7 +71668,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_3yAv8jymNfNuJUDuBzJ1NQhdbAee_following[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3yAv8jymNfNuJUDuBzJ1NQhdbAee_following.has(0)) {
           v = v.id;
         }
@@ -71940,7 +71902,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_BBCTgfphhsFzpVfKTykGSpBNwoA_followers[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_BBCTgfphhsFzpVfKTykGSpBNwoA_followers.has(0)) {
           v = v.id;
         }
@@ -72172,7 +72134,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_3bgkPwJanyTCoVFM9ovRcus8tKkU_liked[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3bgkPwJanyTCoVFM9ovRcus8tKkU_liked.has(0)) {
           v = v.id;
         }
@@ -72402,7 +72364,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_4N1vBJzXDf8NbBumeECQMFvKetja_featured[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_4N1vBJzXDf8NbBumeECQMFvKetja_featured.has(0)) {
           v = v.id;
         }
@@ -72632,7 +72594,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags.has(0)) {
           v = v.id;
         }
@@ -72859,8 +72821,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.has(i)) {
             v = v.id;
           }
@@ -73199,7 +73160,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo.has(0)) {
           v = v.id;
         }
@@ -73465,7 +73426,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.has(0)) {
           v = v.id;
         }
@@ -73573,8 +73534,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.has(i)) {
             v = v.id;
           }
@@ -73806,7 +73766,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.has(0)) {
           v = v.id;
         }
@@ -73914,8 +73874,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.has(i)) {
             v = v.id;
           }
@@ -77715,7 +77674,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_axq166E2eZADq34V4MYUc8KMZdC_publicKey[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_axq166E2eZADq34V4MYUc8KMZdC_publicKey.has(0)) {
           v = v.id;
         }
@@ -77819,8 +77778,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_axq166E2eZADq34V4MYUc8KMZdC_publicKey.has(i)) {
             v = v.id;
           }
@@ -78052,7 +78010,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.has(0)) {
           v = v.id;
         }
@@ -78160,8 +78118,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.has(i)) {
             v = v.id;
           }
@@ -78430,7 +78387,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox.has(0)) {
           v = v.id;
         }
@@ -78675,7 +78632,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_41QwhqJouoLg3h8dRPKat21brynC_outbox[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_41QwhqJouoLg3h8dRPKat21brynC_outbox.has(0)) {
           v = v.id;
         }
@@ -78906,7 +78863,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_3yAv8jymNfNuJUDuBzJ1NQhdbAee_following[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3yAv8jymNfNuJUDuBzJ1NQhdbAee_following.has(0)) {
           v = v.id;
         }
@@ -79140,7 +79097,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_BBCTgfphhsFzpVfKTykGSpBNwoA_followers[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_BBCTgfphhsFzpVfKTykGSpBNwoA_followers.has(0)) {
           v = v.id;
         }
@@ -79372,7 +79329,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_3bgkPwJanyTCoVFM9ovRcus8tKkU_liked[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3bgkPwJanyTCoVFM9ovRcus8tKkU_liked.has(0)) {
           v = v.id;
         }
@@ -79602,7 +79559,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_4N1vBJzXDf8NbBumeECQMFvKetja_featured[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_4N1vBJzXDf8NbBumeECQMFvKetja_featured.has(0)) {
           v = v.id;
         }
@@ -79832,7 +79789,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags.has(0)) {
           v = v.id;
         }
@@ -80059,8 +80016,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.has(i)) {
             v = v.id;
           }
@@ -80399,7 +80355,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo.has(0)) {
           v = v.id;
         }
@@ -80665,7 +80621,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.has(0)) {
           v = v.id;
         }
@@ -80773,8 +80729,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.has(i)) {
             v = v.id;
           }
@@ -81006,7 +80961,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.has(0)) {
           v = v.id;
         }
@@ -81114,8 +81069,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.has(i)) {
             v = v.id;
           }
@@ -84709,7 +84663,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         let v = this.#_3CLQ1PLSXrhSQbTGGHuxNyaEFKM1_describes[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3CLQ1PLSXrhSQbTGGHuxNyaEFKM1_describes.has(0)) {
           v = v.id;
         }
@@ -85629,8 +85583,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_2N5scKaVEcdYHFmfKYYacAwUhUgQ_oneOf.has(i)) {
             v = v.id;
           }
@@ -85861,8 +85814,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_2mV6isMTPRKbWdLCjcpiEysq5dAY_anyOf.has(i)) {
             v = v.id;
           }
@@ -86123,7 +86075,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
         let v = this.#_3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3obhVLFML2Fh2Qsbg3BM2dec8S9e_quote.has(0)) {
           v = v.id;
         }
@@ -86374,7 +86326,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
         let v = this.#_ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_ZKAEiJeuEvjeYkC4pG58D5vAJ4m_quoteAuthorization.has(0)) {
           v = v.id;
         }
@@ -88335,7 +88287,7 @@ relationships?: (Object | URL)[];}
         let v = this.#_2Zqdmi46ZnDQsECS6mzwhrv3rUKq_subject[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2Zqdmi46ZnDQsECS6mzwhrv3rUKq_subject.has(0)) {
           v = v.id;
         }
@@ -88562,7 +88514,7 @@ relationships?: (Object | URL)[];}
         let v = this.#_2MH19yxjn1wnHsNfa5n4JBhJzxyc_object[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2MH19yxjn1wnHsNfa5n4JBhJzxyc_object.has(0)) {
           v = v.id;
         }
@@ -88667,8 +88619,7 @@ relationships?: (Object | URL)[];}
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_2MH19yxjn1wnHsNfa5n4JBhJzxyc_object.has(i)) {
             v = v.id;
           }
@@ -88899,7 +88850,7 @@ relationships?: (Object | URL)[];}
         let v = this.#_4Lzz89F9qipAQSGkWyX9DGWiUojG_relationship[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_4Lzz89F9qipAQSGkWyX9DGWiUojG_relationship.has(0)) {
           v = v.id;
         }
@@ -89006,8 +88957,7 @@ relationships?: (Object | URL)[];}
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_4Lzz89F9qipAQSGkWyX9DGWiUojG_relationship.has(i)) {
             v = v.id;
           }
@@ -91157,7 +91107,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_axq166E2eZADq34V4MYUc8KMZdC_publicKey[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_axq166E2eZADq34V4MYUc8KMZdC_publicKey.has(0)) {
           v = v.id;
         }
@@ -91261,8 +91211,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_axq166E2eZADq34V4MYUc8KMZdC_publicKey.has(i)) {
             v = v.id;
           }
@@ -91494,7 +91443,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.has(0)) {
           v = v.id;
         }
@@ -91602,8 +91551,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.has(i)) {
             v = v.id;
           }
@@ -91872,7 +91820,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox.has(0)) {
           v = v.id;
         }
@@ -92117,7 +92065,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_41QwhqJouoLg3h8dRPKat21brynC_outbox[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_41QwhqJouoLg3h8dRPKat21brynC_outbox.has(0)) {
           v = v.id;
         }
@@ -92348,7 +92296,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_3yAv8jymNfNuJUDuBzJ1NQhdbAee_following[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3yAv8jymNfNuJUDuBzJ1NQhdbAee_following.has(0)) {
           v = v.id;
         }
@@ -92582,7 +92530,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_BBCTgfphhsFzpVfKTykGSpBNwoA_followers[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_BBCTgfphhsFzpVfKTykGSpBNwoA_followers.has(0)) {
           v = v.id;
         }
@@ -92814,7 +92762,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_3bgkPwJanyTCoVFM9ovRcus8tKkU_liked[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3bgkPwJanyTCoVFM9ovRcus8tKkU_liked.has(0)) {
           v = v.id;
         }
@@ -93044,7 +92992,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_4N1vBJzXDf8NbBumeECQMFvKetja_featured[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_4N1vBJzXDf8NbBumeECQMFvKetja_featured.has(0)) {
           v = v.id;
         }
@@ -93274,7 +93222,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2MxnRRLq9iPzx5CFq2NPrXdUDCac_featuredTags.has(0)) {
           v = v.id;
         }
@@ -93501,8 +93449,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.has(i)) {
             v = v.id;
           }
@@ -93841,7 +93788,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_2ZNWDhuNdSXBwEmrB5kwffdKGzok_movedTo.has(0)) {
           v = v.id;
         }
@@ -94107,7 +94054,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.has(0)) {
           v = v.id;
         }
@@ -94215,8 +94162,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.has(i)) {
             v = v.id;
           }
@@ -94448,7 +94394,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         let v = this.#_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.#_trust_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.has(0)) {
           v = v.id;
         }
@@ -94556,8 +94502,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              (this.id == null ||
-                !isTrustedIriOrigin(options, v.id, this.id)) &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.#_trust_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.has(i)) {
             v = v.id;
           }
