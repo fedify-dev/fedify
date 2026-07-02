@@ -231,7 +231,7 @@ async function mergeUnmappedTerms(
   const dummyPrefix = "urn:fedify:dummy:";
   const dummy: Record<string, unknown> = { "@context": context };
   for (let i = 0; i < unmappedKeys.length; i++) {
-    dummy[unmappedKeys[i]] = `${dummyPrefix}${i}`;
+    defineJsonLdProperty(dummy, unmappedKeys[i], `${dummyPrefix}${i}`);
   }
   const expanded = await jsonld.expand(dummy, { documentLoader });
   const representedKeys = new Set<string>();
@@ -251,10 +251,27 @@ async function mergeUnmappedTerms(
   }
   for (const key of unmappedKeys) {
     if (!representedKeys.has(key)) {
-      result[key] = (original as Record<string, unknown>)[key];
+      defineJsonLdProperty(
+        result,
+        key,
+        (original as Record<string, unknown>)[key],
+      );
     }
   }
   return result;
+}
+
+function defineJsonLdProperty(
+  object: Record<string, unknown>,
+  key: string,
+  value: unknown,
+): void {
+  globalThis.Object.defineProperty(object, key, {
+    value,
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  });
 }
 
 function containsValue(value: unknown, expected: string, depth = 0): boolean {

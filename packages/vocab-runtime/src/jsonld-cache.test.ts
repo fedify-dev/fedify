@@ -125,6 +125,86 @@ test("compactJsonLdCache() reuses unchanged unmapped values", async () => {
   strictEqual(compacted.attachment.extra, extra);
 });
 
+test("compactJsonLdCache() defines prototype-like unmapped keys safely", async () => {
+  const context = {
+    id: "@id",
+    type: "@type",
+  };
+  const protoValue = { source: "own __proto__ extension" };
+  const original: Record<string, unknown> = {
+    "@context": context,
+    type: "https://example.com/ns#Object",
+    id: "ap://did:key:z6Mkabc/objects/1",
+  };
+  globalThis.Object.defineProperty(original, "__proto__", {
+    value: protoValue,
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  });
+  const expanded = await jsonld.expand(original);
+  const normalized = normalizeJsonLdIris(expanded, new Set(["@id"]));
+  const compacted = await compactJsonLdCache(normalized, original) as Record<
+    string,
+    unknown
+  >;
+
+  strictEqual(
+    globalThis.Object.getOwnPropertyDescriptor(compacted, "__proto__")?.value,
+    protoValue,
+  );
+  strictEqual(globalThis.Object.getPrototypeOf(compacted), Object.prototype);
+});
+
+test("compactJsonLdCache() checks prototype-like aliases safely", async () => {
+  const context: Record<string, unknown> = {
+    ex: "https://example.com/ns#",
+    id: "@id",
+    represented: "ex:represented",
+  };
+  globalThis.Object.defineProperty(context, "__proto__", {
+    value: "ex:represented",
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  });
+  const original: Record<string, unknown> = {
+    "@context": context,
+    id: "ap://did:key:z6Mkabc/objects/1",
+    represented: "Compacted term already present.",
+  };
+  globalThis.Object.defineProperty(original, "__proto__", {
+    value: "Alias represented by the compacted term.",
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  });
+  const expanded = await jsonld.expand(original);
+  const normalized = normalizeJsonLdIris(expanded, new Set(["@id"]));
+  const compacted = await compactJsonLdCache(normalized, original) as Record<
+    string,
+    unknown
+  >;
+
+  const protoDescriptor = globalThis.Object.getOwnPropertyDescriptor(
+    compacted,
+    "__proto__",
+  );
+  ok(
+    protoDescriptor?.value === "Alias represented by the compacted term." ||
+      Array.isArray(protoDescriptor?.value) &&
+        protoDescriptor.value.includes(
+          "Alias represented by the compacted term.",
+        ),
+  );
+  strictEqual(protoDescriptor?.enumerable, true);
+  strictEqual(compacted.id, "ap+ef61://did:key:z6Mkabc/objects/1");
+  strictEqual(
+    globalThis.Object.getPrototypeOf(compacted),
+    Object.prototype,
+  );
+});
+
 test("compactJsonLdCache() preserves nested contexts", async () => {
   const context = {
     as: "https://www.w3.org/ns/activitystreams#",

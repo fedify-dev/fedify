@@ -252,6 +252,18 @@ test("parseIri() decodes pct-encoded DID delimiters in order", () => {
   );
 });
 
+test("parseIri() preserves encoded percent signs while decoding delimiters", () => {
+  const parsed = parseIri("ap://did%3Aweb%3Aexample.com%2500/u/1");
+  deepStrictEqual(
+    parsed,
+    new URL("ap+ef61://did%3Aweb%3Aexample.com%2500/u/1"),
+  );
+  deepStrictEqual(
+    formatIri(parsed),
+    "ap+ef61://did:web:example.com%00/u/1",
+  );
+});
+
 test("validatePublicUrl()", async () => {
   await rejects(() => validatePublicUrl("ftp://localhost"), UrlError);
   await rejects(

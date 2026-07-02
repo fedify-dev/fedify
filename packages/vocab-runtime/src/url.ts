@@ -145,10 +145,10 @@ function decodePortableAuthority(authority: string): string {
     }
     return decoded;
   }
-  const decoded = authority
-    .replace(/%25/gi, "\0")
-    .replace(/%3A/gi, ":")
-    .replaceAll("\0", "%");
+  const decoded = authority.replace(
+    /%(25|3A)/gi,
+    (match) => match.toLowerCase() === "%3a" ? ":" : "%",
+  );
   if (INVALID_PERCENT_ENCODING_PATTERN.test(decoded)) {
     throw new TypeError("Invalid portable ActivityPub IRI authority.");
   }
