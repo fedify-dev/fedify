@@ -504,7 +504,9 @@ function combineContexts(
   if (ownContext == null || ownContext === inheritedContext) {
     return inheritedContext;
   }
-  return Array.isArray(inheritedContext)
-    ? [...inheritedContext, ownContext]
-    : [inheritedContext, ownContext];
+  const inherited = Array.isArray(inheritedContext)
+    ? inheritedContext
+    : [inheritedContext];
+  const own = Array.isArray(ownContext) ? ownContext : [ownContext];
+  return [...inherited, ...own];
 }
