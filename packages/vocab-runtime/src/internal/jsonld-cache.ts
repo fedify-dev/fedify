@@ -2,6 +2,8 @@ import type { DocumentLoader } from "../docloader.ts";
 import jsonld from "../jsonld.ts";
 import { formatIri, haveSameIriOrigin } from "../url.ts";
 
+const noJsonLdContext = Symbol("noJsonLdContext");
+
 /**
  * Options for deciding whether two IRIs should be treated as same-origin.
  *
@@ -142,12 +144,12 @@ export function getJsonLdContext(value: unknown, depth = 0): unknown {
   return (value as Record<string, unknown>)["@context"];
 }
 
-function getOwnJsonLdContext(value: unknown): unknown {
+function getOwnJsonLdContext(value: unknown): unknown | typeof noJsonLdContext {
   if (
     value == null || typeof value !== "object" || Array.isArray(value) ||
     !("@context" in value)
   ) {
-    return undefined;
+    return noJsonLdContext;
   }
   return (value as Record<string, unknown>)["@context"];
 }
@@ -195,7 +197,9 @@ export async function compactJsonLdCache(
     return clone ?? (Array.isArray(normalized) ? normalized : normalizedArray);
   }
   const ownContext = getOwnJsonLdContext(original);
-  const context = ownContext ?? inheritedContext;
+  const context = ownContext === noJsonLdContext
+    ? inheritedContext
+    : ownContext;
   if (context == null) {
     return preserveNoContextJsonLdShape(normalized, original, depth);
   }
@@ -462,21 +466,26 @@ async function preserveJsonLdShape(
   }
   if (Array.isArray(compacted)) return compacted;
   let clone: Record<string, unknown> | undefined;
+  const ownContext = getOwnJsonLdContext(original);
+  const objectContext = combineContexts(context, ownContext);
+  const objectCompacted = depth > 0 && ownContext === null
+    ? await compactWithEmptyContext(compacted, context, documentLoader)
+    : compacted;
   const compactedObject = depth > 0
     ? await mergeUnmappedTerms(
-      compacted,
+      objectCompacted,
       original,
-      combineContexts(context, getOwnJsonLdContext(original)),
+      objectContext,
       documentLoader,
     ) as Record<string, unknown>
-    : compacted as Record<string, unknown>;
+    : objectCompacted as Record<string, unknown>;
   const originalObject = original as Record<string, unknown>;
   for (const key of globalThis.Object.keys(compactedObject)) {
     if (key === "@context") continue;
     const value = await preserveJsonLdShape(
       compactedObject[key],
       originalObject[key],
-      context,
+      objectContext,
       documentLoader,
       depth + 1,
     );
@@ -497,13 +506,30 @@ async function preserveJsonLdShape(
   return clone ?? compactedObject;
 }
 
+async function compactWithEmptyContext(
+  compacted: unknown,
+  context: unknown,
+  documentLoader?: DocumentLoader,
+): Promise<unknown> {
+  const compactedWithContext = compacted != null &&
+      typeof compacted === "object" && !Array.isArray(compacted) &&
+      !("@context" in compacted)
+    ? { "@context": context, ...compacted as Record<string, unknown> }
+    : compacted;
+  const expanded = await jsonld.expand(compactedWithContext, {
+    documentLoader,
+  });
+  return await jsonld.compact(expanded, {}, { documentLoader });
+}
+
 function combineContexts(
   inheritedContext: unknown,
   ownContext: unknown,
 ): unknown {
-  if (ownContext == null || ownContext === inheritedContext) {
+  if (ownContext === noJsonLdContext || ownContext === inheritedContext) {
     return inheritedContext;
   }
+  if (ownContext == null) return ownContext;
   const inherited = Array.isArray(inheritedContext)
     ? inheritedContext
     : [inheritedContext];

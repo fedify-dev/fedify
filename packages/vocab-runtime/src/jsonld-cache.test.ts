@@ -435,6 +435,37 @@ test("compactJsonLdCache() preserves nested array contexts", async () => {
   });
 });
 
+test("compactJsonLdCache() preserves nested null contexts", async () => {
+  const context = {
+    as: "https://www.w3.org/ns/activitystreams#",
+    id: "@id",
+    type: "@type",
+    attachment: { "@id": "as:attachment" },
+    title: "https://example.com/ns#title",
+  };
+  const original = {
+    "@context": context,
+    type: "as:Note",
+    id: "ap://did:key:z6Mkabc/objects/1",
+    attachment: {
+      "@context": null,
+      "https://example.com/ns#title": "Absolute title.",
+    },
+  };
+  const expanded = await jsonld.expand(original);
+  const normalized = normalizeJsonLdIris(expanded, new Set(["@id"]));
+
+  deepStrictEqual(await compactJsonLdCache(normalized, original), {
+    "@context": context,
+    type: "as:Note",
+    id: "ap+ef61://did:key:z6Mkabc/objects/1",
+    attachment: {
+      "@context": null,
+      "https://example.com/ns#title": "Absolute title.",
+    },
+  });
+});
+
 test("compactJsonLdCache() does not re-add represented nested aliases", async () => {
   const context = {
     as: "https://www.w3.org/ns/activitystreams#",
