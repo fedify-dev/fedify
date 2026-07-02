@@ -147,6 +147,38 @@ test("compactJsonLdCache() preserves no-context object shape", async () => {
   });
 });
 
+test("compactJsonLdCache() ignores nested contexts for no-context parents", async () => {
+  const nestedContext = {
+    type: "@type",
+    name: "https://www.w3.org/ns/activitystreams#name",
+  };
+  const original = {
+    "@id": "ap://did:key:z6Mkabc/objects/1",
+    "@type": ["https://www.w3.org/ns/activitystreams#Note"],
+    "https://www.w3.org/ns/activitystreams#attachment": [
+      {
+        "@context": nestedContext,
+        type: "https://www.w3.org/ns/activitystreams#Object",
+        name: "Nested object",
+      },
+    ],
+  };
+  const expanded = await jsonld.expand(original);
+  const normalized = normalizeJsonLdIris(expanded, new Set(["@id"]));
+
+  deepStrictEqual(await compactJsonLdCache(normalized, original), {
+    "@id": "ap+ef61://did:key:z6Mkabc/objects/1",
+    "@type": ["https://www.w3.org/ns/activitystreams#Note"],
+    "https://www.w3.org/ns/activitystreams#attachment": [
+      {
+        "@context": nestedContext,
+        type: "https://www.w3.org/ns/activitystreams#Object",
+        name: "Nested object",
+      },
+    ],
+  });
+});
+
 test("compactJsonLdCache() defines no-context prototype-like keys safely", async () => {
   const original: Record<string, unknown> = {
     "@id": "ap://did:key:z6Mkabc/objects/1",

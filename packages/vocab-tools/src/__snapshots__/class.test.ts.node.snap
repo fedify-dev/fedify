@@ -2165,9 +2165,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -2177,7 +2178,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -2219,7 +2220,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -2414,9 +2415,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -2426,7 +2428,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -2468,7 +2470,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -2788,9 +2790,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -2800,7 +2803,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -2842,7 +2845,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -3153,9 +3156,10 @@ get contents(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -3165,7 +3169,7 @@ get contents(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -3207,7 +3211,7 @@ get contents(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -3439,9 +3443,10 @@ get names(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -3451,7 +3456,7 @@ get names(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -3493,7 +3498,7 @@ get names(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -3677,9 +3682,10 @@ get names(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -3689,7 +3695,7 @@ get names(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -3731,7 +3737,7 @@ get names(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -4036,9 +4042,10 @@ get names(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -4048,7 +4055,7 @@ get names(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -4090,7 +4097,7 @@ get names(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -4395,9 +4402,10 @@ get names(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -4407,7 +4415,7 @@ get names(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -4449,7 +4457,7 @@ get names(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -4740,9 +4748,10 @@ get names(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -4752,7 +4761,7 @@ get names(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -4794,7 +4803,7 @@ get names(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -5085,9 +5094,10 @@ get names(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -5097,7 +5107,7 @@ get names(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -5139,7 +5149,7 @@ get names(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -5441,9 +5451,10 @@ get names(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -5453,7 +5464,7 @@ get names(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -5495,7 +5506,7 @@ get names(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -5668,9 +5679,10 @@ get names(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -5680,7 +5692,7 @@ get names(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -5722,7 +5734,7 @@ get names(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -5901,9 +5913,10 @@ get names(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -5913,7 +5926,7 @@ get names(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -5955,7 +5968,7 @@ get names(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -6134,9 +6147,10 @@ get names(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -6146,7 +6160,7 @@ get names(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -6188,7 +6202,7 @@ get names(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -6401,9 +6415,10 @@ get summaries(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -6413,7 +6428,7 @@ get summaries(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -6455,7 +6470,7 @@ get summaries(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -6676,9 +6691,10 @@ get urls(): ((URL | Link))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -6688,7 +6704,7 @@ get urls(): ((URL | Link))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -6730,7 +6746,7 @@ get urls(): ((URL | Link))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -7012,9 +7028,10 @@ get urls(): ((URL | Link))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -7024,7 +7041,7 @@ get urls(): ((URL | Link))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -7066,7 +7083,7 @@ get urls(): ((URL | Link))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -7348,9 +7365,10 @@ get urls(): ((URL | Link))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -7360,7 +7378,7 @@ get urls(): ((URL | Link))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -7402,7 +7420,7 @@ get urls(): ((URL | Link))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -7684,9 +7702,10 @@ get urls(): ((URL | Link))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -7696,7 +7715,7 @@ get urls(): ((URL | Link))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -7738,7 +7757,7 @@ get urls(): ((URL | Link))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -8084,9 +8103,10 @@ get urls(): ((URL | Link))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -8096,7 +8116,7 @@ get urls(): ((URL | Link))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -8138,7 +8158,7 @@ get urls(): ((URL | Link))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -8457,9 +8477,10 @@ get urls(): ((URL | Link))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -8469,7 +8490,7 @@ get urls(): ((URL | Link))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -8511,7 +8532,7 @@ get urls(): ((URL | Link))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -8684,9 +8705,10 @@ get urls(): ((URL | Link))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -8696,7 +8718,7 @@ get urls(): ((URL | Link))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -8738,7 +8760,7 @@ get urls(): ((URL | Link))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -8911,9 +8933,10 @@ get urls(): ((URL | Link))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -8923,7 +8946,7 @@ get urls(): ((URL | Link))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -8965,7 +8988,7 @@ get urls(): ((URL | Link))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -13537,9 +13560,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -13549,7 +13573,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -13591,7 +13615,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -13788,9 +13812,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -13800,7 +13825,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -13842,7 +13867,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -15160,9 +15185,10 @@ instruments?: (Object | URL)[];}
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -15172,7 +15198,7 @@ instruments?: (Object | URL)[];}
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -15214,7 +15240,7 @@ instruments?: (Object | URL)[];}
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -15534,9 +15560,10 @@ instruments?: (Object | URL)[];}
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -15546,7 +15573,7 @@ instruments?: (Object | URL)[];}
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -15588,7 +15615,7 @@ instruments?: (Object | URL)[];}
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -15872,9 +15899,10 @@ instruments?: (Object | URL)[];}
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -15884,7 +15912,7 @@ instruments?: (Object | URL)[];}
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -15926,7 +15954,7 @@ instruments?: (Object | URL)[];}
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -16216,9 +16244,10 @@ instruments?: (Object | URL)[];}
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -16228,7 +16257,7 @@ instruments?: (Object | URL)[];}
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -16270,7 +16299,7 @@ instruments?: (Object | URL)[];}
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -16554,9 +16583,10 @@ instruments?: (Object | URL)[];}
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -16566,7 +16596,7 @@ instruments?: (Object | URL)[];}
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -16608,7 +16638,7 @@ instruments?: (Object | URL)[];}
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -16894,9 +16924,10 @@ instruments?: (Object | URL)[];}
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -16906,7 +16937,7 @@ instruments?: (Object | URL)[];}
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -16948,7 +16979,7 @@ instruments?: (Object | URL)[];}
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -19829,9 +19860,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -19841,7 +19873,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -19883,7 +19915,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -20056,9 +20088,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -20068,7 +20101,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -20110,7 +20143,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -22757,9 +22790,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -22769,7 +22803,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -22811,7 +22845,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -22984,9 +23018,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -22996,7 +23031,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -23038,7 +23073,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -24177,9 +24212,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -24189,7 +24225,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -24231,7 +24267,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -24404,9 +24440,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -24416,7 +24453,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -24458,7 +24495,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -25597,9 +25634,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -25609,7 +25647,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -25651,7 +25689,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -25823,9 +25861,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -25835,7 +25874,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -25877,7 +25916,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -27987,9 +28026,10 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -27999,7 +28039,7 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -28041,7 +28081,7 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -28961,9 +29001,10 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -28973,7 +29014,7 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -29015,7 +29056,7 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -29875,9 +29916,10 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -29887,7 +29929,7 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -29929,7 +29971,7 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -35738,9 +35780,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -35750,7 +35793,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -35792,7 +35835,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -36070,9 +36113,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -36082,7 +36126,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -36124,7 +36168,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -36429,9 +36473,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -36441,7 +36486,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -36483,7 +36528,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -36676,9 +36721,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -36688,7 +36734,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -36730,7 +36776,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -36920,9 +36966,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -36932,7 +36979,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -36974,7 +37021,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -37150,9 +37197,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -37162,7 +37210,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -37204,7 +37252,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -37383,9 +37431,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -37395,7 +37444,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -37437,7 +37486,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -37614,9 +37663,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -37626,7 +37676,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -37668,7 +37718,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -37843,9 +37893,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -37855,7 +37906,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -37897,7 +37948,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -38072,9 +38123,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -38084,7 +38136,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -38126,7 +38178,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -38376,9 +38428,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -38388,7 +38441,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -38430,7 +38483,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -38637,9 +38690,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -38649,7 +38703,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -38691,7 +38745,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -39013,9 +39067,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -39025,7 +39080,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -39067,7 +39122,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -42449,9 +42504,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -42461,7 +42517,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -42503,7 +42559,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -42700,9 +42756,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -42712,7 +42769,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -42754,7 +42811,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -45656,9 +45713,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -45668,7 +45726,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -45710,7 +45768,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -45883,9 +45941,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -45895,7 +45954,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -45937,7 +45996,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -46110,9 +46169,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -46122,7 +46182,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -46164,7 +46224,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -46337,9 +46397,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -46349,7 +46410,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -46391,7 +46452,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -46576,9 +46637,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -46588,7 +46650,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -46630,7 +46692,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -46802,9 +46864,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -46814,7 +46877,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -46856,7 +46919,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -47028,9 +47091,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -47040,7 +47104,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -47082,7 +47146,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -47254,9 +47318,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -47266,7 +47331,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -47308,7 +47373,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -47480,9 +47545,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -47492,7 +47558,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -47534,7 +47600,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -47706,9 +47772,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -47718,7 +47785,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -47760,7 +47827,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -47932,9 +47999,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -47944,7 +48012,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -47986,7 +48054,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -48158,9 +48226,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -48170,7 +48239,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -48212,7 +48281,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -49957,9 +50026,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -49969,7 +50039,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -50011,7 +50081,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -50184,9 +50254,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -50196,7 +50267,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -50238,7 +50309,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -50409,9 +50480,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -50421,7 +50493,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -50463,7 +50535,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -55418,9 +55490,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -55430,7 +55503,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -55472,7 +55545,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -55750,9 +55823,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -55762,7 +55836,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -55804,7 +55878,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -56109,9 +56183,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -56121,7 +56196,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -56163,7 +56238,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -56356,9 +56431,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -56368,7 +56444,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -56410,7 +56486,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -56600,9 +56676,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -56612,7 +56689,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -56654,7 +56731,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -56830,9 +56907,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -56842,7 +56920,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -56884,7 +56962,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -57063,9 +57141,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -57075,7 +57154,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -57117,7 +57196,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -57294,9 +57373,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -57306,7 +57386,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -57348,7 +57428,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -57523,9 +57603,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -57535,7 +57616,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -57577,7 +57658,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -57752,9 +57833,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -57764,7 +57846,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -57806,7 +57888,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -58056,9 +58138,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -58068,7 +58151,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -58110,7 +58193,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -58317,9 +58400,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -58329,7 +58413,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -58371,7 +58455,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -58693,9 +58777,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -58705,7 +58790,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -58747,7 +58832,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -61810,9 +61895,10 @@ get names(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -61822,7 +61908,7 @@ get names(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -61864,7 +61950,7 @@ get names(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -66647,9 +66733,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -66659,7 +66746,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -66701,7 +66788,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -66898,9 +66985,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -66910,7 +66998,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -66952,7 +67040,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -67793,9 +67881,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -67805,7 +67894,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -67847,7 +67936,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -68565,9 +68654,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -68577,7 +68667,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -68619,7 +68709,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -70284,9 +70374,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -70296,7 +70387,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -70338,7 +70429,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -70616,9 +70707,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -70628,7 +70720,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -70670,7 +70762,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -70975,9 +71067,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -70987,7 +71080,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -71029,7 +71122,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -71222,9 +71315,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -71234,7 +71328,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -71276,7 +71370,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -71466,9 +71560,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -71478,7 +71573,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -71520,7 +71615,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -71696,9 +71791,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -71708,7 +71804,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -71750,7 +71846,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -71929,9 +72025,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -71941,7 +72038,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -71983,7 +72080,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -72160,9 +72257,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -72172,7 +72270,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -72214,7 +72312,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -72389,9 +72487,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -72401,7 +72500,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -72443,7 +72542,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -72618,9 +72717,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -72630,7 +72730,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -72672,7 +72772,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -72922,9 +73022,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -72934,7 +73035,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -72976,7 +73077,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -73183,9 +73284,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -73195,7 +73297,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -73237,7 +73339,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -73559,9 +73661,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -73571,7 +73674,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -73613,7 +73716,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -77471,9 +77574,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -77483,7 +77587,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -77525,7 +77629,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -77803,9 +77907,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -77815,7 +77920,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -77857,7 +77962,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -78162,9 +78267,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -78174,7 +78280,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -78216,7 +78322,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -78409,9 +78515,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -78421,7 +78528,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -78463,7 +78570,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -78653,9 +78760,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -78665,7 +78773,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -78707,7 +78815,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -78883,9 +78991,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -78895,7 +79004,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -78937,7 +79046,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -79116,9 +79225,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -79128,7 +79238,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -79170,7 +79280,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -79347,9 +79457,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -79359,7 +79470,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -79401,7 +79512,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -79576,9 +79687,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -79588,7 +79700,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -79630,7 +79742,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -79805,9 +79917,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -79817,7 +79930,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -79859,7 +79972,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -80109,9 +80222,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -80121,7 +80235,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -80163,7 +80277,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -80370,9 +80484,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -80382,7 +80497,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -80424,7 +80539,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -80746,9 +80861,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -80758,7 +80874,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -80800,7 +80916,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -84450,9 +84566,10 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -84462,7 +84579,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -84504,7 +84621,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -85368,9 +85485,10 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -85380,7 +85498,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -85422,7 +85540,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -85599,9 +85717,10 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -85611,7 +85730,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -85653,7 +85772,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -85860,9 +85979,10 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -85872,7 +85992,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -85914,7 +86034,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -86111,9 +86231,10 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -86123,7 +86244,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -86165,7 +86286,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -88069,9 +88190,10 @@ relationships?: (Object | URL)[];}
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -88081,7 +88203,7 @@ relationships?: (Object | URL)[];}
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -88123,7 +88245,7 @@ relationships?: (Object | URL)[];}
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -88298,9 +88420,10 @@ relationships?: (Object | URL)[];}
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -88310,7 +88433,7 @@ relationships?: (Object | URL)[];}
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -88352,7 +88475,7 @@ relationships?: (Object | URL)[];}
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -88632,9 +88755,10 @@ relationships?: (Object | URL)[];}
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -88644,7 +88768,7 @@ relationships?: (Object | URL)[];}
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -88686,7 +88810,7 @@ relationships?: (Object | URL)[];}
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -90892,9 +91016,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -90904,7 +91029,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -90946,7 +91071,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -91224,9 +91349,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -91236,7 +91362,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -91278,7 +91404,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -91583,9 +91709,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -91595,7 +91722,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -91637,7 +91764,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -91830,9 +91957,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -91842,7 +91970,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -91884,7 +92012,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -92074,9 +92202,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -92086,7 +92215,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -92128,7 +92257,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -92304,9 +92433,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -92316,7 +92446,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -92358,7 +92488,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -92537,9 +92667,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -92549,7 +92680,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -92591,7 +92722,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -92768,9 +92899,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -92780,7 +92912,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -92822,7 +92954,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -92997,9 +93129,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -93009,7 +93142,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -93051,7 +93184,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -93226,9 +93359,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -93238,7 +93372,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -93280,7 +93414,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -93530,9 +93664,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -93542,7 +93677,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -93584,7 +93719,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -93791,9 +93926,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -93803,7 +93939,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -93845,7 +93981,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -94167,9 +94303,10 @@ get preferredUsernames(): ((string | LanguageString))[] {
         \\"0.0.0\\",
       );
       return await tracer.startActiveSpan(\\"activitypub.lookup_object\\", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -94179,7 +94316,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to fetch {url}: {error}\\",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -94221,7 +94358,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           if (options.suppressError) {
             getLogger([\\"fedify\\", \\"vocab\\"]).error(
               \\"Failed to parse {url}: {error}\\",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }

@@ -1,7 +1,6 @@
 import { deepStrictEqual, ok, rejects, throws } from "node:assert";
 import { test } from "node:test";
 import {
-  canParseIri,
   expandIPv6Address,
   formatIri,
   haveSameIriOrigin,
@@ -22,7 +21,6 @@ test("parseIri() accepts portable ActivityPub URI schemes", () => {
     "AP+EF61://did:key:z6Mkabc/actor",
   ];
   for (const iri of cases) {
-    ok(canParseIri(iri));
     deepStrictEqual(
       parseIri(iri),
       new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
@@ -36,7 +34,6 @@ test("parseIri() accepts DID schemes case-insensitively", () => {
     "ap://DID%3Akey%3Az6Mkabc/actor",
   ];
   for (const iri of cases) {
-    ok(canParseIri(iri));
     deepStrictEqual(
       parseIri(iri),
       new URL("ap+ef61://DID%3Akey%3Az6Mkabc/actor"),
@@ -67,7 +64,7 @@ test("parseIri() preserves existing URL parsing behavior", () => {
     parseIri("at://did:plc:example/record"),
     new URL("at://did%3Aplc%3Aexample/record"),
   );
-  ok(!canParseIri("ap://not-a-did/actor"));
+  throws(() => parseIri("ap://not-a-did/actor"), TypeError);
 });
 
 test("parseJsonLdId() parses JSON-LD ids", () => {
@@ -88,7 +85,6 @@ test("parseJsonLdId() parses JSON-LD ids", () => {
 });
 
 test("parseIri() resolves relative IRIs against portable string bases", () => {
-  ok(canParseIri("/actor", "ap://did:key:z6Mkabc/objects/1"));
   deepStrictEqual(
     parseIri("/actor", "ap://did:key:z6Mkabc/objects/1"),
     new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
@@ -97,7 +93,6 @@ test("parseIri() resolves relative IRIs against portable string bases", () => {
     parseIri("attachments/1", "ap://did:key:z6Mkabc/objects/1"),
     new URL("ap+ef61://did%3Akey%3Az6Mkabc/objects/attachments/1"),
   );
-  ok(!canParseIri("//example.com/outbox", "ap://did:key:z6Mkabc/objects/1"));
   throws(
     () => parseIri("//example.com/outbox", "ap://did:key:z6Mkabc/objects/1"),
     TypeError,
@@ -105,7 +100,6 @@ test("parseIri() resolves relative IRIs against portable string bases", () => {
 });
 
 test("parseIri() resolves relative IRIs against at:// string bases", () => {
-  ok(canParseIri("/record", "at://did:plc:example/collection/item"));
   deepStrictEqual(
     parseIri("/record", "at://did:plc:example/collection/item"),
     new URL("at://did%3Aplc%3Aexample/record"),
@@ -121,11 +115,13 @@ test("parseIri() resolves relative IRIs against at:// string bases", () => {
 });
 
 test("parseIri() rejects portable IRIs without paths", () => {
-  ok(!canParseIri("ap://did:key:z6Mkabc"));
-  ok(
-    !canParseIri("ap://did:key:z6Mkabc?gateways=https%3A%2F%2Fserver.example"),
+  throws(() => parseIri("ap://did:key:z6Mkabc"), TypeError);
+  throws(
+    () =>
+      parseIri("ap://did:key:z6Mkabc?gateways=https%3A%2F%2Fserver.example"),
+    TypeError,
   );
-  ok(!canParseIri("ap://did:key:z6Mkabc#actor"));
+  throws(() => parseIri("ap://did:key:z6Mkabc#actor"), TypeError);
 });
 
 test("parseIri() rejects malformed portable DID authorities", () => {
@@ -136,7 +132,6 @@ test("parseIri() rejects malformed portable DID authorities", () => {
     "ap://did:key:abc%25zz/actor",
   ];
   for (const iri of cases) {
-    ok(!canParseIri(iri));
     throws(() => parseIri(iri), TypeError);
   }
 });
@@ -171,7 +166,7 @@ test("parseIri() normalizes portable URL instances", () => {
     parseIri(new URL("ap+ef61://did%3Aexample%3Aabc%2Fdef/actor")),
     new URL("ap+ef61://did%3Aexample%3Aabc%252Fdef/actor"),
   );
-  ok(!canParseIri("ap+ef61://not-a-did/actor"));
+  throws(() => parseIri("ap+ef61://not-a-did/actor"), TypeError);
 });
 
 test("formatIri() emits canonical portable ActivityPub URI syntax", () => {

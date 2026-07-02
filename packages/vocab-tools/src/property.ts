@@ -86,9 +86,10 @@ async function* generateProperty(
         ${JSON.stringify(metadata.version)},
       );
       return await tracer.startActiveSpan("activitypub.lookup_object", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -98,7 +99,7 @@ async function* generateProperty(
           if (options.suppressError) {
             getLogger(["fedify", "vocab"]).error(
               "Failed to fetch {url}: {error}",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
@@ -140,7 +141,7 @@ async function* generateProperty(
           if (options.suppressError) {
             getLogger(["fedify", "vocab"]).error(
               "Failed to parse {url}: {error}",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }

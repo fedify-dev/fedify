@@ -16,18 +16,6 @@ const DID_SCHEME_PATTERN = /^did:/i;
 const DID_PATTERN = /^did:[a-z0-9]+:[-A-Za-z0-9._%]+(?::[-A-Za-z0-9._%]+)*$/i;
 
 /**
- * Checks whether the given string can be parsed as an IRI.
- */
-export function canParseIri(iri: string, base?: string | URL): boolean {
-  try {
-    parseIri(iri, base);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
  * Parses a JSON-LD `@id` value as an IRI.
  */
 export function parseJsonLdId(

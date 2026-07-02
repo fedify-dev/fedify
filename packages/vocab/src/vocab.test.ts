@@ -1506,6 +1506,37 @@ test({
   },
 });
 
+test("Activity.getObject() fetches canonical portable IRIs", async () => {
+  const fetchedUrls: string[] = [];
+  // deno-lint-ignore require-await
+  const documentLoader: DocumentLoader = async (url) => {
+    fetchedUrls.push(url);
+    return {
+      contextUrl: null,
+      documentUrl: url,
+      document: {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        id: url,
+        type: "Note",
+        content: "Fetched portable object",
+      },
+    };
+  };
+  const activity = await Activity.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Create",
+    object: "ap://did:key:z6Mkabc/objects/1",
+  }, { documentLoader, contextLoader: mockDocumentLoader });
+
+  const object = await activity.getObject({
+    documentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+
+  assertInstanceOf(object, Note);
+  deepStrictEqual(fetchedUrls, ["ap+ef61://did:key:z6Mkabc/objects/1"]);
+});
+
 test({
   name: "Activity.getObjects()",
   permissions: { env: true, read: true },
@@ -3588,7 +3619,7 @@ test(
 
     // deno-lint-ignore require-await
     const documentLoader = async (url: string) => {
-      if (url === "ap+ef61://did%3Akey%3Az6MkOther/note") {
+      if (url === "ap+ef61://did:key:z6MkOther/note") {
         return {
           documentUrl: url,
           contextUrl: null,

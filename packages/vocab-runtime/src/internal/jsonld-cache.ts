@@ -142,6 +142,16 @@ export function getJsonLdContext(value: unknown, depth = 0): unknown {
   return (value as Record<string, unknown>)["@context"];
 }
 
+function getOwnJsonLdContext(value: unknown): unknown {
+  if (
+    value == null || typeof value !== "object" || Array.isArray(value) ||
+    !("@context" in value)
+  ) {
+    return undefined;
+  }
+  return (value as Record<string, unknown>)["@context"];
+}
+
 /**
  * Recompacts normalized JSON-LD cache data against the original context.
  *
@@ -184,7 +194,7 @@ export async function compactJsonLdCache(
     }
     return clone ?? (Array.isArray(normalized) ? normalized : normalizedArray);
   }
-  const ownContext = getJsonLdContext(original);
+  const ownContext = getOwnJsonLdContext(original);
   const context = ownContext ?? inheritedContext;
   if (context == null) {
     return preserveNoContextJsonLdShape(normalized, original, depth);
@@ -456,7 +466,7 @@ async function preserveJsonLdShape(
     ? await mergeUnmappedTerms(
       compacted,
       original,
-      combineContexts(context, getJsonLdContext(original)),
+      combineContexts(context, getOwnJsonLdContext(original)),
       documentLoader,
     ) as Record<string, unknown>
     : compacted as Record<string, unknown>;
