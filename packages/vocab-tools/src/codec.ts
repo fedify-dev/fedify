@@ -406,20 +406,9 @@ export async function* generateDecoder(
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (
-      values["@id"] != null &&
-      !values["@id"].startsWith("_:") &&
-      !canParseIri(values["@id"], options.baseUrl)
-    ) {
-      throw new TypeError("Invalid @id: " + values["@id"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values["@id"] != null &&
-      !values["@id"].startsWith("_:") &&
-      canParseIri(values["@id"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values["@id"]) };
+    const id = parseJsonLdId(values["@id"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   `;
   const subtypes = getSubtypes(typeUri, types, true);
@@ -455,11 +444,7 @@ export async function* generateDecoder(
     yield `
     const instance = new this(
       {
-        id: values["@id"] != null &&
-            !values["@id"].startsWith("_:") &&
-            canParseIri(values["@id"], options.baseUrl)
-          ? parseIri(values["@id"], options.baseUrl)
-          : undefined
+        id
       },
       options,
     );

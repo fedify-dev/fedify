@@ -57,6 +57,7 @@ export {
   isValidPublicIPv4Address,
   isValidPublicIPv6Address,
   parseIri,
+  parseJsonLdId,
   UrlError,
   validatePublicUrl,
 } from "./url.ts";

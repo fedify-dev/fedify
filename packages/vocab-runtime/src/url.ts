@@ -28,6 +28,21 @@ export function canParseIri(iri: string, base?: string | URL): boolean {
 }
 
 /**
+ * Parses a JSON-LD `@id` value as an IRI.
+ */
+export function parseJsonLdId(
+  id: string | undefined,
+  base?: string | URL,
+): URL | undefined {
+  if (id == null || id.startsWith("_:")) return undefined;
+  try {
+    return parseIri(id, base);
+  } catch {
+    throw new TypeError("Invalid @id: " + id);
+  }
+}
+
+/**
  * Parses an IRI as a URL, including FEP-ef61 portable ActivityPub IRIs.
  */
 export function parseIri(iri: string | URL, base?: string | URL): URL {

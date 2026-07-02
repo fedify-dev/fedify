@@ -8,6 +8,7 @@ import {
   isValidPublicIPv4Address,
   isValidPublicIPv6Address,
   parseIri,
+  parseJsonLdId,
   UrlError,
   validatePublicUrl,
 } from "./url.ts";
@@ -67,6 +68,23 @@ test("parseIri() preserves existing URL parsing behavior", () => {
     new URL("at://did%3Aplc%3Aexample/record"),
   );
   ok(!canParseIri("ap://not-a-did/actor"));
+});
+
+test("parseJsonLdId() parses JSON-LD ids", () => {
+  deepStrictEqual(parseJsonLdId(undefined), undefined);
+  deepStrictEqual(parseJsonLdId("_:blank"), undefined);
+  deepStrictEqual(
+    parseJsonLdId("/actor", new URL("https://example.com/users/alice")),
+    new URL("https://example.com/actor"),
+  );
+  deepStrictEqual(
+    parseJsonLdId("ap://did:key:z6Mkabc/actor"),
+    new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
+  );
+  throws(() => parseJsonLdId("/actor"), {
+    name: "TypeError",
+    message: "Invalid @id: /actor",
+  });
 });
 
 test("parseIri() resolves relative IRIs against portable string bases", () => {

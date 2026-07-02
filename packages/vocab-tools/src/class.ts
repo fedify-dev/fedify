@@ -14,7 +14,6 @@ const XSD_ANY_URI = "http://www.w3.org/2001/XMLSchema#anyURI";
 const FEDIFY_URL = "fedify:url";
 const RUNTIME_IMPORTS = [
   "canParseDecimal",
-  "canParseIri",
   "decodeMultibase",
   "type Decimal",
   "type DocumentLoader",
@@ -30,8 +29,9 @@ const RUNTIME_IMPORTS = [
   "LanguageString",
   "parseDecimal",
   "parseIri",
+  "parseJsonLdId",
   "type RemoteDocument",
-];
+].join(",\n    ");
 
 /**
  * Sorts the given types topologically so that the base types come before the
@@ -244,9 +244,7 @@ export async function* generateClasses(
   yield 'import { getLogger } from "@logtape/logtape";\n';
   yield `import { type Span, SpanStatusCode, type TracerProvider, trace }
     from "@opentelemetry/api";\n`;
-  yield `import {\n    ${
-    RUNTIME_IMPORTS.join(",\n    ")
-  }\n} from "@fedify/vocab-runtime";\n`;
+  yield `import {\n    ${RUNTIME_IMPORTS}\n} from "@fedify/vocab-runtime";\n`;
   yield `import {
     isTemporalDuration,
     isTemporalInstant,

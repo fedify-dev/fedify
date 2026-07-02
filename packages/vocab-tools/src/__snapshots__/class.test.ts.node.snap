@@ -6,7 +6,6 @@ import { type Span, SpanStatusCode, type TracerProvider, trace }
     from \\"@opentelemetry/api\\";
 import {
     canParseDecimal,
-    canParseIri,
     decodeMultibase,
     type Decimal,
     type DocumentLoader,
@@ -22,6 +21,7 @@ import {
     LanguageString,
     parseDecimal,
     parseIri,
+    parseJsonLdId,
     type RemoteDocument
 } from \\"@fedify/vocab-runtime\\";
 import {
@@ -10929,20 +10929,9 @@ get urls(): ((URL | Link))[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -11221,11 +11210,7 @@ get urls(): ((URL | Link))[] {
   
     const instance = new this(
       {
-        id: values[\\"@id\\"] != null &&
-            !values[\\"@id\\"].startsWith(\\"_:\\") &&
-            canParseIri(values[\\"@id\\"], options.baseUrl)
-          ? parseIri(values[\\"@id\\"], options.baseUrl)
-          : undefined
+        id
       },
       options,
     );
@@ -13547,20 +13532,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -14602,20 +14576,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -17784,20 +17747,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -18644,20 +18596,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -19189,20 +19130,9 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -19225,11 +19155,7 @@ name?: string | LanguageString | null;value?: string | LanguageString | null;}
   
     const instance = new this(
       {
-        id: values[\\"@id\\"] != null &&
-            !values[\\"@id\\"].startsWith(\\"_:\\") &&
-            canParseIri(values[\\"@id\\"], options.baseUrl)
-          ? parseIri(values[\\"@id\\"], options.baseUrl)
-          : undefined
+        id
       },
       options,
     );
@@ -19823,20 +19749,9 @@ unit?: string | null;numericalValue?: Decimal | null;}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -19859,11 +19774,7 @@ unit?: string | null;numericalValue?: Decimal | null;}
   
     const instance = new this(
       {
-        id: values[\\"@id\\"] != null &&
-            !values[\\"@id\\"].startsWith(\\"_:\\") &&
-            canParseIri(values[\\"@id\\"], options.baseUrl)
-          ? parseIri(values[\\"@id\\"], options.baseUrl)
-          : undefined
+        id
       },
       options,
     );
@@ -20877,20 +20788,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -21355,20 +21255,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -21988,20 +21877,9 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -22024,11 +21902,7 @@ canLike?: InteractionRule | null;canReply?: InteractionRule | null;canAnnounce?:
   
     const instance = new this(
       {
-        id: values[\\"@id\\"] != null &&
-            !values[\\"@id\\"].startsWith(\\"_:\\") &&
-            canParseIri(values[\\"@id\\"], options.baseUrl)
-          ? parseIri(values[\\"@id\\"], options.baseUrl)
-          : undefined
+        id
       },
       options,
     );
@@ -22784,20 +22658,9 @@ get manualApprovals(): (URL)[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -22820,11 +22683,7 @@ get manualApprovals(): (URL)[] {
   
     const instance = new this(
       {
-        id: values[\\"@id\\"] != null &&
-            !values[\\"@id\\"].startsWith(\\"_:\\") &&
-            canParseIri(values[\\"@id\\"], options.baseUrl)
-          ? parseIri(values[\\"@id\\"], options.baseUrl)
-          : undefined
+        id
       },
       options,
     );
@@ -23849,20 +23708,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -24326,20 +24174,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -25287,20 +25124,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -25764,20 +25590,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -26724,20 +26539,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -27201,20 +27005,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -27688,20 +27481,9 @@ get endpoints(): (URL)[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -27728,11 +27510,7 @@ get endpoints(): (URL)[] {
   
     const instance = new this(
       {
-        id: values[\\"@id\\"] != null &&
-            !values[\\"@id\\"].startsWith(\\"_:\\") &&
-            canParseIri(values[\\"@id\\"], options.baseUrl)
-          ? parseIri(values[\\"@id\\"], options.baseUrl)
-          : undefined
+        id
       },
       options,
     );
@@ -28067,20 +27845,9 @@ endpoints?: (URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -28927,20 +28694,9 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -28963,11 +28719,7 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
   
     const instance = new this(
       {
-        id: values[\\"@id\\"] != null &&
-            !values[\\"@id\\"].startsWith(\\"_:\\") &&
-            canParseIri(values[\\"@id\\"], options.baseUrl)
-          ? parseIri(values[\\"@id\\"], options.baseUrl)
-          : undefined
+        id
       },
       options,
     );
@@ -29948,20 +29700,9 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -29984,11 +29725,7 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
   
     const instance = new this(
       {
-        id: values[\\"@id\\"] != null &&
-            !values[\\"@id\\"].startsWith(\\"_:\\") &&
-            canParseIri(values[\\"@id\\"], options.baseUrl)
-          ? parseIri(values[\\"@id\\"], options.baseUrl)
-          : undefined
+        id
       },
       options,
     );
@@ -30882,20 +30619,9 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -30918,11 +30644,7 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
   
     const instance = new this(
       {
-        id: values[\\"@id\\"] != null &&
-            !values[\\"@id\\"].startsWith(\\"_:\\") &&
-            canParseIri(values[\\"@id\\"], options.baseUrl)
-          ? parseIri(values[\\"@id\\"], options.baseUrl)
-          : undefined
+        id
       },
       options,
     );
@@ -31546,20 +31268,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -32167,20 +31878,9 @@ satisfies?: URL | null;resourceQuantity?: Measure | null;}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -32203,11 +31903,7 @@ satisfies?: URL | null;resourceQuantity?: Measure | null;}
   
     const instance = new this(
       {
-        id: values[\\"@id\\"] != null &&
-            !values[\\"@id\\"].startsWith(\\"_:\\") &&
-            canParseIri(values[\\"@id\\"], options.baseUrl)
-          ? parseIri(values[\\"@id\\"], options.baseUrl)
-          : undefined
+        id
       },
       options,
     );
@@ -33018,20 +32714,9 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -33054,11 +32739,7 @@ action?: string | null;resourceConformsTo?: URL | null;resourceQuantity?: Measur
   
     const instance = new this(
       {
-        id: values[\\"@id\\"] != null &&
-            !values[\\"@id\\"].startsWith(\\"_:\\") &&
-            canParseIri(values[\\"@id\\"], options.baseUrl)
-          ? parseIri(values[\\"@id\\"], options.baseUrl)
-          : undefined
+        id
       },
       options,
     );
@@ -33916,20 +33597,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -34444,20 +34114,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -34819,20 +34478,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -35189,20 +34837,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -40933,20 +40570,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -42392,20 +42018,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -42774,20 +42389,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -43824,20 +43428,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -44494,20 +44087,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -44958,20 +44540,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -45327,20 +44898,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -45702,20 +45262,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -49669,20 +49218,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -51576,20 +51114,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -52097,20 +51624,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -52466,20 +51982,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -52833,20 +52338,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -53669,20 +53163,9 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -53705,11 +53188,7 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
   
     const instance = new this(
       {
-        id: values[\\"@id\\"] != null &&
-            !values[\\"@id\\"].startsWith(\\"_:\\") &&
-            canParseIri(values[\\"@id\\"], options.baseUrl)
-          ? parseIri(values[\\"@id\\"], options.baseUrl)
-          : undefined
+        id
       },
       options,
     );
@@ -54285,20 +53764,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -54655,20 +54123,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -55026,20 +54483,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -60770,20 +60216,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -63214,20 +62649,9 @@ get names(): ((string | LanguageString))[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -63258,11 +62682,7 @@ get names(): ((string | LanguageString))[] {
   
     const instance = new this(
       {
-        id: values[\\"@id\\"] != null &&
-            !values[\\"@id\\"].startsWith(\\"_:\\") &&
-            canParseIri(values[\\"@id\\"], options.baseUrl)
-          ? parseIri(values[\\"@id\\"], options.baseUrl)
-          : undefined
+        id
       },
       options,
     );
@@ -63920,20 +63340,9 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -64292,20 +63701,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -64662,20 +64060,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -65035,20 +64422,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -65404,20 +64780,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -65773,20 +65138,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -66142,20 +65496,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -66509,20 +65852,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -66842,20 +66174,9 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -67212,20 +66533,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -68264,20 +67574,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -69101,20 +68400,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -69931,20 +69219,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -75775,20 +75052,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -77236,20 +76502,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -82980,20 +82235,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -84897,20 +84141,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -85799,20 +85032,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -87532,20 +86754,9 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -88239,20 +87450,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -88608,20 +87808,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -90198,20 +89387,9 @@ relationships?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -90729,20 +89907,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -96473,20 +95640,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -98150,20 +97306,9 @@ get contents(): ((string | LanguageString))[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -98186,11 +97331,7 @@ get contents(): ((string | LanguageString))[] {
   
     const instance = new this(
       {
-        id: values[\\"@id\\"] != null &&
-            !values[\\"@id\\"].startsWith(\\"_:\\") &&
-            canParseIri(values[\\"@id\\"], options.baseUrl)
-          ? parseIri(values[\\"@id\\"], options.baseUrl)
-          : undefined
+        id
       },
       options,
     );
@@ -98623,20 +97764,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -98992,20 +98122,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -99577,20 +98696,9 @@ get formerTypes(): ($EntityType)[] {
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -100047,20 +99155,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -100421,20 +99518,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -100793,20 +99879,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -101165,20 +100240,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
@@ -101533,20 +100597,9 @@ instruments?: (Object | URL)[];}
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { \\"@id\\"?: string });
     }
-    if (
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      !canParseIri(values[\\"@id\\"], options.baseUrl)
-    ) {
-      throw new TypeError(\\"Invalid @id: \\" + values[\\"@id\\"]);
-    }
-    if (
-      options.baseUrl == null &&
-      values[\\"@id\\"] != null &&
-      !values[\\"@id\\"].startsWith(\\"_:\\") &&
-      canParseIri(values[\\"@id\\"])
-    ) {
-      options = { ...options, baseUrl: parseIri(values[\\"@id\\"]) };
+    const id = parseJsonLdId(values[\\"@id\\"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   
   if (\\"@type\\" in values) {
