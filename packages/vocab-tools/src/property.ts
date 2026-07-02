@@ -425,7 +425,7 @@ async function* generateProperty(
       yield `
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.${await getFieldName(property.uri, "#_trust")}.has(0)) {
+              !this.${await getFieldName(property.uri, "#_trust")}.has(i)) {
             if (options.crossOrigin === "throw") {
               throw new Error(
                 "The property object's @id (" + v.id.href + ") has a different " +

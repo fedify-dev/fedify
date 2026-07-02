@@ -2371,7 +2371,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_49BipA5dq9eoH8LX8xdsVumveTca_attachment.has(0)) {
+              !this.#_trust_49BipA5dq9eoH8LX8xdsVumveTca_attachment.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -2745,7 +2745,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_42CGqJ94zgQ3ZBbfHwD8Hrr2L5Py_attributedTo.has(0)) {
+              !this.#_trust_42CGqJ94zgQ3ZBbfHwD8Hrr2L5Py_attributedTo.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -3081,7 +3081,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_3ocC3VVi88cEd5sPWL8djkZsvTN6_audience.has(0)) {
+              !this.#_trust_3ocC3VVi88cEd5sPWL8djkZsvTN6_audience.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -3354,7 +3354,7 @@ get contents(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_3mhZzGXSpQ431mBSz2kvych22v4e_context.has(0)) {
+              !this.#_trust_3mhZzGXSpQ431mBSz2kvych22v4e_context.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -3634,7 +3634,7 @@ get names(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_86xFhmgBapoMvYqjbjRuDPayTrS_generator.has(0)) {
+              !this.#_trust_86xFhmgBapoMvYqjbjRuDPayTrS_generator.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -3993,7 +3993,7 @@ get names(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_33CjRLy5ujtsUrwRSCrsggvGdKuR_icon.has(0)) {
+              !this.#_trust_33CjRLy5ujtsUrwRSCrsggvGdKuR_icon.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -4352,7 +4352,7 @@ get names(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_3dXrUdkARxwyJLtJcYi1AJ92H41U_image.has(0)) {
+              !this.#_trust_3dXrUdkARxwyJLtJcYi1AJ92H41U_image.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -4697,7 +4697,7 @@ get names(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_3fpbDrvZgf3Kq1a5V9aByFn8kx3s_inReplyTo.has(0)) {
+              !this.#_trust_3fpbDrvZgf3Kq1a5V9aByFn8kx3s_inReplyTo.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -5042,7 +5042,7 @@ get names(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_31k5MUZJsnsPNg8dQQJieWaXTFnR_location.has(0)) {
+              !this.#_trust_31k5MUZJsnsPNg8dQQJieWaXTFnR_location.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -5385,7 +5385,7 @@ get names(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_gCVTegXxWWCw6wWRxa1QF65zusg_preview.has(0)) {
+              !this.#_trust_gCVTegXxWWCw6wWRxa1QF65zusg_preview.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -6599,7 +6599,7 @@ get summaries(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_5chuqj6s95p5gg2sk1HntGfarRf_tag.has(0)) {
+              !this.#_trust_5chuqj6s95p5gg2sk1HntGfarRf_tag.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -6969,7 +6969,7 @@ get urls(): ((URL | Link))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_3hFbw7DTpHhq3cvVhkY8njhcsXbd_to.has(0)) {
+              !this.#_trust_3hFbw7DTpHhq3cvVhkY8njhcsXbd_to.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -7305,7 +7305,7 @@ get urls(): ((URL | Link))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_aLZupjwL8XB7tzdLgCMXdjZ6qej_bto.has(0)) {
+              !this.#_trust_aLZupjwL8XB7tzdLgCMXdjZ6qej_bto.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -7641,7 +7641,7 @@ get urls(): ((URL | Link))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_42a1SvBs24QSLzKcfjCyNTjW5a1g_cc.has(0)) {
+              !this.#_trust_42a1SvBs24QSLzKcfjCyNTjW5a1g_cc.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -7977,7 +7977,7 @@ get urls(): ((URL | Link))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_3qvegKUB8YLgTXRpEf8E6JZSkz2H_bcc.has(0)) {
+              !this.#_trust_3qvegKUB8YLgTXRpEf8E6JZSkz2H_bcc.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -8375,7 +8375,7 @@ get urls(): ((URL | Link))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_42rPnotok1ivQ2RNCKNbeFJgx8b8_proof.has(0)) {
+              !this.#_trust_42rPnotok1ivQ2RNCKNbeFJgx8b8_proof.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -15497,7 +15497,7 @@ instruments?: (Object | URL)[];}
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_2DjTTboo3CNHU2a2JQqUSE2dbv9D_actor.has(0)) {
+              !this.#_trust_2DjTTboo3CNHU2a2JQqUSE2dbv9D_actor.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -15835,7 +15835,7 @@ instruments?: (Object | URL)[];}
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_2MH19yxjn1wnHsNfa5n4JBhJzxyc_object.has(0)) {
+              !this.#_trust_2MH19yxjn1wnHsNfa5n4JBhJzxyc_object.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -16179,7 +16179,7 @@ instruments?: (Object | URL)[];}
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_3JQCmF2Ww56Ag9EWRYoSZRDNCYtF_target.has(0)) {
+              !this.#_trust_3JQCmF2Ww56Ag9EWRYoSZRDNCYtF_target.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -16517,7 +16517,7 @@ instruments?: (Object | URL)[];}
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_u4QGFbRFcYmPEKGbPv1hpBR9r5G_result.has(0)) {
+              !this.#_trust_u4QGFbRFcYmPEKGbPv1hpBR9r5G_result.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -16857,7 +16857,7 @@ instruments?: (Object | URL)[];}
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_25zu2s3VxVujgEKqrDycjE284XQR_origin.has(0)) {
+              !this.#_trust_25zu2s3VxVujgEKqrDycjE284XQR_origin.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -17193,7 +17193,7 @@ instruments?: (Object | URL)[];}
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_3c5t2x7DYRo2shwTxpkd4kYSS5WQ_instrument.has(0)) {
+              !this.#_trust_3c5t2x7DYRo2shwTxpkd4kYSS5WQ_instrument.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -36085,7 +36085,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_axq166E2eZADq34V4MYUc8KMZdC_publicKey.has(0)) {
+              !this.#_trust_axq166E2eZADq34V4MYUc8KMZdC_publicKey.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -36425,7 +36425,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.has(0)) {
+              !this.#_trust_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -38316,7 +38316,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.has(0)) {
+              !this.#_trust_3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -39028,7 +39028,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.has(0)) {
+              !this.#_trust_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -39368,7 +39368,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.has(0)) {
+              !this.#_trust_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -46607,7 +46607,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_2JPCKWTcfBmTCcW8Tv3TpRaLVaqg_items.has(0)) {
+              !this.#_trust_2JPCKWTcfBmTCcW8Tv3TpRaLVaqg_items.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -55799,7 +55799,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_axq166E2eZADq34V4MYUc8KMZdC_publicKey.has(0)) {
+              !this.#_trust_axq166E2eZADq34V4MYUc8KMZdC_publicKey.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -56139,7 +56139,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.has(0)) {
+              !this.#_trust_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -58030,7 +58030,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.has(0)) {
+              !this.#_trust_3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -58742,7 +58742,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.has(0)) {
+              !this.#_trust_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -59082,7 +59082,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.has(0)) {
+              !this.#_trust_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -62098,7 +62098,7 @@ get names(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_gCVTegXxWWCw6wWRxa1QF65zusg_preview.has(0)) {
+              !this.#_trust_gCVTegXxWWCw6wWRxa1QF65zusg_preview.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -68107,7 +68107,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_2JPCKWTcfBmTCcW8Tv3TpRaLVaqg_items.has(0)) {
+              !this.#_trust_2JPCKWTcfBmTCcW8Tv3TpRaLVaqg_items.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -68881,7 +68881,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_2JPCKWTcfBmTCcW8Tv3TpRaLVaqg_items.has(0)) {
+              !this.#_trust_2JPCKWTcfBmTCcW8Tv3TpRaLVaqg_items.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -70695,7 +70695,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_axq166E2eZADq34V4MYUc8KMZdC_publicKey.has(0)) {
+              !this.#_trust_axq166E2eZADq34V4MYUc8KMZdC_publicKey.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -71035,7 +71035,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.has(0)) {
+              !this.#_trust_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -72926,7 +72926,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.has(0)) {
+              !this.#_trust_3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -73638,7 +73638,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.has(0)) {
+              !this.#_trust_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -73978,7 +73978,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.has(0)) {
+              !this.#_trust_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -77886,7 +77886,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_axq166E2eZADq34V4MYUc8KMZdC_publicKey.has(0)) {
+              !this.#_trust_axq166E2eZADq34V4MYUc8KMZdC_publicKey.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -78226,7 +78226,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.has(0)) {
+              !this.#_trust_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -80117,7 +80117,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.has(0)) {
+              !this.#_trust_3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -80829,7 +80829,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.has(0)) {
+              !this.#_trust_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -81169,7 +81169,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.has(0)) {
+              !this.#_trust_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -85688,7 +85688,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_2N5scKaVEcdYHFmfKYYacAwUhUgQ_oneOf.has(0)) {
+              !this.#_trust_2N5scKaVEcdYHFmfKYYacAwUhUgQ_oneOf.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -85919,7 +85919,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_2mV6isMTPRKbWdLCjcpiEysq5dAY_anyOf.has(0)) {
+              !this.#_trust_2mV6isMTPRKbWdLCjcpiEysq5dAY_anyOf.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -88727,7 +88727,7 @@ relationships?: (Object | URL)[];}
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_2MH19yxjn1wnHsNfa5n4JBhJzxyc_object.has(0)) {
+              !this.#_trust_2MH19yxjn1wnHsNfa5n4JBhJzxyc_object.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -89065,7 +89065,7 @@ relationships?: (Object | URL)[];}
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_4Lzz89F9qipAQSGkWyX9DGWiUojG_relationship.has(0)) {
+              !this.#_trust_4Lzz89F9qipAQSGkWyX9DGWiUojG_relationship.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -91323,7 +91323,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_axq166E2eZADq34V4MYUc8KMZdC_publicKey.has(0)) {
+              !this.#_trust_axq166E2eZADq34V4MYUc8KMZdC_publicKey.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -91663,7 +91663,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.has(0)) {
+              !this.#_trust_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -93554,7 +93554,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.has(0)) {
+              !this.#_trust_3sG2Hdwn9qzKGu9mpYkqakAMUkH9_streams.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -94266,7 +94266,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.has(0)) {
+              !this.#_trust_3NV7TGNhuABbryNjNi4wib4DgNpY_alsoKnownAs.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +
@@ -94606,7 +94606,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
         
           if (v?.id != null &&
               this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
-              !this.#_trust_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.has(0)) {
+              !this.#_trust_4Q6NrKH6bazBGtxwG8vyG77ir7Tg_service.has(i)) {
             if (options.crossOrigin === \\"throw\\") {
               throw new Error(
                 \\"The property object's @id (\\" + v.id.href + \\") has a different \\" +

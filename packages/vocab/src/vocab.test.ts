@@ -1194,6 +1194,7 @@ test("fromJsonLd() formats portable IRIs hidden behind nested remote contexts", 
     unknown
   >;
   deepStrictEqual(jsonLd.extraContainer, {
+    "@context": nestedContextUrl,
     content: "This text mentions ap://did:key:z6Mkabc/text.",
     extra: "This nested extension object should stay cached.",
     extraRef: { id: "ap+ef61://did:key:z6Mkabc/extra" },
@@ -1257,9 +1258,11 @@ test("fromJsonLd() formats portable IRIs in sibling remote-context objects", asy
     unknown
   >;
   deepStrictEqual(jsonLd.firstExtraContainer, {
+    "@context": nestedContextUrl,
     content: "No portable IRI here.",
   });
   deepStrictEqual(jsonLd.secondExtraContainer, {
+    "@context": nestedContextUrl,
     extraRef: { id: "ap+ef61://did:key:z6Mkabc/second" },
   });
 });
@@ -3651,6 +3654,44 @@ test("FEP-fe34: Array properties with crossOrigin trust option", async () => {
   assertInstanceOf(items[1], Note);
   deepStrictEqual((items[0] as Note).content, "Fake note 1");
   deepStrictEqual((items[1] as Note).content, "Legitimate note 2");
+});
+
+test("FEP-fe34: Array properties track trust per item", async () => {
+  const collection = new Collection({
+    id: new URL("https://example.com/collection"),
+    items: [
+      new Note({
+        id: new URL("https://malicious.com/fake-note1"),
+        content: "Trusted constructor note 1",
+      }),
+      new URL("https://different-origin.com/note2"),
+    ],
+  });
+  // deno-lint-ignore require-await
+  const documentLoader = async (url: string) => {
+    if (url === "https://different-origin.com/note2") {
+      return {
+        documentUrl: url,
+        contextUrl: null,
+        document: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          "@type": "Note",
+          "@id": "https://malicious.com/fake-note2",
+          "content": "Untrusted fetched note 2",
+        },
+      };
+    }
+    throw new Error("Document not found");
+  };
+
+  const items = [];
+  for await (const item of collection.getItems({ documentLoader })) {
+    items.push(item);
+  }
+
+  deepStrictEqual(items.length, 1);
+  assertInstanceOf(items[0], Note);
+  deepStrictEqual((items[0] as Note).content, "Trusted constructor note 1");
 });
 
 test(

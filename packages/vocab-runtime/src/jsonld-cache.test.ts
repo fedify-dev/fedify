@@ -125,6 +125,85 @@ test("compactJsonLdCache() reuses unchanged unmapped values", async () => {
   strictEqual(compacted.attachment.extra, extra);
 });
 
+test("compactJsonLdCache() preserves nested contexts", async () => {
+  const context = {
+    as: "https://www.w3.org/ns/activitystreams#",
+    id: "@id",
+    type: "@type",
+    attachment: { "@id": "as:attachment" },
+    name: "as:name",
+  };
+  const nestedContext = {
+    id: "@id",
+    type: "@type",
+    title: "https://example.com/ns#title",
+  };
+  const original = {
+    "@context": context,
+    type: "as:Note",
+    id: "ap://did:key:z6Mkabc/objects/1",
+    attachment: {
+      "@context": nestedContext,
+      type: "as:Object",
+      title: "Nested title.",
+    },
+  };
+  const expanded = await jsonld.expand(original);
+  const normalized = normalizeJsonLdIris(expanded, new Set(["@id"]));
+
+  deepStrictEqual(await compactJsonLdCache(normalized, original), {
+    "@context": context,
+    type: "as:Note",
+    id: "ap+ef61://did:key:z6Mkabc/objects/1",
+    attachment: {
+      "@context": nestedContext,
+      type: "as:Object",
+      "https://example.com/ns#title": "Nested title.",
+    },
+  });
+});
+
+test("compactJsonLdCache() does not re-add represented nested aliases", async () => {
+  const context = {
+    as: "https://www.w3.org/ns/activitystreams#",
+    id: "@id",
+    type: "@type",
+    attachment: { "@id": "as:attachment" },
+    actor: { "@id": "as:actor", "@type": "@id" },
+  };
+  const nestedContext = {
+    id: "@id",
+    type: "@type",
+    actorRef: { "@id": "as:actor", "@type": "@id" },
+  };
+  const original = {
+    "@context": context,
+    type: "as:Note",
+    id: "ap://did:key:z6Mkabc/objects/1",
+    attachment: {
+      "@context": nestedContext,
+      type: "as:Object",
+      actorRef: "ap://did:key:z6Mkabc/actor",
+    },
+  };
+  const expanded = await jsonld.expand(original);
+  const normalized = normalizeJsonLdIris(
+    expanded,
+    new Set(["@id", "https://www.w3.org/ns/activitystreams#actor"]),
+  );
+
+  deepStrictEqual(await compactJsonLdCache(normalized, original), {
+    "@context": context,
+    type: "as:Note",
+    id: "ap+ef61://did:key:z6Mkabc/objects/1",
+    attachment: {
+      "@context": nestedContext,
+      type: "as:Object",
+      actor: "ap+ef61://did:key:z6Mkabc/actor",
+    },
+  });
+});
+
 test("compactJsonLdCache() does not confuse dummy marker prefixes", async () => {
   const context = {
     ex: "https://example.com/ns#",

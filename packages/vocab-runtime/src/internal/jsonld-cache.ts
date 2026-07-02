@@ -132,6 +132,7 @@ export async function compactJsonLdCache(
   original: unknown,
   documentLoader?: DocumentLoader,
   depth = 0,
+  inheritedContext?: unknown,
 ): Promise<unknown> {
   if (depth > 32) return normalized;
   if (Array.isArray(original)) {
@@ -150,6 +151,7 @@ export async function compactJsonLdCache(
         original[i],
         documentLoader,
         depth + 1,
+        inheritedContext,
       );
       if (item !== normalizedArray[i]) {
         clone ??= normalizedArray.slice(0, i);
@@ -160,9 +162,10 @@ export async function compactJsonLdCache(
     }
     return clone ?? (Array.isArray(normalized) ? normalized : normalizedArray);
   }
-  const context = getJsonLdContext(original);
+  const ownContext = getJsonLdContext(original);
+  const context = ownContext ?? inheritedContext;
   if (context == null) return normalized;
-  return preserveJsonLdShape(
+  return await preserveJsonLdShape(
     await mergeUnmappedTerms(
       await jsonld.compact(
         Array.isArray(normalized) && normalized.length === 1
@@ -176,6 +179,9 @@ export async function compactJsonLdCache(
       documentLoader,
     ),
     original,
+    context,
+    documentLoader,
+    depth,
   );
 }
 
@@ -214,10 +220,13 @@ async function mergeUnmappedTerms(
     !globalThis.Object.prototype.hasOwnProperty.call(result, key)
   );
   if (unmappedKeys.length < 1) return result;
+  const compactedWithContext = compacted != null &&
+      typeof compacted === "object" && !Array.isArray(compacted) &&
+      !("@context" in compacted)
+    ? { "@context": context, ...compacted as Record<string, unknown> }
+    : compacted;
   const compactedTerms = getTopLevelTerms(
-    await jsonld.expand(compacted, {
-      documentLoader,
-    }),
+    await jsonld.expand(compactedWithContext, { documentLoader }),
   );
   const dummyPrefix = "urn:fedify:dummy:";
   const dummy: Record<string, unknown> = { "@context": context };
@@ -248,23 +257,27 @@ async function mergeUnmappedTerms(
   return result;
 }
 
-function containsValue(value: unknown, expected: string): boolean {
+function containsValue(value: unknown, expected: string, depth = 0): boolean {
+  if (depth > 32) return false;
   if (value === expected) return true;
   if (Array.isArray(value)) {
-    return value.some((item) => containsValue(item, expected));
+    return value.some((item) => containsValue(item, expected, depth + 1));
   }
   if (value == null || typeof value !== "object") return false;
-  return globalThis.Object.values(value).some((item) =>
-    containsValue(item, expected)
+  return globalThis.Object.entries(value).some(([key, item]) =>
+    key !== "@context" && containsValue(item, expected, depth + 1)
   );
 }
 
-function preserveJsonLdShape(
+async function preserveJsonLdShape(
   compacted: unknown,
   original: unknown,
+  context: unknown,
+  documentLoader?: DocumentLoader,
   depth = 0,
-): unknown {
+): Promise<unknown> {
   if (depth > 32) return compacted;
+  if (compacted === original) return compacted;
   if (
     original == null || typeof original !== "object" ||
     compacted == null || typeof compacted !== "object"
@@ -281,9 +294,11 @@ function preserveJsonLdShape(
     if (compactedArray == null) return compacted;
     let clone: unknown[] | undefined;
     for (let i = 0; i < compactedArray.length; i++) {
-      const value = preserveJsonLdShape(
+      const value = await preserveJsonLdShape(
         compactedArray[i],
         original[i],
+        context,
+        documentLoader,
         depth + 1,
       );
       const originalContext = original[i] != null &&
@@ -307,13 +322,22 @@ function preserveJsonLdShape(
   }
   if (Array.isArray(compacted)) return compacted;
   let clone: Record<string, unknown> | undefined;
-  const compactedObject = compacted as Record<string, unknown>;
+  const compactedObject = depth > 0
+    ? await mergeUnmappedTerms(
+      compacted,
+      original,
+      combineContexts(context, getJsonLdContext(original)),
+      documentLoader,
+    ) as Record<string, unknown>
+    : compacted as Record<string, unknown>;
   const originalObject = original as Record<string, unknown>;
   for (const key of globalThis.Object.keys(compactedObject)) {
     if (key === "@context") continue;
-    const value = preserveJsonLdShape(
+    const value = await preserveJsonLdShape(
       compactedObject[key],
       originalObject[key],
+      context,
+      documentLoader,
       depth + 1,
     );
     const shaped = Array.isArray(originalObject[key]) && !Array.isArray(value)
@@ -325,16 +349,22 @@ function preserveJsonLdShape(
     }
   }
   if (depth > 0) {
-    for (const key of globalThis.Object.keys(originalObject)) {
-      if (
-        key.startsWith("@") ||
-        globalThis.Object.prototype.hasOwnProperty.call(compactedObject, key)
-      ) {
-        continue;
-      }
+    if ("@context" in originalObject && !("@context" in compactedObject)) {
       clone ??= { ...compactedObject };
-      clone[key] = originalObject[key];
+      clone["@context"] = originalObject["@context"];
     }
   }
   return clone ?? compactedObject;
+}
+
+function combineContexts(
+  inheritedContext: unknown,
+  ownContext: unknown,
+): unknown {
+  if (ownContext == null || ownContext === inheritedContext) {
+    return inheritedContext;
+  }
+  return Array.isArray(inheritedContext)
+    ? [...inheritedContext, ownContext]
+    : [inheritedContext, ownContext];
 }
