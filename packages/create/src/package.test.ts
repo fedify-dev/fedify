@@ -8,6 +8,7 @@ const packageDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 test(
   "package.json entrypoints match built create CLI",
+  { skip: "Deno" in globalThis },
   async () => {
     const packageJson = JSON.parse(
       await readFile(resolve(packageDir, "package.json"), "utf8"),
