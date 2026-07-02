@@ -8,7 +8,6 @@ import { type Span, SpanStatusCode, type TracerProvider, trace }
     from "@opentelemetry/api";
 import {
     canParseDecimal,
-    compactJsonLdCache,
     decodeMultibase,
     type Decimal,
     type DocumentLoader,
@@ -17,18 +16,21 @@ import {
     exportSpki,
     formatIri,
     getDocumentLoader,
-    getJsonLdContext,
     importMultibaseKey,
     importPem,
     isDecimal,
-    isTrustedIriOrigin,
     LanguageString,
-    normalizeJsonLdIris,
     parseDecimal,
     parseIri,
     parseJsonLdId,
     type RemoteDocument
 } from "@fedify/vocab-runtime";
+import {
+    compactJsonLdCache,
+    getJsonLdContext,
+    isTrustedIriOrigin,
+    normalizeJsonLdIris
+} from "@fedify/vocab-runtime/internal/jsonld-cache";
 import {
     isTemporalDuration,
     isTemporalInstant,

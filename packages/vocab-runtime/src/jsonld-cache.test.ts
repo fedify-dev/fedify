@@ -5,7 +5,7 @@ import {
   getJsonLdContext,
   isTrustedIriOrigin,
   normalizeJsonLdIris,
-} from "./jsonld-cache.ts";
+} from "./internal/jsonld-cache.ts";
 import jsonld from "./jsonld.ts";
 import { parseIri } from "./url.ts";
 

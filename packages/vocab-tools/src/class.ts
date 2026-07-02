@@ -12,9 +12,14 @@ import { emitOverride } from "./type.ts";
 
 const XSD_ANY_URI = "http://www.w3.org/2001/XMLSchema#anyURI";
 const FEDIFY_URL = "fedify:url";
+const INTERNAL_RUNTIME_IMPORTS = [
+  "compactJsonLdCache",
+  "getJsonLdContext",
+  "isTrustedIriOrigin",
+  "normalizeJsonLdIris",
+].join(",\n    ");
 const RUNTIME_IMPORTS = [
   "canParseDecimal",
-  "compactJsonLdCache",
   "decodeMultibase",
   "type Decimal",
   "type DocumentLoader",
@@ -23,13 +28,10 @@ const RUNTIME_IMPORTS = [
   "exportSpki",
   "formatIri",
   "getDocumentLoader",
-  "getJsonLdContext",
   "importMultibaseKey",
   "importPem",
   "isDecimal",
-  "isTrustedIriOrigin",
   "LanguageString",
-  "normalizeJsonLdIris",
   "parseDecimal",
   "parseIri",
   "parseJsonLdId",
@@ -248,6 +250,7 @@ export async function* generateClasses(
   yield `import { type Span, SpanStatusCode, type TracerProvider, trace }
     from "@opentelemetry/api";\n`;
   yield `import {\n    ${RUNTIME_IMPORTS}\n} from "@fedify/vocab-runtime";\n`;
+  yield `import {\n    ${INTERNAL_RUNTIME_IMPORTS}\n} from "@fedify/vocab-runtime/internal/jsonld-cache";\n`;
   yield `import {
     isTemporalDuration,
     isTemporalInstant,

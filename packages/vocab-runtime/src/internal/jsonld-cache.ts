@@ -1,9 +1,13 @@
-import type { DocumentLoader } from "./docloader.ts";
-import jsonld from "./jsonld.ts";
-import { formatIri, haveSameIriOrigin } from "./url.ts";
+import type { DocumentLoader } from "../docloader.ts";
+import jsonld from "../jsonld.ts";
+import { formatIri, haveSameIriOrigin } from "../url.ts";
 
 /**
  * Options for deciding whether two IRIs should be treated as same-origin.
+ *
+ * @internal Technically exported for generated vocabulary classes, but not
+ * part of the public API contract.  This is not considered public API for
+ * Semantic Versioning decisions.
  */
 export interface IriTrustOptions {
   crossOrigin?: "ignore" | "throw" | "trust";
@@ -11,6 +15,10 @@ export interface IriTrustOptions {
 
 /**
  * Checks whether an IRI is trusted relative to another IRI.
+ *
+ * @internal Technically exported for generated vocabulary classes, but not
+ * part of the public API contract.  This is not considered public API for
+ * Semantic Versioning decisions.
  */
 export function isTrustedIriOrigin(
   options: IriTrustOptions,
@@ -23,6 +31,10 @@ export function isTrustedIriOrigin(
 
 /**
  * Normalizes portable IRIs in JSON-LD cache data.
+ *
+ * @internal Technically exported for generated vocabulary classes, but not
+ * part of the public API contract.  This is not considered public API for
+ * Semantic Versioning decisions.
  */
 export function normalizeJsonLdIris(
   value: unknown,
@@ -85,6 +97,10 @@ export function normalizeJsonLdIris(
 
 /**
  * Finds the first JSON-LD context in a value.
+ *
+ * @internal Technically exported for generated vocabulary classes, but not
+ * part of the public API contract.  This is not considered public API for
+ * Semantic Versioning decisions.
  */
 export function getJsonLdContext(value: unknown, depth = 0): unknown {
   if (depth > 32) return undefined;
@@ -106,6 +122,10 @@ export function getJsonLdContext(value: unknown, depth = 0): unknown {
 
 /**
  * Recompacts normalized JSON-LD cache data against the original context.
+ *
+ * @internal Technically exported for generated vocabulary classes, but not
+ * part of the public API contract.  This is not considered public API for
+ * Semantic Versioning decisions.
  */
 export async function compactJsonLdCache(
   normalized: unknown,
