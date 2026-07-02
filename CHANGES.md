@@ -8,6 +8,18 @@ Version 2.4.0
 
 To be released.
 
+### @fedify/vocab
+
+ -  Added support for [FEP-ef61] portable ActivityPub IRIs in generated
+    vocabulary codecs.  `ap:` and `ap+ef61:` values with decoded or
+    percent-encoded DID authorities now parse as `URL` objects, and JSON-LD
+    serialization emits canonical `ap+ef61:` values with decoded DID
+    authorities.  [[#826], [#850]]
+
+[FEP-ef61]: https://w3id.org/fep/ef61
+[#826]: https://github.com/fedify-dev/fedify/issues/826
+[#850]: https://github.com/fedify-dev/fedify/pull/850
+
 
 Version 2.3.1
 -------------

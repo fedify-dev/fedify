@@ -1,12 +1,263 @@
-import { deepStrictEqual, ok, rejects } from "node:assert";
+import { deepStrictEqual, ok, rejects, throws } from "node:assert";
 import { test } from "node:test";
 import {
   expandIPv6Address,
+  formatIri,
+  haveSameIriOrigin,
   isValidPublicIPv4Address,
   isValidPublicIPv6Address,
+  parseIri,
+  parseJsonLdId,
   UrlError,
   validatePublicUrl,
 } from "./url.ts";
+
+test("parseIri() accepts portable ActivityPub URI schemes", () => {
+  const cases = [
+    "ap://did:key:z6Mkabc/actor",
+    "ap://did%3Akey%3Az6Mkabc/actor",
+    "ap+ef61://did:key:z6Mkabc/actor",
+    "ap+ef61://did%3Akey%3Az6Mkabc/actor",
+    "AP+EF61://did:key:z6Mkabc/actor",
+  ];
+  for (const iri of cases) {
+    deepStrictEqual(
+      parseIri(iri),
+      new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
+    );
+  }
+});
+
+test("parseIri() accepts DID schemes case-insensitively", () => {
+  const cases = [
+    "ap://DID:key:z6Mkabc/actor",
+    "ap://DID%3Akey%3Az6Mkabc/actor",
+  ];
+  for (const iri of cases) {
+    deepStrictEqual(
+      parseIri(iri),
+      new URL("ap+ef61://DID%3Akey%3Az6Mkabc/actor"),
+    );
+  }
+});
+
+test("parseIri() accepts DID method names that start with digits", () => {
+  deepStrictEqual(
+    parseIri("ap://did:3:abc/actor"),
+    new URL("ap+ef61://did%3A3%3Aabc/actor"),
+  );
+});
+
+test("parseIri() accepts hyphens in DID method-specific IDs", () => {
+  deepStrictEqual(
+    parseIri("ap+ef61://did:web:foo-bar.example/actor"),
+    new URL("ap+ef61://did%3Aweb%3Afoo-bar.example/actor"),
+  );
+});
+
+test("parseIri() preserves existing URL parsing behavior", () => {
+  deepStrictEqual(
+    parseIri("/actor", new URL("https://example.com/users/alice")),
+    new URL("https://example.com/actor"),
+  );
+  deepStrictEqual(
+    parseIri("at://did:plc:example/record"),
+    new URL("at://did%3Aplc%3Aexample/record"),
+  );
+  throws(() => parseIri("ap://not-a-did/actor"), TypeError);
+});
+
+test("parseJsonLdId() parses JSON-LD ids", () => {
+  deepStrictEqual(parseJsonLdId(undefined), undefined);
+  deepStrictEqual(parseJsonLdId("_:blank"), undefined);
+  deepStrictEqual(
+    parseJsonLdId("/actor", new URL("https://example.com/users/alice")),
+    new URL("https://example.com/actor"),
+  );
+  deepStrictEqual(
+    parseJsonLdId("ap://did:key:z6Mkabc/actor"),
+    new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
+  );
+  throws(() => parseJsonLdId("/actor"), {
+    name: "TypeError",
+    message: "Invalid @id: /actor",
+  });
+});
+
+test("parseIri() resolves relative IRIs against portable string bases", () => {
+  deepStrictEqual(
+    parseIri("/actor", "ap://did:key:z6Mkabc/objects/1"),
+    new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
+  );
+  deepStrictEqual(
+    parseIri("attachments/1", "ap://did:key:z6Mkabc/objects/1"),
+    new URL("ap+ef61://did%3Akey%3Az6Mkabc/objects/attachments/1"),
+  );
+  throws(
+    () => parseIri("//example.com/outbox", "ap://did:key:z6Mkabc/objects/1"),
+    TypeError,
+  );
+});
+
+test("parseIri() resolves relative IRIs against at:// string bases", () => {
+  deepStrictEqual(
+    parseIri("/record", "at://did:plc:example/collection/item"),
+    new URL("at://did%3Aplc%3Aexample/record"),
+  );
+  deepStrictEqual(
+    parseIri("reply", "at://did:plc:example/collection/item"),
+    new URL("at://did%3Aplc%3Aexample/collection/reply"),
+  );
+  deepStrictEqual(
+    parseIri("reply", "at://did%3Aplc%3Aexample/collection/item"),
+    new URL("at://did%3Aplc%3Aexample/collection/reply"),
+  );
+});
+
+test("parseIri() rejects portable IRIs without paths", () => {
+  throws(() => parseIri("ap://did:key:z6Mkabc"), TypeError);
+  throws(
+    () =>
+      parseIri("ap://did:key:z6Mkabc?gateways=https%3A%2F%2Fserver.example"),
+    TypeError,
+  );
+  throws(() => parseIri("ap://did:key:z6Mkabc#actor"), TypeError);
+});
+
+test("parseIri() rejects malformed portable DID authorities", () => {
+  const cases = [
+    "ap://did:/actor",
+    "ap://did:key/actor",
+    "ap://did%3Akey%3Aabc%25zz/actor",
+    "ap://did:key:abc%25zz/actor",
+  ];
+  for (const iri of cases) {
+    throws(() => parseIri(iri), TypeError);
+  }
+});
+
+test("haveSameIriOrigin() compares portable IRI authorities", () => {
+  ok(haveSameIriOrigin(
+    parseIri("ap://did:key:z6Mkabc/actor"),
+    parseIri("ap://did:key:z6Mkabc/outbox"),
+  ));
+  ok(haveSameIriOrigin(
+    new URL("ap://did%3Akey%3Az6Mkabc/actor"),
+    new URL("ap+ef61://did%3Akey%3Az6Mkabc/outbox"),
+  ));
+  ok(haveSameIriOrigin(
+    parseIri("ap://DID:key:z6Mkabc/actor"),
+    parseIri("ap://did:key:z6Mkabc/outbox"),
+  ));
+  ok(haveSameIriOrigin(
+    new URL("ap+ef61://DID%3Akey%3Az6Mkabc/actor"),
+    new URL("ap+ef61://did%3Akey%3Az6Mkabc/outbox"),
+  ));
+  ok(
+    !haveSameIriOrigin(
+      parseIri("ap://did:key:z6Mkabc/actor"),
+      parseIri("ap://did:key:z6Mkdef/actor"),
+    ),
+  );
+});
+
+test("parseIri() normalizes portable URL instances", () => {
+  deepStrictEqual(
+    parseIri(new URL("ap+ef61://did%3Aexample%3Aabc%2Fdef/actor")),
+    new URL("ap+ef61://did%3Aexample%3Aabc%252Fdef/actor"),
+  );
+  throws(() => parseIri("ap+ef61://not-a-did/actor"), TypeError);
+});
+
+test("formatIri() emits canonical portable ActivityPub URI syntax", () => {
+  const cases = [
+    new URL("ap://did%3Akey%3Az6Mkabc/actor"),
+    new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
+  ];
+  for (const iri of cases) {
+    deepStrictEqual(formatIri(iri), "ap+ef61://did:key:z6Mkabc/actor");
+  }
+  deepStrictEqual(
+    formatIri(new URL("https://example.com/actor")),
+    "https://example.com/actor",
+  );
+  deepStrictEqual(formatIri("/actor"), "/actor");
+});
+
+test("formatIri() preserves DID authority pct-encoded delimiters", () => {
+  const parsed = parseIri("ap://did:example:abc%2Fdef/actor");
+  deepStrictEqual(
+    parsed,
+    new URL("ap+ef61://did%3Aexample%3Aabc%252Fdef/actor"),
+  );
+  deepStrictEqual(
+    formatIri(parsed),
+    "ap+ef61://did:example:abc%2Fdef/actor",
+  );
+  deepStrictEqual(
+    parseIri(formatIri(parsed)),
+    parsed,
+  );
+  deepStrictEqual(
+    formatIri(new URL("ap+ef61://did%3Aexample%3Aabc%2Fdef/actor")),
+    "ap+ef61://did:example:abc%2Fdef/actor",
+  );
+});
+
+test("parseIri() normalizes equivalent encoded DID authorities", () => {
+  deepStrictEqual(
+    parseIri("ap://did:example:abc%252Fdef/actor"),
+    parseIri("ap://did%3Aexample%3Aabc%252Fdef/actor"),
+  );
+});
+
+test("formatIri() preserves DID-internal pct-encoded authority characters", () => {
+  const parsed = parseIri("ap://did:web:example.com%3A3000/actor");
+  deepStrictEqual(
+    parsed,
+    new URL("ap+ef61://did%3Aweb%3Aexample.com%253A3000/actor"),
+  );
+  deepStrictEqual(
+    formatIri(parsed),
+    "ap+ef61://did:web:example.com%3A3000/actor",
+  );
+});
+
+test("parseIri() accepts portable DID URLs with encoded DID delimiters", () => {
+  const parsed = parseIri("ap://did:web:example.com%3A3000/u/1");
+  deepStrictEqual(
+    parsed,
+    new URL("ap+ef61://did%3Aweb%3Aexample.com%253A3000/u/1"),
+  );
+  deepStrictEqual(
+    formatIri(parsed),
+    "ap+ef61://did:web:example.com%3A3000/u/1",
+  );
+});
+
+test("parseIri() decodes pct-encoded DID delimiters in order", () => {
+  const parsed = parseIri("ap://did%3Aweb%3Aexample.com%253A3000/u/1");
+  deepStrictEqual(
+    parsed,
+    new URL("ap+ef61://did%3Aweb%3Aexample.com%253A3000/u/1"),
+  );
+  deepStrictEqual(
+    formatIri(parsed),
+    "ap+ef61://did:web:example.com%3A3000/u/1",
+  );
+});
+
+test("parseIri() preserves encoded percent signs while decoding delimiters", () => {
+  const parsed = parseIri("ap://did%3Aweb%3Aexample.com%2500/u/1");
+  deepStrictEqual(
+    parsed,
+    new URL("ap+ef61://did%3Aweb%3Aexample.com%2500/u/1"),
+  );
+  deepStrictEqual(
+    formatIri(parsed),
+    "ap+ef61://did:web:example.com%00/u/1",
+  );
+});
 
 test("validatePublicUrl()", async () => {
   await rejects(() => validatePublicUrl("ftp://localhost"), UrlError);

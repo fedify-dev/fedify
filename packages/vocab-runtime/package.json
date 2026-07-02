@@ -42,6 +42,16 @@
       "require": "./dist/jsonld.cjs",
       "default": "./dist/jsonld.js"
     },
+    "./internal/jsonld-cache": {
+      "types": {
+        "import": "./dist/internal/jsonld-cache.d.ts",
+        "require": "./dist/internal/jsonld-cache.d.cts",
+        "default": "./dist/internal/jsonld-cache.d.ts"
+      },
+      "import": "./dist/internal/jsonld-cache.js",
+      "require": "./dist/internal/jsonld-cache.cjs",
+      "default": "./dist/internal/jsonld-cache.js"
+    },
     "./temporal": {
       "types": {
         "import": "./dist/temporal.d.ts",

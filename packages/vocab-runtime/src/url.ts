@@ -9,6 +9,147 @@ export class UrlError extends Error {
   }
 }
 
+const PORTABLE_IRI_PATTERN =
+  /^(ap|ap\+ef61):\/\/([^/?#]*)([^?#]*)(\?[^#]*)?(#.*)?$/i;
+const INVALID_PERCENT_ENCODING_PATTERN = /%(?![0-9A-Fa-f]{2})/;
+const DID_SCHEME_PATTERN = /^did:/i;
+const DID_PATTERN = /^did:[a-z0-9]+:[-A-Za-z0-9._%]+(?::[-A-Za-z0-9._%]+)*$/i;
+
+/**
+ * Parses a JSON-LD `@id` value as an IRI.
+ */
+export function parseJsonLdId(
+  id: string | undefined,
+  base?: string | URL,
+): URL | undefined {
+  if (id == null || id.startsWith("_:")) return undefined;
+  try {
+    return parseIri(id, base);
+  } catch {
+    throw new TypeError("Invalid @id: " + id);
+  }
+}
+
+/**
+ * Parses an IRI as a URL, including FEP-ef61 portable ActivityPub IRIs.
+ */
+export function parseIri(iri: string | URL, base?: string | URL): URL {
+  if (iri instanceof URL) {
+    return normalizePortableUrl(iri) ?? new URL(iri.href);
+  }
+  const portable = parsePortableIri(iri);
+  if (portable != null) return portable;
+  base = normalizeBaseIri(base);
+  if (!URL.canParse(iri, base) && iri.startsWith("at://")) {
+    return parseAtUri(iri);
+  }
+  const parsed = new URL(iri, base);
+  return normalizePortableUrl(parsed) ?? parsed;
+}
+
+/**
+ * Formats a URL as an IRI, including FEP-ef61 portable ActivityPub IRIs.
+ */
+export function formatIri(iri: string | URL): string {
+  const parsed = parsePortableIri(iri instanceof URL ? iri.href : iri);
+  if (parsed == null) {
+    return iri instanceof URL
+      ? iri.href
+      : URL.canParse(iri)
+      ? new URL(iri).href
+      : iri;
+  }
+  const authority = decodePortableAuthority(parsed.host);
+  return `ap+ef61://${authority}${parsed.pathname}${parsed.search}${parsed.hash}`;
+}
+
+/**
+ * Checks whether two IRIs have the same origin.
+ */
+export function haveSameIriOrigin(left: URL, right: URL): boolean {
+  return getComparableIriOrigin(left) === getComparableIriOrigin(right);
+}
+
+function getComparableIriOrigin(iri: URL): string {
+  iri = normalizePortableUrl(iri) ?? iri;
+  if (iri.origin !== "null") return iri.origin;
+  if (iri.host !== "") {
+    const host = iri.protocol === "ap+ef61:"
+      ? encodeURIComponent(
+        decodePortableAuthority(iri.host).replace(DID_SCHEME_PATTERN, "did:"),
+      )
+      : iri.host;
+    return `${iri.protocol}//${host}`;
+  }
+  return iri.href;
+}
+
+function parsePortableIri(iri: string): URL | null {
+  const match = iri.match(PORTABLE_IRI_PATTERN);
+  if (match == null) return null;
+  // The readable ap://did:... authority form is not RFC 3986 compliant:
+  // colons are not valid in a URI reg-name authority.  Keep accepting it for
+  // current FEP-ef61 interoperability, but normalize it to a percent-encoded
+  // URL authority internally.  The ap: URI syntax may change later; see:
+  // https://bnewbold.leaflet.pub/3mph4hzvbdc2v
+  const authority = decodePortableAuthority(match[2]);
+  if (!DID_PATTERN.test(authority)) {
+    throw new TypeError("Invalid portable ActivityPub IRI authority.");
+  }
+  if (match[3] === "") {
+    throw new TypeError("Invalid portable ActivityPub IRI path.");
+  }
+  return new URL(
+    `ap+ef61://${encodeURIComponent(authority)}${match[3]}${match[4] ?? ""}${
+      match[5] ?? ""
+    }`,
+  );
+}
+
+function normalizePortableUrl(iri: URL): URL | null {
+  if (iri.protocol !== "ap:" && iri.protocol !== "ap+ef61:") return null;
+  return parsePortableIri(
+    `ap+ef61://${iri.host}${iri.pathname}${iri.search}${iri.hash}`,
+  );
+}
+
+function normalizeBaseIri(base?: string | URL): string | URL | undefined {
+  if (base == null) return undefined;
+  if (base instanceof URL) return normalizePortableUrl(base) ?? base;
+  return parsePortableIri(base) ??
+    (base.startsWith("at://") && !URL.canParse(".", base)
+      ? parseAtUri(base)
+      : base);
+}
+
+function decodePortableAuthority(authority: string): string {
+  if (INVALID_PERCENT_ENCODING_PATTERN.test(authority)) {
+    throw new TypeError("Invalid portable ActivityPub IRI authority.");
+  }
+  if (DID_SCHEME_PATTERN.test(authority)) {
+    const decoded = authority.replace(/%25/gi, "%");
+    if (INVALID_PERCENT_ENCODING_PATTERN.test(decoded)) {
+      throw new TypeError("Invalid portable ActivityPub IRI authority.");
+    }
+    return decoded;
+  }
+  const decoded = authority.replace(
+    /%(25|3A)/gi,
+    (match) => match.toLowerCase() === "%3a" ? ":" : "%",
+  );
+  if (INVALID_PERCENT_ENCODING_PATTERN.test(decoded)) {
+    throw new TypeError("Invalid portable ActivityPub IRI authority.");
+  }
+  return decoded;
+}
+
+function parseAtUri(uri: string): URL {
+  const index = uri.indexOf("/", 5);
+  const authority = index >= 0 ? uri.slice(5, index) : uri.slice(5);
+  const path = index >= 0 ? uri.slice(index) : "";
+  return new URL("at://" + encodeURIComponent(authority) + path);
+}
+
 /**
  * Validates a URL to prevent SSRF attacks.
  */

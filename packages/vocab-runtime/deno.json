@@ -4,6 +4,7 @@
   "license": "MIT",
   "exports": {
     ".": "./src/mod.ts",
+    "./internal/jsonld-cache": "./src/internal/jsonld-cache.ts",
     "./jsonld": "./src/jsonld.ts",
     "./temporal": "./src/temporal.ts"
   },

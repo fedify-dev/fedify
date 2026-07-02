@@ -108,12 +108,19 @@ const create = new Create({
 Note that every URI is represented as a [`URL`] object.  This is for
 distinguishing the URIs from the other strings.
 
+Fedify also accepts [FEP-ef61] portable ActivityPub IRIs in JSON-LD input.
+Both the `ap:` and `ap+ef61:` schemes are accepted, whether the DID authority
+is decoded (e.g., `ap+ef61://did:key:.../actor`) or percent-encoded.  Fedify
+stores these IRIs as `URL` objects with a URL-safe authority internally, and
+serializes them as canonical `ap+ef61:` IRIs with the decoded DID authority.
+
 > [!TIP]
 > You can instantiate an object from a JSON-LD document by calling the
 > `fromJsonLd()` method of the object.  See the [*JSON-LD* section](#json-ld)
 > for details.
 
 [`URL`]: https://developer.mozilla.org/en-US/docs/Web/API/URL
+[FEP-ef61]: https://w3id.org/fep/ef61
 
 
 Properties
