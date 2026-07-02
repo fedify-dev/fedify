@@ -7,6 +7,49 @@ Thank you for considering contributing to Fedify!  This document explains how to
 contribute to the project.
 
 
+First contributions
+-------------------
+
+If this is your first contribution to Fedify, please read this section before
+opening a pull request.  It exists because low-effort, AI-generated pull
+requests have grown common enough to burden maintainers and crowd out genuine
+work.  None of this is meant to discourage you; it is meant to help your first
+contribution land.
+
+For anything beyond a trivial fix, there should be an *accepted issue* before
+you open a pull request:
+
+ -  If an issue already describes the work, comment on it and wait for a
+    maintainer to assign it to you.
+ -  If no issue exists, open one first (see [*Bug reports*](#bug-reports) or
+    [*Feature requests*](#feature-requests) below) and let a maintainer confirm
+    the change is wanted.
+
+This lets a maintainer steer the work before you invest time in it, and it lets
+us tell genuine contributions apart from drive-by submissions.  The same
+requirement already applies to any AI-assisted pull request; see
+*[AI_POLICY.md]*.
+
+Fixing a typo or improving the documentation is exempt: you can open a pull
+request directly, without an issue (see [*Docs*](#docs) below).
+
+We also do not want this to get in the way of people who already know the
+problem domain.  If you are already active in the fediverse or in related
+F/OSS work and are confident the change will be welcome, you may open a
+pull request directly.  In that case, please make it easy for us to see where
+you are coming from, for example by linking your fediverse account or your
+other work.  This is an invitation, not a credential check.
+
+A pull request that follows none of the above may be closed without further
+comment.  Treat this section as that notice: if you have read this far, you
+have already received the explanation a closing comment would give.  It is not
+a judgment of you, and once there is an accepted issue, or you have shown the
+familiarity described above, you are welcome to reopen the pull request or open
+a new one.
+
+[AI_POLICY.md]: AI_POLICY.md
+
+
 Bug reports
 -----------
 
@@ -47,8 +90,6 @@ Pull requests
 If you use AI tools (such as GitHub Copilot, Claude, Cursor, etc.) while
 contributing, you must disclose this in your pull request description and/or
 commit messages.  See *[AI_POLICY.md]* for the complete policy.
-
-[AI_POLICY.md]: AI_POLICY.md
 
 ### License
 
@@ -260,6 +301,9 @@ When adding a new package to the monorepo, the following files must be updated:
     This is required for provenance information when publishing to npm.
 4.  Root *deno.json*: Add the package path to the `workspace` array.
 5.  *pnpm-workspace.yaml*: Add the package path to the `packages` array.
+6.  *.github/CODEOWNERS*: Add the package path under the section that
+    matches its category (e.g., framework integration, database
+    adapter) and list its owner(s).
 
 **Conditional updates:**
 
@@ -302,7 +346,7 @@ changes.
 To update both lockfiles at once, run:
 
 ~~~~ bash
-mise run install
+mise deps
 ~~~~
 
 When reviewing pull requests, please check that lockfile changes are included
@@ -500,8 +544,10 @@ mise trust
 mise install
 ~~~~
 
-This will install [Deno], [Node.js], and [Bun] with the correct versions
-specified in *mise.toml*.
+This installs [Deno], [Node.js], [Bun], and the other tools with the correct
+versions specified in *mise.toml*.  A `postinstall` hook then runs `mise deps`,
+which generates code, installs dependencies, builds all packages, and (on first
+setup) installs the Git pre-commit hook, so the checkout is ready to use.
 
 The recommended editor for Fedify is [Visual Studio Code] with
 the [Deno extension] installed.  Or you can use any editor that supports Deno;
@@ -510,35 +556,28 @@ see the [*Set Up Your Environment* section][1] in the Deno manual.
 > [!CAUTION]
 >
 > Fedify heavily depends on code generation and all packages must be built
-> before coding or testing. Running `mise run install` (or `pnpm install`)
-> automatically handles code generation and builds all packages.
+> before coding or testing. The `mise install` step above handles code
+> generation and builds all packages for you.
 
-Assuming you have Deno and Visual Studio Code installed, you can open
-the repository in Visual Studio Code and get ready to hack on Fedify by running
-the following commands at the *root* of the repository:
+With the tools and dependencies installed by the setup commands above, open the
+repository in Visual Studio Code to get ready to hack on Fedify:
 
 ~~~~ bash
-mise run install  # This runs codegen and builds all packages
 code .
 ~~~~
 
 > [!TIP]
-> It is recommended to install Git pre-commit hooks after cloning the
-> repository to ensure code quality checks run automatically before each
-> commit:
+> The Git pre-commit hook, which runs `mise run check` before each commit, is
+> installed automatically by `mise install` (unless one is already present).
+> To (re)install it explicitly, run:
 >
 > ~~~~ bash
 > mise run hooks:install
 > ~~~~
 
-Note that the `mise run install` command is required to run only once at
-the very first time after checkout. When you update dependencies or code
-generation scripts, run `mise run install` again. Otherwise, you can skip
-the command and just run:
-
-~~~~ bash
-code .
-~~~~
+You only need to run `mise install` once, right after checkout. When you change
+dependencies or code generation inputs, mise's deps providers pick the change
+up automatically before the next task runs (or run `mise deps` explicitly).
 
 Since this is a monorepo, you can also work on individual packages by
 navigating to their directories and using package-specific tasks.
@@ -564,7 +603,7 @@ If you want to test your changes in the Fedify CLI, you can run
 the `fedify lookup` subcommand, you can run the following command:
 
 ~~~~ bash
-mise run cli -- lookup @fedify@hollo.social
+mise run cli -- lookup @fedify@hackers.pub
 ~~~~
 
 > [!NOTE]
@@ -679,7 +718,7 @@ in the browser.  To do that, you need to install [Node.js] and [pnpm] first.
 Then you can run the following commands at the repository root:
 
 ~~~~ bash
-mise run install
+mise install
 mise run docs
 ~~~~
 

@@ -21,10 +21,7 @@
   "bugs": {
     "url": "https://github.com/fedify-dev/fedify/issues"
   },
-  "funding": [
-    "https://opencollective.com/fedify",
-    "https://github.com/sponsors/dahlia"
-  ],
+  "funding": "https://opencollective.com/fedify",
   "engines": {
     "deno": ">=2.0.0",
     "node": ">=22.0.0",

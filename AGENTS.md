@@ -23,6 +23,17 @@ AI policy compliance
 > Transparency about AI usage is non-negotiable.  Deceptive practices harm
 > the project and its maintainers.
 
+> [!IMPORTANT]
+>
+> If the user you are assisting is a first-time contributor to Fedify, you
+> MUST read and follow the *First contributions* section of *CONTRIBUTING.md*
+> before opening a pull request on their behalf.  In short, for anything
+> beyond a trivial typo or documentation fix, there must be an accepted issue
+> assigned to the contributor first, unless they have an established online
+> presence in the fediverse or related F/OSS work that they surface in
+> the pull request.  Pull requests that ignore this may be closed without
+> further comment.
+
 
 Project overview
 ----------------
@@ -45,10 +56,14 @@ Development environment
  -  Primary environment: [Deno]
  -  Additional test environments: [Node.js] and [Bun]
  -  Recommended editor: [Visual Studio Code] with [Deno extension]
- -  **CRITICAL**: Run `mise run install` (or `pnpm install`) after checkout.
-    This automatically runs code generation and builds all packages.
- -  Lockfiles: Both *deno.lock* and *pnpm-lock.yaml* are committed.
-    Update them when changing dependencies.
+ -  **CRITICAL**: Run `mise install` once after checkout.  A `postinstall` hook
+    then runs `mise deps`, which generates code, installs dependencies, and
+    builds all packages, so the checkout is ready to use.
+ -  Run development scripts through mise (`mise tasks` to list,
+    `mise run <task>` to invoke).  Don't call `pnpm` or `npm` directly for dev
+    workflows.
+ -  Lockfiles: Both *deno.lock* and *pnpm-lock.yaml* are committed.  Run
+    `mise deps` to update them when changing dependencies.
 
 [mise]: https://mise.jdx.dev/
 [Deno]: https://deno.com/
@@ -124,21 +139,17 @@ Code patterns and principles
 Development workflow
 --------------------
 
- -  **Code Generation**: Run `mise run codegen` whenever vocabulary YAML files
-    or code generation scripts change.
- -  **Building Packages**: After installation, all packages are automatically
-    built. To rebuild a specific package and its dependencies, run
-    `mise run prepare`, or run `mise run prepare-each <pkgs>` to build
-    specific packages.
- -  **Checking Code**: Run `mise run check` before committing, or run
-    `mise run check-each <pkgs>` to check specific packages.
- -  **Running Tests**:
-     -  `mise run test`: Executes all the tests in every runtime.
-     -  `mise run test:<runtime:deno,node,bun>`: Executes all the tests by the
-        runtime. If some specific tests are needed, execute
-        `mise run test:<runtime> <test-file-path-from-the-root>`.
-     -  `mise run test-each <pkgs>`: Executes tests in packages that include
-        `pkgs` in every runtime.
+ -  **Code Generation**: Vocabulary types are regenerated automatically before
+    any mise task (a `mise deps` provider watches the vocab YAML and
+    `@fedify/vocab-tools`).  Run `mise run codegen` to force it, e.g. to refresh
+    the editor/LSP after editing YAML.
+ -  **Building Packages**: All packages are built automatically as part of
+    setup.  Run `mise run build` to rebuild everything, or
+    `mise run prepare-each <pkg>` to rebuild just one (without the `@fedify/`
+    prefix).
+ -  **Checking Code**: Run `mise run check` before committing.
+ -  **Running Tests**: Use `mise run test:deno` for Deno tests or
+    `mise run test` for all environments.
 
 For detailed contribution guidelines, see *CONTRIBUTING.md*.
 

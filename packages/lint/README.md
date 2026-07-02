@@ -5,7 +5,7 @@
 
 [![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
-[![@fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
+[![@fedify@hackers.pub][@fedify@hackers.pub badge]][@fedify@hackers.pub]
 
 *This package is available since Fedify 2.0.0.*
 
@@ -26,8 +26,8 @@ The plugin includes rules that check for:
 [JSR]: https://jsr.io/@fedify/lint
 [npm badge]: https://img.shields.io/npm/v/@fedify/lint?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/lint
-[@fedify@hollo.social badge]: https://fedi-badge.minhee.org/@fedify@hollo.social/followers.svg
-[@fedify@hollo.social]: https://hollo.social/@fedify
+[@fedify@hackers.pub badge]: https://fedi-badge.minhee.org/@fedify@hackers.pub/followers.svg
+[@fedify@hackers.pub]: https://hackers.pub/@fedify
 [Deno Lint]: https://docs.deno.com/runtime/reference/lint_plugins/
 [ESLint]: https://eslint.org/
 [Oxlint]: https://oxc.rs/docs/guide/usage/linter/

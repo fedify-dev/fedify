@@ -7,7 +7,7 @@
 [![npm][npm badge]][npm]
 [![GitHub Actions][GitHub Actions badge]][GitHub Actions]
 [![Matrix][Matrix badge]][Matrix]
-[![@fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
+[![@fedify@hackers.pub][@fedify@hackers.pub badge]][@fedify@hackers.pub]
 
 > [!NOTE]
 > Looking for a quick demo?  Here it is: [Fedify Demo] on Deno Playground.
@@ -61,8 +61,8 @@ in the fediverse!
 [GitHub Actions]: https://github.com/fedify-dev/fedify/actions/workflows/build.yaml
 [Matrix badge]: https://img.shields.io/matrix/fedify%3Amatrix.org?logo=matrix
 [Matrix]: https://matrix.to/#/#fedify:matrix.org
-[@fedify@hollo.social badge]: https://fedi-badge.minhee.org/@fedify@hollo.social/followers.svg
-[@fedify@hollo.social]: https://hollo.social/@fedify
+[@fedify@hackers.pub badge]: https://fedi-badge.minhee.org/@fedify@hackers.pub/followers.svg
+[@fedify@hackers.pub]: https://hackers.pub/@fedify
 [Fedify Demo]: https://dash.deno.com/playground/fedify-demo
 [ActivityPub]: https://www.w3.org/TR/activitypub/
 [fediverse]: https://en.wikipedia.org/wiki/Fediverse
@@ -215,22 +215,25 @@ financial contributors:[^2]
 
 ### Corporate sponsors
 
-- [<img src="https://images.opencollective.com/ghost/avatar/128.png" width="64" height="64"> Ghost](https://ghost.org)
+| Avatar | Name | Description |
+| ------ | ---- | ----------- |
+| <img src="https://images.opencollective.com/ghost/avatar/128.png" width="64" height="64"> | [Ghost](https://ghost.org) | Fiercely independent, professional publishing |
+| <img src="https://images.opencollective.com/altstore/avatar/128.png" width="64" height="64"> | [AltStore](https://altstore.io) |  |
 
 ### Supporters
 
-- [Daniel Supernault](https://pixelfed.org/)
 - [tkgka](https://opencollective.com/tkgka)
 - [Blaine](https://opencollective.com/blaine)
 - [Erick González Aguilar](https://opencollective.com/erick-gonzalez-aguilar)
+- [Daniel Supernault](https://pixelfed.org/)
 
 ### Backers
 
-Robin Riley, yamanoku, Encyclia, taye, okin, Andy Piper, box464, Evan Prodromou, Rafael Goulart, malte
+Robin Riley, Encyclia, taye, box464, Evan Prodromou, okin, yamanoku, malte, Rafael Goulart, Andy Piper
 
 ### One-time donations
 
-Robin Riley, Markus P, Nils Bergmann, Rameez
+Robin Riley, malte, Nils Bergmann, Markus P, Rameez
 
 <!-- /DO NOT EDIT -->
 

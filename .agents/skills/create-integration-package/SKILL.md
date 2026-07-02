@@ -78,7 +78,7 @@ files, and ensuring the code is compatible with both Deno and Node.js/Bun
 environments.
 
 After writing *deno.json* and *package.json* (or whenever you add or
-change dependencies), run `mise run install` to update both *deno.lock*
+change dependencies), run `mise deps` to update both *deno.lock*
 and *pnpm-lock.yaml*.  This ensures all lockfiles stay in sync.
 
 Add additional definitions as appropriate based on context.  Aside from the
@@ -238,7 +238,7 @@ At a minimum, test the following scenarios (see
 3.  Write *README.md*
 4.  Write *deno.json* (if publishing to JSR is intended)
 5.  Write *package.json* (if publishing to npm is intended)
-6.  Run `mise run install`
+6.  Run `mise deps`
 7.  Write *tsdown.config.ts* (if Node.js and Bun are supported)
 8.  Write tests if possible
 9.  Perform remaining updates per the “Adding a new package” section in

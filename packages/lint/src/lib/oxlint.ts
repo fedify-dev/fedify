@@ -68,7 +68,7 @@ export function warnOxlintSkipped(): void {
   }
   console.warn(
     `Skipping oxlint tests — missing: ${missing.join(", ")}.\n` +
-      "To enable them, run `mise run install && mise run prepare-each lint` " +
+      "To enable them, run `mise install && mise run prepare-each lint` " +
       "from the repository root so both the loader and the oxlint binary " +
       "are available. Prefer `mise run test` (full suite) or " +
       "`mise run test-each lint` (this package) to run tests — those tasks " +

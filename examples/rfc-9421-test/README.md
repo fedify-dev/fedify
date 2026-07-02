@@ -9,7 +9,7 @@ Prerequisites
 -------------
 
  -  [Deno] installed
- -  Run `mise run install` (or `pnpm install`) from the repo root
+ -  Run `mise install` from the repo root
  -  A public tunnel for testing (e.g., `fedify tunnel`)
 
 [Deno]: https://deno.com/

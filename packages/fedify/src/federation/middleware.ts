@@ -422,6 +422,41 @@ function isPermanentInboxParseError(error: unknown): error is Error {
         isInvalidUrlTypeError(error)));
 }
 
+type LinkedDataSignatureJsonLdProcessingError = Error & {
+  details?: { code?: unknown; cause?: unknown };
+  cause?: unknown;
+};
+
+function hasLinkedDataSignatureJsonLdProcessingError(
+  error: LinkedDataSignatureJsonLdProcessingError,
+): boolean {
+  if (
+    error.message.startsWith("Maximum deep iterations exceeded")
+  ) {
+    return true;
+  }
+  const cause = error.cause instanceof Error
+    ? error.cause
+    : error.details?.cause;
+  if (
+    error.name === "jsonld.InvalidUrl" &&
+    error.details?.code === "loading remote context failed" &&
+    cause instanceof Error
+  ) {
+    return (
+      cause.message.startsWith("Maximum deep iterations exceeded")
+    ) || cause.name.startsWith("jsonld.");
+  }
+  return error.name !== "jsonld.InvalidUrl" && error.name.startsWith("jsonld.");
+}
+
+function isLinkedDataSignatureJsonLdProcessingError(
+  error: unknown,
+): error is LinkedDataSignatureJsonLdProcessingError {
+  return error instanceof Error &&
+    hasLinkedDataSignatureJsonLdProcessingError(error);
+}
+
 /**
  * Options for {@link createFederation} function.
  * @template TContextData The type of the context data.
@@ -2314,10 +2349,20 @@ export class FederationImpl<TContextData>
         },
       );
     } else {
-      jsonLd = await signJsonLd(jsonLd, rsaKey.privateKey, rsaKey.keyId, {
-        contextLoader,
-        tracerProvider: this.tracerProvider,
-      });
+      try {
+        jsonLd = await signJsonLd(jsonLd, rsaKey.privateKey, rsaKey.keyId, {
+          contextLoader,
+          tracerProvider: this.tracerProvider,
+        });
+      } catch (error) {
+        if (!isLinkedDataSignatureJsonLdProcessingError(error)) throw error;
+        logger.warn(
+          "Failed to create a Linked Data signature for the activity " +
+            "{activityId}.  The activity will be sent without a Linked " +
+            "Data signature.",
+          { activityId, error },
+        );
+      }
     }
     if (!hasProof) {
       logger.warn(
