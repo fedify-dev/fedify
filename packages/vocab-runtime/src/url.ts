@@ -85,7 +85,14 @@ export function haveSameIriOrigin(left: URL, right: URL): boolean {
 function getComparableIriOrigin(iri: URL): string {
   iri = normalizePortableUrl(iri) ?? iri;
   if (iri.origin !== "null") return iri.origin;
-  if (iri.host !== "") return `${iri.protocol}//${iri.host}`;
+  if (iri.host !== "") {
+    const host = iri.protocol === "ap+ef61:"
+      ? encodeURIComponent(
+        decodePortableAuthority(iri.host).replace(DID_SCHEME_PATTERN, "did:"),
+      )
+      : iri.host;
+    return `${iri.protocol}//${host}`;
+  }
   return iri.href;
 }
 
