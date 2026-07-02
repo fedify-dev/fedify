@@ -337,12 +337,12 @@ async function mergeUnmappedTerms(
   ) {
     return compacted;
   }
-  const result = { ...compacted as Record<string, unknown> };
   const unmappedKeys = globalThis.Object.keys(original).filter((key) =>
     key !== "@context" &&
-    !globalThis.Object.prototype.hasOwnProperty.call(result, key)
+    !globalThis.Object.prototype.hasOwnProperty.call(compacted, key)
   );
-  if (unmappedKeys.length < 1) return result;
+  if (unmappedKeys.length < 1) return compacted;
+  const result = { ...compacted as Record<string, unknown> };
   const compactedWithContext = compacted != null &&
       typeof compacted === "object" && !Array.isArray(compacted) &&
       !("@context" in compacted)
