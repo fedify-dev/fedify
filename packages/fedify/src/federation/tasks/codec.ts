@@ -4,12 +4,20 @@ import type { TracerProvider } from "@opentelemetry/api";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { parse, stringifyAsync } from "devalue";
 
+/**
+ * Serializes and deserializes task payloads for the queue, preserving
+ * `@fedify/vocab` objects across the wire by reducing them to JSON-LD and
+ * rebuilding them on the worker with the bound {@link TaskCodecLoaders}.
+ * @internal
+ */
 export default class TaskCodec {
   constructor(readonly options: TaskCodecLoaders) {}
 
+  /** Serializes `data`, encoding any vocabulary object as its JSON-LD. */
   serialize = (data: unknown): Promise<string> =>
     stringifyAsync(data, { Vocab: this.#stringifyVocab });
 
+  /** Deserializes `raw`, rebuilding any encoded vocabulary object. */
   deserialize = (raw: string): Promise<unknown> =>
     this.#revive(new Map())(parse(raw, { Vocab: VocabHolder.from }));
 
@@ -26,6 +34,7 @@ export default class TaskCodec {
   ): Promise<StandardSchemaV1.InferOutput<S>> =>
     TaskCodec.validate(schema, await this.deserialize(raw));
 
+  /** Validates `data` against `schema`, returning its parsed output. */
   static validate = async <S extends StandardSchemaV1>(
     schema: S,
     data: unknown,

@@ -25,6 +25,20 @@ export interface MessageQueueEnqueueOptions {
    * @since 2.0.0
    */
   readonly orderingKey?: string;
+
+  /**
+   * An optional key requesting at-most-once enqueue semantics for messages
+   * that share it.  A backend that declares
+   * {@link MessageQueue.nativeDeduplication} `true` owns the check: a message
+   * whose `deduplicationKey` was already seen within the backend's
+   * deduplication window is dropped instead of enqueued.  Backends without
+   * native deduplication ignore this field; Fedify performs its own
+   * best-effort deduplication before reaching them on the paths that support
+   * it.
+   *
+   * @since 2.4.0
+   */
+  readonly deduplicationKey?: string;
 }
 
 /**
@@ -86,6 +100,18 @@ export interface MessageQueue {
    * @since 1.7.0
    */
   readonly nativeRetrial?: boolean;
+
+  /**
+   * Whether the message queue backend deduplicates messages that share a
+   * {@link MessageQueueEnqueueOptions.deduplicationKey} natively.  When `true`,
+   * Fedify forwards the `deduplicationKey` and relies on the backend to drop
+   * duplicates; when `false` or omitted, Fedify applies its own best-effort
+   * key–value deduplication on the paths that request it.
+   *
+   * @default `false`
+   * @since 2.4.0
+   */
+  readonly nativeDeduplication?: boolean;
 
   /**
    * Enqueues a message in the queue.
@@ -175,6 +201,12 @@ export class InProcessMessageQueue implements MessageQueue {
    * @since 1.7.0
    */
   readonly nativeRetrial = false;
+
+  /**
+   * In-process message queue does not deduplicate messages natively.
+   * @since 2.4.0
+   */
+  readonly nativeDeduplication = false;
 
   /**
    * Constructs a new {@link InProcessMessageQueue} with the given options.
@@ -365,6 +397,12 @@ export class ParallelMessageQueue implements MessageQueue {
    * @since 1.7.0
    */
   readonly nativeRetrial?: boolean;
+
+  /**
+   * Inherits the native deduplication capability from the wrapped queue.
+   * @since 2.4.0
+   */
+  readonly nativeDeduplication?: boolean;
   readonly getDepth?: () => Promise<MessageQueueDepth>;
 
   /**
@@ -398,6 +436,7 @@ export class ParallelMessageQueue implements MessageQueue {
     this.queue = queue;
     this.workers = workers;
     this.nativeRetrial = queue.nativeRetrial;
+    this.nativeDeduplication = queue.nativeDeduplication;
     if (queue.getDepth != null) {
       this.getDepth = () => queue.getDepth!();
     }
@@ -412,6 +451,19 @@ export class ParallelMessageQueue implements MessageQueue {
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
     if (this.queue.enqueueMany == null) {
+      if (messages.length === 1) {
+        await this.queue.enqueue(messages[0], options);
+        return;
+      }
+      if (options?.deduplicationKey != null) {
+        throw new TypeError(
+          "Cannot enqueue a batch with a deduplicationKey: the wrapped queue " +
+            "does not implement enqueueMany, so ParallelMessageQueue would " +
+            "have to fan out to individual enqueue() calls that cannot share " +
+            "one deduplicationKey atomically.  Wrap a queue that implements " +
+            "enqueueMany instead.",
+        );
+      }
       const results = await Promise.allSettled(
         messages.map((message) => this.queue.enqueue(message, options)),
       );

@@ -10565,12 +10565,15 @@ const withTimeout = <T>(
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 };
 
-const taskFederationOptions = {
+// A factory, not a shared constant: each task test gets its own
+// MemoryKvStore so deduplication markers never leak across tests and the
+// suite stays order-independent as more cases are added.
+const mockOptions = () => ({
   kv: new MemoryKvStore(),
   documentLoaderFactory: () => mockDocumentLoader,
   contextLoaderFactory: () => mockDocumentLoader,
   manuallyStartQueue: true,
-};
+});
 
 test("ContextImpl.enqueueTask()", async (t) => {
   await t.step(
@@ -10578,7 +10581,7 @@ test("ContextImpl.enqueueTask()", async (t) => {
     async () => {
       const queue = new MockQueue({ supportsEnqueueMany: true });
       const federation = createFederation<void>({
-        ...taskFederationOptions,
+        ...mockOptions(),
         queue: { task: queue },
       });
       const task = federation.defineTask("greet", {
@@ -10619,7 +10622,7 @@ test("ContextImpl.enqueueTaskMany()", async (t) => {
     async () => {
       const queue = new MockQueue({ supportsEnqueueMany: true });
       const federation = createFederation<void>({
-        ...taskFederationOptions,
+        ...mockOptions(),
         queue: { task: queue },
       });
       const task = federation.defineTask("bulk", {
@@ -10652,7 +10655,7 @@ test("ContextImpl.enqueueTaskMany()", async (t) => {
     async () => {
       const queue = new MockQueue({ supportsEnqueueMany: true });
       const federation = createFederation<void>({
-        ...taskFederationOptions,
+        ...mockOptions(),
         queue: { task: queue },
       });
       const task = federation.defineTask("bulk-single", {
@@ -10674,7 +10677,7 @@ test("ContextImpl.enqueueTaskMany()", async (t) => {
     async () => {
       const queue = new RendezvousQueue(2);
       const federation = createFederation<void>({
-        ...taskFederationOptions,
+        ...mockOptions(),
         queue: { task: queue },
       });
       const task = federation.defineTask("bulk-fallback", {
@@ -10716,7 +10719,7 @@ test("ContextImpl.enqueueTaskMany()", async (t) => {
     async () => {
       const queue = new MockQueue();
       const federation = createFederation<void>({
-        ...taskFederationOptions,
+        ...mockOptions(),
         queue: { task: queue },
       });
       const task = federation.defineTask("bulk-typed", {

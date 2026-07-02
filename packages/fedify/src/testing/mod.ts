@@ -4,6 +4,7 @@ export {
   createRequestContext,
 } from "./context.ts";
 export {
+  baseOptions,
   type Envelope,
   envelopeSchema,
   makeSchema,

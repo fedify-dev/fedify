@@ -13,7 +13,6 @@ import type {
 import type { MeterProvider, TracerProvider } from "@opentelemetry/api";
 import type { ActivityTransformer } from "../compat/types.ts";
 import type { HttpMessageSignaturesSpec } from "../sig/http.ts";
-import type { CircuitBreakerOptions } from "./circuit-breaker.ts";
 import type {
   ActorAliasMapper,
   ActorDispatcher,
@@ -39,6 +38,7 @@ import type {
   UnverifiedActivityHandler,
   WebFingerLinksDispatcher,
 } from "./callback.ts";
+import type { CircuitBreakerOptions } from "./circuit-breaker.ts";
 import type { Context, InboxContext, RequestContext } from "./context.ts";
 import type { KvStore } from "./kv.ts";
 import type {
@@ -1086,7 +1086,7 @@ export interface FederationOptions<TContextData> {
    * this uses an exponential backoff strategy with a maximum of 10 attempts
    * and a maximum delay of 12 hours.  A per-task retry policy
    * ({@link TaskDefinitionOptions.retryPolicy}) overrides this.
-   * @since 2.x.x
+   * @since 2.4.0
    */
   taskRetryPolicy?: RetryPolicy;
 
@@ -1099,9 +1099,35 @@ export interface FederationOptions<TContextData> {
    * - `"strict"`: no fallback; enqueuing the task throws instead of
    *   silently sharing the outbox queue.
    * @default `"fallback"`
-   * @since 2.x.x
+   * @since 2.4.0
    */
   taskQueueResolution?: "fallback" | "strict";
+
+  /**
+   * The time-to-live for a {@link TaskEnqueueOptions.deduplicationKey} marker
+   * stored in the key–value deduplication fallback.  A second enqueue with the
+   * same key within this window is skipped; once it expires, the key may
+   * enqueue again.  Ignored when the task's queue declares
+   * {@link MessageQueue.nativeDeduplication} (the backend owns the window).
+   * @default `{ hours: 1 }`
+   * @since 2.4.0
+   */
+  taskDeduplicationTtl?: Temporal.DurationLike;
+
+  /**
+   * The behavior when a {@link TaskEnqueueOptions.deduplicationKey} is supplied
+   * but the task's queue does not declare
+   * {@link MessageQueue.nativeDeduplication} *and* the configured
+   * {@link KvStore} exposes no `cas` (compare-and-swap) primitive:
+   *
+   * - `"open"` (the default): proceeds without deduplication after logging at
+   *   debug level.
+   * - `"closed"`: rejects with a `TypeError` before enqueuing.
+   *
+   * @default `"open"`
+   * @since 2.4.0
+   */
+  taskDeduplicationFallback?: "open" | "closed";
 
   /**
    * Activity transformers that are applied to outgoing activities.  It is

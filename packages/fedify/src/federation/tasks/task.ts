@@ -10,7 +10,7 @@ import type { RetryPolicy } from "../retry.ts";
  *                 schema.
  * @param ctx The context for the worker processing the task.
  * @param data The decoded and validated task payload.
- * @since 2.x.x
+ * @since 2.4.0
  */
 export type TaskHandler<TContextData, TData> = (
   ctx: Context<TContextData>,
@@ -22,7 +22,7 @@ export type TaskHandler<TContextData, TData> = (
  * @template TContextData The context data to pass to the {@link Context}.
  * @template TSchema The [Standard Schema](https://standardschema.dev/) that
  *                   validates the task payload.
- * @since 2.x.x
+ * @since 2.4.0
  */
 export interface TaskDefinitionOptions<
   TContextData,
@@ -91,7 +91,7 @@ declare const contextDataBrand: unique symbol;
  * @template TContextData The context data to pass to the {@link Context}.
  * @template TData The type of the task payload, inferred from the task's
  *                 schema.
- * @since 2.x.x
+ * @since 2.4.0
  */
 export interface TaskDefinition<TContextData, TData> {
   /**
@@ -115,7 +115,7 @@ export interface TaskDefinition<TContextData, TData> {
  * Registration of custom background tasks.  Both {@link Federation} and
  * {@link FederationBuilder} implement this interface.
  * @template TContextData The context data to pass to the {@link Context}.
- * @since 2.x.x
+ * @since 2.4.0
  */
 export interface TaskRegistry<TContextData> {
   /**
@@ -146,7 +146,7 @@ export interface TaskRegistry<TContextData> {
 
 /**
  * Options for {@link Context.enqueueTask} and {@link Context.enqueueTaskMany}.
- * @since 2.x.x
+ * @since 2.4.0
  */
 export interface TaskEnqueueOptions {
   /**
@@ -159,6 +159,26 @@ export interface TaskEnqueueOptions {
    * processed sequentially (one at a time).
    */
   readonly orderingKey?: string;
+
+  /**
+   * An optional key requesting at-most-once enqueue for tasks that share it.
+   *
+   * A queue with {@link MessageQueue.nativeDeduplication} `true` enforces it
+   * strictly; otherwise deduplication is best-effort via {@link KvStore.cas},
+   * and {@link FederationOptions.taskDeduplicationFallback} decides whether a
+   * missing `cas` proceeds without deduplication or throws.
+   *
+   * For {@link Context.enqueueTaskMany}, one key governs the whole batch.  When
+   * deduplication is actually applied—a native queue, or the key–value
+   * fallback through {@link KvStore.cas}—a multi-item batch with a
+   * `deduplicationKey` requires the queue to implement
+   * {@link MessageQueue.enqueueMany} so it enqueues atomically, or the call
+   * throws a `TypeError`.  Under the `"open"` fallback with no `cas`, no marker
+   * is taken, so such a batch instead fans out without deduplication.
+   *
+   * @since 2.4.0
+   */
+  readonly deduplicationKey?: string;
 }
 
 /**

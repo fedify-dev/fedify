@@ -1,7 +1,9 @@
+<!-- deno-fmt-ignore-file -->
+
 Background tasks
 ================
 
-*This API is available since Fedify 2.x.x.*
+*This API is available since Fedify 2.4.0.*
 
 Fedify already processes outgoing and incoming activities on background
 workers through its [message queue](./mq.md).  The custom background task API
@@ -139,6 +141,10 @@ Both methods accept options:
 :   Tasks with the same ordering key are processed sequentially (one at
     a time), like the same option on the message queue layer.
 
+`deduplicationKey`
+:   Requests at-most-once enqueue for tasks that share the key; see
+    [Deduplication](#deduplication) below.
+
 ~~~~ typescript
 await ctx.enqueueTask(sendDigest, payload, {
   delay: { minutes: 30 },
@@ -257,12 +263,97 @@ delivered it.
 > queue and set `taskQueueResolution: "strict"`.
 
 
+Deduplication
+-------------
+
+A task often needs *at-most-once-per-key* enqueue: a digest mailer must not
+send twice when a request is retried, and a cleanup job should coalesce
+duplicate triggers.  Passing a `deduplicationKey` requests this—while the
+first enqueue is still within the deduplication window, a second enqueue
+with the same key is dropped.  Whether that drop actually happens depends
+on the queue and key–value store, as the fallback rules below decide:
+
+~~~~ typescript
+await ctx.enqueueTask(sendDigest, payload, {
+  deduplicationKey: `digest:${payload.userId}`,  // [!code highlight]
+});
+~~~~
+
+How the key is resolved depends on the queue and the key–value store:
+
+1.  *Native backend.*  When the task's queue declares
+    `~MessageQueue.nativeDeduplication`, Fedify forwards the key in the
+    message queue's `~MessageQueueEnqueueOptions.deduplicationKey` and the
+    backend owns the check.  Fedify does not touch the key–value store.
+
+2.  *Key–value fallback.*  Otherwise, if the configured `KvStore` exposes
+    the optional compare-and-swap (`~KvStore.cas`) primitive, Fedify records
+    the key under a dedicated `taskDeduplication` prefix with a TTL and skips
+    the enqueue while a marker is present.  The TTL defaults to one hour and is
+    configurable with `~FederationOptions.taskDeduplicationTtl`:
+
+    ~~~~ typescript
+    const federation = createFederation<void>({
+      // ...
+      taskDeduplicationTtl: { minutes: 10 },  // [!code highlight]
+    });
+    ~~~~
+
+3.  *No conditional write.*  When neither applies—no native deduplication and
+    a key–value store without `~KvStore.cas`—the behavior is governed by
+    `~FederationOptions.taskDeduplicationFallback`.  `"open"` (the default)
+    lets the enqueue proceed without deduplication after a debug-level log;
+    `"closed"` throws a `TypeError` before enqueuing:
+
+    ~~~~ typescript
+    const federation = createFederation<void>({
+      // ...
+      taskDeduplicationFallback: "closed",  // [!code highlight]
+    });
+    ~~~~
+
+Among the first-party adapters, the in-memory, Deno KV, SQLite, and MySQL
+key–value stores implement `~KvStore.cas`; PostgreSQL, Redis, and
+Cloudflare Workers KV do not yet, so those deployments take the
+`taskDeduplicationFallback` branch until per-adapter follow-ups add it.
+
+For `~Context.enqueueTaskMany()`, a single `deduplicationKey` applies to the
+whole batch: the batch enqueues as a unit or is skipped as a unit, never
+partially.  Per-item deduplication means calling `~Context.enqueueTask()` in
+a loop, each with its own key.  Deduplicating a multi-item batch requires the
+queue to implement `~MessageQueue.enqueueMany()` so the batch enqueues
+atomically—whether the check is native or the key–value fallback.  Fanning the
+key out across separate `~MessageQueue.enqueue()` calls cannot enqueue a whole
+batch as one unit: a native per-message key cannot cover it, and a key–value
+marker could not be rolled back cleanly if only some of the fanned-out enqueues
+failed.  So when deduplication is actually applied—a native queue, or a
+key–value store with `~KvStore.cas`—Fedify rejects a multi-item batch with a
+`deduplicationKey` on a queue without `~MessageQueue.enqueueMany()` instead of
+risking duplicates.  Under the `"open"` fallback (no native deduplication and no
+`cas`), no marker is taken, so the batch simply fans out without deduplication.
+
+This applies through `ParallelMessageQueue` as well: wrapping a queue that
+lacks `~MessageQueue.enqueueMany()` does not make batch enqueue atomic, so a
+deduplicated multi-item batch on such a wrapper is likewise rejected rather than
+collapsed onto one message.
+
+> [!WARNING]
+> The key–value fallback is *best-effort, not transactional*.  The marker
+> write and the enqueue are separate operations.  Fedify rolls the marker back
+> when an enqueue fails, so a transient failure does not suppress the retry, but
+> a crash before that rollback, the `"open"` fallback under concurrency, a
+> non-atomic third-party `~KvStore.cas`, or reuse of a key within its TTL window
+> can still admit a duplicate or suppress a task.  Cleanup is otherwise by TTL
+> expiry, not active deletion on handler success.  Deployments needing strict
+> guarantees use a queue with `nativeDeduplication: true`, where the backend
+> owns an atomic check.
+
+
 Limitations
 -----------
 
-The current API intentionally ships without deduplication, task-specific
-OpenTelemetry spans and metrics, cron-style periodic scheduling, result
-backends, and per-task priority.  Some of these are planned as follow-ups;
-see the [tracking issue].
+The current API intentionally ships without task-specific OpenTelemetry spans
+and metrics, cron-style periodic scheduling, result backends, and per-task
+priority.  Some of these are planned as follow-ups; see the [tracking issue].
 
 [tracking issue]: https://github.com/fedify-dev/fedify/issues/206

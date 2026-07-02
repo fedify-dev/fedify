@@ -8,31 +8,35 @@ import {
   strictEqual,
   throws,
 } from "node:assert/strict";
+import {
+  baseOptions,
+  makeSchema,
+  MockQueue,
+  numberSchema,
+  stringSchema,
+} from "../../testing/mod.ts";
 import { createFederationBuilder } from "../builder.ts";
 import type { Context } from "../context.ts";
-import type { Federatable, FederationOptions } from "../federation.ts";
-import { MemoryKvStore } from "../kv.ts";
+import type { Federatable } from "../federation.ts";
 import { createFederation, type FederationImpl } from "../middleware.ts";
 import { InProcessMessageQueue } from "../mq.ts";
 import type { TaskMessage } from "../queue.ts";
 import TaskCodec from "./codec.ts";
 import type { TaskDefinition, TaskRegistry } from "./task.ts";
-import {
-  type Envelope,
-  envelopeSchema,
-  MockQueue,
-  numberSchema,
-  stringSchema,
-} from "../../testing/mod.ts";
 
 type Assert<T extends true> = T;
 
-const baseOptions: Omit<FederationOptions<void>, "queue"> = {
-  kv: new MemoryKvStore(),
-  documentLoaderFactory: () => mockDocumentLoader,
-  contextLoaderFactory: () => mockDocumentLoader,
-  manuallyStartQueue: true,
-};
+interface Envelope {
+  note: Note;
+  title: string;
+}
+
+const envelopeSchema = makeSchema(
+  (data): data is Envelope =>
+    typeof data === "object" && data != null &&
+    (data as Envelope).note instanceof Note &&
+    typeof (data as Envelope).title === "string",
+);
 
 const makeTaskMessage = async (
   taskName: string,
@@ -211,224 +215,6 @@ test("Context.enqueueTask() end-to-end", async (t) => {
     strictEqual(data.title, "greeting");
     strictEqual(handlerCtx.origin, "https://example.com");
   });
-
-  await t.step("rejects an invalid payload at enqueue", async () => {
-    const queue = new MockQueue();
-    const federation = createFederation<void>({
-      ...baseOptions,
-      queue: { task: queue },
-    });
-    const task = federation.defineTask("strictly-typed", {
-      schema: numberSchema,
-      handler: () => {},
-    });
-    const ctx = federation.createContext(
-      new URL("https://example.com/"),
-      undefined,
-    );
-    await rejects(
-      // deno-lint-ignore no-explicit-any
-      () => ctx.enqueueTask(task, "not a number" as any),
-      { name: "TypeError", message: /Task data failed schema validation/ },
-    );
-    strictEqual(queue.enqueued.length, 0);
-  });
-
-  await t.step(
-    "starts the task worker on first enqueue without startQueue()",
-    async () => {
-      const queue = new MockQueue();
-      const federation = createFederation<void>({
-        ...baseOptions,
-        manuallyStartQueue: false,
-        queue: { task: queue },
-      });
-      const task = federation.defineTask("auto-start", {
-        schema: stringSchema,
-        handler: () => {},
-      });
-      const ctx = federation.createContext(
-        new URL("https://example.com/"),
-        undefined,
-      );
-      // An app that only uses the custom task API never sends an activity,
-      // so enqueueTask() itself must start the worker like the other
-      // enqueue paths do; otherwise tasks pile up unprocessed forever.
-      await ctx.enqueueTask(task, "first");
-      strictEqual(queue.listenCount, 1);
-      // The started flag keeps a second enqueue from re-listening.
-      await ctx.enqueueTask(task, "second");
-      strictEqual(queue.listenCount, 1);
-      strictEqual(queue.enqueued.length, 2);
-    },
-  );
-
-  await t.step(
-    "rejects a handle from another federation at enqueue",
-    async () => {
-      const queue = new MockQueue();
-      const federation = createFederation<void>({
-        ...baseOptions,
-        queue: { task: queue },
-      });
-      const other = createFederation<void>({
-        ...baseOptions,
-        queue: { task: new MockQueue() },
-      });
-      const foreignTask = other.defineTask("foreign", {
-        schema: stringSchema,
-        handler: () => {},
-      });
-      const ctx = federation.createContext(
-        new URL("https://example.com/"),
-        undefined,
-      );
-      await rejects(
-        () => ctx.enqueueTask(foreignTask, "data"),
-        { name: "TypeError", message: /is not defined on this federation/ },
-      );
-      strictEqual(queue.enqueued.length, 0);
-    },
-  );
-
-  await t.step(
-    "rejects a same-named handle from another federation",
-    async () => {
-      // Name lookup alone cannot tell a foreign handle apart once both
-      // instances define the same task name: the local context would
-      // encode under the *schema carried by the foreign handle*, so a
-      // payload the local schema rejects would enqueue anyway, only to be
-      // dropped by the worker decoding under the local schema.  Both
-      // instances share TContextData = void, so the phantom-brand check
-      // cannot reject this at compile time; the handle-identity guard is
-      // the only defense.
-      const queue = new MockQueue();
-      const federation = createFederation<void>({
-        ...baseOptions,
-        queue: { task: queue },
-      });
-      let called = 0;
-      federation.defineTask("rename", {
-        schema: numberSchema, // the local "rename" takes a number…
-        handler: () => {
-          called++;
-        },
-      });
-      const other = createFederation<void>({
-        ...baseOptions,
-        queue: { task: new MockQueue() },
-      });
-      // …while the other instance's "rename" takes a string:
-      const foreignTask = other.defineTask("rename", {
-        schema: stringSchema,
-        handler: () => {},
-      });
-      const ctx = federation.createContext(
-        new URL("https://example.com/"),
-        undefined,
-      );
-      await rejects(
-        () => ctx.enqueueTask(foreignTask, "not a number"),
-        { name: "TypeError", message: /is not defined on this federation/ },
-      );
-      strictEqual(queue.enqueued.length, 0);
-      strictEqual(called, 0);
-    },
-  );
-
-  await t.step("passes delay and orderingKey through", async () => {
-    const queue = new MockQueue();
-    const federation = createFederation<void>({
-      ...baseOptions,
-      queue: { task: queue },
-    });
-    const task = federation.defineTask("delayed", {
-      schema: stringSchema,
-      handler: () => {},
-    });
-    const ctx = federation.createContext(
-      new URL("https://example.com/"),
-      undefined,
-    );
-    await ctx.enqueueTask(task, "payload", {
-      delay: { seconds: 30 },
-      orderingKey: "user:alice",
-    });
-    strictEqual(queue.enqueued.length, 1);
-    const { message, options } = queue.enqueued[0];
-    strictEqual(message.taskName, "delayed");
-    strictEqual(message.orderingKey, "user:alice");
-    strictEqual(message.attempt, 0);
-    ok(options?.delay instanceof Temporal.Duration);
-    strictEqual(options.delay.total("second"), 30);
-    strictEqual(options.orderingKey, "user:alice");
-  });
-
-  await t.step(
-    "enqueueTaskMany() uses enqueueMany when available",
-    async () => {
-      const queue = new MockQueue({ supportsEnqueueMany: true });
-      const federation = createFederation<void>({
-        ...baseOptions,
-        queue: { task: queue },
-      });
-      const task = federation.defineTask("bulk", {
-        schema: stringSchema,
-        handler: () => {},
-      });
-      const ctx = federation.createContext(
-        new URL("https://example.com/"),
-        undefined,
-      );
-      await ctx.enqueueTaskMany(task, ["a", "b", "c"]);
-      strictEqual(queue.enqueued.length, 0);
-      strictEqual(queue.enqueuedMany.length, 1);
-      strictEqual(queue.enqueuedMany[0].messages.length, 3);
-    },
-  );
-
-  await t.step(
-    "enqueueTaskMany() falls back to parallel enqueues",
-    async () => {
-      const queue = new MockQueue();
-      const federation = createFederation<void>({
-        ...baseOptions,
-        queue: { task: queue },
-      });
-      const task = federation.defineTask("bulk-fallback", {
-        schema: stringSchema,
-        handler: () => {},
-      });
-      const ctx = federation.createContext(
-        new URL("https://example.com/"),
-        undefined,
-      );
-      await ctx.enqueueTaskMany(task, ["a", "b"]);
-      strictEqual(queue.enqueued.length, 2);
-    },
-  );
-
-  await t.step(
-    "enqueueTaskMany() with no payloads touches no queue",
-    async () => {
-      const queue = new MockQueue({ supportsEnqueueMany: true });
-      const federation = createFederation<void>({
-        ...baseOptions,
-        queue: { task: queue },
-      });
-      const task = federation.defineTask("bulk-empty", {
-        schema: stringSchema,
-        handler: () => {},
-      });
-      const ctx = federation.createContext(
-        new URL("https://example.com/"),
-        undefined,
-      );
-      await ctx.enqueueTaskMany(task, []);
-      strictEqual(queue.enqueued.length, 0);
-      strictEqual(queue.enqueuedMany.length, 0);
-    },
-  );
 });
 
 test("task queue routing", async (t) => {
@@ -657,6 +443,75 @@ test("startQueue() task worker", async (t) => {
       strictEqual(received, "payload");
     },
   );
+
+  await t.step(
+    'queue: "task" starts the outbox fallback when no task queue is set',
+    async () => {
+      const inbox = new MockQueue();
+      const outbox = new MockQueue();
+      const fanout = new MockQueue();
+      const federation = createFederation<void>({
+        ...baseOptions,
+        queue: { inbox, outbox, fanout },
+      });
+      federation.defineTask("fallback", {
+        schema: stringSchema,
+        handler: () => {},
+      });
+      const controller = new AbortController();
+      const listening = federation.startQueue(undefined, {
+        signal: controller.signal,
+        queue: "task",
+      });
+      // Tasks route to the outbox fallback, so the "task" selector must start
+      // the outbox worker—otherwise enqueued tasks have no listener.
+      strictEqual(outbox.listenCount, 1);
+      strictEqual(inbox.listenCount, 0);
+      strictEqual(fanout.listenCount, 0);
+      controller.abort();
+      await listening;
+    },
+  );
+
+  await t.step(
+    'queue: "task" starts a task queue shared with the outbox once',
+    async () => {
+      const inbox = new MockQueue();
+      const shared = new MockQueue();
+      const fanout = new MockQueue();
+      const federation = createFederation<void>({
+        ...baseOptions,
+        queue: { inbox, outbox: shared, fanout, task: shared },
+      });
+      const controller = new AbortController();
+      const listening = federation.startQueue(undefined, {
+        signal: controller.signal,
+        queue: "task",
+      });
+      strictEqual(shared.listenCount, 1);
+      strictEqual(inbox.listenCount, 0);
+      strictEqual(fanout.listenCount, 0);
+      controller.abort();
+      await listening;
+    },
+  );
+});
+
+test("MockQueue.listen() resolves on a pre-aborted signal", async () => {
+  const queue = new MockQueue();
+  const controller = new AbortController();
+  controller.abort();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const settled = await Promise.race([
+    queue.listen(() => {}, { signal: controller.signal }).then(() =>
+      "resolved"
+    ),
+    new Promise<string>((resolve) => {
+      timer = setTimeout(() => resolve("pending"), 50);
+    }),
+  ]);
+  clearTimeout(timer);
+  strictEqual(settled, "resolved");
 });
 
 test("processQueuedTask() task dispatch", async (t) => {
