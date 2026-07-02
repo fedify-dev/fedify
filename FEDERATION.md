@@ -37,6 +37,7 @@ Supported FEPs
  -  [FEP-e232][]: Object Links
  -  [FEP-5711][]: Inverse Properties for Collections
  -  [FEP-044f][]: Consent-respecting quote posts
+ -  [FEP-7aa9][]: Featuring recommendations using a dedicated collection
  -  [FEP-0837][]: Federated Marketplace
  -  [FEP-ae0c][]: Fediverse Relay Protocols: Mastodon and LitePub
 
@@ -53,6 +54,7 @@ Supported FEPs
 [FEP-e232]: https://w3id.org/fep/e232
 [FEP-5711]: https://w3id.org/fep/5711
 [FEP-044f]: https://w3id.org/fep/044f
+[FEP-7aa9]: https://w3id.org/fep/7aa9
 [FEP-0837]: https://w3id.org/fep/0837
 [FEP-ae0c]: https://w3id.org/fep/ae0c
 
@@ -78,6 +80,7 @@ fediverse.
  -  [`Delete`]
  -  [`Dislike`]
  -  [`EmojiReact`]
+ -  [`FeatureRequest`] ([FEP-7aa9])
  -  [`Flag`]
  -  [`Follow`]
  -  [`Ignore`]
@@ -113,6 +116,7 @@ fediverse.
 [`Delete`]: https://jsr.io/@fedify/vocab/doc/~/Delete
 [`Dislike`]: https://jsr.io/@fedify/vocab/doc/~/Dislike
 [`EmojiReact`]: https://jsr.io/@fedify/vocab/doc/~/EmojiReact
+[`FeatureRequest`]: https://jsr.io/@fedify/vocab/doc/~/FeatureRequest
 [`Flag`]: https://jsr.io/@fedify/vocab/doc/~/Flag
 [`Follow`]: https://jsr.io/@fedify/vocab/doc/~/Follow
 [`Ignore`]: https://jsr.io/@fedify/vocab/doc/~/Ignore
@@ -158,6 +162,8 @@ fediverse.
  -  [`Audio`]
  -  [`Document`]
  -  [`Event`]
+ -  [`FeatureAuthorization`] ([FEP-7aa9])
+ -  [`FeaturedItem`] ([FEP-7aa9])
  -  [`Image`]
  -  [`LikeAuthorization`] (GoToSocial extension)
  -  [`Note`]
@@ -175,6 +181,8 @@ fediverse.
 [`Audio`]: https://jsr.io/@fedify/vocab/doc/~/Audio
 [`Document`]: https://jsr.io/@fedify/vocab/doc/~/Document
 [`Event`]: https://jsr.io/@fedify/vocab/doc/~/Event
+[`FeatureAuthorization`]: https://jsr.io/@fedify/vocab/doc/~/FeatureAuthorization
+[`FeaturedItem`]: https://jsr.io/@fedify/vocab/doc/~/FeaturedItem
 [`Image`]: https://jsr.io/@fedify/vocab/doc/~/Image
 [`LikeAuthorization`]: https://jsr.io/@fedify/vocab/doc/~/LikeAuthorization
 [`Note`]: https://jsr.io/@fedify/vocab/doc/~/Note
@@ -191,11 +199,13 @@ fediverse.
 
  -  [`Collection`]
  -  [`CollectionPage`]
+ -  [`FeaturedCollection`] ([FEP-7aa9])
  -  [`OrderedCollection`]
  -  [`OrderedCollectionPage`]
 
 [`Collection`]: https://jsr.io/@fedify/vocab/doc/~/Collection
 [`CollectionPage`]: https://jsr.io/@fedify/vocab/doc/~/CollectionPage
+[`FeaturedCollection`]: https://jsr.io/@fedify/vocab/doc/~/FeaturedCollection
 [`OrderedCollection`]: https://jsr.io/@fedify/vocab/doc/~/OrderedCollection
 [`OrderedCollectionPage`]: https://jsr.io/@fedify/vocab/doc/~/OrderedCollectionPage
 

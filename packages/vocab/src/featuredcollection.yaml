@@ -1,0 +1,40 @@
+$schema: ../../vocab-tools/schema.yaml
+name: FeaturedCollection
+compactName: FeaturedCollection
+uri: "https://w3id.org/fep/7aa9#FeaturedCollection"
+extends: "https://www.w3.org/ns/activitystreams#OrderedCollection"
+entity: true
+description: |
+  A curated collection of recommended actors or other objects.
+
+  See [FEP-7aa9](https://w3id.org/fep/7aa9) for details.
+defaultContext:
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+- "https://gotosocial.org/ns"
+- "https://w3id.org/fep/7aa9"
+- toot: "http://joinmastodon.org/ns#"
+  discoverable: "toot:discoverable"
+  Hashtag: "as:Hashtag"
+
+properties:
+- singularName: topic
+  functional: true
+  compactName: topic
+  uri: "https://w3id.org/fep/7aa9#topic"
+  description: |
+    A single {@link Hashtag} object that represents the main topic or category
+    of this featured collection.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Hashtag"
+
+- singularName: discoverable
+  functional: true
+  compactName: discoverable
+  uri: "http://joinmastodon.org/ns#discoverable"
+  description: |
+    When present and set to `false`, signals that this featured collection is
+    not meant to be discovered by search, onboarding, or similar discovery
+    features.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#boolean"

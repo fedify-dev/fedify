@@ -1,0 +1,34 @@
+$schema: ../../vocab-tools/schema.yaml
+name: FeaturedItem
+compactName: FeaturedItem
+uri: "https://w3id.org/fep/7aa9#FeaturedItem"
+extends: "https://www.w3.org/ns/activitystreams#Object"
+entity: true
+description: |
+  A single entry in a {@link FeaturedCollection}.
+
+  See [FEP-7aa9](https://w3id.org/fep/7aa9) for details.
+defaultContext:
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+- "https://gotosocial.org/ns"
+- "https://w3id.org/fep/7aa9"
+
+properties:
+- singularName: featuredObject
+  functional: true
+  compactName: featuredObject
+  uri: "https://w3id.org/fep/7aa9#featuredObject"
+  description: The object being featured.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"
+
+- singularName: featureAuthorization
+  functional: true
+  compactName: featureAuthorization
+  uri: "https://w3id.org/fep/7aa9#featureAuthorization"
+  description: |
+    The {@link FeatureAuthorization} proving that the featured actor consented
+    to inclusion in the featured collection.
+  range:
+  - "https://w3id.org/fep/7aa9#FeatureAuthorization"
