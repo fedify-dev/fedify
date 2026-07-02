@@ -60,6 +60,38 @@ test("getJsonLdContext() finds nested contexts", () => {
   );
 });
 
+test("compactJsonLdCache() preserves no-context object shape", async () => {
+  const original = {
+    "@id": "ap://did:key:z6Mkabc/objects/1",
+    "@type": ["https://www.w3.org/ns/activitystreams#Note"],
+    "https://www.w3.org/ns/activitystreams#attributedTo": [
+      { "@id": "ap://did:key:z6Mkabc/actor" },
+    ],
+    "https://www.w3.org/ns/activitystreams#content": [
+      { "@value": "No-context object shape should stay cached." },
+    ],
+  };
+  const expanded = await jsonld.expand(original);
+  const normalized = normalizeJsonLdIris(
+    expanded,
+    new Set([
+      "@id",
+      "https://www.w3.org/ns/activitystreams#attributedTo",
+    ]),
+  );
+
+  deepStrictEqual(await compactJsonLdCache(normalized, original), {
+    "@id": "ap+ef61://did:key:z6Mkabc/objects/1",
+    "@type": ["https://www.w3.org/ns/activitystreams#Note"],
+    "https://www.w3.org/ns/activitystreams#attributedTo": [
+      { "@id": "ap+ef61://did:key:z6Mkabc/actor" },
+    ],
+    "https://www.w3.org/ns/activitystreams#content": [
+      { "@value": "No-context object shape should stay cached." },
+    ],
+  });
+});
+
 test("compactJsonLdCache() preserves nested unmapped terms", async () => {
   const context = {
     as: "https://www.w3.org/ns/activitystreams#",

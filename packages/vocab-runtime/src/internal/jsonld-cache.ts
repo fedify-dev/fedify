@@ -164,7 +164,9 @@ export async function compactJsonLdCache(
   }
   const ownContext = getJsonLdContext(original);
   const context = ownContext ?? inheritedContext;
-  if (context == null) return normalized;
+  if (context == null) {
+    return preserveNoContextJsonLdShape(normalized, original, depth);
+  }
   return await preserveJsonLdShape(
     await mergeUnmappedTerms(
       await jsonld.compact(
@@ -183,6 +185,95 @@ export async function compactJsonLdCache(
     documentLoader,
     depth,
   );
+}
+
+function preserveNoContextJsonLdShape(
+  normalized: unknown,
+  original: unknown,
+  depth = 0,
+): unknown {
+  if (depth > 32) return normalized;
+  if (
+    original == null || typeof original !== "object" ||
+    Array.isArray(original)
+  ) {
+    return normalized;
+  }
+  const normalizedObject = Array.isArray(normalized) && normalized.length === 1
+    ? normalized[0]
+    : normalized;
+  if (
+    normalizedObject == null || typeof normalizedObject !== "object" ||
+    Array.isArray(normalizedObject)
+  ) {
+    return normalized;
+  }
+  const source = normalizedObject as Record<string, unknown>;
+  const originalObject = original as Record<string, unknown>;
+  let clone: Record<string, unknown> | undefined;
+  for (const key of globalThis.Object.keys(originalObject)) {
+    if (!globalThis.Object.prototype.hasOwnProperty.call(source, key)) {
+      continue;
+    }
+    const value = preserveNoContextValue(
+      source[key],
+      originalObject[key],
+      depth + 1,
+    );
+    if (value !== originalObject[key]) {
+      clone ??= { ...originalObject };
+      clone[key] = value;
+    }
+  }
+  return clone ?? original;
+}
+
+function preserveNoContextValue(
+  normalized: unknown,
+  original: unknown,
+  depth: number,
+): unknown {
+  if (depth > 32) return normalized;
+  if (Array.isArray(original)) {
+    const normalizedArray = Array.isArray(normalized)
+      ? normalized
+      : [normalized];
+    let clone: unknown[] | undefined;
+    for (let i = 0; i < original.length; i++) {
+      const value = preserveNoContextValue(
+        normalizedArray[i],
+        original[i],
+        depth + 1,
+      );
+      if (value !== original[i]) {
+        clone ??= original.slice(0, i);
+        clone.push(value);
+      } else if (clone != null) {
+        clone.push(original[i]);
+      }
+    }
+    return clone ?? original;
+  }
+  const normalizedValue = Array.isArray(normalized)
+    ? normalized[0]
+    : normalized;
+  if (
+    normalizedValue == null || typeof normalizedValue !== "object" ||
+    Array.isArray(normalizedValue)
+  ) {
+    return normalizedValue;
+  }
+  const normalizedObject = normalizedValue as Record<string, unknown>;
+  if (
+    original != null && typeof original === "object" && !Array.isArray(original)
+  ) {
+    return preserveNoContextJsonLdShape(normalizedObject, original, depth + 1);
+  }
+  if (typeof normalizedObject["@id"] === "string") {
+    return normalizedObject["@id"];
+  }
+  if ("@value" in normalizedObject) return normalizedObject["@value"];
+  return normalizedValue;
 }
 
 function getTopLevelTerms(value: unknown): ReadonlySet<string> {

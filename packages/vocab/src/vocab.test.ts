@@ -741,6 +741,36 @@ test("fromJsonLd() preserves single-node expanded arrays with portable IRIs", as
   deepStrictEqual(expanded[0]["@id"], "ap://did:key:z6Mkabc/objects/1");
 });
 
+test("fromJsonLd() preserves no-context object shape with portable IRIs", async () => {
+  const expanded = {
+    "@id": "ap://did:key:z6Mkabc/objects/1",
+    "@type": ["https://www.w3.org/ns/activitystreams#Note"],
+    "https://www.w3.org/ns/activitystreams#attributedTo": [
+      { "@id": "ap://did:key:z6Mkabc/actor" },
+    ],
+    "https://www.w3.org/ns/activitystreams#content": [
+      { "@value": "No-context object shape should stay cached." },
+    ],
+  };
+
+  const note = await Note.fromJsonLd(expanded, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+
+  deepStrictEqual(await note.toJsonLd(), {
+    "@id": "ap+ef61://did:key:z6Mkabc/objects/1",
+    "@type": ["https://www.w3.org/ns/activitystreams#Note"],
+    "https://www.w3.org/ns/activitystreams#attributedTo": [
+      { "@id": "ap+ef61://did:key:z6Mkabc/actor" },
+    ],
+    "https://www.w3.org/ns/activitystreams#content": [
+      { "@value": "No-context object shape should stay cached." },
+    ],
+  });
+  deepStrictEqual(expanded["@id"], "ap://did:key:z6Mkabc/objects/1");
+});
+
 test("fromJsonLd() preserves expanded subtype cache types", async () => {
   const expanded = [
     {
