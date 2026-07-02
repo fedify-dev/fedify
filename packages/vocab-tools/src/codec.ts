@@ -434,7 +434,11 @@ export async function* generateDecoder(
   `;
   yield `
     let cacheJsonLd = !("_fromSubclass" in options) || !options._fromSubclass
-      ? normalizePortableIris(expanded)
+      ? normalizeJsonLdIris(
+        expanded,
+        PORTABLE_IRI_KEYS,
+        PORTABLE_IRI_PATTERN,
+      )
       : undefined;
     if (cacheJsonLd != null && cacheJsonLd !== expanded) {
       cacheJsonLd = structuredClone(cacheJsonLd);

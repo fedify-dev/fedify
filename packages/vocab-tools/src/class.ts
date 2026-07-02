@@ -14,6 +14,7 @@ const XSD_ANY_URI = "http://www.w3.org/2001/XMLSchema#anyURI";
 const FEDIFY_URL = "fedify:url";
 const RUNTIME_IMPORTS = [
   "canParseDecimal",
+  "compactJsonLdCache",
   "decodeMultibase",
   "type Decimal",
   "type DocumentLoader",
@@ -22,11 +23,13 @@ const RUNTIME_IMPORTS = [
   "exportSpki",
   "formatIri",
   "getDocumentLoader",
-  "haveSameIriOrigin",
+  "getJsonLdContext",
   "importMultibaseKey",
   "importPem",
   "isDecimal",
+  "isTrustedIriOrigin",
   "LanguageString",
+  "normalizeJsonLdIris",
   "parseDecimal",
   "parseIri",
   "parseJsonLdId",
@@ -249,18 +252,6 @@ export async function* generateClasses(
     isTemporalDuration,
     isTemporalInstant,
 } from "@fedify/vocab-runtime/temporal";\n`;
-  yield `
-
-function hasTrustedIriOrigin(
-  options: { crossOrigin?: "ignore" | "throw" | "trust" },
-  left: URL | null | undefined,
-  right: URL | null | undefined,
-): boolean {
-  return options.crossOrigin === "trust" || left == null ||
-    (right != null && haveSameIriOrigin(left, right));
-}
-
-`;
   const portableIriKeys = new Set(["@id", "id"]);
   for (const type of Object.values(types)) {
     for (const property of type.properties) {
@@ -271,295 +262,6 @@ function hasTrustedIriOrigin(
   yield `const PORTABLE_IRI_KEYS: ReadonlySet<string> = new Set(${
     JSON.stringify([...portableIriKeys].sort())
   });\n\n`;
-  yield `function isPortableIriValuePosition(
-  key: string,
-  parentKey?: string,
-  portableIriKeys: ReadonlySet<string> = PORTABLE_IRI_KEYS,
-): boolean {
-  return portableIriKeys.has(key) ||
-    ((key === "@value" || key === "@list" || key === "@set") &&
-      parentKey != null && portableIriKeys.has(parentKey));
-}\n\n`;
-  yield `function formatPortableIriForCache(value: string): string {
-  try {
-    return formatIri(value);
-  } catch {
-    return value;
-  }
-}\n\n`;
-  yield `function normalizePortableIris(
-  value: unknown,
-  key?: string,
-  depth = 0,
-  parentKey?: string,
-  portableIriKeys: ReadonlySet<string> = PORTABLE_IRI_KEYS,
-): unknown {
-  if (depth > 32 || key === "@context") return value;
-  if (typeof value === "string") {
-    if (
-      key != null &&
-      isPortableIriValuePosition(key, parentKey, portableIriKeys) &&
-      PORTABLE_IRI_PATTERN.test(value)
-    ) {
-      return formatPortableIriForCache(value);
-    }
-    return value;
-  }
-  if (Array.isArray(value)) {
-    let clone: unknown[] | undefined;
-    for (let i = 0; i < value.length; i++) {
-      const result = normalizePortableIris(
-        value[i],
-        key,
-        depth + 1,
-        parentKey,
-        portableIriKeys,
-      );
-      if (result !== value[i]) {
-        clone ??= value.slice(0, i);
-        clone.push(result);
-      } else if (clone != null) {
-        clone.push(value[i]);
-      }
-    }
-    return clone ?? value;
-  }
-  if (value == null || typeof value !== "object") {
-    return value;
-  }
-  const object = value as Record<string, unknown>;
-  let clone: Record<string, unknown> | undefined;
-  for (const entryKey of globalThis.Object.keys(object)) {
-    const result = normalizePortableIris(
-      object[entryKey],
-      entryKey,
-      depth + 1,
-      key,
-      portableIriKeys,
-    );
-    if (result !== object[entryKey]) {
-      clone ??= { ...object };
-      clone[entryKey] = result;
-    }
-  }
-  return clone ?? object;
-}\n\n`;
-  yield `function getJsonLdContext(value: unknown, depth = 0): unknown {
-  if (depth > 32) return undefined;
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const context = getJsonLdContext(item, depth + 1);
-      if (context !== undefined) return context;
-    }
-    return undefined;
-  }
-  if (
-    value == null || typeof value !== "object" ||
-    !("@context" in value)
-  ) {
-    return undefined;
-  }
-  return (value as Record<string, unknown>)["@context"];
-}\n\n`;
-  yield `async function compactJsonLdCache(
-  normalized: unknown,
-  original: unknown,
-  documentLoader?: DocumentLoader,
-  depth = 0,
-): Promise<unknown> {
-  if (depth > 32) return normalized;
-  if (Array.isArray(original)) {
-    const normalizedArray = Array.isArray(normalized)
-      ? normalized
-      : normalized != null && typeof normalized === "object" &&
-          "@graph" in normalized &&
-          Array.isArray((normalized as Record<string, unknown>)["@graph"])
-      ? (normalized as Record<string, unknown>)["@graph"] as unknown[]
-      : undefined;
-    if (normalizedArray == null) return normalized;
-    let clone: unknown[] | undefined;
-    for (let i = 0; i < normalizedArray.length; i++) {
-      const item = await compactJsonLdCache(
-        normalizedArray[i],
-        original[i],
-        documentLoader,
-        depth + 1,
-      );
-      if (item !== normalizedArray[i]) {
-        clone ??= normalizedArray.slice(0, i);
-        clone.push(item);
-      } else if (clone != null) {
-        clone.push(normalizedArray[i]);
-      }
-    }
-    return clone ?? (Array.isArray(normalized) ? normalized : normalizedArray);
-  }
-  const context = getJsonLdContext(original);
-  if (context == null) return normalized;
-  return preserveJsonLdArrayShape(
-    await mergeUnmappedJsonLdTerms(
-      await jsonld.compact(
-        Array.isArray(normalized) && normalized.length === 1
-          ? normalized[0]
-          : normalized,
-        context,
-        {
-        documentLoader,
-        },
-      ),
-      original,
-      context,
-      documentLoader,
-    ),
-    original,
-  );
-}\n\n`;
-  yield `function getTopLevelJsonLdTerms(value: unknown): ReadonlySet<string> {
-  const terms = new Set<string>();
-  const nodes = Array.isArray(value) ? value : [value];
-  for (const node of nodes) {
-    if (node == null || typeof node !== "object" || Array.isArray(node)) {
-      continue;
-    }
-    for (const key of globalThis.Object.keys(node)) {
-      if (key.startsWith("@")) continue;
-      terms.add(key);
-    }
-  }
-  return terms;
-}\n\n`;
-  yield `async function mergeUnmappedJsonLdTerms(
-  compacted: unknown,
-  original: unknown,
-  context: unknown,
-  documentLoader?: DocumentLoader,
-): Promise<unknown> {
-  if (
-    original == null || typeof original !== "object" ||
-    Array.isArray(original) ||
-    compacted == null || typeof compacted !== "object" ||
-    Array.isArray(compacted)
-  ) {
-    return compacted;
-  }
-  const result = { ...compacted as Record<string, unknown> };
-  const unmappedKeys = globalThis.Object.keys(original).filter((key) =>
-    key !== "@context" &&
-    !globalThis.Object.prototype.hasOwnProperty.call(result, key)
-  );
-  if (unmappedKeys.length < 1) return result;
-  const compactedTerms = getTopLevelJsonLdTerms(await jsonld.expand(compacted, {
-    documentLoader,
-  }));
-  const dummyPrefix = "urn:fedify:dummy:";
-  const dummy: Record<string, unknown> = { "@context": context };
-  for (let i = 0; i < unmappedKeys.length; i++) {
-    dummy[unmappedKeys[i]] = \`\${dummyPrefix}\${i}\`;
-  }
-  const expanded = await jsonld.expand(dummy, { documentLoader });
-  const representedKeys = new Set<string>();
-  const nodes = Array.isArray(expanded) ? expanded : [expanded];
-  for (const node of nodes) {
-    if (node == null || typeof node !== "object" || Array.isArray(node)) {
-      continue;
-    }
-    for (const [term, termValue] of globalThis.Object.entries(node)) {
-      if (!compactedTerms.has(term)) continue;
-      const value = JSON.stringify(termValue);
-      for (let i = 0; i < unmappedKeys.length; i++) {
-        if (value.includes(\`\${dummyPrefix}\${i}\`)) {
-          representedKeys.add(unmappedKeys[i]);
-        }
-      }
-    }
-  }
-  for (const key of unmappedKeys) {
-    if (!representedKeys.has(key)) {
-      const value = (original as Record<string, unknown>)[key];
-      result[key] = structuredClone(value);
-    }
-  }
-  return result;
-}\n\n`;
-  yield `function preserveJsonLdArrayShape(
-  compacted: unknown,
-  original: unknown,
-  depth = 0,
-): unknown {
-  if (depth > 32) return compacted;
-  if (
-    original == null || typeof original !== "object" ||
-    compacted == null || typeof compacted !== "object"
-  ) {
-    return compacted;
-  }
-  if (Array.isArray(original)) {
-    const compactedArray = Array.isArray(compacted)
-      ? compacted
-      : "@graph" in compacted &&
-          Array.isArray((compacted as Record<string, unknown>)["@graph"])
-      ? (compacted as Record<string, unknown>)["@graph"] as unknown[]
-      : undefined;
-    if (compactedArray == null) return compacted;
-    let clone: unknown[] | undefined;
-    for (let i = 0; i < compactedArray.length; i++) {
-      const value = preserveJsonLdArrayShape(
-        compactedArray[i],
-        original[i],
-        depth + 1,
-      );
-      const originalContext = original[i] != null &&
-          typeof original[i] === "object" && !Array.isArray(original[i]) &&
-          "@context" in original[i]
-        ? (original[i] as Record<string, unknown>)["@context"]
-        : undefined;
-      const shaped = originalContext !== undefined &&
-          value != null && typeof value === "object" &&
-          !Array.isArray(value) && !("@context" in value)
-        ? { "@context": originalContext, ...value as Record<string, unknown> }
-        : value;
-      if (shaped !== compactedArray[i]) {
-        clone ??= compactedArray.slice(0, i);
-        clone.push(shaped);
-      } else if (clone != null) {
-        clone.push(compactedArray[i]);
-      }
-    }
-    return clone ?? (Array.isArray(compacted) ? compacted : compactedArray);
-  }
-  if (Array.isArray(compacted)) return compacted;
-  let clone: Record<string, unknown> | undefined;
-  const compactedObject = compacted as Record<string, unknown>;
-  const originalObject = original as Record<string, unknown>;
-  for (const key of globalThis.Object.keys(compactedObject)) {
-    if (key === "@context") continue;
-    const value = preserveJsonLdArrayShape(
-      compactedObject[key],
-      originalObject[key],
-      depth + 1,
-    );
-    const shaped = Array.isArray(originalObject[key]) && !Array.isArray(value)
-      ? [value]
-      : value;
-    if (shaped !== compactedObject[key]) {
-      clone ??= { ...compactedObject };
-      clone[key] = shaped;
-    }
-  }
-  if (depth > 0) {
-    for (const key of globalThis.Object.keys(originalObject)) {
-      if (
-        key.startsWith("@") ||
-        globalThis.Object.prototype.hasOwnProperty.call(compactedObject, key)
-      ) {
-        continue;
-      }
-      clone ??= { ...compactedObject };
-      clone[key] = structuredClone(originalObject[key]);
-    }
-  }
-  return clone ?? compactedObject;
-}\n\n`;
   const moduleVarNames = new Map<string, string>();
   const sorted = sortTopologically(types);
   for (const typeUri of sorted) {

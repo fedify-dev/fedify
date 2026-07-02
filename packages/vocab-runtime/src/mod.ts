@@ -61,3 +61,10 @@ export {
   UrlError,
   validatePublicUrl,
 } from "./url.ts";
+export {
+  compactJsonLdCache,
+  getJsonLdContext,
+  type IriTrustOptions,
+  isTrustedIriOrigin,
+  normalizeJsonLdIris,
+} from "./jsonld-cache.ts";

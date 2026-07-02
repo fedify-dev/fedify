@@ -111,7 +111,7 @@ async function* generateProperty(
             document,
             { documentLoader, contextLoader, tracerProvider, baseUrl }
           );
-          if (obj?.id != null && !hasTrustedIriOrigin(options, obj.id, baseUrl)) {
+          if (obj?.id != null && !isTrustedIriOrigin(options, obj.id, baseUrl)) {
             if (options.crossOrigin === "throw") {
               throw new Error(
                 "The object's @id (" + obj.id.href + ") has a different origin " +
@@ -276,7 +276,7 @@ async function* generateProperty(
         let v = this.${await getFieldName(property.uri)}[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            (this.id == null || !hasTrustedIriOrigin(options, v.id, this.id)) &&
+            (this.id == null || !isTrustedIriOrigin(options, v.id, this.id)) &&
             !this.${await getFieldName(property.uri, "#_trust")}.has(0)) {
           v = v.id;
         }
@@ -316,7 +316,7 @@ async function* generateProperty(
       }
       yield `
         if (v?.id != null &&
-            this.id != null && !hasTrustedIriOrigin(options, v.id, this.id) &&
+            this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.${await getFieldName(property.uri, "#_trust")}.has(0)) {
           if (options.crossOrigin === "throw") {
             throw new Error(
@@ -383,7 +383,7 @@ async function* generateProperty(
           if (!(v instanceof URL) &&
               v.id != null &&
               (this.id == null ||
-                !hasTrustedIriOrigin(options, v.id, this.id)) &&
+                !isTrustedIriOrigin(options, v.id, this.id)) &&
               !this.${await getFieldName(property.uri, "#_trust")}.has(i)) {
             v = v.id;
           }
@@ -424,7 +424,7 @@ async function* generateProperty(
       }
       yield `
           if (v?.id != null &&
-              this.id != null && !hasTrustedIriOrigin(options, v.id, this.id) &&
+              this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.${await getFieldName(property.uri, "#_trust")}.has(0)) {
             if (options.crossOrigin === "throw") {
               throw new Error(
