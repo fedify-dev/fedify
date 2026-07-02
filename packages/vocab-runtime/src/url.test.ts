@@ -97,6 +97,11 @@ test("parseIri() resolves relative IRIs against portable string bases", () => {
     parseIri("attachments/1", "ap://did:key:z6Mkabc/objects/1"),
     new URL("ap+ef61://did%3Akey%3Az6Mkabc/objects/attachments/1"),
   );
+  ok(!canParseIri("//example.com/outbox", "ap://did:key:z6Mkabc/objects/1"));
+  throws(
+    () => parseIri("//example.com/outbox", "ap://did:key:z6Mkabc/objects/1"),
+    TypeError,
+  );
 });
 
 test("parseIri() resolves relative IRIs against at:// string bases", () => {
@@ -217,6 +222,18 @@ test("formatIri() preserves DID-internal pct-encoded authority characters", () =
 
 test("parseIri() accepts portable DID URLs with encoded DID delimiters", () => {
   const parsed = parseIri("ap://did:web:example.com%3A3000/u/1");
+  deepStrictEqual(
+    parsed,
+    new URL("ap+ef61://did%3Aweb%3Aexample.com%253A3000/u/1"),
+  );
+  deepStrictEqual(
+    formatIri(parsed),
+    "ap+ef61://did:web:example.com%3A3000/u/1",
+  );
+});
+
+test("parseIri() decodes pct-encoded DID delimiters in order", () => {
+  const parsed = parseIri("ap://did%3Aweb%3Aexample.com%253A3000/u/1");
   deepStrictEqual(
     parsed,
     new URL("ap+ef61://did%3Aweb%3Aexample.com%253A3000/u/1"),

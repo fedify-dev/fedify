@@ -1,4 +1,4 @@
-import { deepStrictEqual, ok } from "node:assert";
+import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { test } from "node:test";
 import {
   compactJsonLdCache,
@@ -91,6 +91,38 @@ test("compactJsonLdCache() preserves nested unmapped terms", async () => {
       extra: "This nested unmapped property should stay cached.",
     },
   });
+});
+
+test("compactJsonLdCache() reuses unchanged unmapped values", async () => {
+  const context = {
+    as: "https://www.w3.org/ns/activitystreams#",
+    id: "@id",
+    type: "@type",
+    attachment: { "@id": "as:attachment" },
+    name: "as:name",
+  };
+  const extra = { source: "unchanged nested extension" };
+  const rootExtra = { source: "unchanged root extension" };
+  const original = {
+    "@context": context,
+    type: "as:Note",
+    id: "ap://did:key:z6Mkabc/objects/1",
+    rootExtra,
+    attachment: {
+      type: "as:Object",
+      name: "Attachment with an unmapped extension.",
+      extra,
+    },
+  };
+  const expanded = await jsonld.expand(original);
+  const normalized = normalizeJsonLdIris(expanded, new Set(["@id"]));
+  const compacted = await compactJsonLdCache(normalized, original) as {
+    rootExtra: unknown;
+    attachment: { extra: unknown };
+  };
+
+  strictEqual(compacted.rootExtra, rootExtra);
+  strictEqual(compacted.attachment.extra, extra);
 });
 
 test("compactJsonLdCache() does not confuse dummy marker prefixes", async () => {

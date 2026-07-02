@@ -242,9 +242,7 @@ async function mergeUnmappedTerms(
   }
   for (const key of unmappedKeys) {
     if (!representedKeys.has(key)) {
-      result[key] = structuredClone(
-        (original as Record<string, unknown>)[key],
-      );
+      result[key] = (original as Record<string, unknown>)[key];
     }
   }
   return result;
@@ -335,7 +333,7 @@ function preserveJsonLdShape(
         continue;
       }
       clone ??= { ...compactedObject };
-      clone[key] = structuredClone(originalObject[key]);
+      clone[key] = originalObject[key];
     }
   }
   return clone ?? compactedObject;

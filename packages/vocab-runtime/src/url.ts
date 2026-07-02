@@ -55,7 +55,8 @@ export function parseIri(iri: string | URL, base?: string | URL): URL {
   if (!URL.canParse(iri, base) && iri.startsWith("at://")) {
     return parseAtUri(iri);
   }
-  return new URL(iri, base);
+  const parsed = new URL(iri, base);
+  return normalizePortableUrl(parsed) ?? parsed;
 }
 
 /**
@@ -137,7 +138,10 @@ function decodePortableAuthority(authority: string): string {
     }
     return decoded;
   }
-  const decoded = authority.replace(/%3A/gi, ":").replace(/%25/gi, "%");
+  const decoded = authority
+    .replace(/%25/gi, "\0")
+    .replace(/%3A/gi, ":")
+    .replaceAll("\0", "%");
   if (INVALID_PERCENT_ENCODING_PATTERN.test(decoded)) {
     throw new TypeError("Invalid portable ActivityPub IRI authority.");
   }
