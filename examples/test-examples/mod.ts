@@ -33,34 +33,31 @@ const REPO_ROOT = fromFileUrl(new URL("../../", import.meta.url));
 
 // ─── Logging ──────────────────────────────────────────────────────────────────
 //
-// We configure logtape before everything else so that log calls in helpers
-// work even if they execute at module-initialization time.
-//
 // All test-runner logs live under the ["fedify", "examples"] category.
 // Library-internal fedify logs are intentionally excluded so they don't flood
 // the output.  Pass --debug to lower the level from "info" to "debug".
 
-const debugMode = Deno.args.includes("--debug") || Deno.args.includes("-d");
-
-await configure({
-  sinks: { console: getConsoleSink() },
-  filters: {},
-  loggers: [
-    {
-      category: ["fedify", "examples"],
-      lowestLevel: debugMode ? "debug" : "info",
-      sinks: ["console"],
-      filters: [],
-    },
-    {
-      // Suppress logtape's own meta-logs unless something is wrong.
-      category: ["logtape", "meta"],
-      lowestLevel: "warning",
-      sinks: ["console"],
-      filters: [],
-    },
-  ],
-});
+async function configureLogging(debugMode: boolean): Promise<void> {
+  await configure({
+    sinks: { console: getConsoleSink() },
+    filters: {},
+    loggers: [
+      {
+        category: ["fedify", "examples"],
+        lowestLevel: debugMode ? "debug" : "info",
+        sinks: ["console"],
+        filters: [],
+      },
+      {
+        // Suppress logtape's own meta-logs unless something is wrong.
+        category: ["logtape", "meta"],
+        lowestLevel: "warning",
+        sinks: ["console"],
+        filters: [],
+      },
+    ],
+  });
+}
 
 const logger = getLogger(["fedify", "examples", "test-runner"]);
 
@@ -108,7 +105,7 @@ interface MultiHandleExample {
   name: string;
   dir: string;
   /** Command prefix—the handle is appended as the final argument. */
-  cmdPrefix?: string[];
+  cmd: string[];
   /** Handles to try, in order.  Pass if any succeeds. */
   handles: string[];
   description: string;
@@ -124,6 +121,52 @@ type TestResult =
   | { name: string; status: "pass"; output: string }
   | { name: string; status: "fail"; error: string; output: string }
   | { name: string; status: "skip"; reason: string };
+
+interface CliOptions {
+  defaultTimeoutMs: number;
+  debugMode: boolean;
+  filterNames: Set<string>;
+}
+
+function parseTimeoutMs(value: string | undefined): number | undefined {
+  if (value == null || value.trim() === "") return undefined;
+  const timeoutMs = Number(value);
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return undefined;
+  return timeoutMs;
+}
+
+function isCliFlag(value: string): boolean {
+  return value === "-d" || value.startsWith("--");
+}
+
+export function parseCliArgs(args: readonly string[]): CliOptions {
+  let defaultTimeoutMs = 10_000;
+  let debugMode = false;
+  const filterNames = new Set<string>();
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === "--timeout") {
+      const rawValue = args[i + 1];
+      const timeoutMs = parseTimeoutMs(rawValue);
+      if (timeoutMs != null) {
+        defaultTimeoutMs = timeoutMs;
+        i++;
+      } else if (rawValue != null && !isCliFlag(rawValue)) {
+        i++;
+      }
+    } else if (arg.startsWith("--timeout=")) {
+      const timeoutMs = parseTimeoutMs(arg.slice("--timeout=".length));
+      if (timeoutMs != null) defaultTimeoutMs = timeoutMs;
+    } else if (arg === "--debug" || arg === "-d") {
+      debugMode = true;
+    } else if (!arg.startsWith("--")) {
+      filterNames.add(arg);
+    }
+  }
+
+  return { defaultTimeoutMs, debugMode, filterNames };
+}
 
 // ─── Example Registry ─────────────────────────────────────────────────────────
 //
@@ -713,23 +756,10 @@ function printInlineResult(result: TestResult): void {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-async function main(): Promise<void> {
+async function main(args: readonly string[] = Deno.args): Promise<void> {
   // ── Parse CLI arguments ──────────────────────────────────────────────────
-  let defaultTimeoutMs = 10_000;
-  const filterNames = new Set<string>();
-
-  for (let i = 0; i < Deno.args.length; i++) {
-    const arg = Deno.args[i];
-    if (arg === "--timeout" && i + 1 < Deno.args.length) {
-      defaultTimeoutMs = Number(Deno.args[++i]);
-    } else if (arg.startsWith("--timeout=")) {
-      defaultTimeoutMs = Number(arg.slice("--timeout=".length));
-    } else if (arg === "--debug" || arg === "-d") {
-      // already handled above at module level
-    } else if (!arg.startsWith("--")) {
-      filterNames.add(arg);
-    }
-  }
+  const { debugMode, defaultTimeoutMs, filterNames } = parseCliArgs(args);
+  await configureLogging(debugMode);
 
   const shouldRun = (name: string) =>
     filterNames.size === 0 || filterNames.has(name);
@@ -859,4 +889,4 @@ async function main(): Promise<void> {
   Deno.exit(0);
 }
 
-await main();
+if (import.meta.main) await main();
