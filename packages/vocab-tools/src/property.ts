@@ -86,9 +86,10 @@ async function* generateProperty(
         ${JSON.stringify(metadata.version)},
       );
       return await tracer.startActiveSpan("activitypub.lookup_object", async (span) => {
+        const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(url.href);
+          fetchResult = await documentLoader(lookupUrl);
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -98,21 +99,20 @@ async function* generateProperty(
           if (options.suppressError) {
             getLogger(["fedify", "vocab"]).error(
               "Failed to fetch {url}: {error}",
-              { error, url: url.href }
+              { error, url: lookupUrl }
             );
             return null;
           }
           throw error;
         }
         const { document, documentUrl } = fetchResult;
-        const baseUrl = new URL(documentUrl);
+        const baseUrl = parseIri(documentUrl);
         try {
           const obj = await this.#${property.singularName}_fromJsonLd(
             document,
             { documentLoader, contextLoader, tracerProvider, baseUrl }
           );
-          if (options.crossOrigin !== "trust" && obj?.id != null &&
-              obj.id.origin !== baseUrl.origin) {
+          if (obj?.id != null && !isTrustedIriOrigin(options, obj.id, baseUrl)) {
             if (options.crossOrigin === "throw") {
               throw new Error(
                 "The object's @id (" + obj.id.href + ") has a different origin " +
@@ -141,7 +141,7 @@ async function* generateProperty(
           if (options.suppressError) {
             getLogger(["fedify", "vocab"]).error(
               "Failed to parse {url}: {error}",
-              { error: e, url: url.href }
+              { error: e, url: lookupUrl }
             );
             return null;
           }
@@ -275,8 +275,9 @@ async function* generateProperty(
         }
         if (this.${await getFieldName(property.uri)}.length < 1) return null;
         let v = this.${await getFieldName(property.uri)}[0];
-        if (options.crossOrigin !== "trust" && !(v instanceof URL) &&
-            v.id != null && v.id.origin !== this.id?.origin &&
+        if (!(v instanceof URL) &&
+            v.id != null &&
+            !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.${await getFieldName(property.uri, "#_trust")}.has(0)) {
           v = v.id;
         }
@@ -315,8 +316,8 @@ async function* generateProperty(
         `;
       }
       yield `
-        if (options.crossOrigin !== "trust" && v?.id != null &&
-            this.id != null && v.id.origin !== this.id.origin &&
+        if (v?.id != null &&
+            this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
             !this.${await getFieldName(property.uri, "#_trust")}.has(0)) {
           if (options.crossOrigin === "throw") {
             throw new Error(
@@ -380,8 +381,9 @@ async function* generateProperty(
         const vs = this.${await getFieldName(property.uri)};
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
-          if (options.crossOrigin !== "trust" && !(v instanceof URL) &&
-              v.id != null && v.id.origin !== this.id?.origin &&
+          if (!(v instanceof URL) &&
+              v.id != null &&
+              !isTrustedIriOrigin(options, v.id, this.id) &&
               !this.${await getFieldName(property.uri, "#_trust")}.has(i)) {
             v = v.id;
           }
@@ -421,9 +423,9 @@ async function* generateProperty(
         `;
       }
       yield `
-          if (options.crossOrigin !== "trust" && v?.id != null &&
-              this.id != null && v.id.origin !== this.id.origin &&
-              !this.${await getFieldName(property.uri, "#_trust")}.has(0)) {
+          if (v?.id != null &&
+              this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
+              !this.${await getFieldName(property.uri, "#_trust")}.has(i)) {
             if (options.crossOrigin === "throw") {
               throw new Error(
                 "The property object's @id (" + v.id.href + ") has a different " +

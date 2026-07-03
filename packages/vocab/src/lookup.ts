@@ -2,6 +2,8 @@ import type { GetUserAgentOptions } from "@fedify/vocab-runtime";
 import {
   type DocumentLoader,
   getDocumentLoader,
+  haveSameIriOrigin,
+  parseIri,
   type RemoteDocument,
 } from "@fedify/vocab-runtime";
 import { lookupWebFinger } from "@fedify/webfinger";
@@ -312,12 +314,14 @@ async function lookupObjectInternal(
   }
   if (remoteDoc == null) return null;
   let object: Object;
+  let documentUrl: URL;
   try {
+    documentUrl = parseIri(remoteDoc.documentUrl);
     object = await Object.fromJsonLd(remoteDoc.document, {
       documentLoader,
       contextLoader: options.contextLoader,
       tracerProvider: options.tracerProvider,
-      baseUrl: new URL(remoteDoc.documentUrl),
+      baseUrl: documentUrl,
     });
   } catch (error) {
     if (error instanceof TypeError) {
@@ -331,7 +335,7 @@ async function lookupObjectInternal(
   }
   if (
     options.crossOrigin !== "trust" && object.id != null &&
-    object.id.origin !== new URL(remoteDoc.documentUrl).origin
+    !haveSameIriOrigin(object.id, documentUrl)
   ) {
     if (options.crossOrigin === "throw") {
       throw new Error(

@@ -157,10 +157,10 @@ const scalarTypes: Record<string, ScalarType> = {
       return `${v} instanceof URL`;
     },
     encoder(v) {
-      return `{ "@id": ${v}.href }`;
+      return `{ "@id": formatIri(${v}) }`;
     },
     compactEncoder(v) {
-      return `${v}.href`;
+      return `formatIri(${v})`;
     },
     dataCheck(v) {
       return `${v} != null && typeof ${v} === "object" && "@id" in ${v}
@@ -168,22 +168,7 @@ const scalarTypes: Record<string, ScalarType> = {
         && ${v}["@id"] !== ""`;
     },
     decoder(v, baseUrlVar) {
-      return `${v}["@id"].startsWith("at://")
-        ? new URL("at://" +
-          encodeURIComponent(
-            ${v}["@id"].includes("/", 5)
-              ? ${v}["@id"].slice(5, ${v}["@id"].indexOf("/", 5))
-              : ${v}["@id"].slice(5)
-          ) +
-          (
-            ${v}["@id"].includes("/", 5)
-              ? ${v}["@id"].slice(${v}["@id"].indexOf("/", 5))
-              : ""
-          )
-        )
-        : URL.canParse(${v}["@id"]) && ${baseUrlVar}
-          ? new URL(${v}["@id"])
-          : new URL(${v}["@id"], ${baseUrlVar})`;
+      return `parseIri(${v}["@id"], ${baseUrlVar})`;
     },
   },
   "http://www.w3.org/1999/02/22-rdf-syntax-ns#langString": {
@@ -325,10 +310,10 @@ const scalarTypes: Record<string, ScalarType> = {
       return `${v} instanceof URL`;
     },
     encoder(v) {
-      return `{ "@value": ${v}.href }`;
+      return `{ "@value": formatIri(${v}) }`;
     },
     compactEncoder(v) {
-      return `${v}.href`;
+      return `formatIri(${v})`;
     },
     dataCheck(v) {
       return `typeof ${v} === "object" && "@value" in ${v}
@@ -336,7 +321,7 @@ const scalarTypes: Record<string, ScalarType> = {
         && ${v}["@value"] !== "" && ${v}["@value"] !== "/"`;
     },
     decoder(v) {
-      return `new URL(${v}["@value"])`;
+      return `parseIri(${v}["@value"])`;
     },
   },
   "fedify:publicKey": {

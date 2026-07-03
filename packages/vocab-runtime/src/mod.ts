@@ -51,8 +51,12 @@ export {
 } from "./preprocessor.ts";
 export {
   expandIPv6Address,
+  formatIri,
+  haveSameIriOrigin,
   isValidPublicIPv4Address,
   isValidPublicIPv6Address,
+  parseIri,
+  parseJsonLdId,
   UrlError,
   validatePublicUrl,
 } from "./url.ts";

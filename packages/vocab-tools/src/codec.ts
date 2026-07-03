@@ -127,7 +127,7 @@ export async function* generateEncoder(
         const item = (
       `;
       if (!areAllScalarTypes(property.range, types)) {
-        yield "v instanceof URL ? v.href : ";
+        yield "v instanceof URL ? formatIri(v) : ";
       }
       const encoders = getEncoders(
         property.range,
@@ -178,7 +178,7 @@ export async function* generateEncoder(
         ? ""
         : `result["type"] = ${JSON.stringify(type.compactName ?? type.uri)};`
     }
-      if (this.id != null) result["id"] = this.id.href;
+      if (this.id != null) result["id"] = formatIri(this.id);
       result["@context"] = ${JSON.stringify(type.defaultContext)};
       return result;
     }
@@ -210,7 +210,7 @@ export async function* generateEncoder(
       const element = (
     `;
     if (!areAllScalarTypes(property.range, types)) {
-      yield 'v instanceof URL ? { "@id": v.href } : ';
+      yield 'v instanceof URL ? { "@id": formatIri(v) } : ';
     }
     for (const code of getEncoders(property.range, types, "v", "options")) {
       yield code;
@@ -250,7 +250,7 @@ export async function* generateEncoder(
   }
   yield `
     ${type.typeless ? "" : `values["@type"] = [${JSON.stringify(type.uri)}];`}
-    if (this.id != null) values["@id"] = this.id.href;
+    if (this.id != null) values["@id"] = formatIri(this.id);
     if (options.format === "expand") {
       return await jsonld.expand(
         values,
@@ -393,10 +393,12 @@ export async function* generateDecoder(
     };
     // deno-lint-ignore no-explicit-any
     let values: Record<string, any[]> & { "@id"?: string };
+    let expanded: unknown[];
     if (globalThis.Object.keys(json).length == 0) {
       values = {};
+      expanded = [values];
     } else {
-      const expanded = await jsonld.expand(json, {
+      expanded = await jsonld.expand(json, {
         documentLoader: options.contextLoader,
         keepFreeFloatingNodes: true,
       });
@@ -404,11 +406,9 @@ export async function* generateDecoder(
         // deno-lint-ignore no-explicit-any
         (expanded[0] ?? {}) as (Record<string, any[]> & { "@id"?: string });
     }
-    if (values["@id"] != null && !values["@id"].startsWith("_:") && !URL.canParse(values["@id"], options.baseUrl)) {
-      throw new TypeError("Invalid @id: " + values["@id"]);
-    }
-    if (options.baseUrl == null && values["@id"] != null && !values["@id"].startsWith("_:") && URL.canParse(values["@id"])) {
-      options = { ...options, baseUrl: new URL(values["@id"]) };
+    const id = parseJsonLdId(values["@id"], options.baseUrl);
+    if (id != null && options.baseUrl == null) {
+      options = { ...options, baseUrl: id };
     }
   `;
   const subtypes = getSubtypes(typeUri, types, true);
@@ -432,10 +432,24 @@ export async function* generateDecoder(
     }
   }
   `;
+  yield `
+    let cacheJsonLd = !("_fromSubclass" in options) || !options._fromSubclass
+      ? normalizeJsonLdIris(
+        expanded,
+        PORTABLE_IRI_KEYS,
+        PORTABLE_IRI_PATTERN,
+      )
+      : undefined;
+    if (cacheJsonLd != null && cacheJsonLd !== expanded) {
+      cacheJsonLd = structuredClone(cacheJsonLd);
+    }
+  `;
   if (type.extends == null) {
     yield `
     const instance = new this(
-      { id: values["@id"] != null && !values["@id"].startsWith("_:") && URL.canParse(values["@id"], options.baseUrl) ? new URL(values["@id"], options.baseUrl) : undefined },
+      {
+        id
+      },
       options,
     );
     `;
@@ -491,11 +505,7 @@ export async function* generateDecoder(
       if (typeof v === "object" && "@id" in v && !("@type" in v)
           && globalThis.Object.keys(v).length === 1) {
         if (v["@id"].startsWith("_:")) continue;
-        ${variable}.push(
-          !URL.canParse(v["@id"], ${propertyBaseUrl}) && v["@id"].startsWith("at://")
-            ? new URL("at://" + encodeURIComponent(v["@id"].substring(5)))
-            : new URL(v["@id"], ${propertyBaseUrl})
-        );
+        ${variable}.push(parseIri(v["@id"], ${propertyBaseUrl}));
         continue;
       }
       `;
@@ -539,7 +549,19 @@ export async function* generateDecoder(
   yield `
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
-        instance._cachedJsonLd = structuredClone(json);
+        if (cacheJsonLd != null && cacheJsonLd !== expanded) {
+          const compactArray = Array.isArray(json) && json.length === 1;
+          const jsonLd = compactArray ? json[0] : json;
+          const normalized = cacheJsonLd;
+          const cachedJsonLd = await compactJsonLdCache(
+            normalized,
+            jsonLd,
+            options.contextLoader,
+          );
+          instance._cachedJsonLd = compactArray ? [cachedJsonLd] : cachedJsonLd;
+        } else {
+          instance._cachedJsonLd = structuredClone(json);
+        }
       } catch {
         getLogger(["fedify", "vocab"]).warn(
           "Failed to cache JSON-LD: {json}",
