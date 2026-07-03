@@ -9,9 +9,6 @@
 [![Matrix][Matrix badge]][Matrix]
 [![@fedify@hackers.pub][@fedify@hackers.pub badge]][@fedify@hackers.pub]
 
-> [!NOTE]
-> Looking for a quick demo?  Here it is: [Fedify Demo] on Deno Playground.
-
 Fedify is a TypeScript library for building federated server apps
 powered by [ActivityPub] and other standards, so-called [fediverse].[^1]
 It aims to eliminate the complexity and boilerplate code when
@@ -63,7 +60,6 @@ in the fediverse!
 [Matrix]: https://matrix.to/#/#fedify:matrix.org
 [@fedify@hackers.pub badge]: https://fedi-badge.minhee.org/@fedify@hackers.pub/followers.svg
 [@fedify@hackers.pub]: https://hackers.pub/@fedify
-[Fedify Demo]: https://dash.deno.com/playground/fedify-demo
 [ActivityPub]: https://www.w3.org/TR/activitypub/
 [fediverse]: https://en.wikipedia.org/wiki/Fediverse
 [Activity Vocabulary]: https://www.w3.org/TR/activitystreams-vocabulary/
