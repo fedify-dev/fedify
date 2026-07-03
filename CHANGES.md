@@ -20,6 +20,17 @@ To be released.
 [#826]: https://github.com/fedify-dev/fedify/issues/826
 [#850]: https://github.com/fedify-dev/fedify/pull/850
 
+### @fedify/vocab-runtime
+
+ -  Changed `getDocumentLoader()` to reject HTML and XHTML responses that do
+    not advertise an ActivityPub alternate document with a `FetchError`
+    instead of attempting to parse the HTML as JSON.  This makes remote HTML
+    error pages surface as document loading failures with the response URL and
+    content type, rather than generic JSON parser crashes.  [[#912], [#913]]
+
+[#912]: https://github.com/fedify-dev/fedify/issues/912
+[#913]: https://github.com/fedify-dev/fedify/pull/913
+
 
 Version 2.3.1
 -------------
