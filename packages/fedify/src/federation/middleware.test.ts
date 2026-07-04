@@ -10506,8 +10506,11 @@ test("createFederation() omits instrumentation when no meterProvider is set", ()
 });
 
 const taskCodec = new TaskCodec({ contextLoader: mockDocumentLoader });
-const decodeEnvelope = (message: TaskMessage): Promise<Envelope> =>
-  taskCodec.decode(envelopeSchema, message.data);
+const decodeEnvelope = async (message: TaskMessage): Promise<Envelope> => {
+  const decoded = await taskCodec.decode(envelopeSchema, message.data);
+  if (!decoded.ok) throw decoded.error;
+  return decoded.value;
+};
 const envelope = (title: string): Envelope => ({
   note: new Note({ content: title }),
   title,

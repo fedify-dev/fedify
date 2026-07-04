@@ -328,9 +328,10 @@ test("TaskCodec.encode() / decode()", async (t) => {
       const wire = await codec.encode(schema, payload);
       strictEqual(typeof wire, "string");
       const back = await codec.decode(schema, wire);
-      ok(back.note instanceof Note);
-      strictEqual(back.note.content?.toString(), "Hi");
-      strictEqual(back.title, "greeting");
+      if (!back.ok) throw back.error;
+      ok(back.value.note instanceof Note);
+      strictEqual(back.value.note.content?.toString(), "Hi");
+      strictEqual(back.value.title, "greeting");
     },
   );
 
@@ -342,17 +343,26 @@ test("TaskCodec.encode() / decode()", async (t) => {
   });
 
   await t.step(
-    "decode() re-validates and rejects a drifted payload",
+    "decode() reports a validation phase for a drifted payload",
     async () => {
       // Encode under a permissive schema, decode under the strict one.
       const loose = makeSchema((_data): _data is unknown => true);
       const wire = await codec.encode(loose, { note: "not a note" });
-      await rejects(
-        () => codec.decode(schema, wire),
-        { name: "TypeError", message: /Task data failed schema validation/ },
-      );
+      const result = await codec.decode(schema, wire);
+      strictEqual(result.ok, false);
+      if (result.ok) throw new Error("Expected decode to fail.");
+      strictEqual(result.phase, "validation");
+      ok(result.error instanceof TypeError);
     },
   );
+
+  await t.step("decode() reports a deserialization phase", async () => {
+    const result = await codec.decode(schema, "not devalue");
+    strictEqual(result.ok, false);
+    if (result.ok) throw new Error("Expected decode to fail.");
+    strictEqual(result.phase, "deserialization");
+    ok(result.error instanceof Error);
+  });
 
   await t.step(
     "a non-idempotent (transforming) schema fails to round-trip",
@@ -370,10 +380,11 @@ test("TaskCodec.encode() / decode()", async (t) => {
         },
       };
       const wire = await codec.encode(transforming, "hello");
-      await rejects(
-        () => codec.decode(transforming, wire),
-        { name: "TypeError", message: /Task data failed schema validation/ },
-      );
+      const result = await codec.decode(transforming, wire);
+      strictEqual(result.ok, false);
+      if (result.ok) throw new Error("Expected decode to fail.");
+      strictEqual(result.phase, "validation");
+      ok(result.error instanceof TypeError);
     },
   );
 });

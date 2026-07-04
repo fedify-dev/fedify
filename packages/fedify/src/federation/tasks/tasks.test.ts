@@ -1525,7 +1525,7 @@ test("task observability", async (t) => {
     "records the retry re-enqueue with role task and a bumped attempt",
     async () => {
       const queue = new MockQueue();
-      const { federation, recorder } = instrument({
+      const { federation, recorder, exporter } = instrument({
         ...baseOptions,
         queue: { task: queue },
       });
@@ -1548,6 +1548,19 @@ test("task observability", async (t) => {
       strictEqual(enqueued[0].attributes["fedify.queue.role"], "task");
       strictEqual(enqueued[0].attributes["fedify.task.name"], "retry-me");
       strictEqual(enqueued[0].attributes["fedify.queue.task.attempt"], 1);
+      const span = exporter.getSpans("fedify.task")[0];
+      strictEqual(span.attributes["fedify.task.failure_reason"], undefined);
+      strictEqual(span.status.code, SpanStatusCode.UNSET);
+      strictEqual(
+        recorder.getMeasurements("fedify.queue.task.failed").length,
+        0,
+      );
+      const completed = recorder.getMeasurements("fedify.queue.task.completed");
+      strictEqual(completed.length, 1);
+      strictEqual(
+        completed[0].attributes["fedify.task.failure_reason"],
+        undefined,
+      );
     },
   );
 
@@ -1579,6 +1592,49 @@ test("task observability", async (t) => {
       strictEqual(span.status.code, SpanStatusCode.UNSET);
       strictEqual(
         recorder.getMeasurements("fedify.queue.task.failed").length,
+        0,
+      );
+      const durations = recorder.getMeasurements("fedify.queue.task.duration");
+      strictEqual(durations.length, 1);
+      strictEqual(
+        durations[0].attributes["fedify.queue.task.result"],
+        "aborted",
+      );
+    },
+  );
+
+  await t.step(
+    "on a non-native queue an aborted handler that gives up is aborted",
+    async () => {
+      const queue = new MockQueue();
+      const { federation, recorder, exporter } = instrument({
+        ...baseOptions,
+        queue: { task: queue },
+      });
+      federation.defineTask("aborts-give-up", {
+        schema: stringSchema,
+        handler: () => {
+          throw globalThis.Object.assign(new Error("shutting down"), {
+            name: "AbortError",
+          });
+        },
+        retryPolicy: () => null,
+      });
+      await federation.processQueuedTask(
+        undefined,
+        await makeTaskMessage("aborts-give-up", "payload"),
+      );
+
+      strictEqual(queue.enqueued.length, 0);
+      const span = exporter.getSpans("fedify.task")[0];
+      strictEqual(span.attributes["fedify.task.failure_reason"], undefined);
+      strictEqual(span.status.code, SpanStatusCode.UNSET);
+      strictEqual(
+        recorder.getMeasurements("fedify.queue.task.failed").length,
+        0,
+      );
+      strictEqual(
+        recorder.getMeasurements("fedify.queue.task.completed").length,
         0,
       );
       const durations = recorder.getMeasurements("fedify.queue.task.duration");
