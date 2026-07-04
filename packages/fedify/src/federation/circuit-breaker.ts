@@ -247,7 +247,7 @@ export class CircuitBreaker {
     remoteHost: string,
     message: { readonly circuitHeldSince?: string },
   ): Promise<CircuitBreakerBeforeSendDecision> {
-    await this.#sweepLegacyStates();
+    this.#sweepLegacyStates();
     const heldSince = parseHeldSince(message.circuitHeldSince);
     const now = this.#now();
     if (
@@ -351,7 +351,7 @@ export class CircuitBreaker {
   async recordSuccess(
     remoteHost: string,
   ): Promise<CircuitBreakerStateChange | undefined> {
-    await this.#sweepLegacyStates();
+    this.#sweepLegacyStates();
     for (let attempt = 0; attempt < 10; attempt++) {
       const oldState = await this.#get(remoteHost);
       if (oldState == null) return undefined;
@@ -378,7 +378,7 @@ export class CircuitBreaker {
   async recordFailure(
     remoteHost: string,
   ): Promise<CircuitBreakerStateChange | undefined> {
-    await this.#sweepLegacyStates();
+    this.#sweepLegacyStates();
     const now = this.#now();
     for (let attempt = 0; attempt < 10; attempt++) {
       const oldState = await this.#get(remoteHost);
@@ -441,8 +441,16 @@ export class CircuitBreaker {
   async getState(
     remoteHost: string,
   ): Promise<CircuitBreakerKvState | undefined> {
-    await this.#sweepLegacyStates();
+    this.#sweepLegacyStates();
     return stripStoredCircuitBreakerState(await this.#get(remoteHost));
+  }
+
+  /**
+   * The currently running background legacy sweep, if any.
+   * @internal
+   */
+  get pendingSweep(): Promise<void> | undefined {
+    return this.#legacySweep;
   }
 
   #key(remoteHost: string): KvKey {
@@ -453,12 +461,19 @@ export class CircuitBreaker {
     return [...this.#prefix, ...LEGACY_SWEEP_MARKER] as KvKey;
   }
 
-  async #sweepLegacyStates(): Promise<void> {
+  #sweepLegacyStates(): void {
     if (this.#kv.cas == null) return;
-    this.#legacySweep ??= this.#sweepLegacyStatesImpl().finally(() => {
-      this.#legacySweep = undefined;
-    });
-    await this.#legacySweep;
+    if (this.#legacySweep != null) return;
+    this.#legacySweep = this.#sweepLegacyStatesImpl()
+      .catch((error) => {
+        getLogger(["fedify", "federation", "circuit"]).warn(
+          "Failed to sweep legacy circuit breaker state:\n{error}",
+          { error },
+        );
+      })
+      .finally(() => {
+        this.#legacySweep = undefined;
+      });
   }
 
   async #sweepLegacyStatesImpl(): Promise<void> {
@@ -510,7 +525,11 @@ export class CircuitBreaker {
   }
 
   async #deleteIfUnchanged(key: KvKey, value: unknown): Promise<void> {
-    if (await this.#kv.cas?.(key, value, LEGACY_SWEEP_DELETING_MARKER)) {
+    if (
+      await this.#kv.cas?.(key, value, LEGACY_SWEEP_DELETING_MARKER, {
+        ttl: LEGACY_SWEEP_LOCK_TTL,
+      })
+    ) {
       await this.#kv.delete(key);
     }
   }

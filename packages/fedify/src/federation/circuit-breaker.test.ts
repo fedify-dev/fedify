@@ -1,5 +1,5 @@
 import { test } from "@fedify/fixture";
-import { assertEquals, assertRejects, assertThrows } from "@std/assert";
+import { assertEquals, assertThrows } from "@std/assert";
 import {
   CircuitBreaker,
   normalizeCircuitBreakerOptions,
@@ -12,6 +12,7 @@ import {
   type KvStoreSetOptions,
   MemoryKvStore,
 } from "./kv.ts";
+import { markCircuitBreakerLegacySweepDone } from "./circuit-breaker-test-utils.ts";
 
 class AlwaysConflictingKvStore extends MemoryKvStore {
   attempts = 0;
@@ -76,7 +77,21 @@ class CountingSetKvStore implements KvStore {
 
 class CountingSweepKvStore extends MemoryKvStore {
   listCalls = 0;
+  casCalls: {
+    key: KvKey;
+    options: KvStoreSetOptions | undefined;
+  }[] = [];
   deletedKeys: KvKey[] = [];
+
+  override cas(
+    key: KvKey,
+    expectedValue: unknown,
+    newValue: unknown,
+    options?: KvStoreSetOptions,
+  ): Promise<boolean> {
+    this.casCalls.push({ key, options });
+    return super.cas(key, expectedValue, newValue, options);
+  }
 
   override async *list(prefix?: KvKey) {
     this.listCalls++;
@@ -124,15 +139,6 @@ class FailingOnceSweepKvStore extends MemoryKvStore {
     this.deletedKeys.push(key);
     return super.delete(key);
   }
-}
-
-function markLegacySweepDone(kv: MemoryKvStore): Promise<void> {
-  return kv.set([
-    "_fedify",
-    "circuit",
-    "__fedify_meta",
-    "circuit_breaker_state_ttl_sweep_v1",
-  ], { state: "final" });
 }
 
 test("normalizeCircuitBreakerOptions() uses numeric failure policy", () => {
@@ -396,7 +402,7 @@ test("CircuitBreaker opens, probes, closes, and drops held activities", async ()
 
 test("CircuitBreaker recovers stale half-open probes", async () => {
   const kv = new MemoryKvStore();
-  await markLegacySweepDone(kv);
+  await markCircuitBreakerLegacySweepDone(kv);
   let now = Temporal.Instant.from("2026-05-25T00:00:00Z");
   const circuit = new CircuitBreaker({
     kv,
@@ -442,7 +448,7 @@ test("CircuitBreaker recovers stale half-open probes", async () => {
 
 test("CircuitBreaker caps held delays at activity TTL", async () => {
   const kv = new MemoryKvStore();
-  await markLegacySweepDone(kv);
+  await markCircuitBreakerLegacySweepDone(kv);
   const now = Temporal.Instant.from("2026-05-25T00:05:00Z");
   const circuit = new CircuitBreaker({
     kv,
@@ -502,7 +508,7 @@ test("CircuitBreaker caps held delays at activity TTL", async () => {
 
 test("CircuitBreaker ignores malformed held timestamps", async () => {
   const kv = new MemoryKvStore();
-  await markLegacySweepDone(kv);
+  await markCircuitBreakerLegacySweepDone(kv);
   const now = Temporal.Instant.from("2026-05-25T00:05:00Z");
   const circuit = new CircuitBreaker({
     kv,
@@ -531,7 +537,7 @@ test("CircuitBreaker ignores malformed held timestamps", async () => {
 
 test("CircuitBreaker bounds beforeSend CAS retries", async () => {
   let kv = new AlwaysConflictingKvStore();
-  await markLegacySweepDone(kv);
+  await markCircuitBreakerLegacySweepDone(kv);
   const now = Temporal.Instant.from("2026-05-25T00:30:00Z");
   let circuit = new CircuitBreaker({
     kv,
@@ -558,7 +564,7 @@ test("CircuitBreaker bounds beforeSend CAS retries", async () => {
   });
 
   kv = new AlwaysConflictingKvStore();
-  await markLegacySweepDone(kv);
+  await markCircuitBreakerLegacySweepDone(kv);
   circuit = new CircuitBreaker({
     kv,
     prefix: ["_fedify", "circuit"],
@@ -587,7 +593,7 @@ test("CircuitBreaker bounds beforeSend CAS retries", async () => {
 
 test("CircuitBreaker skips recording failures for open circuits", async () => {
   const kv = new CountingCasKvStore();
-  await markLegacySweepDone(kv);
+  await markCircuitBreakerLegacySweepDone(kv);
   const circuit = new CircuitBreaker({
     kv,
     prefix: ["_fedify", "circuit"],
@@ -613,6 +619,7 @@ test("CircuitBreaker skips recording failures for open circuits", async () => {
 
 test("CircuitBreaker writes stored states with a TTL", async () => {
   const kv = new CountingCasKvStore();
+  await markCircuitBreakerLegacySweepDone(kv);
   const circuit = new CircuitBreaker({
     kv,
     prefix: ["_fedify", "circuit"],
@@ -656,6 +663,7 @@ test("CircuitBreaker writes stored states with a TTL without CAS", async () => {
 
 test("CircuitBreaker preserves custom failure history by default", async () => {
   const kv = new CountingCasKvStore();
+  await markCircuitBreakerLegacySweepDone(kv);
   const circuit = new CircuitBreaker({
     kv,
     prefix: ["_fedify", "circuit"],
@@ -672,6 +680,7 @@ test("CircuitBreaker preserves custom failure history by default", async () => {
 
 test("CircuitBreaker accepts an explicit TTL with custom failure policies", async () => {
   const kv = new CountingCasKvStore();
+  await markCircuitBreakerLegacySweepDone(kv);
   const circuit = new CircuitBreaker({
     kv,
     prefix: ["_fedify", "circuit"],
@@ -716,6 +725,7 @@ test("CircuitBreaker migrates legacy states without TTL once", async () => {
     delay: Temporal.Duration.from({ minutes: 30 }),
     heldSince: Temporal.Instant.from("2026-05-25T00:00:00Z"),
   });
+  await circuit.pendingSweep;
 
   assertEquals(
     await kv.get(["_fedify", "circuit", "stale-a.example"]),
@@ -748,6 +758,15 @@ test("CircuitBreaker migrates legacy states without TTL once", async () => {
     failures: ["2026-05-25T00:00:00Z"],
   });
   assertEquals(kv.listCalls, 1);
+  assertEquals(
+    kv.casCalls.find(({ key }) =>
+      key.length === 3 &&
+      key[0] === "_fedify" &&
+      key[1] === "circuit" &&
+      key[2] === "stale-a.example"
+    )?.options,
+    { ttl: Temporal.Duration.from({ days: 7 }) },
+  );
   assertEquals(kv.deletedKeys, [
     ["_fedify", "circuit", "malformed.example"],
   ]);
@@ -775,6 +794,7 @@ test("CircuitBreaker migrates legacy states without TTL once", async () => {
 
   now = Temporal.Instant.from("2026-06-02T00:00:00Z");
   await circuit.recordFailure("final.example");
+  await circuit.pendingSweep;
 
   assertEquals(
     await kv.get(["_fedify", "circuit", "late-stale.example"]),
@@ -814,6 +834,7 @@ test("CircuitBreaker does not sweep state changed after listing", async () => {
   });
 
   await circuit.recordFailure("remote.example");
+  await circuit.pendingSweep;
 
   assertEquals(await kv.get(["_fedify", "circuit", "racy.example"]), {
     state: "closed",
@@ -858,11 +879,8 @@ test("CircuitBreaker retries legacy sweep after transient failures", async () =>
     options: { failureThreshold: 2 },
   });
 
-  await assertRejects(
-    () => circuit.recordFailure("remote.example"),
-    Error,
-    "transient list failure",
-  );
+  await circuit.recordFailure("remote.example");
+  await circuit.pendingSweep;
   assertEquals(
     await kv.get([
       "_fedify",
@@ -878,10 +896,15 @@ test("CircuitBreaker retries legacy sweep after transient failures", async () =>
     "__fedify_meta",
     "circuit_breaker_state_ttl_sweep_v1",
   ]]);
-  await circuit.recordFailure("remote.example");
-
-  assertEquals(kv.listCalls, 2);
   assertEquals(await circuit.getState("remote.example"), {
+    state: "closed",
+    failures: ["2026-05-25T00:00:00Z"],
+  });
+
+  await circuit.recordFailure("another.example");
+  await circuit.pendingSweep;
+  assertEquals(kv.listCalls, 2);
+  assertEquals(await circuit.getState("another.example"), {
     state: "closed",
     failures: ["2026-05-25T00:00:00Z"],
   });

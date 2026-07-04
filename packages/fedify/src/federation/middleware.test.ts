@@ -73,21 +73,13 @@ import {
 import { recordInboxActivity } from "./metrics.ts";
 import type { MessageQueue } from "./mq.ts";
 import type { InboxMessage, Message, OutboxMessage } from "./queue.ts";
+import { markCircuitBreakerLegacySweepDone } from "./circuit-breaker-test-utils.ts";
 
 type IsEqual<A, B> = (<T>() => T extends A ? 1 : 2) extends
   (<T>() => T extends B ? 1 : 2) ? true : false;
 type Assert<T extends true> = T;
 
 let logtapeLock: Promise<void> = Promise.resolve();
-
-function markCircuitBreakerLegacySweepDone(kv: MemoryKvStore): Promise<void> {
-  return kv.set([
-    "_fedify",
-    "circuit",
-    "__fedify_meta",
-    "circuit_breaker_state_ttl_sweep_v1",
-  ], { state: "final" });
-}
 
 async function withLogtapeLock<T>(fn: () => Promise<T>): Promise<T> {
   const run = logtapeLock.then(fn, fn);
