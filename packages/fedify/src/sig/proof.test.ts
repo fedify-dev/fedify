@@ -14,7 +14,13 @@ import {
   Place,
   PUBLIC_COLLECTION,
 } from "@fedify/vocab";
-import { decodeMultibase, importMultibaseKey } from "@fedify/vocab-runtime";
+import {
+  decodeMultibase,
+  exportDidKey,
+  exportMultibaseKey,
+  importMultibaseKey,
+  parseIri,
+} from "@fedify/vocab-runtime";
 import {
   assert,
   assertEquals,
@@ -566,6 +572,107 @@ test("verifyProof()", async () => {
     null,
   );
   assertFalse(contextLoaderCalls.includes("https://attacker.example/ctx"));
+});
+
+test("verifyProof() resolves did:key verification methods locally", async () => {
+  const multibaseKey = (await exportDidKey(ed25519PublicKey.publicKey)).slice(
+    "did:key:".length,
+  );
+  const did = `did:key:${multibaseKey}`;
+  const keyId = new URL(`${did}#${multibaseKey}`);
+  const created = Temporal.Instant.from("2023-02-24T23:36:38Z");
+  const note = new Note({
+    id: parseIri(`ap://did:key:${multibaseKey}/objects/1`),
+    attribution: parseIri(`ap://did:key:${multibaseKey}/actor`),
+    content: "Portable hello",
+  });
+  const proof = await createProof(
+    note,
+    ed25519PrivateKey,
+    keyId,
+    {
+      created,
+      contextLoader: mockDocumentLoader,
+      context: [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/data-integrity/v1",
+      ],
+    },
+  );
+  const jsonLd = await note.toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+    context: [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+  });
+  let documentLoaderCalls = 0;
+  const verifiedKey = await verifyProof(jsonLd, proof, {
+    contextLoader: mockDocumentLoader,
+    documentLoader() {
+      documentLoaderCalls++;
+      throw new TypeError("did:key must not use the document loader");
+    },
+  });
+  assertEquals(
+    verifiedKey,
+    new Multikey({
+      id: keyId,
+      controller: new URL(did),
+      publicKey: ed25519PublicKey.publicKey,
+    }),
+  );
+  assertEquals(documentLoaderCalls, 0);
+
+  const tampered = { ...(jsonLd as Record<string, unknown>) };
+  tampered.content = "Portable goodbye";
+  assertEquals(
+    await verifyProof(tampered, proof, {
+      contextLoader: mockDocumentLoader,
+      documentLoader() {
+        throw new TypeError("did:key must not use the document loader");
+      },
+    }),
+    null,
+  );
+
+  const badProof = proof.clone({
+    verificationMethod: new URL(
+      `${did}#z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK`,
+    ),
+  });
+  assertEquals(
+    await verifyProof(jsonLd, badProof, {
+      contextLoader: mockDocumentLoader,
+      documentLoader() {
+        throw new TypeError("did:key must not use the document loader");
+      },
+    }),
+    null,
+  );
+
+  const unsupportedMultibaseKey = await exportMultibaseKey(
+    rsaPublicKey2.publicKey,
+  );
+  const unsupportedDid = `did:key:${unsupportedMultibaseKey}`;
+  const unsupportedProof = proof.clone({
+    verificationMethod: new URL(
+      `${unsupportedDid}#${unsupportedMultibaseKey}`,
+    ),
+  });
+  let unsupportedDocumentLoaderCalls = 0;
+  assertEquals(
+    await verifyProof(jsonLd, unsupportedProof, {
+      contextLoader: mockDocumentLoader,
+      documentLoader() {
+        unsupportedDocumentLoaderCalls++;
+        throw new TypeError("did:key must not use the document loader");
+      },
+    }),
+    null,
+  );
+  assertEquals(unsupportedDocumentLoaderCalls, 0);
 });
 
 test("verifyProof() records verification duration metric", async (t) => {

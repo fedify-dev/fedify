@@ -563,10 +563,10 @@ Fedify records the following OpenTelemetry metrics:
         (which may itself be backed by a remote store such as Redis or a
         database; the measurement reflects whatever round trip that
         backend incurs).
-     -  `fetched`: the key was not in the cache and was loaded through
-        the document loader, returning a usable key.  This typically
-        corresponds to a network fetch, but a custom document loader
-        that serves from a local store will also fall in this bucket.
+     -  `fetched`: the key was not in the cache and returned a usable
+        key.  This typically corresponds to loading the key through the
+        document loader, but local key resolution paths such as supported
+        `did:key` verification methods also fall in this bucket.
      -  `error`: no usable key came back (HTTP failure, invalid response
         body, cached negative entry, thrown exception, etc.).
 
@@ -585,8 +585,10 @@ Fedify records the following OpenTelemetry metrics:
      -  `hit`: the key was served from the configured `KeyCache`, either
         a valid cached key or a cached negative entry recording a prior
         failed fetch.
-     -  `fetched`: the key was not in the cache and was loaded through
-        the document loader, returning a usable key.
+     -  `fetched`: the key was not in the cache and returned a usable
+        key.  This is usually a document-loader lookup, but local key
+        resolution paths such as supported `did:key` verification methods
+        also use this result.
      -  `not_found`: the remote responded with `404 Not Found` or
         `410 Gone`.  Recorded together with `http.response.status_code`.
      -  `invalid`: the remote responded with a payload Fedify could not
@@ -600,7 +602,9 @@ Fedify records the following OpenTelemetry metrics:
 
     `activitypub.cache.enabled` is always present and is `true` when the
     caller passed a `KeyCache`, `false` otherwise.  `activitypub.remote.host`
-    is the URL host of the key URL, including any non-default port.
+    is the URL host of the key URL, including any non-default port.  It is
+    empty for key identifiers that do not have a URL host, such as `did:key`
+    DID URLs.
     `http.response.status_code` is present only when an HTTP response was
     observed.  Key IDs, full key URLs, and actor IDs are deliberately
     excluded from these metrics;

@@ -1,13 +1,9 @@
-import {
-  CryptographicKey,
-  isActor,
-  type Multikey,
-  Object,
-} from "@fedify/vocab";
+import { CryptographicKey, isActor, Multikey, Object } from "@fedify/vocab";
 import {
   type DocumentLoader,
   FetchError,
   getDocumentLoader,
+  parseDidKeyVerificationMethod,
 } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
 import {
@@ -432,6 +428,59 @@ async function clearFetchErrorMetadata(
   );
 }
 
+function isDidKeyUrl(keyId: URL): boolean {
+  return keyId.protocol === "did:" && keyId.pathname.startsWith("key:");
+}
+
+async function resolveDidKey<T extends CryptographicKey | Multikey>(
+  cacheKey: URL,
+  cls: FetchableKeyClass<T>,
+  keyCache: KeyCache | undefined,
+  logger: ReturnType<typeof getLogger>,
+): Promise<FetchKeyResult<T> | null> {
+  if (!isDidKeyUrl(cacheKey)) return null;
+  const keyId = cacheKey.href;
+  const cachedKey = await keyCache?.get(cacheKey);
+  if (cachedKey instanceof cls && cachedKey.publicKey != null) {
+    logger.debug("Key {keyId} found in cache.", { keyId });
+    return {
+      key: cachedKey as T & { publicKey: CryptoKey },
+      cached: true,
+    };
+  }
+  const clsIsMultikey = cls ===
+    (Multikey as unknown as FetchableKeyClass<T>);
+  if (!clsIsMultikey) {
+    logger.debug(
+      "Failed to resolve did:key {keyId}; did:key verification methods " +
+        "are only supported as Multikey values.",
+      { keyId },
+    );
+    return { key: null, cached: false };
+  }
+  let verificationMethod: Awaited<
+    ReturnType<typeof parseDidKeyVerificationMethod>
+  >;
+  try {
+    verificationMethod = await parseDidKeyVerificationMethod(cacheKey);
+  } catch (error) {
+    logger.debug(
+      "Failed to resolve did:key verification method {keyId}: {error}",
+      { keyId, error },
+    );
+    return { key: null, cached: false };
+  }
+  const key = new Multikey({
+    id: verificationMethod.id,
+    controller: verificationMethod.controller,
+    publicKey: verificationMethod.publicKey,
+  }) as unknown as T & { publicKey: CryptoKey };
+  await keyCache?.set(cacheKey, key);
+  await clearFetchErrorMetadata(cacheKey, keyCache);
+  logger.debug("Resolved did:key verification method {keyId}.", { keyId });
+  return { key, cached: false };
+}
+
 async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
   document: unknown,
   cacheKey: URL,
@@ -577,6 +626,17 @@ async function fetchKeyWithResult<
     const logger = getLogger(["fedify", "sig", "key"]);
     const keyId = cacheKey.href;
     const keyCache = options.keyCache as FetchErrorMetadataCache | undefined;
+    const didKey = await resolveDidKey(cacheKey, cls, keyCache, logger);
+    if (didKey != null) {
+      outcome = {
+        result: didKey.key == null
+          ? "invalid"
+          : didKey.cached
+          ? "hit"
+          : "fetched",
+      };
+      return didKey as TResult;
+    }
     const cached = await getCachedFetchKey(
       cacheKey,
       keyId,
