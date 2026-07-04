@@ -1,4 +1,4 @@
-import { test } from "@fedify/fixture";
+import { createTestMeterProvider, test } from "@fedify/fixture";
 import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { delay } from "es-toolkit";
 import { deepStrictEqual, ok, rejects, strictEqual } from "node:assert/strict";
@@ -285,6 +285,36 @@ test("enqueueTasks() validation and dispatch", async (t) => {
   );
 
   await t.step(
+    "enqueueTaskMany() records one enqueue metric for an enqueueMany batch",
+    async () => {
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const queue = new MockQueue({ supportsEnqueueMany: true });
+      const federation = createFederation<void>({
+        ...baseOptions,
+        meterProvider,
+        queue: { task: queue },
+      });
+      const task = federation.defineTask("bulk-metric", {
+        schema: stringSchema,
+        handler: () => {},
+      });
+      const ctx = federation.createContext(
+        new URL("https://example.com/"),
+        undefined,
+      );
+
+      await ctx.enqueueTaskMany(task, ["a", "b", "c"]);
+
+      const enqueued = recorder.getMeasurements("fedify.queue.task.enqueued");
+      strictEqual(enqueued.length, 1);
+      strictEqual(enqueued[0].value, 3);
+      strictEqual(enqueued[0].attributes["fedify.queue.role"], "task");
+      strictEqual(enqueued[0].attributes["fedify.task.name"], "bulk-metric");
+      strictEqual(enqueued[0].attributes["fedify.queue.task.attempt"], 0);
+    },
+  );
+
+  await t.step(
     "enqueueTaskMany() falls back to parallel enqueues",
     async () => {
       const queue = new MockQueue();
@@ -302,6 +332,63 @@ test("enqueueTasks() validation and dispatch", async (t) => {
       );
       await ctx.enqueueTaskMany(task, ["a", "b"]);
       strictEqual(queue.enqueued.length, 2);
+    },
+  );
+
+  await t.step(
+    "enqueueTaskMany() records fan-out successes before a partial failure",
+    async () => {
+      class PartiallyFailingQueue implements MessageQueue {
+        readonly enqueued: TaskMessage[] = [];
+        #calls = 0;
+
+        enqueue(message: TaskMessage): Promise<void> {
+          this.#calls++;
+          if (this.#calls === 2) {
+            return Promise.reject(new Error("second enqueue failed"));
+          }
+          this.enqueued.push(message);
+          return Promise.resolve();
+        }
+
+        listen(): Promise<void> {
+          return Promise.resolve();
+        }
+      }
+
+      const [meterProvider, recorder] = createTestMeterProvider();
+      const queue = new PartiallyFailingQueue();
+      const federation = createFederation<void>({
+        ...baseOptions,
+        meterProvider,
+        queue: { task: queue },
+      });
+      const task = federation.defineTask("partial-fanout", {
+        schema: stringSchema,
+        handler: () => {},
+      });
+      const ctx = federation.createContext(
+        new URL("https://example.com/"),
+        undefined,
+      );
+
+      await rejects(
+        () => ctx.enqueueTaskMany(task, ["a", "b", "c"]),
+        { message: /second enqueue failed/ },
+      );
+
+      strictEqual(queue.enqueued.length, 2);
+      const enqueued = recorder.getMeasurements("fedify.queue.task.enqueued");
+      strictEqual(enqueued.length, 2);
+      for (const measurement of enqueued) {
+        strictEqual(measurement.value, 1);
+        strictEqual(measurement.attributes["fedify.queue.role"], "task");
+        strictEqual(
+          measurement.attributes["fedify.task.name"],
+          "partial-fanout",
+        );
+        strictEqual(measurement.attributes["fedify.queue.task.attempt"], 0);
+      }
     },
   );
 
