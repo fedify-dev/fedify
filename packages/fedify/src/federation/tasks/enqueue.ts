@@ -7,7 +7,7 @@
  * @module
  */
 import { getLogger } from "@logtape/logtape";
-import { context, propagation } from "@opentelemetry/api";
+import { context, type MeterProvider, propagation } from "@opentelemetry/api";
 import type { KvKey } from "../kv.ts";
 import { getFederationMetrics } from "../metrics.ts";
 import type { FederationImpl } from "../middleware.ts";
@@ -96,20 +96,19 @@ const enqueueTasks = <TContextData>(
       ctx.federation._startQueueInternal(ctx.data);
     }
     try {
-      await dispatch(queue, messages, {
-        delay: getDurationIfDefined(options.delay),
-        orderingKey: options.orderingKey,
-        deduplicationKey: claim.forwardedDeduplicationKey,
-      });
-      // Counted only after a genuine dispatch: a dedup skip returns before
-      // this, and a failed dispatch throws into the rollback below.
-      const meter = getFederationMetrics(ctx.federation.meterProvider);
-      for (const message of messages) {
-        meter.recordQueueTaskEnqueued(
-          { role: "task", queue, taskName: task.name },
-          message.attempt,
-        );
-      }
+      await dispatch(
+        queue,
+        messages,
+        {
+          delay: getDurationIfDefined(options.delay),
+          orderingKey: options.orderingKey,
+          deduplicationKey: claim.forwardedDeduplicationKey,
+        },
+        {
+          meterProvider: ctx.federation.meterProvider,
+          taskName: task.name,
+        },
+      );
     } catch (error) {
       if (claim.rollback != null) {
         try {
@@ -261,7 +260,12 @@ async function dispatch(
     orderingKey?: string;
     deduplicationKey?: string;
   },
+  { meterProvider, taskName }: {
+    meterProvider: MeterProvider | undefined;
+    taskName: string;
+  },
 ): Promise<void> {
+  const metrics = getFederationMetrics(meterProvider);
   if (messages.length === 1) {
     await queue.enqueue(messages[0], options);
   } else if (queue.enqueueMany != null) {
@@ -271,8 +275,24 @@ async function dispatch(
       delay: options.delay,
       orderingKey: options.orderingKey,
     };
-    await Promise.all(messages.map((m) => queue.enqueue(m, fanoutOptions)));
+    const settled = await Promise.allSettled(
+      messages.map(async (message) => {
+        await queue.enqueue(message, fanoutOptions);
+        metrics.recordQueueTaskEnqueued(
+          { role: "task", queue, taskName },
+          message.attempt,
+        );
+      }),
+    );
+    const rejected = settled.find((result) => result.status === "rejected");
+    if (rejected != null) throw rejected.reason;
+    return;
   }
+  metrics.recordQueueTaskEnqueued(
+    { role: "task", queue, taskName },
+    messages[0].attempt,
+    messages.length,
+  );
 }
 
 /**

@@ -955,6 +955,10 @@ export class FederationImpl<TContextData>
     return meterProvider;
   }
 
+  get metrics() {
+    return getFederationMetrics(this.meterProvider);
+  }
+
   #registerQueueDepthGauge(meterProvider: MeterProvider): void {
     if (meterProvider === this.#queueDepthGaugeMeterProvider) return;
     registerQueueDepthGauge(meterProvider, this.#queueDepthGaugeEntries, {
@@ -1031,7 +1035,6 @@ export class FederationImpl<TContextData>
       context.active(),
       message.traceContext,
     );
-    const meter = getFederationMetrics(this.meterProvider);
     return withContext({ messageId: message.id }, async () => {
       if (message.type === "fanout") {
         const common: QueueTaskCommonAttributes = {
@@ -1059,8 +1062,8 @@ export class FederationImpl<TContextData>
                     message.activityId,
                   );
                 }
-                meter.recordQueueTaskStarted(common);
-                meter.incrementQueueTaskInFlight(common);
+                this.metrics.recordQueueTaskStarted(common);
+                this.metrics.incrementQueueTaskInFlight(common);
                 const startedAt = performance.now();
                 let outcome: QueueTaskResult = "completed";
                 try {
@@ -1076,12 +1079,12 @@ export class FederationImpl<TContextData>
                   }
                   throw e;
                 } finally {
-                  meter.recordQueueTaskOutcome(
+                  this.metrics.recordQueueTaskOutcome(
                     common,
                     outcome,
                     getDurationMs(startedAt),
                   );
-                  meter.decrementQueueTaskInFlight(common);
+                  this.metrics.decrementQueueTaskInFlight(common);
                   span.end();
                 }
               },
@@ -1115,8 +1118,8 @@ export class FederationImpl<TContextData>
                     message.activityId,
                   );
                 }
-                meter.recordQueueTaskStarted(common);
-                meter.incrementQueueTaskInFlight(common);
+                this.metrics.recordQueueTaskStarted(common);
+                this.metrics.incrementQueueTaskInFlight(common);
                 const startedAt = performance.now();
                 let outcome: QueueTaskResult = "completed";
                 try {
@@ -1132,12 +1135,12 @@ export class FederationImpl<TContextData>
                   }
                   throw e;
                 } finally {
-                  meter.recordQueueTaskOutcome(
+                  this.metrics.recordQueueTaskOutcome(
                     common,
                     outcome,
                     getDurationMs(startedAt),
                   );
-                  meter.decrementQueueTaskInFlight(common);
+                  this.metrics.decrementQueueTaskInFlight(common);
                   span.end();
                 }
               },
@@ -1163,8 +1166,8 @@ export class FederationImpl<TContextData>
             return await withContext(
               { traceId: spanCtx.traceId, spanId: spanCtx.spanId },
               async () => {
-                meter.recordQueueTaskStarted(common);
-                meter.incrementQueueTaskInFlight(common);
+                this.metrics.recordQueueTaskStarted(common);
+                this.metrics.incrementQueueTaskInFlight(common);
                 const startedAt = performance.now();
                 let outcome: QueueTaskResult = "completed";
                 try {
@@ -1187,12 +1190,12 @@ export class FederationImpl<TContextData>
                   }
                   throw e;
                 } finally {
-                  meter.recordQueueTaskOutcome(
+                  this.metrics.recordQueueTaskOutcome(
                     common,
                     outcome,
                     getDurationMs(startedAt),
                   );
-                  meter.decrementQueueTaskInFlight(common);
+                  this.metrics.decrementQueueTaskInFlight(common);
                   span.end();
                 }
               },
@@ -1221,8 +1224,8 @@ export class FederationImpl<TContextData>
             return await withContext(
               { traceId: spanCtx.traceId, spanId: spanCtx.spanId },
               async () => {
-                meter.recordQueueTaskStarted(common);
-                meter.incrementQueueTaskInFlight(common);
+                this.metrics.recordQueueTaskStarted(common);
+                this.metrics.incrementQueueTaskInFlight(common);
                 const startedAt = performance.now();
                 const recordOutcome = (
                   outcome: QueueTaskResult,
@@ -1239,7 +1242,7 @@ export class FederationImpl<TContextData>
                       ...(error == null ? {} : { message: String(error) }),
                     });
                   }
-                  meter.recordQueueTaskOutcome(
+                  this.metrics.recordQueueTaskOutcome(
                     common,
                     outcome,
                     getDurationMs(startedAt),
@@ -1262,7 +1265,7 @@ export class FederationImpl<TContextData>
                   else recordOutcome("failed", "handler", e);
                   throw e;
                 } finally {
-                  meter.decrementQueueTaskInFlight(common);
+                  this.metrics.decrementQueueTaskInFlight(common);
                   span.end();
                 }
               },
@@ -1388,7 +1391,7 @@ export class FederationImpl<TContextData>
         delay: clampNegativeDelay(delay),
         orderingKey: message.orderingKey,
       });
-      getFederationMetrics(this.meterProvider).recordQueueTaskEnqueued(
+      this.metrics.recordQueueTaskEnqueued(
         {
           role: "outbox",
           queue: outboxQueue,
@@ -1667,7 +1670,7 @@ export class FederationImpl<TContextData>
       if (
         isPermanentFailure
       ) {
-        getFederationMetrics(this.meterProvider).recordPermanentFailure(
+        this.metrics.recordPermanentFailure(
           error.inbox,
           error.statusCode,
         );
@@ -1767,7 +1770,7 @@ export class FederationImpl<TContextData>
               orderingKey: message.orderingKey,
             },
           );
-          getFederationMetrics(this.meterProvider).recordQueueTaskEnqueued(
+          this.metrics.recordQueueTaskEnqueued(
             {
               role: "outbox",
               queue: outboxQueue,
@@ -1911,7 +1914,7 @@ export class FederationImpl<TContextData>
               },
             );
             if (activityType != null) {
-              getFederationMetrics(this.meterProvider)
+              this.metrics
                 .recordQueueTaskEnqueued(
                   {
                     role: "inbox",
@@ -2135,7 +2138,7 @@ export class FederationImpl<TContextData>
               activity,
             );
           } finally {
-            getFederationMetrics(this.meterProvider)
+            this.metrics
               .recordInboxProcessingDuration(
                 activityType,
                 getDurationMs(started),
@@ -2248,7 +2251,7 @@ export class FederationImpl<TContextData>
           delay: clampNegativeDelay(delay),
           orderingKey: message.orderingKey,
         });
-        getFederationMetrics(this.meterProvider).recordQueueTaskEnqueued(
+        this.metrics.recordQueueTaskEnqueued(
           { role: "task", queue, taskName: message.taskName },
           retryMessage.attempt,
         );
@@ -2636,7 +2639,7 @@ export class FederationImpl<TContextData>
                   response.headers.set("Vary", "Accept");
                 }
               } catch (error) {
-                getFederationMetrics(this.meterProvider)
+                this.metrics
                   .recordHttpServerRequest(
                     request.method,
                     metricState.endpoint ?? "error",
@@ -2655,7 +2658,7 @@ export class FederationImpl<TContextData>
                 );
                 throw error;
               }
-              getFederationMetrics(this.meterProvider).recordHttpServerRequest(
+              this.metrics.recordHttpServerRequest(
                 request.method,
                 metricState.endpoint ?? "error",
                 getDurationMs(metricStart),

@@ -1011,10 +1011,11 @@ class FederationMetrics {
   recordQueueTaskEnqueued(
     common: QueueTaskCommonAttributes,
     attempt: number,
+    count = 1,
   ): void {
     const attributes = buildQueueTaskAttributes(common);
     attributes["fedify.queue.task.attempt"] = attempt;
-    this.queueTaskEnqueued.add(1, attributes);
+    this.queueTaskEnqueued.add(count, attributes);
   }
 
   recordQueueTaskStarted(common: QueueTaskCommonAttributes): void {
