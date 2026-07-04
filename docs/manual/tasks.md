@@ -352,7 +352,7 @@ collapsed onto one message.
 Observability
 -------------
 
-*Task-specific telemetry is available since Fedify 2.3.0.*
+*Task-specific telemetry is available since Fedify 2.4.0.*
 
 Each task the worker dequeues runs inside a `fedify.task` [OpenTelemetry] span
 (a *consumer* span, since tasks are not part of ActivityPub it is namespaced
