@@ -8,6 +8,19 @@ Version 2.3.2
 
 To be released.
 
+### @fedify/fedify
+
+ -  Fixed the outbound delivery circuit breaker retaining per-host state in the
+    configured key–value store forever when a remote host never recovered.
+    Circuit breaker state now receives a TTL on writes made with the default
+    failure policy, custom failure policies can opt in with the new `stateTtl`
+    option, and stale state written by earlier 2.3 releases is cleared
+    automatically on CAS-backed stores after upgrade, with another sweep after a
+    grace window to cover rolling deployments.  [[#916], [#917]]
+
+[#916]: https://github.com/fedify-dev/fedify/issues/916
+[#917]: https://github.com/fedify-dev/fedify/pull/917
+
 
 Version 2.3.1
 -------------

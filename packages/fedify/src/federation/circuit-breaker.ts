@@ -19,6 +19,10 @@ export interface CircuitBreakerKvState {
   readonly halfOpened?: string;
 }
 
+type StoredCircuitBreakerKvState = CircuitBreakerKvState & {
+  readonly __fedifyCircuitBreakerStateVersion?: 1;
+};
+
 /**
  * Details passed to {@link CircuitBreakerOptions.onActivityDrop} when a held
  * activity expires before the remote host recovers.
@@ -82,6 +86,17 @@ export type CircuitBreakerOptions = CircuitBreakerFailurePolicy & {
   readonly releaseInterval?: Temporal.Duration | Temporal.DurationLike;
 
   /**
+   * How long Fedify keeps circuit breaker state in the configured key-value
+   * store.
+   *
+   * When omitted, Fedify derives this from `failureWindow`, `recoveryDelay`, and
+   * `heldActivityTtl` for the default numeric failure policy.  Custom `failure`
+   * callbacks do not have an inspectable time window, so custom policies do not
+   * expire their stored state unless this option is provided.
+   */
+  readonly stateTtl?: Temporal.Duration | Temporal.DurationLike;
+
+  /**
    * Called whenever the circuit state changes.
    */
   readonly onStateChange?: (
@@ -112,11 +127,38 @@ export interface NormalizedCircuitBreakerOptions {
   readonly recoveryDelay: Temporal.Duration;
   readonly heldActivityTtl: Temporal.Duration;
   readonly releaseInterval: Temporal.Duration;
+  readonly stateTtl: Temporal.Duration | undefined;
   readonly onStateChange?: CircuitBreakerOptions["onStateChange"];
   readonly onActivityDrop?: CircuitBreakerOptions["onActivityDrop"];
 }
 
 const MAX_CUSTOM_FAILURE_HISTORY = 100;
+// Fedify 2.3.0 and 2.3.1 wrote circuit breaker state without a TTL, so those
+// soft-state entries could live forever for hosts that never recovered.  Keep a
+// marker under the circuit prefix to clear old state on CAS-backed stores after
+// upgrade, then retry once after a grace window in case old workers wrote more
+// no-TTL state during a rolling deployment.  See:
+// https://github.com/fedify-dev/fedify/issues/916
+const LEGACY_SWEEP_MARKER = [
+  "__fedify_meta",
+  "circuit_breaker_state_ttl_sweep_v1",
+] as const;
+const LEGACY_SWEEP_DELETING_MARKER = {
+  __fedifyDeletingCircuitBreakerLegacyState: true,
+};
+const CIRCUIT_BREAKER_STATE_VERSION = 1;
+const LEGACY_SWEEP_LOCK_TTL = Temporal.Duration.from({ minutes: 5 });
+const LEGACY_SWEEP_RETRY_WINDOW = Temporal.Duration.from({ hours: 24 * 7 });
+const LEGACY_SWEEP_WAIT_INTERVAL = 10;
+
+type LegacySweepMarker =
+  | {
+    readonly state: "sweeping";
+    readonly started: string;
+    readonly retryUntil: string;
+  }
+  | { readonly state: "done"; readonly retryUntil: string }
+  | { readonly state: "final" };
 
 /**
  * Constructor options for {@link CircuitBreaker}.
@@ -174,6 +216,7 @@ export class CircuitBreaker {
   readonly #prefix: KvKey;
   readonly #options: NormalizedCircuitBreakerOptions;
   readonly #now: () => Temporal.Instant;
+  #legacySweep: Promise<void> | undefined;
   readonly #stateChangeObserver:
     | CircuitBreakerCreateOptions["stateChangeObserver"]
     | undefined;
@@ -204,6 +247,7 @@ export class CircuitBreaker {
     remoteHost: string,
     message: { readonly circuitHeldSince?: string },
   ): Promise<CircuitBreakerBeforeSendDecision> {
+    await this.#sweepLegacyStates();
     const heldSince = parseHeldSince(message.circuitHeldSince);
     const now = this.#now();
     if (
@@ -307,6 +351,7 @@ export class CircuitBreaker {
   async recordSuccess(
     remoteHost: string,
   ): Promise<CircuitBreakerStateChange | undefined> {
+    await this.#sweepLegacyStates();
     for (let attempt = 0; attempt < 10; attempt++) {
       const oldState = await this.#get(remoteHost);
       if (oldState == null) return undefined;
@@ -333,6 +378,7 @@ export class CircuitBreaker {
   async recordFailure(
     remoteHost: string,
   ): Promise<CircuitBreakerStateChange | undefined> {
+    await this.#sweepLegacyStates();
     const now = this.#now();
     for (let attempt = 0; attempt < 10; attempt++) {
       const oldState = await this.#get(remoteHost);
@@ -395,11 +441,109 @@ export class CircuitBreaker {
   async getState(
     remoteHost: string,
   ): Promise<CircuitBreakerKvState | undefined> {
-    return await this.#get(remoteHost);
+    await this.#sweepLegacyStates();
+    return stripStoredCircuitBreakerState(await this.#get(remoteHost));
   }
 
   #key(remoteHost: string): KvKey {
     return [...this.#prefix, remoteHost] as KvKey;
+  }
+
+  #legacySweepMarkerKey(): KvKey {
+    return [...this.#prefix, ...LEGACY_SWEEP_MARKER] as KvKey;
+  }
+
+  async #sweepLegacyStates(): Promise<void> {
+    if (this.#kv.cas == null) return;
+    this.#legacySweep ??= this.#sweepLegacyStatesImpl().finally(() => {
+      this.#legacySweep = undefined;
+    });
+    await this.#legacySweep;
+  }
+
+  async #sweepLegacyStatesImpl(): Promise<void> {
+    const markerKey = this.#legacySweepMarkerKey();
+    const marker = await this.#acquireLegacySweep(markerKey);
+    if (marker === "done") return;
+    try {
+      for await (const { key, value } of this.#kv.list(this.#prefix)) {
+        if (isEqualKvKey(key, markerKey)) continue;
+        await this.#migrateLegacyState(key, value);
+      }
+    } catch (error) {
+      await this.#deleteIfUnchanged(markerKey, marker);
+      throw error;
+    }
+    await this.#kv.set(
+      markerKey,
+      this.#finishLegacySweepMarker(marker),
+    );
+  }
+
+  #finishLegacySweepMarker(marker: LegacySweepMarker): LegacySweepMarker {
+    if (
+      "retryUntil" in marker &&
+      Temporal.Instant.compare(
+          this.#now(),
+          Temporal.Instant.from(marker.retryUntil),
+        ) <
+        0
+    ) {
+      return { state: "done", retryUntil: marker.retryUntil };
+    }
+    return { state: "final" };
+  }
+
+  async #migrateLegacyState(key: KvKey, value: unknown): Promise<void> {
+    if (isCurrentCircuitBreakerState(value)) return;
+    const state = parseCircuitBreakerKvState(value);
+    if (state != null) {
+      await this.#kv.cas?.(
+        key,
+        value,
+        markCircuitBreakerState(state),
+        this.#setOptions(),
+      );
+      return;
+    }
+    await this.#deleteIfUnchanged(key, value);
+  }
+
+  async #deleteIfUnchanged(key: KvKey, value: unknown): Promise<void> {
+    if (await this.#kv.cas?.(key, value, LEGACY_SWEEP_DELETING_MARKER)) {
+      await this.#kv.delete(key);
+    }
+  }
+
+  async #acquireLegacySweep(
+    markerKey: KvKey,
+  ): Promise<LegacySweepMarker | "done"> {
+    while (true) {
+      const marker = await this.#kv.get(markerKey);
+      if (isLegacySweepDone(marker, this.#now())) return "done";
+      if (isLegacySweepInProgress(marker)) {
+        return "done";
+      }
+      if (marker != null && !isLegacySweepRetryDue(marker, this.#now())) {
+        return "done";
+      }
+      const retryUntil = isLegacySweepRetryDue(marker, this.#now())
+        ? marker.retryUntil
+        : this.#now().add(LEGACY_SWEEP_RETRY_WINDOW).toString();
+      const sweeping = {
+        state: "sweeping",
+        started: this.#now().toString(),
+        retryUntil,
+      } satisfies LegacySweepMarker;
+      if (
+        await this.#kv.cas?.(markerKey, marker ?? undefined, sweeping, {
+          ttl: LEGACY_SWEEP_LOCK_TTL,
+        })
+      ) {
+        return sweeping;
+      }
+      await delay(LEGACY_SWEEP_WAIT_INTERVAL);
+    }
   }
 
   #capHeldRetryAt(
@@ -414,27 +558,43 @@ export class CircuitBreaker {
       : retryAt;
   }
 
-  async #get(remoteHost: string): Promise<CircuitBreakerKvState | undefined> {
-    return parseCircuitBreakerKvState(
+  async #get(
+    remoteHost: string,
+  ): Promise<StoredCircuitBreakerKvState | undefined> {
+    return parseStoredCircuitBreakerKvState(
       await this.#kv.get(this.#key(remoteHost)),
     );
   }
 
   async #replace(
     remoteHost: string,
-    oldState: CircuitBreakerKvState | undefined,
+    oldState: StoredCircuitBreakerKvState | undefined,
     newState: CircuitBreakerKvState | undefined,
   ): Promise<boolean> {
     const key = this.#key(remoteHost);
+    const storedState = newState == null ? undefined : markCircuitBreakerState(
+      newState,
+    );
     if (this.#kv.cas == null) {
-      if (newState == null) {
+      if (storedState == null) {
         await this.#kv.delete(key);
       } else {
-        await this.#kv.set(key, newState);
+        await this.#kv.set(key, storedState, this.#setOptions());
       }
       return true;
     }
-    return await this.#kv.cas(key, oldState, newState);
+    return await this.#kv.cas(
+      key,
+      oldState,
+      storedState,
+      storedState == null ? undefined : this.#setOptions(),
+    );
+  }
+
+  #setOptions(): { ttl: Temporal.Duration } | undefined {
+    return this.#options.stateTtl == null
+      ? undefined
+      : { ttl: this.#options.stateTtl };
   }
 
   async #notifyStateChange(
@@ -485,14 +645,21 @@ export function normalizeCircuitBreakerOptions(
   const releaseInterval = toInstantDuration(
     options.releaseInterval ?? { seconds: 1 },
   );
+  const configuredStateTtl = options.stateTtl == null
+    ? undefined
+    : toInstantDuration(options.stateTtl);
   assertPositiveDuration(recoveryDelay, "recoveryDelay");
   assertPositiveDuration(heldActivityTtl, "heldActivityTtl");
   assertPositiveDuration(releaseInterval, "releaseInterval");
+  if (configuredStateTtl != null) {
+    assertPositiveDuration(configuredStateTtl, "stateTtl");
+  }
   let failure: (timestamps: readonly Temporal.Instant[]) => boolean;
   let pruneFailures: (
     timestamps: readonly Temporal.Instant[],
     now: Temporal.Instant,
   ) => readonly Temporal.Instant[];
+  let stateTtl: Temporal.Duration | undefined;
   if (options.failure == null) {
     const failureThreshold = options.failureThreshold ?? 5;
     if (!Number.isInteger(failureThreshold) || failureThreshold <= 0) {
@@ -516,10 +683,13 @@ export function normalizeCircuitBreakerOptions(
       const last = timestamps[timestamps.length - 1];
       return Temporal.Duration.compare(first.until(last), failureWindow) <= 0;
     };
+    stateTtl = configuredStateTtl ??
+      maxDuration(recoveryDelay, heldActivityTtl, failureWindow);
   } else {
     failure = options.failure;
     pruneFailures = (timestamps) =>
       timestamps.slice(-MAX_CUSTOM_FAILURE_HISTORY);
+    stateTtl = configuredStateTtl;
   }
   return {
     failure,
@@ -527,9 +697,89 @@ export function normalizeCircuitBreakerOptions(
     recoveryDelay,
     heldActivityTtl,
     releaseInterval,
+    stateTtl,
     onStateChange: options.onStateChange,
     onActivityDrop: options.onActivityDrop,
   };
+}
+
+function maxDuration(
+  duration: Temporal.Duration,
+  ...durations: Temporal.Duration[]
+): Temporal.Duration {
+  return durations.reduce(
+    (max, candidate) =>
+      Temporal.Duration.compare(candidate, max) > 0 ? candidate : max,
+    duration,
+  );
+}
+
+function isEqualKvKey(left: KvKey, right: KvKey): boolean {
+  return left.length === right.length &&
+    left.every((part, index) => part === right[index]);
+}
+
+function isLegacySweepDone(
+  value: unknown,
+  now: Temporal.Instant,
+): value is LegacySweepMarker {
+  if (typeof value !== "object" || value == null || !("state" in value)) {
+    return false;
+  }
+  if (value.state === "final") return true;
+  if (
+    value.state === "done" && "retryUntil" in value &&
+    typeof value.retryUntil === "string"
+  ) {
+    return Temporal.Instant.compare(
+      now,
+      Temporal.Instant.from(value.retryUntil),
+    ) <
+      0;
+  }
+  return false;
+}
+
+function isLegacySweepRetryDue(
+  value: unknown,
+  now: Temporal.Instant,
+): value is Extract<LegacySweepMarker, { state: "done" }> {
+  return typeof value === "object" && value != null &&
+    "state" in value && value.state === "done" &&
+    "retryUntil" in value && typeof value.retryUntil === "string" &&
+    Temporal.Instant.compare(now, Temporal.Instant.from(value.retryUntil)) >= 0;
+}
+
+function isLegacySweepInProgress(value: unknown): boolean {
+  return typeof value === "object" && value != null &&
+    "state" in value && value.state === "sweeping";
+}
+
+function isCurrentCircuitBreakerState(value: unknown): boolean {
+  return typeof value === "object" && value != null &&
+    "__fedifyCircuitBreakerStateVersion" in value &&
+    value.__fedifyCircuitBreakerStateVersion === CIRCUIT_BREAKER_STATE_VERSION;
+}
+
+function markCircuitBreakerState(
+  state: CircuitBreakerKvState,
+): StoredCircuitBreakerKvState {
+  return {
+    ...state,
+    __fedifyCircuitBreakerStateVersion: CIRCUIT_BREAKER_STATE_VERSION,
+  };
+}
+
+function stripStoredCircuitBreakerState(
+  state: StoredCircuitBreakerKvState | undefined,
+): CircuitBreakerKvState | undefined {
+  if (state == null) return undefined;
+  const { __fedifyCircuitBreakerStateVersion: _, ...publicState } = state;
+  return publicState;
+}
+
+function delay(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 function toInstantDuration(
@@ -580,6 +830,14 @@ function parseHeldSince(
 export function parseCircuitBreakerKvState(
   value: unknown,
 ): CircuitBreakerKvState | undefined {
+  return stripStoredCircuitBreakerState(
+    parseStoredCircuitBreakerKvState(value),
+  );
+}
+
+function parseStoredCircuitBreakerKvState(
+  value: unknown,
+): StoredCircuitBreakerKvState | undefined {
   const isInstantString = (v: unknown): v is string => {
     if (typeof v !== "string") return false;
     try {
@@ -615,5 +873,9 @@ export function parseCircuitBreakerKvState(
     failures: record.failures,
     ...(record.opened == null ? {} : { opened: record.opened }),
     ...(record.halfOpened == null ? {} : { halfOpened: record.halfOpened }),
+    ...(record.__fedifyCircuitBreakerStateVersion ===
+        CIRCUIT_BREAKER_STATE_VERSION
+      ? { __fedifyCircuitBreakerStateVersion: CIRCUIT_BREAKER_STATE_VERSION }
+      : {}),
   };
 }
