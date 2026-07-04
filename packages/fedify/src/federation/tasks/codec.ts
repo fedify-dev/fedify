@@ -4,6 +4,14 @@ import type { TracerProvider } from "@opentelemetry/api";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { parse, stringifyAsync } from "devalue";
 
+type TaskCodecDecodeResult<S extends StandardSchemaV1> =
+  | { readonly ok: true; readonly value: StandardSchemaV1.InferOutput<S> }
+  | {
+    readonly ok: false;
+    readonly phase: "deserialization" | "validation";
+    readonly error: unknown;
+  };
+
 /**
  * Serializes and deserializes task payloads for the queue, preserving
  * `@fedify/vocab` objects across the wire by reducing them to JSON-LD and
@@ -30,21 +38,19 @@ export default class TaskCodec {
   decode = async <S extends StandardSchemaV1>(
     schema: S,
     raw: string,
-  ): Promise<StandardSchemaV1.InferOutput<S>> =>
-    TaskCodec.validate(schema, await this.deserialize(raw));
-
-  /**
-   * Validates an already-deserialized `data` against `schema`.  An instance
-   * wrapper over {@link TaskCodec.validate} so the dispatch site can split
-   * {@link decode} into its deserialize and validate phases—telling a
-   * deserialization failure apart from a validation failure—without importing
-   * the class.
-   */
-  validate = <S extends StandardSchemaV1>(
-    schema: S,
-    data: unknown,
-  ): Promise<StandardSchemaV1.InferOutput<S>> =>
-    TaskCodec.validate(schema, data);
+  ): Promise<TaskCodecDecodeResult<S>> => {
+    let data: unknown;
+    try {
+      data = await this.deserialize(raw);
+    } catch (error) {
+      return { ok: false, phase: "deserialization", error };
+    }
+    try {
+      return { ok: true, value: await TaskCodec.validate(schema, data) };
+    } catch (error) {
+      return { ok: false, phase: "validation", error };
+    }
+  };
 
   static validate = async <S extends StandardSchemaV1>(
     schema: S,

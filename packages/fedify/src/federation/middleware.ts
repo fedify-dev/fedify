@@ -177,6 +177,13 @@ import {
 import { hasMalformedKnownTemporalLiteral } from "./temporal.ts";
 import { handleWebFinger } from "./webfinger.ts";
 
+type QueueTaskDispatchResult =
+  | { readonly outcome: "completed" | "aborted" }
+  | {
+    readonly outcome: "failed";
+    readonly failureReason: QueueTaskFailureReason;
+  };
+
 const circuitBreakerCasWarningKvStores = new WeakSet<KvStore>();
 let nextQueueDepthGaugeSourceId = 0;
 const retryAfterHttpDate = new RegExp(
@@ -1240,13 +1247,15 @@ export class FederationImpl<TContextData>
                   );
                 };
                 try {
-                  const failureReason = await this.#listenTaskMessage(
+                  const result = await this.#listenTaskMessage(
                     contextData,
                     message,
                   );
                   recordOutcome(
-                    failureReason == null ? "completed" : "failed",
-                    failureReason,
+                    result.outcome,
+                    result.outcome === "failed"
+                      ? result.failureReason
+                      : undefined,
                   );
                 } catch (e) {
                   if (isAbortError(e)) recordOutcome("aborted", undefined);
@@ -2158,7 +2167,7 @@ export class FederationImpl<TContextData>
   async #listenTaskMessage(
     contextData: TContextData,
     message: TaskMessage,
-  ): Promise<QueueTaskFailureReason | undefined> {
+  ): Promise<QueueTaskDispatchResult> {
     const logger = getLogger(["fedify", "federation", "task"]);
     const def = this.taskDefinitions.get(message.taskName);
     if (def == null) {
@@ -2168,35 +2177,29 @@ export class FederationImpl<TContextData>
           "dropping.",
         { taskName: message.taskName },
       );
-      return "unknown_task";
+      return { outcome: "failed", failureReason: "unknown_task" };
     }
     const context = this.#createContext(new URL(message.baseUrl), contextData);
-    const deserialized = await context.codec.deserialize(message.data)
-      .then((value) => ({ ok: true, value }) as const)
-      .catch((error) => ({ ok: false, error }) as const);
-    if (!deserialized.ok) {
-      logger.error(
-        "Custom task {taskName} payload could not be deserialized; " +
-          "dropping:\n{error}",
-        { taskName: message.taskName, error: deserialized.error },
-      );
-      return "deserialization";
-    }
-    const data = await context.codec.validate(def.schema, deserialized.value)
-      .then((value) => ({ ok: true, value }) as const)
-      .catch((error) => ({ ok: false, error }) as const);
+    const data = await context.codec.decode(def.schema, message.data);
     if (!data.ok) {
-      // An incompatible payload won't succeed by retrying.
-      logger.error(
-        "Custom task {taskName} payload failed schema validation; " +
-          "dropping:\n{error}",
-        { taskName: message.taskName, error: data.error },
-      );
-      return "validation";
+      if (data.phase === "deserialization") {
+        logger.error(
+          "Custom task {taskName} payload could not be deserialized; " +
+            "dropping:\n{error}",
+          { taskName: message.taskName, error: data.error },
+        );
+      } else {
+        logger.error(
+          "Custom task {taskName} payload failed schema validation; " +
+            "dropping:\n{error}",
+          { taskName: message.taskName, error: data.error },
+        );
+      }
+      return { outcome: "failed", failureReason: data.phase };
     }
     try {
       await def.handler(context, data.value);
-      return undefined;
+      return { outcome: "completed" };
     } catch (error) {
       if (def.onError != null) {
         try {
@@ -2249,6 +2252,7 @@ export class FederationImpl<TContextData>
           { role: "task", queue, taskName: message.taskName },
           retryMessage.attempt,
         );
+        return { outcome: "completed" };
       } else {
         logger.error(
           "Custom task {taskName} failed after {attempt} attempts; giving " +
@@ -2257,7 +2261,9 @@ export class FederationImpl<TContextData>
         );
       }
       // A swallowed abort is a graceful interruption, not a task failure.
-      return isAbortError(error) ? undefined : "handler";
+      return isAbortError(error)
+        ? { outcome: "aborted" }
+        : { outcome: "failed", failureReason: "handler" };
     }
   }
 

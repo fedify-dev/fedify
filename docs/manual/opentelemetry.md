@@ -830,12 +830,15 @@ Fedify records the following OpenTelemetry metrics:
     `fedify.queue.task.result`, which is `completed` when processing returned
     without throwing, `failed` when processing did not succeed (for inbox and
     outbox, the worker re-threw a non-abort error; for a custom task, either
-    the handler threw or the payload was dropped—`deserialization`,
-    `validation`, or `unknown_task`—in which case the message is still acked
-    but the outcome is recorded as `failed` with a
-    `fedify.task.failure_reason`), and `aborted` when the worker re-threw an
+    the payload was dropped—`deserialization`, `validation`, or
+    `unknown_task`—in which case the message is still acked but the outcome
+    is recorded as `failed` with a `fedify.task.failure_reason`, or the
+    handler threw and the retry policy declined another attempt, recorded
+    with the `handler` reason—a handler error folded into a scheduled retry
+    records `completed` instead), and `aborted` when the worker re-threw an
     `AbortError` (for example, because a graceful-shutdown `AbortSignal`
-    interrupted processing).  When the queue backend does not declare
+    interrupted processing) or when an aborted custom task attempt was
+    abandoned without a retry.  When the queue backend does not declare
     `nativeRetrial`, Fedify catches inbox listener and outbox delivery errors
     itself; if its retry policy still allows another attempt, it schedules a
     retry by re-enqueuing the message and returns from the worker without

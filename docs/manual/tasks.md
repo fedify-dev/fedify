@@ -402,10 +402,13 @@ worker acknowledges the message and does not re-enqueue it.  Telemetry still
 records these as a failed outcome with the matching reason, while the queue is
 left drained—so a drop is observable without being retried.  A `handler`
 failure follows the configured retry policy (see
-[Retries](#retry-and-error-handling)).  A worker shutdown is never counted as a
-failure: an interrupted attempt carries no `fedify.task.failure_reason`,
-recorded as an `aborted` outcome when the abort propagates (on a `nativeRetrial`
-queue) and otherwise folded into a retry like any handler error.
+[Retries](#retry-and-error-handling)): an attempt folded into a scheduled
+retry records a `completed` outcome, and only the terminal give-up records
+`failed` with the `handler` reason.  A worker shutdown is never counted as a
+failure: an interrupted attempt carries no `fedify.task.failure_reason`—it is
+recorded as an `aborted` outcome when the abort propagates (on a
+`nativeRetrial` queue) or when the retry policy declines another attempt, and
+otherwise folded into a scheduled retry like any handler error.
 
 The bounded value set keeps metric cardinality finite: a metric's task name is
 a registered, known-at-startup value, never derived from message content—an
