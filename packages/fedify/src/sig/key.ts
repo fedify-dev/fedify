@@ -402,18 +402,30 @@ async function getCachedFetchKey<T extends CryptographicKey | Multikey>(
 ): Promise<FetchKeyResult<T> | null> {
   if (keyCache == null) return null;
   const cachedKey = await keyCache.get(cacheKey);
+  const hit = checkCachedKeyHit(cachedKey, keyId, cls, logger);
+  if (hit != null) return hit;
+  if (cachedKey === null) {
+    logger.debug(
+      "Entry {keyId} found in cache, but it is unavailable.",
+      { keyId },
+    );
+    return { key: null, cached: true };
+  }
+  return null;
+}
+
+function checkCachedKeyHit<T extends CryptographicKey | Multikey>(
+  cachedKey: CryptographicKey | Multikey | null | undefined,
+  keyId: string,
+  cls: FetchableKeyClass<T>,
+  logger: ReturnType<typeof getLogger>,
+): FetchKeyResult<T> | null {
   if (cachedKey instanceof cls && cachedKey.publicKey != null) {
     logger.debug("Key {keyId} found in cache.", { keyId });
     return {
       key: cachedKey as T & { publicKey: CryptoKey },
       cached: true,
     };
-  } else if (cachedKey === null) {
-    logger.debug(
-      "Entry {keyId} found in cache, but it is unavailable.",
-      { keyId },
-    );
-    return { key: null, cached: true };
   }
   return null;
 }
@@ -441,13 +453,8 @@ async function resolveDidKey<T extends CryptographicKey | Multikey>(
   if (!isDidKeyUrl(cacheKey)) return null;
   const keyId = cacheKey.href;
   const cachedKey = await keyCache?.get(cacheKey);
-  if (cachedKey instanceof cls && cachedKey.publicKey != null) {
-    logger.debug("Key {keyId} found in cache.", { keyId });
-    return {
-      key: cachedKey as T & { publicKey: CryptoKey },
-      cached: true,
-    };
-  }
+  const hit = checkCachedKeyHit(cachedKey, keyId, cls, logger);
+  if (hit != null) return hit;
   const clsIsMultikey = cls ===
     (Multikey as unknown as FetchableKeyClass<T>);
   if (!clsIsMultikey) {
