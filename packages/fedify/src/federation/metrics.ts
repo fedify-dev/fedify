@@ -95,7 +95,7 @@ export interface QueueTaskCommonAttributes {
   /**
    * The registered name of a custom background task, emitted as the
    * `fedify.task.name` attribute.  Set only for the `"task"` role.
-   * @since 2.3.0
+   * @since 2.4.0
    */
   taskName?: string;
 }
@@ -225,7 +225,7 @@ export type HttpSignatureMetricFailureReason =
  *  -  `validation`: the deserialized payload failed schema validation.
  *  -  `unknown_task`: the task name has no registered handler.
  *  -  `handler`: the registered handler threw.
- * @since 2.3.0
+ * @since 2.4.0
  */
 export type QueueTaskFailureReason =
   | "deserialization"
