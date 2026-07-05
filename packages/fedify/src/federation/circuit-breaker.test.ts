@@ -993,7 +993,7 @@ test("CircuitBreaker caches completed legacy sweep markers", async () => {
   assertEquals(finalKv.markerGetCalls, 1);
 });
 
-test("CircuitBreaker ignores malformed legacy sweep retry markers", async () => {
+test("CircuitBreaker retries malformed legacy sweep markers", async () => {
   const kv = new CountingSweepKvStore();
   await kv.set([
     "_fedify",
@@ -1003,6 +1003,10 @@ test("CircuitBreaker ignores malformed legacy sweep retry markers", async () => 
   ], {
     state: "done",
     retryUntil: "not an instant",
+  });
+  await kv.set(["_fedify", "circuit", "stale.example"], {
+    state: "closed",
+    failures: ["2026-05-25T00:00:00Z"],
   });
   const circuit = new CircuitBreaker({
     kv,
@@ -1014,11 +1018,25 @@ test("CircuitBreaker ignores malformed legacy sweep retry markers", async () => 
   await circuit.recordFailure("remote.example");
   await circuit.pendingSweep;
 
-  assertEquals(kv.listCalls, 0);
+  assertEquals(kv.listCalls, 1);
+  assertEquals(await kv.get(["_fedify", "circuit", "stale.example"]), {
+    state: "closed",
+    failures: ["2026-05-25T00:00:00Z"],
+    __fedifyCircuitBreakerStateVersion: 1,
+  });
   assertEquals(await circuit.getState("remote.example"), {
     state: "closed",
     failures: ["2026-05-25T00:00:00Z"],
   });
+  assertEquals(
+    await kv.get([
+      "_fedify",
+      "circuit",
+      "__fedify_meta",
+      "circuit_breaker_state_ttl_sweep_v1",
+    ]),
+    { state: "done", retryUntil: "2026-06-01T00:00:00Z" },
+  );
 });
 
 test("CircuitBreaker retries legacy sweep after transient failures", async () => {

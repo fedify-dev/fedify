@@ -548,7 +548,8 @@ export class CircuitBreaker {
         return "done";
       }
       if (
-        marker != null && !isLegacySweepRetryDue(marker, now) &&
+        isLegacySweepMarker(marker, now) &&
+        !isLegacySweepRetryDue(marker, now) &&
         !isLegacySweepStale(marker, now)
       ) {
         return "done";
@@ -818,6 +819,16 @@ function isLegacySweepRetryDue(
 
 function isLegacySweepActive(value: unknown, now: Temporal.Instant): boolean {
   return isLegacySweepDone(value, now) || isLegacySweepInProgress(value, now);
+}
+
+function isLegacySweepMarker(
+  value: unknown,
+  now: Temporal.Instant,
+): value is LegacySweepMarker {
+  return isLegacySweepDone(value, now) ||
+    isLegacySweepRetryDue(value, now) ||
+    isLegacySweepInProgress(value, now) ||
+    isLegacySweepStale(value, now);
 }
 
 function isLegacySweepInProgress(
