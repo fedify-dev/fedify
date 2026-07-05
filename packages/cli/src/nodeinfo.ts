@@ -376,8 +376,9 @@ export async function getFaviconUrl(
       if (w < 38 || h < 19) continue;
     }
     if ("href" in attrs) {
-      if (attrs.href.endsWith(".svg")) continue;
-      return new URL(attrs.href, response.url);
+      const parsedUrl = new URL(attrs.href, response.url);
+      if (parsedUrl.pathname.toLowerCase().endsWith(".svg")) continue;
+      return parsedUrl;
     }
   }
   return new URL("/favicon.ico", response.url);
