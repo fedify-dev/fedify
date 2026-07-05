@@ -98,7 +98,10 @@ export class PostgresKvStore implements KvStore {
         ${ttl}
       )
       ON CONFLICT (key)
-        DO UPDATE SET value = EXCLUDED.value, ttl = EXCLUDED.ttl;
+        DO UPDATE SET
+          value = EXCLUDED.value,
+          created = CURRENT_TIMESTAMP,
+          ttl = EXCLUDED.ttl;
     `;
     await this.#expire();
   }

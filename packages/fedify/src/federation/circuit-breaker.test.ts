@@ -731,6 +731,10 @@ test("CircuitBreaker migrates legacy states without TTL once", async () => {
   });
   await kv.set(["_fedify", "circuit", "malformed.example"], "stale");
   await kv.set(["_fedify", "other", "untouched.example"], "keep");
+  await kv.set(["_fedify", "circuit", "__fedify_meta", "future"], {
+    state: "closed",
+    failures: ["2026-05-25T00:00:00Z"],
+  });
   let now = Temporal.Instant.from("2026-05-25T00:00:00Z");
   const circuit = new CircuitBreaker({
     kv,
@@ -771,6 +775,13 @@ test("CircuitBreaker migrates legacy states without TTL once", async () => {
   assertEquals(
     await kv.get(["_fedify", "other", "untouched.example"]),
     "keep",
+  );
+  assertEquals(
+    await kv.get(["_fedify", "circuit", "__fedify_meta", "future"]),
+    {
+      state: "closed",
+      failures: ["2026-05-25T00:00:00Z"],
+    },
   );
   await circuit.recordFailure("remote.example");
   assertEquals(await circuit.getState("remote.example"), {

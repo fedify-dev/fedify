@@ -485,6 +485,7 @@ export class CircuitBreaker {
     try {
       for await (const { key, value } of this.#kv.list(this.#prefix)) {
         if (isEqualKvKey(key, markerKey)) continue;
+        if (key.length !== this.#prefix.length + 1) continue;
         await this.#migrateLegacyState(key, value);
       }
     } catch (error) {
@@ -514,7 +515,7 @@ export class CircuitBreaker {
     if (isCurrentCircuitBreakerState(value)) return;
     const state = parseCircuitBreakerKvState(value);
     if (state != null) {
-      await this.#kv.cas?.(
+      await this.#kv.cas!(
         key,
         value,
         markCircuitBreakerState(state),
@@ -527,7 +528,7 @@ export class CircuitBreaker {
 
   async #deleteIfUnchanged(key: KvKey, value: unknown): Promise<void> {
     if (
-      await this.#kv.cas?.(key, value, LEGACY_SWEEP_DELETING_MARKER, {
+      await this.#kv.cas!(key, value, LEGACY_SWEEP_DELETING_MARKER, {
         ttl: LEGACY_SWEEP_LOCK_TTL,
       })
     ) {
@@ -559,7 +560,7 @@ export class CircuitBreaker {
         retryUntil,
       } satisfies LegacySweepMarker;
       if (
-        await this.#kv.cas?.(markerKey, marker ?? undefined, sweeping, {
+        await this.#kv.cas!(markerKey, marker ?? undefined, sweeping, {
           ttl: LEGACY_SWEEP_LOCK_TTL,
         })
       ) {
