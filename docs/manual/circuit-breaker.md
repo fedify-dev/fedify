@@ -176,6 +176,14 @@ const federation = createFederation<void>({
 });
 ~~~~
 
+When upgrading from Fedify 2.3.0 or 2.3.1, Fedify automatically rewrites
+legacy circuit state with a TTL only on `KvStore` implementations that support
+`cas()`.  Stores without CAS, including `@fedify/postgres` and
+`@fedify/redis`, apply TTLs to new circuit state but cannot automatically
+clean up circuit state that was already written without a TTL.  If that old
+state matters for your deployment, remove it with a one-off cleanup script or
+add a TTL directly in your storage backend.
+
 
 Observability
 -------------

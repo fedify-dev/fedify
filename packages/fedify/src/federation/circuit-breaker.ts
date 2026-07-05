@@ -486,7 +486,6 @@ export class CircuitBreaker {
     if (marker === "done") return;
     try {
       for await (const { key, value } of this.#kv.list(this.#prefix)) {
-        if (isEqualKvKey(key, markerKey)) continue;
         if (key.length !== this.#prefix.length + 1) continue;
         await this.#migrateLegacyState(key, value);
       }
@@ -755,11 +754,6 @@ function maxDuration(
       Temporal.Duration.compare(candidate, max) > 0 ? candidate : max,
     duration,
   );
-}
-
-function isEqualKvKey(left: KvKey, right: KvKey): boolean {
-  return left.length === right.length &&
-    left.every((part, index) => part === right[index]);
 }
 
 function isLegacySweepDone(
