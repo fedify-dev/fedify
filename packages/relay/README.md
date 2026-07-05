@@ -5,7 +5,7 @@
 
 [![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
-[![@fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
+[![@fedify@hackers.pub][@fedify@hackers.pub badge]][@fedify@hackers.pub]
 
 *This package is available since Fedify 2.0.0.*
 
@@ -20,8 +20,8 @@ see the [*Relay server* section in the Fedify manual][manual].
 [JSR]: https://jsr.io/@fedify/relay
 [npm badge]: https://img.shields.io/npm/v/@fedify/relay?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/relay
-[@fedify@hollo.social badge]: https://fedi-badge.minhee.org/@fedify@hollo.social/followers.svg
-[@fedify@hollo.social]: https://hollo.social/@fedify
+[@fedify@hackers.pub badge]: https://fedi-badge.minhee.org/@fedify@hackers.pub/followers.svg
+[@fedify@hackers.pub]: https://hackers.pub/@fedify
 [Fedify]: https://fedify.dev/
 [manual]: https://fedify.dev/manual/relay
 

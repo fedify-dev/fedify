@@ -3,8 +3,40 @@ import { generateCloner, generateConstructor } from "./constructor.ts";
 import { generateFields } from "./field.ts";
 import { generateInspector, generateInspectorPostClass } from "./inspector.ts";
 import { generateProperties } from "./property.ts";
-import { type TypeSchema, validateTypeSchemas } from "./schema.ts";
+import {
+  type PropertySchema,
+  type TypeSchema,
+  validateTypeSchemas,
+} from "./schema.ts";
 import { emitOverride } from "./type.ts";
+
+const XSD_ANY_URI = "http://www.w3.org/2001/XMLSchema#anyURI";
+const FEDIFY_URL = "fedify:url";
+const INTERNAL_RUNTIME_IMPORTS = [
+  "compactJsonLdCache",
+  "getJsonLdContext",
+  "isTrustedIriOrigin",
+  "normalizeJsonLdIris",
+].join(",\n    ");
+const RUNTIME_IMPORTS = [
+  "canParseDecimal",
+  "decodeMultibase",
+  "type Decimal",
+  "type DocumentLoader",
+  "encodeMultibase",
+  "exportMultibaseKey",
+  "exportSpki",
+  "formatIri",
+  "getDocumentLoader",
+  "importMultibaseKey",
+  "importPem",
+  "isDecimal",
+  "LanguageString",
+  "parseDecimal",
+  "parseIri",
+  "parseJsonLdId",
+  "type RemoteDocument",
+].join(",\n    ");
 
 /**
  * Sorts the given types topologically so that the base types come before the
@@ -184,6 +216,40 @@ export function getEntityTypeById(id: string | URL): $EntityType | undefined {
 `;
 }
 
+function canContainIriValue(
+  property: PropertySchema,
+  types: Record<string, TypeSchema>,
+): boolean {
+  return property.range.some((typeUri) =>
+    typeUri === XSD_ANY_URI || typeUri === FEDIFY_URL || types[typeUri]?.entity
+  );
+}
+
+function addKeys(
+  keys: Set<string>,
+  property: { uri: string; compactName?: string },
+): void {
+  keys.add(property.uri);
+  if (property.compactName != null) keys.add(property.compactName);
+}
+
+function addPortableIriKeys(
+  keys: Set<string>,
+  property: PropertySchema,
+  types: Record<string, TypeSchema>,
+): void {
+  if (!canContainIriValue(property, types)) return;
+  addKeys(keys, property);
+  if (
+    "redundantProperties" in property &&
+    property.redundantProperties != null
+  ) {
+    for (const redundantProperty of property.redundantProperties) {
+      addKeys(keys, redundantProperty);
+    }
+  }
+}
+
 /**
  * Generates the TypeScript classes from the given types.
  * @param types The types to generate classes from.
@@ -193,30 +259,13 @@ export async function* generateClasses(
   types: Record<string, TypeSchema>,
 ): AsyncIterable<string> {
   validateTypeSchemas(types);
-  const runtimeImports = [
-    "canParseDecimal",
-    "decodeMultibase",
-    "type Decimal",
-    "type DocumentLoader",
-    "encodeMultibase",
-    "exportMultibaseKey",
-    "exportSpki",
-    "getDocumentLoader",
-    "importMultibaseKey",
-    "importPem",
-    "isDecimal",
-    "LanguageString",
-    "parseDecimal",
-    "type RemoteDocument",
-  ];
   yield "// deno-lint-ignore-file ban-unused-ignore no-explicit-any no-unused-vars prefer-const verbatim-module-syntax\n";
   yield 'import jsonld from "@fedify/vocab-runtime/jsonld";\n';
   yield 'import { getLogger } from "@logtape/logtape";\n';
   yield `import { type Span, SpanStatusCode, type TracerProvider, trace }
     from "@opentelemetry/api";\n`;
-  yield `import {\n    ${
-    runtimeImports.join(",\n    ")
-  }\n} from "@fedify/vocab-runtime";\n`;
+  yield `import {\n    ${RUNTIME_IMPORTS}\n} from "@fedify/vocab-runtime";\n`;
+  yield `import {\n    ${INTERNAL_RUNTIME_IMPORTS}\n} from "@fedify/vocab-runtime/internal/jsonld-cache";\n`;
   yield `import {
     isTemporalDuration,
     isTemporalInstant,
@@ -233,6 +282,16 @@ function isValidLanguageTag(language: string): boolean {
 }
 `;
   yield "\n\n";
+  const portableIriKeys = new Set(["@id", "id"]);
+  for (const type of Object.values(types)) {
+    for (const property of type.properties) {
+      addPortableIriKeys(portableIriKeys, property, types);
+    }
+  }
+  yield "const PORTABLE_IRI_PATTERN = /^ap(?:\\+ef61)?:\\/\\//i;\n";
+  yield `const PORTABLE_IRI_KEYS: ReadonlySet<string> = new Set(${
+    JSON.stringify([...portableIriKeys].sort())
+  });\n\n`;
   const moduleVarNames = new Map<string, string>();
   const sorted = sortTopologically(types);
   for (const typeUri of sorted) {

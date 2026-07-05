@@ -7,6 +7,49 @@ Thank you for considering contributing to Fedify!  This document explains how to
 contribute to the project.
 
 
+First contributions
+-------------------
+
+If this is your first contribution to Fedify, please read this section before
+opening a pull request.  It exists because low-effort, AI-generated pull
+requests have grown common enough to burden maintainers and crowd out genuine
+work.  None of this is meant to discourage you; it is meant to help your first
+contribution land.
+
+For anything beyond a trivial fix, there should be an *accepted issue* before
+you open a pull request:
+
+ -  If an issue already describes the work, comment on it and wait for a
+    maintainer to assign it to you.
+ -  If no issue exists, open one first (see [*Bug reports*](#bug-reports) or
+    [*Feature requests*](#feature-requests) below) and let a maintainer confirm
+    the change is wanted.
+
+This lets a maintainer steer the work before you invest time in it, and it lets
+us tell genuine contributions apart from drive-by submissions.  The same
+requirement already applies to any AI-assisted pull request; see
+*[AI_POLICY.md]*.
+
+Fixing a typo or improving the documentation is exempt: you can open a pull
+request directly, without an issue (see [*Docs*](#docs) below).
+
+We also do not want this to get in the way of people who already know the
+problem domain.  If you are already active in the fediverse or in related
+F/OSS work and are confident the change will be welcome, you may open a
+pull request directly.  In that case, please make it easy for us to see where
+you are coming from, for example by linking your fediverse account or your
+other work.  This is an invitation, not a credential check.
+
+A pull request that follows none of the above may be closed without further
+comment.  Treat this section as that notice: if you have read this far, you
+have already received the explanation a closing comment would give.  It is not
+a judgment of you, and once there is an accepted issue, or you have shown the
+familiarity described above, you are welcome to reopen the pull request or open
+a new one.
+
+[AI_POLICY.md]: AI_POLICY.md
+
+
 Bug reports
 -----------
 
@@ -47,8 +90,6 @@ Pull requests
 If you use AI tools (such as GitHub Copilot, Claude, Cursor, etc.) while
 contributing, you must disclose this in your pull request description and/or
 commit messages.  See *[AI_POLICY.md]* for the complete policy.
-
-[AI_POLICY.md]: AI_POLICY.md
 
 ### License
 
@@ -562,7 +603,7 @@ If you want to test your changes in the Fedify CLI, you can run
 the `fedify lookup` subcommand, you can run the following command:
 
 ~~~~ bash
-mise run cli -- lookup @fedify@hollo.social
+mise run cli -- lookup @fedify@hackers.pub
 ~~~~
 
 > [!NOTE]

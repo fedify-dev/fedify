@@ -11,7 +11,7 @@ interface Member {
   readonly profile: string;
   readonly name: string;
   readonly company: string | null;
-  readonly description: string;
+  readonly description: string | null;
   readonly image: string | null;
   readonly email?: string | null;
   readonly newsletterOptIn?: null;
@@ -70,6 +70,12 @@ function escape(string: string): string {
   return string.replace(/[\\*_()\[\]]/g, (m) => `\\${m}`);
 }
 
+function escapeTableCell(string: string | null): string {
+  return string == null
+    ? ""
+    : escape(string).replaceAll("|", "\\|").replaceAll("\n", "<br>");
+}
+
 function getLink(member: Member): string {
   return member.website ?? member.github ?? member.twitter ?? member.profile;
 }
@@ -101,6 +107,20 @@ function listNamesAndAvatars(members: MemberList, size: number): string {
     .join("\n");
 }
 
+function tableCorporateSponsors(members: MemberList, size: number): string {
+  return [
+    "| Avatar | Name | Description |",
+    "| ------ | ---- | ----------- |",
+    ...members.map((member) =>
+      `| <img src="${
+        getAvatar(member, size * 2)
+      }" width="${size}" height="${size}"> | [${
+        escapeTableCell(member.name)
+      }](${getLink(member)}) | ${escapeTableCell(member.description)} |`
+    ),
+  ].join("\n");
+}
+
 type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
 
 function heading(level: HeadingLevel, text: string): string {
@@ -116,7 +136,7 @@ function render(members: MemberList, headingLevel: HeadingLevel): string {
   const corporateSponsors = getCorporateSponsors(members);
   if (corporateSponsors.length > 0) {
     sections.push(heading(headingLevel, "Corporate sponsors"));
-    sections.push(listNamesAndAvatars(corporateSponsors, 64));
+    sections.push(tableCorporateSponsors(corporateSponsors, 64));
   }
   const sponsors = getSponsors(members);
   if (sponsors.length > 0) {

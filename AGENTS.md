@@ -23,6 +23,17 @@ AI policy compliance
 > Transparency about AI usage is non-negotiable.  Deceptive practices harm
 > the project and its maintainers.
 
+> [!IMPORTANT]
+>
+> If the user you are assisting is a first-time contributor to Fedify, you
+> MUST read and follow the *First contributions* section of *CONTRIBUTING.md*
+> before opening a pull request on their behalf.  In short, for anything
+> beyond a trivial typo or documentation fix, there must be an accepted issue
+> assigned to the contributor first, unless they have an established online
+> presence in the fediverse or related F/OSS work that they surface in
+> the pull request.  Pull requests that ignore this may be closed without
+> further comment.
+
 
 Project overview
 ----------------

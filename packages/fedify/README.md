@@ -7,10 +7,7 @@
 [![npm][npm badge]][npm]
 [![GitHub Actions][GitHub Actions badge]][GitHub Actions]
 [![Matrix][Matrix badge]][Matrix]
-[![@fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
-
-> [!NOTE]
-> Looking for a quick demo?  Here it is: [Fedify Demo] on Deno Playground.
+[![@fedify@hackers.pub][@fedify@hackers.pub badge]][@fedify@hackers.pub]
 
 Fedify is a TypeScript library for building federated server apps
 powered by [ActivityPub] and other standards, so-called [fediverse].[^1]
@@ -61,9 +58,8 @@ in the fediverse!
 [GitHub Actions]: https://github.com/fedify-dev/fedify/actions/workflows/build.yaml
 [Matrix badge]: https://img.shields.io/matrix/fedify%3Amatrix.org?logo=matrix
 [Matrix]: https://matrix.to/#/#fedify:matrix.org
-[@fedify@hollo.social badge]: https://fedi-badge.minhee.org/@fedify@hollo.social/followers.svg
-[@fedify@hollo.social]: https://hollo.social/@fedify
-[Fedify Demo]: https://dash.deno.com/playground/fedify-demo
+[@fedify@hackers.pub badge]: https://fedi-badge.minhee.org/@fedify@hackers.pub/followers.svg
+[@fedify@hackers.pub]: https://hackers.pub/@fedify
 [ActivityPub]: https://www.w3.org/TR/activitypub/
 [fediverse]: https://en.wikipedia.org/wiki/Fediverse
 [Activity Vocabulary]: https://www.w3.org/TR/activitystreams-vocabulary/
@@ -215,8 +211,10 @@ financial contributors:[^2]
 
 ### Corporate sponsors
 
-- [<img src="https://images.opencollective.com/ghost/avatar/128.png" width="64" height="64"> Ghost](https://ghost.org)
-- [<img src="https://images.opencollective.com/altstore/avatar/128.png" width="64" height="64"> AltStore](https://altstore.io)
+| Avatar | Name | Description |
+| ------ | ---- | ----------- |
+| <img src="https://images.opencollective.com/ghost/avatar/128.png" width="64" height="64"> | [Ghost](https://ghost.org) | Fiercely independent, professional publishing |
+| <img src="https://images.opencollective.com/altstore/avatar/128.png" width="64" height="64"> | [AltStore](https://altstore.io) |  |
 
 ### Supporters
 
