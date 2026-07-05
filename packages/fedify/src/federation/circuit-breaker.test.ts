@@ -196,7 +196,7 @@ test("normalizeCircuitBreakerOptions() uses numeric failure policy", () => {
   );
   assertEquals(
     options.stateTtl,
-    Temporal.Duration.from({ hours: 2, minutes: 10 }),
+    Temporal.Duration.from({ hours: 3 }),
   );
 });
 
