@@ -326,7 +326,7 @@ export async function getFaviconUrl(
       if (w < 38 || h < 19) continue;
     }
     if ("href" in attrs) {
-      if (attrs.href.endsWith(".svg")) continue;
+      if (attrs.href.toLowerCase().endsWith(".svg")) continue;
       return new URL(attrs.href, response.url);
     }
   }
