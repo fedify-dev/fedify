@@ -70,14 +70,14 @@ discover and display the underlying ActivityPub.
 
 For example:
 
- -  [hollo.social/@fedify]
+ -  [hackers.pub/@fedify]
  -  [@hongminhee@fosstodon.org]
 
 If you want to know further details about BrowserPub,
 read the [creator's Mastodon thread].
 
 [BrowserPub]: https://browser.pub/
-[hollo.social/@fedify]: https://browser.pub/https://hollo.social/@fedify
+[hackers.pub/@fedify]: https://browser.pub/https://hackers.pub/@fedify
 [@hongminhee@fosstodon.org]: https://browser.pub/@hongminhee@fosstodon.org
 [creator's Mastodon thread]: https://podcastindex.social/@js/113011966366461060
 

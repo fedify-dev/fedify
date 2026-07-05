@@ -5,7 +5,7 @@
 
 [![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
-[![@fedify@hollo.social][@fedify@hollo.social badge]][@fedify@hollo.social]
+[![@fedify@hackers.pub][@fedify@hackers.pub badge]][@fedify@hackers.pub]
 
 *This package is available since Fedify 2.1.0.*
 
@@ -43,8 +43,8 @@ export const onRequest = fedifyMiddleware(
 [JSR]: https://jsr.io/@fedify/astro
 [npm badge]: https://img.shields.io/npm/v/@fedify/astro?logo=npm
 [npm]: https://www.npmjs.com/package/@fedify/astro
-[@fedify@hollo.social badge]: https://fedi-badge.minhee.org/@fedify@hollo.social/followers.svg
-[@fedify@hollo.social]: https://hollo.social/@fedify
+[@fedify@hackers.pub badge]: https://fedi-badge.minhee.org/@fedify@hackers.pub/followers.svg
+[@fedify@hackers.pub]: https://hackers.pub/@fedify
 [Fedify]: https://fedify.dev/
 [Astro]: https://astro.build/
 
