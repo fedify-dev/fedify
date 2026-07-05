@@ -34,6 +34,17 @@ To be released.
 [#849]: https://github.com/fedify-dev/fedify/issues/849
 [#851]: https://github.com/fedify-dev/fedify/pull/851
 
+### @fedify/cli
+
+ -  Fixed `fedify nodeinfo` choosing SVG favicons whose filenames use
+    uppercase `.SVG` extensions or include query strings or fragments.  The
+    command now ignores those SVG favicon links and falls back to
+    `/favicon.ico` before rendering terminal art.  [[#891], [#918] by Junghoon
+    Ban]
+
+[#891]: https://github.com/fedify-dev/fedify/issues/891
+[#918]: https://github.com/fedify-dev/fedify/pull/918
+
 ### @fedify/vocab
 
  -  Fixed Activity Vocabulary parsing so malformed language tags in remote
