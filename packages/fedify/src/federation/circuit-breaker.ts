@@ -703,7 +703,7 @@ export function normalizeCircuitBreakerOptions(
       return Temporal.Duration.compare(first.until(last), failureWindow) <= 0;
     };
     stateTtl = configuredStateTtl ??
-      maxDuration(recoveryDelay, heldActivityTtl, failureWindow);
+      maxDuration(recoveryDelay.add(failureWindow), heldActivityTtl);
   } else {
     failure = options.failure;
     pruneFailures = (timestamps) =>
@@ -750,11 +750,15 @@ function isLegacySweepDone(
     value.state === "done" && "retryUntil" in value &&
     typeof value.retryUntil === "string"
   ) {
-    return Temporal.Instant.compare(
-      now,
-      Temporal.Instant.from(value.retryUntil),
-    ) <
-      0;
+    try {
+      return Temporal.Instant.compare(
+        now,
+        Temporal.Instant.from(value.retryUntil),
+      ) <
+        0;
+    } catch {
+      return false;
+    }
   }
   return false;
 }
@@ -763,10 +767,21 @@ function isLegacySweepRetryDue(
   value: unknown,
   now: Temporal.Instant,
 ): value is Extract<LegacySweepMarker, { state: "done" }> {
-  return typeof value === "object" && value != null &&
-    "state" in value && value.state === "done" &&
-    "retryUntil" in value && typeof value.retryUntil === "string" &&
-    Temporal.Instant.compare(now, Temporal.Instant.from(value.retryUntil)) >= 0;
+  if (
+    typeof value !== "object" || value == null ||
+    !("state" in value) || value.state !== "done" ||
+    !("retryUntil" in value) || typeof value.retryUntil !== "string"
+  ) {
+    return false;
+  }
+  try {
+    return Temporal.Instant.compare(
+      now,
+      Temporal.Instant.from(value.retryUntil),
+    ) >= 0;
+  } catch {
+    return false;
+  }
 }
 
 function isLegacySweepInProgress(value: unknown): boolean {

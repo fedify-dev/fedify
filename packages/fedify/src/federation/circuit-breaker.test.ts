@@ -145,6 +145,8 @@ test("normalizeCircuitBreakerOptions() uses numeric failure policy", () => {
   const options = normalizeCircuitBreakerOptions({
     failureThreshold: 3,
     failureWindow: { minutes: 10 },
+    heldActivityTtl: { hours: 1 },
+    recoveryDelay: { hours: 2 },
   });
   const failures = [
     Temporal.Instant.from("2026-05-25T00:00:00Z"),
@@ -177,6 +179,10 @@ test("normalizeCircuitBreakerOptions() uses numeric failure policy", () => {
       "2026-05-25T00:11:00Z",
       "2026-05-25T00:12:00Z",
     ],
+  );
+  assertEquals(
+    options.stateTtl,
+    Temporal.Duration.from({ hours: 2, minutes: 10 }),
   );
 });
 
@@ -862,6 +868,34 @@ test("CircuitBreaker skips legacy sweep already running elsewhere", async () => 
   });
 
   await circuit.recordFailure("remote.example");
+
+  assertEquals(kv.listCalls, 0);
+  assertEquals(await circuit.getState("remote.example"), {
+    state: "closed",
+    failures: ["2026-05-25T00:00:00Z"],
+  });
+});
+
+test("CircuitBreaker ignores malformed legacy sweep retry markers", async () => {
+  const kv = new CountingSweepKvStore();
+  await kv.set([
+    "_fedify",
+    "circuit",
+    "__fedify_meta",
+    "circuit_breaker_state_ttl_sweep_v1",
+  ], {
+    state: "done",
+    retryUntil: "not an instant",
+  });
+  const circuit = new CircuitBreaker({
+    kv,
+    prefix: ["_fedify", "circuit"],
+    now: () => Temporal.Instant.from("2026-05-25T00:00:00Z"),
+    options: { failureThreshold: 2 },
+  });
+
+  await circuit.recordFailure("remote.example");
+  await circuit.pendingSweep;
 
   assertEquals(kv.listCalls, 0);
   assertEquals(await circuit.getState("remote.example"), {
