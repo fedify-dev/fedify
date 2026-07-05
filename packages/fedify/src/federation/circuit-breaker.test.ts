@@ -77,11 +77,25 @@ class CountingSetKvStore implements KvStore {
 
 class CountingSweepKvStore extends MemoryKvStore {
   listCalls = 0;
+  markerGetCalls = 0;
   casCalls: {
     key: KvKey;
     options: KvStoreSetOptions | undefined;
   }[] = [];
   deletedKeys: KvKey[] = [];
+
+  override get<T = unknown>(key: KvKey): Promise<T | undefined> {
+    if (
+      key.length === 4 &&
+      key[0] === "_fedify" &&
+      key[1] === "circuit" &&
+      key[2] === "__fedify_meta" &&
+      key[3] === "circuit_breaker_state_ttl_sweep_v1"
+    ) {
+      this.markerGetCalls++;
+    }
+    return super.get(key);
+  }
 
   override cas(
     key: KvKey,
@@ -874,6 +888,55 @@ test("CircuitBreaker skips legacy sweep already running elsewhere", async () => 
     state: "closed",
     failures: ["2026-05-25T00:00:00Z"],
   });
+});
+
+test("CircuitBreaker caches completed legacy sweep markers", async () => {
+  const doneKv = new CountingSweepKvStore();
+  await doneKv.set([
+    "_fedify",
+    "circuit",
+    "__fedify_meta",
+    "circuit_breaker_state_ttl_sweep_v1",
+  ], {
+    state: "done",
+    retryUntil: "2026-06-01T00:00:00Z",
+  });
+  let now = Temporal.Instant.from("2026-05-25T00:00:00Z");
+  const doneCircuit = new CircuitBreaker({
+    kv: doneKv,
+    prefix: ["_fedify", "circuit"],
+    now: () => now,
+    options: { failureThreshold: 2 },
+  });
+
+  await doneCircuit.recordFailure("remote.example");
+  await doneCircuit.pendingSweep;
+  await doneCircuit.recordFailure("another.example");
+  await doneCircuit.pendingSweep;
+
+  assertEquals(doneKv.markerGetCalls, 1);
+
+  now = Temporal.Instant.from("2026-06-02T00:00:00Z");
+  await doneCircuit.recordFailure("final.example");
+  await doneCircuit.pendingSweep;
+
+  assertEquals(doneKv.markerGetCalls, 2);
+
+  const finalKv = new CountingSweepKvStore();
+  await markCircuitBreakerLegacySweepDone(finalKv);
+  const finalCircuit = new CircuitBreaker({
+    kv: finalKv,
+    prefix: ["_fedify", "circuit"],
+    now: () => Temporal.Instant.from("2026-05-25T00:00:00Z"),
+    options: { failureThreshold: 2 },
+  });
+
+  await finalCircuit.recordFailure("remote.example");
+  await finalCircuit.pendingSweep;
+  await finalCircuit.recordFailure("another.example");
+  await finalCircuit.pendingSweep;
+
+  assertEquals(finalKv.markerGetCalls, 1);
 });
 
 test("CircuitBreaker ignores malformed legacy sweep retry markers", async () => {

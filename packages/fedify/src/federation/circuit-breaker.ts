@@ -217,6 +217,7 @@ export class CircuitBreaker {
   readonly #options: NormalizedCircuitBreakerOptions;
   readonly #now: () => Temporal.Instant;
   #legacySweep: Promise<void> | undefined;
+  #legacySweepDone: Temporal.Instant | "final" | undefined;
   readonly #stateChangeObserver:
     | CircuitBreakerCreateOptions["stateChangeObserver"]
     | undefined;
@@ -464,6 +465,7 @@ export class CircuitBreaker {
   #sweepLegacyStates(): void {
     if (this.#kv.cas == null) return;
     if (this.#legacySweep != null) return;
+    if (this.#isLegacySweepDone()) return;
     this.#legacySweep = this.#sweepLegacyStatesImpl()
       .catch((error) => {
         getLogger(["fedify", "federation", "circuit"]).warn(
@@ -489,10 +491,9 @@ export class CircuitBreaker {
       await this.#deleteIfUnchanged(markerKey, marker);
       throw error;
     }
-    await this.#kv.set(
-      markerKey,
-      this.#finishLegacySweepMarker(marker),
-    );
+    const finishedMarker = this.#finishLegacySweepMarker(marker);
+    await this.#kv.set(markerKey, finishedMarker);
+    this.#rememberLegacySweepMarker(finishedMarker);
   }
 
   #finishLegacySweepMarker(marker: LegacySweepMarker): LegacySweepMarker {
@@ -539,7 +540,10 @@ export class CircuitBreaker {
   ): Promise<LegacySweepMarker | "done"> {
     while (true) {
       const marker = await this.#kv.get(markerKey);
-      if (isLegacySweepDone(marker, this.#now())) return "done";
+      if (isLegacySweepDone(marker, this.#now())) {
+        this.#rememberLegacySweepMarker(marker);
+        return "done";
+      }
       if (isLegacySweepInProgress(marker)) {
         return "done";
       }
@@ -563,6 +567,21 @@ export class CircuitBreaker {
       }
       await delay(LEGACY_SWEEP_WAIT_INTERVAL);
     }
+  }
+
+  #isLegacySweepDone(): boolean {
+    if (this.#legacySweepDone === "final") return true;
+    if (this.#legacySweepDone == null) return false;
+    if (Temporal.Instant.compare(this.#now(), this.#legacySweepDone) < 0) {
+      return true;
+    }
+    this.#legacySweepDone = undefined;
+    return false;
+  }
+
+  #rememberLegacySweepMarker(marker: unknown): void {
+    const doneUntil = getLegacySweepDoneUntil(marker, this.#now());
+    if (doneUntil != null) this.#legacySweepDone = doneUntil;
   }
 
   #capHeldRetryAt(
@@ -742,25 +761,31 @@ function isLegacySweepDone(
   value: unknown,
   now: Temporal.Instant,
 ): value is LegacySweepMarker {
+  return getLegacySweepDoneUntil(value, now) != null;
+}
+
+function getLegacySweepDoneUntil(
+  value: unknown,
+  now: Temporal.Instant,
+): Temporal.Instant | "final" | undefined {
   if (typeof value !== "object" || value == null || !("state" in value)) {
-    return false;
+    return undefined;
   }
-  if (value.state === "final") return true;
+  if (value.state === "final") return "final";
   if (
     value.state === "done" && "retryUntil" in value &&
     typeof value.retryUntil === "string"
   ) {
     try {
-      return Temporal.Instant.compare(
-        now,
-        Temporal.Instant.from(value.retryUntil),
-      ) <
-        0;
+      const retryUntil = Temporal.Instant.from(value.retryUntil);
+      return Temporal.Instant.compare(now, retryUntil) < 0
+        ? retryUntil
+        : undefined;
     } catch {
-      return false;
+      return undefined;
     }
   }
-  return false;
+  return undefined;
 }
 
 function isLegacySweepRetryDue(
