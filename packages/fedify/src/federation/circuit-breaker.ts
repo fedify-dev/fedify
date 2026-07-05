@@ -150,6 +150,7 @@ const CIRCUIT_BREAKER_STATE_VERSION = 1;
 const LEGACY_SWEEP_LOCK_TTL = Temporal.Duration.from({ minutes: 5 });
 const LEGACY_SWEEP_RETRY_WINDOW = Temporal.Duration.from({ hours: 24 * 7 });
 const LEGACY_SWEEP_WAIT_INTERVAL = 10;
+const LEGACY_SWEEP_CAS_ATTEMPTS = 3;
 
 type LegacySweepMarker =
   | {
@@ -464,6 +465,7 @@ export class CircuitBreaker {
 
   #sweepLegacyStates(): void {
     if (this.#kv.cas == null) return;
+    if (this.#options.stateTtl == null) return;
     if (this.#legacySweep != null) return;
     if (this.#isLegacySweepDone()) return;
     this.#legacySweep = this.#sweepLegacyStatesImpl()
@@ -493,8 +495,9 @@ export class CircuitBreaker {
       throw error;
     }
     const finishedMarker = this.#finishLegacySweepMarker(marker);
-    await this.#kv.set(markerKey, finishedMarker);
-    this.#rememberLegacySweepMarker(finishedMarker);
+    if (await this.#kv.cas!(markerKey, marker, finishedMarker)) {
+      this.#rememberLegacySweepMarker(finishedMarker);
+    }
   }
 
   #finishLegacySweepMarker(marker: LegacySweepMarker): LegacySweepMarker {
@@ -540,7 +543,7 @@ export class CircuitBreaker {
   async #acquireLegacySweep(
     markerKey: KvKey,
   ): Promise<LegacySweepMarker | "done"> {
-    while (true) {
+    for (let attempt = 0; attempt < LEGACY_SWEEP_CAS_ATTEMPTS; attempt++) {
       const marker = await this.#kv.get(markerKey);
       const now = this.#now();
       if (isLegacySweepActive(marker, now)) {
@@ -565,6 +568,7 @@ export class CircuitBreaker {
       }
       await delay(LEGACY_SWEEP_WAIT_INTERVAL);
     }
+    return "done";
   }
 
   #isLegacySweepDone(): boolean {

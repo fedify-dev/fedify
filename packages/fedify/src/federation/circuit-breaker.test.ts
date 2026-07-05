@@ -118,6 +118,44 @@ class CountingSweepKvStore extends MemoryKvStore {
   }
 }
 
+class ConflictingSweepMarkerKvStore extends CountingSweepKvStore {
+  attempts = 0;
+
+  override cas(
+    key: KvKey,
+    expectedValue: unknown,
+    newValue: unknown,
+    options?: KvStoreSetOptions,
+  ): Promise<boolean> {
+    if (
+      key.length === 4 &&
+      key[0] === "_fedify" &&
+      key[1] === "circuit" &&
+      key[2] === "__fedify_meta" &&
+      key[3] === "circuit_breaker_state_ttl_sweep_v1"
+    ) {
+      this.attempts++;
+      if (this.attempts > 3) {
+        throw new Error("legacy sweep did not stop retrying CAS misses");
+      }
+      return Promise.resolve(false);
+    }
+    return super.cas(key, expectedValue, newValue, options);
+  }
+}
+
+class MarkerChangedDuringListKvStore extends CountingSweepKvStore {
+  override async *list(prefix?: KvKey) {
+    yield* super.list(prefix);
+    await super.set([
+      "_fedify",
+      "circuit",
+      "__fedify_meta",
+      "circuit_breaker_state_ttl_sweep_v1",
+    ], { state: "final" });
+  }
+}
+
 class UpdatingDuringListKvStore extends MemoryKvStore {
   override async *list(prefix?: KvKey) {
     for await (const entry of super.list(prefix)) {
@@ -718,6 +756,31 @@ test("CircuitBreaker accepts an explicit TTL with custom failure policies", asyn
   });
 });
 
+test("CircuitBreaker skips legacy sweep when custom policies have no TTL", async () => {
+  const kv = new CountingSweepKvStore();
+  await kv.set(["_fedify", "circuit", "stale.example"], {
+    state: "closed",
+    failures: ["2026-05-25T00:00:00Z"],
+  });
+  const circuit = new CircuitBreaker({
+    kv,
+    prefix: ["_fedify", "circuit"],
+    now: () => Temporal.Instant.from("2026-05-25T00:00:00Z"),
+    options: {
+      failure: (timestamps) => timestamps.length >= 2,
+    },
+  });
+
+  await circuit.recordFailure("remote.example");
+  await circuit.pendingSweep;
+
+  assertEquals(kv.listCalls, 0);
+  assertEquals(await kv.get(["_fedify", "circuit", "stale.example"]), {
+    state: "closed",
+    failures: ["2026-05-25T00:00:00Z"],
+  });
+});
+
 test("CircuitBreaker migrates legacy states without TTL once", async () => {
   const kv = new CountingSweepKvStore();
   await kv.set(["_fedify", "circuit", "stale-a.example"], {
@@ -899,6 +962,49 @@ test("CircuitBreaker skips legacy sweep already running elsewhere", async () => 
     state: "closed",
     failures: ["2026-05-25T00:00:00Z"],
   });
+});
+
+test("CircuitBreaker does not overwrite a changed legacy sweep marker", async () => {
+  const kv = new MarkerChangedDuringListKvStore();
+  await kv.set(["_fedify", "circuit", "stale.example"], {
+    state: "closed",
+    failures: ["2026-05-25T00:00:00Z"],
+  });
+  const circuit = new CircuitBreaker({
+    kv,
+    prefix: ["_fedify", "circuit"],
+    now: () => Temporal.Instant.from("2026-05-25T00:00:00Z"),
+    options: { failureThreshold: 2 },
+  });
+
+  await circuit.recordFailure("remote.example");
+  await circuit.pendingSweep;
+
+  assertEquals(
+    await kv.get([
+      "_fedify",
+      "circuit",
+      "__fedify_meta",
+      "circuit_breaker_state_ttl_sweep_v1",
+    ]),
+    { state: "final" },
+  );
+});
+
+test("CircuitBreaker bounds legacy sweep CAS retries", async () => {
+  const kv = new ConflictingSweepMarkerKvStore();
+  const circuit = new CircuitBreaker({
+    kv,
+    prefix: ["_fedify", "circuit"],
+    now: () => Temporal.Instant.from("2026-05-25T00:00:00Z"),
+    options: { failureThreshold: 2 },
+  });
+
+  await circuit.getState("remote.example");
+  await circuit.pendingSweep;
+
+  assertEquals(kv.attempts, 3);
+  assertEquals(kv.listCalls, 0);
 });
 
 test("CircuitBreaker retries expired legacy sweep markers", async () => {
