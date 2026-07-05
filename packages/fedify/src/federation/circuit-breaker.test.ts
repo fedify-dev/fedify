@@ -655,7 +655,7 @@ test("CircuitBreaker writes stored states with a TTL", async () => {
   await circuit.recordFailure("remote.example");
 
   assertEquals(kv.options.at(-1), {
-    ttl: Temporal.Duration.from({ days: 2 }),
+    ttl: Temporal.Duration.from({ days: 2, hours: 1 }),
   });
 });
 
@@ -677,7 +677,7 @@ test("CircuitBreaker writes stored states with a TTL without CAS", async () => {
 
   assertEquals(kv.keys, [["_fedify", "circuit", "remote.example"]]);
   assertEquals(kv.options.at(-1), {
-    ttl: Temporal.Duration.from({ days: 2 }),
+    ttl: Temporal.Duration.from({ days: 2, hours: 1 }),
   });
 });
 
@@ -899,6 +899,49 @@ test("CircuitBreaker skips legacy sweep already running elsewhere", async () => 
     state: "closed",
     failures: ["2026-05-25T00:00:00Z"],
   });
+});
+
+test("CircuitBreaker retries expired legacy sweep markers", async () => {
+  const kv = new CountingSweepKvStore();
+  await kv.set([
+    "_fedify",
+    "circuit",
+    "__fedify_meta",
+    "circuit_breaker_state_ttl_sweep_v1",
+  ], {
+    state: "sweeping",
+    started: "2026-05-25T00:00:00Z",
+    retryUntil: "2026-06-01T00:00:00Z",
+  });
+  await kv.set(["_fedify", "circuit", "stale.example"], {
+    state: "closed",
+    failures: ["2026-05-25T00:00:00Z"],
+  });
+  const circuit = new CircuitBreaker({
+    kv,
+    prefix: ["_fedify", "circuit"],
+    now: () => Temporal.Instant.from("2026-05-25T00:06:00Z"),
+    options: { failureThreshold: 2 },
+  });
+
+  await circuit.recordFailure("remote.example");
+  await circuit.pendingSweep;
+
+  assertEquals(kv.listCalls, 1);
+  assertEquals(await kv.get(["_fedify", "circuit", "stale.example"]), {
+    state: "closed",
+    failures: ["2026-05-25T00:00:00Z"],
+    __fedifyCircuitBreakerStateVersion: 1,
+  });
+  assertEquals(
+    await kv.get([
+      "_fedify",
+      "circuit",
+      "__fedify_meta",
+      "circuit_breaker_state_ttl_sweep_v1",
+    ]),
+    { state: "done", retryUntil: "2026-06-01T00:00:00Z" },
+  );
 });
 
 test("CircuitBreaker caches completed legacy sweep markers", async () => {

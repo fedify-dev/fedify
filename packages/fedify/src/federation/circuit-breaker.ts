@@ -498,15 +498,16 @@ export class CircuitBreaker {
   }
 
   #finishLegacySweepMarker(marker: LegacySweepMarker): LegacySweepMarker {
+    const retryUntil = getLegacySweepRetryUntil(marker);
     if (
-      "retryUntil" in marker &&
+      retryUntil != null &&
       Temporal.Instant.compare(
           this.#now(),
-          Temporal.Instant.from(marker.retryUntil),
+          Temporal.Instant.from(retryUntil),
         ) <
         0
     ) {
-      return { state: "done", retryUntil: marker.retryUntil };
+      return { state: "done", retryUntil };
     }
     return { state: "final" };
   }
@@ -541,22 +542,24 @@ export class CircuitBreaker {
   ): Promise<LegacySweepMarker | "done"> {
     while (true) {
       const marker = await this.#kv.get(markerKey);
-      if (isLegacySweepDone(marker, this.#now())) {
+      const now = this.#now();
+      if (isLegacySweepActive(marker, now)) {
         this.#rememberLegacySweepMarker(marker);
         return "done";
       }
-      if (isLegacySweepInProgress(marker)) {
+      if (
+        marker != null && !isLegacySweepRetryDue(marker, now) &&
+        !isLegacySweepStale(marker, now)
+      ) {
         return "done";
       }
-      if (marker != null && !isLegacySweepRetryDue(marker, this.#now())) {
-        return "done";
-      }
-      const retryUntil = isLegacySweepRetryDue(marker, this.#now())
+      const retryUntil = isLegacySweepRetryDue(marker, now)
         ? marker.retryUntil
-        : this.#now().add(LEGACY_SWEEP_RETRY_WINDOW).toString();
+        : getLegacySweepRetryUntil(marker) ??
+          now.add(LEGACY_SWEEP_RETRY_WINDOW).toString();
       const sweeping = {
         state: "sweeping",
-        started: this.#now().toString(),
+        started: now.toString(),
         retryUntil,
       } satisfies LegacySweepMarker;
       if (
@@ -723,7 +726,10 @@ export function normalizeCircuitBreakerOptions(
       return Temporal.Duration.compare(first.until(last), failureWindow) <= 0;
     };
     stateTtl = configuredStateTtl ??
-      maxDuration(recoveryDelay.add(failureWindow), heldActivityTtl);
+      maxDuration(
+        recoveryDelay.add(failureWindow),
+        recoveryDelay.add(heldActivityTtl),
+      );
   } else {
     failure = options.failure;
     pruneFailures = (timestamps) =>
@@ -810,9 +816,53 @@ function isLegacySweepRetryDue(
   }
 }
 
-function isLegacySweepInProgress(value: unknown): boolean {
+function isLegacySweepActive(value: unknown, now: Temporal.Instant): boolean {
+  return isLegacySweepDone(value, now) || isLegacySweepInProgress(value, now);
+}
+
+function isLegacySweepInProgress(
+  value: unknown,
+  now: Temporal.Instant,
+): boolean {
+  if (
+    typeof value !== "object" || value == null ||
+    !("state" in value) || value.state !== "sweeping" ||
+    !("started" in value) || typeof value.started !== "string"
+  ) {
+    return false;
+  }
+  try {
+    return Temporal.Instant.compare(
+      now,
+      Temporal.Instant.from(value.started).add(LEGACY_SWEEP_LOCK_TTL),
+    ) < 0;
+  } catch {
+    return false;
+  }
+}
+
+function isLegacySweepStale(
+  value: unknown,
+  now: Temporal.Instant,
+): value is Extract<LegacySweepMarker, { state: "sweeping" }> {
   return typeof value === "object" && value != null &&
-    "state" in value && value.state === "sweeping";
+    "state" in value && value.state === "sweeping" &&
+    !isLegacySweepInProgress(value, now);
+}
+
+function getLegacySweepRetryUntil(value: unknown): string | undefined {
+  if (
+    typeof value !== "object" || value == null ||
+    !("retryUntil" in value) || typeof value.retryUntil !== "string"
+  ) {
+    return undefined;
+  }
+  try {
+    Temporal.Instant.from(value.retryUntil);
+    return value.retryUntil;
+  } catch {
+    return undefined;
+  }
 }
 
 function isCurrentCircuitBreakerState(value: unknown): boolean {
