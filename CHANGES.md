@@ -44,6 +44,17 @@ To be released.
 [#847]: https://github.com/fedify-dev/fedify/issues/847
 [#848]: https://github.com/fedify-dev/fedify/pull/848
 
+### @fedify/cli
+
+ -  Fixed `fedify nodeinfo` choosing SVG favicons whose filenames use
+    uppercase `.SVG` extensions or include query strings or fragments.  The
+    command now ignores those SVG favicon links and falls back to
+    `/favicon.ico` before rendering terminal art.
+    [[#891], [#918] by Junghoon Ban]
+
+[#891]: https://github.com/fedify-dev/fedify/issues/891
+[#918]: https://github.com/fedify-dev/fedify/pull/918
+
 
 Version 2.2.6
 -------------
@@ -510,6 +521,14 @@ To be released.
     JSON-LD language maps no longer abort parsing with a `RangeError`.  Fedify
     now ignores only the malformed language-tagged value and continues parsing
     the rest of the object.  [[#847], [#848]]
+
+### @fedify/cli
+
+ -  Fixed `fedify nodeinfo` choosing SVG favicons whose filenames use
+    uppercase `.SVG` extensions or include query strings or fragments.  The
+    command now ignores those SVG favicon links and falls back to
+    `/favicon.ico` before rendering terminal art.
+    [[#891], [#918] by Junghoon Ban]
 
 
 Version 2.1.17
@@ -1135,6 +1154,14 @@ To be released.
     JSON-LD language maps no longer abort parsing with a `RangeError`.  Fedify
     now ignores only the malformed language-tagged value and continues parsing
     the rest of the object.  [[#847], [#848]]
+
+### @fedify/cli
+
+ -  Fixed `fedify nodeinfo` choosing SVG favicons whose filenames use
+    uppercase `.SVG` extensions or include query strings or fragments.  The
+    command now ignores those SVG favicon links and falls back to
+    `/favicon.ico` before rendering terminal art.
+    [[#891], [#918] by Junghoon Ban]
 
 
 Version 2.0.21
