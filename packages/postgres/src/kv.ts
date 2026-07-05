@@ -89,7 +89,9 @@ export class PostgresKvStore implements KvStore {
     options?: KvStoreSetOptions | undefined,
   ): Promise<void> {
     await this.initialize();
-    const ttl = options?.ttl == null ? null : options.ttl.toString();
+    const ttl = options?.ttl == null
+      ? null
+      : Temporal.Duration.from(options.ttl).toString();
     await this.#sql`
       INSERT INTO ${this.#sql(this.#tableName)} (key, value, ttl)
       VALUES (

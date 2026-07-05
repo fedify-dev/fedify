@@ -547,13 +547,6 @@ export class CircuitBreaker {
         this.#rememberLegacySweepMarker(marker);
         return "done";
       }
-      if (
-        isLegacySweepMarker(marker, now) &&
-        !isLegacySweepRetryDue(marker, now) &&
-        !isLegacySweepStale(marker, now)
-      ) {
-        return "done";
-      }
       const retryUntil = isLegacySweepRetryDue(marker, now)
         ? marker.retryUntil
         : getLegacySweepRetryUntil(marker) ??
@@ -821,16 +814,6 @@ function isLegacySweepActive(value: unknown, now: Temporal.Instant): boolean {
   return isLegacySweepDone(value, now) || isLegacySweepInProgress(value, now);
 }
 
-function isLegacySweepMarker(
-  value: unknown,
-  now: Temporal.Instant,
-): value is LegacySweepMarker {
-  return isLegacySweepDone(value, now) ||
-    isLegacySweepRetryDue(value, now) ||
-    isLegacySweepInProgress(value, now) ||
-    isLegacySweepStale(value, now);
-}
-
 function isLegacySweepInProgress(
   value: unknown,
   now: Temporal.Instant,
@@ -850,15 +833,6 @@ function isLegacySweepInProgress(
   } catch {
     return false;
   }
-}
-
-function isLegacySweepStale(
-  value: unknown,
-  now: Temporal.Instant,
-): value is Extract<LegacySweepMarker, { state: "sweeping" }> {
-  return typeof value === "object" && value != null &&
-    "state" in value && value.state === "sweeping" &&
-    !isLegacySweepInProgress(value, now);
 }
 
 function getLegacySweepRetryUntil(value: unknown): string | undefined {

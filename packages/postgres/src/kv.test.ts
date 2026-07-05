@@ -92,6 +92,16 @@ test("PostgresKvStore.set()", { skip: dbUrl == null }, async () => {
     assert.strictEqual(result2[0].value, "qux");
     assert.strictEqual(result2[0].ttl, "1 day");
 
+    await store.set(["foo", "duration-like"], "duration-like", {
+      ttl: { hours: 1 } as Temporal.Duration,
+    });
+    const durationLikeResult = await sql`
+      SELECT * FROM ${sql(tableName)}
+      WHERE key = ${["foo", "duration-like"]}
+    `;
+    assert.strictEqual(durationLikeResult.length, 1);
+    assert.strictEqual(durationLikeResult[0].ttl, "01:00:00");
+
     await store.set(["foo", "quux"], true);
     const result3 = await sql`
       SELECT * FROM ${sql(tableName)}
