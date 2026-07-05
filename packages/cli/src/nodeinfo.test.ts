@@ -81,6 +81,56 @@ test("getFaviconUrl - svg icons only falls back to /favicon.ico", async () => {
   fetchMock.hardReset();
 });
 
+const HTML_WITH_UPPERCASE_SVG_ONLY = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Site</title>
+  <link rel="icon" href="/icon.SVG" type="image/svg+xml">
+  </head>
+<body>Test</body>
+</html>
+`;
+
+test("getFaviconUrl - uppercase svg icons only falls back to /favicon.ico", async () => {
+  fetchMock.spyGlobal();
+
+  fetchMock.get("https://example.com/", {
+    body: HTML_WITH_UPPERCASE_SVG_ONLY,
+    headers: { "Content-Type": "text/html" },
+  });
+
+  const result = await getFaviconUrl("https://example.com/");
+  assert.equal(result.href, "https://example.com/favicon.ico");
+
+  fetchMock.hardReset();
+});
+
+const HTML_WITH_UPPERCASE_SVG_WITH_QUERY = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Site</title>
+  <link rel="icon" href="/icon.SVG?v=1#icon" type="image/svg+xml">
+  </head>
+<body>Test</body>
+</html>
+`;
+
+test("getFaviconUrl - uppercase svg icons with query and hash fall back to /favicon.ico", async () => {
+  fetchMock.spyGlobal();
+
+  fetchMock.get("https://example.com/", {
+    body: HTML_WITH_UPPERCASE_SVG_WITH_QUERY,
+    headers: { "Content-Type": "text/html" },
+  });
+
+  const result = await getFaviconUrl("https://example.com/");
+  assert.equal(result.href, "https://example.com/favicon.ico");
+
+  fetchMock.hardReset();
+});
+
 const HTML_WITHOUT_ICON = `
 <!DOCTYPE html>
 <html>
