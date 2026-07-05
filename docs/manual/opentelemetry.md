@@ -333,44 +333,44 @@ Instrumented metrics
 
 Fedify records the following OpenTelemetry metrics:
 
-| Metric name                                   | Instrument    | Unit          | Description                                                                                     |
-| --------------------------------------------- | ------------- | ------------- | ----------------------------------------------------------------------------------------------- |
-| `activitypub.delivery.sent`                   | Counter       | `{attempt}`   | Counts outgoing ActivityPub delivery attempts.                                                  |
-| `activitypub.delivery.permanent_failure`      | Counter       | `{failure}`   | Counts outgoing deliveries abandoned as permanent failures.                                     |
-| `activitypub.delivery.duration`               | Histogram     | `ms`          | Measures outgoing ActivityPub delivery attempt duration.                                        |
-| `activitypub.circuit_breaker.state_change`    | Counter       | `{change}`    | Counts queued outbox circuit breaker state changes per remote host.                             |
-| `activitypub.inbox.activity`                  | Counter       | `{activity}`  | Classifies inbound activities by lifecycle outcome.                                             |
-| `activitypub.inbox.processing_duration`       | Histogram     | `ms`          | Measures inbox listener processing duration.                                                    |
-| `activitypub.outbox.activity`                 | Counter       | `{activity}`  | Classifies outbound activities by lifecycle outcome.                                            |
-| `activitypub.fanout.recipients`               | Histogram     | `{recipient}` | Records the recipient inbox count produced by a single fanout enqueue.                          |
-| `activitypub.collection.request`              | Counter       | `{request}`   | Counts ActivityPub collection and collection-page requests.                                     |
-| `activitypub.collection.dispatch.duration`    | Histogram     | `ms`          | Measures collection dispatcher callback duration.                                               |
-| `activitypub.collection.page.items`           | Histogram     | `{item}`      | Records item counts materialized for collection and collection-page responses.                  |
-| `activitypub.collection.total_items`          | Histogram     | `{item}`      | Records total item counts reported by collection counters.                                      |
-| `activitypub.signature.verification_failure`  | Counter       | `{failure}`   | Counts failed signature verification for inbox requests.                                        |
-| `activitypub.signature.verification.duration` | Histogram     | `ms`          | Measures signature verification duration across HTTP, Linked Data, and Object Integrity Proofs. |
-| `activitypub.signature.key_fetch.duration`    | Histogram     | `ms`          | Measures public key lookup duration during signature verification.                              |
-| `activitypub.key.lookup`                      | Counter       | `{lookup}`    | Counts public key lookups performed by `fetchKey()` / `fetchKeyDetailed()`.                     |
-| `activitypub.key.lookup.duration`             | Histogram     | `ms`          | Measures public key lookup duration, including cache hits and remote fetches.                   |
-| `activitypub.document.fetch`                  | Counter       | `{fetch}`     | Counts remote JSON-LD document loader invocations made by Fedify-wrapped loaders.               |
-| `activitypub.document.fetch.duration`         | Histogram     | `ms`          | Measures remote JSON-LD document loader invocation duration.                                    |
-| `activitypub.document.cache`                  | Counter       | `{lookup}`    | Counts KV-backed document loader cache lookups, classified as `hit` or `miss`.                  |
-| `activitypub.object.lookup`                   | Counter       | `{lookup}`    | Counts `lookupObject()` calls, classified by whether the resolved value is an Actor.            |
-| `activitypub.actor.discovery`                 | Counter       | `{discovery}` | Counts `getActorHandle()` actor handle discovery attempts.                                      |
-| `activitypub.actor.discovery.duration`        | Histogram     | `ms`          | Measures `getActorHandle()` discovery duration.                                                 |
-| `webfinger.lookup`                            | Counter       | `{lookup}`    | Counts outgoing WebFinger lookups performed by `lookupWebFinger()`.                             |
-| `webfinger.lookup.duration`                   | Histogram     | `ms`          | Measures outgoing WebFinger lookup duration.                                                    |
-| `webfinger.handle`                            | Counter       | `{request}`   | Counts inbound WebFinger requests handled by `Federation.fetch()`.                              |
-| `webfinger.handle.duration`                   | Histogram     | `ms`          | Measures inbound WebFinger request handling duration.                                           |
-| `fedify.http.server.request.count`            | Counter       | `{request}`   | Counts inbound HTTP requests handled by `Federation.fetch()`.                                   |
-| `fedify.http.server.request.duration`         | Histogram     | `ms`          | Measures inbound HTTP request duration in `Federation.fetch()`.                                 |
-| `fedify.queue.task.enqueued`                  | Counter       | `{task}`      | Counts inbox, outbox, and fanout tasks Fedify enqueued.                                         |
-| `fedify.queue.task.started`                   | Counter       | `{task}`      | Counts queue tasks Fedify began processing as a worker.                                         |
-| `fedify.queue.task.completed`                 | Counter       | `{task}`      | Counts queue tasks Fedify finished processing without throwing.                                 |
-| `fedify.queue.task.failed`                    | Counter       | `{task}`      | Counts queue tasks Fedify abandoned because processing threw.                                   |
-| `fedify.queue.task.duration`                  | Histogram     | `ms`          | Measures queue task processing duration in Fedify workers.                                      |
-| `fedify.queue.task.in_flight`                 | UpDownCounter | `{task}`      | Tracks queue tasks currently in flight in this Fedify process.                                  |
-| `fedify.queue.depth`                          | Gauge         | `{message}`   | Reports queued, ready, and delayed queue depth when the queue backend supports it.              |
+| Metric name                                   | Instrument    | Unit          | Description                                                                                       |
+| --------------------------------------------- | ------------- | ------------- | ------------------------------------------------------------------------------------------------- |
+| `activitypub.delivery.sent`                   | Counter       | `{attempt}`   | Counts outgoing ActivityPub delivery attempts.                                                    |
+| `activitypub.delivery.permanent_failure`      | Counter       | `{failure}`   | Counts outgoing deliveries abandoned as permanent failures.                                       |
+| `activitypub.delivery.duration`               | Histogram     | `ms`          | Measures outgoing ActivityPub delivery attempt duration.                                          |
+| `activitypub.circuit_breaker.state_change`    | Counter       | `{change}`    | Counts queued outbox circuit breaker state changes per remote host.                               |
+| `activitypub.inbox.activity`                  | Counter       | `{activity}`  | Classifies inbound activities by lifecycle outcome.                                               |
+| `activitypub.inbox.processing_duration`       | Histogram     | `ms`          | Measures inbox listener processing duration.                                                      |
+| `activitypub.outbox.activity`                 | Counter       | `{activity}`  | Classifies outbound activities by lifecycle outcome.                                              |
+| `activitypub.fanout.recipients`               | Histogram     | `{recipient}` | Records the recipient inbox count produced by a single fanout enqueue.                            |
+| `activitypub.collection.request`              | Counter       | `{request}`   | Counts ActivityPub collection and collection-page requests.                                       |
+| `activitypub.collection.dispatch.duration`    | Histogram     | `ms`          | Measures collection dispatcher callback duration.                                                 |
+| `activitypub.collection.page.items`           | Histogram     | `{item}`      | Records item counts materialized for collection and collection-page responses.                    |
+| `activitypub.collection.total_items`          | Histogram     | `{item}`      | Records total item counts reported by collection counters.                                        |
+| `activitypub.signature.verification_failure`  | Counter       | `{failure}`   | Counts failed signature verification for inbox requests.                                          |
+| `activitypub.signature.verification.duration` | Histogram     | `ms`          | Measures signature verification duration across HTTP, Linked Data, and Object Integrity Proofs.   |
+| `activitypub.signature.key_fetch.duration`    | Histogram     | `ms`          | Measures public key lookup duration during signature verification.                                |
+| `activitypub.key.lookup`                      | Counter       | `{lookup}`    | Counts public key lookups performed by `fetchKey()` / `fetchKeyDetailed()`.                       |
+| `activitypub.key.lookup.duration`             | Histogram     | `ms`          | Measures public key lookup duration, including cache hits, local resolutions, and remote fetches. |
+| `activitypub.document.fetch`                  | Counter       | `{fetch}`     | Counts remote JSON-LD document loader invocations made by Fedify-wrapped loaders.                 |
+| `activitypub.document.fetch.duration`         | Histogram     | `ms`          | Measures remote JSON-LD document loader invocation duration.                                      |
+| `activitypub.document.cache`                  | Counter       | `{lookup}`    | Counts KV-backed document loader cache lookups, classified as `hit` or `miss`.                    |
+| `activitypub.object.lookup`                   | Counter       | `{lookup}`    | Counts `lookupObject()` calls, classified by whether the resolved value is an Actor.              |
+| `activitypub.actor.discovery`                 | Counter       | `{discovery}` | Counts `getActorHandle()` actor handle discovery attempts.                                        |
+| `activitypub.actor.discovery.duration`        | Histogram     | `ms`          | Measures `getActorHandle()` discovery duration.                                                   |
+| `webfinger.lookup`                            | Counter       | `{lookup}`    | Counts outgoing WebFinger lookups performed by `lookupWebFinger()`.                               |
+| `webfinger.lookup.duration`                   | Histogram     | `ms`          | Measures outgoing WebFinger lookup duration.                                                      |
+| `webfinger.handle`                            | Counter       | `{request}`   | Counts inbound WebFinger requests handled by `Federation.fetch()`.                                |
+| `webfinger.handle.duration`                   | Histogram     | `ms`          | Measures inbound WebFinger request handling duration.                                             |
+| `fedify.http.server.request.count`            | Counter       | `{request}`   | Counts inbound HTTP requests handled by `Federation.fetch()`.                                     |
+| `fedify.http.server.request.duration`         | Histogram     | `ms`          | Measures inbound HTTP request duration in `Federation.fetch()`.                                   |
+| `fedify.queue.task.enqueued`                  | Counter       | `{task}`      | Counts inbox, outbox, and fanout tasks Fedify enqueued.                                           |
+| `fedify.queue.task.started`                   | Counter       | `{task}`      | Counts queue tasks Fedify began processing as a worker.                                           |
+| `fedify.queue.task.completed`                 | Counter       | `{task}`      | Counts queue tasks Fedify finished processing without throwing.                                   |
+| `fedify.queue.task.failed`                    | Counter       | `{task}`      | Counts queue tasks Fedify abandoned because processing threw.                                     |
+| `fedify.queue.task.duration`                  | Histogram     | `ms`          | Measures queue task processing duration in Fedify workers.                                        |
+| `fedify.queue.task.in_flight`                 | UpDownCounter | `{task}`      | Tracks queue tasks currently in flight in this Fedify process.                                    |
+| `fedify.queue.depth`                          | Gauge         | `{message}`   | Reports queued, ready, and delayed queue depth when the queue backend supports it.                |
 
 ### Metric attributes
 
