@@ -290,6 +290,15 @@ test("normalizeCircuitBreakerOptions() validates positive durations", () => {
     RangeError,
     "releaseInterval",
   );
+  assertThrows(
+    () =>
+      normalizeCircuitBreakerOptions({
+        recoveryDelay: { minutes: 30 },
+        stateTtl: { minutes: 29 },
+      }),
+    RangeError,
+    "stateTtl",
+  );
 });
 
 test("normalizeCircuitBreakerOptions() accepts callback failure policy", () => {

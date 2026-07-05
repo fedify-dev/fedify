@@ -669,7 +669,8 @@ export class CircuitBreaker {
  * @param options The public circuit breaker options supplied to Fedify.
  * @returns The normalized failure predicate, failure pruning function,
  * duration values, and optional callbacks with defaults applied.
- * @throws {RangeError} If any configured duration is not positive.
+ * @throws {RangeError} If any configured duration is not positive, or if
+ * `stateTtl` is shorter than `recoveryDelay`.
  * @throws {TypeError} If `failureThreshold` is not a positive integer.
  */
 export function normalizeCircuitBreakerOptions(
@@ -692,6 +693,9 @@ export function normalizeCircuitBreakerOptions(
   assertPositiveDuration(releaseInterval, "releaseInterval");
   if (configuredStateTtl != null) {
     assertPositiveDuration(configuredStateTtl, "stateTtl");
+    if (Temporal.Duration.compare(configuredStateTtl, recoveryDelay) < 0) {
+      throw new RangeError("stateTtl must be at least recoveryDelay.");
+    }
   }
   let failure: (timestamps: readonly Temporal.Instant[]) => boolean;
   let pruneFailures: (
