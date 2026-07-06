@@ -365,7 +365,7 @@ parent.  The span carries:
  -  `fedify.task.attempt` — the zero-based attempt number; a retry re-enqueue
     increments it.
  -  `fedify.task.failure_reason` — set only on a terminal failure, one of the
-    four bounded values below.
+    five bounded values below.
 
 On a terminal failure the span's status is also set to `ERROR`, so trace-based
 error views surface dropped and given-up tasks together with their
@@ -389,8 +389,8 @@ backend, not a task queue's.  A failed outcome
 also carries `fedify.task.failure_reason` on `fedify.queue.task.failed` and
 `fedify.queue.task.duration`.
 
-The `fedify.task.failure_reason` attribute takes one of four bounded values,
-mapping to the worker's dispatch decision points:
+The `fedify.task.failure_reason` attribute takes one of five bounded values,
+mapping to the worker's dispatch and retry-scheduling decision points:
 
 | Value             | Meaning                                            |
 | ----------------- | -------------------------------------------------- |
@@ -398,6 +398,7 @@ mapping to the worker's dispatch decision points:
 | `validation`      | The deserialized payload failed schema validation. |
 | `unknown_task`    | The task name has no registered handler.           |
 | `handler`         | The registered handler threw.                      |
+| `retry_enqueue`   | A retry was scheduled, but re-enqueuing it failed. |
 
 The first three are *drops*: the payload cannot succeed by retrying, so the
 worker acknowledges the message and does not re-enqueue it.  Telemetry still
@@ -406,7 +407,11 @@ left drained—so a drop is observable without being retried.  A `handler`
 failure follows the configured retry policy (see
 [Retries](#retry-and-error-handling)): an attempt folded into a scheduled
 retry records a `completed` outcome, and only the terminal give-up records
-`failed` with the `handler` reason.  A worker shutdown is never counted as a
+`failed` with the `handler` reason.  If a retry *is* scheduled but re-enqueuing
+the retry message to the queue backend fails, the worker instead records
+`failed` with the `retry_enqueue` reason and re-throws (so the message is
+nacked, not dropped), preserving the original handler error as the thrown
+error's cause.  A worker shutdown is never counted as a
 failure: an interrupted attempt carries no `fedify.task.failure_reason`—it is
 recorded as an `aborted` outcome when the abort propagates (on a
 `nativeRetrial` queue) or when the retry policy declines another attempt, and

@@ -1565,6 +1565,62 @@ test("task observability", async (t) => {
   );
 
   await t.step(
+    "attributes retry_enqueue when the retry re-enqueue itself fails",
+    async () => {
+      // A queue whose enqueue always rejects: the only enqueue here is the
+      // retry re-enqueue, so it drives the re-enqueue-failure path.
+      class RejectingQueue implements MessageQueue {
+        enqueue(): Promise<void> {
+          return Promise.reject(new Error("backend unavailable"));
+        }
+        listen(): Promise<void> {
+          return Promise.resolve();
+        }
+      }
+      const queue = new RejectingQueue();
+      const { federation, recorder, exporter } = instrument({
+        ...baseOptions,
+        queue: { task: queue },
+      });
+      const handlerError = new Error("boom");
+      federation.defineTask("retry-enqueue-fails", {
+        schema: stringSchema,
+        handler: () => {
+          throw handlerError;
+        },
+        retryPolicy: () => Temporal.Duration.from({ milliseconds: 1 }),
+      });
+      const message = await makeTaskMessage("retry-enqueue-fails", "payload");
+      // The message is nacked (re-thrown), and the thrown marker preserves the
+      // original handler error as its cause.
+      await rejects(
+        () => federation.processQueuedTask(undefined, message),
+        (e: unknown) => e instanceof Error && e.cause === handlerError,
+      );
+
+      const failed = recorder.getMeasurements("fedify.queue.task.failed");
+      strictEqual(failed.length, 1);
+      strictEqual(
+        failed[0].attributes["fedify.task.failure_reason"],
+        "retry_enqueue",
+      );
+      // No successful retry re-enqueue was recorded.
+      strictEqual(
+        recorder.getMeasurements("fedify.queue.task.enqueued").length,
+        0,
+      );
+      const span = exporter.getSpans("fedify.task")[0];
+      strictEqual(
+        span.attributes["fedify.task.failure_reason"],
+        "retry_enqueue",
+      );
+      strictEqual(span.status.code, SpanStatusCode.ERROR);
+      // The span surfaces the original handler error, not the enqueue error.
+      ok(span.status.message?.includes("boom"));
+    },
+  );
+
+  await t.step(
     "records an abort as aborted, without a failure reason or error status",
     async () => {
       const queue = new MockQueue({ nativeRetrial: true });

@@ -170,19 +170,14 @@ import {
 } from "./send.ts";
 import {
   enqueueTasks,
+  type QueueTaskDispatchResult,
   TaskCodec,
   type TaskDefinition,
   type TaskEnqueueOptions,
+  TaskRetryEnqueueError,
 } from "./tasks/mod.ts";
 import { hasMalformedKnownTemporalLiteral } from "./temporal.ts";
 import { handleWebFinger } from "./webfinger.ts";
-
-type QueueTaskDispatchResult =
-  | { readonly outcome: "completed" | "aborted" }
-  | {
-    readonly outcome: "failed";
-    readonly failureReason: QueueTaskFailureReason;
-  };
 
 const circuitBreakerCasWarningKvStores = new WeakSet<KvStore>();
 let nextQueueDepthGaugeSourceId = 0;
@@ -1262,7 +1257,9 @@ export class FederationImpl<TContextData>
                   );
                 } catch (e) {
                   if (isAbortError(e)) recordOutcome("aborted", undefined);
-                  else recordOutcome("failed", "handler", e);
+                  else if (e instanceof TaskRetryEnqueueError) {
+                    recordOutcome("failed", "retry_enqueue", e.cause ?? e);
+                  } else recordOutcome("failed", "handler", e);
                   throw e;
                 } finally {
                   this.metrics.decrementQueueTaskInFlight(common);
@@ -2247,10 +2244,23 @@ export class FederationImpl<TContextData>
           ...message,
           attempt: message.attempt + 1,
         } satisfies TaskMessage;
-        await queue.enqueue(retryMessage, {
-          delay: clampNegativeDelay(delay),
-          orderingKey: message.orderingKey,
-        });
+        try {
+          await queue.enqueue(retryMessage, {
+            delay: clampNegativeDelay(delay),
+            orderingKey: message.orderingKey,
+          });
+        } catch (enqueueError) {
+          logger.error(
+            "Custom task {taskName} could not be re-enqueued for a retry " +
+              "(attempt #{attempt}):\n{error}",
+            {
+              taskName: message.taskName,
+              attempt: retryMessage.attempt,
+              error: enqueueError,
+            },
+          );
+          throw new TaskRetryEnqueueError(error);
+        }
         this.metrics.recordQueueTaskEnqueued(
           { role: "task", queue, taskName: message.taskName },
           retryMessage.attempt,
