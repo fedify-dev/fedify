@@ -402,22 +402,47 @@ test("handleWebFinger()", async (t) => {
   });
 
   await t.step("handleHost", async () => {
-    const u = new URL(url);
-    u.searchParams.set("resource", "acct:someone@example.com");
+    let u = new URL("https://ap.example.com/.well-known/webfinger");
+    u.searchParams.set("resource", "acct:someone@ap.example.com");
     let context = createContext(u);
     let request = context.request;
     let response = await handleWebFinger(request, {
       context,
-      host: "handle.example.com",
+      host: "example.com",
       actorDispatcher,
       onNotFound,
     });
     assertEquals(response.status, 200);
     assertEquals(await response.json(), {
-      ...expected,
-      aliases: [...expected.aliases, "acct:someone@handle.example.com"],
+      subject: "acct:someone@example.com",
+      aliases: [
+        "https://ap.example.com/users/someone",
+        "acct:someone@ap.example.com",
+      ],
+      links: [
+        {
+          href: "https://ap.example.com/users/someone",
+          rel: "self",
+          type: "application/activity+json",
+        },
+        {
+          href: "https://ap.example.com/@someone",
+          rel: "http://webfinger.net/rel/profile-page",
+        },
+        {
+          href: "https://ap.example.com/@someone",
+          rel: "alternate",
+          type: "text/html",
+        },
+        {
+          href: "https://ap.example.com/icon.jpg",
+          rel: "http://webfinger.net/rel/avatar",
+          type: "image/jpeg",
+        },
+      ],
     });
 
+    u = new URL(url);
     u.searchParams.set("resource", "acct:someone@handle.example.com");
     context = createContext(u);
     request = context.request;

@@ -240,6 +240,7 @@ async function handleWebFingerInternal<TContextData>(
   }
 
   const aliases: string[] = [];
+  let subject = resourceUrl.href;
   if (resourceUrl.protocol != "acct:" && actor.preferredUsername != null) {
     aliases.push(`acct:${actor.preferredUsername}@${host ?? context.url.host}`);
     if (host != null && host !== context.url.host) {
@@ -255,10 +256,11 @@ async function handleWebFingerInternal<TContextData>(
     !resourceUrl.href.endsWith(`@${host}`)
   ) {
     const username = resourceUrl.href.replace(/^acct:/, "").replace(/@.*$/, "");
-    aliases.push(`acct:${username}@${host}`);
+    subject = `acct:${actor.preferredUsername ?? username}@${host}`;
+    aliases.push(resourceUrl.href);
   }
   const jrd: ResourceDescriptor = {
-    subject: resourceUrl.href,
+    subject,
     aliases,
     links,
   };

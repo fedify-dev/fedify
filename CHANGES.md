@@ -18,8 +18,16 @@ To be released.
     collections instead of being treated as unknown routes.
     [[#849], [#851] by ChanHaeng Lee]
 
+ -  Fixed split-origin WebFinger responses for `acct:` aliases on the web
+    origin host.  When a local actor is queried through the server-origin
+    `acct:` alias, Fedify now returns the canonical handle-host `acct:` URI as
+    the JRD `subject` and keeps the queried `acct:` URI in `aliases`.
+    [[#920], [#921]]
+
 [#849]: https://github.com/fedify-dev/fedify/issues/849
 [#851]: https://github.com/fedify-dev/fedify/pull/851
+[#920]: https://github.com/fedify-dev/fedify/issues/920
+[#921]: https://github.com/fedify-dev/fedify/pull/921
 
 ### @fedify/cli
 
