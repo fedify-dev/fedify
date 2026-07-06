@@ -32,6 +32,7 @@ import type {
 import { lookupWebFinger } from "@fedify/webfinger";
 import { getLogger, withContext } from "@logtape/logtape";
 import {
+  type Attributes,
   context,
   type MeterProvider,
   metrics,
@@ -141,8 +142,6 @@ import {
   isAbortError,
   type QueueDepthGaugeEntry,
   type QueueTaskCommonAttributes,
-  type QueueTaskFailureReason,
-  type QueueTaskResult,
   recordCircuitBreakerStateChange,
   recordCollectionRequest,
   recordFanoutRecipients,
@@ -169,6 +168,8 @@ import {
   type SenderKeyPair,
 } from "./send.ts";
 import {
+  classifyAbortableError,
+  classifyTaskError,
   enqueueTasks,
   type QueueTaskDispatchResult,
   TaskCodec,
@@ -1025,7 +1026,6 @@ export class FederationImpl<TContextData>
     contextData: TContextData,
     message: Message,
   ): Promise<void> {
-    const tracer = this._getTracer();
     const extractedContext = propagation.extract(
       context.active(),
       message.traceContext,
@@ -1037,54 +1037,17 @@ export class FederationImpl<TContextData>
           queue: this.fanoutQueue,
           activityType: message.activityType,
         };
-        await tracer.startActiveSpan(
+        await this.#runWorkerSpan(
           "activitypub.fanout",
-          {
-            kind: SpanKind.CONSUMER,
-            attributes: {
-              "activitypub.activity.type": message.activityType,
-            },
-          },
+          { "activitypub.activity.type": message.activityType },
           extractedContext,
-          async (span) => {
-            const spanCtx = span.spanContext();
-            return await withContext(
-              { traceId: spanCtx.traceId, spanId: spanCtx.spanId },
-              async () => {
-                if (message.activityId != null) {
-                  span.setAttribute(
-                    "activitypub.activity.id",
-                    message.activityId,
-                  );
-                }
-                this.metrics.recordQueueTaskStarted(common);
-                this.metrics.incrementQueueTaskInFlight(common);
-                const startedAt = performance.now();
-                let outcome: QueueTaskResult = "completed";
-                try {
-                  await this.#listenFanoutMessage(contextData, message);
-                } catch (e) {
-                  const aborted = isAbortError(e);
-                  outcome = aborted ? "aborted" : "failed";
-                  if (!aborted) {
-                    span.setStatus({
-                      code: SpanStatusCode.ERROR,
-                      message: String(e),
-                    });
-                  }
-                  throw e;
-                } finally {
-                  this.metrics.recordQueueTaskOutcome(
-                    common,
-                    outcome,
-                    getDurationMs(startedAt),
-                  );
-                  this.metrics.decrementQueueTaskInFlight(common);
-                  span.end();
-                }
-              },
-            );
-          },
+          this.#instrumentWorkerBody(common, async (span) => {
+            if (message.activityId != null) {
+              span.setAttribute("activitypub.activity.id", message.activityId);
+            }
+            await this.#listenFanoutMessage(contextData, message);
+            return { outcome: "completed" };
+          }, classifyAbortableError),
         );
       } else if (message.type === "outbox") {
         const common: QueueTaskCommonAttributes = {
@@ -1092,110 +1055,41 @@ export class FederationImpl<TContextData>
           queue: this.outboxQueue,
           activityType: message.activityType,
         };
-        await tracer.startActiveSpan(
+        await this.#runWorkerSpan(
           "activitypub.outbox",
           {
-            kind: SpanKind.CONSUMER,
-            attributes: {
-              "activitypub.activity.type": message.activityType,
-              "activitypub.activity.retries": message.attempt,
-            },
+            "activitypub.activity.type": message.activityType,
+            "activitypub.activity.retries": message.attempt,
           },
           extractedContext,
-          async (span) => {
-            const spanCtx = span.spanContext();
-            return await withContext(
-              { traceId: spanCtx.traceId, spanId: spanCtx.spanId },
-              async () => {
-                if (message.activityId != null) {
-                  span.setAttribute(
-                    "activitypub.activity.id",
-                    message.activityId,
-                  );
-                }
-                this.metrics.recordQueueTaskStarted(common);
-                this.metrics.incrementQueueTaskInFlight(common);
-                const startedAt = performance.now();
-                let outcome: QueueTaskResult = "completed";
-                try {
-                  await this.#listenOutboxMessage(contextData, message, span);
-                } catch (e) {
-                  const aborted = isAbortError(e);
-                  outcome = aborted ? "aborted" : "failed";
-                  if (!aborted) {
-                    span.setStatus({
-                      code: SpanStatusCode.ERROR,
-                      message: String(e),
-                    });
-                  }
-                  throw e;
-                } finally {
-                  this.metrics.recordQueueTaskOutcome(
-                    common,
-                    outcome,
-                    getDurationMs(startedAt),
-                  );
-                  this.metrics.decrementQueueTaskInFlight(common);
-                  span.end();
-                }
-              },
-            );
-          },
+          this.#instrumentWorkerBody(common, async (span) => {
+            if (message.activityId != null) {
+              span.setAttribute("activitypub.activity.id", message.activityId);
+            }
+            await this.#listenOutboxMessage(contextData, message, span);
+            return { outcome: "completed" };
+          }, classifyAbortableError),
         );
       } else if (message.type === "inbox") {
         const common: QueueTaskCommonAttributes = {
           role: "inbox",
           queue: this.inboxQueue,
         };
-        await tracer.startActiveSpan(
+        await this.#runWorkerSpan(
           "activitypub.inbox",
-          {
-            kind: SpanKind.CONSUMER,
-            attributes: {
-              "activitypub.shared_inbox": message.identifier == null,
-            },
-          },
+          { "activitypub.shared_inbox": message.identifier == null },
           extractedContext,
-          async (span) => {
-            const spanCtx = span.spanContext();
-            return await withContext(
-              { traceId: spanCtx.traceId, spanId: spanCtx.spanId },
-              async () => {
-                this.metrics.recordQueueTaskStarted(common);
-                this.metrics.incrementQueueTaskInFlight(common);
-                const startedAt = performance.now();
-                let outcome: QueueTaskResult = "completed";
-                try {
-                  await this.#listenInboxMessage(
-                    contextData,
-                    message,
-                    span,
-                    (activityType) => {
-                      common.activityType = activityType;
-                    },
-                  );
-                } catch (e) {
-                  const aborted = isAbortError(e);
-                  outcome = aborted ? "aborted" : "failed";
-                  if (!aborted) {
-                    span.setStatus({
-                      code: SpanStatusCode.ERROR,
-                      message: String(e),
-                    });
-                  }
-                  throw e;
-                } finally {
-                  this.metrics.recordQueueTaskOutcome(
-                    common,
-                    outcome,
-                    getDurationMs(startedAt),
-                  );
-                  this.metrics.decrementQueueTaskInFlight(common);
-                  span.end();
-                }
+          this.#instrumentWorkerBody(common, async (span) => {
+            await this.#listenInboxMessage(
+              contextData,
+              message,
+              span,
+              (activityType) => {
+                common.activityType = activityType;
               },
             );
-          },
+            return { outcome: "completed" };
+          }, classifyAbortableError),
         );
       } else if (message.type === "task") {
         const registered = this.taskDefinitions.get(message.taskName) != null;
@@ -1204,74 +1098,102 @@ export class FederationImpl<TContextData>
           queue: this.resolveTaskQueue(message.taskName),
           taskName: registered ? message.taskName : undefined,
         };
-        await tracer.startActiveSpan(
+        await this.#runWorkerSpan(
           "fedify.task",
           {
-            kind: SpanKind.CONSUMER,
-            attributes: {
-              "fedify.task.name": message.taskName,
-              "fedify.task.attempt": message.attempt,
-            },
+            "fedify.task.name": message.taskName,
+            "fedify.task.attempt": message.attempt,
           },
           extractedContext,
-          async (span) => {
-            const spanCtx = span.spanContext();
-            return await withContext(
-              { traceId: spanCtx.traceId, spanId: spanCtx.spanId },
-              async () => {
-                this.metrics.recordQueueTaskStarted(common);
-                this.metrics.incrementQueueTaskInFlight(common);
-                const startedAt = performance.now();
-                const recordOutcome = (
-                  outcome: QueueTaskResult,
-                  failureReason: QueueTaskFailureReason | undefined,
-                  error?: unknown,
-                ): void => {
-                  if (failureReason != null) {
-                    span.setAttribute(
-                      "fedify.task.failure_reason",
-                      failureReason,
-                    );
-                    span.setStatus({
-                      code: SpanStatusCode.ERROR,
-                      ...(error == null ? {} : { message: String(error) }),
-                    });
-                  }
-                  this.metrics.recordQueueTaskOutcome(
-                    common,
-                    outcome,
-                    getDurationMs(startedAt),
-                    outcome === "failed" ? failureReason : undefined,
-                  );
-                };
-                try {
-                  const result = await this.#listenTaskMessage(
-                    contextData,
-                    message,
-                  );
-                  recordOutcome(
-                    result.outcome,
-                    result.outcome === "failed"
-                      ? result.failureReason
-                      : undefined,
-                  );
-                } catch (e) {
-                  if (isAbortError(e)) recordOutcome("aborted", undefined);
-                  else if (e instanceof TaskRetryEnqueueError) {
-                    recordOutcome("failed", "retry_enqueue", e.cause ?? e);
-                  } else recordOutcome("failed", "handler", e);
-                  throw e;
-                } finally {
-                  this.metrics.decrementQueueTaskInFlight(common);
-                  span.end();
-                }
-              },
-            );
-          },
+          this.#instrumentWorkerBody(
+            common,
+            () => this.#listenTaskMessage(contextData, message),
+            classifyTaskError,
+          ),
         );
       }
     });
   }
+
+  /**
+   * Opens a CONSUMER span for a queue worker and scopes the extracted trace
+   * context around its body.  The body—typically built by
+   * {@link FederationImpl.instrumentWorkerBody}—receives the span and returns
+   * the context-scoped worker callback.
+   * @param spanName The consumer span name (for example, `"fedify.task"`).
+   * @param spanAttributes The initial span attributes.
+   * @param extractedContext The trace context extracted from the message.
+   * @param instrumentedBody Builds the context-scoped worker callback for the
+   *                         opened span.
+   */
+  async #runWorkerSpan(
+    spanName: string,
+    spanAttributes: Attributes,
+    extractedContext: ReturnType<typeof propagation.extract>,
+    instrumentedBody: (span: Span) => () => Promise<void>,
+  ): Promise<void> {
+    await this._getTracer().startActiveSpan(
+      spanName,
+      { kind: SpanKind.CONSUMER, attributes: spanAttributes },
+      extractedContext,
+      async (span: Span) => {
+        const spanCtx = span.spanContext();
+        return await withContext(
+          { traceId: spanCtx.traceId, spanId: spanCtx.spanId },
+          instrumentedBody(span),
+        );
+      },
+    );
+  }
+
+  /**
+   * Wraps a worker body with the shared `fedify.queue.task.*` boundary
+   * telemetry, returning the instrumented body keyed by its span.  The
+   * instrumentation records the started, outcome, and duration metrics, pairs
+   * the in-flight increment with its decrement, sets the span's error status
+   * from the terminal outcome, and ends the span.  The fanout, outbox, inbox,
+   * and task workers differ only in `common`, the body, and how a thrown error
+   * maps to an outcome.
+   * @param common The shared queue-task metric attributes for this worker.
+   * @param run Runs the worker body and resolves to its terminal outcome.
+   * @param classifyError Maps a thrown error to a terminal outcome.
+   */
+  #instrumentWorkerBody = (
+    common: QueueTaskCommonAttributes,
+    run: (span: Span) => Promise<QueueTaskDispatchResult>,
+    classifyError: (error: unknown) => QueueTaskDispatchResult,
+  ) =>
+  (span: Span) =>
+  async () => {
+    this.metrics.recordQueueTaskStarted(common);
+    this.metrics.incrementQueueTaskInFlight(common);
+    const startedAt = performance.now();
+    let result: QueueTaskDispatchResult = { outcome: "completed" };
+    try {
+      result = await run(span);
+    } catch (e) {
+      result = classifyError(e);
+      throw e;
+    } finally {
+      if (result.outcome === "failed") {
+        if (result.failureReason != null) {
+          span.setAttribute("fedify.task.failure_reason", result.failureReason);
+        }
+        span.setStatus({
+          code: SpanStatusCode.ERROR,
+          ...(result.error == null ? {} : { message: String(result.error) }),
+        });
+      }
+      this.metrics.recordQueueTaskOutcome(
+        common,
+        result.outcome,
+        getDurationMs(startedAt),
+        result.outcome === "failed" ? result.failureReason : undefined,
+      );
+      this.metrics.decrementQueueTaskInFlight(common);
+      span.end();
+    }
+  };
 
   async #listenFanoutMessage(
     data: TContextData,

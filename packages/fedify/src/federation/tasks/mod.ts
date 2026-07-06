@@ -8,7 +8,11 @@
  */
 export { default as TaskCodec } from "./codec.ts";
 export { default as enqueueTasks } from "./enqueue.ts";
-export { TaskRetryEnqueueError } from "./error.ts";
+export {
+  classifyAbortableError,
+  classifyTaskError,
+  TaskRetryEnqueueError,
+} from "./error.ts";
 export type {
   TaskDefinition,
   TaskDefinitionInternal,
