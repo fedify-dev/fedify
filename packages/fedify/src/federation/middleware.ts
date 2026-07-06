@@ -955,7 +955,7 @@ export class FederationImpl<TContextData>
     return meterProvider;
   }
 
-  get metrics() {
+  get metrics(): ReturnType<typeof getFederationMetrics> {
     return getFederationMetrics(this.meterProvider);
   }
 
