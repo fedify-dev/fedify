@@ -259,6 +259,12 @@ async function handleWebFingerInternal<TContextData>(
   ) {
     subject = `acct:${actor.preferredUsername ?? acctUsername}@${host}`;
     aliases.push(resourceUrl.href);
+    if (
+      actor.preferredUsername != null && actor.preferredUsername !== "" &&
+      actor.preferredUsername !== acctUsername
+    ) {
+      aliases.push(`acct:${actor.preferredUsername}@${context.url.host}`);
+    }
   }
   const jrd: ResourceDescriptor = {
     subject,
