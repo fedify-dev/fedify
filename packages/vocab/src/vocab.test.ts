@@ -115,6 +115,16 @@ const FEATURE_CONTEXT = [
   "https://w3id.org/fep/7aa9",
 ] as const;
 
+const FEATURED_ITEM_CONTEXT = [
+  ...FEATURE_CONTEXT,
+  {
+    featuredObjectType: {
+      "@id": "https://w3id.org/fep/7aa9#featuredObjectType",
+      "@type": "@id",
+    },
+  },
+] as const;
+
 const FEATURED_COLLECTION_CONTEXT = [
   ...FEATURE_CONTEXT,
   {
@@ -2646,13 +2656,15 @@ test("FeaturedItem.toJsonLd()", async () => {
   const item = new FeaturedItem({
     id: new URL("https://example.com/users/alice/featured/1/items/1"),
     featuredObject: new URL("https://example.com/users/bob"),
+    featuredObjectType: Person,
     featureAuthorization: new URL("https://example.com/users/bob/stamps/1"),
   });
   const expected = {
-    "@context": FEATURE_CONTEXT,
+    "@context": FEATURED_ITEM_CONTEXT,
     type: "FeaturedItem",
     id: "https://example.com/users/alice/featured/1/items/1",
     featuredObject: "https://example.com/users/bob",
+    featuredObjectType: "as:Person",
     featureAuthorization: "https://example.com/users/bob/stamps/1",
   };
   deepStrictEqual(
@@ -2669,6 +2681,7 @@ test("FeaturedItem.toJsonLd()", async () => {
     loaded.featuredObjectId,
     new URL("https://example.com/users/bob"),
   );
+  deepStrictEqual(loaded.featuredObjectType, Person);
   deepStrictEqual(
     loaded.featureAuthorizationId,
     new URL("https://example.com/users/bob/stamps/1"),

@@ -13,6 +13,9 @@ defaultContext:
 - "https://w3id.org/security/data-integrity/v1"
 - "https://gotosocial.org/ns"
 - "https://w3id.org/fep/7aa9"
+- featuredObjectType:
+    "@id": "https://w3id.org/fep/7aa9#featuredObjectType"
+    "@type": "@id"
 
 properties:
 - singularName: featuredObject
@@ -22,6 +25,14 @@ properties:
   description: The object being featured.
   range:
   - "https://www.w3.org/ns/activitystreams#Object"
+
+- singularName: featuredObjectType
+  functional: true
+  compactName: featuredObjectType
+  uri: "https://w3id.org/fep/7aa9#featuredObjectType"
+  description: The ActivityStreams type of the object being featured.
+  range:
+  - "fedify:vocabEntityType"
 
 - singularName: featureAuthorization
   functional: true

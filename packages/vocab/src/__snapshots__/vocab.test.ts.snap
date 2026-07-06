@@ -2126,6 +2126,7 @@ snapshot[`Deno.inspect(FeaturedItem) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   featuredObject: Object {},
+  featuredObjectType: [class Person extends Object],
   featureAuthorization: FeatureAuthorization {}
 }'
 `;
@@ -2171,6 +2172,7 @@ snapshot[`Deno.inspect(FeaturedItem) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   featuredObject: URL "https://example.com/",
+  featuredObjectType: [class Person extends Object],
   featureAuthorization: URL "https://example.com/"
 }'
 `;
@@ -2216,6 +2218,7 @@ snapshot[`Deno.inspect(FeaturedItem) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   featuredObject: Object {},
+  featuredObjectType: [class Person extends Object],
   featureAuthorization: FeatureAuthorization {}
 }'
 `;
