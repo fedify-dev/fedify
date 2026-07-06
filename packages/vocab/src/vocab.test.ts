@@ -2585,12 +2585,6 @@ test("InteractionPolicy.canFeature", async () => {
       "https://www.w3.org/ns/activitystreams",
       "https://gotosocial.org/ns",
       "https://w3id.org/fep/7aa9",
-      {
-        featuredCollections: {
-          "@id": "https://w3id.org/fep/7aa9#featuredCollections",
-          "@type": "@id",
-        },
-      },
     ],
     type: "Person",
     id: "https://example.com/users/alice",
@@ -2686,6 +2680,21 @@ test("FeaturedItem.toJsonLd()", async () => {
     loaded.featureAuthorizationId,
     new URL("https://example.com/users/bob/stamps/1"),
   );
+
+  const loadedFromFepContext = await FeaturedItem.fromJsonLd({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/fep/7aa9",
+    ],
+    type: "FeaturedItem",
+    id: "https://example.com/users/alice/featured/1/items/1",
+    featuredObject: "https://example.com/users/bob",
+    featuredObjectType: "as:Person",
+  }, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  deepStrictEqual(loadedFromFepContext.featuredObjectType, Person);
 });
 
 test("FeatureAuthorization.fromJsonLd()", async () => {
