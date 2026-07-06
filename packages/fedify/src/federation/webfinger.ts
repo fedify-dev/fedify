@@ -1,4 +1,4 @@
-import { Link as LinkObject } from "@fedify/vocab";
+import { type LanguageString, Link as LinkObject } from "@fedify/vocab";
 import type { Link, ResourceDescriptor } from "@fedify/webfinger";
 import { getLogger } from "@logtape/logtape";
 import type { Span, Tracer } from "@opentelemetry/api";
@@ -13,6 +13,53 @@ import type {
 import type { RequestContext } from "./context.ts";
 
 const logger = getLogger(["fedify", "webfinger", "server"]);
+
+interface WebFingerSubjectAndAliasesOptions {
+  resourceUrl: URL;
+  actorUri: URL;
+  preferredUsername: string | LanguageString | null | undefined;
+  acctUsername: string | null;
+  host: string | undefined;
+  contextHost: string;
+}
+
+function getWebFingerSubjectAndAliases(
+  {
+    resourceUrl,
+    actorUri,
+    preferredUsername,
+    acctUsername,
+    host,
+    contextHost,
+  }: WebFingerSubjectAndAliasesOptions,
+): Pick<ResourceDescriptor, "subject" | "aliases"> {
+  const aliases: string[] = [];
+  let subject = resourceUrl.href;
+  if (resourceUrl.protocol != "acct:" && preferredUsername != null) {
+    aliases.push(`acct:${preferredUsername}@${host ?? contextHost}`);
+    if (host != null && host !== contextHost) {
+      aliases.push(`acct:${preferredUsername}@${contextHost}`);
+    }
+  }
+  if (resourceUrl.href !== actorUri.href) {
+    aliases.push(actorUri.href);
+  }
+  if (
+    resourceUrl.protocol === "acct:" && host != null &&
+    host !== contextHost &&
+    !resourceUrl.href.endsWith(`@${host}`)
+  ) {
+    subject = `acct:${preferredUsername ?? acctUsername}@${host}`;
+    aliases.push(resourceUrl.href);
+    if (
+      preferredUsername != null && preferredUsername !== "" &&
+      preferredUsername !== acctUsername
+    ) {
+      aliases.push(`acct:${preferredUsername}@${contextHost}`);
+    }
+  }
+  return { subject, aliases };
+}
 
 /**
  * Parameters for {@link handleWebFinger}.
@@ -202,10 +249,11 @@ async function handleWebFingerInternal<TContextData>(
     logger.error("Actor {identifier} not found.", { identifier });
     return await onNotFound(request);
   }
+  const actorUri = context.getActorUri(identifier);
   const links: Link[] = [
     {
       rel: "self",
-      href: context.getActorUri(identifier).href,
+      href: actorUri.href,
       type: "application/activity+json",
     },
   ];
@@ -241,31 +289,14 @@ async function handleWebFingerInternal<TContextData>(
     }
   }
 
-  const aliases: string[] = [];
-  let subject = resourceUrl.href;
-  if (resourceUrl.protocol != "acct:" && actor.preferredUsername != null) {
-    aliases.push(`acct:${actor.preferredUsername}@${host ?? context.url.host}`);
-    if (host != null && host !== context.url.host) {
-      aliases.push(`acct:${actor.preferredUsername}@${context.url.host}`);
-    }
-  }
-  if (resourceUrl.href !== context.getActorUri(identifier).href) {
-    aliases.push(context.getActorUri(identifier).href);
-  }
-  if (
-    resourceUrl.protocol === "acct:" && host != null &&
-    host !== context.url.host &&
-    !resourceUrl.href.endsWith(`@${host}`)
-  ) {
-    subject = `acct:${actor.preferredUsername ?? acctUsername}@${host}`;
-    aliases.push(resourceUrl.href);
-    if (
-      actor.preferredUsername != null && actor.preferredUsername !== "" &&
-      actor.preferredUsername !== acctUsername
-    ) {
-      aliases.push(`acct:${actor.preferredUsername}@${context.url.host}`);
-    }
-  }
+  const { subject, aliases } = getWebFingerSubjectAndAliases({
+    resourceUrl,
+    actorUri,
+    preferredUsername: actor.preferredUsername,
+    acctUsername,
+    host,
+    contextHost: context.url.host,
+  });
   const jrd: ResourceDescriptor = {
     subject,
     aliases,
