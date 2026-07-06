@@ -92,6 +92,16 @@ test("PostgresKvStore.set()", { skip: dbUrl == null }, async () => {
     assert.strictEqual(result2[0].value, "qux");
     assert.strictEqual(result2[0].ttl, "1 day");
 
+    await store.set(["foo", "duration-like"], "duration-like", {
+      ttl: { hours: 1 } as Temporal.Duration,
+    });
+    const durationLikeResult = await sql`
+      SELECT * FROM ${sql(tableName)}
+      WHERE key = ${["foo", "duration-like"]}
+    `;
+    assert.strictEqual(durationLikeResult.length, 1);
+    assert.strictEqual(durationLikeResult[0].ttl, "01:00:00");
+
     await store.set(["foo", "quux"], true);
     const result3 = await sql`
       SELECT * FROM ${sql(tableName)}
@@ -106,6 +116,46 @@ test("PostgresKvStore.set()", { skip: dbUrl == null }, async () => {
     await sql.end();
   }
 });
+
+test(
+  "PostgresKvStore.set() refreshes TTL origin on update",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+
+    const { sql, tableName, store } = getStore();
+    try {
+      await store.initialize();
+      await sql`
+        INSERT INTO ${sql(tableName)} (key, value, created)
+        VALUES (
+          ${["ttl", "origin"]},
+          ${"stale"},
+          CURRENT_TIMESTAMP - INTERVAL '2 days'
+        )
+      `;
+
+      await store.set(["ttl", "origin"], "fresh", {
+        ttl: Temporal.Duration.from({ days: 1 }),
+      });
+
+      assert.strictEqual(await store.get(["ttl", "origin"]), "fresh");
+      const result = await sql`
+        SELECT created
+        FROM ${sql(tableName)}
+        WHERE key = ${["ttl", "origin"]}
+      `;
+      assert.strictEqual(result.length, 1);
+      assert(
+        result[0].created > new Date(Date.now() - 60_000),
+        "created timestamp should be refreshed on TTL update",
+      );
+    } finally {
+      await store.drop();
+      await sql.end();
+    }
+  },
+);
 
 test("PostgresKvStore.delete()", { skip: dbUrl == null }, async () => {
   if (dbUrl == null) return; // Bun does not support skip option

@@ -30,9 +30,19 @@ To be released.
     collections instead of being treated as unknown routes.
     [[#849], [#851] by ChanHaeng Lee]
 
+ -  Fixed the outbound delivery circuit breaker retaining per-host state in the
+    configured key–value store forever when a remote host never recovered.
+    Circuit breaker state now receives a TTL on writes made with the default
+    failure policy, custom failure policies can opt in with the new `stateTtl`
+    option, and stale state written by earlier 2.3 releases is cleared
+    automatically on CAS-backed stores after upgrade, with another sweep after a
+    grace window to cover rolling deployments.  [[#916], [#917]]
+
 [GHSA-hqph-j65v-8cq5]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-hqph-j65v-8cq5
 [#849]: https://github.com/fedify-dev/fedify/issues/849
 [#851]: https://github.com/fedify-dev/fedify/pull/851
+[#916]: https://github.com/fedify-dev/fedify/issues/916
+[#917]: https://github.com/fedify-dev/fedify/pull/917
 
 ### @fedify/vocab
 
