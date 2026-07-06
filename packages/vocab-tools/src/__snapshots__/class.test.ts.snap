@@ -34388,8 +34388,7 @@ export class FeaturedItem extends Object {
   
       #_Ht5F1pFtcuyJkybWck37rPhwyQv_featuredObject: (Object | URL)[] = [];
       #_trust_Ht5F1pFtcuyJkybWck37rPhwyQv_featuredObject: Set<number> = new Set();
-    #_4QMrZjaU2kGxde57Qwj2RWdv1D1g_featuredObjectType: ($EntityType)[] = [];
-
+    
       #_2gG5sxnwav2sb69C22RbERtJ8rba_featureAuthorization: (FeatureAuthorization | URL)[] = [];
       #_trust_2gG5sxnwav2sb69C22RbERtJ8rba_featureAuthorization: Set<number> = new Set();
     
@@ -34418,7 +34417,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;featuredObject?: Object | URL | null;featuredObjectType?: $EntityType | null;featureAuthorization?: FeatureAuthorization | URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;featuredObject?: Object | URL | null;featureAuthorization?: FeatureAuthorization | URL | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -34436,19 +34435,6 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             throw new TypeError(
               "The featuredObject must be of type " +
               "Object | URL" + ".",
-            );
-          }
-        }
-      
-        if ("featuredObjectType" in values &&             values.featuredObjectType != null) {
-          if (isEntityType(values.featuredObjectType)) {
-            // @ts-ignore: type is checked above.
-            this.#_4QMrZjaU2kGxde57Qwj2RWdv1D1g_featuredObjectType = [values.featuredObjectType];
-      
-          } else {
-            throw new TypeError(
-              "The featuredObjectType must be of type " +
-              "$EntityType" + ".",
             );
           }
         }
@@ -34493,7 +34479,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;featuredObject?: Object | URL | null;featuredObjectType?: $EntityType | null;featureAuthorization?: FeatureAuthorization | URL | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;featuredObject?: Object | URL | null;featureAuthorization?: FeatureAuthorization | URL | null;}
 
     = {},
     options: {
@@ -34519,19 +34505,6 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             throw new TypeError(
               "The featuredObject must be of type " +
               "Object | URL" + ".",
-            );
-          }
-        }
-      clone.#_4QMrZjaU2kGxde57Qwj2RWdv1D1g_featuredObjectType = this.#_4QMrZjaU2kGxde57Qwj2RWdv1D1g_featuredObjectType;
-        if ("featuredObjectType" in values &&             values.featuredObjectType != null) {
-          if (isEntityType(values.featuredObjectType)) {
-            // @ts-ignore: type is checked above.
-            clone.#_4QMrZjaU2kGxde57Qwj2RWdv1D1g_featuredObjectType = [values.featuredObjectType];
-      
-          } else {
-            throw new TypeError(
-              "The featuredObjectType must be of type " +
-              "$EntityType" + ".",
             );
           }
         }
@@ -34776,19 +34749,6 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return null;
         }
         return v;
-      }
-      
-/** The ActivityStreams type of the object being featured.
- */
- get featuredObjectType(): ($EntityType | null) {
-        if (this._warning != null) {
-          getLogger(this._warning.category).warn(
-            this._warning.message,
-            this._warning.values
-          );
-        }
-        if (this.#_4QMrZjaU2kGxde57Qwj2RWdv1D1g_featuredObjectType.length < 1) return null;
-        return this.#_4QMrZjaU2kGxde57Qwj2RWdv1D1g_featuredObjectType[0];
       }
       
     async #fetchFeatureAuthorization(
@@ -35080,22 +35040,6 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       }
       
       compactItems = [];
-      for (const v of this.#_4QMrZjaU2kGxde57Qwj2RWdv1D1g_featuredObjectType) {
-        const item = (
-      { "@id": v.typeId.href }
-        );
-        compactItems.push(item);
-      }
-      if (compactItems.length > 0) {
-      
-        result["featuredObjectType"]
-          = compactItems.length > 1
-          ? compactItems
-          : compactItems[0];
-        
-      }
-      
-      compactItems = [];
       for (const v of this.#_2gG5sxnwav2sb69C22RbERtJ8rba_featureAuthorization) {
         const item = (
       v instanceof URL ? formatIri(v) : await v.toJsonLd({
@@ -35117,7 +35061,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       result["type"] = "FeaturedItem";
       if (this.id != null) result["id"] = formatIri(this.id);
-      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"featuredObjectType":{"@id":"https://w3id.org/fep/7aa9#featuredObjectType","@type":"@id"}}];
+      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9"];
       return result;
     }
     
@@ -35150,21 +35094,6 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     }
     
     array = [];
-    for (const v of this.#_4QMrZjaU2kGxde57Qwj2RWdv1D1g_featuredObjectType) {
-      const element = (
-    { "@id": v.typeId.href }
-      );
-    array.push(element);;
-    }
-    if (array.length > 0) {
-      const propValue = (
-    array
-      );
-      values["https://w3id.org/fep/7aa9#featuredObjectType"] = propValue;
-    
-    }
-    
-    array = [];
     for (const v of this.#_2gG5sxnwav2sb69C22RbERtJ8rba_featureAuthorization) {
       const element = (
     v instanceof URL ? { "@id": formatIri(v) } : await v.toJsonLd(options)
@@ -35188,7 +35117,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       );
     }
     const docContext = options.context ??
-      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"featuredObjectType":{"@id":"https://w3id.org/fep/7aa9#featuredObjectType","@type":"@id"}}];
+      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -35214,11 +35143,6 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
 
   protected override isCompactable(): boolean {
 
-      if (
-        this.#_4QMrZjaU2kGxde57Qwj2RWdv1D1g_featuredObjectType != null &&
-        this.#_4QMrZjaU2kGxde57Qwj2RWdv1D1g_featuredObjectType.length > 0
-      ) return false;
-      
     return super.isCompactable();
   }
   
@@ -35371,37 +35295,6 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       _Ht5F1pFtcuyJkybWck37rPhwyQv_featuredObject.push(decoded);
     }
     instance.#_Ht5F1pFtcuyJkybWck37rPhwyQv_featuredObject = _Ht5F1pFtcuyJkybWck37rPhwyQv_featuredObject;
-    const _4QMrZjaU2kGxde57Qwj2RWdv1D1g_featuredObjectType: ($EntityType)[] = [];
-
-    let _4QMrZjaU2kGxde57Qwj2RWdv1D1g_featuredObjectType__array = values["https://w3id.org/fep/7aa9#featuredObjectType"];
-    
-    for (
-      const v of _4QMrZjaU2kGxde57Qwj2RWdv1D1g_featuredObjectType__array == null
-        ? []
-        : _4QMrZjaU2kGxde57Qwj2RWdv1D1g_featuredObjectType__array.length === 1 && "@list" in _4QMrZjaU2kGxde57Qwj2RWdv1D1g_featuredObjectType__array[0]
-        ? _4QMrZjaU2kGxde57Qwj2RWdv1D1g_featuredObjectType__array[0]["@list"]
-        : _4QMrZjaU2kGxde57Qwj2RWdv1D1g_featuredObjectType__array
-    ) {
-      if (v == null) continue;
-    
-      const decoded = (() => {
-        if (v == null || typeof v !== "object" || !("@id" in v) ||
-            typeof v["@id"] !== "string" || v["@id"] === "") {
-          return undefined;
-        }
-        const entityType = getEntityTypeById(v["@id"]);
-        if (entityType == null) {
-          getLogger(["fedify", "vocab"]).warn(
-            "Ignoring unknown vocabulary entity type reference: {typeId}",
-            { typeId: v["@id"] },
-          );
-        }
-        return entityType;
-      })();
-      if (typeof decoded === "undefined") continue;
-      _4QMrZjaU2kGxde57Qwj2RWdv1D1g_featuredObjectType.push(decoded);
-    }
-    instance.#_4QMrZjaU2kGxde57Qwj2RWdv1D1g_featuredObjectType = _4QMrZjaU2kGxde57Qwj2RWdv1D1g_featuredObjectType;
     
       const _2gG5sxnwav2sb69C22RbERtJ8rba_featureAuthorization: (FeatureAuthorization | URL)[] = [];
       const _trust_2gG5sxnwav2sb69C22RbERtJ8rba_featureAuthorization: Set<number> = new Set();
@@ -35478,26 +35371,6 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
       if (_Ht5F1pFtcuyJkybWck37rPhwyQv_featuredObject.length == 1) {
         proxy.featuredObject = _Ht5F1pFtcuyJkybWck37rPhwyQv_featuredObject[0];
-      }
-      
-      const _4QMrZjaU2kGxde57Qwj2RWdv1D1g_featuredObjectType = this.#_4QMrZjaU2kGxde57Qwj2RWdv1D1g_featuredObjectType
-        // deno-lint-ignore no-explicit-any
-        .map((v: any) => v instanceof URL
-          ? {
-              [Symbol.for("Deno.customInspect")]: (
-                inspect: typeof Deno.inspect,
-                options: Deno.InspectOptions,
-              ): string => "URL " + inspect(v.href, options),
-              [Symbol.for("nodejs.util.inspect.custom")]: (
-                _depth: number,
-                options: unknown,
-                inspect: (value: unknown, options: unknown) => string,
-              ): string => "URL " + inspect(v.href, options),
-            }
-          : v);
-    
-      if (_4QMrZjaU2kGxde57Qwj2RWdv1D1g_featuredObjectType.length == 1) {
-        proxy.featuredObjectType = _4QMrZjaU2kGxde57Qwj2RWdv1D1g_featuredObjectType[0];
       }
       
       const _2gG5sxnwav2sb69C22RbERtJ8rba_featureAuthorization = this.#_2gG5sxnwav2sb69C22RbERtJ8rba_featureAuthorization
