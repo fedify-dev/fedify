@@ -1,0 +1,21 @@
+$schema: ../../vocab-tools/schema.yaml
+name: FeatureRequest
+compactName: FeatureRequest
+uri: "https://w3id.org/fep/7aa9#FeatureRequest"
+extends: "https://www.w3.org/ns/activitystreams#Activity"
+entity: true
+description: |
+  A request for consent before featuring an actor in a
+  {@link FeaturedCollection}.
+
+  The `object` property references the actor to be included, and the
+  `instrument` property references the featured collection.
+
+  See [FEP-7aa9](https://w3id.org/fep/7aa9) for details.
+defaultContext:
+- "https://w3id.org/identity/v1"
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+- "https://gotosocial.org/ns"
+- "https://w3id.org/fep/7aa9"
+properties: []

@@ -16,9 +16,23 @@ To be released.
     serialization emits canonical `ap+ef61:` values with decoded DID
     authorities.  [[#826], [#850]]
 
+ -  Added vocabulary support for [FEP-7aa9], including
+    `FeaturedCollection`, `FeaturedItem`, `FeatureRequest`, and
+    `FeatureAuthorization`, plus actor `featuredCollections` and
+    `InteractionPolicy.canFeature` properties.  [[#810], [#914]]
+
 [FEP-ef61]: https://w3id.org/fep/ef61
+[FEP-7aa9]: https://w3id.org/fep/7aa9
+[#810]: https://github.com/fedify-dev/fedify/issues/810
 [#826]: https://github.com/fedify-dev/fedify/issues/826
 [#850]: https://github.com/fedify-dev/fedify/pull/850
+[#914]: https://github.com/fedify-dev/fedify/pull/914
+
+### @fedify/vocab-runtime
+
+ -  Added the [FEP-7aa9] JSON-LD context to the preloaded context registry so
+    FEP-7aa9 documents can be compacted and expanded without fetching the
+    context remotely.  [[#810], [#914]]
 
 ### @fedify/vocab-runtime
 

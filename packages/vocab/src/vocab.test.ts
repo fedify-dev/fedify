@@ -36,6 +36,10 @@ import {
   Delete,
   Document,
   Endpoints,
+  FeatureAuthorization,
+  FeaturedCollection,
+  FeaturedItem,
+  FeatureRequest,
   Follow,
   Hashtag,
   Intent,
@@ -101,6 +105,23 @@ const QUOTE_REQUEST_CONTEXT = [
       "@id": "toot:votersCount",
       "@type": "http://www.w3.org/2001/XMLSchema#nonNegativeInteger",
     },
+  },
+] as const;
+
+const FEATURE_CONTEXT = [
+  "https://www.w3.org/ns/activitystreams",
+  "https://w3id.org/security/data-integrity/v1",
+  "https://gotosocial.org/ns",
+  "https://w3id.org/fep/7aa9",
+] as const;
+
+const FEATURED_COLLECTION_CONTEXT = [
+  ...FEATURE_CONTEXT,
+  {
+    Hashtag: "as:Hashtag",
+    discoverable: "toot:discoverable",
+    sensitive: "as:sensitive",
+    toot: "http://joinmastodon.org/ns#",
   },
 ] as const;
 
@@ -1734,6 +1755,7 @@ test("Person.toJsonLd()", async () => {
       "https://www.w3.org/ns/did/v1",
       "https://w3id.org/security/multikey/v1",
       "https://gotosocial.org/ns",
+      "https://w3id.org/fep/7aa9",
       {
         PropertyValue: "schema:PropertyValue",
         alsoKnownAs: {
@@ -1747,6 +1769,10 @@ test("Person.toJsonLd()", async () => {
         discoverable: "toot:discoverable",
         featured: {
           "@id": "toot:featured",
+          "@type": "@id",
+        },
+        featuredCollections: {
+          "@id": "https://w3id.org/fep/7aa9#featuredCollections",
           "@type": "@id",
         },
         featuredTags: {
@@ -2449,6 +2475,266 @@ test("InteractionPolicy.canQuote", async () => {
   deepStrictEqual(
     await loaded.toJsonLd({ contextLoader: mockDocumentLoader }),
     expected,
+  );
+});
+
+test("InteractionPolicy.canFeature", async () => {
+  const person = new Person({
+    id: new URL("https://example.com/users/alice"),
+    featuredCollections: new URL(
+      "https://example.com/users/alice/featured_collections",
+    ),
+    interactionPolicy: new InteractionPolicy({
+      canFeature: new InteractionRule({
+        automaticApproval: new URL(
+          "https://www.w3.org/ns/activitystreams#Public",
+        ),
+      }),
+    }),
+  });
+  const expected = {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/v1",
+      "https://w3id.org/security/data-integrity/v1",
+      "https://www.w3.org/ns/did/v1",
+      "https://w3id.org/security/multikey/v1",
+      "https://gotosocial.org/ns",
+      "https://w3id.org/fep/7aa9",
+      {
+        Emoji: "toot:Emoji",
+        PropertyValue: "schema:PropertyValue",
+        _misskey_followedMessage: "misskey:_misskey_followedMessage",
+        alsoKnownAs: {
+          "@id": "as:alsoKnownAs",
+          "@type": "@id",
+        },
+        discoverable: "toot:discoverable",
+        featured: {
+          "@id": "toot:featured",
+          "@type": "@id",
+        },
+        featuredCollections: {
+          "@id": "https://w3id.org/fep/7aa9#featuredCollections",
+          "@type": "@id",
+        },
+        featuredTags: {
+          "@id": "toot:featuredTags",
+          "@type": "@id",
+        },
+        indexable: "toot:indexable",
+        isCat: "misskey:isCat",
+        manuallyApprovesFollowers: "as:manuallyApprovesFollowers",
+        memorial: "toot:memorial",
+        misskey: "https://misskey-hub.net/ns#",
+        movedTo: {
+          "@id": "as:movedTo",
+          "@type": "@id",
+        },
+        schema: "http://schema.org#",
+        suspended: "toot:suspended",
+        toot: "http://joinmastodon.org/ns#",
+        value: "schema:value",
+      },
+    ],
+    type: "Person",
+    id: "https://example.com/users/alice",
+    featuredCollections: "https://example.com/users/alice/featured_collections",
+    interactionPolicy: {
+      canFeature: {
+        automaticApproval: "as:Public",
+      },
+    },
+  };
+  deepStrictEqual(
+    await person.toJsonLd({ contextLoader: mockDocumentLoader }),
+    expected,
+  );
+
+  const loaded = await Person.fromJsonLd(expected, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  deepStrictEqual(
+    loaded.featuredCollectionsId,
+    new URL("https://example.com/users/alice/featured_collections"),
+  );
+  assertInstanceOf(loaded.interactionPolicy, InteractionPolicy);
+  assertInstanceOf(loaded.interactionPolicy.canFeature, InteractionRule);
+  deepStrictEqual(
+    loaded.interactionPolicy.canFeature.automaticApproval,
+    new URL("https://www.w3.org/ns/activitystreams#Public"),
+  );
+  deepStrictEqual(
+    await loaded.toJsonLd({ contextLoader: mockDocumentLoader }),
+    expected,
+  );
+
+  const loadedFromFepContext = await Person.fromJsonLd({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://gotosocial.org/ns",
+      "https://w3id.org/fep/7aa9",
+      {
+        featuredCollections: {
+          "@id": "https://w3id.org/fep/7aa9#featuredCollections",
+          "@type": "@id",
+        },
+      },
+    ],
+    type: "Person",
+    id: "https://example.com/users/alice",
+    featuredCollections: "https://example.com/users/alice/featured_collections",
+  }, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  deepStrictEqual(
+    loadedFromFepContext.featuredCollectionsId,
+    new URL("https://example.com/users/alice/featured_collections"),
+  );
+});
+
+test("FeaturedCollection.toJsonLd()", async () => {
+  const collection = new FeaturedCollection({
+    id: new URL("https://example.com/users/alice/featured/1"),
+    name: "Cute cats",
+    attribution: new URL("https://example.com/users/alice"),
+    topic: new Hashtag({ name: "#cats" }),
+    discoverable: false,
+    totalItems: 1,
+  });
+  const expected = {
+    "@context": FEATURED_COLLECTION_CONTEXT,
+    type: "FeaturedCollection",
+    id: "https://example.com/users/alice/featured/1",
+    attributedTo: "https://example.com/users/alice",
+    name: "Cute cats",
+    totalItems: 1,
+    topic: {
+      type: "Hashtag",
+      name: "#cats",
+    },
+    discoverable: false,
+  };
+  deepStrictEqual(
+    await collection.toJsonLd({ contextLoader: mockDocumentLoader }),
+    expected,
+  );
+
+  const loaded = await FeaturedCollection.fromJsonLd(expected, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  assertInstanceOf(loaded, FeaturedCollection);
+  deepStrictEqual(loaded.name, "Cute cats");
+  deepStrictEqual(
+    loaded.attributionId,
+    new URL("https://example.com/users/alice"),
+  );
+  assertInstanceOf(loaded.topic, Hashtag);
+  deepStrictEqual(loaded.topic.name, "#cats");
+  deepStrictEqual(loaded.discoverable, false);
+  deepStrictEqual(loaded.totalItems, 1);
+  deepStrictEqual(
+    await loaded.toJsonLd({ contextLoader: mockDocumentLoader }),
+    expected,
+  );
+});
+
+test("FeaturedItem.toJsonLd()", async () => {
+  const item = new FeaturedItem({
+    id: new URL("https://example.com/users/alice/featured/1/items/1"),
+    featuredObject: new URL("https://example.com/users/bob"),
+    featureAuthorization: new URL("https://example.com/users/bob/stamps/1"),
+  });
+  const expected = {
+    "@context": FEATURE_CONTEXT,
+    type: "FeaturedItem",
+    id: "https://example.com/users/alice/featured/1/items/1",
+    featuredObject: "https://example.com/users/bob",
+    featureAuthorization: "https://example.com/users/bob/stamps/1",
+  };
+  deepStrictEqual(
+    await item.toJsonLd({ contextLoader: mockDocumentLoader }),
+    expected,
+  );
+
+  const loaded = await FeaturedItem.fromJsonLd(expected, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  assertInstanceOf(loaded, FeaturedItem);
+  deepStrictEqual(
+    loaded.featuredObjectId,
+    new URL("https://example.com/users/bob"),
+  );
+  deepStrictEqual(
+    loaded.featureAuthorizationId,
+    new URL("https://example.com/users/bob/stamps/1"),
+  );
+});
+
+test("FeatureAuthorization.fromJsonLd()", async () => {
+  const jsonLd = {
+    "@context": FEATURE_CONTEXT,
+    type: "FeatureAuthorization",
+    id: "https://example.com/users/bob/stamps/1",
+    interactingObject: "https://example.com/users/alice/featured/1",
+    interactionTarget: "https://example.com/users/bob",
+  };
+  const authorization = await FeatureAuthorization.fromJsonLd(jsonLd, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  assertInstanceOf(authorization, FeatureAuthorization);
+  deepStrictEqual(
+    authorization.interactingObjectId,
+    new URL("https://example.com/users/alice/featured/1"),
+  );
+  deepStrictEqual(
+    authorization.interactionTargetId,
+    new URL("https://example.com/users/bob"),
+  );
+  deepStrictEqual(
+    await authorization.toJsonLd({ contextLoader: mockDocumentLoader }),
+    jsonLd,
+  );
+});
+
+test("FeatureRequest.toJsonLd()", async () => {
+  const request = new FeatureRequest({
+    id: new URL("https://example.com/users/alice/featured/1/requests/1"),
+    object: new URL("https://example.com/users/bob"),
+    instrument: new URL("https://example.com/users/alice/featured/1"),
+  });
+  const expected = {
+    "@context": [
+      "https://w3id.org/identity/v1",
+      ...FEATURE_CONTEXT,
+    ],
+    type: "FeatureRequest",
+    id: "https://example.com/users/alice/featured/1/requests/1",
+    object: "https://example.com/users/bob",
+    instrument: "https://example.com/users/alice/featured/1",
+  };
+  deepStrictEqual(
+    await request.toJsonLd({ contextLoader: mockDocumentLoader }),
+    expected,
+  );
+
+  const loaded = await FeatureRequest.fromJsonLd(expected, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  assertInstanceOf(loaded, FeatureRequest);
+  deepStrictEqual(
+    loaded.objectId,
+    new URL("https://example.com/users/bob"),
+  );
+  deepStrictEqual(
+    loaded.instrumentId,
+    new URL("https://example.com/users/alice/featured/1"),
   );
 });
 
