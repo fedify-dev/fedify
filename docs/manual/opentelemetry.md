@@ -368,7 +368,7 @@ Fedify records the following OpenTelemetry metrics:
 | `fedify.queue.task.enqueued`                  | Counter       | `{task}`      | Counts inbox, outbox, fanout, and custom background tasks Fedify enqueued.                        |
 | `fedify.queue.task.started`                   | Counter       | `{task}`      | Counts queue tasks Fedify began processing as a worker.                                           |
 | `fedify.queue.task.completed`                 | Counter       | `{task}`      | Counts queue tasks Fedify finished processing without throwing.                                   |
-| `fedify.queue.task.failed`                    | Counter       | `{task}`      | Counts queue tasks Fedify abandoned because processing threw.                                     |
+| `fedify.queue.task.failed`                    | Counter       | `{task}`      | Counts queue tasks Fedify recorded as failed after processing or dispatch did not succeed.        |
 | `fedify.queue.task.duration`                  | Histogram     | `ms`          | Measures queue task processing duration in Fedify workers.                                        |
 | `fedify.queue.task.in_flight`                 | UpDownCounter | `{task}`      | Tracks queue tasks currently in flight in this Fedify process.                                    |
 | `fedify.queue.depth`                          | Gauge         | `{message}`   | Reports queued, ready, and delayed queue depth when the queue backend supports it.                |

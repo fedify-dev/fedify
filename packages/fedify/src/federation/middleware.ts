@@ -2255,6 +2255,12 @@ export class FederationImpl<TContextData>
           { role: "task", queue, taskName: message.taskName },
           retryMessage.attempt,
         );
+        // `completed` here means the attempt was folded into a scheduled retry,
+        // not that the handler succeeded; only a terminal give-up records
+        // `failed`. This mirrors the inbox/outbox worker-boundary convention—
+        // do not change it to `failed` without regressing terminal-failure-only
+        // task telemetry.
+        // See also: https://fedify.dev/manual/tasks#observability
         return { outcome: "completed" };
       } else {
         logger.error(
