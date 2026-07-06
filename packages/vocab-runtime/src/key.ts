@@ -130,7 +130,14 @@ function decodeEd25519DidKeyMultibase(multibaseKey: string): Uint8Array {
   if (!multibaseKey.startsWith("z")) {
     throw new TypeError("did:key must use base58-btc Multibase encoding.");
   }
-  const decoded = decodeMultibase(multibaseKey);
+  let decoded: Uint8Array;
+  try {
+    decoded = decodeMultibase(multibaseKey);
+  } catch (error) {
+    throw new TypeError("Invalid did:key Multibase encoding.", {
+      cause: error,
+    });
+  }
   const { code } = getMulticodecPrefix(decoded);
   if (code !== ED25519_PUBLIC_KEY_MULTICODEC) {
     throw new TypeError("Unsupported did:key type: 0x" + code.toString(16));

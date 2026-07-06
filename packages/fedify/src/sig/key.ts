@@ -1,5 +1,6 @@
 import { CryptographicKey, isActor, Multikey, Object } from "@fedify/vocab";
 import {
+  type DidKeyVerificationMethod,
   type DocumentLoader,
   FetchError,
   getDocumentLoader,
@@ -444,6 +445,33 @@ function isDidKeyUrl(keyId: URL): boolean {
   return keyId.protocol === "did:" && keyId.pathname.startsWith("key:");
 }
 
+async function doRawKeysMatch(
+  left: CryptoKey,
+  right: CryptoKey,
+): Promise<boolean> {
+  const [leftRaw, rightRaw] = await Promise.all([
+    crypto.subtle.exportKey("raw", left),
+    crypto.subtle.exportKey("raw", right),
+  ]);
+  if (leftRaw.byteLength !== rightRaw.byteLength) return false;
+  const leftBytes = new Uint8Array(leftRaw);
+  const rightBytes = new Uint8Array(rightRaw);
+  return leftBytes.every((byte, index) => byte === rightBytes[index]);
+}
+
+async function isCachedDidKeyValid(
+  key: Multikey & { publicKey: CryptoKey },
+  verificationMethod: DidKeyVerificationMethod,
+): Promise<boolean> {
+  try {
+    return key.id?.href === verificationMethod.id.href &&
+      key.controllerId?.href === verificationMethod.controller.href &&
+      await doRawKeysMatch(key.publicKey, verificationMethod.publicKey);
+  } catch {
+    return false;
+  }
+}
+
 async function resolveDidKey<T extends CryptographicKey | Multikey>(
   cacheKey: URL,
   cls: FetchableKeyClass<T>,
@@ -452,9 +480,6 @@ async function resolveDidKey<T extends CryptographicKey | Multikey>(
 ): Promise<FetchKeyResult<T> | null> {
   if (!isDidKeyUrl(cacheKey)) return null;
   const keyId = cacheKey.href;
-  const cachedKey = await keyCache?.get(cacheKey);
-  const hit = checkCachedKeyHit(cachedKey, keyId, cls, logger);
-  if (hit != null) return hit;
   const clsIsMultikey = cls ===
     (Multikey as unknown as FetchableKeyClass<T>);
   if (!clsIsMultikey) {
@@ -465,9 +490,7 @@ async function resolveDidKey<T extends CryptographicKey | Multikey>(
     );
     return { key: null, cached: false };
   }
-  let verificationMethod: Awaited<
-    ReturnType<typeof parseDidKeyVerificationMethod>
-  >;
+  let verificationMethod: DidKeyVerificationMethod;
   try {
     verificationMethod = await parseDidKeyVerificationMethod(cacheKey);
   } catch (error) {
@@ -476,6 +499,14 @@ async function resolveDidKey<T extends CryptographicKey | Multikey>(
       { keyId, error },
     );
     return { key: null, cached: false };
+  }
+  const cachedKey = await keyCache?.get(cacheKey);
+  const hit = checkCachedKeyHit(cachedKey, keyId, cls, logger);
+  if (
+    hit?.key instanceof Multikey &&
+    await isCachedDidKeyValid(hit.key, verificationMethod)
+  ) {
+    return hit;
   }
   const key = new Multikey({
     id: verificationMethod.id,

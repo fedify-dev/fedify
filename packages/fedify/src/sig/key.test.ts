@@ -507,6 +507,47 @@ test("fetchKey() resolves did:key Multikeys without document loading", async () 
   assertEquals(documentLoaderCalls, 0);
 });
 
+test("fetchKey() validates cached did:key Multikeys", async () => {
+  const did = await exportDidKey(ed25519PublicKey.publicKey);
+  const keyId = `${did}#${did.slice("did:key:".length)}`;
+  const wrongKeyPair = await generateCryptoKeyPair("Ed25519");
+  const cachedKey = new Multikey({
+    id: new URL(keyId),
+    controller: new URL(did),
+    publicKey: wrongKeyPair.publicKey,
+  });
+  const expectedKey = new Multikey({
+    id: new URL(keyId),
+    controller: new URL(did),
+    publicKey: ed25519PublicKey.publicKey,
+  }) as Multikey & { publicKey: CryptoKey };
+  const cache: Record<string, CryptographicKey | Multikey | null> = {
+    [keyId]: cachedKey,
+  };
+  let documentLoaderCalls = 0;
+
+  const result = await fetchKey(keyId, Multikey, {
+    documentLoader() {
+      documentLoaderCalls++;
+      throw new TypeError("did:key must not use the document loader");
+    },
+    contextLoader: mockDocumentLoader,
+    keyCache: {
+      get(keyId) {
+        return Promise.resolve(cache[keyId.href]);
+      },
+      set(keyId, key) {
+        cache[keyId.href] = key;
+        return Promise.resolve();
+      },
+    } satisfies KeyCache,
+  });
+
+  assertEquals(result, { key: expectedKey, cached: false });
+  assertEquals(documentLoaderCalls, 0);
+  assertEquals(cache[keyId], expectedKey);
+});
+
 test("fetchKey() rejects unsupported did:key values locally", async () => {
   const invalidKeyId =
     "did:key:z6MksHj1MJnidCtDiyYW9ugNFftoX9fLK4bornTxmMZ6X7vq#z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK";
@@ -585,6 +626,7 @@ test("fetchKeyDetailed() rejects invalid did:key without fetchError", async () =
 test("fetchKey() does not resolve did:key as CryptographicKey", async () => {
   const did = await exportDidKey(ed25519PublicKey.publicKey);
   const keyId = `${did}#${did.slice("did:key:".length)}`;
+  let cacheGets = 0;
   let documentLoaderCalls = 0;
   assertEquals(
     await fetchKey(keyId, CryptographicKey, {
@@ -593,9 +635,19 @@ test("fetchKey() does not resolve did:key as CryptographicKey", async () => {
         throw new TypeError("did:key must not use the document loader");
       },
       contextLoader: mockDocumentLoader,
+      keyCache: {
+        get() {
+          cacheGets++;
+          throw new TypeError("did:key must not check the cache");
+        },
+        set() {
+          throw new TypeError("did:key must not write to the cache");
+        },
+      },
     }),
     { key: null, cached: false },
   );
+  assertEquals(cacheGets, 0);
   assertEquals(documentLoaderCalls, 0);
 });
 
