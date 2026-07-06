@@ -154,6 +154,36 @@ For multi-worker deployments, use a `KvStore` implementation that supports
 Fedify still works without CAS, but it logs a warning because concurrent
 workers can race when opening or closing the same host's circuit.
 
+Fedify expires stored circuit state after it is no longer useful.  With the
+default numeric failure policy, the default `stateTtl` is derived from
+`failureWindow`, `recoveryDelay`, and `heldActivityTtl` so failure history,
+recovery probes, and held activities all have enough time to complete.  If you
+provide a custom `failure` callback, Fedify cannot infer how long your policy
+needs its timestamp history, so stored state does not expire by default.  Set
+`stateTtl` explicitly when using a custom policy and you want circuit state to
+be cleaned up automatically:
+
+~~~~ typescript
+const federation = createFederation<void>({
+  kv,
+  queue,
+  circuitBreaker: {
+    failure(timestamps) {
+      return timestamps.length >= 10;
+    },
+    stateTtl: { days: 14 },
+  },
+});
+~~~~
+
+When upgrading from Fedify 2.3.0 or 2.3.1, Fedify automatically rewrites
+legacy circuit state with a TTL only on `KvStore` implementations that support
+`cas()`.  Stores without CAS, including `@fedify/postgres` and
+`@fedify/redis`, apply TTLs to new circuit state but cannot automatically
+clean up circuit state that was already written without a TTL.  If that old
+state matters for your deployment, remove it with a one-off cleanup script or
+add a TTL directly in your storage backend.
+
 
 Observability
 -------------
