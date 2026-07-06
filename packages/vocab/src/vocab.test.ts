@@ -120,6 +120,7 @@ const FEATURED_COLLECTION_CONTEXT = [
   {
     Hashtag: "as:Hashtag",
     discoverable: "toot:discoverable",
+    sensitive: "as:sensitive",
     toot: "http://joinmastodon.org/ns#",
   },
 ] as const;

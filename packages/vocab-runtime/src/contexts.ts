@@ -6,8 +6,8 @@ import activitystreams from "./contexts/activitystreams.json" with {
   type: "json",
 };
 import didV1 from "./contexts/did-v1.json" with { type: "json" };
-import fep7aa9 from "./contexts/fep-7aa9.json" with { type: "json" };
 import fep5711 from "./contexts/fep-5711.json" with { type: "json" };
+import fep7aa9 from "./contexts/fep-7aa9.json" with { type: "json" };
 import gotosocial from "./contexts/gotosocial.json" with { type: "json" };
 import identityV1 from "./contexts/identity-v1.json" with { type: "json" };
 import joinLemmyContext from "./contexts/join-lemmy.json" with { type: "json" };

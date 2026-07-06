@@ -14,6 +14,7 @@ defaultContext:
 - "https://gotosocial.org/ns"
 - "https://w3id.org/fep/7aa9"
 - toot: "http://joinmastodon.org/ns#"
+  sensitive: "as:sensitive"
   discoverable: "toot:discoverable"
   Hashtag: "as:Hashtag"
 
