@@ -73,6 +73,7 @@ import {
 import { recordInboxActivity } from "./metrics.ts";
 import type { MessageQueue } from "./mq.ts";
 import type { InboxMessage, Message, OutboxMessage } from "./queue.ts";
+import { markCircuitBreakerLegacySweepDone } from "./circuit-breaker-test-utils.ts";
 
 type IsEqual<A, B> = (<T>() => T extends A ? 1 : 2) extends
   (<T>() => T extends B ? 1 : 2) ? true : false;
@@ -7375,6 +7376,7 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
     const { federation, queued, kv } = setup({
       failureThreshold: 1,
     });
+    await markCircuitBreakerLegacySweepDone(kv);
     await kv.set(["_fedify", "circuit", "success-bookkeeping.example"], {
       state: "closed",
       failures: [],
@@ -7601,6 +7603,7 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       },
       { permanentFailureStatusCodes: [500] },
     );
+    await markCircuitBreakerLegacySweepDone(kv);
     await kv.set(["_fedify", "circuit", "permanent-bookkeeping.example"], {
       state: "half-open",
       failures: ["2026-05-25T00:00:00Z"],
@@ -7938,6 +7941,7 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       },
       { permanentFailureStatusCodes: [500] },
     );
+    await markCircuitBreakerLegacySweepDone(kv);
     await kv.set(["_fedify", "circuit", "permanent-probe.example"], {
       state: "half-open",
       failures: ["2026-05-25T00:00:00Z"],
@@ -7973,6 +7977,7 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       failureThreshold: 1,
       releaseInterval: { seconds: 1 },
     });
+    await markCircuitBreakerLegacySweepDone(kv);
     await kv.set(["_fedify", "circuit", "gone.example"], {
       state: "half-open",
       failures: ["2026-05-25T00:00:00Z"],
@@ -8108,6 +8113,7 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
         releaseInterval: { minutes: 1 },
       },
     });
+    await markCircuitBreakerLegacySweepDone(kv);
     await kv.set(["_fedify", "circuit", "half-open-telemetry.example"], {
       state: "half-open",
       failures: ["2026-05-25T00:00:00Z"],
@@ -8166,6 +8172,7 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
           recoveryDelay: { seconds: 1 },
         },
       });
+      await markCircuitBreakerLegacySweepDone(kv);
       await kv.set(["_fedify", "circuit", "stale-probe-telemetry.example"], {
         state: "half-open",
         failures: ["2026-05-25T00:00:00Z"],
@@ -8265,6 +8272,7 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
         },
       },
     });
+    await markCircuitBreakerLegacySweepDone(kv);
     await kv.set(["_fedify", "circuit", "expired-probe.example"], {
       state: "half-open",
       failures: ["2026-05-25T00:00:00Z"],
