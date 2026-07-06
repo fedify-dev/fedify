@@ -22,6 +22,39 @@ const algorithms: Record<
   "1.3.101.112": "Ed25519",
 };
 
+const DID_KEY_PREFIX = "did:key:";
+const ED25519_PUBLIC_KEY_MULTICODEC = 0xed;
+const ED25519_PUBLIC_KEY_LENGTH = 32;
+const DID_KEY_PATTERN = /^did:key:([^/?#]+)$/;
+const DID_KEY_VERIFICATION_METHOD_PATTERN = /^did:key:([^/?#]+)#([^/?#]+)$/;
+
+/**
+ * Parsed `did:key` verification method.
+ *
+ * @since 2.4.0
+ */
+export interface DidKeyVerificationMethod {
+  /**
+   * The DID URL identifying the verification method.
+   */
+  readonly id: URL;
+
+  /**
+   * The controller DID.
+   */
+  readonly controller: URL;
+
+  /**
+   * The Ed25519 public key encoded as a Multibase Multikey value.
+   */
+  readonly publicKeyMultibase: string;
+
+  /**
+   * The Ed25519 public key.
+   */
+  readonly publicKey: CryptoKey;
+}
+
 /**
  * Imports a PEM-SPKI formatted public key.
  * @param pem The PEM-SPKI formatted public key.
@@ -91,6 +124,98 @@ const PKCS1_HEADER = /^\s*-----BEGIN\s+RSA\s+PUBLIC\s+KEY-----\s*\n/;
  */
 export function importPem(pem: string): Promise<CryptoKey> {
   return PKCS1_HEADER.test(pem) ? importPkcs1(pem) : importSpki(pem);
+}
+
+function decodeEd25519DidKeyMultibase(multibaseKey: string): Uint8Array {
+  if (!multibaseKey.startsWith("z")) {
+    throw new TypeError("did:key must use base58-btc Multibase encoding.");
+  }
+  let decoded: Uint8Array;
+  try {
+    decoded = decodeMultibase(multibaseKey);
+  } catch (error) {
+    throw new TypeError("Invalid did:key Multibase encoding.", {
+      cause: error,
+    });
+  }
+  const { code } = getMulticodecPrefix(decoded);
+  if (code !== ED25519_PUBLIC_KEY_MULTICODEC) {
+    throw new TypeError("Unsupported did:key type: 0x" + code.toString(16));
+  }
+  const content = removeMulticodecPrefix(decoded);
+  if (content.length !== ED25519_PUBLIC_KEY_LENGTH) {
+    throw new TypeError("Invalid Ed25519 did:key length.");
+  }
+  return content;
+}
+
+/**
+ * Imports an Ed25519 `did:key` DID.
+ *
+ * @param did The `did:key` DID.
+ * @returns The imported Ed25519 public key.
+ * @throws {TypeError} If the DID is malformed or uses an unsupported key type.
+ * @since 2.4.0
+ */
+export async function importDidKey(did: string | URL): Promise<CryptoKey> {
+  const didString = did instanceof URL ? did.href : did;
+  const match = didString.match(DID_KEY_PATTERN);
+  if (match == null) throw new TypeError("Invalid did:key DID.");
+  const content = decodeEd25519DidKeyMultibase(match[1]);
+  return await crypto.subtle.importKey(
+    "raw",
+    content.slice(),
+    "Ed25519",
+    true,
+    ["verify"],
+  );
+}
+
+/**
+ * Exports an Ed25519 public key as a `did:key` DID.
+ *
+ * @param key The Ed25519 public key.
+ * @returns The `did:key` DID.
+ * @throws {TypeError} If the key is invalid or unsupported.
+ * @since 2.4.0
+ */
+export async function exportDidKey(key: CryptoKey): Promise<string> {
+  if (key.algorithm.name !== "Ed25519") {
+    throw new TypeError(
+      "Unsupported key type: " + JSON.stringify(key.algorithm),
+    );
+  }
+  return DID_KEY_PREFIX + await exportMultibaseKey(key);
+}
+
+/**
+ * Parses an Ed25519 `did:key` verification method DID URL.
+ *
+ * @param didUrl The `did:key` DID URL.
+ * @returns The parsed verification method.
+ * @throws {TypeError} If the DID URL is malformed, unsupported, or its
+ *                     fragment does not identify the same key as the DID.
+ * @since 2.4.0
+ */
+export async function parseDidKeyVerificationMethod(
+  didUrl: string | URL,
+): Promise<DidKeyVerificationMethod> {
+  const didUrlString = didUrl instanceof URL ? didUrl.href : didUrl;
+  const match = didUrlString.match(DID_KEY_VERIFICATION_METHOD_PATTERN);
+  if (match == null) {
+    throw new TypeError("Invalid did:key verification method.");
+  }
+  const [, publicKeyMultibase, fragment] = match;
+  if (publicKeyMultibase !== fragment) {
+    throw new TypeError("Invalid did:key verification method fragment.");
+  }
+  const publicKey = await importDidKey(DID_KEY_PREFIX + publicKeyMultibase);
+  return {
+    id: new URL(didUrlString),
+    controller: new URL(DID_KEY_PREFIX + publicKeyMultibase),
+    publicKeyMultibase,
+    publicKey,
+  };
 }
 
 /**

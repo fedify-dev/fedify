@@ -17,12 +17,16 @@ export {
   type RemoteDocument,
 } from "./docloader.ts";
 export {
+  type DidKeyVerificationMethod,
+  exportDidKey,
   exportMultibaseKey,
   exportSpki,
+  importDidKey,
   importMultibaseKey,
   importPem,
   importPkcs1,
   importSpki,
+  parseDidKeyVerificationMethod,
 } from "./key.ts";
 export {
   canParseDecimal,

@@ -12,8 +12,12 @@ defaultContext:
 - "https://www.w3.org/ns/did/v1"
 - "https://w3id.org/security/multikey/v1"
 - "https://gotosocial.org/ns"
+- "https://w3id.org/fep/7aa9"
 - alsoKnownAs:
     "@id": "as:alsoKnownAs"
+    "@type": "@id"
+  featuredCollections:
+    "@id": "https://w3id.org/fep/7aa9#featuredCollections"
     "@type": "@id"
   manuallyApprovesFollowers: "as:manuallyApprovesFollowers"
   movedTo:
@@ -193,6 +197,15 @@ properties:
     at people's profiles, is implemented using an extra property `featuredTags`
     on the actor object that points to a {@link Collection} of {@link Hashtag}
     objects specifically.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Collection"
+
+- singularName: featuredCollections
+  functional: true
+  compactName: featuredCollections
+  uri: "https://w3id.org/fep/7aa9#featuredCollections"
+  description: |
+    A collection of {@link FeaturedCollection}s created by this actor.
   range:
   - "https://www.w3.org/ns/activitystreams#Collection"
 

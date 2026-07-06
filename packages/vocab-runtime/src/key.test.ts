@@ -2,13 +2,17 @@ import { deepStrictEqual, rejects } from "node:assert";
 import { test } from "node:test";
 import { exportJwk, importJwk } from "./jwk.ts";
 import {
+  exportDidKey,
   exportMultibaseKey,
   exportSpki,
+  importDidKey,
   importMultibaseKey,
   importPem,
   importPkcs1,
   importSpki,
+  parseDidKeyVerificationMethod,
 } from "./key.ts";
+import { addMulticodecPrefix } from "./internal/multicodec.ts";
 import { encodeMultibase } from "./multibase/mod.ts";
 
 // cSpell: disable
@@ -197,4 +201,86 @@ test("exportMultibaseKey()", async () => {
     "z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
     // cSpell: enable
   );
+});
+
+test("exportDidKey() and importDidKey()", async () => {
+  const ed25519Key = await importJwk(ed25519Jwk, "public");
+  const did = await exportDidKey(ed25519Key);
+  deepStrictEqual(did, `did:key:${ed25519Multibase}`);
+  deepStrictEqual(await exportJwk(await importDidKey(did)), ed25519Jwk);
+  deepStrictEqual(
+    await exportJwk(await importDidKey(new URL(did))),
+    ed25519Jwk,
+  );
+
+  const rsaKey = await importJwk(rsaJwk, "public");
+  await rejects(
+    () => exportDidKey(rsaKey),
+    TypeError,
+  );
+  await rejects(
+    () => importDidKey(`did:key:${rsaMultibase}`),
+    new TypeError("Unsupported did:key type: 0x1205"),
+  );
+});
+
+test("parseDidKeyVerificationMethod()", async () => {
+  const verificationMethod = `did:key:${ed25519Multibase}#${ed25519Multibase}`;
+  const parsed = await parseDidKeyVerificationMethod(verificationMethod);
+  deepStrictEqual(parsed.id, new URL(verificationMethod));
+  deepStrictEqual(parsed.controller, new URL(`did:key:${ed25519Multibase}`));
+  deepStrictEqual(parsed.publicKeyMultibase, ed25519Multibase);
+  deepStrictEqual(await exportJwk(parsed.publicKey), ed25519Jwk);
+});
+
+test("did:key helpers reject malformed values", async () => {
+  const ed25519Key = await importJwk(ed25519Jwk, "public");
+  const raw = new Uint8Array(await crypto.subtle.exportKey("raw", ed25519Key));
+  const shortEd25519 = new TextDecoder().decode(
+    encodeMultibase(
+      "base58btc",
+      addMulticodecPrefix(0xed, raw.slice(0, 31)),
+    ),
+  );
+  const base64UrlEd25519 = new TextDecoder().decode(
+    encodeMultibase(
+      "base64url",
+      addMulticodecPrefix(0xed, raw),
+    ),
+  );
+  const malformedMulticodec = new TextDecoder().decode(
+    encodeMultibase("base58btc", Uint8Array.from([0x80])),
+  );
+
+  for (
+    const value of [
+      "did:web:example.com",
+      "did:key:",
+      `did:key:${ed25519Multibase}/path`,
+      `did:key:${ed25519Multibase}?query`,
+      `did:key:${ed25519Multibase}#${ed25519Multibase}`,
+      "did:key:z0",
+      `did:key:${base64UrlEd25519}`,
+      `did:key:${shortEd25519}`,
+      `did:key:${malformedMulticodec}`,
+    ]
+  ) {
+    await rejects(() => importDidKey(value), TypeError);
+  }
+
+  for (
+    const value of [
+      `did:key:${ed25519Multibase}`,
+      `did:key:${ed25519Multibase}#`,
+      `did:key:${ed25519Multibase}#z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK`,
+      `did:key:${ed25519Multibase}#${base64UrlEd25519}`,
+      "did:key:z0#z0",
+      `did:key:${rsaMultibase}#${rsaMultibase}`,
+      `did:key:${shortEd25519}#${shortEd25519}`,
+      `did:key:${malformedMulticodec}#${malformedMulticodec}`,
+      "https://example.com/key",
+    ]
+  ) {
+    await rejects(() => parseDidKeyVerificationMethod(value), TypeError);
+  }
 });

@@ -163,10 +163,10 @@ export type SignatureVerificationResult =
  *     `KeyCache` itself may be backed by a remote store such as Redis or a
  *     database, in which case the measurement reflects whatever round trip
  *     that backend incurs.
- *  -  `fetched`: the public key was not in the cache and was loaded
- *     through the document loader, returning a usable key.  This typically
- *     corresponds to a network fetch, but a custom document loader that
- *     serves from a local store will also fall in this bucket.
+ *  -  `fetched`: the public key was not in the cache and returned a usable
+ *     key.  This typically corresponds to a document loader lookup, but
+ *     local key resolution paths such as supported `did:key` verification
+ *     methods also fall in this bucket.
  *  -  `error`: the fetch attempt returned no usable key (HTTP failure,
  *     invalid response body, cached negative entry, thrown exception,
  *     etc.).
@@ -722,8 +722,8 @@ class FederationMetrics {
     );
     this.keyLookup = meter.createCounter("activitypub.key.lookup", {
       description:
-        "Public-key lookup attempts performed by Fedify, including both " +
-        "cache hits and remote fetches.",
+        "Public-key lookup attempts performed by Fedify, including cache " +
+        "hits, local resolutions, and remote fetches.",
       unit: "{lookup}",
     });
     this.keyLookupDuration = meter.createHistogram(
@@ -731,7 +731,7 @@ class FederationMetrics {
       {
         description:
           "Duration of public-key lookups performed by Fedify, including " +
-          "any remote fetch.",
+          "cache hits, local resolutions, and any remote fetch.",
         unit: "ms",
         advice: {
           // Reuse the OpenTelemetry HTTP server semantic-conventions buckets

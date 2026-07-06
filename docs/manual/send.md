@@ -1084,6 +1084,13 @@ set](./actor.md#public-keys-of-an-actor) and the actor has any Ed25519 key pair.
 If there are multiple key pairs, Fedify creates the number of integrity proofs
 equal to the number of Ed25519 key pairs.
 
+When verifying incoming Object Integrity Proofs, Fedify can resolve Ed25519
+`did:key` verification methods locally.  A proof whose `verificationMethod`
+is a DID URL such as `did:key:z...#z...` does not require fetching that
+verification method as a JSON-LD document.  This is the key lookup mechanism
+used by [FEP-ef61] portable objects; policy checks that relate a portable
+object ID to its proof are handled separately from proof verification itself.
+
 > [!TIP]
 > HTTPS Signatures, Linked Data Signatures, and Object Integrity Proofs can
 > coexist in an application and be used together for maximum compatibility.
@@ -1100,6 +1107,7 @@ equal to the number of Ed25519 key pairs.
 > key pairs for each actor, and store them in the database.
 
 [FEP-8b32]: https://w3id.org/fep/8b32
+[FEP-ef61]: https://w3id.org/fep/ef61
 
 
 Activity transformers

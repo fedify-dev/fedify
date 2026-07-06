@@ -8,6 +8,20 @@ Version 2.4.0
 
 To be released.
 
+### @fedify/fedify
+
+ -  Added local `did:key` verification method resolution for
+    [FEP-8b32] Object Integrity Proofs.  `verifyProof()` can now verify
+    Ed25519 `eddsa-jcs-2022` proofs whose `verificationMethod` is a
+    `did:key:z...#z...` DID URL without fetching the verification method
+    as a remote JSON-LD document, which is required for [FEP-ef61]
+    portable objects.  [[#827], [#915]]
+
+[FEP-8b32]: https://w3id.org/fep/8b32
+[FEP-ef61]: https://w3id.org/fep/ef61
+[#827]: https://github.com/fedify-dev/fedify/issues/827
+[#915]: https://github.com/fedify-dev/fedify/pull/915
+
 ### @fedify/vocab
 
  -  Added support for [FEP-ef61] portable ActivityPub IRIs in generated
@@ -16,11 +30,28 @@ To be released.
     serialization emits canonical `ap+ef61:` values with decoded DID
     authorities.  [[#826], [#850]]
 
-[FEP-ef61]: https://w3id.org/fep/ef61
+ -  Added vocabulary support for [FEP-7aa9], including
+    `FeaturedCollection`, `FeaturedItem`, `FeatureRequest`, and
+    `FeatureAuthorization`, plus actor `featuredCollections` and
+    `InteractionPolicy.canFeature` properties.  [[#810], [#914]]
+
+[FEP-7aa9]: https://w3id.org/fep/7aa9
+[#810]: https://github.com/fedify-dev/fedify/issues/810
 [#826]: https://github.com/fedify-dev/fedify/issues/826
 [#850]: https://github.com/fedify-dev/fedify/pull/850
+[#914]: https://github.com/fedify-dev/fedify/pull/914
 
 ### @fedify/vocab-runtime
+
+ -  Added the [FEP-7aa9] JSON-LD context to the preloaded context registry so
+    FEP-7aa9 documents can be compacted and expanded without fetching the
+    context remotely.  [[#810], [#914]]
+
+ -  Added helpers for Ed25519 `did:key` DIDs and verification method DID
+    URLs: `exportDidKey()` exports public keys to base58-btc `did:key` DIDs,
+    `importDidKey()` imports supported DIDs back to `CryptoKey`, and
+    `parseDidKeyVerificationMethod()` validates `did:key:z...#z...`
+    verification methods.  [[#827], [#915]]
 
  -  Changed `getDocumentLoader()` to reject HTML and XHTML responses that do
     not advertise an ActivityPub alternate document with a `FetchError`
@@ -8005,7 +8036,6 @@ Released on June 29, 2024.
     for Object Integrity Proofs.  [[FEP-8b32], [#54]]
 
 [eddsa-jcs-2022]: https://codeberg.org/fediverse/fep/pulls/338
-[FEP-8b32]: https://w3id.org/fep/8b32
 [#54]: https://github.com/fedify-dev/fedify/issues/54
 [#71]: https://github.com/fedify-dev/fedify/issues/71
 [#74]: https://github.com/fedify-dev/fedify/issues/74

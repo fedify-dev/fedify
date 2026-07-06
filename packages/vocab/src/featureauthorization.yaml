@@ -1,0 +1,33 @@
+$schema: ../../vocab-tools/schema.yaml
+name: FeatureAuthorization
+compactName: FeatureAuthorization
+uri: "https://w3id.org/fep/7aa9#FeatureAuthorization"
+extends: "https://www.w3.org/ns/activitystreams#Object"
+entity: true
+description: |
+  Proves that an actor consented to being included in a
+  {@link FeaturedCollection}.
+
+  See [FEP-7aa9](https://w3id.org/fep/7aa9) for details.
+defaultContext:
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/security/data-integrity/v1"
+- "https://gotosocial.org/ns"
+- "https://w3id.org/fep/7aa9"
+
+properties:
+- singularName: interactingObject
+  functional: true
+  compactName: interactingObject
+  uri: "https://gotosocial.org/ns#interactingObject"
+  description: The featured collection for which the authorization was granted.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"
+
+- singularName: interactionTarget
+  functional: true
+  compactName: interactionTarget
+  uri: "https://gotosocial.org/ns#interactionTarget"
+  description: The actor that was authorized to be featured.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Object"

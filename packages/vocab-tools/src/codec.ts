@@ -207,7 +207,7 @@ export async function* generateEncoder(
     yield `
     array = [];
     for (const v of this.${await getFieldName(property.uri)}) {
-      const element = (
+      let element = (
     `;
     if (!areAllScalarTypes(property.range, types)) {
       yield 'v instanceof URL ? { "@id": formatIri(v) } : ';
@@ -217,6 +217,11 @@ export async function* generateEncoder(
     }
     yield `
       );
+      if (Array.isArray(element)) {
+        if (element.length < 1) continue;
+        if (element.length == 1) element = element[0];
+      }
+      if (typeof element === "undefined") continue;
     `;
     if (isNonFunctionalProperty(property) && property.container === "graph") {
       yield `array.push({ "@graph": element });`;
@@ -254,7 +259,10 @@ export async function* generateEncoder(
     if (options.format === "expand") {
       return await jsonld.expand(
         values,
-        { documentLoader: options.contextLoader },
+        {
+          documentLoader: options.contextLoader,
+          keepFreeFloatingNodes: true,
+        },
       );
     }
     const docContext = options.context ??
@@ -394,7 +402,17 @@ export async function* generateDecoder(
     // deno-lint-ignore no-explicit-any
     let values: Record<string, any[]> & { "@id"?: string };
     let expanded: unknown[];
-    if (globalThis.Object.keys(json).length == 0) {
+    if (
+      "_fromSubclass" in options &&
+      options._fromSubclass &&
+      typeof json === "object" &&
+      !Array.isArray(json)
+    ) {
+      values =
+        // deno-lint-ignore no-explicit-any
+        json as (Record<string, any[]> & { "@id"?: string });
+      expanded = [values];
+    } else if (globalThis.Object.keys(json).length == 0) {
       values = {};
       expanded = [values];
     } else {
@@ -455,8 +473,9 @@ export async function* generateDecoder(
     `;
   } else {
     yield `
-    delete values["@type"];
-    const instance = await super.fromJsonLd(values, {
+    const superValues = structuredClone(values);
+    delete superValues["@type"];
+    const instance = await super.fromJsonLd(superValues, {
       ...options,
       // @ts-ignore: an internal option
       _fromSubclass: true,
@@ -485,13 +504,25 @@ export async function* generateDecoder(
         `;
       }
     }
+    let itemsExpression =
+      `${arrayVariable}.length === 1 && "@list" in ${arrayVariable}[0]
+        ? ${arrayVariable}[0]["@list"]
+        : ${arrayVariable}`;
+    if (
+      isNonFunctionalProperty(property) && property.container === "graph"
+    ) {
+      itemsExpression = `(${itemsExpression}).flatMap((item: unknown) =>
+          item != null && typeof item === "object" && "@graph" in item &&
+            Array.isArray((item as { "@graph": unknown })["@graph"])
+            ? (item as { "@graph": unknown[] })["@graph"]
+            : [item]
+        )`;
+    }
     yield `
     for (
       const v of ${arrayVariable} == null
         ? []
-        : ${arrayVariable}.length === 1 && "@list" in ${arrayVariable}[0]
-        ? ${arrayVariable}[0]["@list"]
-        : ${arrayVariable}
+        : ${itemsExpression}
     ) {
       if (v == null) continue;
     `;
