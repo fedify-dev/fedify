@@ -813,7 +813,7 @@ Fedify records the following OpenTelemetry metrics:
     registered names.  A failed task outcome
     (`fedify.queue.task.result=failed`) additionally carries
     `fedify.task.failure_reason`, one of `deserialization`, `validation`,
-    `unknown_task`, or `handler`.
+    `unknown_task`, `handler`, or `retry_enqueue`.
     `fedify.queue.native_retrial` reflects the queue backend's `nativeRetrial`
     flag when set on the queue. `activitypub.activity.type` is recorded
     whenever Fedify knows the activity type for the queued message; for inbox
@@ -831,7 +831,9 @@ Fedify records the following OpenTelemetry metrics:
     is recorded as `failed` with a `fedify.task.failure_reason`, or the
     handler threw and the retry policy declined another attempt, recorded
     with the `handler` reason—a handler error folded into a scheduled retry
-    records `completed` instead), and `aborted` when the worker re-threw an
+    records `completed` instead, unless re-enqueuing that retry itself fails,
+    which records `failed` with the `retry_enqueue` reason and nacks the
+    message), and `aborted` when the worker re-threw an
     `AbortError` (for example, because a graceful-shutdown `AbortSignal`
     interrupted processing) or when an aborted custom task attempt was
     abandoned without a retry.  When the queue backend does not declare
@@ -1010,7 +1012,7 @@ for ActivityPub:
 | `fedify.queue.task.result`                   | string   | The terminal outcome of queue task processing: `completed`, `failed`, or `aborted`.                                                                                                                                   | `"failed"`                                                           |
 | `fedify.task.name`                           | string   | The name of a custom background task: always on the `fedify.task` span; on the task's `fedify.queue.task.*` run metrics only for a registered task (omitted for an `unknown_task` drop, keeping cardinality bounded). | `"sendDigest"`                                                       |
 | `fedify.task.attempt`                        | int      | The zero-based attempt number of a custom background task, on the `fedify.task` span.                                                                                                                                 | `0`                                                                  |
-| `fedify.task.failure_reason`                 | string   | Why a custom background task failed: `deserialization`, `validation`, `unknown_task`, or `handler`.  Set only on a terminal failure.                                                                                  | `"validation"`                                                       |
+| `fedify.task.failure_reason`                 | string   | Why a custom background task failed: `deserialization`, `validation`, `unknown_task`, `handler`, or `retry_enqueue`.  Set only on a terminal failure.                                                                 | `"validation"`                                                       |
 | `http.redirect.url`                          | string   | The redirect URL when a document fetch results in a redirect.                                                                                                                                                         | `"https://example.com/new-location"`                                 |
 | `http.response.status_code`                  | int      | The HTTP response status code.                                                                                                                                                                                        | `200`                                                                |
 | `http_signatures.signature`                  | string   | The signature of the HTTP request in hexadecimal.                                                                                                                                                                     | `"73a74c990beabe6e59cc68f9c6db7811b59cbb22fd12dcffb3565b651540efe9"` |

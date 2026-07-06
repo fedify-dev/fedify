@@ -219,19 +219,23 @@ export type HttpSignatureMetricFailureReason =
 /**
  * The reason a custom background task terminated unsuccessfully, emitted as the
  * `fedify.task.failure_reason` attribute.  A small bounded set mapping to the
- * worker's dispatch decision points; open to later refinement.
+ * worker's dispatch and retry-scheduling decision points; open to later
+ * refinement.
  *
  *  -  `deserialization`: the wire payload could not be deserialized.
  *  -  `validation`: the deserialized payload failed schema validation.
  *  -  `unknown_task`: the task name has no registered handler.
  *  -  `handler`: the registered handler threw.
+ *  -  `retry_enqueue`: the handler threw and a retry was scheduled, but
+ *     re-enqueuing the retry to the queue backend failed.
  * @since 2.4.0
  */
 export type QueueTaskFailureReason =
   | "deserialization"
   | "validation"
   | "unknown_task"
-  | "handler";
+  | "handler"
+  | "retry_enqueue";
 
 /**
  * Bounded values recorded as `ld_signatures.type` on the signature

@@ -8,6 +8,7 @@
  */
 export { default as TaskCodec } from "./codec.ts";
 export { default as enqueueTasks } from "./enqueue.ts";
+export { TaskRetryEnqueueError } from "./error.ts";
 export type {
   TaskDefinition,
   TaskDefinitionInternal,
@@ -16,3 +17,4 @@ export type {
   TaskHandler,
   TaskRegistry,
 } from "./task.ts";
+export type { QueueTaskDispatchResult } from "./types.ts";
