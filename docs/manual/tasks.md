@@ -375,11 +375,13 @@ failure.
 
 Tasks also reuse the `fedify.queue.task.*` metric family (`enqueued`,
 `started`, `completed`, `failed`, `duration`, `in_flight`) that the inbox,
-outbox, and fanout workers already report.  On a task run measurement
-(`enqueued`, `started`, `completed`, `failed`, `duration`),
+outbox, and fanout workers already report.  Across these measurements
 `fedify.queue.role` is `task` and `fedify.task.name` names the task; the
 process-local `in_flight` UpDownCounter omits `fedify.task.name` so its
-increments and decrements pair up cleanly.
+increments and decrements pair up cleanly.  `fedify.queue.task.enqueued` is
+recorded at the enqueue site—both the initial enqueue and a retry
+re-enqueue—whereas `started`, `completed`, `failed`, and `duration` are
+recorded during the worker run.
 `fedify.queue.backend` reflects the queue actually used after routing—so a task
 that falls back to the `outboxQueue` (see
 [Routing](#queue-routing-and-isolation)) is labeled with the outbox queue's
@@ -414,7 +416,16 @@ The bounded value set keeps metric cardinality finite: a metric's task name is
 a registered, known-at-startup value, never derived from message content—an
 `unknown_task` drop carries a wire-supplied name, so that name is kept off the
 metrics (it still appears on the span, which does not aggregate into time
-series).  See the [OpenTelemetry](./opentelemetry.md) manual for the full span,
+series).
+
+For example, grouping `fedify.queue.task.failed` by
+`fedify.task.failure_reason` separates schema drift
+(`deserialization`/`validation` drops) from `handler` give-ups. Or, filtering
+`fedify.queue.task.enqueued` for `fedify.queue.task.attempt > 0` (or reading
+`fedify.task.attempt` on the `fedify.task` span) surfaces retry re-enqueues
+before they become give-ups.
+
+See the [OpenTelemetry](./opentelemetry.md) manual for the full span,
 attribute, and metric reference.
 
 [OpenTelemetry]: https://opentelemetry.io/
