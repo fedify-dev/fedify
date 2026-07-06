@@ -1030,7 +1030,7 @@ test(
       ...baseOptions,
       kv,
       queue: { task: queue },
-      taskDeduplicationTtl: { milliseconds: 1 },
+      taskDeduplicationTtl: { minutes: 1 },
     });
     const task = federation.defineTask("stale-rollback", {
       schema: stringSchema,
@@ -1043,7 +1043,7 @@ test(
 
     const first = ctx.enqueueTask(task, "first", { deduplicationKey: "k" });
     await firstEntered;
-    await delay(20);
+    await kv.delete(markerKey);
     await ctx.enqueueTask(task, "second", { deduplicationKey: "k" });
     const secondToken = await kv.get(markerKey);
     ok(secondToken != null);
