@@ -233,9 +233,9 @@ function normalizePortableComponent(value: string): string {
     throw new TypeError("Invalid portable ActivityPub IRI component.");
   }
   return value.replace(
-    /%[0-9A-Fa-f]{2}|[^%]+|%/g,
+    /%[0-9A-Fa-f]{2}|[^%]+/g,
     (match) => {
-      if (match.startsWith("%") && match.length === 3) {
+      if (match.startsWith("%")) {
         const upper = match.toUpperCase();
         const decoded = String.fromCharCode(
           Number.parseInt(upper.slice(1), 16),
