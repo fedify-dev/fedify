@@ -193,9 +193,6 @@ test("canonicalizePortableUri() emits comparison forms", () => {
     "ap://did:key:z6Mkabc/actor?gateways=https%3A%2F%2Fa.example",
     "ap+ef61://did:key:z6Mkabc/actor",
     "ap+ef61://did%3Akey%3Az6Mkabc/actor?gateways=https%3A%2F%2Fa.example",
-    new URL(
-      "ap+ef61://did%3Akey%3Az6Mkabc/actor?gateways=https%3A%2F%2Fa.example",
-    ),
   ];
   for (const iri of cases) {
     deepStrictEqual(
@@ -289,16 +286,19 @@ test("canonicalizePortableUri() rejects non-portable URIs", () => {
   for (const iri of cases) {
     throws(() => canonicalizePortableUri(iri), TypeError);
   }
+  throws(
+    () =>
+      canonicalizePortableUri(
+        new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor") as unknown as string,
+      ),
+    TypeError,
+  );
 });
 
 test("arePortableUrisEqual() compares canonical portable URI forms", () => {
   ok(arePortableUrisEqual(
     "ap://did:key:z6Mkabc/actor",
     "ap+ef61://did%3Akey%3Az6Mkabc/actor?gateways=https%3A%2F%2Fa.example",
-  ));
-  ok(arePortableUrisEqual(
-    new URL("ap://did%3Akey%3Az6Mkabc/actor?gateways=https%3A%2F%2Fa.example"),
-    "ap+ef61://did:key:z6Mkabc/actor",
   ));
   ok(arePortableUrisEqual(
     "ap://DID:key:z6Mkabc/actor",

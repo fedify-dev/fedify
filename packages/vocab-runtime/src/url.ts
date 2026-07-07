@@ -67,22 +67,23 @@ export function formatIri(iri: string | URL): string {
 /**
  * Canonicalizes a FEP-ef61 portable ActivityPub URI for comparison.
  *
- * This accepts both `ap:` and `ap+ef61:` URI values with decoded or
+ * This accepts both `ap:` and `ap+ef61:` URI strings with decoded or
  * percent-encoded DID authorities.  The returned value uses the `ap+ef61:`
- * scheme, a decoded DID authority, and no query component.
+ * scheme, a decoded DID authority, and no query component.  Pass the raw URI
+ * string, not a `URL` object, because JavaScript `URL` normalizes opaque path
+ * segments before Fedify can compare them.
  *
  * @since 2.4.0
  */
-export function canonicalizePortableUri(input: string | URL): string {
-  const iri = input instanceof URL ? input.href : input;
-  const parsed = parsePortableIri(iri);
+export function canonicalizePortableUri(input: string): string {
+  if (typeof input !== "string") {
+    throw new TypeError("Invalid portable ActivityPub IRI.");
+  }
+  const parsed = parsePortableIri(input);
   if (parsed == null) {
     throw new TypeError("Invalid portable ActivityPub IRI.");
   }
-  const match = iri.match(PORTABLE_IRI_PATTERN);
-  if (match == null) {
-    throw new TypeError("Invalid portable ActivityPub IRI.");
-  }
+  const match = input.match(PORTABLE_IRI_PATTERN)!;
   // parsePortableIri() validates the value but returns a URL, which normalizes
   // opaque path segments.  Use the raw match for path and fragment comparison.
   // parsed.host is the encodeURIComponent() output from parsePortableIri(), so
@@ -101,8 +102,8 @@ export function canonicalizePortableUri(input: string | URL): string {
  * @since 2.4.0
  */
 export function arePortableUrisEqual(
-  left: string | URL,
-  right: string | URL,
+  left: string,
+  right: string,
 ): boolean {
   return canonicalizePortableUri(left) === canonicalizePortableUri(right);
 }
