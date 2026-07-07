@@ -219,6 +219,9 @@ function normalizePercentEncoding(value: string): string {
 }
 
 function normalizePortableComponent(value: string): string {
+  if (INVALID_PERCENT_ENCODING_PATTERN.test(value)) {
+    throw new TypeError("Invalid portable ActivityPub IRI component.");
+  }
   return value.replace(
     /%[0-9A-Fa-f]{2}|[^%]+|%/g,
     (match) =>
