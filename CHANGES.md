@@ -92,6 +92,12 @@ To be released.
 
 ### @fedify/vocab-runtime
 
+ -  Added `canonicalizePortableUri()` and `arePortableUrisEqual()` for
+    comparing [FEP-ef61] portable ActivityPub URIs.  The helpers accept `ap:`
+    and `ap+ef61:` values with decoded or percent-encoded DID authorities,
+    normalize them to `ap+ef61:`, and ignore query hints such as `gateways`
+    during comparison.  [[#828], [#924]]
+
  -  Added the [FEP-7aa9] JSON-LD context to the preloaded context registry so
     FEP-7aa9 documents can be compacted and expanded without fetching the
     context remotely.  [[#810], [#914]]
@@ -108,8 +114,10 @@ To be released.
     error pages surface as document loading failures with the response URL and
     content type, rather than generic JSON parser crashes.  [[#912], [#913]]
 
+[#828]: https://github.com/fedify-dev/fedify/issues/828
 [#912]: https://github.com/fedify-dev/fedify/issues/912
 [#913]: https://github.com/fedify-dev/fedify/pull/913
+[#924]: https://github.com/fedify-dev/fedify/pull/924
 
 
 Version 2.3.1

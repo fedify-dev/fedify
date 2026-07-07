@@ -64,6 +64,40 @@ export function formatIri(iri: string | URL): string {
 }
 
 /**
+ * Canonicalizes a FEP-ef61 portable ActivityPub URI for comparison.
+ *
+ * This accepts both `ap:` and `ap+ef61:` URI values with decoded or
+ * percent-encoded DID authorities.  The returned value uses the `ap+ef61:`
+ * scheme, a decoded DID authority, and no query component.
+ *
+ * @since 2.4.0
+ */
+export function canonicalizePortableUri(input: string | URL): string {
+  const parsed = parsePortableIri(input instanceof URL ? input.href : input);
+  if (parsed == null) {
+    throw new TypeError("Invalid portable ActivityPub IRI.");
+  }
+  const authority = decodePortableAuthority(parsed.host).replace(
+    DID_SCHEME_PATTERN,
+    "did:",
+  );
+  return `ap+ef61://${authority}${parsed.pathname}${parsed.hash}`;
+}
+
+/**
+ * Checks whether two FEP-ef61 portable ActivityPub URIs identify the same
+ * portable object.
+ *
+ * @since 2.4.0
+ */
+export function arePortableUrisEqual(
+  left: string | URL,
+  right: string | URL,
+): boolean {
+  return canonicalizePortableUri(left) === canonicalizePortableUri(right);
+}
+
+/**
  * Checks whether two IRIs have the same origin.
  */
 export function haveSameIriOrigin(left: URL, right: URL): boolean {

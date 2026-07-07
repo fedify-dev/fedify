@@ -54,6 +54,8 @@ export {
   type PropertyPreprocessorContext,
 } from "./preprocessor.ts";
 export {
+  arePortableUrisEqual,
+  canonicalizePortableUri,
   expandIPv6Address,
   formatIri,
   haveSameIriOrigin,
