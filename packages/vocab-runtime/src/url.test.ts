@@ -262,9 +262,17 @@ test("canonicalizePortableUri() normalizes path and fragment pct-encoding casing
     canonicalizePortableUri("ap://did:key:z6Mkabc/actor%2fprofile%3aimage"),
     "ap+ef61://did:key:z6Mkabc/actor%2Fprofile%3Aimage",
   );
+  deepStrictEqual(
+    canonicalizePortableUri("ap://did:key:z6Mkabc/actor%2Dprofile#part%7Etwo"),
+    "ap+ef61://did:key:z6Mkabc/actor-profile#part~two",
+  );
   ok(arePortableUrisEqual(
     "ap://did:key:z6Mkabc/actor%2fprofile#part%2ftwo",
     "ap://did:key:z6Mkabc/actor%2Fprofile#part%2Ftwo",
+  ));
+  ok(arePortableUrisEqual(
+    "ap://did:key:z6Mkabc/actor%2Dprofile#part%7Etwo",
+    "ap://did:key:z6Mkabc/actor-profile#part~two",
   ));
 });
 
@@ -297,7 +305,7 @@ test("canonicalizePortableUri() preserves opaque path segments", () => {
   );
   deepStrictEqual(
     canonicalizePortableUri("ap://did:key:z6Mkabc/a/%2e%2e/b"),
-    "ap+ef61://did:key:z6Mkabc/a/%2E%2E/b",
+    "ap+ef61://did:key:z6Mkabc/a/../b",
   );
   ok(
     !arePortableUrisEqual(

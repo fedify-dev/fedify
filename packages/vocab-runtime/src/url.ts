@@ -234,10 +234,16 @@ function normalizePortableComponent(value: string): string {
   }
   return value.replace(
     /%[0-9A-Fa-f]{2}|[^%]+|%/g,
-    (match) =>
-      match.startsWith("%") && match.length === 3
-        ? match.toUpperCase()
-        : encodeURI(match),
+    (match) => {
+      if (match.startsWith("%") && match.length === 3) {
+        const upper = match.toUpperCase();
+        const decoded = String.fromCharCode(
+          Number.parseInt(upper.slice(1), 16),
+        );
+        return /[A-Za-z0-9._~-]/.test(decoded) ? decoded : upper;
+      }
+      return encodeURI(match);
+    },
   );
 }
 
