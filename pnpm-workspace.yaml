@@ -59,7 +59,6 @@ catalog:
   "@cloudflare/workers-types": ^4.20260511.1
   "@fxts/core": ^1.20.0
   "@js-temporal/polyfill": ^0.5.1
-  temporal-polyfill: ^1.0.1
   "@logtape/file": ^2.2.0
   "@logtape/logtape": ^2.2.0
   "@multiformats/base-x": ^4.0.1
@@ -113,6 +112,7 @@ catalog:
   nuxt: ^4.4.2
   oxlint: ^1.66.0
   postgres: ^3.4.7
+  temporal-polyfill: ^1.0.1
   tsdown: ^0.22.0
   typescript: ^6.0.0
   urlpattern-polyfill: "^10.1.0"

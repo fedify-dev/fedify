@@ -1,4 +1,4 @@
-import { ok, rejects, strictEqual } from "node:assert";
+import { ok, strictEqual, throws } from "node:assert";
 import { createRequire } from "node:module";
 import { mockDocumentLoader, test } from "@fedify/fixture";
 
@@ -8,8 +8,8 @@ test("CommonJS entry bundles temporal-polyfill internally", {
   const originalTemporal = globalThis.Temporal;
 
   const require = createRequire(import.meta.url);
-  await rejects(
-    () => Promise.resolve().then(() => require("temporal-polyfill")),
+  throws(
+    () => require("temporal-polyfill"),
     (error: unknown) => {
       if (error == null || typeof error !== "object") return false;
       const { code } = error as { code?: unknown };

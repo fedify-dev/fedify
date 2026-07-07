@@ -132,7 +132,7 @@ for (const pkg of packages) {
         }
       }
       if (
-        text.includes("Temporal") &&
+        /\bTemporal\b/.test(text) &&
         !text.includes(`/// <reference lib="esnext.temporal" />`)
       ) {
         console.error(`${file} is missing the Temporal lib reference`);
@@ -154,10 +154,12 @@ async function prepareTypeConsumerProject(
   });
   await Deno.mkdir(join(dir, "node_modules", "@fedify"), { recursive: true });
   for (const pkg of typeConsumerPackages) {
+    // Symlink the package root so package.json exports resolve to the dist
+    // artifacts produced by the earlier build check.
     await Deno.symlink(
       join(root, "packages", pkg),
       join(dir, "node_modules", "@fedify", pkg),
-      { type: "dir" },
+      { type: Deno.build.os === "windows" ? "junction" : "dir" },
     );
   }
   await Deno.writeTextFile(
