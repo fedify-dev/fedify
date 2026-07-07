@@ -96,10 +96,10 @@ export function canonicalizePortableUri(input: string): string {
     decodePortableAuthority(parsed.host).replace(DID_SCHEME_PATTERN, "did:"),
   );
   // Keep path and fragment text from the raw match to avoid URL dot-segment
-  // normalization, but still normalize percent-escape hex casing per URI
-  // comparison rules.
-  const path = normalizePercentEncoding(match[3]);
-  const fragment = match[5] == null ? "" : normalizePercentEncoding(match[5]);
+  // normalization, but still encode raw characters and normalize
+  // percent-escape hex casing per URI comparison rules.
+  const path = normalizePortableComponent(match[3]);
+  const fragment = match[5] == null ? "" : normalizePortableComponent(match[5]);
   return `ap+ef61://${authority}${path}${fragment}`;
 }
 
@@ -107,9 +107,10 @@ export function canonicalizePortableUri(input: string): string {
  * Checks whether two FEP-ef61 portable ActivityPub URIs identify the same
  * portable object.
  *
- * Non-string or non-portable inputs are compared by strict string equality.
- * Portable URI inputs are compared through {@link canonicalizePortableUri},
- * which can throw a `TypeError` for malformed portable authorities or paths.
+ * Non-string inputs return `false`.  Non-portable URI strings use strict string
+ * equality.  Portable URI strings are compared through
+ * {@link canonicalizePortableUri}; malformed portable URI strings return
+ * `false` unless they are exactly equal.
  *
  * @since 2.4.0
  */
@@ -117,13 +118,17 @@ export function arePortableUrisEqual(
   left: string,
   right: string,
 ): boolean {
-  if (
-    typeof left !== "string" || typeof right !== "string" ||
-    !PORTABLE_IRI_PATTERN.test(left) || !PORTABLE_IRI_PATTERN.test(right)
-  ) {
-    return left === right;
+  if (typeof left !== "string" || typeof right !== "string") return false;
+  if (left === right) return true;
+  if (!PORTABLE_IRI_PATTERN.test(left) || !PORTABLE_IRI_PATTERN.test(right)) {
+    return false;
   }
-  return canonicalizePortableUri(left) === canonicalizePortableUri(right);
+  try {
+    return canonicalizePortableUri(left) === canonicalizePortableUri(right);
+  } catch (error) {
+    if (error instanceof TypeError) return false;
+    throw error;
+  }
 }
 
 /**
@@ -210,6 +215,16 @@ function normalizePercentEncoding(value: string): string {
   return value.replace(
     PERCENT_ENCODING_PATTERN,
     (match) => match.toUpperCase(),
+  );
+}
+
+function normalizePortableComponent(value: string): string {
+  return value.replace(
+    /%[0-9A-Fa-f]{2}|[^%]+|%/g,
+    (match) =>
+      match.startsWith("%") && match.length === 3
+        ? match.toUpperCase()
+        : encodeURI(match),
   );
 }
 

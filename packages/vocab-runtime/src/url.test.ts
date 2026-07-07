@@ -260,6 +260,17 @@ test("canonicalizePortableUri() normalizes path and fragment pct-encoding casing
   ));
 });
 
+test("canonicalizePortableUri() encodes raw path and fragment characters", () => {
+  deepStrictEqual(
+    canonicalizePortableUri("ap://did:key:z6Mkabc/\u00e9#\u00e9"),
+    "ap+ef61://did:key:z6Mkabc/%C3%A9#%C3%A9",
+  );
+  ok(arePortableUrisEqual(
+    "ap://did:key:z6Mkabc/\u00e9#\u00e9",
+    "ap://did:key:z6Mkabc/%C3%A9#%C3%A9",
+  ));
+});
+
 test("canonicalizePortableUri() normalizes DID scheme casing", () => {
   deepStrictEqual(
     canonicalizePortableUri("ap://DID:key:z6Mkabc/actor"),
@@ -360,9 +371,18 @@ test("arePortableUrisEqual() handles non-portable URI strings", () => {
       "https://example.com/actor",
     ),
   );
-  throws(
-    () => arePortableUrisEqual("ap://not-a-did/actor", "ap://not-a-did/actor"),
-    TypeError,
+  ok(arePortableUrisEqual("ap://not-a-did/actor", "ap://not-a-did/actor"));
+  ok(
+    !arePortableUrisEqual(
+      "ap://not-a-did/actor",
+      "ap://not-a-did/outbox",
+    ),
+  );
+  ok(
+    !arePortableUrisEqual(
+      "ap://not-a-did/actor",
+      "ap://did:key:z6Mkabc/actor",
+    ),
   );
 });
 
