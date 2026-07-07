@@ -89,13 +89,15 @@ export function canonicalizePortableUri(input: string): string {
   // parsed.host is the encodeURIComponent() output from parsePortableIri(), so
   // decodePortableAuthority() reverses the shared percent-encoded authority
   // path here rather than the raw did:-prefixed branch.
-  // Only the authority gets percent-encoding case normalization.  The path and
-  // fragment stay byte-for-byte from the raw match so their pct-encoding case
-  // remains part of the opaque portable object identity.
   const authority = normalizePercentEncoding(
     decodePortableAuthority(parsed.host).replace(DID_SCHEME_PATTERN, "did:"),
   );
-  return `ap+ef61://${authority}${match[3]}${match[5] ?? ""}`;
+  // Keep path and fragment text from the raw match to avoid URL dot-segment
+  // normalization, but still normalize percent-escape hex casing per URI
+  // comparison rules.
+  const path = normalizePercentEncoding(match[3]);
+  const fragment = match[5] == null ? "" : normalizePercentEncoding(match[5]);
+  return `ap+ef61://${authority}${path}${fragment}`;
 }
 
 /**
@@ -108,6 +110,12 @@ export function arePortableUrisEqual(
   left: string,
   right: string,
 ): boolean {
+  if (
+    typeof left !== "string" || typeof right !== "string" ||
+    !PORTABLE_IRI_PATTERN.test(left) || !PORTABLE_IRI_PATTERN.test(right)
+  ) {
+    return left === right;
+  }
   return canonicalizePortableUri(left) === canonicalizePortableUri(right);
 }
 
