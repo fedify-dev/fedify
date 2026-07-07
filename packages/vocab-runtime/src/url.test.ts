@@ -232,6 +232,10 @@ test("canonicalizePortableUri() normalizes authority pct-encoding casing", () =>
     "ap+ef61://did:example:abc%2Fdef/actor",
   );
   deepStrictEqual(
+    canonicalizePortableUri("ap://did:example:abc%2fdef%3abar/actor"),
+    "ap+ef61://did:example:abc%2Fdef%3Abar/actor",
+  );
+  deepStrictEqual(
     canonicalizePortableUri("ap://did%3Aexample%3Aabc%252fdef/actor"),
     "ap+ef61://did:example:abc%2Fdef/actor",
   );
@@ -245,6 +249,10 @@ test("canonicalizePortableUri() normalizes path and fragment pct-encoding casing
   deepStrictEqual(
     canonicalizePortableUri("ap://did:key:z6Mkabc/actor%2fprofile#part%2ftwo"),
     "ap+ef61://did:key:z6Mkabc/actor%2Fprofile#part%2Ftwo",
+  );
+  deepStrictEqual(
+    canonicalizePortableUri("ap://did:key:z6Mkabc/actor%2fprofile%3aimage"),
+    "ap+ef61://did:key:z6Mkabc/actor%2Fprofile%3Aimage",
   );
   ok(arePortableUrisEqual(
     "ap://did:key:z6Mkabc/actor%2fprofile#part%2ftwo",

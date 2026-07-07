@@ -73,6 +73,9 @@ export function formatIri(iri: string | URL): string {
  * string, not a `URL` object, because JavaScript `URL` normalizes opaque path
  * segments before Fedify can compare them.
  *
+ * @param input The raw portable ActivityPub URI string to canonicalize.
+ * @returns The canonical portable ActivityPub URI string.
+ * @throws {TypeError} If the input is not a valid portable ActivityPub IRI.
  * @since 2.4.0
  */
 export function canonicalizePortableUri(input: string): string {
@@ -103,6 +106,10 @@ export function canonicalizePortableUri(input: string): string {
 /**
  * Checks whether two FEP-ef61 portable ActivityPub URIs identify the same
  * portable object.
+ *
+ * Non-string or non-portable inputs are compared by strict string equality.
+ * Portable URI inputs are compared through {@link canonicalizePortableUri},
+ * which can throw a `TypeError` for malformed portable authorities or paths.
  *
  * @since 2.4.0
  */
