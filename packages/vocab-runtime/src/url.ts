@@ -89,6 +89,9 @@ export function canonicalizePortableUri(input: string): string {
   // parsed.host is the encodeURIComponent() output from parsePortableIri(), so
   // decodePortableAuthority() reverses the shared percent-encoded authority
   // path here rather than the raw did:-prefixed branch.
+  // Only the authority gets percent-encoding case normalization.  The path and
+  // fragment stay byte-for-byte from the raw match so their pct-encoding case
+  // remains part of the opaque portable object identity.
   const authority = normalizePercentEncoding(
     decodePortableAuthority(parsed.host).replace(DID_SCHEME_PATTERN, "did:"),
   );
