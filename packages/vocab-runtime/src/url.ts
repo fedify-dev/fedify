@@ -12,6 +12,7 @@ export class UrlError extends Error {
 const PORTABLE_IRI_PATTERN =
   /^(ap|ap\+ef61):\/\/([^/?#]*)([^?#]*)(\?[^#]*)?(#.*)?$/i;
 const INVALID_PERCENT_ENCODING_PATTERN = /%(?![0-9A-Fa-f]{2})/;
+const PERCENT_ENCODING_PATTERN = /%[0-9A-Fa-f]{2}/g;
 const DID_SCHEME_PATTERN = /^did:/i;
 const DID_PATTERN = /^did:[a-z0-9]+:[-A-Za-z0-9._%]+(?::[-A-Za-z0-9._%]+)*$/i;
 
@@ -73,15 +74,24 @@ export function formatIri(iri: string | URL): string {
  * @since 2.4.0
  */
 export function canonicalizePortableUri(input: string | URL): string {
-  const parsed = parsePortableIri(input instanceof URL ? input.href : input);
+  const iri = input instanceof URL ? input.href : input;
+  const parsed = parsePortableIri(iri);
   if (parsed == null) {
     throw new TypeError("Invalid portable ActivityPub IRI.");
   }
-  const authority = decodePortableAuthority(parsed.host).replace(
-    DID_SCHEME_PATTERN,
-    "did:",
+  const match = iri.match(PORTABLE_IRI_PATTERN);
+  if (match == null) {
+    throw new TypeError("Invalid portable ActivityPub IRI.");
+  }
+  // parsePortableIri() validates the value but returns a URL, which normalizes
+  // opaque path segments.  Use the raw match for path and fragment comparison.
+  // parsed.host is the encodeURIComponent() output from parsePortableIri(), so
+  // decodePortableAuthority() reverses the shared percent-encoded authority
+  // path here rather than the raw did:-prefixed branch.
+  const authority = normalizePercentEncoding(
+    decodePortableAuthority(parsed.host).replace(DID_SCHEME_PATTERN, "did:"),
   );
-  return `ap+ef61://${authority}${parsed.pathname}${parsed.hash}`;
+  return `ap+ef61://${authority}${match[3]}${match[5] ?? ""}`;
 }
 
 /**
@@ -175,6 +185,13 @@ function decodePortableAuthority(authority: string): string {
     throw new TypeError("Invalid portable ActivityPub IRI authority.");
   }
   return decoded;
+}
+
+function normalizePercentEncoding(value: string): string {
+  return value.replace(
+    PERCENT_ENCODING_PATTERN,
+    (match) => match.toUpperCase(),
+  );
 }
 
 function parseAtUri(uri: string): URL {

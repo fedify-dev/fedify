@@ -229,6 +229,21 @@ test("canonicalizePortableUri() preserves DID-internal pct-encoded characters", 
   );
 });
 
+test("canonicalizePortableUri() normalizes authority pct-encoding casing", () => {
+  deepStrictEqual(
+    canonicalizePortableUri("ap://did:example:abc%2fdef/actor"),
+    "ap+ef61://did:example:abc%2Fdef/actor",
+  );
+  deepStrictEqual(
+    canonicalizePortableUri("ap://did%3Aexample%3Aabc%252fdef/actor"),
+    "ap+ef61://did:example:abc%2Fdef/actor",
+  );
+  ok(arePortableUrisEqual(
+    "ap://did:example:abc%2fdef/actor",
+    "ap://did:example:abc%2Fdef/actor",
+  ));
+});
+
 test("canonicalizePortableUri() normalizes DID scheme casing", () => {
   deepStrictEqual(
     canonicalizePortableUri("ap://DID:key:z6Mkabc/actor"),
@@ -237,6 +252,29 @@ test("canonicalizePortableUri() normalizes DID scheme casing", () => {
   deepStrictEqual(
     canonicalizePortableUri("ap://DID%3Akey%3Az6Mkabc/actor"),
     "ap+ef61://did:key:z6Mkabc/actor",
+  );
+});
+
+test("canonicalizePortableUri() preserves opaque path segments", () => {
+  deepStrictEqual(
+    canonicalizePortableUri("ap://did:key:z6Mkabc/a/../b?gateways=x"),
+    "ap+ef61://did:key:z6Mkabc/a/../b",
+  );
+  deepStrictEqual(
+    canonicalizePortableUri("ap://did:key:z6Mkabc/a/%2e%2e/b"),
+    "ap+ef61://did:key:z6Mkabc/a/%2e%2e/b",
+  );
+  ok(
+    !arePortableUrisEqual(
+      "ap://did:key:z6Mkabc/a/../b",
+      "ap://did:key:z6Mkabc/b",
+    ),
+  );
+  ok(
+    !arePortableUrisEqual(
+      "ap://did:key:z6Mkabc/a/%2e%2e/b",
+      "ap://did:key:z6Mkabc/b",
+    ),
   );
 });
 
