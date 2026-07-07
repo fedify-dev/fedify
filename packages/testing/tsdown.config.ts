@@ -1,7 +1,7 @@
 import { defineConfig } from "tsdown";
 import {
-  isTemporalPolyfillDependency,
   temporalPolyfillCjsBanner,
+  temporalPolyfillCjsDeps,
   temporalPolyfillEsmBanner,
   temporalPolyfillImportPlugin,
 } from "../../scripts/tsdown/temporal.mts";
@@ -14,16 +14,15 @@ export default defineConfig({
       banner: temporalPolyfillEsmBanner(),
     },
     cjs: {
-      deps: {
+      deps: temporalPolyfillCjsDeps({
         neverBundle: [
           "@fedify/fedify",
           "@fedify/fedify/federation",
+          "@fedify/fixture",
           "@fedify/vocab",
           "@fedify/vocab-runtime",
         ],
-        alwaysBundle: isTemporalPolyfillDependency,
-        skipNodeModulesBundle: false,
-      },
+      }),
       plugins: [temporalPolyfillImportPlugin],
       banner: temporalPolyfillCjsBanner(),
     },
@@ -39,6 +38,7 @@ export default defineConfig({
     neverBundle: [
       "@fedify/fedify",
       "@fedify/fedify/federation",
+      "@fedify/fixture",
       "@fedify/vocab",
       "@fedify/vocab-runtime",
     ],

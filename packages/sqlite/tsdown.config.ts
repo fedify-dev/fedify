@@ -1,7 +1,7 @@
 import { defineConfig } from "tsdown";
 import {
-  isTemporalPolyfillDependency,
   temporalPolyfillCjsBanner,
+  temporalPolyfillCjsDeps,
   temporalPolyfillEsmBanner,
   temporalPolyfillImportPlugin,
 } from "../../scripts/tsdown/temporal.mts";
@@ -21,10 +21,7 @@ export default defineConfig({
       banner: temporalPolyfillEsmBanner(),
     },
     cjs: {
-      deps: {
-        alwaysBundle: isTemporalPolyfillDependency,
-        skipNodeModulesBundle: false,
-      },
+      deps: temporalPolyfillCjsDeps(),
       plugins: [temporalPolyfillImportPlugin],
       banner: temporalPolyfillCjsBanner(),
     },

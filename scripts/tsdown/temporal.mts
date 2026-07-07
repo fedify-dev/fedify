@@ -1,4 +1,5 @@
 import { sep } from "node:path";
+import type { DepsConfig, ResolvedConfig } from "tsdown";
 
 // Shared tsdown helpers for packages that use Temporal in published output.
 //
@@ -13,13 +14,24 @@ export function isTemporalPolyfillDependency(id: string): boolean {
     /^temporal-utils(\/.*)?$/.test(id);
 }
 
+export function temporalPolyfillCjsDeps(
+  deps: Omit<DepsConfig, "alwaysBundle" | "skipNodeModulesBundle"> = {},
+): ResolvedConfig["deps"] {
+  // tsdown's nested format type currently expects resolved deps, even though
+  // user config deps are accepted at runtime.
+  return ({
+    ...deps,
+    alwaysBundle: isTemporalPolyfillDependency,
+  } as unknown) as ResolvedConfig["deps"];
+}
+
 export const temporalPolyfillImportPlugin = {
   name: "fedify-temporal-polyfill-import",
   transform(code: string, id: string) {
     if (!id.replaceAll(sep, "/").includes("/src/")) return null;
     if (!/\.[cm]?[jt]sx?$/.test(id)) return null;
     if (!/\bTemporal\./.test(code)) return null;
-    if (code.includes(`from "temporal-polyfill"`)) return null;
+    if (/from\s+["']temporal-polyfill["']/.test(code)) return null;
     return {
       code: [
         `import { Temporal as __FedifyTemporal } from "temporal-polyfill";`,
@@ -54,6 +66,9 @@ export function temporalPolyfillCjsBanner(extraJs?: string): {
   };
 }
 
+// ESM-only intro for configs that emit test or CLI artifacts without CJS.
+// CJS outputs must use temporalPolyfillCjsBanner() and
+// temporalPolyfillImportPlugin instead.
 export const temporalPolyfillIntro = `
       import { Temporal } from "temporal-polyfill";
     `;

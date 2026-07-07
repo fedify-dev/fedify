@@ -2,8 +2,8 @@ import { glob, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, sep } from "node:path";
 import { defineConfig } from "tsdown";
 import {
-  isTemporalPolyfillDependency,
   temporalPolyfillCjsBanner,
+  temporalPolyfillCjsDeps,
   temporalPolyfillEsmBanner,
   temporalPolyfillImportPlugin,
   temporalPolyfillIntro,
@@ -28,11 +28,9 @@ export default [
         banner: temporalPolyfillEsmBanner(),
       },
       cjs: {
-        deps: {
+        deps: temporalPolyfillCjsDeps({
           neverBundle: [/^node:/],
-          alwaysBundle: isTemporalPolyfillDependency,
-          skipNodeModulesBundle: false,
-        },
+        }),
         plugins: [temporalPolyfillImportPlugin],
         banner: temporalPolyfillCjsBanner(),
       },

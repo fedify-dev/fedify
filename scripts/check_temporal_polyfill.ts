@@ -59,6 +59,42 @@ async function* walk(dir: string): AsyncGenerator<string> {
 
 let failures = 0;
 
+async function findTypeScriptCompiler(): Promise<string> {
+  const candidates = [
+    join(root, "node_modules", "typescript", "bin", "tsc"),
+  ];
+  for (const store of [".deno", ".pnpm"]) {
+    const storeDir = join(root, "node_modules", store);
+    try {
+      for await (const entry of Deno.readDir(storeDir)) {
+        if (!entry.isDirectory || !entry.name.startsWith("typescript@")) {
+          continue;
+        }
+        candidates.push(
+          join(
+            storeDir,
+            entry.name,
+            "node_modules",
+            "typescript",
+            "bin",
+            "tsc",
+          ),
+        );
+      }
+    } catch (error) {
+      if (!(error instanceof Deno.errors.NotFound)) throw error;
+    }
+  }
+  for (const candidate of candidates) {
+    try {
+      if ((await Deno.stat(candidate)).isFile) return candidate;
+    } catch (error) {
+      if (!(error instanceof Deno.errors.NotFound)) throw error;
+    }
+  }
+  throw new Error("Could not find the TypeScript compiler.");
+}
+
 for (const pkg of packages) {
   const dist = `packages/${pkg}/dist`;
   const files = [];
@@ -95,7 +131,10 @@ for (const pkg of packages) {
           failures++;
         }
       }
-      if (!text.includes(`/// <reference lib="esnext.temporal" />`)) {
+      if (
+        text.includes("Temporal") &&
+        !text.includes(`/// <reference lib="esnext.temporal" />`)
+      ) {
         console.error(`${file} is missing the Temporal lib reference`);
         failures++;
       }
@@ -207,9 +246,13 @@ async function checkTypeConsumerProject(
   );
   try {
     const command = new Deno.Command(
-      join(root, "node_modules", ".bin", "tsc"),
+      "node",
       {
-        args: ["-p", "tsconfig.json"],
+        args: [
+          await findTypeScriptCompiler(),
+          "-p",
+          "tsconfig.json",
+        ],
         cwd: dir,
         stdout: "piped",
         stderr: "piped",

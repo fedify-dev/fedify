@@ -2,8 +2,8 @@ import { glob } from "node:fs/promises";
 import { sep } from "node:path";
 import { defineConfig } from "tsdown";
 import {
-  isTemporalPolyfillDependency,
   temporalPolyfillCjsBanner,
+  temporalPolyfillCjsDeps,
   temporalPolyfillEsmBanner,
   temporalPolyfillImportPlugin,
   temporalPolyfillIntro,
@@ -18,10 +18,7 @@ export default [
         banner: temporalPolyfillEsmBanner(),
       },
       cjs: {
-        deps: {
-          alwaysBundle: isTemporalPolyfillDependency,
-          skipNodeModulesBundle: false,
-        },
+        deps: temporalPolyfillCjsDeps(),
         plugins: [temporalPolyfillImportPlugin],
         banner: temporalPolyfillCjsBanner(),
       },
