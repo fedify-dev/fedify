@@ -1,4 +1,5 @@
 import { defineConfig } from "tsdown";
+import { temporalPolyfillIntro } from "../../scripts/tsdown/temporal.mts";
 
 export default defineConfig({
   entry: [
@@ -24,9 +25,7 @@ export default defineConfig({
     },
   },
   outputOptions(outputOptions) {
-    outputOptions.intro = `
-      import { Temporal } from "@js-temporal/polyfill";
-    `;
+    outputOptions.intro = temporalPolyfillIntro;
     return outputOptions;
   },
 });

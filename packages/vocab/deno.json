@@ -14,7 +14,8 @@
   "imports": {
     "fast-check": "npm:fast-check@^3.22.0",
     "fetch-mock": "npm:fetch-mock@^12.5.2",
-    "jsonld": "npm:jsonld@^9.0.0"
+    "jsonld": "npm:jsonld@^9.0.0",
+    "temporal-polyfill": "npm:temporal-polyfill@^1.0.1"
   },
   "exclude": [
     "dist/",

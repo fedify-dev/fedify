@@ -3482,7 +3482,7 @@ import {
   type Recipient,
   Undo,
 } from "@fedify/vocab";
-import { Temporal } from "@js-temporal/polyfill";
+import { Temporal } from "temporal-polyfill";
 // ...
 import { actorKeys, followers, posts, users } from "./db/schema";
 ~~~~
@@ -3490,7 +3490,7 @@ import { actorKeys, followers, posts, users } from "./db/schema";
 We also need the polyfill itself in *package.json*:
 
 ~~~~ sh
-npm install @js-temporal/polyfill
+npm install temporal-polyfill
 ~~~~
 
 Node.js 22 does not yet ship `Temporal` natively, and Fedify
@@ -6528,7 +6528,7 @@ import {
   Note,
   PUBLIC_COLLECTION,
 } from "@fedify/vocab";
-import { Temporal } from "@js-temporal/polyfill";
+import { Temporal } from "temporal-polyfill";
 import { and, eq } from "drizzle-orm";
 import {
   createError,

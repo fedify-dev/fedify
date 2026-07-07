@@ -45,6 +45,7 @@
     "@fxts/core": "npm:@fxts/core@^1.21.1",
     "@hongminhee/localtunnel": "jsr:@hongminhee/localtunnel@^0.3.0",
     "@js-temporal/polyfill": "npm:@js-temporal/polyfill@^0.5.1",
+    "temporal-polyfill": "npm:temporal-polyfill@^1.0.1",
     "@logtape/file": "jsr:@logtape/file@^2.2.0",
     "@logtape/logtape": "jsr:@logtape/logtape@^2.2.0",
     "@nestjs/common": "npm:@nestjs/common@^11.0.1",

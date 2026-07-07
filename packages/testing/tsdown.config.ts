@@ -1,9 +1,33 @@
 import { defineConfig } from "tsdown";
+import {
+  isTemporalPolyfillDependency,
+  temporalPolyfillCjsBanner,
+  temporalPolyfillEsmBanner,
+  temporalPolyfillImportPlugin,
+} from "../../scripts/tsdown/temporal.mts";
 
 export default defineConfig({
   entry: "src/mod.ts",
   dts: { compilerOptions: { isolatedDeclarations: true, declaration: true } },
-  format: ["esm", "cjs"],
+  format: {
+    esm: {
+      banner: temporalPolyfillEsmBanner(),
+    },
+    cjs: {
+      deps: {
+        neverBundle: [
+          "@fedify/fedify",
+          "@fedify/fedify/federation",
+          "@fedify/vocab",
+          "@fedify/vocab-runtime",
+        ],
+        alwaysBundle: isTemporalPolyfillDependency,
+        skipNodeModulesBundle: false,
+      },
+      plugins: [temporalPolyfillImportPlugin],
+      banner: temporalPolyfillCjsBanner(),
+    },
+  },
   platform: "node",
   outExtensions({ format }) {
     return {
@@ -18,14 +42,5 @@ export default defineConfig({
       "@fedify/vocab",
       "@fedify/vocab-runtime",
     ],
-  },
-  banner({ format }) {
-    const js = format === "cjs"
-      ? `const { Temporal } = require("@js-temporal/polyfill");`
-      : `import { Temporal } from "@js-temporal/polyfill";`;
-    return {
-      js,
-      dts: `/// <reference lib="esnext.temporal" />`,
-    };
   },
 });

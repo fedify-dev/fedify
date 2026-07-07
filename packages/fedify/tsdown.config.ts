@@ -1,6 +1,13 @@
 import { glob } from "node:fs/promises";
 import { join, sep } from "node:path";
 import { defineConfig } from "tsdown";
+import {
+  isTemporalPolyfillDependency,
+  temporalPolyfillCjsBanner,
+  temporalPolyfillEsmBanner,
+  temporalPolyfillImportPlugin,
+  temporalPolyfillIntro,
+} from "../../scripts/tsdown/temporal.mts";
 
 function isTestingHelperImporter(importer: string | undefined): boolean {
   const normalized = importer?.replaceAll(sep, "/");
@@ -21,24 +28,26 @@ export default [
       "./src/vocab/mod.ts",
     ],
     dts: { compilerOptions: { isolatedDeclarations: true, declaration: true } },
-    format: ["esm", "cjs"],
+    format: {
+      esm: {
+        banner: temporalPolyfillEsmBanner(
+          `import { URLPattern } from "urlpattern-polyfill";`,
+        ),
+      },
+      cjs: {
+        deps: {
+          neverBundle: [/^node:/],
+          alwaysBundle: isTemporalPolyfillDependency,
+          skipNodeModulesBundle: false,
+        },
+        plugins: [temporalPolyfillImportPlugin],
+        banner: temporalPolyfillCjsBanner(
+          `const { URLPattern } = require("urlpattern-polyfill");`,
+        ),
+      },
+    },
     platform: "neutral",
     deps: { neverBundle: [/^node:/] },
-    banner({ format }) {
-      const js = format === "cjs"
-        ? [
-          `const { Temporal } = require("@js-temporal/polyfill");`,
-          `const { URLPattern } = require("urlpattern-polyfill");`,
-        ].join("\n")
-        : [
-          `import { Temporal } from "@js-temporal/polyfill";`,
-          `import { URLPattern } from "urlpattern-polyfill";`,
-        ].join("\n");
-      return {
-        js,
-        dts: `/// <reference lib="esnext.temporal" />`,
-      };
-    },
   }),
   defineConfig({
     entry: [
@@ -73,8 +82,7 @@ export default [
       },
     },
     outputOptions: {
-      intro: `
-      import { Temporal } from "@js-temporal/polyfill";
+      intro: `${temporalPolyfillIntro}
       import { URLPattern } from "urlpattern-polyfill";
       globalThis.addEventListener = () => {};
     `,

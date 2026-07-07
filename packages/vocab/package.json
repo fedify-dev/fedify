@@ -37,7 +37,6 @@
   "dependencies": {
     "@fedify/vocab-tools": "workspace:*",
     "@fedify/webfinger": "workspace:*",
-    "@js-temporal/polyfill": "catalog:",
     "@multiformats/base-x": "catalog:",
     "@logtape/logtape": "catalog:",
     "@opentelemetry/api": "catalog:",
@@ -45,7 +44,8 @@
     "es-toolkit": "catalog:",
     "@fedify/vocab-runtime": "workspace:*",
     "jsonld": "^9.0.0",
-    "pkijs": "catalog:"
+    "pkijs": "catalog:",
+    "temporal-polyfill": "catalog:"
   },
   "devDependencies": {
     "@fedify/fixture": "workspace:*",

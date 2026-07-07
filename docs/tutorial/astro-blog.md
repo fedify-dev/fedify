@@ -1911,14 +1911,14 @@ as the HTML page URL since we'll share the path `/posts/{slug}` between Astro
 and Fedify via content negotiation.  `content_hash` is a SHA-256 digest of the
 title and body, used to detect edits.
 
-### Adding `@js-temporal/polyfill`
+### Adding `temporal-polyfill`
 
 The `Article` object uses `Temporal.Instant` from the [TC39 Temporal proposal]
 polyfill.  Although `@fedify/vocab` already depends on this package, you should
 list it directly in your project so the version stays under your control:
 
 ~~~~ sh
-bun add @js-temporal/polyfill
+bun add temporal-polyfill
 ~~~~
 
 [TC39 Temporal proposal]: https://tc39.es/proposal-temporal/
@@ -1967,7 +1967,7 @@ import {
   Person,
   Undo,
 } from "@fedify/vocab";
-import { Temporal } from "@js-temporal/polyfill";
+import { Temporal } from "temporal-polyfill";
 import { getLogger } from "@logtape/logtape";
 import {
   addFollower,
@@ -2114,7 +2114,7 @@ Create *src/lib/publish.ts*:
 // @noErrors
 import type { RequestContext } from "@fedify/fedify";
 import { Article, Create, Delete, Update } from "@fedify/vocab";
-import { Temporal } from "@js-temporal/polyfill";
+import { Temporal } from "temporal-polyfill";
 import { getCollection } from "astro:content";
 import { BLOG_IDENTIFIER } from "../federation.ts";
 import db from "./db.ts";
@@ -2519,7 +2519,7 @@ import {
   Undo,
   Update,
 } from "@fedify/vocab";
-import { Temporal } from "@js-temporal/polyfill";
+import { Temporal } from "temporal-polyfill";
 import { getLogger } from "@logtape/logtape";
 import {
   addComment,

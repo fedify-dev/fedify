@@ -88,7 +88,6 @@
     "@inquirer/prompts": "^7.8.4",
     "@jimp/core": "^1.6.1",
     "@jimp/wasm-webp": "^1.6.1",
-    "@js-temporal/polyfill": "catalog:",
     "@logtape/file": "catalog:",
     "@logtape/logtape": "catalog:",
     "@poppanator/http-constants": "^1.1.1",
@@ -109,6 +108,7 @@
     "shiki": "^1.6.4",
     "smol-toml": "^1.6.1",
     "srvx": "^0.8.7",
+    "temporal-polyfill": "catalog:",
     "valibot": "^1.4.0",
     "yaml": "^2.9.0"
   },
