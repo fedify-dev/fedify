@@ -6,6 +6,8 @@ Fedify changelog
 Version 2.4.0
 -------------
 
+To be released.
+
 ### @fedify/fedify
 
  -  Added local `did:key` verification method resolution for
