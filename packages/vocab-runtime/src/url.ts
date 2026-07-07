@@ -92,7 +92,7 @@ export function canonicalizePortableUri(input: string): string {
   // parsed.host is the encodeURIComponent() output from parsePortableIri(), so
   // decodePortableAuthority() reverses the shared percent-encoded authority
   // path here rather than the raw did:-prefixed branch.
-  const authority = normalizePercentEncoding(
+  const authority = normalizePortableAuthority(
     decodePortableAuthority(parsed.host).replace(DID_SCHEME_PATTERN, "did:"),
   );
   // Keep path and fragment text from the raw match to avoid URL dot-segment
@@ -215,6 +215,16 @@ function normalizePercentEncoding(value: string): string {
   return value.replace(
     PERCENT_ENCODING_PATTERN,
     (match) => match.toUpperCase(),
+  );
+}
+
+function normalizePortableAuthority(authority: string): string {
+  return normalizePercentEncoding(authority).replace(
+    PERCENT_ENCODING_PATTERN,
+    (match) => {
+      const decoded = String.fromCharCode(Number.parseInt(match.slice(1), 16));
+      return /[A-Za-z0-9._~-]/.test(decoded) ? decoded : match;
+    },
   );
 }
 
