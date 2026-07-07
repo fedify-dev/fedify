@@ -242,7 +242,14 @@ function normalizePortableComponent(value: string): string {
         );
         return /[A-Za-z0-9._~-]/.test(decoded) ? decoded : upper;
       }
-      return encodeURI(match);
+      try {
+        return encodeURI(match);
+      } catch (error) {
+        if (error instanceof URIError) {
+          throw new TypeError("Invalid portable ActivityPub IRI component.");
+        }
+        throw error;
+      }
     },
   );
 }

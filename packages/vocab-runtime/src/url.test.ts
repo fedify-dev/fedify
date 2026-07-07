@@ -347,6 +347,14 @@ test("canonicalizePortableUri() rejects invalid path and fragment pct-encoding",
     () => canonicalizePortableUri("ap://did:key:z6Mkabc/actor#part%zz"),
     TypeError,
   );
+  throws(
+    () => canonicalizePortableUri("ap://did:key:z6Mkabc/\ud800"),
+    TypeError,
+  );
+  throws(
+    () => canonicalizePortableUri("ap://did:key:z6Mkabc/actor#\ud800"),
+    TypeError,
+  );
 });
 
 test("arePortableUrisEqual() compares canonical portable URI forms", () => {
@@ -412,6 +420,18 @@ test("arePortableUrisEqual() handles non-portable URI strings", () => {
     !arePortableUrisEqual(
       "ap://did:key:z6Mkabc/a%zz",
       "ap://did:key:z6Mkabc/a%25zz",
+    ),
+  );
+  ok(
+    !arePortableUrisEqual(
+      "ap://did:key:z6Mkabc/\ud800",
+      "ap://did:key:z6Mkabc/%EF%BF%BD",
+    ),
+  );
+  ok(
+    !arePortableUrisEqual(
+      "ap://did:key:z6Mkabc/actor#\ud800",
+      "ap://did:key:z6Mkabc/actor#%EF%BF%BD",
     ),
   );
 });
