@@ -8,6 +8,13 @@ Version 2.4.0
 
 ### @fedify/fedify
 
+ -  Added local `did:key` verification method resolution for
+    [FEP-8b32] Object Integrity Proofs.  `verifyProof()` can now verify
+    Ed25519 `eddsa-jcs-2022` proofs whose `verificationMethod` is a
+    `did:key:z...#z...` DID URL without fetching the verification method
+    as a remote JSON-LD document, which is required for [FEP-ef61]
+    portable objects.  [[#827], [#915]]
+
  -  Added a custom background task API that generalizes Fedify's
     enqueue-and-process-later pattern to arbitrary application-defined jobs:
 
@@ -45,8 +52,11 @@ Version 2.4.0
         `FederationOptions.taskDeduplicationTtl` and
         `FederationOptions.taskDeduplicationFallback` options.
 
-    [[#206], [#797], [#798], [#799], [#803], [#806], [#812] by ChanHaeng Lee]
+    [[#206], [#797], [#798], [#799], [#803], [#806], [#812], [#923] by
+    ChanHaeng Lee]
 
+[FEP-8b32]: https://w3id.org/fep/8b32
+[FEP-ef61]: https://w3id.org/fep/ef61
 [Standard Schema]: https://standardschema.dev/
 [#206]: https://github.com/fedify-dev/fedify/issues/206
 [#797]: https://github.com/fedify-dev/fedify/issues/797
@@ -55,20 +65,9 @@ Version 2.4.0
 [#803]: https://github.com/fedify-dev/fedify/pull/803
 [#806]: https://github.com/fedify-dev/fedify/pull/806
 [#812]: https://github.com/fedify-dev/fedify/pull/812
-
-### @fedify/fedify
-
- -  Added local `did:key` verification method resolution for
-    [FEP-8b32] Object Integrity Proofs.  `verifyProof()` can now verify
-    Ed25519 `eddsa-jcs-2022` proofs whose `verificationMethod` is a
-    `did:key:z...#z...` DID URL without fetching the verification method
-    as a remote JSON-LD document, which is required for [FEP-ef61]
-    portable objects.  [[#827], [#915]]
-
-[FEP-8b32]: https://w3id.org/fep/8b32
-[FEP-ef61]: https://w3id.org/fep/ef61
 [#827]: https://github.com/fedify-dev/fedify/issues/827
 [#915]: https://github.com/fedify-dev/fedify/pull/915
+[#923]: https://github.com/fedify-dev/fedify/pull/923
 
 ### @fedify/vocab
 
