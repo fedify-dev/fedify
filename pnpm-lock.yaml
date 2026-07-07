@@ -377,8 +377,8 @@ importers:
         specifier: ^4.0.0
         version: 4.0.0
       markdown-it-jsr-ref:
-        specifier: 0.4.4
-        version: 0.4.4
+        specifier: 0.5.0
+        version: 0.5.0
       mermaid:
         specifier: ^11.4.1
         version: 11.7.0
@@ -9648,9 +9648,6 @@ packages:
   lines-and-columns@1.2.4:
     resolution: {integrity: sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg==}
 
-  linkify-it@5.0.0:
-    resolution: {integrity: sha512-5aHCbzQRADcdP+ATqnDuhhJ/MRIqDkZX5pyjFHRRysS8vZ5AbqGEoFIb6pYHPZ+L/OC2Lc+xT8uHVVR5CAK/wQ==}
-
   linkify-it@5.0.1:
     resolution: {integrity: sha512-wVoTjP4Q6R0NW5hiZkVJaFZPWgtXfoGF+6LucL3/FtiNjmcHhYjEr5f1Kqjirc1nBW07J/ZuRFumqr2oqccEWg==}
 
@@ -9767,8 +9764,8 @@ packages:
   markdown-it-footnote@4.0.0:
     resolution: {integrity: sha512-WYJ7urf+khJYl3DqofQpYfEYkZKbmXmwxQV8c8mO/hGIhgZ1wOe7R4HLFNwqx7TjILbnC98fuyeSsin19JdFcQ==}
 
-  markdown-it-jsr-ref@0.4.4:
-    resolution: {integrity: sha512-z6abJJXW0vNHaLC9fxVvT9iaHw2pGjiQDn+rFlQKV3+JgfmNH6bwF8uzWGh1d5Wo7UUAx1w7drmyQFG0OWwh8g==}
+  markdown-it-jsr-ref@0.5.0:
+    resolution: {integrity: sha512-lPo1of7KhZ3wrSenZG7W1Ddoal2sfpVPNuPLlF24BxO8xwwfOA/CxdnZ8HwJ+6YZFkUR7y1uCJKRqF1NUym3LQ==}
 
   markdown-it@14.1.0:
     resolution: {integrity: sha512-a54IwgWPaeBCAAsv13YgmALOF1elABB08FxO9i+r4VFk5Vl4pKokRPeX8u5TCgSsPi6ec1otfLjdOpVcgbpshg==}
@@ -21671,10 +21668,6 @@ snapshots:
 
   lines-and-columns@1.2.4: {}
 
-  linkify-it@5.0.0:
-    dependencies:
-      uc.micro: 2.1.0
-
   linkify-it@5.0.1:
     dependencies:
       uc.micro: 2.1.0
@@ -21803,16 +21796,16 @@ snapshots:
 
   markdown-it-footnote@4.0.0: {}
 
-  markdown-it-jsr-ref@0.4.4:
+  markdown-it-jsr-ref@0.5.0:
     dependencies:
       '@deno/shim-deno': 0.18.2
-      markdown-it: 14.1.0
+      markdown-it: 14.2.0
 
   markdown-it@14.1.0:
     dependencies:
       argparse: 2.0.1
       entities: 4.5.0
-      linkify-it: 5.0.0
+      linkify-it: 5.0.1
       mdurl: 2.0.0
       punycode.js: 2.3.1
       uc.micro: 2.1.0
