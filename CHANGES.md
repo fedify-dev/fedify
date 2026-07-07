@@ -17,10 +17,59 @@ To be released.
     as a remote JSON-LD document, which is required for [FEP-ef61]
     portable objects.  [[#827], [#915]]
 
+ -  Added a custom background task API that generalizes Fedify's
+    enqueue-and-process-later pattern to arbitrary application-defined jobs:
+
+     -  `Federation` and `FederationBuilder` gained a `defineTask()` method
+        through the new `TaskRegistry` interface, which `Federatable` now
+        extends.
+     -  `Context` gained `enqueueTask()` and `enqueueTaskMany()` methods,
+        with `delay` and `orderingKey` options
+        (new `TaskEnqueueOptions` interface).
+     -  Every task requires a [Standard Schema]
+        (`schema` option) from which the payload type is inferred; payloads
+        are validated at enqueue time (fail fast) and again at dequeue time
+        (protection against schema drift across deployments).
+     -  Payloads are serialized by Fedify with devalue, so `Date`, `Map`,
+        `Set`, `URL`, `bigint`, circular references, and Activity Vocabulary
+        objects round-trip faithfully across every message queue backend.
+     -  Failed handlers are retried with exponential backoff by default;
+        tasks support per-task `retryPolicy` and `onError` options, the new
+        `FederationOptions.taskRetryPolicy` sets the federation-wide default,
+        and queues with `nativeRetrial` delegate retries to the backend.
+     -  Tasks can be isolated from activity delivery through the new
+        `FederationQueueOptions.task` slot or a per-task `queue` option;
+        without them, tasks fall back to the outbox queue unless the new
+        `FederationOptions.taskQueueResolution` option is set to `"strict"`.
+        `Federation.startQueue()` now accepts `queue: "task"` to run
+        a task-only worker.
+     -  Tasks can request at-most-once enqueue with a `deduplicationKey`
+        (new `TaskEnqueueOptions.deduplicationKey`).  A queue declaring the new
+        `MessageQueue.nativeDeduplication` capability owns the check and
+        receives the key through the new
+        `MessageQueueEnqueueOptions.deduplicationKey`; otherwise Fedify
+        performs a best-effort key–value guard through the optional
+        `KvStore.cas` primitive, under a new `taskDeduplication` key prefix.
+        The marker TTL and the no-`cas` fallback are tunable with the new
+        `FederationOptions.taskDeduplicationTtl` and
+        `FederationOptions.taskDeduplicationFallback` options.
+
+    [[#206], [#797], [#798], [#799], [#803], [#806], [#812], [#923] by
+    ChanHaeng Lee]
+
 [FEP-8b32]: https://w3id.org/fep/8b32
 [FEP-ef61]: https://w3id.org/fep/ef61
+[Standard Schema]: https://standardschema.dev/
+[#206]: https://github.com/fedify-dev/fedify/issues/206
+[#797]: https://github.com/fedify-dev/fedify/issues/797
+[#798]: https://github.com/fedify-dev/fedify/issues/798
+[#799]: https://github.com/fedify-dev/fedify/issues/799
+[#803]: https://github.com/fedify-dev/fedify/pull/803
+[#806]: https://github.com/fedify-dev/fedify/pull/806
+[#812]: https://github.com/fedify-dev/fedify/pull/812
 [#827]: https://github.com/fedify-dev/fedify/issues/827
 [#915]: https://github.com/fedify-dev/fedify/pull/915
+[#923]: https://github.com/fedify-dev/fedify/pull/923
 
 ### @fedify/vocab
 

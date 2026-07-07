@@ -16,7 +16,7 @@ import type { MessageQueue } from "./mq.ts";
  * The role of a queued task, derived from the queued message's `type` field.
  * @since 2.3.0
  */
-export type QueueTaskRole = "fanout" | "outbox" | "inbox";
+export type QueueTaskRole = "fanout" | "outbox" | "inbox" | "task";
 
 /**
  * The terminal result of a queued task processing attempt.
@@ -91,6 +91,13 @@ export interface QueueTaskCommonAttributes {
   role: QueueTaskRole;
   queue?: MessageQueue;
   activityType?: string;
+
+  /**
+   * The registered name of a custom background task, emitted as the
+   * `fedify.task.name` attribute.  Set only for the `"task"` role.
+   * @since 2.4.0
+   */
+  taskName?: string;
 }
 
 /**
@@ -208,6 +215,27 @@ export type HttpSignatureMetricAlgorithm =
 export type HttpSignatureMetricFailureReason =
   | "invalidSignature"
   | "keyFetchError";
+
+/**
+ * The reason a custom background task terminated unsuccessfully, emitted as the
+ * `fedify.task.failure_reason` attribute.  A small bounded set mapping to the
+ * worker's dispatch and retry-scheduling decision points; open to later
+ * refinement.
+ *
+ *  -  `deserialization`: the wire payload could not be deserialized.
+ *  -  `validation`: the deserialized payload failed schema validation.
+ *  -  `unknown_task`: the task name has no registered handler.
+ *  -  `handler`: the registered handler threw.
+ *  -  `retry_enqueue`: the handler threw and a retry was scheduled, but
+ *     re-enqueuing the retry to the queue backend failed.
+ * @since 2.4.0
+ */
+export type QueueTaskFailureReason =
+  | "deserialization"
+  | "validation"
+  | "unknown_task"
+  | "handler"
+  | "retry_enqueue";
 
 /**
  * Bounded values recorded as `ld_signatures.type` on the signature
@@ -987,10 +1015,11 @@ class FederationMetrics {
   recordQueueTaskEnqueued(
     common: QueueTaskCommonAttributes,
     attempt: number,
+    count = 1,
   ): void {
     const attributes = buildQueueTaskAttributes(common);
     attributes["fedify.queue.task.attempt"] = attempt;
-    this.queueTaskEnqueued.add(1, attributes);
+    this.queueTaskEnqueued.add(count, attributes);
   }
 
   recordQueueTaskStarted(common: QueueTaskCommonAttributes): void {
@@ -1009,9 +1038,13 @@ class FederationMetrics {
     common: QueueTaskCommonAttributes,
     result: QueueTaskResult,
     durationMs: number,
+    failureReason?: QueueTaskFailureReason,
   ): void {
     const attributes = buildQueueTaskAttributes(common);
     attributes["fedify.queue.task.result"] = result;
+    if (failureReason != null && result === "failed") {
+      attributes["fedify.task.failure_reason"] = failureReason;
+    }
     if (result === "completed") {
       this.queueTaskCompleted.add(1, attributes);
     } else if (result === "failed") {
@@ -1196,6 +1229,9 @@ function buildQueueTaskAttributes(
   }
   if (common.activityType != null) {
     attributes["activitypub.activity.type"] = common.activityType;
+  }
+  if (common.taskName != null) {
+    attributes["fedify.task.name"] = common.taskName;
   }
   return attributes;
 }

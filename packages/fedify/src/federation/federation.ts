@@ -13,7 +13,6 @@ import type {
 import type { MeterProvider, TracerProvider } from "@opentelemetry/api";
 import type { ActivityTransformer } from "../compat/types.ts";
 import type { HttpMessageSignaturesSpec } from "../sig/http.ts";
-import type { CircuitBreakerOptions } from "./circuit-breaker.ts";
 import type {
   ActorAliasMapper,
   ActorDispatcher,
@@ -39,6 +38,7 @@ import type {
   UnverifiedActivityHandler,
   WebFingerLinksDispatcher,
 } from "./callback.ts";
+import type { CircuitBreakerOptions } from "./circuit-breaker.ts";
 import type { Context, InboxContext, RequestContext } from "./context.ts";
 import type { KvStore } from "./kv.ts";
 import type {
@@ -49,6 +49,7 @@ import type {
 import type { MessageQueue } from "./mq.ts";
 import type { Message } from "./queue.ts";
 import type { RetryPolicy } from "./retry.ts";
+import type { TaskRegistry } from "./tasks/mod.ts";
 
 /**
  * Options for {@link Federation.startQueue} method.
@@ -62,11 +63,11 @@ export interface FederationStartQueueOptions {
 
   /**
    * Starts the task worker only for the specified queue.  If unspecified,
-   * which is the default, the task worker starts for all three queues:
-   * inbox, outbox, and fanout.
+   * which is the default, the task worker starts for all four queues:
+   * inbox, outbox, fanout, and task.
    * @since 1.3.0
    */
-  queue?: "inbox" | "outbox" | "fanout";
+  queue?: "inbox" | "outbox" | "fanout" | "task";
 }
 
 /**
@@ -74,7 +75,7 @@ export interface FederationStartQueueOptions {
  * @template TContextData The context data to pass to the {@link Context}.
  * @since 1.6.0
  */
-export interface Federatable<TContextData> {
+export interface Federatable<TContextData> extends TaskRegistry<TContextData> {
   /**
    * Registers a NodeInfo dispatcher.
    * @param path The URI path pattern for the NodeInfo dispatcher.  The syntax
@@ -1079,6 +1080,54 @@ export interface FederationOptions<TContextData> {
    * @since 0.12.0
    */
   inboxRetryPolicy?: RetryPolicy;
+
+  /**
+   * The retry policy for processing custom background tasks.  By default,
+   * this uses an exponential backoff strategy with a maximum of 10 attempts
+   * and a maximum delay of 12 hours.  A per-task retry policy
+   * ({@link TaskDefinitionOptions.retryPolicy}) overrides this.
+   * @since 2.4.0
+   */
+  taskRetryPolicy?: RetryPolicy;
+
+  /**
+   * How a queue is resolved for a custom background task when neither
+   * a per-task queue ({@link TaskDefinitionOptions.queue}) nor a dedicated
+   * task queue ({@link FederationQueueOptions.task}) is configured.
+   *
+   * - `"fallback"` (the default): the task is routed to the outbox queue.
+   * - `"strict"`: no fallback; enqueuing the task throws instead of
+   *   silently sharing the outbox queue.
+   * @default `"fallback"`
+   * @since 2.4.0
+   */
+  taskQueueResolution?: "fallback" | "strict";
+
+  /**
+   * The time-to-live for a {@link TaskEnqueueOptions.deduplicationKey} marker
+   * stored in the key–value deduplication fallback.  A second enqueue with the
+   * same key within this window is skipped; once it expires, the key may
+   * enqueue again.  Ignored when the task's queue declares
+   * {@link MessageQueue.nativeDeduplication} (the backend owns the window).
+   * @default `{ hours: 1 }`
+   * @since 2.4.0
+   */
+  taskDeduplicationTtl?: Temporal.DurationLike;
+
+  /**
+   * The behavior when a {@link TaskEnqueueOptions.deduplicationKey} is supplied
+   * but the task's queue does not declare
+   * {@link MessageQueue.nativeDeduplication} *and* the configured
+   * {@link KvStore} exposes no `cas` (compare-and-swap) primitive:
+   *
+   * - `"open"` (the default): proceeds without deduplication after logging at
+   *   debug level.
+   * - `"closed"`: rejects with a `TypeError` before enqueuing.
+   *
+   * @default `"open"`
+   * @since 2.4.0
+   */
+  taskDeduplicationFallback?: "open" | "closed";
 
   /**
    * Activity transformers that are applied to outgoing activities.  It is

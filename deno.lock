@@ -124,6 +124,7 @@
     "npm:cli-highlight@^2.1.11": "2.1.11",
     "npm:cli-table3@~0.6.5": "0.6.5",
     "npm:dax@~0.46.1": "0.46.1",
+    "npm:devalue@^5.8.1": "5.8.1",
     "npm:enquirer@^2.4.1": "2.4.1",
     "npm:es-toolkit@^1.46.1": "1.46.1",
     "npm:esbuild-wasm@~0.25.11": "0.25.12",
@@ -4763,8 +4764,8 @@
         "base-64"
       ]
     },
-    "devalue@5.7.1": {
-      "integrity": "sha512-MUbZ586EgQqdRnC4yDrlod3BEdyvE4TapGYHMW2CiaW+KkkFmWEFqBUaLltEZCGi0iFXCEjRF0OjF0DV2QHjOA=="
+    "devalue@5.8.1": {
+      "integrity": "sha512-4CXDYRBGqN+57wVJkuXBYmpAVUSg3L6JAQa/DFqm238G73E1wuyc/JhGQJzN7vUf/CMphYau2zXbfWzDR5aTEw=="
     },
     "devlop@1.1.0": {
       "integrity": "sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA==",
@@ -8421,7 +8422,6 @@
         "aria-query@5.3.1",
         "axobject-query",
         "clsx",
-        "devalue",
         "esm-env",
         "esrap",
         "is-reference@3.0.3",
@@ -9630,6 +9630,7 @@
           "jsr:@std/assert@0.226",
           "jsr:@std/url@~0.225.1",
           "npm:@multiformats/base-x@^4.0.1",
+          "npm:devalue@^5.8.1",
           "npm:fast-check@^3.22.0",
           "npm:fetch-mock@^12.5.2",
           "npm:json-canon@^1.0.1",
@@ -9642,6 +9643,7 @@
             "npm:@js-temporal/polyfill@~0.5.1",
             "npm:@jsr/std__assert@0.226",
             "npm:@types/node@^24.2.1",
+            "npm:devalue@^5.8.1",
             "npm:json-canon@^1.0.1",
             "npm:jsonld@9",
             "npm:miniflare@^4.20250523.0",
