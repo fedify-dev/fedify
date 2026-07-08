@@ -613,11 +613,21 @@ function deleteAuthenticatedAttribution(
   controllerId: URL,
   verificationMethodId: URL,
 ): void {
-  attributions.delete(controllerId.href);
+  const controllerHasCryptographicOrigin = hasCryptographicOrigin(
+    controllerId.href,
+  );
+  const verificationMethodMatchesController =
+    controllerHasCryptographicOrigin &&
+    hasCryptographicOrigin(verificationMethodId.href) &&
+    haveSameFe34Origin(controllerId, verificationMethodId);
   if (
-    !hasCryptographicOrigin(controllerId.href) ||
-    !hasCryptographicOrigin(verificationMethodId.href) ||
-    !haveSameFe34Origin(controllerId, verificationMethodId)
+    !controllerHasCryptographicOrigin ||
+    verificationMethodMatchesController
+  ) {
+    attributions.delete(controllerId.href);
+  }
+  if (
+    !verificationMethodMatchesController
   ) return;
   for (const attribution of [...attributions]) {
     if (

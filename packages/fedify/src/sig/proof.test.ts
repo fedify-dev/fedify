@@ -1150,6 +1150,55 @@ test("verifyObject() rejects HTTPS keys claiming a portable DID controller", asy
   assertEquals(verified, null);
 });
 
+test("verifyObject() rejects HTTPS keys claiming an exact DID attribution", async () => {
+  const victimDid = "did:key:z6MkVictim";
+  const keyId = new URL("https://attacker.example/keys/ed25519");
+  const note = new Note({
+    id: parseIri("ap://did:key:z6MkVictim/objects/1"),
+    attribution: new URL(victimDid),
+    content: "Spoofed DID-attributed note",
+  });
+  const signed = await signObject(note, ed25519PrivateKey, keyId, {
+    contextLoader: mockDocumentLoader,
+    context: [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+  });
+  const jsonLd = await signed.toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+    context: [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+  });
+
+  const verified = await verifyObject(Note, jsonLd, {
+    documentLoader: async (url) => {
+      if (url === keyId.href) {
+        return {
+          documentUrl: url,
+          contextUrl: null,
+          document: {
+            "@context": "https://w3id.org/security/multikey/v1",
+            id: keyId.href,
+            type: "Multikey",
+            controller: victimDid,
+            publicKeyMultibase: await exportMultibaseKey(
+              ed25519PublicKey.publicKey,
+            ),
+          },
+        };
+      }
+      throw new TypeError(`Unexpected fetch: ${url}`);
+    },
+    contextLoader: mockDocumentLoader,
+  });
+
+  assertEquals(verified, null);
+});
+
 test("verifyObject() rejects did:key proofs from another portable attribution origin", async () => {
   const did = await exportDidKey(ed25519PublicKey.publicKey);
   const keyId = new URL(`${did}#${did.substring("did:key:".length)}`);

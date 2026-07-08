@@ -93,7 +93,7 @@ export function canonicalizePortableUri(input: string): string {
   // decodePortableAuthority() reverses the shared percent-encoded authority
   // path here rather than the raw did:-prefixed branch.
   const authority = normalizePortableAuthority(
-    decodePortableAuthority(parsed.host).replace(DID_SCHEME_PATTERN, "did:"),
+    getDidUrlOrigin(decodePortableAuthority(parsed.host)),
   );
   // Keep path and fragment text from the raw match to avoid URL dot-segment
   // normalization, but still encode raw characters and normalize
@@ -194,7 +194,7 @@ function getComparableIriOrigin(iri: URL): string {
   if (iri.host !== "") {
     const host = iri.protocol === "ap+ef61:"
       ? encodeURIComponent(
-        decodePortableAuthority(iri.host).replace(DID_SCHEME_PATTERN, "did:"),
+        getDidUrlOrigin(decodePortableAuthority(iri.host)),
       )
       : iri.host;
     return `${iri.protocol}//${host}`;
@@ -203,13 +203,15 @@ function getComparableIriOrigin(iri: URL): string {
 }
 
 function getPortableCryptographicOrigin(iri: URL): string {
-  return decodePortableAuthority(iri.host).replace(DID_SCHEME_PATTERN, "did:");
+  return getDidUrlOrigin(decodePortableAuthority(iri.host));
 }
 
 function getDidUrlOrigin(iri: string): string {
   const did = iri.split(/[/?#]/, 1)[0].replace(DID_SCHEME_PATTERN, "did:");
   if (!DID_PATTERN.test(did)) throw new TypeError("Invalid DID URL.");
-  return did;
+  const parts = did.split(":");
+  parts[1] = parts[1].toLowerCase();
+  return parts.join(":");
 }
 
 function parsePortableIri(iri: string): URL | null {
@@ -220,7 +222,7 @@ function parsePortableIri(iri: string): URL | null {
   // current FEP-ef61 interoperability, but normalize it to a percent-encoded
   // URL authority internally.  The ap: URI syntax may change later; see:
   // https://bnewbold.leaflet.pub/3mph4hzvbdc2v
-  const authority = decodePortableAuthority(match[2]);
+  const authority = getDidUrlOrigin(decodePortableAuthority(match[2]));
   if (!DID_PATTERN.test(authority)) {
     throw new TypeError("Invalid portable ActivityPub IRI authority.");
   }

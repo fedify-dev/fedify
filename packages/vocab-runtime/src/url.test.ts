@@ -32,15 +32,16 @@ test("parseIri() accepts portable ActivityPub URI schemes", () => {
   }
 });
 
-test("parseIri() accepts DID schemes case-insensitively", () => {
+test("parseIri() normalizes DID scheme and method casing", () => {
   const cases = [
     "ap://DID:key:z6Mkabc/actor",
     "ap://DID%3Akey%3Az6Mkabc/actor",
+    "ap://did:KEY:z6Mkabc/actor",
   ];
   for (const iri of cases) {
     deepStrictEqual(
       parseIri(iri),
-      new URL("ap+ef61://DID%3Akey%3Az6Mkabc/actor"),
+      new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
     );
   }
 });
@@ -208,6 +209,10 @@ test("getFe34Origin() computes web and cryptographic origins", () => {
     getFe34Origin("did:key:z6Mkabc/path/to/resource?service=activitypub#key"),
     "did:key:z6Mkabc",
   );
+  deepStrictEqual(
+    getFe34Origin("did:KEY:z6Mkabc#z6Mkabc"),
+    "did:key:z6Mkabc",
+  );
 });
 
 test("getFe34Origin() rejects unsupported or malformed identifiers", () => {
@@ -248,6 +253,10 @@ test("haveSameFe34Origin() compares web and cryptographic origins", () => {
   ));
   ok(haveSameFe34Origin(
     "ap+ef61://did:key:z6Mkabc/actor",
+    "did:key:z6Mkabc#z6Mkabc",
+  ));
+  ok(haveSameFe34Origin(
+    "ap://did:KEY:z6Mkabc/actor",
     "did:key:z6Mkabc#z6Mkabc",
   ));
   ok(
