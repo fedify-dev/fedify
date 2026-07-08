@@ -66,8 +66,8 @@
     "README.md"
   ],
   "dependencies": {
-    "@js-temporal/polyfill": "catalog:",
-    "@logtape/logtape": "catalog:"
+    "@logtape/logtape": "catalog:",
+    "temporal-polyfill": "catalog:"
   },
   "peerDependencies": {
     "@fedify/fedify": "workspace:^",
@@ -76,6 +76,7 @@
   "devDependencies": {
     "@fedify/fixture": "workspace:^",
     "@fedify/testing": "workspace:^",
+    "@js-temporal/polyfill": "catalog:",
     "@std/async": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"

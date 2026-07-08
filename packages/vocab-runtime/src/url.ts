@@ -12,6 +12,7 @@ export class UrlError extends Error {
 const PORTABLE_IRI_PATTERN =
   /^(ap|ap\+ef61):\/\/([^/?#]*)([^?#]*)(\?[^#]*)?(#.*)?$/i;
 const INVALID_PERCENT_ENCODING_PATTERN = /%(?![0-9A-Fa-f]{2})/;
+const PERCENT_ENCODING_PATTERN = /%[0-9A-Fa-f]{2}/g;
 const DID_SCHEME_PATTERN = /^did:/i;
 const DID_PATTERN = /^did:[a-z0-9]+:[-A-Za-z0-9._%]+(?::[-A-Za-z0-9._%]+)*$/i;
 
@@ -61,6 +62,73 @@ export function formatIri(iri: string | URL): string {
   }
   const authority = decodePortableAuthority(parsed.host);
   return `ap+ef61://${authority}${parsed.pathname}${parsed.search}${parsed.hash}`;
+}
+
+/**
+ * Canonicalizes a FEP-ef61 portable ActivityPub URI for comparison.
+ *
+ * This accepts both `ap:` and `ap+ef61:` URI strings with decoded or
+ * percent-encoded DID authorities.  The returned value uses the `ap+ef61:`
+ * scheme, a decoded DID authority, and no query component.  Pass the raw URI
+ * string, not a `URL` object, because JavaScript `URL` normalizes opaque path
+ * segments before Fedify can compare them.
+ *
+ * @param input The raw portable ActivityPub URI string to canonicalize.
+ * @returns The canonical portable ActivityPub URI string.
+ * @throws {TypeError} If the input is not a valid portable ActivityPub IRI.
+ * @since 2.4.0
+ */
+export function canonicalizePortableUri(input: string): string {
+  if (typeof input !== "string") {
+    throw new TypeError("Invalid portable ActivityPub IRI.");
+  }
+  const parsed = parsePortableIri(input);
+  if (parsed == null) {
+    throw new TypeError("Invalid portable ActivityPub IRI.");
+  }
+  const match = input.match(PORTABLE_IRI_PATTERN)!;
+  // parsePortableIri() validates the value but returns a URL, which normalizes
+  // opaque path segments.  Use the raw match for path and fragment comparison.
+  // parsed.host is the encodeURIComponent() output from parsePortableIri(), so
+  // decodePortableAuthority() reverses the shared percent-encoded authority
+  // path here rather than the raw did:-prefixed branch.
+  const authority = normalizePortableAuthority(
+    decodePortableAuthority(parsed.host).replace(DID_SCHEME_PATTERN, "did:"),
+  );
+  // Keep path and fragment text from the raw match to avoid URL dot-segment
+  // normalization, but still encode raw characters and normalize
+  // percent-escape hex casing per URI comparison rules.
+  const path = normalizePortableComponent(match[3]);
+  const fragment = match[5] == null ? "" : normalizePortableComponent(match[5]);
+  return `ap+ef61://${authority}${path}${fragment}`;
+}
+
+/**
+ * Checks whether two FEP-ef61 portable ActivityPub URIs identify the same
+ * portable object.
+ *
+ * Non-string inputs return `false`.  Non-portable URI strings use strict string
+ * equality.  Portable URI strings are compared through
+ * {@link canonicalizePortableUri}; malformed portable URI strings return
+ * `false` unless they are exactly equal.
+ *
+ * @since 2.4.0
+ */
+export function arePortableUrisEqual(
+  left: string,
+  right: string,
+): boolean {
+  if (typeof left !== "string" || typeof right !== "string") return false;
+  if (left === right) return true;
+  if (!PORTABLE_IRI_PATTERN.test(left) || !PORTABLE_IRI_PATTERN.test(right)) {
+    return false;
+  }
+  try {
+    return canonicalizePortableUri(left) === canonicalizePortableUri(right);
+  } catch (error) {
+    if (error instanceof TypeError) return false;
+    throw error;
+  }
 }
 
 /**
@@ -141,6 +209,49 @@ function decodePortableAuthority(authority: string): string {
     throw new TypeError("Invalid portable ActivityPub IRI authority.");
   }
   return decoded;
+}
+
+function normalizePercentEncoding(value: string): string {
+  return value.replace(
+    PERCENT_ENCODING_PATTERN,
+    (match) => match.toUpperCase(),
+  );
+}
+
+function normalizePortableAuthority(authority: string): string {
+  return normalizePercentEncoding(authority).replace(
+    PERCENT_ENCODING_PATTERN,
+    (match) => {
+      const decoded = String.fromCharCode(Number.parseInt(match.slice(1), 16));
+      return /[A-Za-z0-9._~-]/.test(decoded) ? decoded : match;
+    },
+  );
+}
+
+function normalizePortableComponent(value: string): string {
+  if (INVALID_PERCENT_ENCODING_PATTERN.test(value)) {
+    throw new TypeError("Invalid portable ActivityPub IRI component.");
+  }
+  return value.replace(
+    /%[0-9A-Fa-f]{2}|[^%]+/g,
+    (match) => {
+      if (match.startsWith("%")) {
+        const upper = match.toUpperCase();
+        const decoded = String.fromCharCode(
+          Number.parseInt(upper.slice(1), 16),
+        );
+        return /[A-Za-z0-9._~-]/.test(decoded) ? decoded : upper;
+      }
+      try {
+        return encodeURI(match);
+      } catch (error) {
+        if (error instanceof URIError) {
+          throw new TypeError("Invalid portable ActivityPub IRI component.");
+        }
+        throw error;
+      }
+    },
+  );
 }
 
 function parseAtUri(uri: string): URL {

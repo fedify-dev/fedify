@@ -47,8 +47,8 @@
   "dependencies": {
     "@fedify/fedify": "workspace:^",
     "@fedify/vocab": "workspace:*",
-    "@js-temporal/polyfill": "catalog:",
-    "@logtape/logtape": "catalog:"
+    "@logtape/logtape": "catalog:",
+    "temporal-polyfill": "catalog:"
   },
   "devDependencies": {
     "@fedify/vocab-runtime": "workspace:^",

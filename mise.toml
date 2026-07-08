@@ -246,9 +246,10 @@ for pkg in ($env.usage_packages | split row " " | where ($it | is-not-empty)) {
 '''
 
 # Testing
+
 [tasks."test:deno"]
+wait_for = ["build"]
 description = "Run the test suite using Deno"
-depends = ["build"]
 run = "deno test --check --doc --allow-all --unstable-kv --trace-leaks --parallel"
 
 [tasks."test:node"]
@@ -267,7 +268,12 @@ run = "pnpm run --recursive --parallel --filter '!{docs}' --config.enable-pre-po
 
 [tasks.test]
 description = "Run the test suite across all environments (Deno, Node.js, Bun)"
-depends = ["check", "test:deno", "test:node", "test:bun"]
+depends = ["check", "test:deno", "test:node", "test:bun", "test:temporal-polyfill"]
+
+[tasks."test:temporal-polyfill"]
+description = "Check Temporal polyfill packaging"
+depends = ["build"]
+run = "deno run --allow-read --allow-write --allow-run scripts/check_temporal_polyfill.ts"
 
 [tasks.test-each]
 description = "Run tests for a specific package across all environments"

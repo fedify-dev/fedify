@@ -1,5 +1,6 @@
 import type { InboxContext, OutboxContext } from "@fedify/fedify/federation";
 import { signJsonLd } from "@fedify/fedify/sig";
+import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { mockDocumentLoader, test } from "@fedify/fixture";
 import {
   Activity,
@@ -1710,4 +1711,120 @@ test("MockContext.getActorKeyPairs() returns empty array when no dispatcher regi
 
   const keyPairs = await context.getActorKeyPairs("alice");
   assertEquals(keyPairs, []);
+});
+
+// A Standard Schema that only accepts numbers; mirrors a strict task schema.
+const numberSchema: StandardSchemaV1<unknown, number> = {
+  "~standard": {
+    version: 1,
+    vendor: "fedify-test",
+    validate: (value: unknown) =>
+      typeof value === "number"
+        ? { value }
+        : { issues: [{ message: "Expected a number." }] },
+  },
+};
+
+test("MockContext.enqueueTask rejects a payload the schema refuses", async () => {
+  const federation = createFederation<void>();
+  let called = 0;
+  const task = federation.defineTask("count", {
+    schema: numberSchema,
+    handler: () => {
+      called++;
+    },
+  });
+  const context = federation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+  await assertRejects(
+    () => context.enqueueTask(task, "not a number" as unknown as number),
+    TypeError,
+    "Task data failed schema validation",
+  );
+  assertEquals(called, 0); // production fails fast at enqueue; so must the mock
+});
+
+test("MockContext.enqueueTask passes the schema's validated output to the handler", async () => {
+  const federation = createFederation<void>();
+  // A coercing schema: uppercases the string.  Input and output share the
+  // same type, but the validated value differs from the raw input.
+  const upper: StandardSchemaV1<string, string> = {
+    "~standard": {
+      version: 1,
+      vendor: "fedify-test",
+      validate: (value: unknown) =>
+        typeof value === "string"
+          ? { value: value.toUpperCase() }
+          : { issues: [{ message: "Expected a string." }] },
+    },
+  };
+  let received = "UNSET";
+  const task = federation.defineTask("shout", {
+    schema: upper,
+    handler: (_ctx, data) => {
+      received = data;
+    },
+  });
+  const context = federation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+  await context.enqueueTask(task, "hi");
+  // The handler observes the validated output, not the raw "hi".
+  assertEquals(received, "HI");
+});
+
+test("MockContext.enqueueTaskMany validates the whole batch before any handler runs", async () => {
+  const federation = createFederation<void>();
+  const seen: number[] = [];
+  const task = federation.defineTask("count-many", {
+    schema: numberSchema,
+    handler: (_ctx, data) => {
+      seen.push(data);
+    },
+  });
+  const context = federation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+  // The second item is invalid: production validates every payload before
+  // enqueuing anything, so the whole batch rejects with no effect.  The
+  // mock must not let the first handler run before the batch is vetted.
+  await assertRejects(
+    () => context.enqueueTaskMany(task, [1, "two" as unknown as number]),
+    TypeError,
+    "Task data failed schema validation",
+  );
+  assertEquals(seen, []);
+});
+
+test("MockContext.enqueueTask rejects a handle from another federation", async () => {
+  const federation = createFederation<void>();
+  const other = createFederation<void>();
+  let called = 0;
+  federation.defineTask("shared-name", {
+    schema: numberSchema,
+    handler: () => {
+      called++;
+    },
+  });
+  // Same task name on another federation: production compares the registered
+  // handle by identity and rejects the foreign one, so a name-only lookup in
+  // the mock would let tests pass with a handle the real federation refuses.
+  const foreign = other.defineTask("shared-name", {
+    schema: numberSchema,
+    handler: () => {},
+  });
+  const context = federation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+  await assertRejects(
+    () => context.enqueueTask(foreign, 1),
+    TypeError,
+    "is not defined on this federation",
+  );
+  assertEquals(called, 0);
 });

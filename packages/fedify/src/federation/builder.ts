@@ -67,6 +67,13 @@ import type {
   CollectionCallbacks,
   CustomCollectionCallbacks,
 } from "./handler.ts";
+import type { StandardSchemaV1 } from "@standard-schema/spec";
+import type {
+  TaskDefinition,
+  TaskDefinitionInternal,
+  TaskDefinitionOptions,
+  TaskHandler,
+} from "./tasks/mod.ts";
 
 export const ACTOR_ALIAS_PREFIX = "actorAlias:";
 
@@ -181,6 +188,7 @@ export class FederationBuilderImpl<TContextData>
       TContextData
     >
   >;
+  taskDefinitions: Map<string, TaskDefinitionInternal<TContextData>>;
 
   /**
    * Symbol registry for unique identification of unnamed symbols.
@@ -193,6 +201,7 @@ export class FederationBuilderImpl<TContextData>
     this.objectTypeIds = {};
     this.collectionCallbacks = {};
     this.collectionTypeIds = {};
+    this.taskDefinitions = new Map();
   }
 
   /**
@@ -260,6 +269,7 @@ export class FederationBuilderImpl<TContextData>
     f.unverifiedActivityHandler = this.unverifiedActivityHandler;
     f.outboxPermanentFailureHandler = this.outboxPermanentFailureHandler;
     f.idempotencyStrategy = this.idempotencyStrategy;
+    f.taskDefinitions = new Map(this.taskDefinitions);
     return f;
   }
 
@@ -593,6 +603,30 @@ export class FederationBuilderImpl<TContextData>
     dispatcher: WebFingerLinksDispatcher<TContextData>,
   ): void {
     this.webFingerLinksDispatcher = dispatcher;
+  }
+
+  defineTask<TSchema extends StandardSchemaV1>(
+    name: string,
+    options: TaskDefinitionOptions<TContextData, TSchema>,
+  ): TaskDefinition<TContextData, StandardSchemaV1.InferOutput<TSchema>> {
+    if (this.taskDefinitions.has(name)) {
+      throw new TypeError(`Task ${JSON.stringify(name)} is already defined.`);
+    }
+    const handle: TaskDefinition<
+      TContextData,
+      StandardSchemaV1.InferOutput<TSchema>
+    > = { name, schema: options.schema };
+    this.taskDefinitions.set(name, {
+      name,
+      schema: options.schema,
+      handle,
+      handler: options.handler as TaskHandler<TContextData, unknown>,
+      onError: options
+        .onError as TaskDefinitionInternal<TContextData>["onError"],
+      retryPolicy: options.retryPolicy,
+      queue: options.queue,
+    });
+    return handle;
   }
 
   /**

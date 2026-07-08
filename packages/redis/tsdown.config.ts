@@ -1,24 +1,30 @@
 import { defineConfig } from "tsdown";
+import {
+  temporalPolyfillCjsBanner,
+  temporalPolyfillCjsDeps,
+  temporalPolyfillEsmBanner,
+  temporalPolyfillImportPlugin,
+} from "../../scripts/tsdown/temporal.mts";
 
 export default defineConfig({
   entry: ["src/mod.ts", "src/codec.ts", "src/kv.ts", "src/mq.ts"],
   dts: { compilerOptions: { isolatedDeclarations: true, declaration: true } },
   unbundle: true,
-  format: ["esm", "cjs"],
+  format: {
+    esm: {
+      banner: temporalPolyfillEsmBanner(),
+    },
+    cjs: {
+      deps: temporalPolyfillCjsDeps(),
+      plugins: [temporalPolyfillImportPlugin],
+      banner: temporalPolyfillCjsBanner(),
+    },
+  },
   platform: "node",
   outExtensions({ format }) {
     return {
       js: format === "cjs" ? ".cjs" : ".js",
       dts: format === "cjs" ? ".d.cts" : ".d.ts",
-    };
-  },
-  banner({ format }) {
-    const js = format === "cjs"
-      ? `const { Temporal } = require("@js-temporal/polyfill");`
-      : `import { Temporal } from "@js-temporal/polyfill";`;
-    return {
-      js,
-      dts: `/// <reference lib="esnext.temporal" />`,
     };
   },
 });

@@ -64,15 +64,16 @@
     }
   },
   "dependencies": {
-    "@js-temporal/polyfill": "catalog:",
     "@logtape/logtape": "catalog:",
-    "es-toolkit": "^1.46.1"
+    "es-toolkit": "^1.46.1",
+    "temporal-polyfill": "catalog:"
   },
   "peerDependencies": {
     "@fedify/fedify": "workspace:^"
   },
   "devDependencies": {
     "@fedify/testing": "workspace:^",
+    "@js-temporal/polyfill": "catalog:",
     "@std/async": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"

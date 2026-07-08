@@ -46,7 +46,9 @@ function getNodeCommand(): string {
     : process.execPath;
 }
 
-test("CLI build keeps the init command bridge", async () => {
+test("CLI build keeps the init command bridge", {
+  skip: "Deno" in globalThis,
+}, async () => {
   const entrypoint = resolve(packageDir, "dist/mod.js");
   const commandBridge = resolve(packageDir, "dist/commands.js");
   await access(entrypoint);

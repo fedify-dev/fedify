@@ -17,10 +17,66 @@ To be released.
     as a remote JSON-LD document, which is required for [FEP-ef61]
     portable objects.  [[#827], [#915]]
 
+ -  Added a custom background task API that generalizes Fedify's
+    enqueue-and-process-later pattern to arbitrary application-defined jobs:
+
+     -  `Federation` and `FederationBuilder` gained a `defineTask()` method
+        through the new `TaskRegistry` interface, which `Federatable` now
+        extends.
+     -  `Context` gained `enqueueTask()` and `enqueueTaskMany()` methods,
+        with `delay` and `orderingKey` options
+        (new `TaskEnqueueOptions` interface).
+     -  Every task requires a [Standard Schema]
+        (`schema` option) from which the payload type is inferred; payloads
+        are validated at enqueue time (fail fast) and again at dequeue time
+        (protection against schema drift across deployments).
+     -  Payloads are serialized by Fedify with devalue, so `Date`, `Map`,
+        `Set`, `URL`, `bigint`, circular references, and Activity Vocabulary
+        objects round-trip faithfully across every message queue backend.
+     -  Failed handlers are retried with exponential backoff by default;
+        tasks support per-task `retryPolicy` and `onError` options, the new
+        `FederationOptions.taskRetryPolicy` sets the federation-wide default,
+        and queues with `nativeRetrial` delegate retries to the backend.
+     -  Tasks can be isolated from activity delivery through the new
+        `FederationQueueOptions.task` slot or a per-task `queue` option;
+        without them, tasks fall back to the outbox queue unless the new
+        `FederationOptions.taskQueueResolution` option is set to `"strict"`.
+        `Federation.startQueue()` now accepts `queue: "task"` to run
+        a task-only worker.
+     -  Tasks can request at-most-once enqueue with a `deduplicationKey`
+        (new `TaskEnqueueOptions.deduplicationKey`).  A queue declaring the new
+        `MessageQueue.nativeDeduplication` capability owns the check and
+        receives the key through the new
+        `MessageQueueEnqueueOptions.deduplicationKey`; otherwise Fedify
+        performs a best-effort key–value guard through the optional
+        `KvStore.cas` primitive, under a new `taskDeduplication` key prefix.
+        The marker TTL and the no-`cas` fallback are tunable with the new
+        `FederationOptions.taskDeduplicationTtl` and
+        `FederationOptions.taskDeduplicationFallback` options.
+
+    [[#206], [#797], [#798], [#799], [#803], [#806], [#812], [#923] by
+    ChanHaeng Lee]
+
+ -  Fixed CommonJS distribution files that use Temporal so they no longer
+    require `@js-temporal/polyfill` at runtime.  The CommonJS build now
+    bundles `temporal-polyfill`, while type declarations rely on the standard
+    `esnext.temporal` lib reference.  [[#823], [#925]]
+
 [FEP-8b32]: https://w3id.org/fep/8b32
 [FEP-ef61]: https://w3id.org/fep/ef61
+[Standard Schema]: https://standardschema.dev/
+[#206]: https://github.com/fedify-dev/fedify/issues/206
+[#797]: https://github.com/fedify-dev/fedify/issues/797
+[#798]: https://github.com/fedify-dev/fedify/issues/798
+[#799]: https://github.com/fedify-dev/fedify/issues/799
+[#803]: https://github.com/fedify-dev/fedify/pull/803
+[#806]: https://github.com/fedify-dev/fedify/pull/806
+[#812]: https://github.com/fedify-dev/fedify/pull/812
+[#823]: https://github.com/fedify-dev/fedify/issues/823
 [#827]: https://github.com/fedify-dev/fedify/issues/827
 [#915]: https://github.com/fedify-dev/fedify/pull/915
+[#923]: https://github.com/fedify-dev/fedify/pull/923
+[#925]: https://github.com/fedify-dev/fedify/pull/925
 
 ### @fedify/vocab
 
@@ -35,6 +91,11 @@ To be released.
     `FeatureAuthorization`, plus actor `featuredCollections` and
     `InteractionPolicy.canFeature` properties.  [[#810], [#914]]
 
+ -  Fixed the CommonJS vocabulary build so it no longer requires
+    `@js-temporal/polyfill` at runtime.  The build now bundles
+    `temporal-polyfill`, while type declarations rely on the standard
+    `esnext.temporal` lib reference.  [[#823], [#925]]
+
 [FEP-7aa9]: https://w3id.org/fep/7aa9
 [#810]: https://github.com/fedify-dev/fedify/issues/810
 [#826]: https://github.com/fedify-dev/fedify/issues/826
@@ -42,6 +103,12 @@ To be released.
 [#914]: https://github.com/fedify-dev/fedify/pull/914
 
 ### @fedify/vocab-runtime
+
+ -  Added `canonicalizePortableUri()` and `arePortableUrisEqual()` for
+    comparing [FEP-ef61] portable ActivityPub URI strings.  The helpers accept
+    `ap:` and `ap+ef61:` values with decoded or percent-encoded DID
+    authorities, normalize them to `ap+ef61:`, and ignore query hints such as
+    `gateways` during comparison.  [[#828], [#924]]
 
  -  Added the [FEP-7aa9] JSON-LD context to the preloaded context registry so
     FEP-7aa9 documents can be compacted and expanded without fetching the
@@ -59,8 +126,64 @@ To be released.
     error pages surface as document loading failures with the response URL and
     content type, rather than generic JSON parser crashes.  [[#912], [#913]]
 
+[#828]: https://github.com/fedify-dev/fedify/issues/828
 [#912]: https://github.com/fedify-dev/fedify/issues/912
 [#913]: https://github.com/fedify-dev/fedify/pull/913
+[#924]: https://github.com/fedify-dev/fedify/pull/924
+
+### @fedify/cli
+
+ -  Switched the CLI's Temporal runtime dependency from
+    `@js-temporal/polyfill` to `temporal-polyfill`.  [[#823], [#925]]
+
+### @fedify/debugger
+
+ -  Fixed the CommonJS debugger build so it no longer requires
+    `@js-temporal/polyfill` at runtime.  The build now bundles
+    `temporal-polyfill`, while type declarations rely on the standard
+    `esnext.temporal` lib reference.  [[#823], [#925]]
+
+### @fedify/mysql
+
+ -  Fixed the CommonJS MySQL adapter build so it no longer requires
+    `@js-temporal/polyfill` at runtime.  The build now bundles
+    `temporal-polyfill`, while type declarations rely on the standard
+    `esnext.temporal` lib reference.  [[#823], [#925]]
+
+### @fedify/postgres
+
+ -  Fixed the CommonJS PostgreSQL adapter build so it no longer requires
+    `@js-temporal/polyfill` at runtime.  The build now bundles
+    `temporal-polyfill`, while type declarations rely on the standard
+    `esnext.temporal` lib reference.  [[#823], [#925]]
+
+### @fedify/redis
+
+ -  Fixed the CommonJS Redis adapter build so it no longer requires
+    `@js-temporal/polyfill` at runtime.  The build now bundles
+    `temporal-polyfill`, while type declarations rely on the standard
+    `esnext.temporal` lib reference.  [[#823], [#925]]
+
+### @fedify/relay
+
+ -  Fixed the CommonJS relay build so it no longer requires
+    `@js-temporal/polyfill` at runtime.  The build now bundles
+    `temporal-polyfill`, while type declarations rely on the standard
+    `esnext.temporal` lib reference.  [[#823], [#925]]
+
+### @fedify/sqlite
+
+ -  Fixed the CommonJS SQLite adapter build so it no longer requires
+    `@js-temporal/polyfill` at runtime.  The build now bundles
+    `temporal-polyfill`, while type declarations rely on the standard
+    `esnext.temporal` lib reference.  [[#823], [#925]]
+
+### @fedify/testing
+
+ -  Fixed the CommonJS testing utilities build so it no longer requires
+    `@js-temporal/polyfill` at runtime.  The build now bundles
+    `temporal-polyfill`, while type declarations rely on the standard
+    `esnext.temporal` lib reference.  [[#823], [#925]]
 
 
 Version 2.3.2

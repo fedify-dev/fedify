@@ -113,6 +113,12 @@ Both the `ap:` and `ap+ef61:` schemes are accepted, whether the DID authority
 is decoded (e.g., `ap+ef61://did:key:.../actor`) or percent-encoded.  Fedify
 stores these IRIs as `URL` objects with a URL-safe authority internally, and
 serializes them as canonical `ap+ef61:` IRIs with the decoded DID authority.
+When comparing portable object IDs, use `canonicalizePortableUri()` or
+`arePortableUrisEqual()` from `@fedify/vocab-runtime`; these helpers remove
+query hints such as `gateways` according to [FEP-ef61].  Pass raw URI strings
+to these comparison helpers, because JavaScript `URL` objects normalize opaque
+path segments before Fedify can compare them.  Serialization keeps those query
+hints intact.
 
 > [!TIP]
 > You can instantiate an object from a JSON-LD document by calling the

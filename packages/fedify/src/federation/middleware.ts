@@ -32,6 +32,7 @@ import type {
 import { lookupWebFinger } from "@fedify/webfinger";
 import { getLogger, withContext } from "@logtape/logtape";
 import {
+  type Attributes,
   context,
   type MeterProvider,
   metrics,
@@ -58,13 +59,6 @@ import { getNodeInfo, type GetNodeInfoOptions } from "../nodeinfo/client.ts";
 import { handleNodeInfo, handleNodeInfoJrd } from "../nodeinfo/handler.ts";
 import type { JsonValue, NodeInfo } from "../nodeinfo/types.ts";
 import {
-  type BenchmarkMetricReader,
-  type BenchmarkTriggerOptions,
-  createBenchmarkMeterProvider,
-  handleBenchmarkStats,
-  handleBenchmarkTrigger,
-} from "./bench.ts";
-import {
   type HttpMessageSignaturesSpec,
   type HttpMessageSignaturesSpecDeterminer,
   verifyRequest,
@@ -87,6 +81,13 @@ import { getKeyOwner, type GetKeyOwnerOptions } from "../sig/owner.ts";
 import { hasProofLike, signObject, verifyObject } from "../sig/proof.ts";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 import { kvCache } from "../utils/kv-cache.ts";
+import {
+  type BenchmarkMetricReader,
+  type BenchmarkTriggerOptions,
+  createBenchmarkMeterProvider,
+  handleBenchmarkStats,
+  handleBenchmarkTrigger,
+} from "./bench.ts";
 import { ACTOR_ALIAS_PREFIX, FederationBuilderImpl } from "./builder.ts";
 import type { OutboxErrorHandler } from "./callback.ts";
 import {
@@ -141,7 +142,6 @@ import {
   isAbortError,
   type QueueDepthGaugeEntry,
   type QueueTaskCommonAttributes,
-  type QueueTaskResult,
   recordCircuitBreakerStateChange,
   recordCollectionRequest,
   recordFanoutRecipients,
@@ -158,6 +158,7 @@ import type {
   Message,
   OutboxMessage,
   SenderKeyJwkPair,
+  TaskMessage,
 } from "./queue.ts";
 import { createExponentialBackoffPolicy, type RetryPolicy } from "./retry.ts";
 import {
@@ -166,8 +167,18 @@ import {
   SendActivityError,
   type SenderKeyPair,
 } from "./send.ts";
-import { handleWebFinger } from "./webfinger.ts";
+import {
+  classifyAbortableError,
+  classifyTaskError,
+  enqueueTasks,
+  type QueueTaskDispatchResult,
+  TaskCodec,
+  type TaskDefinition,
+  type TaskEnqueueOptions,
+  TaskRetryEnqueueError,
+} from "./tasks/mod.ts";
 import { hasMalformedKnownTemporalLiteral } from "./temporal.ts";
+import { handleWebFinger } from "./webfinger.ts";
 
 const circuitBreakerCasWarningKvStores = new WeakSet<KvStore>();
 let nextQueueDepthGaugeSourceId = 0;
@@ -484,6 +495,14 @@ export interface FederationQueueOptions {
    * {@link Context.sendActivity} calls.
    */
   readonly fanout?: MessageQueue;
+
+  /**
+   * The message queue for custom background tasks.  If not provided,
+   * tasks are routed to the outbox queue (unless
+   * {@link FederationOptions.taskQueueResolution} is `"strict"`).
+   * @since 2.4.0
+   */
+  readonly task?: MessageQueue;
 }
 
 /**
@@ -533,6 +552,15 @@ export interface FederationKvPrefixes {
    * @since 2.3.0
    */
   readonly circuitBreaker: KvKey;
+
+  /**
+   * The key prefix used for storing custom background task deduplication
+   * markers.  Kept separate from {@link activityIdempotence} so the two key
+   * spaces never collide.
+   * @default `["_fedify", "taskDeduplication"]`
+   * @since 2.4.0
+   */
+  readonly taskDeduplication: KvKey;
 }
 
 /**
@@ -577,9 +605,8 @@ export class FederationImpl<TContextData>
   inboxQueue?: MessageQueue;
   outboxQueue?: MessageQueue;
   fanoutQueue?: MessageQueue;
-  inboxQueueStarted: boolean;
-  outboxQueueStarted: boolean;
-  fanoutQueueStarted: boolean;
+  taskQueue?: MessageQueue;
+  startedQueues: Set<MessageQueue>;
   manuallyStartQueue: boolean;
   origin?: FederationOrigin;
   documentLoaderFactory: DocumentLoaderFactory;
@@ -593,6 +620,10 @@ export class FederationImpl<TContextData>
   skipSignatureVerification: boolean;
   outboxRetryPolicy: RetryPolicy;
   inboxRetryPolicy: RetryPolicy;
+  taskRetryPolicy: RetryPolicy;
+  taskQueueResolution: "fallback" | "strict";
+  taskDeduplicationTtl: Temporal.Duration;
+  taskDeduplicationFallback: "open" | "closed";
   circuitBreaker?: CircuitBreaker;
   activityTransformers: readonly ActivityTransformer<TContextData>[];
   _tracerProvider: TracerProvider | undefined;
@@ -654,6 +685,7 @@ export class FederationImpl<TContextData>
         httpMessageSignaturesSpec: ["_fedify", "httpMessageSignaturesSpec"],
         acceptSignatureNonce: ["_fedify", "acceptSignatureNonce"],
         circuitBreaker: ["_fedify", "circuit"],
+        taskDeduplication: ["_fedify", "taskDeduplication"],
       } satisfies FederationKvPrefixes),
       ...(options.kvPrefixes ?? {}),
     };
@@ -661,14 +693,19 @@ export class FederationImpl<TContextData>
       this.inboxQueue = undefined;
       this.outboxQueue = undefined;
       this.fanoutQueue = undefined;
+      this.taskQueue = undefined;
     } else if ("enqueue" in options.queue && "listen" in options.queue) {
       this.inboxQueue = options.queue;
       this.outboxQueue = options.queue;
       this.fanoutQueue = options.queue;
+      // A bare queue leaves taskQueue undefined; tasks are served through
+      // the outboxQueue fallback.
+      this.taskQueue = undefined;
     } else {
       this.inboxQueue = options.queue.inbox;
       this.outboxQueue = options.queue.outbox;
       this.fanoutQueue = options.queue.fanout;
+      this.taskQueue = options.queue.task;
     }
     if (options.circuitBreaker !== false && this.outboxQueue != null) {
       this.circuitBreaker = new CircuitBreaker({
@@ -696,9 +733,7 @@ export class FederationImpl<TContextData>
         );
       }
     }
-    this.inboxQueueStarted = false;
-    this.outboxQueueStarted = false;
-    this.fanoutQueueStarted = false;
+    this.startedQueues = new Set();
     this.manuallyStartQueue = options.manuallyStartQueue ?? false;
     if (options.origin != null) {
       if (typeof options.origin === "string") {
@@ -877,6 +912,14 @@ export class FederationImpl<TContextData>
       createExponentialBackoffPolicy();
     this.inboxRetryPolicy = options.inboxRetryPolicy ??
       createExponentialBackoffPolicy();
+    this.taskRetryPolicy = options.taskRetryPolicy ??
+      createExponentialBackoffPolicy();
+    this.taskQueueResolution = options.taskQueueResolution ?? "fallback";
+    this.taskDeduplicationTtl = Temporal.Duration.from(
+      options.taskDeduplicationTtl ?? { hours: 1 },
+    );
+    this.taskDeduplicationFallback = options.taskDeduplicationFallback ??
+      "open";
     this.activityTransformers = options.activityTransformers ??
       getDefaultActivityTransformers<TContextData>();
     this._tracerProvider = options.tracerProvider;
@@ -908,6 +951,10 @@ export class FederationImpl<TContextData>
     return meterProvider;
   }
 
+  get metrics(): ReturnType<typeof getFederationMetrics> {
+    return getFederationMetrics(this.meterProvider);
+  }
+
   #registerQueueDepthGauge(meterProvider: MeterProvider): void {
     if (meterProvider === this.#queueDepthGaugeMeterProvider) return;
     registerQueueDepthGauge(meterProvider, this.#queueDepthGaugeEntries, {
@@ -929,53 +976,44 @@ export class FederationImpl<TContextData>
     return this.tracerProvider.getTracer(metadata.name, metadata.version);
   }
 
+  resolveTaskQueue(taskName: string): MessageQueue | undefined {
+    const def = this.taskDefinitions.get(taskName);
+    const resolved = def?.queue ?? this.taskQueue;
+    if (resolved != null) return resolved;
+    return this.taskQueueResolution === "strict" ? undefined : this.outboxQueue;
+  }
+
   async _startQueueInternal(
     ctxData: TContextData,
     signal?: AbortSignal,
     queue?: keyof FederationQueueOptions,
   ): Promise<void> {
-    if (this.inboxQueue == null && this.outboxQueue == null) return;
+    // Tasks fall back to the outbox queue and may add per-task queues; the
+    // identity Set then starts each instance once even when roles share one.
+    type QueueNameMessage = [
+      keyof FederationQueueOptions,
+      MessageQueue | undefined,
+    ];
+    const taskQueue = this.taskQueue ??
+      (this.taskQueueResolution === "fallback" ? this.outboxQueue : undefined);
+    const customQueues = this.taskDefinitions.values()
+      .map((def): QueueNameMessage => ["task", def.queue]);
+    const targets: QueueNameMessage[] = [
+      ["inbox", this.inboxQueue],
+      ["outbox", this.outboxQueue],
+      ["fanout", this.fanoutQueue],
+      ["task", taskQueue],
+      ...customQueues,
+    ];
     const logger = getLogger(["fedify", "federation", "queue"]);
     const promises: Promise<void>[] = [];
-    if (
-      this.inboxQueue != null && (queue == null || queue === "inbox") &&
-      !this.inboxQueueStarted
-    ) {
-      logger.debug("Starting an inbox task worker.");
-      this.inboxQueueStarted = true;
+    for (const [role, target] of targets) {
+      if (target == null || !(queue == null || queue === role)) continue;
+      if (this.startedQueues.has(target)) continue;
+      this.startedQueues.add(target);
+      logger.debug("Starting a {role} queue worker.", { role });
       promises.push(
-        this.inboxQueue.listen(
-          (msg) => this.processQueuedTask(ctxData, msg),
-          { signal },
-        ),
-      );
-    }
-    if (
-      this.outboxQueue != null &&
-      this.outboxQueue !== this.inboxQueue &&
-      (queue == null || queue === "outbox") &&
-      !this.outboxQueueStarted
-    ) {
-      logger.debug("Starting an outbox task worker.");
-      this.outboxQueueStarted = true;
-      promises.push(
-        this.outboxQueue.listen(
-          (msg) => this.processQueuedTask(ctxData, msg),
-          { signal },
-        ),
-      );
-    }
-    if (
-      this.fanoutQueue != null &&
-      this.fanoutQueue !== this.inboxQueue &&
-      this.fanoutQueue !== this.outboxQueue &&
-      (queue == null || queue === "fanout") &&
-      !this.fanoutQueueStarted
-    ) {
-      logger.debug("Starting a fanout task worker.");
-      this.fanoutQueueStarted = true;
-      promises.push(
-        this.fanoutQueue.listen(
+        target.listen(
           (msg) => this.processQueuedTask(ctxData, msg),
           { signal },
         ),
@@ -988,12 +1026,10 @@ export class FederationImpl<TContextData>
     contextData: TContextData,
     message: Message,
   ): Promise<void> {
-    const tracer = this._getTracer();
     const extractedContext = propagation.extract(
       context.active(),
       message.traceContext,
     );
-    const meter = getFederationMetrics(this.meterProvider);
     return withContext({ messageId: message.id }, async () => {
       if (message.type === "fanout") {
         const common: QueueTaskCommonAttributes = {
@@ -1001,54 +1037,17 @@ export class FederationImpl<TContextData>
           queue: this.fanoutQueue,
           activityType: message.activityType,
         };
-        await tracer.startActiveSpan(
+        await this.#runWorkerSpan(
           "activitypub.fanout",
-          {
-            kind: SpanKind.CONSUMER,
-            attributes: {
-              "activitypub.activity.type": message.activityType,
-            },
-          },
+          { "activitypub.activity.type": message.activityType },
           extractedContext,
-          async (span) => {
-            const spanCtx = span.spanContext();
-            return await withContext(
-              { traceId: spanCtx.traceId, spanId: spanCtx.spanId },
-              async () => {
-                if (message.activityId != null) {
-                  span.setAttribute(
-                    "activitypub.activity.id",
-                    message.activityId,
-                  );
-                }
-                meter.recordQueueTaskStarted(common);
-                meter.incrementQueueTaskInFlight(common);
-                const startedAt = performance.now();
-                let outcome: QueueTaskResult = "completed";
-                try {
-                  await this.#listenFanoutMessage(contextData, message);
-                } catch (e) {
-                  const aborted = isAbortError(e);
-                  outcome = aborted ? "aborted" : "failed";
-                  if (!aborted) {
-                    span.setStatus({
-                      code: SpanStatusCode.ERROR,
-                      message: String(e),
-                    });
-                  }
-                  throw e;
-                } finally {
-                  meter.recordQueueTaskOutcome(
-                    common,
-                    outcome,
-                    getDurationMs(startedAt),
-                  );
-                  meter.decrementQueueTaskInFlight(common);
-                  span.end();
-                }
-              },
-            );
-          },
+          this.#instrumentWorkerBody(common, async (span) => {
+            if (message.activityId != null) {
+              span.setAttribute("activitypub.activity.id", message.activityId);
+            }
+            await this.#listenFanoutMessage(contextData, message);
+            return { outcome: "completed" };
+          }, classifyAbortableError),
         );
       } else if (message.type === "outbox") {
         const common: QueueTaskCommonAttributes = {
@@ -1056,114 +1055,145 @@ export class FederationImpl<TContextData>
           queue: this.outboxQueue,
           activityType: message.activityType,
         };
-        await tracer.startActiveSpan(
+        await this.#runWorkerSpan(
           "activitypub.outbox",
           {
-            kind: SpanKind.CONSUMER,
-            attributes: {
-              "activitypub.activity.type": message.activityType,
-              "activitypub.activity.retries": message.attempt,
-            },
+            "activitypub.activity.type": message.activityType,
+            "activitypub.activity.retries": message.attempt,
           },
           extractedContext,
-          async (span) => {
-            const spanCtx = span.spanContext();
-            return await withContext(
-              { traceId: spanCtx.traceId, spanId: spanCtx.spanId },
-              async () => {
-                if (message.activityId != null) {
-                  span.setAttribute(
-                    "activitypub.activity.id",
-                    message.activityId,
-                  );
-                }
-                meter.recordQueueTaskStarted(common);
-                meter.incrementQueueTaskInFlight(common);
-                const startedAt = performance.now();
-                let outcome: QueueTaskResult = "completed";
-                try {
-                  await this.#listenOutboxMessage(contextData, message, span);
-                } catch (e) {
-                  const aborted = isAbortError(e);
-                  outcome = aborted ? "aborted" : "failed";
-                  if (!aborted) {
-                    span.setStatus({
-                      code: SpanStatusCode.ERROR,
-                      message: String(e),
-                    });
-                  }
-                  throw e;
-                } finally {
-                  meter.recordQueueTaskOutcome(
-                    common,
-                    outcome,
-                    getDurationMs(startedAt),
-                  );
-                  meter.decrementQueueTaskInFlight(common);
-                  span.end();
-                }
-              },
-            );
-          },
+          this.#instrumentWorkerBody(common, async (span) => {
+            if (message.activityId != null) {
+              span.setAttribute("activitypub.activity.id", message.activityId);
+            }
+            await this.#listenOutboxMessage(contextData, message, span);
+            return { outcome: "completed" };
+          }, classifyAbortableError),
         );
       } else if (message.type === "inbox") {
         const common: QueueTaskCommonAttributes = {
           role: "inbox",
           queue: this.inboxQueue,
         };
-        await tracer.startActiveSpan(
+        await this.#runWorkerSpan(
           "activitypub.inbox",
-          {
-            kind: SpanKind.CONSUMER,
-            attributes: {
-              "activitypub.shared_inbox": message.identifier == null,
-            },
-          },
+          { "activitypub.shared_inbox": message.identifier == null },
           extractedContext,
-          async (span) => {
-            const spanCtx = span.spanContext();
-            return await withContext(
-              { traceId: spanCtx.traceId, spanId: spanCtx.spanId },
-              async () => {
-                meter.recordQueueTaskStarted(common);
-                meter.incrementQueueTaskInFlight(common);
-                const startedAt = performance.now();
-                let outcome: QueueTaskResult = "completed";
-                try {
-                  await this.#listenInboxMessage(
-                    contextData,
-                    message,
-                    span,
-                    (activityType) => {
-                      common.activityType = activityType;
-                    },
-                  );
-                } catch (e) {
-                  const aborted = isAbortError(e);
-                  outcome = aborted ? "aborted" : "failed";
-                  if (!aborted) {
-                    span.setStatus({
-                      code: SpanStatusCode.ERROR,
-                      message: String(e),
-                    });
-                  }
-                  throw e;
-                } finally {
-                  meter.recordQueueTaskOutcome(
-                    common,
-                    outcome,
-                    getDurationMs(startedAt),
-                  );
-                  meter.decrementQueueTaskInFlight(common);
-                  span.end();
-                }
+          this.#instrumentWorkerBody(common, async (span) => {
+            await this.#listenInboxMessage(
+              contextData,
+              message,
+              span,
+              (activityType) => {
+                common.activityType = activityType;
               },
             );
+            return { outcome: "completed" };
+          }, classifyAbortableError),
+        );
+      } else if (message.type === "task") {
+        const registered = this.taskDefinitions.get(message.taskName) != null;
+        const common: QueueTaskCommonAttributes = {
+          role: "task",
+          queue: this.resolveTaskQueue(message.taskName),
+          taskName: registered ? message.taskName : undefined,
+        };
+        await this.#runWorkerSpan(
+          "fedify.task",
+          {
+            "fedify.task.name": message.taskName,
+            "fedify.task.attempt": message.attempt,
           },
+          extractedContext,
+          this.#instrumentWorkerBody(
+            common,
+            () => this.#listenTaskMessage(contextData, message),
+            classifyTaskError,
+          ),
         );
       }
     });
   }
+
+  /**
+   * Opens a CONSUMER span for a queue worker and scopes the extracted trace
+   * context around its body.  The body—typically built by
+   * {@link FederationImpl.instrumentWorkerBody}—receives the span and returns
+   * the context-scoped worker callback.
+   * @param spanName The consumer span name (for example, `"fedify.task"`).
+   * @param spanAttributes The initial span attributes.
+   * @param extractedContext The trace context extracted from the message.
+   * @param instrumentedBody Builds the context-scoped worker callback for the
+   *                         opened span.
+   */
+  async #runWorkerSpan(
+    spanName: string,
+    spanAttributes: Attributes,
+    extractedContext: ReturnType<typeof propagation.extract>,
+    instrumentedBody: (span: Span) => () => Promise<void>,
+  ): Promise<void> {
+    await this._getTracer().startActiveSpan(
+      spanName,
+      { kind: SpanKind.CONSUMER, attributes: spanAttributes },
+      extractedContext,
+      async (span: Span) => {
+        const spanCtx = span.spanContext();
+        return await withContext(
+          { traceId: spanCtx.traceId, spanId: spanCtx.spanId },
+          instrumentedBody(span),
+        );
+      },
+    );
+  }
+
+  /**
+   * Wraps a worker body with the shared `fedify.queue.task.*` boundary
+   * telemetry, returning the instrumented body keyed by its span.  The
+   * instrumentation records the started, outcome, and duration metrics, pairs
+   * the in-flight increment with its decrement, sets the span's error status
+   * from the terminal outcome, and ends the span.  The fanout, outbox, inbox,
+   * and task workers differ only in `common`, the body, and how a thrown error
+   * maps to an outcome.
+   * @param common The shared queue-task metric attributes for this worker.
+   * @param run Runs the worker body and resolves to its terminal outcome.
+   * @param classifyError Maps a thrown error to a terminal outcome.
+   */
+  #instrumentWorkerBody = (
+    common: QueueTaskCommonAttributes,
+    run: (span: Span) => Promise<QueueTaskDispatchResult>,
+    classifyError: (error: unknown) => QueueTaskDispatchResult,
+  ) =>
+  (span: Span) =>
+  async () => {
+    this.metrics.recordQueueTaskStarted(common);
+    this.metrics.incrementQueueTaskInFlight(common);
+    const startedAt = performance.now();
+    let result: QueueTaskDispatchResult = { outcome: "completed" };
+    try {
+      result = await run(span);
+    } catch (e) {
+      result = classifyError(e);
+      throw e;
+    } finally {
+      if (result.outcome === "failed") {
+        if (result.failureReason != null) {
+          span.setAttribute("fedify.task.failure_reason", result.failureReason);
+        }
+        span.setStatus({
+          code: SpanStatusCode.ERROR,
+          ...(result.error == null ? {} : { message: String(result.error) }),
+        });
+      }
+      this.metrics.recordQueueTaskOutcome(
+        common,
+        result.outcome,
+        getDurationMs(startedAt),
+        result.outcome === "failed" ? result.failureReason : undefined,
+      );
+      this.metrics.decrementQueueTaskInFlight(common);
+      span.end();
+    }
+  };
 
   async #listenFanoutMessage(
     data: TContextData,
@@ -1280,7 +1310,7 @@ export class FederationImpl<TContextData>
         delay: clampNegativeDelay(delay),
         orderingKey: message.orderingKey,
       });
-      getFederationMetrics(this.meterProvider).recordQueueTaskEnqueued(
+      this.metrics.recordQueueTaskEnqueued(
         {
           role: "outbox",
           queue: outboxQueue,
@@ -1559,7 +1589,7 @@ export class FederationImpl<TContextData>
       if (
         isPermanentFailure
       ) {
-        getFederationMetrics(this.meterProvider).recordPermanentFailure(
+        this.metrics.recordPermanentFailure(
           error.inbox,
           error.statusCode,
         );
@@ -1659,7 +1689,7 @@ export class FederationImpl<TContextData>
               orderingKey: message.orderingKey,
             },
           );
-          getFederationMetrics(this.meterProvider).recordQueueTaskEnqueued(
+          this.metrics.recordQueueTaskEnqueued(
             {
               role: "outbox",
               queue: outboxQueue,
@@ -1803,7 +1833,7 @@ export class FederationImpl<TContextData>
               },
             );
             if (activityType != null) {
-              getFederationMetrics(this.meterProvider)
+              this.metrics
                 .recordQueueTaskEnqueued(
                   {
                     role: "inbox",
@@ -2027,7 +2057,7 @@ export class FederationImpl<TContextData>
               activity,
             );
           } finally {
-            getFederationMetrics(this.meterProvider)
+            this.metrics
               .recordInboxProcessingDuration(
                 activityType,
                 getDurationMs(started),
@@ -2054,6 +2084,128 @@ export class FederationImpl<TContextData>
         listenerSpan.end();
       },
     );
+  }
+
+  async #listenTaskMessage(
+    contextData: TContextData,
+    message: TaskMessage,
+  ): Promise<QueueTaskDispatchResult> {
+    const logger = getLogger(["fedify", "federation", "task"]);
+    const def = this.taskDefinitions.get(message.taskName);
+    if (def == null) {
+      // Unknown task: a handler won't appear by retrying.  Drop and log.
+      logger.warn(
+        "Received a custom task {taskName} with no registered handler; " +
+          "dropping.",
+        { taskName: message.taskName },
+      );
+      return { outcome: "failed", failureReason: "unknown_task" };
+    }
+    const context = this.#createContext(new URL(message.baseUrl), contextData);
+    const data = await context.codec.decode(def.schema, message.data);
+    if (!data.ok) {
+      if (data.phase === "deserialization") {
+        logger.error(
+          "Custom task {taskName} payload could not be deserialized; " +
+            "dropping:\n{error}",
+          { taskName: message.taskName, error: data.error },
+        );
+      } else {
+        logger.error(
+          "Custom task {taskName} payload failed schema validation; " +
+            "dropping:\n{error}",
+          { taskName: message.taskName, error: data.error },
+        );
+      }
+      return { outcome: "failed", failureReason: data.phase };
+    }
+    try {
+      await def.handler(context, data.value);
+      return { outcome: "completed" };
+    } catch (error) {
+      if (def.onError != null) {
+        try {
+          await def.onError(context, error, data.value);
+        } catch (onErrorError) {
+          logger.error(
+            "onError for custom task {taskName} threw:\n{error}",
+            { taskName: message.taskName, error: onErrorError },
+          );
+        }
+      }
+      const queue = this.resolveTaskQueue(def.name);
+      if (queue?.nativeRetrial) throw error; // the backend owns retries
+      const retryPolicy = def.retryPolicy ?? this.taskRetryPolicy;
+      // A corrupted `started` must not throw here and abort the retry.
+      let elapsedTime = Temporal.Duration.from({ seconds: 0 });
+      try {
+        elapsedTime = Temporal.Instant.from(message.started)
+          .until(Temporal.Now.instant());
+      } catch (parseError) {
+        logger.error(
+          "Custom task {taskName} has an unparsable started time " +
+            "{started}; treating elapsedTime as zero:\n{error}",
+          {
+            taskName: message.taskName,
+            started: message.started,
+            error: parseError,
+          },
+        );
+      }
+      const delay = retryPolicy({
+        elapsedTime,
+        attempts: message.attempt,
+      });
+      if (delay != null && queue != null) {
+        logger.error(
+          "Custom task {taskName} failed (attempt #{attempt}); retry...:" +
+            "\n{error}",
+          { taskName: message.taskName, attempt: message.attempt, error },
+        );
+        const retryMessage = {
+          ...message,
+          attempt: message.attempt + 1,
+        } satisfies TaskMessage;
+        try {
+          await queue.enqueue(retryMessage, {
+            delay: clampNegativeDelay(delay),
+            orderingKey: message.orderingKey,
+          });
+        } catch (enqueueError) {
+          logger.error(
+            "Custom task {taskName} could not be re-enqueued for a retry " +
+              "(attempt #{attempt}):\n{error}",
+            {
+              taskName: message.taskName,
+              attempt: retryMessage.attempt,
+              error: enqueueError,
+            },
+          );
+          throw new TaskRetryEnqueueError(error);
+        }
+        this.metrics.recordQueueTaskEnqueued(
+          { role: "task", queue, taskName: message.taskName },
+          retryMessage.attempt,
+        );
+        // `completed` here means the attempt was folded into a scheduled retry,
+        // not that the handler succeeded; only a terminal give-up records
+        // `failed`. This mirrors the inbox/outbox worker-boundary convention—
+        // do not change it to `failed` without regressing terminal-failure-only
+        // task telemetry.
+        // See also: https://fedify.dev/manual/tasks#observability
+        return { outcome: "completed" };
+      } else {
+        logger.error(
+          "Custom task {taskName} failed after {attempt} attempts; giving " +
+            "up:\n{error}",
+          { taskName: message.taskName, attempt: message.attempt, error },
+        );
+      }
+      // A swallowed abort is a graceful interruption, not a task failure.
+      return isAbortError(error)
+        ? { outcome: "aborted" }
+        : { outcome: "failed", failureReason: "handler" };
+    }
   }
 
   startQueue(
@@ -2425,7 +2577,7 @@ export class FederationImpl<TContextData>
                   response.headers.set("Vary", "Accept");
                 }
               } catch (error) {
-                getFederationMetrics(this.meterProvider)
+                this.metrics
                   .recordHttpServerRequest(
                     request.method,
                     metricState.endpoint ?? "error",
@@ -2444,7 +2596,7 @@ export class FederationImpl<TContextData>
                 );
                 throw error;
               }
-              getFederationMetrics(this.meterProvider).recordHttpServerRequest(
+              this.metrics.recordHttpServerRequest(
                 request.method,
                 metricState.endpoint ?? "error",
                 getDurationMs(metricStart),
@@ -2935,6 +3087,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   readonly documentLoader: DocumentLoader;
   readonly contextLoader: DocumentLoader;
   readonly invokedFromActorKeyPairsDispatcher?: { identifier: string };
+  #codec?: TaskCodec;
 
   constructor(
     {
@@ -2953,6 +3106,20 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     this.contextLoader = contextLoader;
     this.invokedFromActorKeyPairsDispatcher =
       invokedFromActorKeyPairsDispatcher;
+  }
+
+  /**
+   * A {@link TaskCodec} bound to this context's loaders, used to encode
+   * and decode custom task payloads.  Lazily created and cached so a context
+   * that never enqueues or dispatches a task pays nothing.
+   * @internal
+   */
+  get codec(): TaskCodec {
+    return this.#codec ??= new TaskCodec(this);
+  }
+
+  get #enqueueTasks() {
+    return enqueueTasks(this);
   }
 
   clone(data: TContextData): Context<TContextData> {
@@ -3489,6 +3656,22 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       meterProvider: options.meterProvider ?? this.federation._meterProvider,
       allowPrivateAddress: this.federation.allowPrivateAddress,
     });
+  }
+
+  async enqueueTask<TData>(
+    task: TaskDefinition<TContextData, TData>,
+    data: TData,
+    options: TaskEnqueueOptions = {},
+  ): Promise<void> {
+    await this.#enqueueTasks(task, [data], options);
+  }
+
+  async enqueueTaskMany<TData>(
+    task: TaskDefinition<TContextData, TData>,
+    payloads: readonly TData[],
+    options: TaskEnqueueOptions = {},
+  ): Promise<void> {
+    await this.#enqueueTasks(task, payloads, options);
   }
 
   sendActivity(
