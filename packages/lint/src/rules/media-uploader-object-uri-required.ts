@@ -229,7 +229,27 @@ function toNode(value: unknown): AnyNode | null {
   return typeof n.type === "string" ? (n as AnyNode) : null;
 }
 
-/** Strips wrapper expressions that do not change the underlying value. */
+/** Whether the node is a `Promise.resolve(x)` call. */
+function isPromiseResolveCall(expr: AnyNode): boolean {
+  if (expr.type !== "CallExpression") return false;
+  const callee = toNode(expr.callee);
+  if (
+    callee == null || callee.type !== "MemberExpression" ||
+    getMemberPropertyName(callee as unknown as Node) !== "resolve"
+  ) {
+    return false;
+  }
+  const object = toNode(callee.object);
+  return object != null && object.type === "Identifier" &&
+    object.name === "Promise";
+}
+
+/**
+ * Strips wrapper expressions that do not change the underlying value: `await`,
+ * `as`/`!`/`satisfies` type assertions, and `Promise.resolve(...)` (a
+ * synchronous callback may wrap its result in an already-resolved promise,
+ * which `MediaUploaderCallback` permits).
+ */
 function unwrapExpression(value: unknown): AnyNode | null {
   let current = toNode(value);
   while (current != null) {
@@ -239,12 +259,16 @@ function unwrapExpression(value: unknown): AnyNode | null {
       current.type === "TSNonNullExpression" ||
       current.type === "TSSatisfiesExpression"
     ) current = toNode(current.expression);
-    else return current;
+    else if (isPromiseResolveCall(current)) {
+      const args = current.arguments;
+      current = Array.isArray(args) && args.length === 1
+        ? toNode(args[0])
+        : null;
+    } else return current;
   }
   return null;
 }
 
-/** Whether the expression is a `<ctx>.getObjectUri(...)` or alias call. */
 interface DeriveContext {
   /** The callback's context parameter name, or `null` when destructured. */
   ctxName: string | null;

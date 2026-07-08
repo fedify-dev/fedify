@@ -402,3 +402,53 @@ federation.setMediaUploader(
     ruleName,
   }),
 );
+
+test(
+  `${ruleName}: ✅ Good - a synchronous callback wrapping getObjectUri in Promise.resolve`,
+  lintTest({
+    code: `
+import { Video } from "@fedify/vocab";
+
+federation.setMediaUploader(
+  "/users/{identifier}/media",
+  (ctx, identifier, file, object) =>
+    Promise.resolve(ctx.getObjectUri(Video, { uuid: "abc" })),
+);
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - Promise.resolve wrapping an object with a derived id`,
+  lintTest({
+    code: `
+import { Image } from "@fedify/vocab";
+
+federation.setMediaUploader(
+  "/users/{identifier}/media",
+  (ctx, identifier, file, object) =>
+    Promise.resolve(new Image({ id: ctx.getObjectUri(Image, { uuid: "abc" }) })),
+);
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - Promise.resolve wrapping a hard-coded URL`,
+  lintTest({
+    code: `
+federation.setMediaUploader(
+  "/users/{identifier}/media",
+  (ctx, identifier, file, object) =>
+    Promise.resolve(new URL("https://example.com/hard-coded")),
+);
+`,
+    rule,
+    ruleName,
+    expectedError: EXPECTED,
+  }),
+);
