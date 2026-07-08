@@ -57,6 +57,11 @@ To be released.
     [[#206], [#797], [#798], [#799], [#803], [#806], [#812], [#923] by
     ChanHaeng Lee]
 
+ -  Fixed CommonJS distribution files that use Temporal so they no longer
+    require `@js-temporal/polyfill` at runtime.  The CommonJS build now
+    bundles `temporal-polyfill`, while type declarations rely on the standard
+    `esnext.temporal` lib reference.  [[#823], [#925]]
+
 [FEP-8b32]: https://w3id.org/fep/8b32
 [FEP-ef61]: https://w3id.org/fep/ef61
 [Standard Schema]: https://standardschema.dev/
@@ -67,9 +72,11 @@ To be released.
 [#803]: https://github.com/fedify-dev/fedify/pull/803
 [#806]: https://github.com/fedify-dev/fedify/pull/806
 [#812]: https://github.com/fedify-dev/fedify/pull/812
+[#823]: https://github.com/fedify-dev/fedify/issues/823
 [#827]: https://github.com/fedify-dev/fedify/issues/827
 [#915]: https://github.com/fedify-dev/fedify/pull/915
 [#923]: https://github.com/fedify-dev/fedify/pull/923
+[#925]: https://github.com/fedify-dev/fedify/pull/925
 
 ### @fedify/vocab
 
@@ -83,6 +90,11 @@ To be released.
     `FeaturedCollection`, `FeaturedItem`, `FeatureRequest`, and
     `FeatureAuthorization`, plus actor `featuredCollections` and
     `InteractionPolicy.canFeature` properties.  [[#810], [#914]]
+
+ -  Fixed the CommonJS vocabulary build so it no longer requires
+    `@js-temporal/polyfill` at runtime.  The build now bundles
+    `temporal-polyfill`, while type declarations rely on the standard
+    `esnext.temporal` lib reference.  [[#823], [#925]]
 
 [FEP-7aa9]: https://w3id.org/fep/7aa9
 [#810]: https://github.com/fedify-dev/fedify/issues/810
@@ -110,6 +122,60 @@ To be released.
 
 [#912]: https://github.com/fedify-dev/fedify/issues/912
 [#913]: https://github.com/fedify-dev/fedify/pull/913
+
+### @fedify/cli
+
+ -  Switched the CLI's Temporal runtime dependency from
+    `@js-temporal/polyfill` to `temporal-polyfill`.  [[#823], [#925]]
+
+### @fedify/debugger
+
+ -  Fixed the CommonJS debugger build so it no longer requires
+    `@js-temporal/polyfill` at runtime.  The build now bundles
+    `temporal-polyfill`, while type declarations rely on the standard
+    `esnext.temporal` lib reference.  [[#823], [#925]]
+
+### @fedify/mysql
+
+ -  Fixed the CommonJS MySQL adapter build so it no longer requires
+    `@js-temporal/polyfill` at runtime.  The build now bundles
+    `temporal-polyfill`, while type declarations rely on the standard
+    `esnext.temporal` lib reference.  [[#823], [#925]]
+
+### @fedify/postgres
+
+ -  Fixed the CommonJS PostgreSQL adapter build so it no longer requires
+    `@js-temporal/polyfill` at runtime.  The build now bundles
+    `temporal-polyfill`, while type declarations rely on the standard
+    `esnext.temporal` lib reference.  [[#823], [#925]]
+
+### @fedify/redis
+
+ -  Fixed the CommonJS Redis adapter build so it no longer requires
+    `@js-temporal/polyfill` at runtime.  The build now bundles
+    `temporal-polyfill`, while type declarations rely on the standard
+    `esnext.temporal` lib reference.  [[#823], [#925]]
+
+### @fedify/relay
+
+ -  Fixed the CommonJS relay build so it no longer requires
+    `@js-temporal/polyfill` at runtime.  The build now bundles
+    `temporal-polyfill`, while type declarations rely on the standard
+    `esnext.temporal` lib reference.  [[#823], [#925]]
+
+### @fedify/sqlite
+
+ -  Fixed the CommonJS SQLite adapter build so it no longer requires
+    `@js-temporal/polyfill` at runtime.  The build now bundles
+    `temporal-polyfill`, while type declarations rely on the standard
+    `esnext.temporal` lib reference.  [[#823], [#925]]
+
+### @fedify/testing
+
+ -  Fixed the CommonJS testing utilities build so it no longer requires
+    `@js-temporal/polyfill` at runtime.  The build now bundles
+    `temporal-polyfill`, while type declarations rely on the standard
+    `esnext.temporal` lib reference.  [[#823], [#925]]
 
 
 Version 2.3.1

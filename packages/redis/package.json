@@ -74,8 +74,8 @@
     "package.json"
   ],
   "dependencies": {
-    "@js-temporal/polyfill": "catalog:",
-    "@logtape/logtape": "catalog:"
+    "@logtape/logtape": "catalog:",
+    "temporal-polyfill": "catalog:"
   },
   "peerDependencies": {
     "@fedify/fedify": "workspace:^",
@@ -85,6 +85,7 @@
     "@std/async": "catalog:",
     "@fedify/fixture": "workspace:^",
     "@fedify/testing": "workspace:^",
+    "@js-temporal/polyfill": "catalog:",
     "@types/node": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"

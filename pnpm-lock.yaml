@@ -174,6 +174,9 @@ catalogs:
     postgres:
       specifier: ^3.4.7
       version: 3.4.7
+    temporal-polyfill:
+      specifier: ^1.0.1
+      version: 1.0.1
     tsdown:
       specifier: ^0.22.0
       version: 0.22.0
@@ -280,9 +283,6 @@ importers:
       '@hono/node-server':
         specifier: ^1.13.7
         version: 1.14.4(hono@4.8.3)
-      '@js-temporal/polyfill':
-        specifier: 'catalog:'
-        version: 0.5.1
       '@logtape/file':
         specifier: 'catalog:'
         version: 2.2.0(@logtape/logtape@2.2.0)
@@ -391,6 +391,9 @@ importers:
       stringify-entities:
         specifier: ^4.0.4
         version: 4.0.4
+      temporal-polyfill:
+        specifier: 'catalog:'
+        version: 1.0.1
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -983,9 +986,6 @@ importers:
       '@jimp/wasm-webp':
         specifier: ^1.6.1
         version: 1.6.1
-      '@js-temporal/polyfill':
-        specifier: 'catalog:'
-        version: 0.5.1
       '@logtape/file':
         specifier: 'catalog:'
         version: 2.2.0(@logtape/logtape@2.2.0)
@@ -1061,6 +1061,9 @@ importers:
       srvx:
         specifier: ^0.8.7
         version: 0.8.16
+      temporal-polyfill:
+        specifier: 'catalog:'
+        version: 1.0.1
       valibot:
         specifier: ^1.4.0
         version: 1.4.0(typescript@6.0.3)
@@ -1114,9 +1117,6 @@ importers:
       '@fedify/fedify':
         specifier: workspace:^
         version: link:../fedify
-      '@js-temporal/polyfill':
-        specifier: 'catalog:'
-        version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
         version: 2.2.0
@@ -1135,6 +1135,9 @@ importers:
       hono:
         specifier: 'catalog:'
         version: 4.8.3
+      temporal-polyfill:
+        specifier: 'catalog:'
+        version: 1.0.1
     devDependencies:
       tsdown:
         specifier: 'catalog:'
@@ -1220,9 +1223,6 @@ importers:
       '@fedify/webfinger':
         specifier: workspace:*
         version: link:../webfinger
-      '@js-temporal/polyfill':
-        specifier: ^0.5.1
-        version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
         version: 2.2.0
@@ -1262,6 +1262,9 @@ importers:
       structured-field-values:
         specifier: ^2.0.4
         version: 2.0.4
+      temporal-polyfill:
+        specifier: 'catalog:'
+        version: 1.0.1
       urlpattern-polyfill:
         specifier: 'catalog:'
         version: 10.1.0
@@ -1470,9 +1473,6 @@ importers:
       '@fedify/fedify':
         specifier: workspace:^
         version: link:../fedify
-      '@js-temporal/polyfill':
-        specifier: 'catalog:'
-        version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
         version: 2.2.0
@@ -1482,6 +1482,9 @@ importers:
       mysql2:
         specifier: 'catalog:'
         version: 3.22.3(@types/node@24.3.0)
+      temporal-polyfill:
+        specifier: 'catalog:'
+        version: 1.0.1
     devDependencies:
       '@fedify/fixture':
         specifier: workspace:^
@@ -1489,6 +1492,9 @@ importers:
       '@fedify/testing':
         specifier: workspace:^
         version: link:../testing
+      '@js-temporal/polyfill':
+        specifier: 'catalog:'
+        version: 0.5.1
       tsdown:
         specifier: 'catalog:'
         version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
@@ -1573,15 +1579,15 @@ importers:
       '@fedify/fedify':
         specifier: workspace:^
         version: link:../fedify
-      '@js-temporal/polyfill':
-        specifier: 'catalog:'
-        version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
         version: 2.2.0
       postgres:
         specifier: 'catalog:'
         version: 3.4.7
+      temporal-polyfill:
+        specifier: 'catalog:'
+        version: 1.0.1
     devDependencies:
       '@fedify/fixture':
         specifier: workspace:^
@@ -1589,6 +1595,9 @@ importers:
       '@fedify/testing':
         specifier: workspace:^
         version: link:../testing
+      '@js-temporal/polyfill':
+        specifier: 'catalog:'
+        version: 0.5.1
       '@std/async':
         specifier: 'catalog:'
         version: '@jsr/std__async@1.0.13'
@@ -1604,15 +1613,15 @@ importers:
       '@fedify/fedify':
         specifier: workspace:^
         version: link:../fedify
-      '@js-temporal/polyfill':
-        specifier: 'catalog:'
-        version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
         version: 2.2.0
       ioredis:
         specifier: 'catalog:'
         version: 5.10.1
+      temporal-polyfill:
+        specifier: 'catalog:'
+        version: 1.0.1
     devDependencies:
       '@fedify/fixture':
         specifier: workspace:^
@@ -1620,6 +1629,9 @@ importers:
       '@fedify/testing':
         specifier: workspace:^
         version: link:../testing
+      '@js-temporal/polyfill':
+        specifier: 'catalog:'
+        version: 0.5.1
       '@std/async':
         specifier: 'catalog:'
         version: '@jsr/std__async@1.0.13'
@@ -1641,12 +1653,12 @@ importers:
       '@fedify/vocab':
         specifier: workspace:*
         version: link:../vocab
-      '@js-temporal/polyfill':
-        specifier: 'catalog:'
-        version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
         version: 2.2.0
+      temporal-polyfill:
+        specifier: 'catalog:'
+        version: 1.0.1
     devDependencies:
       '@fedify/vocab-runtime':
         specifier: workspace:^
@@ -1682,19 +1694,22 @@ importers:
       '@fedify/fedify':
         specifier: workspace:^
         version: link:../fedify
-      '@js-temporal/polyfill':
-        specifier: 'catalog:'
-        version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
         version: 2.2.0
       es-toolkit:
         specifier: ^1.46.1
         version: 1.46.1
+      temporal-polyfill:
+        specifier: 'catalog:'
+        version: 1.0.1
     devDependencies:
       '@fedify/testing':
         specifier: workspace:^
         version: link:../testing
+      '@js-temporal/polyfill':
+        specifier: 'catalog:'
+        version: 0.5.1
       '@std/async':
         specifier: 'catalog:'
         version: '@jsr/std__async@1.0.13'
@@ -1729,13 +1744,13 @@ importers:
       es-toolkit:
         specifier: 'catalog:'
         version: 1.46.1
+      temporal-polyfill:
+        specifier: 'catalog:'
+        version: 1.0.1
     devDependencies:
       '@fedify/fixture':
         specifier: workspace:^
         version: link:../fixture
-      '@js-temporal/polyfill':
-        specifier: 'catalog:'
-        version: 0.5.1
       '@standard-schema/spec':
         specifier: 'catalog:'
         version: 1.1.0
@@ -1778,9 +1793,6 @@ importers:
       '@fedify/webfinger':
         specifier: workspace:*
         version: link:../webfinger
-      '@js-temporal/polyfill':
-        specifier: 'catalog:'
-        version: 0.5.1
       '@logtape/logtape':
         specifier: 'catalog:'
         version: 2.2.0
@@ -1802,6 +1814,9 @@ importers:
       pkijs:
         specifier: 'catalog:'
         version: 3.3.3
+      temporal-polyfill:
+        specifier: 'catalog:'
+        version: 1.0.1
     devDependencies:
       '@fedify/fixture':
         specifier: workspace:*
@@ -11967,6 +11982,15 @@ packages:
 
   teex@1.0.1:
     resolution: {integrity: sha512-eYE6iEI62Ni1H8oIa7KlDU6uQBtqr4Eajni3wX7rpfXD8ysFx8z0+dri+KWEPWpBsxXfxu58x/0jvTVT1ekOSg==}
+
+  temporal-polyfill@1.0.1:
+    resolution: {integrity: sha512-N2SoI9olnW7BUsU8RosDphZQl9s+WJ8O7PoJMFCr/e5/1rFkVI4GNOWaSeySG+UoP04foPYsnLWbJmbXOiShZg==}
+
+  temporal-spec@1.0.0:
+    resolution: {integrity: sha512-00Ahj1e1ifaERTMOIIGpOCdOo9IEk2m6GGSMedsn9a2SIsGLdOTbmME1Htv6IM82b6VHrzSUTIVc7YHy6hdhFQ==}
+
+  temporal-utils@1.0.1:
+    resolution: {integrity: sha512-HAixuesxFQIUaQk3ptX2jhfO/FsOkgVkDDMawvp6n/fkB1q6BKfs3lURw9I+pK/2e2e/q/vrLrxmeqauBoyGMQ==}
 
   terracotta@1.1.0:
     resolution: {integrity: sha512-kfQciWUBUBgYkXu7gh3CK3FAJng/iqZslAaY08C+k1Hdx17aVEpcFFb/WPaysxAfcupNH3y53s/pc53xxZauww==}
@@ -24899,6 +24923,15 @@ snapshots:
     transitivePeerDependencies:
       - bare-abort-controller
       - react-native-b4a
+
+  temporal-polyfill@1.0.1:
+    dependencies:
+      temporal-spec: 1.0.0
+      temporal-utils: 1.0.1
+
+  temporal-spec@1.0.0: {}
+
+  temporal-utils@1.0.1: {}
 
   terracotta@1.1.0(solid-js@1.9.12):
     dependencies:

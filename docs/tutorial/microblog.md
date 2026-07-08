@@ -3137,16 +3137,16 @@ object.
 
 Before implementation, we need to install a necessary library. Because
 the [Temporal API] used by Fedify to represent time is not yet built into
-Node.js, we need the *[@js-temporal/polyfill]* package to polyfill it:
+Node.js, we need the *[temporal-polyfill]* package to polyfill it:
 
 ~~~~ sh
-npm add @js-temporal/polyfill
+npm add temporal-polyfill
 ~~~~
 
 Open the *src/federation.ts* file and `import` the installed package:
 
 ~~~~ typescript [src/federation.ts]
-import { Temporal } from "@js-temporal/polyfill";
+import { Temporal } from "temporal-polyfill";
 ~~~~
 
 Also `import` the `Post` type and the `PUBLIC_COLLECTION` constant provided by
@@ -3259,7 +3259,7 @@ temporary domain name) in the Mastodon search box again:
 This time, our created post appears properly in the search results!
 
 [Temporal API]: https://tc39.es/proposal-temporal/docs/
-[@js-temporal/polyfill]: https://github.com/js-temporal/temporal-polyfill
+[temporal-polyfill]: https://github.com/fullcalendar/temporal-polyfill
 
 ### Sending `Create(Note)` activity
 

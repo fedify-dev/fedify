@@ -84,6 +84,7 @@
     "mysql2/promise": "npm:mysql2@^3.22.3/promise",
     "postgres": "npm:postgres@^3.4.7",
     "preact": "npm:preact@10.19.6",
+    "temporal-polyfill": "npm:temporal-polyfill@^1.0.1",
     "tsdown": "npm:tsdown@^0.22.0"
   },
   "unstable": [

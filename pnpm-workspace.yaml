@@ -112,6 +112,7 @@ catalog:
   nuxt: ^4.4.2
   oxlint: ^1.66.0
   postgres: ^3.4.7
+  temporal-polyfill: ^1.0.1
   tsdown: ^0.22.0
   typescript: ^6.0.0
   urlpattern-polyfill: "^10.1.0"

@@ -1,6 +1,13 @@
 import { glob, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, sep } from "node:path";
 import { defineConfig } from "tsdown";
+import {
+  temporalPolyfillCjsBanner,
+  temporalPolyfillCjsDeps,
+  temporalPolyfillEsmBanner,
+  temporalPolyfillImportPlugin,
+  temporalPolyfillIntro,
+} from "../../scripts/tsdown/temporal.mts";
 
 async function copyFileSafely(
   source: string,
@@ -16,17 +23,21 @@ export default [
       "./src/mod.ts",
     ],
     dts: { compilerOptions: { isolatedDeclarations: true, declaration: true } },
-    format: ["esm", "cjs"],
+    format: {
+      esm: {
+        banner: temporalPolyfillEsmBanner(),
+      },
+      cjs: {
+        deps: temporalPolyfillCjsDeps({
+          neverBundle: [/^node:/],
+        }),
+        plugins: [temporalPolyfillImportPlugin],
+        banner: temporalPolyfillCjsBanner(),
+      },
+    },
     platform: "neutral",
-    deps: { neverBundle: [/^node:/] },
-    banner({ format }) {
-      const js = format === "cjs"
-        ? `const { Temporal } = require("@js-temporal/polyfill");`
-        : `import { Temporal } from "@js-temporal/polyfill";`;
-      return {
-        js,
-        dts: `/// <reference lib="esnext.temporal" />`,
-      };
+    deps: {
+      neverBundle: [/^node:/],
     },
   }),
   defineConfig({
@@ -49,8 +60,7 @@ export default [
       },
     },
     outputOptions: {
-      intro: `
-      import { Temporal } from "@js-temporal/polyfill";
+      intro: `${temporalPolyfillIntro}
       globalThis.addEventListener = () => {};
     `,
     },

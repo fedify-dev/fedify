@@ -140,7 +140,6 @@
     "@fedify/vocab": "workspace:*",
     "@fedify/vocab-runtime": "workspace:*",
     "@fedify/webfinger": "workspace:*",
-    "@js-temporal/polyfill": "^0.5.1",
     "@logtape/logtape": "catalog:",
     "@opentelemetry/api": "catalog:",
     "@opentelemetry/core": "catalog:",
@@ -154,6 +153,7 @@
     "json-canon": "^1.0.1",
     "jsonld": "^9.0.0",
     "structured-field-values": "^2.0.4",
+    "temporal-polyfill": "catalog:",
     "urlpattern-polyfill": "catalog:"
   },
   "devDependencies": {

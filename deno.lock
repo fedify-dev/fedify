@@ -169,6 +169,7 @@
     "npm:smol-toml@^1.6.1": "1.6.1",
     "npm:srvx@~0.8.7": "0.8.16",
     "npm:structured-field-values@^2.0.4": "2.0.4",
+    "npm:temporal-polyfill@^1.0.1": "1.0.1",
     "npm:tsdown@0.22": "0.22.0_tsx@4.21.0",
     "npm:tsx@^4.21.0": "4.21.0",
     "npm:uri-template-router@1": "1.0.0",
@@ -8474,6 +8475,19 @@
         "streamx"
       ]
     },
+    "temporal-polyfill@1.0.1": {
+      "integrity": "sha512-N2SoI9olnW7BUsU8RosDphZQl9s+WJ8O7PoJMFCr/e5/1rFkVI4GNOWaSeySG+UoP04foPYsnLWbJmbXOiShZg==",
+      "dependencies": [
+        "temporal-spec",
+        "temporal-utils"
+      ]
+    },
+    "temporal-spec@1.0.0": {
+      "integrity": "sha512-00Ahj1e1ifaERTMOIIGpOCdOo9IEk2m6GGSMedsn9a2SIsGLdOTbmME1Htv6IM82b6VHrzSUTIVc7YHy6hdhFQ=="
+    },
+    "temporal-utils@1.0.1": {
+      "integrity": "sha512-HAixuesxFQIUaQk3ptX2jhfO/FsOkgVkDDMawvp6n/fkB1q6BKfs3lURw9I+pK/2e2e/q/vrLrxmeqauBoyGMQ=="
+    },
     "terracotta@1.1.0_solid-js@1.9.12": {
       "integrity": "sha512-kfQciWUBUBgYkXu7gh3CK3FAJng/iqZslAaY08C+k1Hdx17aVEpcFFb/WPaysxAfcupNH3y53s/pc53xxZauww==",
       "dependencies": [
@@ -9497,6 +9511,7 @@
       "npm:mysql2@^3.22.3",
       "npm:postgres@^3.4.7",
       "npm:preact@10.19.6",
+      "npm:temporal-polyfill@^1.0.1",
       "npm:tsdown@0.22"
     ],
     "members": {
@@ -9640,7 +9655,6 @@
         ],
         "packageJson": {
           "dependencies": [
-            "npm:@js-temporal/polyfill@~0.5.1",
             "npm:@jsr/std__assert@0.226",
             "npm:@types/node@^24.2.1",
             "npm:devalue@^5.8.1",
@@ -9727,7 +9741,8 @@
         "dependencies": [
           "npm:fast-check@^3.22.0",
           "npm:fetch-mock@^12.5.2",
-          "npm:jsonld@9"
+          "npm:jsonld@9",
+          "npm:temporal-polyfill@^1.0.1"
         ],
         "packageJson": {
           "dependencies": [
