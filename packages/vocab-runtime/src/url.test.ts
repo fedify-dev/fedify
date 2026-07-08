@@ -213,6 +213,14 @@ test("getFe34Origin() computes web and cryptographic origins", () => {
     getFe34Origin("did:KEY:z6Mkabc#z6Mkabc"),
     "did:key:z6Mkabc",
   );
+  deepStrictEqual(
+    getFe34Origin("ap://did%3Aweb%3Afoo%2Dbar.example/actor"),
+    "did:web:foo-bar.example",
+  );
+  deepStrictEqual(
+    getFe34Origin("did:web:foo%2dbar.example#key"),
+    "did:web:foo-bar.example",
+  );
 });
 
 test("getFe34Origin() rejects unsupported or malformed identifiers", () => {
@@ -258,6 +266,14 @@ test("haveSameFe34Origin() compares web and cryptographic origins", () => {
   ok(haveSameFe34Origin(
     "ap://did:KEY:z6Mkabc/actor",
     "did:key:z6Mkabc#z6Mkabc",
+  ));
+  ok(haveSameFe34Origin(
+    "ap://did%3Aweb%3Afoo%2Dbar.example/actor",
+    "ap://did:web:foo-bar.example/note",
+  ));
+  ok(haveSameFe34Origin(
+    "ap://did%3Aexample%3Aabc%252fdef/actor",
+    "did:example:abc%2Fdef#key",
   ));
   ok(
     !haveSameFe34Origin(

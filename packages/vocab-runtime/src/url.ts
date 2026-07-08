@@ -211,7 +211,7 @@ function getDidUrlOrigin(iri: string): string {
   if (!DID_PATTERN.test(did)) throw new TypeError("Invalid DID URL.");
   const parts = did.split(":");
   parts[1] = parts[1].toLowerCase();
-  return parts.join(":");
+  return normalizePortableAuthority(parts.join(":"));
 }
 
 function parsePortableIri(iri: string): URL | null {
