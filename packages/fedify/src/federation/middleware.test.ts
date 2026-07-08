@@ -4302,6 +4302,40 @@ test("Federation.setMediaUploader()", async (t) => {
   });
 
   await t.step(
+    "authorize hook can read request headers",
+    async () => {
+      const federation = createFederation<void>({
+        kv,
+        documentLoaderFactory: () => mockDocumentLoader,
+      });
+      federation.setActorDispatcher(
+        "/users/{identifier}",
+        () => new vocab.Person({}),
+      );
+      let seenAuthorization: string | null = null;
+      federation
+        .setMediaUploader(
+          "/users/{identifier}/media",
+          () => Promise.resolve(new URL("https://example.com/pending")),
+        )
+        .authorize((ctx) => {
+          seenAuthorization = ctx.request.headers.get("authorization");
+          return seenAuthorization === "Bearer ok";
+        });
+      const response = await federation.fetch(
+        new Request("https://example.com/users/john/media", {
+          method: "POST",
+          headers: { authorization: "Bearer ok" },
+          body: makeUploadForm(),
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 202);
+      assertEquals(seenAuthorization, "Bearer ok");
+    },
+  );
+
+  await t.step(
     "404 when the actor does not exist (callback not invoked)",
     async () => {
       const federation = createFederation<void>({

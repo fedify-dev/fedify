@@ -1052,13 +1052,24 @@ export async function handleMediaUpload<TContextData>(
     return await onNotFound(request);
   }
   if (authorizePredicate != null) {
+    // Give the authorization hook a header-only view of the request rather
+    // than cloning it.  Cloning a request tees its body stream, so cloning a
+    // multipart upload would force the entire file to be buffered a second
+    // time for the (typically never consumed) authorize clone once the handler
+    // reads the original with request.formData() below.  Authorization for a
+    // media upload is header/token based, so a bodyless request is sufficient.
+    const authorizeRequest = new Request(request.url, {
+      method: request.method,
+      headers: request.headers,
+    });
     const authorizeContext = ctx.clone(ctx.data) as
       & RequestContext<TContextData>
       & { request: Request };
-    authorizeContext.request = request.clone() as Request;
-    const requestForUnauthorized = authorizeContext.request.clone() as Request;
+    authorizeContext.request = authorizeRequest;
     if (!await authorizePredicate(authorizeContext, identifier)) {
-      return await onUnauthorized(requestForUnauthorized);
+      // The original request body is still unread here (formData() runs only
+      // after authorization succeeds), so hand it to onUnauthorized intact.
+      return await onUnauthorized(request);
     }
   }
   const actor = await actorDispatcher(ctx, identifier);
