@@ -4053,6 +4053,47 @@ test("Federation.setMediaUploader()", async (t) => {
     },
   );
 
+  await t.step(
+    "accepts the object field as a plain text part",
+    async () => {
+      const federation = createFederation<void>({
+        kv,
+        documentLoaderFactory: () => mockDocumentLoader,
+      });
+      federation.setActorDispatcher(
+        "/users/{identifier}",
+        () => new vocab.Person({}),
+      );
+      federation.setMediaUploader(
+        "/users/{identifier}/media",
+        () => Promise.resolve(new URL("https://example.com/pending")),
+      );
+      // Unlike makeUploadForm(), submit `object` as a plain string field (not
+      // a Blob) to exercise the `typeof objectField === "string"` branch.
+      const form = new FormData();
+      form.append(
+        "file",
+        new File([new Uint8Array([1, 2, 3])], "cat.png", { type: "image/png" }),
+      );
+      form.append(
+        "object",
+        JSON.stringify({
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Image",
+          name: "A cat",
+        }),
+      );
+      const response = await federation.fetch(
+        new Request("https://example.com/users/john/media", {
+          method: "POST",
+          body: form,
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 202);
+    },
+  );
+
   await t.step("415 when the request is not multipart/form-data", async () => {
     const federation = createFederation<void>({
       kv,
@@ -4098,6 +4139,69 @@ test("Federation.setMediaUploader()", async (t) => {
       );
       assertEquals(response.status, 500);
       assertEquals(response.headers.get("location"), null);
+    },
+  );
+
+  await t.step(
+    "500 when the callback returns null (defensive)",
+    async () => {
+      const federation = createFederation<void>({
+        kv,
+        documentLoaderFactory: () => mockDocumentLoader,
+      });
+      federation.setActorDispatcher(
+        "/users/{identifier}",
+        () => new vocab.Person({}),
+      );
+      federation.setMediaUploader(
+        "/users/{identifier}/media",
+        // Simulate a JavaScript caller that returns nothing.
+        (() => Promise.resolve(null)) as unknown as Parameters<
+          typeof federation.setMediaUploader
+        >[1],
+      );
+      const response = await federation.fetch(
+        new Request("https://example.com/users/john/media", {
+          method: "POST",
+          body: makeUploadForm(),
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 500);
+    },
+  );
+
+  await t.step(
+    "500 when serializing the returned object throws",
+    async () => {
+      const federation = createFederation<void>({
+        kv,
+        documentLoaderFactory: () => mockDocumentLoader,
+      });
+      federation.setActorDispatcher(
+        "/users/{identifier}",
+        () => new vocab.Person({}),
+      );
+      federation.setMediaUploader(
+        "/users/{identifier}/media",
+        () => {
+          const image = new vocab.Image({
+            id: new URL("https://example.com/objects/x"),
+          });
+          // Force toJsonLd() to fail (e.g. a context loader error).
+          (image as unknown as { toJsonLd: () => Promise<unknown> }).toJsonLd =
+            () => Promise.reject(new Error("serialization boom"));
+          return Promise.resolve(image);
+        },
+      );
+      const response = await federation.fetch(
+        new Request("https://example.com/users/john/media", {
+          method: "POST",
+          body: makeUploadForm(),
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 500);
     },
   );
 

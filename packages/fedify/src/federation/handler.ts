@@ -1126,6 +1126,21 @@ export async function handleMediaUpload<TContextData>(
       headers: plainTextHeaders,
     });
   }
+  if (result == null) {
+    // The callback's return type forbids this, but a JavaScript caller (or a
+    // callback missing a return statement) could still yield null/undefined;
+    // convert it into a controlled response instead of crashing below.
+    logger.error(
+      "The media uploader callback for {identifier} returned null or " +
+        "undefined; it must return an object (201 Created) or a URL " +
+        "(202 Accepted).",
+      { identifier },
+    );
+    return new Response("Internal server error.", {
+      status: 500,
+      headers: plainTextHeaders,
+    });
+  }
   const warnUnlessRegistered = (target: URL): void => {
     if (isRegisteredObjectUri(target)) return;
     logger.warn(
@@ -1162,7 +1177,22 @@ export async function handleMediaUpload<TContextData>(
     });
   }
   warnUnlessRegistered(result.id);
-  const jsonLd = await result.toJsonLd(ctx);
+  let jsonLd: unknown;
+  try {
+    jsonLd = await result.toJsonLd(ctx);
+  } catch (error) {
+    // Serialization can fail (e.g. a context loader error); convert it into a
+    // controlled response, like every other failure mode in this handler,
+    // rather than letting it propagate out of Federation.fetch().
+    logger.error(
+      "Failed to serialize the uploaded object to JSON-LD:\n{error}",
+      { identifier, error },
+    );
+    return new Response("Internal server error.", {
+      status: 500,
+      headers: plainTextHeaders,
+    });
+  }
   logger.info(
     "The media upload for {identifier} is ready; responding 201 Created.",
     { identifier, location: result.id.href },
