@@ -1,6 +1,8 @@
 import { deepStrictEqual, ok, rejects, throws } from "node:assert";
 import { test } from "node:test";
 import {
+  arePortableUrisEqual,
+  canonicalizePortableUri,
   expandIPv6Address,
   formatIri,
   haveSameIriOrigin,
@@ -182,6 +184,256 @@ test("formatIri() emits canonical portable ActivityPub URI syntax", () => {
     "https://example.com/actor",
   );
   deepStrictEqual(formatIri("/actor"), "/actor");
+});
+
+test("canonicalizePortableUri() emits comparison forms", () => {
+  const cases = [
+    "ap://did:key:z6Mkabc/actor",
+    "ap://did%3Akey%3Az6Mkabc/actor",
+    "ap://did:key:z6Mkabc/actor?gateways=https%3A%2F%2Fa.example",
+    "ap+ef61://did:key:z6Mkabc/actor",
+    "ap+ef61://did%3Akey%3Az6Mkabc/actor?gateways=https%3A%2F%2Fa.example",
+  ];
+  for (const iri of cases) {
+    deepStrictEqual(
+      canonicalizePortableUri(iri),
+      "ap+ef61://did:key:z6Mkabc/actor",
+    );
+  }
+});
+
+test("canonicalizePortableUri() preserves paths and fragments", () => {
+  deepStrictEqual(
+    canonicalizePortableUri(
+      "ap://did:key:z6Mkabc/objects/1/attachments/2?gateways=https%3A%2F%2Fa.example#image",
+    ),
+    "ap+ef61://did:key:z6Mkabc/objects/1/attachments/2#image",
+  );
+  deepStrictEqual(
+    canonicalizePortableUri("ap://did:key:z6Mkabc/objects/1#reply"),
+    "ap+ef61://did:key:z6Mkabc/objects/1#reply",
+  );
+});
+
+test("canonicalizePortableUri() preserves DID-internal pct-encoded characters", () => {
+  deepStrictEqual(
+    canonicalizePortableUri("ap://did:example:abc%2Fdef/actor?x=1"),
+    "ap+ef61://did:example:abc%2Fdef/actor",
+  );
+  deepStrictEqual(
+    canonicalizePortableUri("ap://did%3Aweb%3Aexample.com%253A3000/u/1"),
+    "ap+ef61://did:web:example.com%3A3000/u/1",
+  );
+});
+
+test("canonicalizePortableUri() normalizes authority pct-encoding casing", () => {
+  deepStrictEqual(
+    canonicalizePortableUri("ap://did:example:abc%2fdef/actor"),
+    "ap+ef61://did:example:abc%2Fdef/actor",
+  );
+  deepStrictEqual(
+    canonicalizePortableUri("ap://did:example:abc%2fdef%3abar/actor"),
+    "ap+ef61://did:example:abc%2Fdef%3Abar/actor",
+  );
+  deepStrictEqual(
+    canonicalizePortableUri("ap://did%3Aexample%3Aabc%252fdef/actor"),
+    "ap+ef61://did:example:abc%2Fdef/actor",
+  );
+  deepStrictEqual(
+    canonicalizePortableUri("ap://did%3Akey%3Az6Mk%2Dabc/actor"),
+    "ap+ef61://did:key:z6Mk-abc/actor",
+  );
+  ok(arePortableUrisEqual(
+    "ap://did:example:abc%2fdef/actor",
+    "ap://did:example:abc%2Fdef/actor",
+  ));
+  ok(arePortableUrisEqual(
+    "ap://did%3Akey%3Az6Mk%2Dabc/actor",
+    "ap://did:key:z6Mk-abc/actor",
+  ));
+});
+
+test("canonicalizePortableUri() normalizes path and fragment pct-encoding casing", () => {
+  deepStrictEqual(
+    canonicalizePortableUri("ap://did:key:z6Mkabc/actor%2fprofile#part%2ftwo"),
+    "ap+ef61://did:key:z6Mkabc/actor%2Fprofile#part%2Ftwo",
+  );
+  deepStrictEqual(
+    canonicalizePortableUri("ap://did:key:z6Mkabc/actor%2fprofile%3aimage"),
+    "ap+ef61://did:key:z6Mkabc/actor%2Fprofile%3Aimage",
+  );
+  deepStrictEqual(
+    canonicalizePortableUri("ap://did:key:z6Mkabc/actor%2Dprofile#part%7Etwo"),
+    "ap+ef61://did:key:z6Mkabc/actor-profile#part~two",
+  );
+  ok(arePortableUrisEqual(
+    "ap://did:key:z6Mkabc/actor%2fprofile#part%2ftwo",
+    "ap://did:key:z6Mkabc/actor%2Fprofile#part%2Ftwo",
+  ));
+  ok(arePortableUrisEqual(
+    "ap://did:key:z6Mkabc/actor%2Dprofile#part%7Etwo",
+    "ap://did:key:z6Mkabc/actor-profile#part~two",
+  ));
+});
+
+test("canonicalizePortableUri() encodes raw path and fragment characters", () => {
+  deepStrictEqual(
+    canonicalizePortableUri("ap://did:key:z6Mkabc/\u00e9#\u00e9"),
+    "ap+ef61://did:key:z6Mkabc/%C3%A9#%C3%A9",
+  );
+  ok(arePortableUrisEqual(
+    "ap://did:key:z6Mkabc/\u00e9#\u00e9",
+    "ap://did:key:z6Mkabc/%C3%A9#%C3%A9",
+  ));
+});
+
+test("canonicalizePortableUri() normalizes DID scheme casing", () => {
+  deepStrictEqual(
+    canonicalizePortableUri("ap://DID:key:z6Mkabc/actor"),
+    "ap+ef61://did:key:z6Mkabc/actor",
+  );
+  deepStrictEqual(
+    canonicalizePortableUri("ap://DID%3Akey%3Az6Mkabc/actor"),
+    "ap+ef61://did:key:z6Mkabc/actor",
+  );
+});
+
+test("canonicalizePortableUri() preserves opaque path segments", () => {
+  deepStrictEqual(
+    canonicalizePortableUri("ap://did:key:z6Mkabc/a/../b?gateways=x"),
+    "ap+ef61://did:key:z6Mkabc/a/../b",
+  );
+  deepStrictEqual(
+    canonicalizePortableUri("ap://did:key:z6Mkabc/a/%2e%2e/b"),
+    "ap+ef61://did:key:z6Mkabc/a/../b",
+  );
+  ok(
+    !arePortableUrisEqual(
+      "ap://did:key:z6Mkabc/a/../b",
+      "ap://did:key:z6Mkabc/b",
+    ),
+  );
+  ok(
+    !arePortableUrisEqual(
+      "ap://did:key:z6Mkabc/a/%2e%2e/b",
+      "ap://did:key:z6Mkabc/b",
+    ),
+  );
+});
+
+test("canonicalizePortableUri() rejects non-portable URIs", () => {
+  const cases = [
+    "https://example.com/actor",
+    "at://did:plc:example/record",
+    "/actor",
+    "ap://not-a-did/actor",
+    "ap://did:key:z6Mkabc",
+  ];
+  for (const iri of cases) {
+    throws(() => canonicalizePortableUri(iri), TypeError);
+  }
+  throws(
+    () =>
+      canonicalizePortableUri(
+        new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor") as unknown as string,
+      ),
+    TypeError,
+  );
+});
+
+test("canonicalizePortableUri() rejects invalid path and fragment pct-encoding", () => {
+  throws(() => canonicalizePortableUri("ap://did:key:z6Mkabc/a%zz"), TypeError);
+  throws(
+    () => canonicalizePortableUri("ap://did:key:z6Mkabc/actor#part%zz"),
+    TypeError,
+  );
+  throws(
+    () => canonicalizePortableUri("ap://did:key:z6Mkabc/\ud800"),
+    TypeError,
+  );
+  throws(
+    () => canonicalizePortableUri("ap://did:key:z6Mkabc/actor#\ud800"),
+    TypeError,
+  );
+});
+
+test("arePortableUrisEqual() compares canonical portable URI forms", () => {
+  ok(arePortableUrisEqual(
+    "ap://did:key:z6Mkabc/actor",
+    "ap+ef61://did%3Akey%3Az6Mkabc/actor?gateways=https%3A%2F%2Fa.example",
+  ));
+  ok(arePortableUrisEqual(
+    "ap://DID:key:z6Mkabc/actor",
+    "ap://did:key:z6Mkabc/actor",
+  ));
+  ok(
+    !arePortableUrisEqual(
+      "ap://did:key:z6Mkabc/actor",
+      "ap://did:key:z6Mkdef/actor",
+    ),
+  );
+  ok(
+    !arePortableUrisEqual(
+      "ap://did:key:z6Mkabc/actor",
+      "ap://did:key:z6Mkabc/outbox",
+    ),
+  );
+  ok(
+    !arePortableUrisEqual(
+      "ap://did:key:z6Mkabc/actor#one",
+      "ap://did:key:z6Mkabc/actor#two",
+    ),
+  );
+});
+
+test("arePortableUrisEqual() handles non-portable URI strings", () => {
+  ok(arePortableUrisEqual(
+    "https://example.com/actor",
+    "https://example.com/actor",
+  ));
+  ok(
+    !arePortableUrisEqual(
+      "https://example.com/actor",
+      "https://example.com/outbox",
+    ),
+  );
+  ok(
+    !arePortableUrisEqual(
+      "ap://did:key:z6Mkabc/actor",
+      "https://example.com/actor",
+    ),
+  );
+  ok(arePortableUrisEqual("ap://not-a-did/actor", "ap://not-a-did/actor"));
+  ok(
+    !arePortableUrisEqual(
+      "ap://not-a-did/actor",
+      "ap://not-a-did/outbox",
+    ),
+  );
+  ok(
+    !arePortableUrisEqual(
+      "ap://not-a-did/actor",
+      "ap://did:key:z6Mkabc/actor",
+    ),
+  );
+  ok(
+    !arePortableUrisEqual(
+      "ap://did:key:z6Mkabc/a%zz",
+      "ap://did:key:z6Mkabc/a%25zz",
+    ),
+  );
+  ok(
+    !arePortableUrisEqual(
+      "ap://did:key:z6Mkabc/\ud800",
+      "ap://did:key:z6Mkabc/%EF%BF%BD",
+    ),
+  );
+  ok(
+    !arePortableUrisEqual(
+      "ap://did:key:z6Mkabc/actor#\ud800",
+      "ap://did:key:z6Mkabc/actor#%EF%BF%BD",
+    ),
+  );
 });
 
 test("formatIri() preserves DID authority pct-encoded delimiters", () => {
