@@ -5003,7 +5003,8 @@ snapshot[`Deno.inspect(Endpoints) [auto] 1`] = `
   oauthTokenEndpoint: URL "https://example.com/",
   provideClientKey: URL "https://example.com/",
   signClientKey: URL "https://example.com/",
-  sharedInbox: URL "https://example.com/"
+  sharedInbox: URL "https://example.com/",
+  uploadMedia: URL "https://example.com/"
 }'
 `;
 
@@ -5015,7 +5016,8 @@ snapshot[`Deno.inspect(Endpoints) [auto] 2`] = `
   oauthTokenEndpoint: URL "https://example.com/",
   provideClientKey: URL "https://example.com/",
   signClientKey: URL "https://example.com/",
-  sharedInbox: URL "https://example.com/"
+  sharedInbox: URL "https://example.com/",
+  uploadMedia: URL "https://example.com/"
 }'
 `;
 
@@ -5027,7 +5029,8 @@ snapshot[`Deno.inspect(Endpoints) [auto] 3`] = `
   oauthTokenEndpoint: URL "https://example.com/",
   provideClientKey: URL "https://example.com/",
   signClientKey: URL "https://example.com/",
-  sharedInbox: URL "https://example.com/"
+  sharedInbox: URL "https://example.com/",
+  uploadMedia: URL "https://example.com/"
 }'
 `;
 

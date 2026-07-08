@@ -140,6 +140,7 @@ const MANUAL = {
     { text: "Actor dispatcher", link: "/manual/actor.md" },
     { text: "Inbox listeners", link: "/manual/inbox.md" },
     { text: "Outbox listeners", link: "/manual/outbox.md" },
+    { text: "Media upload", link: "/manual/media-upload.md" },
     { text: "Sending activities", link: "/manual/send.md" },
     { text: "Collections", link: "/manual/collections.md" },
     { text: "Conversation backfill", link: "/manual/backfill.md" },

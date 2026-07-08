@@ -3886,6 +3886,562 @@ test("Federation.setOutboxListeners()", async (t) => {
   );
 });
 
+function makeUploadForm(
+  options: { file?: boolean; object?: string | null } = {},
+): FormData {
+  const {
+    file = true,
+    object = JSON.stringify({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Image",
+      name: "A cat",
+    }),
+  } = options;
+  const form = new FormData();
+  if (file) {
+    form.append(
+      "file",
+      new File([new Uint8Array([1, 2, 3])], "cat.png", { type: "image/png" }),
+    );
+  }
+  if (object != null) {
+    form.append(
+      "object",
+      new Blob([object], { type: "application/json" }),
+    );
+  }
+  return form;
+}
+
+test("Federation.setMediaUploader()", async (t) => {
+  const kv = new MemoryKvStore();
+
+  await t.step("path validation", () => {
+    const federation = createFederation<void>({
+      kv,
+      documentLoaderFactory: () => mockDocumentLoader,
+    });
+    federation.setMediaUploader(
+      "/users/{identifier}/media",
+      () => Promise.resolve(new URL("https://example.com/")),
+    );
+    // A media uploader may only be registered once.
+    assertThrows(
+      () =>
+        federation.setMediaUploader(
+          "/users/{identifier}/media2",
+          () => Promise.resolve(new URL("https://example.com/")),
+        ),
+      RouterError,
+    );
+  });
+
+  await t.step("getMediaUploaderUri() builds the endpoint URI", () => {
+    const federation = createFederation<void>({
+      kv,
+      documentLoaderFactory: () => mockDocumentLoader,
+    });
+    federation.setMediaUploader(
+      "/users/{identifier}/media",
+      () => Promise.resolve(new URL("https://example.com/")),
+    );
+    const ctx = federation.createContext(
+      new URL("https://example.com/"),
+      undefined,
+    );
+    assertEquals(
+      ctx.getMediaUploaderUri("alice").href,
+      "https://example.com/users/alice/media",
+    );
+  });
+
+  await t.step(
+    "returns 201 Created when the callback returns an object",
+    async () => {
+      const federation = createFederation<void>({
+        kv,
+        documentLoaderFactory: () => mockDocumentLoader,
+      });
+      federation.setActorDispatcher(
+        "/users/{identifier}",
+        (_ctx, identifier) =>
+          identifier === "john" ? new vocab.Person({}) : null,
+      );
+      federation.setObjectDispatcher(
+        vocab.Image,
+        "/objects/{uuid}",
+        (_ctx, values) => new vocab.Image({ name: `Image ${values.uuid}` }),
+      );
+      let receivedFileType: string | undefined;
+      let receivedName: string | null | undefined;
+      federation
+        .setMediaUploader(
+          "/users/{identifier}/media",
+          (ctx, _identifier, file, object) => {
+            receivedFileType = file.type;
+            receivedName = typeof object.name === "string"
+              ? object.name
+              : object.name?.toString();
+            return Promise.resolve(
+              new vocab.Image({
+                id: ctx.getObjectUri(vocab.Image, { uuid: "abc" }),
+                url: new URL("https://example.com/files/abc.png"),
+                mediaType: file.type,
+                name: object.name,
+              }),
+            );
+          },
+        )
+        .authorize((_ctx, identifier) => identifier === "john");
+
+      const response = await federation.fetch(
+        new Request("https://example.com/users/john/media", {
+          method: "POST",
+          body: makeUploadForm(),
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 201);
+      assertEquals(
+        response.headers.get("location"),
+        "https://example.com/objects/abc",
+      );
+      assertEquals(receivedFileType, "image/png");
+      assertEquals(receivedName, "A cat");
+      const body = await response.json() as { id?: string };
+      assertEquals(body.id, "https://example.com/objects/abc");
+    },
+  );
+
+  await t.step(
+    "returns 202 Accepted when the callback returns a URL",
+    async () => {
+      const federation = createFederation<void>({
+        kv,
+        documentLoaderFactory: () => mockDocumentLoader,
+      });
+      federation.setActorDispatcher(
+        "/users/{identifier}",
+        () => new vocab.Person({}),
+      );
+      federation.setObjectDispatcher(
+        vocab.Video,
+        "/videos/{uuid}",
+        (_ctx, values) => new vocab.Video({ name: `Video ${values.uuid}` }),
+      );
+      federation
+        .setMediaUploader(
+          "/users/{identifier}/media",
+          (ctx) =>
+            Promise.resolve(ctx.getObjectUri(vocab.Video, { uuid: "xyz" })),
+        )
+        .authorize(() => true);
+
+      const response = await federation.fetch(
+        new Request("https://example.com/users/john/media", {
+          method: "POST",
+          body: makeUploadForm(),
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 202);
+      assertEquals(
+        response.headers.get("location"),
+        "https://example.com/videos/xyz",
+      );
+      assertEquals(await response.text(), "");
+    },
+  );
+
+  await t.step("415 when the request is not multipart/form-data", async () => {
+    const federation = createFederation<void>({
+      kv,
+      documentLoaderFactory: () => mockDocumentLoader,
+    });
+    federation.setMediaUploader(
+      "/users/{identifier}/media",
+      () => Promise.resolve(new URL("https://example.com/")),
+    );
+    const response = await federation.fetch(
+      new Request("https://example.com/users/john/media", {
+        method: "POST",
+        body: JSON.stringify({ type: "Image" }),
+        headers: { "content-type": "application/json" },
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 415);
+  });
+
+  await t.step(
+    "500 when the returned object has no id (no Location possible)",
+    async () => {
+      const federation = createFederation<void>({
+        kv,
+        documentLoaderFactory: () => mockDocumentLoader,
+      });
+      federation.setActorDispatcher(
+        "/users/{identifier}",
+        () => new vocab.Person({}),
+      );
+      federation.setMediaUploader(
+        "/users/{identifier}/media",
+        // An object with no id cannot yield a 201 Location header.
+        () => Promise.resolve(new vocab.Image({ name: "no id" })),
+      );
+      const response = await federation.fetch(
+        new Request("https://example.com/users/john/media", {
+          method: "POST",
+          body: makeUploadForm(),
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 500);
+      assertEquals(response.headers.get("location"), null);
+    },
+  );
+
+  await t.step("400 when the file field is missing", async () => {
+    const federation = createFederation<void>({
+      kv,
+      documentLoaderFactory: () => mockDocumentLoader,
+    });
+    federation.setActorDispatcher(
+      "/users/{identifier}",
+      () => new vocab.Person({}),
+    );
+    federation.setMediaUploader(
+      "/users/{identifier}/media",
+      () => Promise.resolve(new URL("https://example.com/")),
+    );
+    const response = await federation.fetch(
+      new Request("https://example.com/users/john/media", {
+        method: "POST",
+        body: makeUploadForm({ file: false }),
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 400);
+  });
+
+  await t.step("400 when the object field is missing", async () => {
+    const federation = createFederation<void>({
+      kv,
+      documentLoaderFactory: () => mockDocumentLoader,
+    });
+    federation.setActorDispatcher(
+      "/users/{identifier}",
+      () => new vocab.Person({}),
+    );
+    federation.setMediaUploader(
+      "/users/{identifier}/media",
+      () => Promise.resolve(new URL("https://example.com/")),
+    );
+    const response = await federation.fetch(
+      new Request("https://example.com/users/john/media", {
+        method: "POST",
+        body: makeUploadForm({ object: null }),
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 400);
+  });
+
+  await t.step("400 when the object field is unparseable", async () => {
+    const federation = createFederation<void>({
+      kv,
+      documentLoaderFactory: () => mockDocumentLoader,
+    });
+    federation.setActorDispatcher(
+      "/users/{identifier}",
+      () => new vocab.Person({}),
+    );
+    federation.setMediaUploader(
+      "/users/{identifier}/media",
+      () => Promise.resolve(new URL("https://example.com/")),
+    );
+    const response = await federation.fetch(
+      new Request("https://example.com/users/john/media", {
+        method: "POST",
+        body: makeUploadForm({ object: "{ not json" }),
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 400);
+  });
+
+  await t.step("401 when authorize returns false", async () => {
+    const federation = createFederation<void>({
+      kv,
+      documentLoaderFactory: () => mockDocumentLoader,
+    });
+    federation.setActorDispatcher(
+      "/users/{identifier}",
+      () => new vocab.Person({}),
+    );
+    let called = false;
+    federation
+      .setMediaUploader("/users/{identifier}/media", () => {
+        called = true;
+        return Promise.resolve(new URL("https://example.com/"));
+      })
+      .authorize(() => false);
+    const response = await federation.fetch(
+      new Request("https://example.com/users/john/media", {
+        method: "POST",
+        body: makeUploadForm(),
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 401);
+    assertEquals(called, false);
+  });
+
+  await t.step(
+    "404 when the actor does not exist (callback not invoked)",
+    async () => {
+      const federation = createFederation<void>({
+        kv,
+        documentLoaderFactory: () => mockDocumentLoader,
+      });
+      federation.setActorDispatcher(
+        "/users/{identifier}",
+        (_ctx, identifier) =>
+          identifier === "john" ? new vocab.Person({}) : null,
+      );
+      let called = false;
+      federation.setMediaUploader("/users/{identifier}/media", () => {
+        called = true;
+        return Promise.resolve(new URL("https://example.com/"));
+      });
+      const response = await federation.fetch(
+        new Request("https://example.com/users/no-one/media", {
+          method: "POST",
+          body: makeUploadForm(),
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 404);
+      assertEquals(called, false);
+    },
+  );
+
+  await t.step(
+    "404 when the actor is tombstoned (callback not invoked)",
+    async () => {
+      const federation = createFederation<void>({
+        kv,
+        documentLoaderFactory: () => mockDocumentLoader,
+      });
+      federation.setActorDispatcher(
+        "/users/{identifier}",
+        () => new vocab.Tombstone({}),
+      );
+      let called = false;
+      federation.setMediaUploader("/users/{identifier}/media", () => {
+        called = true;
+        return Promise.resolve(new URL("https://example.com/"));
+      });
+      const response = await federation.fetch(
+        new Request("https://example.com/users/john/media", {
+          method: "POST",
+          body: makeUploadForm(),
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 404);
+      assertEquals(called, false);
+    },
+  );
+
+  await t.step("405 for non-POST methods", async () => {
+    const federation = createFederation<void>({
+      kv,
+      documentLoaderFactory: () => mockDocumentLoader,
+    });
+    federation.setMediaUploader(
+      "/users/{identifier}/media",
+      () => Promise.resolve(new URL("https://example.com/")),
+    );
+    const response = await federation.fetch(
+      new Request("https://example.com/users/john/media", {
+        method: "GET",
+        headers: { accept: "application/activity+json" },
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 405);
+    assertEquals(response.headers.get("allow"), "POST");
+  });
+
+  await t.step(
+    "warns when the returned id is not a registered object route",
+    async () => {
+      await withLogtapeLock(async () => {
+        const records: LogRecord[] = [];
+        await reset();
+        try {
+          await configure({
+            sinks: {
+              buffer(record: LogRecord): void {
+                records.push(record);
+              },
+            },
+            filters: {},
+            loggers: [{ category: [], sinks: ["buffer"] }],
+          });
+          const federation = createFederation<void>({
+            kv,
+            documentLoaderFactory: () => mockDocumentLoader,
+          });
+          federation.setActorDispatcher(
+            "/users/{identifier}",
+            () => new vocab.Person({}),
+          );
+          federation.setMediaUploader(
+            "/users/{identifier}/media",
+            () =>
+              // Not derived from ctx.getObjectUri(): no object dispatcher.
+              Promise.resolve(
+                new vocab.Image({
+                  id: new URL("https://example.com/not-registered"),
+                }),
+              ),
+          );
+          const response = await federation.fetch(
+            new Request("https://example.com/users/john/media", {
+              method: "POST",
+              body: makeUploadForm(),
+            }),
+            { contextData: undefined },
+          );
+          assertEquals(response.status, 201);
+          assertEquals(
+            records.some((record) =>
+              record.category.join(".") === "fedify.federation.mediaUploader" &&
+              record.level === "warning" &&
+              record.properties.identifier === "john"
+            ),
+            true,
+          );
+        } finally {
+          await reset();
+        }
+      });
+    },
+  );
+
+  await t.step(
+    "warns when the actor omits endpoints.uploadMedia",
+    async () => {
+      await withLogtapeLock(async () => {
+        const records: LogRecord[] = [];
+        await reset();
+        try {
+          await configure({
+            sinks: {
+              buffer(record: LogRecord): void {
+                records.push(record);
+              },
+            },
+            filters: {},
+            loggers: [{ category: [], sinks: ["buffer"] }],
+          });
+          const federation = createFederation<void>({
+            kv,
+            documentLoaderFactory: () => mockDocumentLoader,
+          });
+          federation.setActorDispatcher(
+            "/users/{identifier}",
+            (ctx, identifier) =>
+              new vocab.Person({
+                id: ctx.getActorUri(identifier),
+                // No endpoints.uploadMedia even though a media uploader is set.
+              }),
+          );
+          federation.setMediaUploader(
+            "/users/{identifier}/media",
+            () => Promise.resolve(new URL("https://example.com/")),
+          );
+          const response = await federation.fetch(
+            new Request("https://example.com/users/john", {
+              headers: { accept: "application/activity+json" },
+            }),
+            { contextData: undefined },
+          );
+          assertEquals(response.status, 200);
+          assertEquals(
+            records.some((record) =>
+              record.rawMessage ===
+                "You configured a media uploader, but the actor does not have " +
+                  "a endpoints.uploadMedia property.  Set the property with " +
+                  "Context.getMediaUploaderUri(identifier)."
+            ),
+            true,
+          );
+        } finally {
+          await reset();
+        }
+      });
+    },
+  );
+
+  await t.step(
+    "does not warn when the actor advertises endpoints.uploadMedia",
+    async () => {
+      await withLogtapeLock(async () => {
+        const records: LogRecord[] = [];
+        await reset();
+        try {
+          await configure({
+            sinks: {
+              buffer(record: LogRecord): void {
+                records.push(record);
+              },
+            },
+            filters: {},
+            loggers: [{ category: [], sinks: ["buffer"] }],
+          });
+          const federation = createFederation<void>({
+            kv,
+            documentLoaderFactory: () => mockDocumentLoader,
+          });
+          federation.setActorDispatcher(
+            "/users/{identifier}",
+            (ctx, identifier) =>
+              new vocab.Person({
+                id: ctx.getActorUri(identifier),
+                endpoints: new vocab.Endpoints({
+                  uploadMedia: ctx.getMediaUploaderUri(identifier),
+                }),
+              }),
+          );
+          federation.setMediaUploader(
+            "/users/{identifier}/media",
+            () => Promise.resolve(new URL("https://example.com/")),
+          );
+          const response = await federation.fetch(
+            new Request("https://example.com/users/john", {
+              headers: { accept: "application/activity+json" },
+            }),
+            { contextData: undefined },
+          );
+          assertEquals(response.status, 200);
+          assertEquals(
+            records.some((record) =>
+              typeof record.rawMessage === "string" &&
+              record.rawMessage.includes("endpoints.uploadMedia")
+            ),
+            false,
+          );
+        } finally {
+          await reset();
+        }
+      });
+    },
+  );
+});
+
 test("Federation.fetch() preserves original LD-signed payload for InboxContextImpl.activity", async () => {
   const remoteContextUrl = "https://remote.example/contexts/ext";
   const sourceContextLoader = async (resource: string) => {

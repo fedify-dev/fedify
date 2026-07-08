@@ -36,7 +36,7 @@ import {
     isTemporalInstant,
 } from "@fedify/vocab-runtime/temporal";
 const PORTABLE_IRI_PATTERN = /^ap(?:\\+ef61)?:\\/\\//i;
-const PORTABLE_IRI_KEYS: ReadonlySet<string> = new Set(["@id","_misskey_quote","actor","alsoKnownAs","announceAuthorization","anyOf","approvedBy","assertionMethod","attachment","attributedTo","audience","automaticApproval","bcc","bto","cc","context","controller","current","describes","emojiReactions","featureAuthorization","featured","featuredCollections","featuredObject","featuredTags","first","followers","followersOf","following","followingOf","generator","href","http://fedibird.com/ns#emojiReactions","http://fedibird.com/ns#quoteUri","http://joinmastodon.org/ns#featured","http://joinmastodon.org/ns#featuredTags","http://www.w3.org/ns/ldp#inbox","https://gotosocial.org/ns#announceAuthorization","https://gotosocial.org/ns#approvedBy","https://gotosocial.org/ns#automaticApproval","https://gotosocial.org/ns#interactingObject","https://gotosocial.org/ns#interactionTarget","https://gotosocial.org/ns#likeAuthorization","https://gotosocial.org/ns#manualApproval","https://gotosocial.org/ns#replyAuthorization","https://misskey-hub.net/ns#_misskey_quote","https://w3id.org/fep/044f#quote","https://w3id.org/fep/044f#quoteAuthorization","https://w3id.org/fep/5711#followersOf","https://w3id.org/fep/5711#followingOf","https://w3id.org/fep/5711#inboxOf","https://w3id.org/fep/5711#likedOf","https://w3id.org/fep/5711#likesOf","https://w3id.org/fep/5711#outboxOf","https://w3id.org/fep/5711#repliesOf","https://w3id.org/fep/5711#sharesOf","https://w3id.org/fep/7aa9#featureAuthorization","https://w3id.org/fep/7aa9#featuredCollections","https://w3id.org/fep/7aa9#featuredObject","https://w3id.org/security#assertionMethod","https://w3id.org/security#controller","https://w3id.org/security#owner","https://w3id.org/security#proof","https://w3id.org/security#publicKey","https://w3id.org/security#verificationMethod","https://w3id.org/valueflows/ont/vf#resourceConformsTo","https://w3id.org/valueflows/ont/vf#satisfies","https://www.w3.org/ns/activitystreams#actor","https://www.w3.org/ns/activitystreams#alsoKnownAs","https://www.w3.org/ns/activitystreams#anyOf","https://www.w3.org/ns/activitystreams#attachment","https://www.w3.org/ns/activitystreams#attributedTo","https://www.w3.org/ns/activitystreams#audience","https://www.w3.org/ns/activitystreams#bcc","https://www.w3.org/ns/activitystreams#bto","https://www.w3.org/ns/activitystreams#cc","https://www.w3.org/ns/activitystreams#context","https://www.w3.org/ns/activitystreams#current","https://www.w3.org/ns/activitystreams#describes","https://www.w3.org/ns/activitystreams#first","https://www.w3.org/ns/activitystreams#followers","https://www.w3.org/ns/activitystreams#following","https://www.w3.org/ns/activitystreams#generator","https://www.w3.org/ns/activitystreams#href","https://www.w3.org/ns/activitystreams#icon","https://www.w3.org/ns/activitystreams#image","https://www.w3.org/ns/activitystreams#inReplyTo","https://www.w3.org/ns/activitystreams#instrument","https://www.w3.org/ns/activitystreams#items","https://www.w3.org/ns/activitystreams#last","https://www.w3.org/ns/activitystreams#liked","https://www.w3.org/ns/activitystreams#likes","https://www.w3.org/ns/activitystreams#location","https://www.w3.org/ns/activitystreams#movedTo","https://www.w3.org/ns/activitystreams#next","https://www.w3.org/ns/activitystreams#oauthAuthorizationEndpoint","https://www.w3.org/ns/activitystreams#oauthTokenEndpoint","https://www.w3.org/ns/activitystreams#object","https://www.w3.org/ns/activitystreams#oneOf","https://www.w3.org/ns/activitystreams#origin","https://www.w3.org/ns/activitystreams#outbox","https://www.w3.org/ns/activitystreams#partOf","https://www.w3.org/ns/activitystreams#prev","https://www.w3.org/ns/activitystreams#preview","https://www.w3.org/ns/activitystreams#provideClientKey","https://www.w3.org/ns/activitystreams#proxyUrl","https://www.w3.org/ns/activitystreams#quoteUrl","https://www.w3.org/ns/activitystreams#relationship","https://www.w3.org/ns/activitystreams#replies","https://www.w3.org/ns/activitystreams#result","https://www.w3.org/ns/activitystreams#sharedInbox","https://www.w3.org/ns/activitystreams#shares","https://www.w3.org/ns/activitystreams#signClientKey","https://www.w3.org/ns/activitystreams#streams","https://www.w3.org/ns/activitystreams#subject","https://www.w3.org/ns/activitystreams#tag","https://www.w3.org/ns/activitystreams#target","https://www.w3.org/ns/activitystreams#to","https://www.w3.org/ns/activitystreams#units","https://www.w3.org/ns/activitystreams#url","https://www.w3.org/ns/did#service","https://www.w3.org/ns/did#serviceEndpoint","icon","id","image","inReplyTo","inbox","inboxOf","instrument","interactingObject","interactionTarget","items","last","likeAuthorization","liked","likedOf","likes","likesOf","location","manualApproval","movedTo","next","oauthAuthorizationEndpoint","oauthTokenEndpoint","object","oneOf","orderedItems","origin","outbox","outboxOf","owner","partOf","prev","preview","proof","provideClientKey","proxyUrl","publicKey","quote","quoteAuthorization","quoteUri","quoteUrl","relationship","replies","repliesOf","replyAuthorization","resourceConformsTo","result","satisfies","service","sharedInbox","shares","sharesOf","signClientKey","streams","subject","tag","target","to","units","url"]);
+const PORTABLE_IRI_KEYS: ReadonlySet<string> = new Set(["@id","_misskey_quote","actor","alsoKnownAs","announceAuthorization","anyOf","approvedBy","assertionMethod","attachment","attributedTo","audience","automaticApproval","bcc","bto","cc","context","controller","current","describes","emojiReactions","featureAuthorization","featured","featuredCollections","featuredObject","featuredTags","first","followers","followersOf","following","followingOf","generator","href","http://fedibird.com/ns#emojiReactions","http://fedibird.com/ns#quoteUri","http://joinmastodon.org/ns#featured","http://joinmastodon.org/ns#featuredTags","http://www.w3.org/ns/ldp#inbox","https://gotosocial.org/ns#announceAuthorization","https://gotosocial.org/ns#approvedBy","https://gotosocial.org/ns#automaticApproval","https://gotosocial.org/ns#interactingObject","https://gotosocial.org/ns#interactionTarget","https://gotosocial.org/ns#likeAuthorization","https://gotosocial.org/ns#manualApproval","https://gotosocial.org/ns#replyAuthorization","https://misskey-hub.net/ns#_misskey_quote","https://w3id.org/fep/044f#quote","https://w3id.org/fep/044f#quoteAuthorization","https://w3id.org/fep/5711#followersOf","https://w3id.org/fep/5711#followingOf","https://w3id.org/fep/5711#inboxOf","https://w3id.org/fep/5711#likedOf","https://w3id.org/fep/5711#likesOf","https://w3id.org/fep/5711#outboxOf","https://w3id.org/fep/5711#repliesOf","https://w3id.org/fep/5711#sharesOf","https://w3id.org/fep/7aa9#featureAuthorization","https://w3id.org/fep/7aa9#featuredCollections","https://w3id.org/fep/7aa9#featuredObject","https://w3id.org/security#assertionMethod","https://w3id.org/security#controller","https://w3id.org/security#owner","https://w3id.org/security#proof","https://w3id.org/security#publicKey","https://w3id.org/security#verificationMethod","https://w3id.org/valueflows/ont/vf#resourceConformsTo","https://w3id.org/valueflows/ont/vf#satisfies","https://www.w3.org/ns/activitystreams#actor","https://www.w3.org/ns/activitystreams#alsoKnownAs","https://www.w3.org/ns/activitystreams#anyOf","https://www.w3.org/ns/activitystreams#attachment","https://www.w3.org/ns/activitystreams#attributedTo","https://www.w3.org/ns/activitystreams#audience","https://www.w3.org/ns/activitystreams#bcc","https://www.w3.org/ns/activitystreams#bto","https://www.w3.org/ns/activitystreams#cc","https://www.w3.org/ns/activitystreams#context","https://www.w3.org/ns/activitystreams#current","https://www.w3.org/ns/activitystreams#describes","https://www.w3.org/ns/activitystreams#first","https://www.w3.org/ns/activitystreams#followers","https://www.w3.org/ns/activitystreams#following","https://www.w3.org/ns/activitystreams#generator","https://www.w3.org/ns/activitystreams#href","https://www.w3.org/ns/activitystreams#icon","https://www.w3.org/ns/activitystreams#image","https://www.w3.org/ns/activitystreams#inReplyTo","https://www.w3.org/ns/activitystreams#instrument","https://www.w3.org/ns/activitystreams#items","https://www.w3.org/ns/activitystreams#last","https://www.w3.org/ns/activitystreams#liked","https://www.w3.org/ns/activitystreams#likes","https://www.w3.org/ns/activitystreams#location","https://www.w3.org/ns/activitystreams#movedTo","https://www.w3.org/ns/activitystreams#next","https://www.w3.org/ns/activitystreams#oauthAuthorizationEndpoint","https://www.w3.org/ns/activitystreams#oauthTokenEndpoint","https://www.w3.org/ns/activitystreams#object","https://www.w3.org/ns/activitystreams#oneOf","https://www.w3.org/ns/activitystreams#origin","https://www.w3.org/ns/activitystreams#outbox","https://www.w3.org/ns/activitystreams#partOf","https://www.w3.org/ns/activitystreams#prev","https://www.w3.org/ns/activitystreams#preview","https://www.w3.org/ns/activitystreams#provideClientKey","https://www.w3.org/ns/activitystreams#proxyUrl","https://www.w3.org/ns/activitystreams#quoteUrl","https://www.w3.org/ns/activitystreams#relationship","https://www.w3.org/ns/activitystreams#replies","https://www.w3.org/ns/activitystreams#result","https://www.w3.org/ns/activitystreams#sharedInbox","https://www.w3.org/ns/activitystreams#shares","https://www.w3.org/ns/activitystreams#signClientKey","https://www.w3.org/ns/activitystreams#streams","https://www.w3.org/ns/activitystreams#subject","https://www.w3.org/ns/activitystreams#tag","https://www.w3.org/ns/activitystreams#target","https://www.w3.org/ns/activitystreams#to","https://www.w3.org/ns/activitystreams#units","https://www.w3.org/ns/activitystreams#uploadMedia","https://www.w3.org/ns/activitystreams#url","https://www.w3.org/ns/did#service","https://www.w3.org/ns/did#serviceEndpoint","icon","id","image","inReplyTo","inbox","inboxOf","instrument","interactingObject","interactionTarget","items","last","likeAuthorization","liked","likedOf","likes","likesOf","location","manualApproval","movedTo","next","oauthAuthorizationEndpoint","oauthTokenEndpoint","object","oneOf","orderedItems","origin","outbox","outboxOf","owner","partOf","prev","preview","proof","provideClientKey","proxyUrl","publicKey","quote","quoteAuthorization","quoteUri","quoteUrl","relationship","replies","repliesOf","replyAuthorization","resourceConformsTo","result","satisfies","service","sharedInbox","shares","sharesOf","signClientKey","streams","subject","tag","target","to","units","uploadMedia","url"]);
 
 import * as _ppM0 from "./preprocessors.ts";
 
@@ -56602,6 +56602,7 @@ export class Endpoints {
 #_8Bx9qN8oU7Bpt2xi6khaxWp1gMr_provideClientKey: (URL)[] = [];
 #_3dU7PMVQZJpsCpo2F4RQXxBXdPmS_signClientKey: (URL)[] = [];
 #_3JprUSDLVqqX4dwHRi37qGZZCRCc_sharedInbox: (URL)[] = [];
+#_KukVKGqFRETxAxXA15YCYAA7XAT_uploadMedia: (URL)[] = [];
 
   /**
    * Constructs a new instance of Endpoints with the given values.
@@ -56612,7 +56613,7 @@ export class Endpoints {
     values:
   {
 id?: URL | null;
-proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint?: URL | null;provideClientKey?: URL | null;signClientKey?: URL | null;sharedInbox?: URL | null;}
+proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint?: URL | null;provideClientKey?: URL | null;signClientKey?: URL | null;sharedInbox?: URL | null;uploadMedia?: URL | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -56716,6 +56717,19 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
             );
           }
         }
+      
+        if ("uploadMedia" in values &&             values.uploadMedia != null) {
+          if (values.uploadMedia instanceof URL) {
+            // @ts-ignore: type is checked above.
+            this.#_KukVKGqFRETxAxXA15YCYAA7XAT_uploadMedia = [values.uploadMedia];
+      
+          } else {
+            throw new TypeError(
+              "The uploadMedia must be of type " +
+              "URL" + ".",
+            );
+          }
+        }
       }
 
   /**
@@ -56728,7 +56742,7 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
     values:
   {
 id?: URL | null;
-proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint?: URL | null;provideClientKey?: URL | null;signClientKey?: URL | null;sharedInbox?: URL | null;}
+proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint?: URL | null;provideClientKey?: URL | null;signClientKey?: URL | null;sharedInbox?: URL | null;uploadMedia?: URL | null;}
 
     = {},
     options: {
@@ -56824,6 +56838,19 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
           } else {
             throw new TypeError(
               "The sharedInbox must be of type " +
+              "URL" + ".",
+            );
+          }
+        }
+      clone.#_KukVKGqFRETxAxXA15YCYAA7XAT_uploadMedia = this.#_KukVKGqFRETxAxXA15YCYAA7XAT_uploadMedia;
+        if ("uploadMedia" in values &&             values.uploadMedia != null) {
+          if (values.uploadMedia instanceof URL) {
+            // @ts-ignore: type is checked above.
+            clone.#_KukVKGqFRETxAxXA15YCYAA7XAT_uploadMedia = [values.uploadMedia];
+      
+          } else {
+            throw new TypeError(
+              "The uploadMedia must be of type " +
               "URL" + ".",
             );
           }
@@ -56937,6 +56964,25 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
         }
         if (this.#_3JprUSDLVqqX4dwHRi37qGZZCRCc_sharedInbox.length < 1) return null;
         return this.#_3JprUSDLVqqX4dwHRi37qGZZCRCc_sharedInbox[0];
+      }
+      
+/** Upload endpoint URI for this user for binary data, such as an image or
+ * video, as described in the [ActivityPub Media
+ * Upload](https://www.w3.org/wiki/SocialCG/ActivityPub/MediaUpload) extension.
+ * Clients \`POST\` a \`multipart/form-data\` request containing a \`file\` part
+ * (the binary payload) and an \`object\` part (an ActivityStreams object shell)
+ * to this endpoint.
+ * 
+ */
+ get uploadMedia(): (URL | null) {
+        if (this._warning != null) {
+          getLogger(this._warning.category).warn(
+            this._warning.message,
+            this._warning.values
+          );
+        }
+        if (this.#_KukVKGqFRETxAxXA15YCYAA7XAT_uploadMedia.length < 1) return null;
+        return this.#_KukVKGqFRETxAxXA15YCYAA7XAT_uploadMedia[0];
       }
       
   /**
@@ -57069,6 +57115,22 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
         
       }
       
+      compactItems = [];
+      for (const v of this.#_KukVKGqFRETxAxXA15YCYAA7XAT_uploadMedia) {
+        const item = (
+      formatIri(v)
+        );
+        compactItems.push(item);
+      }
+      if (compactItems.length > 0) {
+      
+        result["uploadMedia"]
+          = compactItems.length > 1
+          ? compactItems
+          : compactItems[0];
+        
+      }
+      
       
       if (this.id != null) result["id"] = formatIri(this.id);
       result["@context"] = "https://www.w3.org/ns/activitystreams";
@@ -57165,6 +57227,21 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
     array
       );
       values["https://www.w3.org/ns/activitystreams#sharedInbox"] = propValue;
+    
+    }
+    
+    array = [];
+    for (const v of this.#_KukVKGqFRETxAxXA15YCYAA7XAT_uploadMedia) {
+      const element = (
+    { "@id": formatIri(v) }
+      );
+    array.push(element);;
+    }
+    if (array.length > 0) {
+      const propValue = (
+    array
+      );
+      values["https://www.w3.org/ns/activitystreams#uploadMedia"] = propValue;
     
     }
     
@@ -57419,6 +57496,24 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
       _3JprUSDLVqqX4dwHRi37qGZZCRCc_sharedInbox.push(decoded);
     }
     instance.#_3JprUSDLVqqX4dwHRi37qGZZCRCc_sharedInbox = _3JprUSDLVqqX4dwHRi37qGZZCRCc_sharedInbox;
+    const _KukVKGqFRETxAxXA15YCYAA7XAT_uploadMedia: (URL)[] = [];
+
+    let _KukVKGqFRETxAxXA15YCYAA7XAT_uploadMedia__array = values["https://www.w3.org/ns/activitystreams#uploadMedia"];
+    
+    for (
+      const v of _KukVKGqFRETxAxXA15YCYAA7XAT_uploadMedia__array == null
+        ? []
+        : _KukVKGqFRETxAxXA15YCYAA7XAT_uploadMedia__array.length === 1 && "@list" in _KukVKGqFRETxAxXA15YCYAA7XAT_uploadMedia__array[0]
+        ? _KukVKGqFRETxAxXA15YCYAA7XAT_uploadMedia__array[0]["@list"]
+        : _KukVKGqFRETxAxXA15YCYAA7XAT_uploadMedia__array
+    ) {
+      if (v == null) continue;
+    
+      const decoded = parseIri(v["@id"], options.baseUrl);
+      if (typeof decoded === "undefined") continue;
+      _KukVKGqFRETxAxXA15YCYAA7XAT_uploadMedia.push(decoded);
+    }
+    instance.#_KukVKGqFRETxAxXA15YCYAA7XAT_uploadMedia = _KukVKGqFRETxAxXA15YCYAA7XAT_uploadMedia;
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
@@ -57580,6 +57675,26 @@ proxyUrl?: URL | null;oauthAuthorizationEndpoint?: URL | null;oauthTokenEndpoint
     
       if (_3JprUSDLVqqX4dwHRi37qGZZCRCc_sharedInbox.length == 1) {
         proxy.sharedInbox = _3JprUSDLVqqX4dwHRi37qGZZCRCc_sharedInbox[0];
+      }
+      
+      const _KukVKGqFRETxAxXA15YCYAA7XAT_uploadMedia = this.#_KukVKGqFRETxAxXA15YCYAA7XAT_uploadMedia
+        // deno-lint-ignore no-explicit-any
+        .map((v: any) => v instanceof URL
+          ? {
+              [Symbol.for("Deno.customInspect")]: (
+                inspect: typeof Deno.inspect,
+                options: Deno.InspectOptions,
+              ): string => "URL " + inspect(v.href, options),
+              [Symbol.for("nodejs.util.inspect.custom")]: (
+                _depth: number,
+                options: unknown,
+                inspect: (value: unknown, options: unknown) => string,
+              ): string => "URL " + inspect(v.href, options),
+            }
+          : v);
+    
+      if (_KukVKGqFRETxAxXA15YCYAA7XAT_uploadMedia.length == 1) {
+        proxy.uploadMedia = _KukVKGqFRETxAxXA15YCYAA7XAT_uploadMedia[0];
       }
       
     return proxy;

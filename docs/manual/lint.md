@@ -756,6 +756,48 @@ federation
   });
 ~~~~
 
+### `media-uploader-object-uri-required`
+
+Warns when a `setMediaUploader()` callback returns a value that is not derived
+from `ctx.getObjectUri()`.
+
+**When this rule applies:**
+You've registered a media uploader with `setMediaUploader()`, but its callback
+never references `ctx.getObjectUri()`, so the returned `id`/`URL` probably does
+not point at a registered object dispatcher route.
+
+**Why it matters:**
+The upload endpoint emits object IDs, but serving those IDs back as fetchable
+ActivityStreams objects is the developer's job via `setObjectDispatcher()`.
+Deriving the returned value from `ctx.getObjectUri()` keeps the emitted ID in
+sync with a registered object dispatcher route.
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import { createFederation } from "@fedify/fedify";
+import { Image } from "@fedify/vocab";
+const federation = createFederation<void>({ kv: null as any });
+// ---cut-before---
+// ❌ Bad: Returned id is a hard-coded URL, not from ctx.getObjectUri()
+federation.setMediaUploader(
+  "/users/{identifier}/media",
+  async (ctx, identifier, file, object) => {
+    return new Image({ id: new URL("https://example.com/media/1") });
+  },
+);
+
+// ✅ Good: Returned id is derived from ctx.getObjectUri()
+federation.setMediaUploader(
+  "/users/{identifier}/media",
+  async (ctx, identifier, file, object) => {
+    return new Image({
+      id: ctx.getObjectUri(Image, { uuid: "1" }),
+      mediaType: file.type,
+    });
+  },
+);
+~~~~
+
 ### `actor-followers-property-required`
 
 Ensures `followers` is defined when `setFollowersDispatcher()` is configured.
@@ -1214,6 +1256,92 @@ federation.setActorDispatcher("/users/{identifier}", (ctx, identifier) => {
     inbox: ctx.getInboxUri(identifier),
     endpoints: new Endpoints({
       sharedInbox: ctx.getInboxUri(),  // No identifier for shared inbox
+    }),
+  });
+});
+~~~~
+
+### `actor-upload-media-property-required`
+
+Ensures `endpoints.uploadMedia` is defined when `setMediaUploader()` is
+configured.
+
+**When this rule applies:**
+You've called `federation.setMediaUploader()`, but the actor object doesn't
+advertise the endpoint under an
+`endpoints: new Endpoints({ uploadMedia: ... })` property.
+
+**Why it matters:**
+Registering a media uploader does not by itself expose the endpoint to clients.
+Advertising it under `endpoints.uploadMedia` is what lets clients discover where
+to upload media.
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import { createFederation } from "@fedify/fedify";
+import { Endpoints, Person } from "@fedify/vocab";
+const federation = createFederation<void>({ kv: null as any });
+// ---cut-before---
+// ❌ Bad: Missing endpoints.uploadMedia when a media uploader is registered
+federation.setActorDispatcher("/users/{identifier}", (ctx, identifier) => {
+  return new Person({
+    id: ctx.getActorUri(identifier),
+    // Missing endpoints.uploadMedia!
+  });
+});
+
+federation.setMediaUploader(
+  "/users/{identifier}/media",
+  async (ctx, identifier, file, object) =>
+    ctx.getObjectUri(Person, { uuid: "1" }),
+);
+
+// ✅ Good: Advertise endpoints.uploadMedia
+federation.setActorDispatcher("/users/{identifier}", (ctx, identifier) => {
+  return new Person({
+    id: ctx.getActorUri(identifier),
+    endpoints: new Endpoints({
+      uploadMedia: ctx.getMediaUploaderUri(identifier),
+    }),
+  });
+});
+~~~~
+
+### `actor-upload-media-property-mismatch`
+
+Validates that `endpoints.uploadMedia` is set using
+`ctx.getMediaUploaderUri(identifier)`.
+
+**When this rule applies:**
+The `endpoints.uploadMedia` property is set to a value other than
+`ctx.getMediaUploaderUri(identifier)`.
+
+**Why it matters:**
+The advertised upload endpoint URI must match the path configured in
+`setMediaUploader()`, or clients will upload to the wrong URL.
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import { createFederation } from "@fedify/fedify";
+import { Endpoints, Person } from "@fedify/vocab";
+const federation = createFederation<void>({ kv: null as any });
+// ---cut-before---
+// ❌ Bad: Using a hard-coded URL for the upload endpoint
+federation.setActorDispatcher("/users/{identifier}", (ctx, identifier) => {
+  return new Person({
+    id: ctx.getActorUri(identifier),
+    endpoints: new Endpoints({
+      uploadMedia: new URL("https://example.com/upload"),  // Wrong!
+    }),
+  });
+});
+
+// ✅ Good: Use ctx.getMediaUploaderUri(identifier)
+federation.setActorDispatcher("/users/{identifier}", (ctx, identifier) => {
+  return new Person({
+    id: ctx.getActorUri(identifier),
+    endpoints: new Endpoints({
+      uploadMedia: ctx.getMediaUploaderUri(identifier),
     }),
   });
 });

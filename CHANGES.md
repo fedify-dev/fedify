@@ -22,6 +22,24 @@ To be released.
     as a remote JSON-LD document, which is required for [FEP-ef61]
     portable objects.  [[#827], [#915]]
 
+ -  Added support for the [ActivityPub Media Upload extension] so that servers
+    can accept client-to-server media uploads:  [[#754], [#927]]
+
+     -  `Federation` and `FederationBuilder` gained a `setMediaUploader()`
+        method (through the new `MediaUploaderSetters` interface) that registers
+        a `multipart/form-data` upload endpoint.  Its callback finalizes the
+        uploaded `file` alongside the posted `object` shell and returns either
+        the created object (`201 Created`) or the `URL` at which it will become
+        available once processing finishes (`202 Accepted`).
+     -  `Context` gained a `getMediaUploaderUri()` method for building the
+        endpoint URI, which actor dispatchers advertise under the new
+        `Endpoints.uploadMedia` property.
+     -  A new metric endpoint category, `media_upload`, classifies these
+        requests in the `fedify.endpoint` attribute.
+     -  Fedify logs a runtime warning when a callback's returned URI does not
+        point at a registered object dispatcher route, or when a registered
+        media uploader is not advertised under `endpoints.uploadMedia`.
+
  -  Added a custom background task API that generalizes Fedify's
     enqueue-and-process-later pattern to arbitrary application-defined jobs:
 
@@ -70,8 +88,10 @@ To be released.
 [FEP-8b32]: https://w3id.org/fep/8b32
 [FEP-fe34]: https://w3id.org/fep/fe34
 [FEP-ef61]: https://w3id.org/fep/ef61
+[ActivityPub Media Upload extension]: https://www.w3.org/wiki/SocialCG/ActivityPub/MediaUpload
 [Standard Schema]: https://standardschema.dev/
 [#206]: https://github.com/fedify-dev/fedify/issues/206
+[#754]: https://github.com/fedify-dev/fedify/issues/754
 [#797]: https://github.com/fedify-dev/fedify/issues/797
 [#798]: https://github.com/fedify-dev/fedify/issues/798
 [#799]: https://github.com/fedify-dev/fedify/issues/799
@@ -85,6 +105,7 @@ To be released.
 [#923]: https://github.com/fedify-dev/fedify/pull/923
 [#925]: https://github.com/fedify-dev/fedify/pull/925
 [#926]: https://github.com/fedify-dev/fedify/pull/926
+[#927]: https://github.com/fedify-dev/fedify/pull/927
 
 ### @fedify/vocab
 
@@ -104,6 +125,9 @@ To be released.
     `FeaturedCollection`, `FeaturedItem`, `FeatureRequest`, and
     `FeatureAuthorization`, plus actor `featuredCollections` and
     `InteractionPolicy.canFeature` properties.  [[#810], [#914]]
+
+ -  Added the `Endpoints.uploadMedia` property, the standard ActivityStreams
+    endpoint for the [ActivityPub Media Upload extension].  [[#754], [#927]]
 
  -  Fixed the CommonJS vocabulary build so it no longer requires
     `@js-temporal/polyfill` at runtime.  The build now bundles
@@ -204,6 +228,20 @@ To be released.
     `@js-temporal/polyfill` at runtime.  The build now bundles
     `temporal-polyfill`, while type declarations rely on the standard
     `esnext.temporal` lib reference.  [[#823], [#925]]
+
+### @fedify/lint
+
+ -  Added three lint rules for the media upload endpoint introduced in
+    `@fedify/fedify`:  [[#754], [#927]]
+
+     -  `media-uploader-object-uri-required` warns when a `setMediaUploader()`
+        callback does not derive its return value from `ctx.getObjectUri()`.
+     -  `actor-upload-media-property-required` warns when a media uploader is
+        registered but the actor dispatcher does not advertise
+        `endpoints.uploadMedia`.
+     -  `actor-upload-media-property-mismatch` warns when
+        `endpoints.uploadMedia` is not built with
+        `ctx.getMediaUploaderUri(identifier)`.
 
 
 Version 2.3.1
