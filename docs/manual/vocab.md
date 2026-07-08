@@ -601,6 +601,12 @@ This security model ensures that objects and their properties respect origin
 boundaries, preventing malicious actors from impersonating content from other
 servers.
 
+For ordinary HTTP(S) object IDs, the origin is the web origin: scheme, host,
+and port.  For [FEP-ef61] portable IDs, Fedify uses the cryptographic origin
+defined by the portable identifier.  An `ap:` or `ap+ef61:` URI is owned by the
+DID in its authority component, and a DID URL such as `did:key:z...#z...` is
+owned by its DID component.
+
 [FEP-fe34]: https://w3id.org/fep/fe34
 
 ### Same-origin policy for properties
@@ -632,6 +638,11 @@ Fedify will not trust the embedded `Note` object because its `@id` has a
 different origin (`different-origin.com`) than the parent activity's origin
 (`example.com`).  Instead, it will fetch the `Note` object directly from
 `https://different-origin.com/notes/456` to verify its authenticity.
+
+The same rule applies to cryptographic origins.  For example,
+`ap+ef61://did:key:zAlice/actor` and `did:key:zAlice#zAlice` share the
+`did:key:zAlice` origin, but `ap+ef61://did:key:zBob/actor` is a different
+origin.
 
 ### Controlling origin checks
 

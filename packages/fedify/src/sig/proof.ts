@@ -5,7 +5,7 @@ import {
   Multikey,
   type Object,
 } from "@fedify/vocab";
-import type { DocumentLoader } from "@fedify/vocab-runtime";
+import { type DocumentLoader, haveSameFe34Origin } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
 import {
   type MeterProvider,
@@ -584,6 +584,7 @@ export async function verifyObject<T extends Object>(
   for await (const proof of object.getProofs(options)) {
     const key = await verifyProof(jsonLd, proof, options);
     if (key === null) return null;
+    if (proof.verificationMethodId == null) return null;
     if (key.controllerId == null) {
       logger.debug(
         "Key {keyId} does not have a controller.",
@@ -591,7 +592,11 @@ export async function verifyObject<T extends Object>(
       );
       continue;
     }
-    attributions.delete(key.controllerId.href);
+    deleteAuthenticatedAttribution(
+      attributions,
+      key.controllerId,
+      proof.verificationMethodId,
+    );
   }
   if (attributions.size > 0) {
     logger.debug(
@@ -601,4 +606,29 @@ export async function verifyObject<T extends Object>(
     return null;
   }
   return object;
+}
+
+function deleteAuthenticatedAttribution(
+  attributions: Set<string>,
+  controllerId: URL,
+  verificationMethodId: URL,
+): void {
+  attributions.delete(controllerId.href);
+  if (
+    !hasCryptographicOrigin(controllerId.href) ||
+    !hasCryptographicOrigin(verificationMethodId.href) ||
+    !haveSameFe34Origin(controllerId, verificationMethodId)
+  ) return;
+  for (const attribution of [...attributions]) {
+    if (
+      hasCryptographicOrigin(attribution) &&
+      haveSameFe34Origin(controllerId, attribution)
+    ) {
+      attributions.delete(attribution);
+    }
+  }
+}
+
+function hasCryptographicOrigin(iri: string): boolean {
+  return /^did:/i.test(iri) || /^ap(?:\+ef61)?:\/\//i.test(iri);
 }

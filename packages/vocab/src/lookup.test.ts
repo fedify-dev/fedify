@@ -416,6 +416,127 @@ test("FEP-fe34: lookupObject() cross-origin security", {
     );
   });
 
+  await t.step(
+    "same-authority non-FE34 IRIs are still trusted",
+    async () => {
+      // deno-lint-ignore require-await
+      const atProtoDocumentLoader = async (url: string) => {
+        if (url === "https://gateway.example/at-item") {
+          return {
+            documentUrl: "at://did%3Aplc%3Aexample/collection/item",
+            contextUrl: null,
+            document: {
+              "@context": "https://www.w3.org/ns/activitystreams",
+              type: "Note",
+              id: "at://did:plc:example/collection/reply",
+              content: "AT Protocol note",
+            },
+          };
+        }
+        throw new Error(`Unexpected URL: ${url}`);
+      };
+
+      const result = await lookupObject(
+        "https://gateway.example/at-item",
+        {
+          documentLoader: atProtoDocumentLoader,
+          contextLoader: mockDocumentLoader,
+        },
+      );
+
+      assertInstanceOf(result, Note);
+      deepStrictEqual(
+        result.id,
+        new URL("at://did%3Aplc%3Aexample/collection/reply"),
+      );
+      deepStrictEqual(result.content, "AT Protocol note");
+    },
+  );
+
+  await t.step(
+    "portable object IDs are trusted by DID cryptographic origin",
+    async () => {
+      // deno-lint-ignore require-await
+      const portableDocumentLoader = async (url: string) => {
+        if (
+          url ===
+            "https://gateway.example/.well-known/apgateway/did:key:z6Mkabc/note"
+        ) {
+          return {
+            documentUrl: "ap+ef61://did:key:z6Mkabc/note",
+            contextUrl: null,
+            document: {
+              "@context": "https://www.w3.org/ns/activitystreams",
+              type: "Note",
+              id: "ap://did:key:z6Mkabc/note",
+              content: "Portable note",
+            },
+          };
+        }
+        throw new Error(`Unexpected URL: ${url}`);
+      };
+
+      const result = await lookupObject(
+        "https://gateway.example/.well-known/apgateway/did:key:z6Mkabc/note",
+        {
+          documentLoader: portableDocumentLoader,
+          contextLoader: mockDocumentLoader,
+        },
+      );
+
+      assertInstanceOf(result, Note);
+      deepStrictEqual(result.content, "Portable note");
+    },
+  );
+
+  await t.step(
+    "portable object IDs reject mismatched cryptographic origins",
+    async () => {
+      // deno-lint-ignore require-await
+      const portableDocumentLoader = async (url: string) => {
+        if (
+          url ===
+            "https://gateway.example/.well-known/apgateway/did:key:z6Mkabc/note"
+        ) {
+          return {
+            documentUrl: "ap+ef61://did:key:z6Mkabc/note",
+            contextUrl: null,
+            document: {
+              "@context": "https://www.w3.org/ns/activitystreams",
+              type: "Note",
+              id: "ap://did:key:z6Mkdef/note",
+              content: "Spoofed portable note",
+            },
+          };
+        }
+        throw new Error(`Unexpected URL: ${url}`);
+      };
+
+      const result = await lookupObject(
+        "https://gateway.example/.well-known/apgateway/did:key:z6Mkabc/note",
+        {
+          documentLoader: portableDocumentLoader,
+          contextLoader: mockDocumentLoader,
+        },
+      );
+
+      deepStrictEqual(result, null);
+      await rejects(
+        () =>
+          lookupObject(
+            "https://gateway.example/.well-known/apgateway/did:key:z6Mkabc/note",
+            {
+              documentLoader: portableDocumentLoader,
+              contextLoader: mockDocumentLoader,
+              crossOrigin: "throw",
+            },
+          ),
+        Error,
+        "The object's @id (ap+ef61://did%3Akey%3Az6Mkdef/note) has a different origin than the document URL (ap+ef61://did:key:z6Mkabc/note)",
+      );
+    },
+  );
+
   await t.step("objects without @id are trusted", async () => {
     // deno-lint-ignore require-await
     const noIdDocumentLoader = async (url: string) => {
