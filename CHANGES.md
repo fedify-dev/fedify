@@ -227,6 +227,12 @@ To be released.
     the JRD `subject` and keeps the queried `acct:` URI in `aliases`.
     [[#920], [#921]]
 
+ -  Fixed the npm package published by CI/CD so it includes the Fedify agent
+    skill at *skills/fedify/SKILL.md*.  The package metadata already advertised
+    the skill, and local `pnpm pack` builds included it, but the automated
+    npm publish artifact skipped the `prepack` step that materializes the
+    symlinked skill directory before packing.
+
 [GHSA-hqph-j65v-8cq5]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-hqph-j65v-8cq5
 [#849]: https://github.com/fedify-dev/fedify/issues/849
 [#851]: https://github.com/fedify-dev/fedify/pull/851
