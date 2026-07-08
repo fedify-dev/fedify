@@ -246,9 +246,9 @@ function isPromiseResolveCall(expr: AnyNode): boolean {
 
 /**
  * Strips wrapper expressions that do not change the underlying value: `await`,
- * `as`/`!`/`satisfies` type assertions, and `Promise.resolve(...)` (a
- * synchronous callback may wrap its result in an already-resolved promise,
- * which `MediaUploaderCallback` permits).
+ * parentheses, `as`/`<T>`/`!`/`satisfies` type assertions, and
+ * `Promise.resolve(...)` (a synchronous callback may wrap its result in an
+ * already-resolved promise, which `MediaUploaderCallback` permits).
  */
 function unwrapExpression(value: unknown): AnyNode | null {
   let current = toNode(value);
@@ -257,7 +257,9 @@ function unwrapExpression(value: unknown): AnyNode | null {
     else if (
       current.type === "TSAsExpression" ||
       current.type === "TSNonNullExpression" ||
-      current.type === "TSSatisfiesExpression"
+      current.type === "TSSatisfiesExpression" ||
+      current.type === "TSTypeAssertion" ||
+      current.type === "ParenthesizedExpression"
     ) current = toNode(current.expression);
     else if (isPromiseResolveCall(current)) {
       const args = current.arguments;

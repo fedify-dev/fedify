@@ -452,3 +452,20 @@ federation.setMediaUploader(
     expectedError: EXPECTED,
   }),
 );
+
+test(
+  `${ruleName}: ✅ Good - getObjectUri wrapped in an angle-bracket type assertion`,
+  lintTest({
+    code: `
+import { Video } from "@fedify/vocab";
+
+federation.setMediaUploader(
+  "/users/{identifier}/media",
+  (ctx, identifier, file, object) =>
+    <URL> ctx.getObjectUri(Video, { uuid: "abc" }),
+);
+`,
+    rule,
+    ruleName,
+  }),
+);
