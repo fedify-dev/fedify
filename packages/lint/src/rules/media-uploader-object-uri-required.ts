@@ -415,9 +415,12 @@ function objectIdDerivesFromGetObjectUri(
 
 /**
  * Whether a single returned expression is valid: a URL derived from
- * `getObjectUri()`, or an object whose own `id` is derived from it.  An object
- * is judged solely by its `id`, so `getObjectUri()` appearing in another
- * property (e.g. `url`) does not excuse a hard-coded `id`.
+ * `getObjectUri()`, or a vocab object (a `new X({...})` expression) whose own
+ * `id` is derived from it.  The object is judged solely by its `id`, so
+ * `getObjectUri()` appearing in another property (e.g. `url`) does not excuse a
+ * hard-coded `id`.  A plain object literal is rejected: the handler calls
+ * `toJsonLd()` on the result, so a bare `{ ... }` (which lacks it) is not a
+ * valid return.
  */
 function returnDerivesFromGetObjectUri(
   value: unknown,
@@ -441,9 +444,6 @@ function returnDerivesFromGetObjectUri(
     return returnDerivesFromGetObjectUri(expr.consequent, ctx, seen) &&
       returnDerivesFromGetObjectUri(expr.alternate, ctx, seen);
   }
-  if (expr.type === "ObjectExpression") {
-    return objectIdDerivesFromGetObjectUri(expr, ctx, seen);
-  }
   if (expr.type === "NewExpression") {
     if (isUrlConstructor(expr)) {
       return urlDerivesFromGetObjectUri(expr, ctx, seen);
@@ -454,6 +454,8 @@ function returnDerivesFromGetObjectUri(
     if (objArg == null) return false;
     return objectIdDerivesFromGetObjectUri(objArg, ctx, seen);
   }
+  // A plain object literal (`{ ... }`) is not a vocab object, so fall through
+  // to the URL check, which rejects it.
   return urlDerivesFromGetObjectUri(expr, ctx, seen);
 }
 

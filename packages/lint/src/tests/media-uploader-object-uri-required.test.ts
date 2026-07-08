@@ -469,3 +469,19 @@ federation.setMediaUploader(
     ruleName,
   }),
 );
+
+test(
+  `${ruleName}: ❌ Bad - a plain object literal is not a vocab object`,
+  lintTest({
+    code: `
+federation.setMediaUploader(
+  "/users/{identifier}/media",
+  (ctx, identifier, file, object) =>
+    ({ id: ctx.getObjectUri(Image, { uuid: "abc" }) }),
+);
+`,
+    rule,
+    ruleName,
+    expectedError: EXPECTED,
+  }),
+);
