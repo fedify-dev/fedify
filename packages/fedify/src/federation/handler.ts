@@ -1051,6 +1051,15 @@ export async function handleMediaUpload<TContextData>(
     logger.error("Actor dispatcher is not set.", { identifier });
     return await onNotFound(request);
   }
+  // Resolve the actor before authorization: a missing or tombstoned actor
+  // should reach the documented 404 regardless of the authorize hook, and the
+  // cheap existence check avoids buffering the whole upload below for a bogus
+  // identifier.
+  const actor = await actorDispatcher(ctx, identifier);
+  if (actor == null || actor instanceof Tombstone) {
+    logger.error("Actor {identifier} not found.", { identifier });
+    return await onNotFound(request);
+  }
   if (authorizePredicate != null) {
     // Buffer the upload once so that both a signature-verifying hook (which
     // reads the body to check an RFC 9421 Content-Digest over the multipart
@@ -1058,7 +1067,19 @@ export async function handleMediaUpload<TContextData>(
     // instead would tee its body stream and buffer the whole file a second
     // time for whichever branch is read last; reading it once and rebuilding a
     // fresh Request from the bytes for each consumer avoids that.
-    const body = await request.arrayBuffer();
+    let body: ArrayBuffer;
+    try {
+      body = await request.arrayBuffer();
+    } catch (error) {
+      logger.error("Failed to read the multipart/form-data body:\n{error}", {
+        identifier,
+        error,
+      });
+      return new Response("Invalid multipart/form-data body.", {
+        status: 400,
+        headers: plainTextHeaders,
+      });
+    }
     const rebuild = (): Request =>
       new Request(request.url, {
         method: request.method,
@@ -1073,11 +1094,6 @@ export async function handleMediaUpload<TContextData>(
       return await onUnauthorized(rebuild());
     }
     request = rebuild();
-  }
-  const actor = await actorDispatcher(ctx, identifier);
-  if (actor == null || actor instanceof Tombstone) {
-    logger.error("Actor {identifier} not found.", { identifier });
-    return await onNotFound(request);
   }
   let form: FormData;
   try {

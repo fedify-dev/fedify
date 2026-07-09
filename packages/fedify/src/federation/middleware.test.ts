@@ -4401,6 +4401,78 @@ test("Federation.setMediaUploader()", async (t) => {
   );
 
   await t.step(
+    "404 for a missing actor takes precedence over authorization",
+    async () => {
+      const federation = createFederation<void>({
+        kv,
+        documentLoaderFactory: () => mockDocumentLoader,
+      });
+      federation.setActorDispatcher(
+        "/users/{identifier}",
+        (_ctx, identifier) =>
+          identifier === "john" ? new vocab.Person({}) : null,
+      );
+      let authorizeCalled = false;
+      federation
+        .setMediaUploader(
+          "/users/{identifier}/media",
+          () => Promise.resolve(new URL("https://example.com/")),
+        )
+        .authorize(() => {
+          authorizeCalled = true;
+          return false;
+        });
+      const response = await federation.fetch(
+        new Request("https://example.com/users/no-one/media", {
+          method: "POST",
+          body: makeUploadForm(),
+        }),
+        { contextData: undefined },
+      );
+      // The actor is resolved before authorization, so a bogus identifier gets
+      // 404 (not 401), and the body is never buffered for authorization.
+      assertEquals(response.status, 404);
+      assertEquals(authorizeCalled, false);
+    },
+  );
+
+  await t.step(
+    "400 when the body errors during the authorization read",
+    async () => {
+      const federation = createFederation<void>({
+        kv,
+        documentLoaderFactory: () => mockDocumentLoader,
+      });
+      federation.setActorDispatcher(
+        "/users/{identifier}",
+        () => new vocab.Person({}),
+      );
+      federation
+        .setMediaUploader(
+          "/users/{identifier}/media",
+          () => Promise.resolve(new URL("https://example.com/")),
+        )
+        .authorize(() => true);
+      const erroringBody = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          controller.error(new Error("stream boom"));
+        },
+      });
+      const response = await federation.fetch(
+        new Request("https://example.com/users/john/media", {
+          method: "POST",
+          headers: { "content-type": "multipart/form-data; boundary=abc" },
+          body: erroringBody,
+          duplex: "half",
+          // deno-lint-ignore no-explicit-any
+        } as any),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 400);
+    },
+  );
+
+  await t.step(
     "404 when the actor is tombstoned (callback not invoked)",
     async () => {
       const federation = createFederation<void>({
