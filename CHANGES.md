@@ -142,6 +142,19 @@ To be released.
 [#850]: https://github.com/fedify-dev/fedify/pull/850
 [#914]: https://github.com/fedify-dev/fedify/pull/914
 
+### @fedify/interaction-controls
+
+ -  Added the new `@fedify/interaction-controls` package for implementing
+    [GoToSocial interaction controls], [FEP-044f], and [FEP-7aa9].  It provides
+    immutable TypeScript APIs for creating and verifying interaction requests
+    and authorizations, evaluating `InteractionPolicy`, recognizing bare
+    interactions, and formatting stable storage keys for like, reply, announce,
+    quote, and feature interactions.  [[#811]]
+
+[GoToSocial interaction controls]: https://docs.gotosocial.org/en/v0.21.1/federation/interaction_controls/
+[FEP-044f]: https://w3id.org/fep/044f
+[#811]: https://github.com/fedify-dev/fedify/issues/811
+
 ### @fedify/vocab-runtime
 
  -  Added `getFe34Origin()` and `haveSameFe34Origin()` for comparing ordinary
@@ -1079,7 +1092,6 @@ Released on April 28, 2026.
      -  Added `Measure` class for representing quantities with units of
         measure, with `unit` and `numericalValue` properties.
 
-[FEP-044f]: https://w3id.org/fep/044f
 [#452]: https://github.com/fedify-dev/fedify/issues/452
 [#578]: https://github.com/fedify-dev/fedify/issues/578
 [#645]: https://github.com/fedify-dev/fedify/issues/645
