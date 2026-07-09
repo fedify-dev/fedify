@@ -98,6 +98,43 @@ for the other interactions:
     featuring another actor is a profile/discovery action.
 
 
+End-to-end flow
+---------------
+
+The helpers cover the request, authorization, and final interaction checks.
+Your application still owns delivery, persistence, and moderation:
+
+~~~~ mermaid
+sequenceDiagram
+    participant Requester
+    participant Owner as Object owner
+    participant Moderator
+
+    Requester->>Owner: createRequest() activity
+    Owner->>Owner: verifyRequest() and evaluatePolicy()
+
+    alt denied
+        Owner-->>Requester: Reject or ignore
+    else manual approval
+        Owner->>Moderator: Queue request
+        Moderator-->>Owner: Approve
+        Owner-->>Requester: Accept with createAuthorization()
+    else automatic approval
+        Owner-->>Requester: Accept with createAuthorization()
+    end
+
+    opt accepted authorization
+        Requester->>Owner: Interaction with authorization
+        Owner->>Owner: verifyAuthorization()
+        alt authorization valid
+            Owner->>Owner: Accept interaction
+        else invalid authorization
+            Owner-->>Requester: Reject or ignore
+        end
+    end
+~~~~
+
+
 Request flow
 ------------
 
