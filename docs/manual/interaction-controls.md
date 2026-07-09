@@ -66,6 +66,7 @@ import { InteractionPolicy, InteractionRule, Note, PUBLIC_COLLECTION } from "@fe
 import type { Context } from "@fedify/fedify";
 
 const context = {} as Context<void>;
+// ---cut-before---
 const target = new Note({
   id: new URL("https://example.com/notes/1"),
   attribution: new URL("https://example.com/users/alice"),
@@ -138,6 +139,7 @@ import { LikeRequest } from "@fedify/vocab";
 
 const context = {} as Context<void>;
 const request = null as unknown as LikeRequest;
+// ---cut-before---
 
 const verified = await likeInteraction.verifyRequest(context, { request });
 if (!verified.verified) {
@@ -196,6 +198,7 @@ const context = {} as Context<void>;
 const authorization = null as unknown as LikeAuthorization;
 const like = null as unknown as Like;
 const target = null as unknown as Note;
+// ---cut-before---
 
 const verified = await likeInteraction.verifyAuthorization(context, {
   authorization,
