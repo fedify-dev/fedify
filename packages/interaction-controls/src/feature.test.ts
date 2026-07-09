@@ -41,6 +41,26 @@ test("featureInteraction creates and verifies requests", async () => {
   assert.equal(result.interactionTargetId.href, targetId.href);
 });
 
+test("featureInteraction accepts actorless requests from collection owner", async () => {
+  const target = new Person({ id: targetId });
+  const collection = new FeaturedCollection({
+    id: collectionId,
+    attribution: actor,
+  });
+  const request = new FeatureRequest({
+    id: new URL("https://example.com/requests/5"),
+    object: target,
+    instrument: collection,
+  });
+
+  const result = await featureInteraction.verifyRequest(context, { request });
+
+  assert.equal(result.verified, true);
+  assert.equal(result.requester.href, actor.href);
+  assert.equal(result.interactingObjectId.href, collectionId.href);
+  assert.equal(result.interactionTargetId.href, targetId.href);
+});
+
 test("featureInteraction denies mismatched collection owners", async () => {
   const target = new Person({ id: targetId });
   const collection = new FeaturedCollection({
@@ -133,6 +153,51 @@ test("featureInteraction creates and verifies authorizations", async () => {
   });
 
   assert.equal(result.verified, true);
+});
+
+test("featureInteraction verifies actorless authorizations", async () => {
+  const target = new Person({ id: targetId });
+  const collection = new FeaturedCollection({
+    id: collectionId,
+    attribution: actor,
+  });
+  const authorization = new FeatureAuthorization({
+    id: authorizationId,
+    interactingObject: collectionId,
+    interactionTarget: targetId,
+  });
+
+  const result = await featureInteraction.verifyAuthorization(context, {
+    authorization,
+    interactingObject: collection,
+    interactionTarget: target,
+    attributedTo: targetId,
+  });
+
+  assert.equal(result.verified, true);
+});
+
+test("featureInteraction checks actorless authorization origins", async () => {
+  const target = new Person({ id: targetId });
+  const collection = new FeaturedCollection({
+    id: collectionId,
+    attribution: actor,
+  });
+  const authorization = new FeatureAuthorization({
+    id: new URL("https://example.org/authorizations/5"),
+    interactingObject: collectionId,
+    interactionTarget: targetId,
+  });
+
+  const result = await featureInteraction.verifyAuthorization(context, {
+    authorization,
+    interactingObject: collection,
+    interactionTarget: target,
+    attributedTo: targetId,
+  });
+
+  assert.equal(result.verified, false);
+  assert.equal(result.failure.type, "originMismatch");
 });
 
 test("featureInteraction does not recognize standalone featured items", () => {

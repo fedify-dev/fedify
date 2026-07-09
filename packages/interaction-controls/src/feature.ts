@@ -23,21 +23,18 @@ export const featureInteraction: InteractionControl<
     request.getInstrument(options) as Promise<FeaturedCollection | null>,
   getInteractionTarget: (request, options) =>
     request.getObject(options) as Promise<Actor | null>,
-  validateRequest: (request, collection) => {
-    if (
-      !idsEqual(
-        collection.attributionId,
-        request.actorId ?? new URL("about:blank"),
-      )
-    ) {
+  getRequester: (_request, collection) => collection.attributionId,
+  validateRequest: (_request, collection, _target, requester) => {
+    if (!idsEqual(collection.attributionId, requester)) {
       return {
         type: "requesterMismatch",
-        expected: request.actorId ?? new URL("about:blank"),
+        expected: requester,
         actual: collection.attributionId ?? undefined,
       };
     }
     return null;
   },
+  authorizationAttribution: "optional",
   getSelfActor: (subject) => subject.id,
   defaultMissingPolicy: "denied",
   recognizeImpolite: () => null,

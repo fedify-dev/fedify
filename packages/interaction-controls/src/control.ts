@@ -62,11 +62,18 @@ interface ControlConfig<
     request: TRequest,
     options: DereferenceOptions,
   ) => Promise<TTarget | null>;
+  readonly getRequester?: (
+    request: TRequest,
+    interactingObject: TInteracting,
+    interactionTarget: TTarget,
+  ) => URL | null;
   readonly validateRequest: (
     request: TRequest,
     interactingObject: TInteracting,
     interactionTarget: TTarget,
+    requester: URL,
   ) => RequestValidationFailure | null;
+  readonly authorizationAttribution?: "required" | "optional";
   readonly getSelfActor: (subject: TTarget) => URL | null;
   readonly defaultMissingPolicy: "automatic" | "denied";
   readonly recognizeImpolite: (
@@ -263,15 +270,6 @@ async function verifyRequest<
       failure: { category: "invalid", type: "missingId" },
     };
   }
-  const requester = request.actorId;
-  if (requester == null) {
-    return {
-      verified: false,
-      request,
-      requestId: request.id,
-      failure: { category: "invalid", type: "missingActor" },
-    };
-  }
   const interactionTarget = await config.getInteractionTarget(request, options);
   if (interactionTarget == null) {
     return {
@@ -290,6 +288,16 @@ async function verifyRequest<
       failure: { category: "invalid", type: "missingInstrument" },
     };
   }
+  const requester = request.actorId ??
+    config.getRequester?.(request, interactingObject, interactionTarget);
+  if (requester == null) {
+    return {
+      verified: false,
+      request,
+      requestId: request.id,
+      failure: { category: "invalid", type: "missingActor" },
+    };
+  }
   const interactingObjectId = getRequiredId(
     interactingObject,
     "interactingObject",
@@ -302,6 +310,7 @@ async function verifyRequest<
     request,
     interactingObject,
     interactionTarget,
+    requester,
   );
   if (validation != null) {
     return {
@@ -456,7 +465,11 @@ async function verifyAuthorization<
     };
   }
   if (options.attributedTo != null) {
-    if (!idsEqual(authorization.attributionId, options.attributedTo)) {
+    const attributionRequired = config.authorizationAttribution !== "optional";
+    if (
+      attributionRequired &&
+      !idsEqual(authorization.attributionId, options.attributedTo)
+    ) {
       return {
         verified: false,
         authorization,
@@ -466,6 +479,22 @@ async function verifyAuthorization<
           type: "attributionMismatch",
           expected: options.attributedTo,
           actual: authorization.attributionId ?? undefined,
+        },
+      };
+    }
+    if (
+      authorization.attributionId != null &&
+      !idsEqual(authorization.attributionId, options.attributedTo)
+    ) {
+      return {
+        verified: false,
+        authorization,
+        authorizationId: authorization.id,
+        failure: {
+          category: "unauthorized",
+          type: "attributionMismatch",
+          expected: options.attributedTo,
+          actual: authorization.attributionId,
         },
       };
     }
