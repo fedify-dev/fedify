@@ -11,6 +11,7 @@
     "./packages/fastify",
     "./packages/fedify",
     "./packages/fixture",
+    "./packages/interaction-controls",
     "./packages/fresh",
     "./packages/h3",
     "./packages/init",
