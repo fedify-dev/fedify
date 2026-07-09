@@ -138,6 +138,8 @@ federation code:
     filtering implementation (`setFollowersDispatcher` only for now)
  -  **`media-uploader-object-uri-required`**: Warns when a `setMediaUploader`
     callback does not derive its return value from `getObjectUri`
+ -  **`media-uploader-authorization-required`**: Warns when `setMediaUploader`
+    is registered without an `authorize` hook
 
 
 Installation

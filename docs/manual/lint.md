@@ -798,6 +798,45 @@ federation.setMediaUploader(
 );
 ~~~~
 
+### `media-uploader-authorization-required`
+
+Warns when `setMediaUploader()` is registered without an `.authorize()` hook.
+
+**When this rule applies:**
+You've called `federation.setMediaUploader()` but never chained (or otherwise
+called) `.authorize()` on the returned setter.
+
+**Why it matters:**
+Without an authorize hook, the upload endpoint accepts uploads from anyone who
+can reach the URL.  For an endpoint that stores files, that is a serious abuse,
+denial-of-service, and storage-cost risk, so `.authorize()` should be
+configured unless a public upload endpoint is genuinely intended.
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import { createFederation } from "@fedify/fedify";
+import { Image } from "@fedify/vocab";
+const federation = createFederation<void>({ kv: null as any });
+// ---cut-before---
+// ❌ Bad: No authorize() hook, so anyone can upload
+federation.setMediaUploader(
+  "/users/{identifier}/media",
+  async (ctx, identifier, file, object) =>
+    ctx.getObjectUri(Image, { uuid: "1" }),
+);
+
+// ✅ Good: Protected with authorize()
+federation
+  .setMediaUploader(
+    "/users/{identifier}/media",
+    async (ctx, identifier, file, object) =>
+      ctx.getObjectUri(Image, { uuid: "1" }),
+  )
+  .authorize(async (ctx, identifier) => {
+    return ctx.request.headers.get("authorization") === `Bearer ${identifier}`;
+  });
+~~~~
+
 ### `actor-followers-property-required`
 
 Ensures `followers` is defined when `setFollowersDispatcher()` is configured.

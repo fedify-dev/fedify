@@ -4686,6 +4686,60 @@ test("Federation.setMediaUploader()", async (t) => {
       });
     },
   );
+
+  await t.step(
+    "warns once when no authorize hook is configured",
+    async () => {
+      await withLogtapeLock(async () => {
+        const records: LogRecord[] = [];
+        await reset();
+        try {
+          await configure({
+            sinks: {
+              buffer(record: LogRecord): void {
+                records.push(record);
+              },
+            },
+            filters: {},
+            loggers: [{ category: [], sinks: ["buffer"] }],
+          });
+          const federation = createFederation<void>({
+            kv,
+            documentLoaderFactory: () => mockDocumentLoader,
+          });
+          federation.setActorDispatcher(
+            "/users/{identifier}",
+            () => new vocab.Person({}),
+          );
+          // Registered without .authorize().
+          federation.setMediaUploader(
+            "/users/{identifier}/media",
+            () => Promise.resolve(new URL("https://example.com/")),
+          );
+          const send = () =>
+            federation.fetch(
+              new Request("https://example.com/users/john/media", {
+                method: "POST",
+                body: makeUploadForm(),
+              }),
+              { contextData: undefined },
+            );
+          assertEquals((await send()).status, 202);
+          assertEquals((await send()).status, 202);
+          const warnings = records.filter((record) =>
+            record.category.join(".") === "fedify.federation.mediaUploader" &&
+            record.level === "warning" &&
+            typeof record.rawMessage === "string" &&
+            record.rawMessage.includes("without an authorize() hook")
+          );
+          // Fires exactly once, not on every upload.
+          assertEquals(warnings.length, 1);
+        } finally {
+          await reset();
+        }
+      });
+    },
+  );
 });
 
 test("Federation.fetch() preserves original LD-signed payload for InboxContextImpl.activity", async () => {

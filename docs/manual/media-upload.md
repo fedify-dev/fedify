@@ -72,6 +72,16 @@ federation
   });
 ~~~~
 
+> [!WARNING]
+> Always configure `~MediaUploaderSetters.authorize()` in production.  Without
+> it, the endpoint accepts uploads from anyone who can reach the URL, which for
+> an endpoint that stores files is a serious abuse, denial-of-service, and
+> storage-cost risk.  If you register a media uploader without an authorize
+> hook, Fedify logs a runtime warning, and the `@fedify/lint` rule
+> [`media-uploader-authorization-required`](./lint.md) flags it statically.
+> Omit `authorize()` only when you deliberately intend a public upload
+> endpoint.
+
 The callback receives the request context, the matched `{identifier}`, the
 uploaded `file` (a Web-standard [`File`]), and the parsed `object` shell.  Since
 the client may send any subtype of `Object` and the shell lacks an `id`, the

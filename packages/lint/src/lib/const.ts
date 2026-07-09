@@ -152,4 +152,5 @@ export const RULE_IDS = {
   // Listener rules
   outboxListenerDeliveryRequired: "outbox-listener-delivery-required",
   mediaUploaderObjectUriRequired: "media-uploader-object-uri-required",
+  mediaUploaderAuthorizationRequired: "media-uploader-authorization-required",
 } as const;

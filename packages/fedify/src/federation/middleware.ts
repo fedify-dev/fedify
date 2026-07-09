@@ -634,6 +634,7 @@ export class FederationImpl<TContextData>
   benchmarkMode: boolean;
   benchmarkMetricReader?: BenchmarkMetricReader;
   benchmarkTriggerOptions: BenchmarkTriggerOptions;
+  #mediaUploaderNoAuthWarned = false;
   readonly #queueDepthGaugeSourceId = `fedify-${
     (++nextQueueDepthGaugeSourceId).toString(36)
   }`;
@@ -2718,6 +2719,22 @@ export class FederationImpl<TContextData>
               "Content-Type": "text/plain; charset=utf-8",
             },
           });
+        }
+        if (
+          this.mediaUploaderAuthorizePredicate == null &&
+          !this.#mediaUploaderNoAuthWarned
+        ) {
+          // Warn once: a media uploader without an authorize hook accepts
+          // uploads from anyone who can reach the URL.  This is a serious
+          // exposure for an endpoint that stores files, so surface it unless
+          // a public upload endpoint is genuinely intended.
+          this.#mediaUploaderNoAuthWarned = true;
+          getLogger(["fedify", "federation", "mediaUploader"]).warn(
+            "The media uploader is registered without an authorize() hook, " +
+              "so it accepts uploads from anyone who can reach the endpoint.  " +
+              "Protect it with .authorize() unless a public upload endpoint " +
+              "is intended.",
+          );
         }
         return await handleMediaUpload(request, {
           identifier: route.values.identifier,

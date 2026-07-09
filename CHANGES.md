@@ -37,8 +37,10 @@ To be released.
      -  A new metric endpoint category, `media_upload`, classifies these
         requests in the `fedify.endpoint` attribute.
      -  Fedify logs a runtime warning when a callback's returned URI does not
-        point at a registered object dispatcher route, or when a registered
-        media uploader is not advertised under `endpoints.uploadMedia`.
+        point at a registered object dispatcher route, when a registered
+        media uploader is not advertised under `endpoints.uploadMedia`, or
+        when a media uploader is registered without an `authorize()` hook (so
+        the endpoint would accept uploads from anyone).
 
  -  Added a custom background task API that generalizes Fedify's
     enqueue-and-process-later pattern to arbitrary application-defined jobs:
@@ -231,11 +233,13 @@ To be released.
 
 ### @fedify/lint
 
- -  Added three lint rules for the media upload endpoint introduced in
+ -  Added four lint rules for the media upload endpoint introduced in
     `@fedify/fedify`:  [[#754], [#927]]
 
      -  `media-uploader-object-uri-required` warns when a `setMediaUploader()`
         callback does not derive its return value from `ctx.getObjectUri()`.
+     -  `media-uploader-authorization-required` warns when `setMediaUploader()`
+        is registered without an `.authorize()` hook.
      -  `actor-upload-media-property-required` warns when a media uploader is
         registered but the actor dispatcher does not advertise
         `endpoints.uploadMedia`.

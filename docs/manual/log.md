@@ -183,6 +183,16 @@ The `["fedify", "federation", "inbox"]` category is used for logging messages
 related to incoming activities.  When you cannot receive an activity, you can
 check the log messages in this category with the `"debug"` level.
 
+### `["fedify", "federation", "mediaUploader"]`
+
+*This category is available since Fedify 2.4.0.*
+
+The `["fedify", "federation", "mediaUploader"]` category is used for logging
+messages related to the [media upload endpoint](./media-upload.md).  In
+particular, it emits a `"warning"` when a media uploader is registered without
+an `authorize()` hook, and when a callback returns a URI that does not point at
+a registered object dispatcher route.
+
 ### `["fedify", "federation", "object"]`
 
 The `["fedify", "federation", "object"]` category is used for logging messages

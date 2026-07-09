@@ -84,6 +84,9 @@ import {
   eslint as collectionFiltering,
 } from "./rules/collection-filtering-not-implemented.ts";
 import {
+  eslint as mediaUploaderAuthorizationRequired,
+} from "./rules/media-uploader-authorization-required.ts";
+import {
   eslint as mediaUploaderObjectUriRequired,
 } from "./rules/media-uploader-object-uri-required.ts";
 import {
@@ -121,6 +124,8 @@ const rules: Record<
   [RULE_IDS.collectionFilteringNotImplemented]: collectionFiltering,
   [RULE_IDS.outboxListenerDeliveryRequired]: outboxListenerDeliveryRequired,
   [RULE_IDS.mediaUploaderObjectUriRequired]: mediaUploaderObjectUriRequired,
+  [RULE_IDS.mediaUploaderAuthorizationRequired]:
+    mediaUploaderAuthorizationRequired,
 };
 
 /**

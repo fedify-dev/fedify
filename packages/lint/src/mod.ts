@@ -65,6 +65,9 @@ import {
   deno as collectionFiltering,
 } from "./rules/collection-filtering-not-implemented.ts";
 import {
+  deno as mediaUploaderAuthorizationRequired,
+} from "./rules/media-uploader-authorization-required.ts";
+import {
   deno as mediaUploaderObjectUriRequired,
 } from "./rules/media-uploader-object-uri-required.ts";
 import {
@@ -105,6 +108,8 @@ const plugin: Deno.lint.Plugin = {
     [RULE_IDS.collectionFilteringNotImplemented]: collectionFiltering,
     [RULE_IDS.outboxListenerDeliveryRequired]: outboxListenerDeliveryRequired,
     [RULE_IDS.mediaUploaderObjectUriRequired]: mediaUploaderObjectUriRequired,
+    [RULE_IDS.mediaUploaderAuthorizationRequired]:
+      mediaUploaderAuthorizationRequired,
   },
 };
 
