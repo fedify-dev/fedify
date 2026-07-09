@@ -178,14 +178,25 @@ Fedify handles malformed requests before your callback runs:
     `401 Unauthorized` (overridable via the `onUnauthorized` option of
     `createFederation()`, the same as outbox listeners).
  -  A request whose `{identifier}` has no actor (the actor dispatcher returns
-    `null` or a `Tombstone`) receives `404 Not Found`, and the callback is not
-    invoked.  Like the outbox, the media uploader treats the actor dispatcher as
-    the source of valid actors, so uploads for nonexistent or deleted actors are
-    never stored.
+    `null` or a `Tombstone`) receives `404 Not Found`, and neither the
+    authorize hook nor the callback runs.  The media uploader treats the actor
+    dispatcher as the source of valid actors, so uploads for nonexistent or
+    deleted actors are never stored.
  -  A request missing the `file` part receives `400 Bad Request`.
  -  A request whose `object` part is missing or unparseable receives
     `400 Bad Request`.
  -  A non-`POST` request to the endpoint receives `405 Method Not Allowed`.
+
+> [!NOTE]
+> Unlike the outbox, the media upload endpoint resolves the actor *before*
+> running authorization.  A request for a nonexistent or deleted actor
+> therefore receives `404 Not Found` even when it would also fail
+> authorization, whereas the outbox returns `401 Unauthorized` in that case.
+> The order is deliberate: the actor existence check is cheap, so resolving it
+> first avoids buffering the entire upload for a bogus identifier, and it makes
+> the `404` reliable regardless of the authorize hook.  This does not reveal
+> anything new, since actor existence is already public (the actor URI itself
+> returns `404` for unknown actors).
 
 
 Current scope

@@ -1051,10 +1051,13 @@ export async function handleMediaUpload<TContextData>(
     logger.error("Actor dispatcher is not set.", { identifier });
     return await onNotFound(request);
   }
-  // Resolve the actor before authorization: a missing or tombstoned actor
-  // should reach the documented 404 regardless of the authorize hook, and the
-  // cheap existence check avoids buffering the whole upload below for a bogus
-  // identifier.
+  // Resolve the actor before authorization.  This deliberately differs from
+  // handleOutbox(), which authorizes first: here a missing or tombstoned actor
+  // reaches the documented 404 regardless of the authorize hook (so it may
+  // return 404 where the outbox would return 401), and the cheap existence
+  // check avoids buffering the whole upload below for a bogus identifier.  The
+  // actor's existence is already public via its actor URI, so this leaks
+  // nothing new.
   const actor = await actorDispatcher(ctx, identifier);
   if (actor == null || actor instanceof Tombstone) {
     logger.error("Actor {identifier} not found.", { identifier });
