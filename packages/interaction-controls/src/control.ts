@@ -212,6 +212,10 @@ export function getRequiredId(value: ASObject | URL, name: string): URL {
   return value.id;
 }
 
+function getId(value: ASObject | URL): URL | null {
+  return value instanceof URL ? value : value.id;
+}
+
 export function idsEqual(left: URL | null | undefined, right: URL): boolean {
   return left != null && left.href === right.href;
 }
@@ -298,14 +302,24 @@ async function verifyRequest<
       failure: { category: "invalid", type: "missingActor" },
     };
   }
-  const interactingObjectId = getRequiredId(
-    interactingObject,
-    "interactingObject",
-  );
-  const interactionTargetId = getRequiredId(
-    interactionTarget,
-    "interactionTarget",
-  );
+  const interactingObjectId = getId(interactingObject);
+  if (interactingObjectId == null) {
+    return {
+      verified: false,
+      request,
+      requestId: request.id,
+      failure: { category: "invalid", type: "missingInstrumentId" },
+    };
+  }
+  const interactionTargetId = getId(interactionTarget);
+  if (interactionTargetId == null) {
+    return {
+      verified: false,
+      request,
+      requestId: request.id,
+      failure: { category: "invalid", type: "missingObjectId" },
+    };
+  }
   const validation = config.validateRequest(
     request,
     interactingObject,
@@ -464,53 +478,63 @@ async function verifyAuthorization<
       },
     };
   }
-  if (options.attributedTo != null) {
-    const attributionRequired = config.authorizationAttribution !== "optional";
-    if (
-      attributionRequired &&
-      !idsEqual(authorization.attributionId, options.attributedTo)
-    ) {
-      return {
-        verified: false,
-        authorization,
-        authorizationId: authorization.id,
-        failure: {
-          category: "unauthorized",
-          type: "attributionMismatch",
-          expected: options.attributedTo,
-          actual: authorization.attributionId ?? undefined,
-        },
-      };
-    }
-    if (
-      authorization.attributionId != null &&
-      !idsEqual(authorization.attributionId, options.attributedTo)
-    ) {
-      return {
-        verified: false,
-        authorization,
-        authorizationId: authorization.id,
-        failure: {
-          category: "unauthorized",
-          type: "attributionMismatch",
-          expected: options.attributedTo,
-          actual: authorization.attributionId,
-        },
-      };
-    }
-    if (authorization.id.origin !== options.attributedTo.origin) {
-      return {
-        verified: false,
-        authorization,
-        authorizationId: authorization.id,
-        failure: {
-          category: "unauthorized",
-          type: "originMismatch",
-          expectedOrigin: options.attributedTo.origin,
-          actualOrigin: authorization.id.origin,
-        },
-      };
-    }
+  const expectedAttribution = options.attributedTo ??
+    (!(options.interactionTarget instanceof URL)
+      ? config.getSelfActor(options.interactionTarget)
+      : null);
+  if (expectedAttribution == null) {
+    return {
+      verified: false,
+      authorization,
+      authorizationId: authorization.id,
+      failure: { category: "unauthorized", type: "missingAttribution" },
+    };
+  }
+  const attributionRequired = config.authorizationAttribution !== "optional";
+  if (
+    attributionRequired &&
+    !idsEqual(authorization.attributionId, expectedAttribution)
+  ) {
+    return {
+      verified: false,
+      authorization,
+      authorizationId: authorization.id,
+      failure: {
+        category: "unauthorized",
+        type: "attributionMismatch",
+        expected: expectedAttribution,
+        actual: authorization.attributionId ?? undefined,
+      },
+    };
+  }
+  if (
+    authorization.attributionId != null &&
+    !idsEqual(authorization.attributionId, expectedAttribution)
+  ) {
+    return {
+      verified: false,
+      authorization,
+      authorizationId: authorization.id,
+      failure: {
+        category: "unauthorized",
+        type: "attributionMismatch",
+        expected: expectedAttribution,
+        actual: authorization.attributionId,
+      },
+    };
+  }
+  if (authorization.id.origin !== expectedAttribution.origin) {
+    return {
+      verified: false,
+      authorization,
+      authorizationId: authorization.id,
+      failure: {
+        category: "unauthorized",
+        type: "originMismatch",
+        expectedOrigin: expectedAttribution.origin,
+        actualOrigin: authorization.id.origin,
+      },
+    };
   }
   if (options.verifyAuthenticity != null) {
     const authentic = await options.verifyAuthenticity(authorization, context);

@@ -130,6 +130,14 @@ test("likeInteraction creates and verifies authorizations", async () => {
 
   assert.equal(result.verified, true);
   assert.equal(result.authorizationId.href, authorizationId.href);
+
+  const inferredResult = await likeInteraction.verifyAuthorization(context, {
+    authorization,
+    interactingObject: like,
+    interactionTarget: target,
+  });
+
+  assert.equal(inferredResult.verified, true);
 });
 
 test("likeInteraction verifies requests", async () => {
@@ -148,6 +156,77 @@ test("likeInteraction verifies requests", async () => {
   assert.equal(result.requester.href, actor.href);
   assert.equal(result.interactingObjectId.href, likeId.href);
   assert.equal(result.interactionTargetId.href, targetId.href);
+});
+
+test("likeInteraction rejects id-less request objects", async () => {
+  const target = new Note({ attribution: author });
+  const like = new Like({ id: likeId, actor, object: targetId });
+  const request = new LikeRequest({
+    id: new URL("https://example.com/requests/1"),
+    actor,
+    object: target,
+    instrument: like,
+  });
+
+  const result = await likeInteraction.verifyRequest(context, { request });
+
+  assert.equal(result.verified, false);
+  assert.equal(result.failure.type, "missingObjectId");
+});
+
+test("likeInteraction rejects id-less request instruments", async () => {
+  const target = new Note({ id: targetId, attribution: author });
+  const like = new Like({ actor, object: targetId });
+  const request = new LikeRequest({
+    id: new URL("https://example.com/requests/1"),
+    actor,
+    object: target,
+    instrument: like,
+  });
+
+  const result = await likeInteraction.verifyRequest(context, { request });
+
+  assert.equal(result.verified, false);
+  assert.equal(result.failure.type, "missingInstrumentId");
+});
+
+test("likeInteraction rejects unverifiable authorization grantors", async () => {
+  const target = new Note({ id: targetId, attribution: author });
+  const like = new Like({ id: likeId, actor, object: target });
+  const authorization = new LikeAuthorization({
+    id: new URL("https://example.org/authorizations/1"),
+    attribution: new URL("https://example.org/users/carol"),
+    interactingObject: likeId,
+    interactionTarget: targetId,
+  });
+
+  const result = await likeInteraction.verifyAuthorization(context, {
+    authorization,
+    interactingObject: like,
+    interactionTarget: target,
+  });
+
+  assert.equal(result.verified, false);
+  assert.equal(result.failure.type, "attributionMismatch");
+});
+
+test("likeInteraction rejects missing authorization grantors", async () => {
+  const target = new Note({ id: targetId });
+  const like = new Like({ id: likeId, actor, object: target });
+  const authorization = new LikeAuthorization({
+    id: authorizationId,
+    interactingObject: likeId,
+    interactionTarget: targetId,
+  });
+
+  const result = await likeInteraction.verifyAuthorization(context, {
+    authorization,
+    interactingObject: like,
+    interactionTarget: target,
+  });
+
+  assert.equal(result.verified, false);
+  assert.equal(result.failure.type, "missingAttribution");
 });
 
 test("likeInteraction builds responses and revocations", () => {

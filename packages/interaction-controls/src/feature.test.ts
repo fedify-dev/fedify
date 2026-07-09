@@ -153,6 +153,14 @@ test("featureInteraction creates and verifies authorizations", async () => {
   });
 
   assert.equal(result.verified, true);
+
+  const inferredResult = await featureInteraction.verifyAuthorization(context, {
+    authorization,
+    interactingObject: collection,
+    interactionTarget: target,
+  });
+
+  assert.equal(inferredResult.verified, true);
 });
 
 test("featureInteraction verifies actorless authorizations", async () => {

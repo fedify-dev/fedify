@@ -224,7 +224,8 @@ const authorization = likeInteraction.createAuthorization({
 ~~~~
 
 When a signed interaction arrives with an authorization, verify that the
-authorization still refers to the same interaction object and target:
+authorization still refers to the same interaction object and target, and that
+the grant came from the target owner:
 
 ~~~~ typescript twoslash
 import type { Context } from "@fedify/fedify";

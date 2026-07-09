@@ -151,7 +151,9 @@ export type InteractionRequestVerificationFailure =
       | "missingId"
       | "missingActor"
       | "missingObject"
-      | "missingInstrument";
+      | "missingObjectId"
+      | "missingInstrument"
+      | "missingInstrumentId";
   }
   | {
     readonly category: "invalid";
@@ -289,6 +291,10 @@ export type InteractionAuthorizationVerificationFailure =
   | {
     readonly category: "unauthorized";
     readonly type: "missingId";
+  }
+  | {
+    readonly category: "unauthorized";
+    readonly type: "missingAttribution";
   }
   | {
     readonly category: "unauthorized";
