@@ -1052,25 +1052,27 @@ export async function handleMediaUpload<TContextData>(
     return await onNotFound(request);
   }
   if (authorizePredicate != null) {
-    // Give the authorization hook a header-only view of the request rather
-    // than cloning it.  Cloning a request tees its body stream, so cloning a
-    // multipart upload would force the entire file to be buffered a second
-    // time for the (typically never consumed) authorize clone once the handler
-    // reads the original with request.formData() below.  Authorization for a
-    // media upload is header/token based, so a bodyless request is sufficient.
-    const authorizeRequest = new Request(request.url, {
-      method: request.method,
-      headers: request.headers,
-    });
+    // Buffer the upload once so that both a signature-verifying hook (which
+    // reads the body to check an RFC 9421 Content-Digest over the multipart
+    // payload) and request.formData() below can read it.  Cloning the request
+    // instead would tee its body stream and buffer the whole file a second
+    // time for whichever branch is read last; reading it once and rebuilding a
+    // fresh Request from the bytes for each consumer avoids that.
+    const body = await request.arrayBuffer();
+    const rebuild = (): Request =>
+      new Request(request.url, {
+        method: request.method,
+        headers: request.headers,
+        body: body.byteLength > 0 ? body : undefined,
+      });
     const authorizeContext = ctx.clone(ctx.data) as
       & RequestContext<TContextData>
       & { request: Request };
-    authorizeContext.request = authorizeRequest;
+    authorizeContext.request = rebuild();
     if (!await authorizePredicate(authorizeContext, identifier)) {
-      // The original request body is still unread here (formData() runs only
-      // after authorization succeeds), so hand it to onUnauthorized intact.
-      return await onUnauthorized(request);
+      return await onUnauthorized(rebuild());
     }
+    request = rebuild();
   }
   const actor = await actorDispatcher(ctx, identifier);
   if (actor == null || actor instanceof Tombstone) {

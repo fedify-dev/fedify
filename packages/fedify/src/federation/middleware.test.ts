@@ -4336,6 +4336,42 @@ test("Federation.setMediaUploader()", async (t) => {
   );
 
   await t.step(
+    "authorize hook can read the request body, and the upload still succeeds",
+    async () => {
+      const federation = createFederation<void>({
+        kv,
+        documentLoaderFactory: () => mockDocumentLoader,
+      });
+      federation.setActorDispatcher(
+        "/users/{identifier}",
+        () => new vocab.Person({}),
+      );
+      let authorizeBodyLength = -1;
+      federation
+        .setMediaUploader(
+          "/users/{identifier}/media",
+          () => Promise.resolve(new URL("https://example.com/pending")),
+        )
+        // A signature-verifying hook would consume the body; emulate that by
+        // reading it here and confirm the handler can still parse the upload.
+        .authorize(async (ctx) => {
+          const buffer = await ctx.request.arrayBuffer();
+          authorizeBodyLength = buffer.byteLength;
+          return authorizeBodyLength > 0;
+        });
+      const response = await federation.fetch(
+        new Request("https://example.com/users/john/media", {
+          method: "POST",
+          body: makeUploadForm(),
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 202);
+      assert(authorizeBodyLength > 0);
+    },
+  );
+
+  await t.step(
     "404 when the actor does not exist (callback not invoked)",
     async () => {
       const federation = createFederation<void>({
