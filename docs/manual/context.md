@@ -101,6 +101,7 @@ shows the methods:
  -  `~Context.getObjectUri()`
  -  `~Context.getInboxUri()`
  -  `~Context.getOutboxUri()`
+ -  `~Context.getMediaUploaderUri()`
  -  `~Context.getFollowingUri()`
  -  `~Context.getFollowersUri()`
  -  `~Context.getLikedUri()`

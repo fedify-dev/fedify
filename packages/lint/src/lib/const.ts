@@ -87,6 +87,17 @@ export const properties = {
       wrapper: "Endpoints",
     },
   },
+  uploadMedia: {
+    name: "uploadMedia",
+    path: ["endpoints", "uploadMedia"],
+    getter: "getMediaUploaderUri",
+    setter: "setMediaUploader",
+    requiresIdentifier: true,
+    nested: {
+      parent: "endpoints",
+      wrapper: "Endpoints",
+    },
+  },
   publicKey: {
     name: "publicKey",
     path: ["publicKey"],
@@ -119,6 +130,7 @@ export const RULE_IDS = {
   actorFeaturedTagsPropertyRequired: "actor-featured-tags-property-required",
   actorInboxPropertyRequired: "actor-inbox-property-required",
   actorSharedInboxPropertyRequired: "actor-shared-inbox-property-required",
+  actorUploadMediaPropertyRequired: "actor-upload-media-property-required",
   actorPublicKeyRequired: "actor-public-key-required",
   actorAssertionMethodRequired: "actor-assertion-method-required",
 
@@ -132,10 +144,13 @@ export const RULE_IDS = {
   actorFeaturedTagsPropertyMismatch: "actor-featured-tags-property-mismatch",
   actorInboxPropertyMismatch: "actor-inbox-property-mismatch",
   actorSharedInboxPropertyMismatch: "actor-shared-inbox-property-mismatch",
+  actorUploadMediaPropertyMismatch: "actor-upload-media-property-mismatch",
 
   // Collection rules
   collectionFilteringNotImplemented: "collection-filtering-not-implemented",
 
   // Listener rules
   outboxListenerDeliveryRequired: "outbox-listener-delivery-required",
+  mediaUploaderObjectUriRequired: "media-uploader-object-uri-required",
+  mediaUploaderAuthorizationRequired: "media-uploader-authorization-required",
 } as const;

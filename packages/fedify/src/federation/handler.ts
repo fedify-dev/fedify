@@ -52,6 +52,7 @@ import type {
   CustomCollectionCursor,
   CustomCollectionDispatcher,
   InboxErrorHandler,
+  MediaUploaderCallback,
   ObjectAuthorizePredicate,
   ObjectDispatcher,
   OutboxListenerErrorHandler,
@@ -967,6 +968,273 @@ export async function handleOutbox<TContextData>(
   return new Response("", {
     status: 202,
     headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
+}
+
+/**
+ * Parameters for handling a media upload request.
+ * @template TContextData The context data to pass to the context.
+ * @since 2.4.0
+ */
+export interface MediaUploadHandlerParameters<TContextData> {
+  identifier: string;
+  context: RequestContext<TContextData>;
+  mediaUploaderCallback: MediaUploaderCallback<TContextData>;
+  actorDispatcher?: ActorDispatcher<TContextData>;
+  authorizePredicate?: AuthorizePredicate<TContextData>;
+
+  /**
+   * Determines whether the given URI points at a registered object dispatcher
+   * route on this server.  Used to warn when a media upload callback returns a
+   * value that is not derived from `Context.getObjectUri()`.
+   */
+  isRegisteredObjectUri(uri: URL): boolean;
+  onUnauthorized(request: Request): Response | Promise<Response>;
+  onNotFound(request: Request): Response | Promise<Response>;
+}
+
+const plainTextHeaders = {
+  "Content-Type": "text/plain; charset=utf-8",
+} as const;
+
+/**
+ * Handles a media upload request (the [ActivityPub Media Upload
+ * extension](https://www.w3.org/wiki/SocialCG/ActivityPub/MediaUpload)).
+ * @template TContextData The context data to pass to the context.
+ * @param request The HTTP request.
+ * @param parameters The parameters for handling the request.
+ * @returns A promise that resolves to an HTTP response.
+ * @since 2.4.0
+ */
+export async function handleMediaUpload<TContextData>(
+  request: Request,
+  {
+    identifier,
+    context: ctx,
+    mediaUploaderCallback,
+    actorDispatcher,
+    authorizePredicate,
+    isRegisteredObjectUri,
+    onUnauthorized,
+    onNotFound,
+  }: MediaUploadHandlerParameters<TContextData>,
+): Promise<Response> {
+  const logger = getLogger(["fedify", "federation", "mediaUploader"]);
+  if (request.bodyUsed) {
+    logger.error("Request body has already been read.", { identifier });
+    return new Response("Internal server error.", {
+      status: 500,
+      headers: plainTextHeaders,
+    });
+  } else if (request.body?.locked) {
+    logger.error("Request body is locked.", { identifier });
+    return new Response("Internal server error.", {
+      status: 500,
+      headers: plainTextHeaders,
+    });
+  }
+  const contentType = request.headers.get("content-type");
+  if (
+    contentType == null ||
+    !contentType.toLowerCase().startsWith("multipart/form-data")
+  ) {
+    logger.error(
+      "The media upload request is not multipart/form-data (got {contentType}).",
+      { identifier, contentType },
+    );
+    return new Response("Unsupported media type.", {
+      status: 415,
+      headers: plainTextHeaders,
+    });
+  }
+  if (actorDispatcher == null) {
+    logger.error("Actor dispatcher is not set.", { identifier });
+    return await onNotFound(request);
+  }
+  // Resolve the actor before authorization.  This deliberately differs from
+  // handleOutbox(), which authorizes first: here a missing or tombstoned actor
+  // reaches the documented 404 regardless of the authorize hook (so it may
+  // return 404 where the outbox would return 401), and the cheap existence
+  // check avoids buffering the whole upload below for a bogus identifier.  The
+  // actor's existence is already public via its actor URI, so this leaks
+  // nothing new.
+  const actor = await actorDispatcher(ctx, identifier);
+  if (actor == null || actor instanceof Tombstone) {
+    logger.error("Actor {identifier} not found.", { identifier });
+    return await onNotFound(request);
+  }
+  if (authorizePredicate != null) {
+    // Buffer the upload once so that both a signature-verifying hook (which
+    // reads the body to check an RFC 9421 Content-Digest over the multipart
+    // payload) and request.formData() below can read it.  Cloning the request
+    // instead would tee its body stream and buffer the whole file a second
+    // time for whichever branch is read last; reading it once and rebuilding a
+    // fresh Request from the bytes for each consumer avoids that.
+    let body: ArrayBuffer;
+    try {
+      body = await request.arrayBuffer();
+    } catch (error) {
+      logger.error("Failed to read the multipart/form-data body:\n{error}", {
+        identifier,
+        error,
+      });
+      return new Response("Invalid multipart/form-data body.", {
+        status: 400,
+        headers: plainTextHeaders,
+      });
+    }
+    const rebuild = (): Request =>
+      new Request(request.url, {
+        method: request.method,
+        headers: request.headers,
+        body: body.byteLength > 0 ? body : undefined,
+      });
+    const authorizeContext = ctx.clone(ctx.data) as
+      & RequestContext<TContextData>
+      & { request: Request };
+    authorizeContext.request = rebuild();
+    if (!await authorizePredicate(authorizeContext, identifier)) {
+      return await onUnauthorized(rebuild());
+    }
+    request = rebuild();
+  }
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch (error) {
+    logger.error("Failed to parse the multipart/form-data body:\n{error}", {
+      identifier,
+      error,
+    });
+    return new Response("Invalid multipart/form-data body.", {
+      status: 400,
+      headers: plainTextHeaders,
+    });
+  }
+  const file = form.get("file");
+  if (!(file instanceof File)) {
+    logger.error("The media upload request has no file field.", { identifier });
+    return new Response("Missing file field.", {
+      status: 400,
+      headers: plainTextHeaders,
+    });
+  }
+  const objectField = form.get("object");
+  if (objectField == null) {
+    logger.error("The media upload request has no object field.", {
+      identifier,
+    });
+    return new Response("Missing object field.", {
+      status: 400,
+      headers: plainTextHeaders,
+    });
+  }
+  let object: Object;
+  try {
+    const objectText = typeof objectField === "string"
+      ? objectField
+      : await objectField.text();
+    object = await Object.fromJsonLd(JSON.parse(objectText), ctx);
+  } catch (error) {
+    logger.error("Failed to parse the object field:\n{error}", {
+      identifier,
+      error,
+    });
+    return new Response("Invalid object field.", {
+      status: 400,
+      headers: plainTextHeaders,
+    });
+  }
+  let result: Object | URL;
+  try {
+    result = await mediaUploaderCallback(ctx, identifier, file, object);
+  } catch (error) {
+    logger.error("Failed to process the media upload:\n{error}", {
+      identifier,
+      error,
+    });
+    return new Response("Internal server error.", {
+      status: 500,
+      headers: plainTextHeaders,
+    });
+  }
+  if (result == null) {
+    // The callback's return type forbids this, but a JavaScript caller (or a
+    // callback missing a return statement) could still yield null/undefined;
+    // convert it into a controlled response instead of crashing below.
+    logger.error(
+      "The media uploader callback for {identifier} returned null or " +
+        "undefined; it must return an object (201 Created) or a URL " +
+        "(202 Accepted).",
+      { identifier },
+    );
+    return new Response("Internal server error.", {
+      status: 500,
+      headers: plainTextHeaders,
+    });
+  }
+  const warnUnlessRegistered = (target: URL): void => {
+    if (isRegisteredObjectUri(target)) return;
+    logger.warn(
+      "The media uploader callback for {identifier} returned {target}, which " +
+        "does not point at a registered object dispatcher route; derive the " +
+        "returned id/URL from Context.getObjectUri().  The upload still " +
+        "succeeded.",
+      { identifier, target: target.href },
+    );
+  };
+  if (result instanceof URL) {
+    warnUnlessRegistered(result);
+    logger.info(
+      "The media upload for {identifier} is still being processed; " +
+        "responding 202 Accepted.",
+      { identifier, location: result.href },
+    );
+    return new Response(null, {
+      status: 202,
+      headers: { Location: result.href },
+    });
+  }
+  if (result.id == null) {
+    logger.error(
+      "The media uploader callback for {identifier} returned an object " +
+        "without an id, so a 201 Created response cannot include the required " +
+        "Location header.  Set the object's id with Context.getObjectUri(), " +
+        "or return the eventual URL to respond 202 Accepted instead.",
+      { identifier },
+    );
+    return new Response("Internal server error.", {
+      status: 500,
+      headers: plainTextHeaders,
+    });
+  }
+  warnUnlessRegistered(result.id);
+  let jsonLd: unknown;
+  try {
+    jsonLd = await result.toJsonLd(ctx);
+  } catch (error) {
+    // Serialization can fail (e.g. a context loader error); convert it into a
+    // controlled response, like every other failure mode in this handler,
+    // rather than letting it propagate out of Federation.fetch().
+    logger.error(
+      "Failed to serialize the uploaded object to JSON-LD:\n{error}",
+      { identifier, error },
+    );
+    return new Response("Internal server error.", {
+      status: 500,
+      headers: plainTextHeaders,
+    });
+  }
+  logger.info(
+    "The media upload for {identifier} is ready; responding 201 Created.",
+    { identifier, location: result.id.href },
+  );
+  return new Response(JSON.stringify(jsonLd), {
+    status: 201,
+    headers: {
+      "Content-Type": "application/activity+json",
+      Location: result.id.href,
+    },
   });
 }
 

@@ -56,8 +56,20 @@ import {
   deno as actorSharedInboxPropertyRequired,
 } from "./rules/actor-shared-inbox-property-required.ts";
 import {
+  deno as actorUploadMediaPropertyMismatch,
+} from "./rules/actor-upload-media-property-mismatch.ts";
+import {
+  deno as actorUploadMediaPropertyRequired,
+} from "./rules/actor-upload-media-property-required.ts";
+import {
   deno as collectionFiltering,
 } from "./rules/collection-filtering-not-implemented.ts";
+import {
+  deno as mediaUploaderAuthorizationRequired,
+} from "./rules/media-uploader-authorization-required.ts";
+import {
+  deno as mediaUploaderObjectUriRequired,
+} from "./rules/media-uploader-object-uri-required.ts";
 import {
   deno as outboxListenerDeliveryRequired,
 } from "./rules/outbox-listener-delivery-required.ts";
@@ -87,10 +99,17 @@ const plugin: Deno.lint.Plugin = {
       actorSharedInboxPropertyRequired,
     [RULE_IDS.actorSharedInboxPropertyMismatch]:
       actorSharedInboxPropertyMismatch,
+    [RULE_IDS.actorUploadMediaPropertyRequired]:
+      actorUploadMediaPropertyRequired,
+    [RULE_IDS.actorUploadMediaPropertyMismatch]:
+      actorUploadMediaPropertyMismatch,
     [RULE_IDS.actorPublicKeyRequired]: actorPublicKeyRequired,
     [RULE_IDS.actorAssertionMethodRequired]: actorAssertionMethodRequired,
     [RULE_IDS.collectionFilteringNotImplemented]: collectionFiltering,
     [RULE_IDS.outboxListenerDeliveryRequired]: outboxListenerDeliveryRequired,
+    [RULE_IDS.mediaUploaderObjectUriRequired]: mediaUploaderObjectUriRequired,
+    [RULE_IDS.mediaUploaderAuthorizationRequired]:
+      mediaUploaderAuthorizationRequired,
   },
 };
 

@@ -201,6 +201,41 @@ export type OutboxListener<TContextData, TActivity extends Activity> = (
 ) => void | Promise<void>;
 
 /**
+ * A callback that finalizes a media upload posted to the media upload endpoint
+ * (the [ActivityPub Media Upload
+ * extension](https://www.w3.org/wiki/SocialCG/ActivityPub/MediaUpload)).
+ *
+ * The return value determines the HTTP response:
+ *
+ * -  Returning a {@link Object} (the resource is fetchable right away) makes the
+ *    endpoint respond with `201 Created` and a `Location` header pointing at the
+ *    object's `id`.
+ * -  Returning a {@link URL} (the resource is still being processed, e.g.
+ *    transcoding) makes the endpoint respond with `202 Accepted` and a
+ *    `Location` header pointing at the returned URL.
+ *
+ * @template TContextData The context data to pass to the {@link Context}.
+ * @param context The request context.
+ * @param identifier The identifier of the actor whose media upload endpoint
+ *                   received the request.
+ * @param file The uploaded file.
+ * @param object The parsed ActivityStreams object shell sent alongside the file.
+ *               Since the client may send any subtype of {@link Object} and the
+ *               shell lacks an `id`, the callback receives the base
+ *               {@link Object} and narrows with `instanceof` as needed.
+ * @returns The finalized object (`201 Created`) or the URL at which it will
+ *          become available (`202 Accepted`).  It may be returned synchronously
+ *          or wrapped in a `Promise`.
+ * @since 2.4.0
+ */
+export type MediaUploaderCallback<TContextData> = (
+  context: RequestContext<TContextData>,
+  identifier: string,
+  file: File,
+  object: Object,
+) => Object | URL | Promise<Object | URL>;
+
+/**
  * The reason why an incoming activity could not be verified.
  *
  * Unlike inbox listeners registered through {@link InboxListenerSetters.on},

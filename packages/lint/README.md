@@ -127,11 +127,19 @@ federation code:
     when `setInboxListeners` is set
  -  **`actor-shared-inbox-property-mismatch`**: Validates sharedInbox URI from
     `getInboxUri`
+ -  **`actor-upload-media-property-required`**: Ensures endpoints.uploadMedia is
+    defined when `setMediaUploader` is set
+ -  **`actor-upload-media-property-mismatch`**: Validates endpoints.uploadMedia
+    URI from `getMediaUploaderUri`
 
 ### Other rules
 
  -  **`collection-filtering-not-implemented`**: Warns about missing collection
     filtering implementation (`setFollowersDispatcher` only for now)
+ -  **`media-uploader-object-uri-required`**: Warns when a `setMediaUploader`
+    callback does not derive its return value from `getObjectUri`
+ -  **`media-uploader-authorization-required`**: Warns when `setMediaUploader`
+    is registered without an `authorize` hook
 
 
 Installation

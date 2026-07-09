@@ -27,6 +27,7 @@ import type {
   CustomCollectionDispatcher,
   InboxErrorHandler,
   InboxListener,
+  MediaUploaderCallback,
   NodeInfoDispatcher,
   ObjectAuthorizePredicate,
   ObjectDispatcher,
@@ -340,6 +341,52 @@ export interface Federatable<TContextData> extends TaskRegistry<TContextData> {
   setOutboxListeners(
     outboxPath: `${string}${Rfc6570Expression<"identifier">}${string}`,
   ): OutboxListenerSetters<TContextData>;
+
+  /**
+   * Registers a media upload endpoint for the [ActivityPub Media Upload
+   * extension](https://www.w3.org/wiki/SocialCG/ActivityPub/MediaUpload).
+   * Clients `POST` a `multipart/form-data` request with a `file` part (the
+   * binary payload) and an `object` part (an ActivityStreams object shell) to
+   * this endpoint.  The actor should advertise this endpoint under
+   * `endpoints.uploadMedia` using {@link Context.getMediaUploaderUri}.
+   *
+   * @example
+   * ``` typescript
+   * federation
+   *   .setMediaUploader(
+   *     "/users/{identifier}/media",
+   *     async (ctx, identifier, file, object) => {
+   *       const stored = await uploadToStorage(file);
+   *       return new Image({
+   *         id: ctx.getObjectUri(Image, { uuid: stored.uuid }),
+   *         url: new URL(stored.publicUrl),
+   *         mediaType: file.type,
+   *         name: object.name,
+   *       });
+   *     },
+   *   )
+   *   .authorize(async (ctx, identifier) => {
+   *     return ctx.request.headers.get("authorization") === `Bearer ${identifier}`;
+   *   });
+   * ```
+   *
+   * @param path The URI path pattern for the media upload endpoint.  The syntax
+   *             is based on URI Template
+   *             ([RFC 6570](https://tools.ietf.org/html/rfc6570)).  The path
+   *             must have one variable: `{identifier}`.
+   * @param callback A callback that finalizes the uploaded media and returns
+   *                 either the created {@link Object} (`201 Created`) or the
+   *                 {@link URL} at which it will become available
+   *                 (`202 Accepted`).
+   * @returns An object to configure the media upload endpoint.
+   * @throws {RouterError} Thrown if the path pattern is invalid or a media
+   *                       uploader is already registered.
+   * @since 2.4.0
+   */
+  setMediaUploader(
+    path: `${string}${Rfc6570Expression<"identifier">}${string}`,
+    callback: MediaUploaderCallback<TContextData>,
+  ): MediaUploaderSetters<TContextData>;
 
   /**
    * Registers a following collection dispatcher.
@@ -1389,6 +1436,24 @@ export interface OutboxListenerSetters<TContextData> {
   authorize(
     predicate: AuthorizePredicate<TContextData>,
   ): OutboxListenerSetters<TContextData>;
+}
+
+/**
+ * An object to configure the media upload endpoint registered through
+ * {@link Federatable.setMediaUploader}.
+ * @since 2.4.0
+ */
+export interface MediaUploaderSetters<TContextData> {
+  /**
+   * Registers a callback to authorize requests to the media upload endpoint.
+   *
+   * @param predicate A callback to authorize the request.
+   * @returns The setters object so that settings can be chained.
+   * @since 2.4.0
+   */
+  authorize(
+    predicate: AuthorizePredicate<TContextData>,
+  ): MediaUploaderSetters<TContextData>;
 }
 
 /**

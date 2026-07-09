@@ -1964,6 +1964,39 @@ test("Endpoints.toJsonLd() omits type", async () => {
   deepStrictEqual(restored, ep);
 });
 
+test("Endpoints.uploadMedia round-trips", async () => {
+  const ep = new Endpoints({
+    uploadMedia: new URL("https://example.com/users/alice/media"),
+  });
+  deepStrictEqual(
+    ep.uploadMedia?.href,
+    "https://example.com/users/alice/media",
+  );
+
+  const compact = await ep.toJsonLd() as Record<string, unknown>;
+  deepStrictEqual(
+    compact["uploadMedia"],
+    "https://example.com/users/alice/media",
+  );
+
+  // Round-trip through every format under the standard AS term.
+  for (const format of [undefined, "compact" as const, "expand" as const]) {
+    const jsonLd = await ep.toJsonLd({
+      format,
+      contextLoader: mockDocumentLoader,
+    });
+    const restored = await Endpoints.fromJsonLd(jsonLd, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    });
+    deepStrictEqual(
+      restored.uploadMedia?.href,
+      "https://example.com/users/alice/media",
+      `round-trip failed for format=${format ?? "heuristic"}`,
+    );
+  }
+});
+
 test("Source.toJsonLd() omits type", async () => {
   const src = new Source({
     content: "Hello, world!",
@@ -2030,6 +2063,7 @@ test("Endpoints with all properties set omits type", async () => {
     provideClientKey: new URL("https://example.com/provide-key"),
     signClientKey: new URL("https://example.com/sign-key"),
     sharedInbox: new URL("https://example.com/inbox"),
+    uploadMedia: new URL("https://example.com/upload-media"),
   });
 
   // Compact heuristic path
@@ -2050,6 +2084,7 @@ test("Endpoints with all properties set omits type", async () => {
   );
   deepStrictEqual(compact["signClientKey"], "https://example.com/sign-key");
   deepStrictEqual(compact["sharedInbox"], "https://example.com/inbox");
+  deepStrictEqual(compact["uploadMedia"], "https://example.com/upload-media");
 
   // Round-trip all three formats
   for (

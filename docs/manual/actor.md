@@ -240,6 +240,13 @@ const ctx = null as unknown as Context<void>;
 new Endpoints({ sharedInbox: ctx.getInboxUri() })
 ~~~~
 
+If you register a media uploader with `Federation.setMediaUploader()`, advertise
+it here too, under the `uploadMedia` endpoint, using the
+`Context.getMediaUploaderUri()` method.  See the [*Media upload*][media-upload]
+guide for details.
+
+[media-upload]: ./media-upload.md
+
 ### `publicKey`
 
 The `publicKey` property contains the public key of the actor.  It is
