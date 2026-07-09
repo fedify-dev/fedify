@@ -52863,7 +52863,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       
       result["type"] = "Document";
       if (this.id != null) result["id"] = formatIri(this.id);
-      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2","https://w3id.org/fep/ef61","https://gotosocial.org/ns"];
+      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2",{"digestMultibase":"https://www.w3.org/ns/credentials/v2#digestMultibase"},"https://gotosocial.org/ns"];
       return result;
     }
     
@@ -52940,7 +52940,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       );
     }
     const docContext = options.context ??
-      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2","https://w3id.org/fep/ef61","https://gotosocial.org/ns"];
+      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2",{"digestMultibase":"https://www.w3.org/ns/credentials/v2#digestMultibase"},"https://gotosocial.org/ns"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -53407,7 +53407,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
       result["type"] = "Audio";
       if (this.id != null) result["id"] = formatIri(this.id);
-      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2","https://w3id.org/fep/ef61","https://gotosocial.org/ns"];
+      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2",{"digestMultibase":"https://www.w3.org/ns/credentials/v2#digestMultibase"},"https://gotosocial.org/ns"];
       return result;
     }
     
@@ -53433,7 +53433,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       );
     }
     const docContext = options.context ??
-      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2","https://w3id.org/fep/ef61","https://gotosocial.org/ns"];
+      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2",{"digestMultibase":"https://www.w3.org/ns/credentials/v2#digestMultibase"},"https://gotosocial.org/ns"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -68618,7 +68618,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
       result["type"] = "Image";
       if (this.id != null) result["id"] = formatIri(this.id);
-      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2","https://w3id.org/fep/ef61","https://gotosocial.org/ns"];
+      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2",{"digestMultibase":"https://www.w3.org/ns/credentials/v2#digestMultibase"},"https://gotosocial.org/ns"];
       return result;
     }
     
@@ -68644,7 +68644,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       );
     }
     const docContext = options.context ??
-      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2","https://w3id.org/fep/ef61","https://gotosocial.org/ns"];
+      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2",{"digestMultibase":"https://www.w3.org/ns/credentials/v2#digestMultibase"},"https://gotosocial.org/ns"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -81228,7 +81228,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
       result["type"] = "Page";
       if (this.id != null) result["id"] = formatIri(this.id);
-      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2","https://w3id.org/fep/ef61","https://gotosocial.org/ns"];
+      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2",{"digestMultibase":"https://www.w3.org/ns/credentials/v2#digestMultibase"},"https://gotosocial.org/ns"];
       return result;
     }
     
@@ -81254,7 +81254,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       );
     }
     const docContext = options.context ??
-      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2","https://w3id.org/fep/ef61","https://gotosocial.org/ns"];
+      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2",{"digestMultibase":"https://www.w3.org/ns/credentials/v2#digestMultibase"},"https://gotosocial.org/ns"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -106054,7 +106054,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
       result["type"] = "Video";
       if (this.id != null) result["id"] = formatIri(this.id);
-      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2","https://w3id.org/fep/ef61","https://gotosocial.org/ns"];
+      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2",{"digestMultibase":"https://www.w3.org/ns/credentials/v2#digestMultibase"},"https://gotosocial.org/ns"];
       return result;
     }
     
@@ -106080,7 +106080,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       );
     }
     const docContext = options.context ??
-      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2","https://w3id.org/fep/ef61","https://gotosocial.org/ns"];
+      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2",{"digestMultibase":"https://www.w3.org/ns/credentials/v2#digestMultibase"},"https://gotosocial.org/ns"];
     const compacted = await jsonld.compact(
       values,
       docContext,

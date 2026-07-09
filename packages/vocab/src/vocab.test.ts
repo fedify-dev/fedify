@@ -787,7 +787,7 @@ test("FEP-ef61: digestMultibase round-trips on links and media objects", async (
   }
 });
 
-test("FEP-ef61: digestMultibase uses the FEP term, not Data Integrity v1", async () => {
+test("FEP-ef61: digestMultibase avoids Data Integrity context conflicts", async () => {
   const digestMultibase = "zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n";
   const image = new Image({
     url: new URL("hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n"),
@@ -806,6 +806,19 @@ test("FEP-ef61: digestMultibase uses the FEP term, not Data Integrity v1", async
     !(
       "https://w3id.org/security#digestMultibase" in
         (expanded as Record<string, unknown>[])[0]
+    ),
+  );
+
+  const compact = await image.toJsonLd() as Record<string, unknown>;
+  deepStrictEqual(compact.digestMultibase, digestMultibase);
+  ok(
+    !(compact["@context"] as unknown[]).includes("https://w3id.org/fep/ef61"),
+  );
+  ok(
+    (compact["@context"] as unknown[]).some((context) =>
+      context != null && typeof context === "object" &&
+      (context as Record<string, unknown>).digestMultibase ===
+        "https://www.w3.org/ns/credentials/v2#digestMultibase"
     ),
   );
 });

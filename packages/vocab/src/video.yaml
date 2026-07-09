@@ -8,6 +8,6 @@ description: Represents a video document of any kind.
 defaultContext:
 - "https://www.w3.org/ns/activitystreams"
 - "https://w3id.org/security/data-integrity/v2"
-- "https://w3id.org/fep/ef61"
+- digestMultibase: "https://www.w3.org/ns/credentials/v2#digestMultibase"
 - "https://gotosocial.org/ns"
 properties: []
