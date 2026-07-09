@@ -745,6 +745,47 @@ test("FEP-ef61: digestMultibase uses the FEP term, not Data Integrity v1", async
   );
 });
 
+test("FEP-ef61: digestMultibase parses after Data Integrity v1 contexts", async () => {
+  const digestMultibase = "zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n";
+  const image = await Image.fromJsonLd({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+      "https://w3id.org/fep/ef61",
+    ],
+    type: "Image",
+    url: "hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n",
+    mediaType: "image/png",
+    digestMultibase,
+  });
+
+  deepStrictEqual(image.digestMultibase, digestMultibase);
+});
+
+test("FEP-ef61: Link image normalization preserves digestMultibase", async () => {
+  const digestMultibase = "zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n";
+  const obj = await Object.fromJsonLd({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+      "https://w3id.org/fep/ef61",
+    ],
+    type: "Note",
+    image: {
+      type: "Link",
+      href: "hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n",
+      mediaType: "image/png",
+      digestMultibase,
+    },
+  });
+  const images = [];
+  for await (const img of obj.getImages()) {
+    images.push(img);
+  }
+
+  deepStrictEqual(images[0]?.digestMultibase, digestMultibase);
+});
+
 test("fromJsonLd() caches text that mentions portable ActivityPub IRIs", async () => {
   const noteJson = {
     "@context": [

@@ -3,10 +3,6 @@
     "id": "@id",
     "type": "@type",
     "@protected": true,
-    "digestMultibase": {
-      "@id": "https://w3id.org/security#digestMultibase",
-      "@type": "https://w3id.org/security#multibase"
-    },
     "proof": {
       "@id": "https://w3id.org/security#proof",
       "@type": "@id",

@@ -211,7 +211,7 @@ FEP-ef61 portable objects
 
 Fedify accepts [FEP-ef61] portable ActivityPub IRIs in JSON-LD input.  Both
 the `ap:` and `ap+ef61:` schemes are accepted, whether the DID authority is
-decoded (e.g., `ap+ef61://did:key:.../actor`) or percent-encoded.  Fedify
+decoded (e.g., `ap+ef61://did%3Akey%3A.../actor`) or percent-encoded.  Fedify
 stores these IRIs as `URL` objects with a URL-safe authority internally, and
 serializes them as canonical `ap+ef61:` IRIs with the decoded DID authority.
 
