@@ -245,14 +245,32 @@ Stable storage keys
 Each helper provides stable keys for persistence:
 
 ~~~~ typescript twoslash
-import { formatAuthorizationKey, formatInteractionKey } from "@fedify/interaction-controls";
+import {
+  formatAuthorizationKey,
+  formatInteractionKey,
+  likeInteraction,
+} from "@fedify/interaction-controls";
+import { Like, LikeAuthorization, Note } from "@fedify/vocab";
 
+const actor = new URL("https://remote.example/users/bob");
 const target = new URL("https://example.com/notes/1");
-const interaction = new URL("https://remote.example/likes/1");
+const like = new Like({
+  id: new URL("https://remote.example/likes/1"),
+  actor,
+  object: target,
+});
 const authorization = new URL("https://example.com/authorizations/1");
 
-const interactionKey = formatInteractionKey("like", target, interaction);
-const authorizationKey = formatAuthorizationKey("like", authorization);
+const interactionKey = formatInteractionKey(likeInteraction.getInteractionKey({
+  requester: actor,
+  interactingObject: like,
+  interactionTarget: new Note({ id: target }),
+}));
+const authorizationKey = formatAuthorizationKey(
+  likeInteraction.getAuthorizationKey({
+    authorization: new LikeAuthorization({ id: authorization }),
+  }),
+);
 ~~~~
 
 The keys are plain strings.  Use them with your existing database or key–value

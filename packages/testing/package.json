@@ -50,6 +50,8 @@
     "@fedify/fedify": "workspace:^"
   },
   "dependencies": {
+    "@fedify/vocab": "workspace:*",
+    "@fedify/vocab-runtime": "workspace:^",
     "es-toolkit": "catalog:",
     "temporal-polyfill": "catalog:"
   },

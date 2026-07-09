@@ -232,6 +232,9 @@ importers:
       '@fedify/hono':
         specifier: workspace:^
         version: link:../packages/hono
+      '@fedify/interaction-controls':
+        specifier: workspace:^
+        version: link:../packages/interaction-controls
       '@fedify/koa':
         specifier: workspace:^
         version: link:../packages/koa
@@ -1763,6 +1766,12 @@ importers:
       '@fedify/fedify':
         specifier: workspace:^
         version: link:../fedify
+      '@fedify/vocab':
+        specifier: workspace:*
+        version: link:../vocab
+      '@fedify/vocab-runtime':
+        specifier: workspace:^
+        version: link:../vocab-runtime
       es-toolkit:
         specifier: 'catalog:'
         version: 1.46.1

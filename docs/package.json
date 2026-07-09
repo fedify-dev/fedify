@@ -13,6 +13,7 @@
     "@fedify/fedify": "workspace:^",
     "@fedify/h3": "workspace:^",
     "@fedify/hono": "workspace:^",
+    "@fedify/interaction-controls": "workspace:^",
     "@fedify/koa": "workspace:^",
     "@fedify/lint": "workspace:^",
     "@fedify/mysql": "workspace:^",
@@ -76,7 +77,7 @@
   },
   "scripts": {
     "dev": "cd ../ && pnpm run --filter '@fedify/*' -r build:self && cd docs/ && vitepress dev --host",
-    "build": "cd ../ && pnpm run --filter '@fedify/*' -r build:self && cd docs/ && NODE_OPTIONS='--max-old-space-size=8192' vitepress build",
+    "build": "cd ../ && pnpm run --filter '@fedify/*' -r build:self && cd docs/ && NODE_OPTIONS='--max-old-space-size=12288' vitepress build",
     "preview": "cd ../ && pnpm run --filter '@fedify/*' -r build:self && cd docs/ && vitepress preview"
   }
 }
