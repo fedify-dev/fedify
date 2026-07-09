@@ -1,3 +1,4 @@
+export { announceInteraction } from "./announce.ts";
 export { formatAuthorizationKey, formatInteractionKey } from "./key.ts";
 export { likeInteraction } from "./like.ts";
 export { replyInteraction } from "./reply.ts";
