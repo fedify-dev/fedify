@@ -111,41 +111,18 @@ const resolveCallbackReference = (
 };
 
 /**
- * Analyzes the callback's context parameter: its identifier name (used to
- * require that `getObjectUri()` member calls are made on the context itself,
- * not some other object), and the names under which `getObjectUri` is
- * destructured out of it (`({ getObjectUri }) => ...`), so a bare
- * `getObjectUri(...)` call counts as deriving from the context method.
+ * Returns the identifier name of the callback's context parameter, used to
+ * require that `getObjectUri()` is called as a member of the context itself
+ * (`ctx.getObjectUri(...)`), not on some other object.  Returns `null` when the
+ * parameter is destructured: destructuring `getObjectUri` off the context
+ * (`({ getObjectUri }) => getObjectUri(...)`) loses the method's receiver and
+ * throws at runtime, so that form is intentionally not recognized as valid.
  */
-function analyzeContextParam(
-  callback: FunctionLikeNode,
-): { ctxName: string | null; aliases: Set<string> } {
-  const aliases = new Set<string>();
+function getContextParamName(callback: FunctionLikeNode): string | null {
   const contextParam = unwrapAssignmentPattern(
     callback.params[0] as Node | undefined,
   );
-  if (contextParam?.type === "Identifier") {
-    return { ctxName: contextParam.name, aliases };
-  }
-  if (contextParam?.type === "ObjectPattern") {
-    for (const prop of contextParam.properties) {
-      if (!isNode(prop) || prop.type !== "Property") continue;
-      const keyName = prop.key.type === "Identifier"
-        ? prop.key.name
-        : prop.key.type === "Literal" && typeof prop.key.value === "string"
-        ? prop.key.value
-        : null;
-      if (keyName !== GETTER_NAME) continue;
-      const value = prop.value as Node;
-      if (value.type === "Identifier") aliases.add(value.name);
-      else if (
-        value.type === "AssignmentPattern" && value.left.type === "Identifier"
-      ) {
-        aliases.add(value.left.name);
-      }
-    }
-  }
-  return { ctxName: null, aliases };
+  return contextParam?.type === "Identifier" ? contextParam.name : null;
 }
 
 const FUNCTION_NODE_TYPES = new Set([
@@ -274,33 +251,30 @@ function unwrapExpression(value: unknown): AnyNode | null {
 interface DeriveContext {
   /** The callback's context parameter name, or `null` when destructured. */
   ctxName: string | null;
-  /** Names `getObjectUri` is destructured to (`({ getObjectUri }) => ...`). */
-  aliases: Set<string>;
   /** `const`/`let`/`var` bindings declared inside the callback body. */
   bindings: Map<string, unknown>;
 }
 
 /**
- * Whether the expression is a call to `getObjectUri()` on the context: a member
- * call `<ctx>.getObjectUri(...)` whose receiver is the context parameter, or a
- * bare call to a name `getObjectUri` was destructured to.  A member call on any
- * other object (e.g. `helper.getObjectUri(...)`) does not count.
+ * Whether the expression is a member call `<ctx>.getObjectUri(...)` whose
+ * receiver is the callback's context parameter.  A call on any other object
+ * (e.g. `helper.getObjectUri(...)`), or a bare `getObjectUri(...)` from a
+ * destructured parameter (which loses the receiver and throws at runtime),
+ * does not count.
  */
 function isGetObjectUriCall(expr: AnyNode, ctx: DeriveContext): boolean {
   if (expr.type !== "CallExpression") return false;
+  if (ctx.ctxName == null) return false;
   const callee = toNode(expr.callee);
-  if (callee == null) return false;
   if (
-    callee.type === "MemberExpression" &&
-    getMemberPropertyName(callee as unknown as Node) === GETTER_NAME
+    callee == null || callee.type !== "MemberExpression" ||
+    getMemberPropertyName(callee as unknown as Node) !== GETTER_NAME
   ) {
-    if (ctx.ctxName == null) return false;
-    const object = unwrapExpression(callee.object);
-    return object != null && object.type === "Identifier" &&
-      object.name === ctx.ctxName;
+    return false;
   }
-  return callee.type === "Identifier" && typeof callee.name === "string" &&
-    ctx.aliases.has(callee.name);
+  const object = unwrapExpression(callee.object);
+  return object != null && object.type === "Identifier" &&
+    object.name === ctx.ctxName;
 }
 
 function isUrlConstructor(expr: AnyNode): boolean {
@@ -467,10 +441,12 @@ function returnDerivesFromGetObjectUri(
 function callbackDerivesFromGetObjectUri(callback: FunctionLikeNode): boolean {
   const returnedExpressions = collectReturnedExpressions(callback);
   if (returnedExpressions.length < 1) return false;
-  const { ctxName, aliases } = analyzeContextParam(callback);
   const bindings = new Map<string, unknown>();
   collectLocalBindings(callback.body, bindings);
-  const ctx: DeriveContext = { ctxName, aliases, bindings };
+  const ctx: DeriveContext = {
+    ctxName: getContextParamName(callback),
+    bindings,
+  };
   return returnedExpressions.every((expr) =>
     returnDerivesFromGetObjectUri(expr, ctx, new Set())
   );

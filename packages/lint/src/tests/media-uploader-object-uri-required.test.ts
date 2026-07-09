@@ -84,8 +84,11 @@ federation.setMediaUploader("/users/{identifier}/media", uploader);
 );
 
 test(
-  `${ruleName}: ✅ Good - destructured getObjectUri alias`,
+  `${ruleName}: ❌ Bad - destructured getObjectUri loses its receiver`,
   lintTest({
+    // Destructuring getObjectUri off the context loses the method's receiver
+    // and throws at runtime, so it must not be accepted; the callback should
+    // call ctx.getObjectUri(...) as a member instead.
     code: `
 import { Image } from "@fedify/vocab";
 
@@ -98,6 +101,7 @@ federation.setMediaUploader(
 `,
     rule,
     ruleName,
+    expectedError: EXPECTED,
   }),
 );
 
