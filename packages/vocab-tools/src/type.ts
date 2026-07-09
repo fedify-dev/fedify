@@ -332,18 +332,20 @@ const scalarTypes: Record<string, ScalarType> = {
       return `${v} instanceof URL && isGatewayUrl(${v})`;
     },
     encoder(v) {
-      return `{ "@value": formatIri(${v}) }`;
+      return `{ "@id": formatIri(${v}) }`;
     },
     compactEncoder(v) {
       return `formatIri(${v})`;
     },
     dataCheck(v) {
-      return `typeof ${v} === "object" && "@value" in ${v}
-        && typeof ${v}["@value"] === "string"
-        && ${v}["@value"] !== "" && ${v}["@value"] !== "/"`;
+      return `${v} != null && typeof ${v} === "object" &&
+        (("@id" in ${v} && typeof ${v}["@id"] === "string" &&
+          ${v}["@id"] !== "" && ${v}["@id"] !== "/") ||
+        ("@value" in ${v} && typeof ${v}["@value"] === "string" &&
+          ${v}["@value"] !== "" && ${v}["@value"] !== "/"))`;
     },
     decoder(v) {
-      return `parseGatewayUrl(${v}["@value"])`;
+      return `parseGatewayUrl("@id" in ${v} ? ${v}["@id"] : ${v}["@value"])`;
     },
   },
   "fedify:publicKey": {

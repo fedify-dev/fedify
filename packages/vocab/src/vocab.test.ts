@@ -686,6 +686,26 @@ test("FEP-ef61: actor gateways preserve single, empty, and invalid cases", async
   );
 });
 
+test("FEP-ef61: actor gateways accept @id typed JSON-LD references", async () => {
+  const actor = await Person.fromJsonLd({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      {
+        gateways: {
+          "@id": "https://w3id.org/fep/ef61/gateways",
+          "@type": "@id",
+          "@container": "@list",
+        },
+      },
+    ],
+    type: "Person",
+    id: "ap+ef61://did:key:z6Mkabc/actor",
+    gateways: ["https://gateway.example/"],
+  });
+
+  deepStrictEqual(actor.gateways, [new URL("https://gateway.example/")]);
+});
+
 test("FEP-ef61: actor gateways must be HTTP(S) base URIs", async () => {
   const validGateways = [
     new URL("https://server.example/"),
