@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Context } from "@fedify/fedify";
+import type { DocumentLoader } from "@fedify/vocab-runtime";
 import {
   Accept,
   Announce,
@@ -24,6 +25,10 @@ const author = new URL("https://example.net/users/bob");
 const targetId = new URL("https://example.net/notes/1");
 const likeId = new URL("https://example.com/likes/1");
 const authorizationId = new URL("https://example.net/authorizations/1");
+const throwingDocumentLoader: DocumentLoader = async () => {
+  await Promise.resolve();
+  throw new Error("not dereferenceable");
+};
 
 test("likeInteraction creates typed requests", () => {
   const target = new Note({ id: targetId, attribution: author });
@@ -197,6 +202,42 @@ test("likeInteraction rejects wrong request instrument types", async () => {
 
   assert.equal(result.verified, false);
   assert.equal(result.failure.type, "wrongInstrumentType");
+});
+
+test("likeInteraction returns failures for dereferenceable object errors", async () => {
+  const like = new Like({ id: likeId, actor, object: targetId });
+  const request = new LikeRequest({
+    id: new URL("https://example.com/requests/1"),
+    actor,
+    object: targetId,
+    instrument: like,
+  });
+
+  const result = await likeInteraction.verifyRequest(context, {
+    request,
+    documentLoader: throwingDocumentLoader,
+  });
+
+  assert.equal(result.verified, false);
+  assert.equal(result.failure.type, "missingObject");
+});
+
+test("likeInteraction returns failures for dereferenceable instrument errors", async () => {
+  const target = new Note({ id: targetId, attribution: author });
+  const request = new LikeRequest({
+    id: new URL("https://example.com/requests/1"),
+    actor,
+    object: target,
+    instrument: likeId,
+  });
+
+  const result = await likeInteraction.verifyRequest(context, {
+    request,
+    documentLoader: throwingDocumentLoader,
+  });
+
+  assert.equal(result.verified, false);
+  assert.equal(result.failure.type, "missingInstrument");
 });
 
 test("likeInteraction rejects id-less request objects", async () => {

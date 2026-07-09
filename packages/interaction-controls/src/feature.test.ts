@@ -7,6 +7,7 @@ import {
   FeatureRequest,
   InteractionPolicy,
   InteractionRule,
+  Note,
   Person,
   PUBLIC_COLLECTION,
 } from "@fedify/vocab";
@@ -59,6 +60,25 @@ test("featureInteraction accepts actorless requests from collection owner", asyn
   assert.equal(result.requester.href, actor.href);
   assert.equal(result.interactingObjectId.href, collectionId.href);
   assert.equal(result.interactionTargetId.href, targetId.href);
+});
+
+test("featureInteraction rejects non-actor request targets", async () => {
+  const target = new Note({ id: targetId });
+  const collection = new FeaturedCollection({
+    id: collectionId,
+    attribution: actor,
+  });
+  const request = new FeatureRequest({
+    id: new URL("https://example.com/requests/5"),
+    actor,
+    object: target,
+    instrument: collection,
+  });
+
+  const result = await featureInteraction.verifyRequest(context, { request });
+
+  assert.equal(result.verified, false);
+  assert.equal(result.failure.type, "wrongObjectType");
 });
 
 test("featureInteraction denies mismatched collection owners", async () => {

@@ -1,9 +1,15 @@
 import {
   type Actor,
+  Application,
   FeatureAuthorization,
   FeaturedCollection,
   FeatureRequest,
+  Group,
+  isActor,
   type Object as ASObject,
+  Organization,
+  Person,
+  Service,
 } from "@fedify/vocab";
 import { createInteractionControl, idsEqual } from "./control.ts";
 import type { InteractionControl } from "./types.ts";
@@ -26,6 +32,14 @@ export const featureInteraction: InteractionControl<
   interactingObjectTypes: [FeaturedCollection.typeId],
   getInteractionTarget: (request, options) =>
     request.getObject(options) as Promise<Actor | null>,
+  isInteractionTarget: isActor,
+  interactionTargetTypes: [
+    Application.typeId,
+    Group.typeId,
+    Organization.typeId,
+    Person.typeId,
+    Service.typeId,
+  ],
   getRequester: (_request, collection) => collection.attributionId,
   validateRequest: (_request, collection, _target, requester) => {
     if (!idsEqual(collection.attributionId, requester)) {

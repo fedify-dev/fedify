@@ -64,6 +64,8 @@ interface ControlConfig<
     request: TRequest,
     options: DereferenceOptions,
   ) => Promise<TTarget | null>;
+  readonly isInteractionTarget?: (object: ASObject) => object is TTarget;
+  readonly interactionTargetTypes?: readonly URL[];
   readonly getRequester?: (
     request: TRequest,
     interactingObject: TInteracting,
@@ -91,6 +93,7 @@ interface ControlConfig<
 
 interface DereferenceOptions {
   readonly documentLoader?: DocumentLoader;
+  readonly suppressError?: boolean;
 }
 
 type RequestValidationFailure =
@@ -276,7 +279,14 @@ async function verifyRequest<
       failure: { category: "invalid", type: "missingId" },
     };
   }
-  const interactionTarget = await config.getInteractionTarget(request, options);
+  const dereferenceOptions = {
+    documentLoader: options.documentLoader,
+    suppressError: true,
+  };
+  const interactionTarget = await config.getInteractionTarget(
+    request,
+    dereferenceOptions,
+  );
   if (interactionTarget == null) {
     return {
       verified: false,
@@ -285,7 +295,26 @@ async function verifyRequest<
       failure: { category: "invalid", type: "missingObject" },
     };
   }
-  const interactingObject = await config.getInteractingObject(request, options);
+  if (
+    config.isInteractionTarget != null &&
+    !config.isInteractionTarget(interactionTarget)
+  ) {
+    return {
+      verified: false,
+      request,
+      requestId: request.id,
+      failure: {
+        category: "invalid",
+        type: "wrongObjectType",
+        expectedTypes: config.interactionTargetTypes ?? [],
+        actualTypes: [getTypeId(interactionTarget)],
+      },
+    };
+  }
+  const interactingObject = await config.getInteractingObject(
+    request,
+    dereferenceOptions,
+  );
   if (interactingObject == null) {
     return {
       verified: false,
