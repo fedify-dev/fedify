@@ -58,6 +58,8 @@ interface ControlConfig<
     request: TRequest,
     options: DereferenceOptions,
   ) => Promise<TInteracting | null>;
+  readonly isInteractingObject?: (object: ASObject) => object is TInteracting;
+  readonly interactingObjectTypes?: readonly URL[];
   readonly getInteractionTarget: (
     request: TRequest,
     options: DereferenceOptions,
@@ -290,6 +292,22 @@ async function verifyRequest<
       request,
       requestId: request.id,
       failure: { category: "invalid", type: "missingInstrument" },
+    };
+  }
+  if (
+    config.isInteractingObject != null &&
+    !config.isInteractingObject(interactingObject)
+  ) {
+    return {
+      verified: false,
+      request,
+      requestId: request.id,
+      failure: {
+        category: "invalid",
+        type: "wrongInstrumentType",
+        expectedTypes: config.interactingObjectTypes ?? [],
+        actualTypes: [getTypeId(interactingObject)],
+      },
     };
   }
   const requester = request.actorId ??
@@ -645,6 +663,7 @@ async function evaluatePolicy<
     options.requester,
     context,
     options.matchesApprovalCollection,
+    { actorOnly: true },
   );
   if (automatic != null) {
     return { result: "automatic", reason: automatic };
@@ -654,9 +673,28 @@ async function evaluatePolicy<
     options.requester,
     context,
     options.matchesApprovalCollection,
+    { actorOnly: true },
   );
   if (manual != null) {
     return { result: "manual", reason: manual };
+  }
+  const broadAutomatic = await matchRule(
+    rule.automaticApprovals,
+    options.requester,
+    context,
+    options.matchesApprovalCollection,
+  );
+  if (broadAutomatic != null) {
+    return { result: "automatic", reason: broadAutomatic };
+  }
+  const broadManual = await matchRule(
+    rule.manualApprovals,
+    options.requester,
+    context,
+    options.matchesApprovalCollection,
+  );
+  if (broadManual != null) {
+    return { result: "manual", reason: broadManual };
   }
   const unknownCollection = firstUnverifiableCollection(
     [...rule.automaticApprovals, ...rule.manualApprovals],
@@ -726,13 +764,17 @@ async function matchRule<TContextData>(
   matchesApprovalCollection:
     | MatchesApprovalCollection<TContextData>
     | undefined,
+  options: { readonly actorOnly?: boolean } = {},
 ): Promise<InteractionPolicyMatchReason | null> {
+  for (const entry of entries) {
+    if (entry.href === requester.href) {
+      return { type: "actor", actor: entry };
+    }
+  }
+  if (options.actorOnly) return null;
   for (const entry of entries) {
     if (entry.href === PUBLIC_COLLECTION.href) {
       return { type: "public" };
-    }
-    if (entry.href === requester.href) {
-      return { type: "actor", actor: entry };
     }
   }
   for (const entry of entries) {

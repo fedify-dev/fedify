@@ -3,6 +3,7 @@ import { test } from "node:test";
 import type { Context } from "@fedify/fedify";
 import {
   Accept,
+  Announce,
   InteractionPolicy,
   InteractionRule,
   Like,
@@ -106,6 +107,30 @@ test("likeInteraction evaluates explicit policy rules", async () => {
   );
 });
 
+test("likeInteraction evaluates actor rules before public rules", async () => {
+  const target = new Note({
+    id: targetId,
+    attribution: author,
+    interactionPolicy: new InteractionPolicy({
+      canLike: new InteractionRule({
+        automaticApproval: PUBLIC_COLLECTION,
+        manualApproval: actor,
+      }),
+    }),
+  });
+
+  assert.deepEqual(
+    await likeInteraction.evaluatePolicy(context, {
+      subject: target,
+      requester: actor,
+    }),
+    {
+      result: "manual",
+      reason: { type: "actor", actor },
+    },
+  );
+});
+
 test("likeInteraction creates and verifies authorizations", async () => {
   const target = new Note({ id: targetId, attribution: author });
   const like = new Like({ id: likeId, actor, object: target });
@@ -156,6 +181,22 @@ test("likeInteraction verifies requests", async () => {
   assert.equal(result.requester.href, actor.href);
   assert.equal(result.interactingObjectId.href, likeId.href);
   assert.equal(result.interactionTargetId.href, targetId.href);
+});
+
+test("likeInteraction rejects wrong request instrument types", async () => {
+  const target = new Note({ id: targetId, attribution: author });
+  const announce = new Announce({ id: likeId, actor, object: targetId });
+  const request = new LikeRequest({
+    id: new URL("https://example.com/requests/1"),
+    actor,
+    object: target,
+    instrument: announce,
+  });
+
+  const result = await likeInteraction.verifyRequest(context, { request });
+
+  assert.equal(result.verified, false);
+  assert.equal(result.failure.type, "wrongInstrumentType");
 });
 
 test("likeInteraction rejects id-less request objects", async () => {

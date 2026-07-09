@@ -1,7 +1,7 @@
 import {
   type Actor,
   FeatureAuthorization,
-  type FeaturedCollection,
+  FeaturedCollection,
   FeatureRequest,
   type Object as ASObject,
 } from "@fedify/vocab";
@@ -21,6 +21,9 @@ export const featureInteraction: InteractionControl<
   authorizationClass: FeatureAuthorization,
   getInteractingObject: (request, options) =>
     request.getInstrument(options) as Promise<FeaturedCollection | null>,
+  isInteractingObject: (object): object is FeaturedCollection =>
+    object instanceof FeaturedCollection,
+  interactingObjectTypes: [FeaturedCollection.typeId],
   getInteractionTarget: (request, options) =>
     request.getObject(options) as Promise<Actor | null>,
   getRequester: (_request, collection) => collection.attributionId,

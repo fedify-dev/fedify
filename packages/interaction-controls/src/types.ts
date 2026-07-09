@@ -147,6 +147,12 @@ export type InteractionRequestVerificationFailure =
   }
   | {
     readonly category: "invalid";
+    readonly type: "wrongInstrumentType";
+    readonly expectedTypes: readonly URL[];
+    readonly actualTypes: readonly URL[];
+  }
+  | {
+    readonly category: "invalid";
     readonly type:
       | "missingId"
       | "missingActor"

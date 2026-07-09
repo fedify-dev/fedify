@@ -25,6 +25,8 @@ export const likeInteraction: InteractionControl<
   authorizationClass: LikeAuthorization,
   getInteractingObject: (request, options) =>
     request.getInstrument(options) as Promise<Like | null>,
+  isInteractingObject: (object): object is Like => object instanceof Like,
+  interactingObjectTypes: [Like.typeId],
   getInteractionTarget: (request, options) =>
     request.getObject(options) as Promise<ASObject | null>,
   validateRequest: (request, like, target) => {

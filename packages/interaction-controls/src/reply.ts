@@ -1,10 +1,10 @@
 import {
-  type Article,
-  type ChatMessage,
+  Article,
+  ChatMessage,
   Create,
-  type Note,
+  Note,
   type Object as ASObject,
-  type Question,
+  Question,
   ReplyAuthorization,
   ReplyRequest,
 } from "@fedify/vocab";
@@ -35,6 +35,17 @@ export const replyInteraction: InteractionControl<
   authorizationClass: ReplyAuthorization,
   getInteractingObject: (request, options) =>
     request.getInstrument(options) as Promise<ReplyPost | null>,
+  isInteractingObject: (object): object is ReplyPost =>
+    object instanceof Note ||
+    object instanceof Article ||
+    object instanceof Question ||
+    object instanceof ChatMessage,
+  interactingObjectTypes: [
+    Note.typeId,
+    Article.typeId,
+    Question.typeId,
+    ChatMessage.typeId,
+  ],
   getInteractionTarget: (request, options) =>
     request.getObject(options) as Promise<ASObject | null>,
   validateRequest: (request, reply, target) => {

@@ -25,6 +25,9 @@ export const announceInteraction: InteractionControl<
   authorizationClass: AnnounceAuthorization,
   getInteractingObject: (request, options) =>
     request.getInstrument(options) as Promise<Announce | null>,
+  isInteractingObject: (object): object is Announce =>
+    object instanceof Announce,
+  interactingObjectTypes: [Announce.typeId],
   getInteractionTarget: (request, options) =>
     request.getObject(options) as Promise<ASObject | null>,
   validateRequest: (request, announce, target) => {
