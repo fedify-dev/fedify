@@ -1,4 +1,5 @@
 export { announceInteraction } from "./announce.ts";
+export { featureInteraction } from "./feature.ts";
 export { formatAuthorizationKey, formatInteractionKey } from "./key.ts";
 export { likeInteraction } from "./like.ts";
 export { quoteInteraction } from "./quote.ts";
