@@ -649,6 +649,8 @@ test("parseGatewayUrl() accepts only HTTP(S) base URIs", () => {
   for (
     const url of [
       "ftp://server.example/",
+      "https://user:pass@server.example/",
+      "https://user@server.example/",
       "https://server.example/path",
       "https://server.example/?x=1",
       "https://server.example/#fragment",

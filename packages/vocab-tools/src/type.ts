@@ -345,7 +345,7 @@ const scalarTypes: Record<string, ScalarType> = {
           ${v}["@value"] !== "" && ${v}["@value"] !== "/"))`;
     },
     decoder(v) {
-      return `parseGatewayUrl("@id" in ${v} ? ${v}["@id"] : ${v}["@value"])`;
+      return `parseGatewayUrl(typeof ${v}["@id"] === "string" ? ${v}["@id"] : ${v}["@value"])`;
     },
   },
   "fedify:publicKey": {

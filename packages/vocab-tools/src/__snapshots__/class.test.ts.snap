@@ -49487,7 +49487,7 @@ get gateways(): (URL)[] {
     ) {
       if (v == null) continue;
     
-      const decoded = parseGatewayUrl("@id" in v ? v["@id"] : v["@value"]);
+      const decoded = parseGatewayUrl(typeof v["@id"] === "string" ? v["@id"] : v["@value"]);
       if (typeof decoded === "undefined") continue;
       _hQiaHhZP8hqxckxTBrpsGNs57E3.push(decoded);
     }
@@ -65190,7 +65190,7 @@ get gateways(): (URL)[] {
     ) {
       if (v == null) continue;
     
-      const decoded = parseGatewayUrl("@id" in v ? v["@id"] : v["@value"]);
+      const decoded = parseGatewayUrl(typeof v["@id"] === "string" ? v["@id"] : v["@value"]);
       if (typeof decoded === "undefined") continue;
       _hQiaHhZP8hqxckxTBrpsGNs57E3.push(decoded);
     }
@@ -79951,7 +79951,7 @@ get gateways(): (URL)[] {
     ) {
       if (v == null) continue;
     
-      const decoded = parseGatewayUrl("@id" in v ? v["@id"] : v["@value"]);
+      const decoded = parseGatewayUrl(typeof v["@id"] === "string" ? v["@id"] : v["@value"]);
       if (typeof decoded === "undefined") continue;
       _hQiaHhZP8hqxckxTBrpsGNs57E3.push(decoded);
     }
@@ -87663,7 +87663,7 @@ get gateways(): (URL)[] {
     ) {
       if (v == null) continue;
     
-      const decoded = parseGatewayUrl("@id" in v ? v["@id"] : v["@value"]);
+      const decoded = parseGatewayUrl(typeof v["@id"] === "string" ? v["@id"] : v["@value"]);
       if (typeof decoded === "undefined") continue;
       _hQiaHhZP8hqxckxTBrpsGNs57E3.push(decoded);
     }
@@ -101613,7 +101613,7 @@ get gateways(): (URL)[] {
     ) {
       if (v == null) continue;
     
-      const decoded = parseGatewayUrl("@id" in v ? v["@id"] : v["@value"]);
+      const decoded = parseGatewayUrl(typeof v["@id"] === "string" ? v["@id"] : v["@value"]);
       if (typeof decoded === "undefined") continue;
       _hQiaHhZP8hqxckxTBrpsGNs57E3.push(decoded);
     }

@@ -720,6 +720,8 @@ test("FEP-ef61: actor gateways must be HTTP(S) base URIs", async () => {
   for (
     const gateway of [
       "ftp://server.example/",
+      "https://user:pass@server.example/",
+      "https://user@server.example/",
       "https://server.example/path",
       "https://server.example/?x=1",
       "https://server.example/#fragment",
