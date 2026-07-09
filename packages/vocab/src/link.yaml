@@ -12,7 +12,9 @@ description: |
   object) to the resource identified by the `href`. Properties of
   the {@link Link} are properties of the reference as opposed to properties of
   the resource.
-defaultContext: "https://www.w3.org/ns/activitystreams"
+defaultContext:
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/fep/ef61"
 
 properties:
 - singularName: href
@@ -45,6 +47,17 @@ properties:
   description: |
     When used on a {@link Link}, identifies the MIME media type of the
     referenced resource.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#string"
+
+- singularName: digestMultibase
+  functional: true
+  compactName: digestMultibase
+  uri: "https://www.w3.org/ns/credentials/v2#digestMultibase"
+  description: |
+    The multibase-encoded integrity digest of the linked resource.
+
+    See [FEP-ef61](https://w3id.org/fep/ef61) for details.
   range:
   - "http://www.w3.org/2001/XMLSchema#string"
 

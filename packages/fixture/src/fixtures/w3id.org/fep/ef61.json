@@ -1,0 +1,10 @@
+{
+  "@context": {
+    "gateways": {
+      "@id": "https://w3id.org/fep/ef61/gateways",
+      "@type": "http://www.w3.org/2001/XMLSchema#anyURI",
+      "@container": "@list"
+    },
+    "digestMultibase": "https://www.w3.org/ns/credentials/v2#digestMultibase"
+  }
+}

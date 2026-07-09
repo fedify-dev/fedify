@@ -351,8 +351,10 @@ export interface GetDocumentLoaderOptions extends DocumentLoaderFactoryOptions {
  * - <https://www.w3.org/ns/activitystreams>
  * - <https://w3id.org/security/v1>
  * - <https://w3id.org/security/data-integrity/v1>
+ * - <https://w3id.org/security/data-integrity/v2>
  * - <https://www.w3.org/ns/did/v1>
  * - <https://w3id.org/security/multikey/v1>
+ * - <https://w3id.org/fep/ef61>
  * - <https://purl.archive.org/socialweb/webfinger>
  * - <http://schema.org/>
  * @param options Options for the document loader.

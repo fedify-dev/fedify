@@ -7,6 +7,7 @@ entity: true
 description: Represents a Web Page.
 defaultContext:
 - "https://www.w3.org/ns/activitystreams"
-- "https://w3id.org/security/data-integrity/v1"
+- "https://w3id.org/security/data-integrity/v2"
+- "https://w3id.org/fep/ef61"
 - "https://gotosocial.org/ns"
 properties: []

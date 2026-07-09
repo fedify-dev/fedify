@@ -88,6 +88,11 @@ To be released.
 
 ### @fedify/vocab
 
+ -  Added [FEP-ef61] vocabulary terms for portable ActivityPub objects.
+    Actor classes now expose ordered `gateways` lists, and `Link` plus
+    document/media classes expose `digestMultibase` for external resource
+    integrity metadata.  [[#830], [#928]]
+
  -  Updated [FEP-fe34] cross-origin checks to understand cryptographic origins
     for [FEP-ef61] portable ActivityPub IDs and DID URLs.  Generated property
     accessors and `lookupObject()` now treat `ap:`/`ap+ef61:` IDs and matching
@@ -113,10 +118,16 @@ To be released.
 [FEP-7aa9]: https://w3id.org/fep/7aa9
 [#810]: https://github.com/fedify-dev/fedify/issues/810
 [#826]: https://github.com/fedify-dev/fedify/issues/826
+[#830]: https://github.com/fedify-dev/fedify/issues/830
 [#850]: https://github.com/fedify-dev/fedify/pull/850
 [#914]: https://github.com/fedify-dev/fedify/pull/914
+[#928]: https://github.com/fedify-dev/fedify/pull/928
 
 ### @fedify/vocab-runtime
+
+ -  Added the [FEP-ef61] JSON-LD context to the preloaded context registry so
+    portable actor and media documents can compact and expand `gateways` and
+    `digestMultibase` without fetching the context remotely.  [[#830], [#928]]
 
  -  Added `getFe34Origin()` and `haveSameFe34Origin()` for comparing ordinary
     web origins and [FEP-ef61] cryptographic origins with one shared

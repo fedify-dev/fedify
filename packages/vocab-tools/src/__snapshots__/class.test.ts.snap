@@ -36,7 +36,7 @@ import {
     isTemporalInstant,
 } from "@fedify/vocab-runtime/temporal";
 const PORTABLE_IRI_PATTERN = /^ap(?:\\+ef61)?:\\/\\//i;
-const PORTABLE_IRI_KEYS: ReadonlySet<string> = new Set(["@id","_misskey_quote","actor","alsoKnownAs","announceAuthorization","anyOf","approvedBy","assertionMethod","attachment","attributedTo","audience","automaticApproval","bcc","bto","cc","context","controller","current","describes","emojiReactions","featureAuthorization","featured","featuredCollections","featuredObject","featuredTags","first","followers","followersOf","following","followingOf","generator","href","http://fedibird.com/ns#emojiReactions","http://fedibird.com/ns#quoteUri","http://joinmastodon.org/ns#featured","http://joinmastodon.org/ns#featuredTags","http://www.w3.org/ns/ldp#inbox","https://gotosocial.org/ns#announceAuthorization","https://gotosocial.org/ns#approvedBy","https://gotosocial.org/ns#automaticApproval","https://gotosocial.org/ns#interactingObject","https://gotosocial.org/ns#interactionTarget","https://gotosocial.org/ns#likeAuthorization","https://gotosocial.org/ns#manualApproval","https://gotosocial.org/ns#replyAuthorization","https://misskey-hub.net/ns#_misskey_quote","https://w3id.org/fep/044f#quote","https://w3id.org/fep/044f#quoteAuthorization","https://w3id.org/fep/5711#followersOf","https://w3id.org/fep/5711#followingOf","https://w3id.org/fep/5711#inboxOf","https://w3id.org/fep/5711#likedOf","https://w3id.org/fep/5711#likesOf","https://w3id.org/fep/5711#outboxOf","https://w3id.org/fep/5711#repliesOf","https://w3id.org/fep/5711#sharesOf","https://w3id.org/fep/7aa9#featureAuthorization","https://w3id.org/fep/7aa9#featuredCollections","https://w3id.org/fep/7aa9#featuredObject","https://w3id.org/security#assertionMethod","https://w3id.org/security#controller","https://w3id.org/security#owner","https://w3id.org/security#proof","https://w3id.org/security#publicKey","https://w3id.org/security#verificationMethod","https://w3id.org/valueflows/ont/vf#resourceConformsTo","https://w3id.org/valueflows/ont/vf#satisfies","https://www.w3.org/ns/activitystreams#actor","https://www.w3.org/ns/activitystreams#alsoKnownAs","https://www.w3.org/ns/activitystreams#anyOf","https://www.w3.org/ns/activitystreams#attachment","https://www.w3.org/ns/activitystreams#attributedTo","https://www.w3.org/ns/activitystreams#audience","https://www.w3.org/ns/activitystreams#bcc","https://www.w3.org/ns/activitystreams#bto","https://www.w3.org/ns/activitystreams#cc","https://www.w3.org/ns/activitystreams#context","https://www.w3.org/ns/activitystreams#current","https://www.w3.org/ns/activitystreams#describes","https://www.w3.org/ns/activitystreams#first","https://www.w3.org/ns/activitystreams#followers","https://www.w3.org/ns/activitystreams#following","https://www.w3.org/ns/activitystreams#generator","https://www.w3.org/ns/activitystreams#href","https://www.w3.org/ns/activitystreams#icon","https://www.w3.org/ns/activitystreams#image","https://www.w3.org/ns/activitystreams#inReplyTo","https://www.w3.org/ns/activitystreams#instrument","https://www.w3.org/ns/activitystreams#items","https://www.w3.org/ns/activitystreams#last","https://www.w3.org/ns/activitystreams#liked","https://www.w3.org/ns/activitystreams#likes","https://www.w3.org/ns/activitystreams#location","https://www.w3.org/ns/activitystreams#movedTo","https://www.w3.org/ns/activitystreams#next","https://www.w3.org/ns/activitystreams#oauthAuthorizationEndpoint","https://www.w3.org/ns/activitystreams#oauthTokenEndpoint","https://www.w3.org/ns/activitystreams#object","https://www.w3.org/ns/activitystreams#oneOf","https://www.w3.org/ns/activitystreams#origin","https://www.w3.org/ns/activitystreams#outbox","https://www.w3.org/ns/activitystreams#partOf","https://www.w3.org/ns/activitystreams#prev","https://www.w3.org/ns/activitystreams#preview","https://www.w3.org/ns/activitystreams#provideClientKey","https://www.w3.org/ns/activitystreams#proxyUrl","https://www.w3.org/ns/activitystreams#quoteUrl","https://www.w3.org/ns/activitystreams#relationship","https://www.w3.org/ns/activitystreams#replies","https://www.w3.org/ns/activitystreams#result","https://www.w3.org/ns/activitystreams#sharedInbox","https://www.w3.org/ns/activitystreams#shares","https://www.w3.org/ns/activitystreams#signClientKey","https://www.w3.org/ns/activitystreams#streams","https://www.w3.org/ns/activitystreams#subject","https://www.w3.org/ns/activitystreams#tag","https://www.w3.org/ns/activitystreams#target","https://www.w3.org/ns/activitystreams#to","https://www.w3.org/ns/activitystreams#units","https://www.w3.org/ns/activitystreams#url","https://www.w3.org/ns/did#service","https://www.w3.org/ns/did#serviceEndpoint","icon","id","image","inReplyTo","inbox","inboxOf","instrument","interactingObject","interactionTarget","items","last","likeAuthorization","liked","likedOf","likes","likesOf","location","manualApproval","movedTo","next","oauthAuthorizationEndpoint","oauthTokenEndpoint","object","oneOf","orderedItems","origin","outbox","outboxOf","owner","partOf","prev","preview","proof","provideClientKey","proxyUrl","publicKey","quote","quoteAuthorization","quoteUri","quoteUrl","relationship","replies","repliesOf","replyAuthorization","resourceConformsTo","result","satisfies","service","sharedInbox","shares","sharesOf","signClientKey","streams","subject","tag","target","to","units","url"]);
+const PORTABLE_IRI_KEYS: ReadonlySet<string> = new Set(["@id","_misskey_quote","actor","alsoKnownAs","announceAuthorization","anyOf","approvedBy","assertionMethod","attachment","attributedTo","audience","automaticApproval","bcc","bto","cc","context","controller","current","describes","emojiReactions","featureAuthorization","featured","featuredCollections","featuredObject","featuredTags","first","followers","followersOf","following","followingOf","gateways","generator","href","http://fedibird.com/ns#emojiReactions","http://fedibird.com/ns#quoteUri","http://joinmastodon.org/ns#featured","http://joinmastodon.org/ns#featuredTags","http://www.w3.org/ns/ldp#inbox","https://gotosocial.org/ns#announceAuthorization","https://gotosocial.org/ns#approvedBy","https://gotosocial.org/ns#automaticApproval","https://gotosocial.org/ns#interactingObject","https://gotosocial.org/ns#interactionTarget","https://gotosocial.org/ns#likeAuthorization","https://gotosocial.org/ns#manualApproval","https://gotosocial.org/ns#replyAuthorization","https://misskey-hub.net/ns#_misskey_quote","https://w3id.org/fep/044f#quote","https://w3id.org/fep/044f#quoteAuthorization","https://w3id.org/fep/5711#followersOf","https://w3id.org/fep/5711#followingOf","https://w3id.org/fep/5711#inboxOf","https://w3id.org/fep/5711#likedOf","https://w3id.org/fep/5711#likesOf","https://w3id.org/fep/5711#outboxOf","https://w3id.org/fep/5711#repliesOf","https://w3id.org/fep/5711#sharesOf","https://w3id.org/fep/7aa9#featureAuthorization","https://w3id.org/fep/7aa9#featuredCollections","https://w3id.org/fep/7aa9#featuredObject","https://w3id.org/fep/ef61/gateways","https://w3id.org/security#assertionMethod","https://w3id.org/security#controller","https://w3id.org/security#owner","https://w3id.org/security#proof","https://w3id.org/security#publicKey","https://w3id.org/security#verificationMethod","https://w3id.org/valueflows/ont/vf#resourceConformsTo","https://w3id.org/valueflows/ont/vf#satisfies","https://www.w3.org/ns/activitystreams#actor","https://www.w3.org/ns/activitystreams#alsoKnownAs","https://www.w3.org/ns/activitystreams#anyOf","https://www.w3.org/ns/activitystreams#attachment","https://www.w3.org/ns/activitystreams#attributedTo","https://www.w3.org/ns/activitystreams#audience","https://www.w3.org/ns/activitystreams#bcc","https://www.w3.org/ns/activitystreams#bto","https://www.w3.org/ns/activitystreams#cc","https://www.w3.org/ns/activitystreams#context","https://www.w3.org/ns/activitystreams#current","https://www.w3.org/ns/activitystreams#describes","https://www.w3.org/ns/activitystreams#first","https://www.w3.org/ns/activitystreams#followers","https://www.w3.org/ns/activitystreams#following","https://www.w3.org/ns/activitystreams#generator","https://www.w3.org/ns/activitystreams#href","https://www.w3.org/ns/activitystreams#icon","https://www.w3.org/ns/activitystreams#image","https://www.w3.org/ns/activitystreams#inReplyTo","https://www.w3.org/ns/activitystreams#instrument","https://www.w3.org/ns/activitystreams#items","https://www.w3.org/ns/activitystreams#last","https://www.w3.org/ns/activitystreams#liked","https://www.w3.org/ns/activitystreams#likes","https://www.w3.org/ns/activitystreams#location","https://www.w3.org/ns/activitystreams#movedTo","https://www.w3.org/ns/activitystreams#next","https://www.w3.org/ns/activitystreams#oauthAuthorizationEndpoint","https://www.w3.org/ns/activitystreams#oauthTokenEndpoint","https://www.w3.org/ns/activitystreams#object","https://www.w3.org/ns/activitystreams#oneOf","https://www.w3.org/ns/activitystreams#origin","https://www.w3.org/ns/activitystreams#outbox","https://www.w3.org/ns/activitystreams#partOf","https://www.w3.org/ns/activitystreams#prev","https://www.w3.org/ns/activitystreams#preview","https://www.w3.org/ns/activitystreams#provideClientKey","https://www.w3.org/ns/activitystreams#proxyUrl","https://www.w3.org/ns/activitystreams#quoteUrl","https://www.w3.org/ns/activitystreams#relationship","https://www.w3.org/ns/activitystreams#replies","https://www.w3.org/ns/activitystreams#result","https://www.w3.org/ns/activitystreams#sharedInbox","https://www.w3.org/ns/activitystreams#shares","https://www.w3.org/ns/activitystreams#signClientKey","https://www.w3.org/ns/activitystreams#streams","https://www.w3.org/ns/activitystreams#subject","https://www.w3.org/ns/activitystreams#tag","https://www.w3.org/ns/activitystreams#target","https://www.w3.org/ns/activitystreams#to","https://www.w3.org/ns/activitystreams#units","https://www.w3.org/ns/activitystreams#url","https://www.w3.org/ns/did#service","https://www.w3.org/ns/did#serviceEndpoint","icon","id","image","inReplyTo","inbox","inboxOf","instrument","interactingObject","interactionTarget","items","last","likeAuthorization","liked","likedOf","likes","likesOf","location","manualApproval","movedTo","next","oauthAuthorizationEndpoint","oauthTokenEndpoint","object","oneOf","orderedItems","origin","outbox","outboxOf","owner","partOf","prev","preview","proof","provideClientKey","proxyUrl","publicKey","quote","quoteAuthorization","quoteUri","quoteUrl","relationship","replies","repliesOf","replyAuthorization","resourceConformsTo","result","satisfies","service","sharedInbox","shares","sharesOf","signClientKey","streams","subject","tag","target","to","units","url"]);
 
 import * as _ppM0 from "./preprocessors.ts";
 
@@ -43296,7 +43296,8 @@ export class Application extends Object {
     
       #_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod: (Multikey | URL)[] = [];
       #_trust_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod: Set<number> = new Set();
-    #_36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers: (boolean)[] = [];
+    #_hQiaHhZP8hqxckxTBrpsGNs57E3: (URL)[] = [];
+#_36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers: (boolean)[] = [];
 
       #_3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox: (OrderedCollection | OrderedCollectionPage | URL)[] = [];
       #_trust_3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox: Set<number> = new Set();
@@ -43369,7 +43370,8 @@ bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration |
 proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;preferredUsername?: string | LanguageString | null;
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
-assertionMethods?: (Multikey | URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
+assertionMethods?: (Multikey | URL)[];gateway?: URL | null;
+gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
 aliases?: (Application | Group | Organization | Person | Service | URL)[];service?: DidService | URL | null;
 services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | null;}
 ,
@@ -43492,6 +43494,42 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
             throw new TypeError(
               "The assertionMethods must be an array of type " +
               "Multikey | URL" + ".",
+            );
+          }
+        }
+      
+        if ("gateway" in values &&             values.gateway != null) {
+          if (values.gateway instanceof URL) {
+            // @ts-ignore: type is checked above.
+            this.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = [values.gateway];
+      
+          } else {
+            throw new TypeError(
+              "The gateway must be of type " +
+              "URL" + ".",
+            );
+          }
+        }
+      
+        if ("gateways" in values &&             values.gateways != null) {
+      
+          if ("gateway" in values &&
+              values.gateway != null) {
+            throw new TypeError(
+              "Cannot initialize both gateway and " +
+                "gateways at the same time.",
+            );
+          }
+        
+          if (Array.isArray(values.gateways) &&
+              values.gateways.every(v => v instanceof URL)) {
+            // @ts-ignore: type is checked above.
+            this.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = values.gateways;
+      
+          } else {
+            throw new TypeError(
+              "The gateways must be an array of type " +
+              "URL" + ".",
             );
           }
         }
@@ -43846,7 +43884,8 @@ bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration |
 proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;preferredUsername?: string | LanguageString | null;
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
-assertionMethods?: (Multikey | URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
+assertionMethods?: (Multikey | URL)[];gateway?: URL | null;
+gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
 aliases?: (Application | Group | Organization | Person | Service | URL)[];service?: DidService | URL | null;
 services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | null;}
 
@@ -43979,6 +44018,42 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
             throw new TypeError(
               "The assertionMethods must be an array of type " +
               "Multikey | URL" + ".",
+            );
+          }
+        }
+      clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = this.#_hQiaHhZP8hqxckxTBrpsGNs57E3;
+        if ("gateway" in values &&             values.gateway != null) {
+          if (values.gateway instanceof URL) {
+            // @ts-ignore: type is checked above.
+            clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = [values.gateway];
+      
+          } else {
+            throw new TypeError(
+              "The gateway must be of type " +
+              "URL" + ".",
+            );
+          }
+        }
+      
+        if ("gateways" in values &&             values.gateways != null) {
+      
+          if ("gateway" in values &&
+              values.gateway != null) {
+            throw new TypeError(
+              "Cannot update both gateway and " +
+                "gateways at the same time.",
+            );
+          }
+        
+          if (Array.isArray(values.gateways) &&
+              values.gateways.every(v => v instanceof URL)) {
+            // @ts-ignore: type is checked above.
+            clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = values.gateways;
+      
+          } else {
+            throw new TypeError(
+              "The gateways must be an array of type " +
+              "URL" + ".",
             );
           }
         }
@@ -45002,6 +45077,33 @@ get preferredUsernames(): ((string | LanguageString))[] {
           }
           yield v;
         }
+      }
+      
+/** Gateways where the latest version of this portable actor object can be
+ * retrieved.
+ * 
+ * See [FEP-ef61](https://w3id.org/fep/ef61) for details.
+ * 
+ */
+ get gateway(): (URL | null) {
+        if (this._warning != null) {
+          getLogger(this._warning.category).warn(
+            this._warning.message,
+            this._warning.values
+          );
+        }
+        if (this.#_hQiaHhZP8hqxckxTBrpsGNs57E3.length < 1) return null;
+        return this.#_hQiaHhZP8hqxckxTBrpsGNs57E3[0];
+      }
+      
+/** Gateways where the latest version of this portable actor object can be
+ * retrieved.
+ * 
+ * See [FEP-ef61](https://w3id.org/fep/ef61) for details.
+ * 
+ */
+get gateways(): (URL)[] {
+        return this.#_hQiaHhZP8hqxckxTBrpsGNs57E3;
       }
       
 /** When \`true\`, conveys that for this actor, follow requests are not usually
@@ -48313,6 +48415,19 @@ get preferredUsernames(): ((string | LanguageString))[] {
       }
       
       compactItems = [];
+      for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
+        const item = (
+      formatIri(v)
+        );
+        compactItems.push(item);
+      }
+      if (compactItems.length > 0) {
+      
+        result["gateways"] = compactItems;
+        
+      }
+      
+      compactItems = [];
       for (const v of this.#_36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers) {
         const item = (
       v
@@ -48726,7 +48841,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       result["type"] = "Application";
       if (this.id != null) result["id"] = formatIri(this.id);
-      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/v1","https://w3id.org/security/data-integrity/v1","https://www.w3.org/ns/did/v1","https://w3id.org/security/multikey/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"alsoKnownAs":{"@id":"as:alsoKnownAs","@type":"@id"},"featuredCollections":{"@id":"https://w3id.org/fep/7aa9#featuredCollections","@type":"@id"},"manuallyApprovesFollowers":"as:manuallyApprovesFollowers","movedTo":{"@id":"as:movedTo","@type":"@id"},"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji","featured":{"@id":"toot:featured","@type":"@id"},"featuredTags":{"@id":"toot:featuredTags","@type":"@id"},"discoverable":"toot:discoverable","suspended":"toot:suspended","memorial":"toot:memorial","indexable":"toot:indexable","schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value","misskey":"https://misskey-hub.net/ns#","_misskey_followedMessage":"misskey:_misskey_followedMessage","isCat":"misskey:isCat"}];
+      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/fep/ef61","https://w3id.org/security/v1","https://w3id.org/security/data-integrity/v1","https://www.w3.org/ns/did/v1","https://w3id.org/security/multikey/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"alsoKnownAs":{"@id":"as:alsoKnownAs","@type":"@id"},"featuredCollections":{"@id":"https://w3id.org/fep/7aa9#featuredCollections","@type":"@id"},"manuallyApprovesFollowers":"as:manuallyApprovesFollowers","movedTo":{"@id":"as:movedTo","@type":"@id"},"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji","featured":{"@id":"toot:featured","@type":"@id"},"featuredTags":{"@id":"toot:featuredTags","@type":"@id"},"discoverable":"toot:discoverable","suspended":"toot:suspended","memorial":"toot:memorial","indexable":"toot:indexable","schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value","misskey":"https://misskey-hub.net/ns#","_misskey_followedMessage":"misskey:_misskey_followedMessage","isCat":"misskey:isCat"}];
       return result;
     }
     
@@ -48788,6 +48903,21 @@ get preferredUsernames(): ((string | LanguageString))[] {
     array
       );
       values["https://w3id.org/security#assertionMethod"] = propValue;
+    
+    }
+    
+    array = [];
+    for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
+      const element = (
+    { "@value": formatIri(v) }
+      );
+    array.push(element);;
+    }
+    if (array.length > 0) {
+      const propValue = (
+    { "@list": array }
+      );
+      values["https://w3id.org/fep/ef61/gateways"] = propValue;
     
     }
     
@@ -49100,7 +49230,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       );
     }
     const docContext = options.context ??
-      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/v1","https://w3id.org/security/data-integrity/v1","https://www.w3.org/ns/did/v1","https://w3id.org/security/multikey/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"alsoKnownAs":{"@id":"as:alsoKnownAs","@type":"@id"},"featuredCollections":{"@id":"https://w3id.org/fep/7aa9#featuredCollections","@type":"@id"},"manuallyApprovesFollowers":"as:manuallyApprovesFollowers","movedTo":{"@id":"as:movedTo","@type":"@id"},"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji","featured":{"@id":"toot:featured","@type":"@id"},"featuredTags":{"@id":"toot:featuredTags","@type":"@id"},"discoverable":"toot:discoverable","suspended":"toot:suspended","memorial":"toot:memorial","indexable":"toot:indexable","schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value","misskey":"https://misskey-hub.net/ns#","_misskey_followedMessage":"misskey:_misskey_followedMessage","isCat":"misskey:isCat"}];
+      ["https://www.w3.org/ns/activitystreams","https://w3id.org/fep/ef61","https://w3id.org/security/v1","https://w3id.org/security/data-integrity/v1","https://www.w3.org/ns/did/v1","https://w3id.org/security/multikey/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"alsoKnownAs":{"@id":"as:alsoKnownAs","@type":"@id"},"featuredCollections":{"@id":"https://w3id.org/fep/7aa9#featuredCollections","@type":"@id"},"manuallyApprovesFollowers":"as:manuallyApprovesFollowers","movedTo":{"@id":"as:movedTo","@type":"@id"},"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji","featured":{"@id":"toot:featured","@type":"@id"},"featuredTags":{"@id":"toot:featuredTags","@type":"@id"},"discoverable":"toot:discoverable","suspended":"toot:suspended","memorial":"toot:memorial","indexable":"toot:indexable","schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value","misskey":"https://misskey-hub.net/ns#","_misskey_followedMessage":"misskey:_misskey_followedMessage","isCat":"misskey:isCat"}];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -49342,6 +49472,24 @@ get preferredUsernames(): ((string | LanguageString))[] {
       _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.push(decoded);
     }
     instance.#_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod = _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod;
+    const _hQiaHhZP8hqxckxTBrpsGNs57E3: (URL)[] = [];
+
+    let _hQiaHhZP8hqxckxTBrpsGNs57E3__array = values["https://w3id.org/fep/ef61/gateways"];
+    
+    for (
+      const v of _hQiaHhZP8hqxckxTBrpsGNs57E3__array == null
+        ? []
+        : _hQiaHhZP8hqxckxTBrpsGNs57E3__array.length === 1 && "@list" in _hQiaHhZP8hqxckxTBrpsGNs57E3__array[0]
+        ? _hQiaHhZP8hqxckxTBrpsGNs57E3__array[0]["@list"]
+        : _hQiaHhZP8hqxckxTBrpsGNs57E3__array
+    ) {
+      if (v == null) continue;
+    
+      const decoded = parseIri(v["@value"]);
+      if (typeof decoded === "undefined") continue;
+      _hQiaHhZP8hqxckxTBrpsGNs57E3.push(decoded);
+    }
+    instance.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = _hQiaHhZP8hqxckxTBrpsGNs57E3;
     const _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers: (boolean)[] = [];
 
     let _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers__array = values["https://www.w3.org/ns/activitystreams#manuallyApprovesFollowers"];
@@ -50011,6 +50159,32 @@ get preferredUsernames(): ((string | LanguageString))[] {
           || !("assertionMethod" in proxy)
           && _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.length > 0) {
         proxy.assertionMethods = _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod;
+      }
+      
+      const _hQiaHhZP8hqxckxTBrpsGNs57E3 = this.#_hQiaHhZP8hqxckxTBrpsGNs57E3
+        // deno-lint-ignore no-explicit-any
+        .map((v: any) => v instanceof URL
+          ? {
+              [Symbol.for("Deno.customInspect")]: (
+                inspect: typeof Deno.inspect,
+                options: Deno.InspectOptions,
+              ): string => "URL " + inspect(v.href, options),
+              [Symbol.for("nodejs.util.inspect.custom")]: (
+                _depth: number,
+                options: unknown,
+                inspect: (value: unknown, options: unknown) => string,
+              ): string => "URL " + inspect(v.href, options),
+            }
+          : v);
+    
+      if (_hQiaHhZP8hqxckxTBrpsGNs57E3.length == 1) {
+        proxy.gateway = _hQiaHhZP8hqxckxTBrpsGNs57E3[0];
+      }
+      
+      if (_hQiaHhZP8hqxckxTBrpsGNs57E3.length > 1
+          || !("gateway" in proxy)
+          && _hQiaHhZP8hqxckxTBrpsGNs57E3.length > 0) {
+        proxy.gateways = _hQiaHhZP8hqxckxTBrpsGNs57E3;
       }
       
       const _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers = this.#_36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers
@@ -52389,6 +52563,7 @@ export class Document extends Object {
     }
   #_2e9AP7WdHBJYAgXG6GEyq7nSkNMe_width: (number)[] = [];
 #_2cGKFeFJMmiNpGZFEF75mCwFQsKb_height: (number)[] = [];
+#_2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase: (string)[] = [];
 
   /**
    * Constructs a new instance of Document with the given values.
@@ -52415,7 +52590,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;digestMultibase?: string | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -52449,6 +52624,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             );
           }
         }
+      
+        if ("digestMultibase" in values &&             values.digestMultibase != null) {
+          if (typeof values.digestMultibase === "string") {
+            // @ts-ignore: type is checked above.
+            this.#_2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase = [values.digestMultibase];
+      
+          } else {
+            throw new TypeError(
+              "The digestMultibase must be of type " +
+              "string" + ".",
+            );
+          }
+        }
       }
 
   /**
@@ -52477,7 +52665,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;digestMultibase?: string | null;}
 
     = {},
     options: {
@@ -52519,6 +52707,19 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             );
           }
         }
+      clone.#_2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase = this.#_2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase;
+        if ("digestMultibase" in values &&             values.digestMultibase != null) {
+          if (typeof values.digestMultibase === "string") {
+            // @ts-ignore: type is checked above.
+            clone.#_2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase = [values.digestMultibase];
+      
+          } else {
+            throw new TypeError(
+              "The digestMultibase must be of type " +
+              "string" + ".",
+            );
+          }
+        }
       
     return clone;
   }
@@ -52551,6 +52752,23 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         }
         if (this.#_2cGKFeFJMmiNpGZFEF75mCwFQsKb_height.length < 1) return null;
         return this.#_2cGKFeFJMmiNpGZFEF75mCwFQsKb_height[0];
+      }
+      
+/** The multibase-encoded integrity digest of an external resource represented
+ * by this document.
+ * 
+ * See [FEP-ef61](https://w3id.org/fep/ef61) for details.
+ * 
+ */
+ get digestMultibase(): (string | null) {
+        if (this._warning != null) {
+          getLogger(this._warning.category).warn(
+            this._warning.message,
+            this._warning.values
+          );
+        }
+        if (this.#_2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase.length < 1) return null;
+        return this.#_2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase[0];
       }
       
   /**
@@ -52625,9 +52843,25 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         
       }
       
+      compactItems = [];
+      for (const v of this.#_2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase) {
+        const item = (
+      v
+        );
+        compactItems.push(item);
+      }
+      if (compactItems.length > 0) {
+      
+        result["digestMultibase"]
+          = compactItems.length > 1
+          ? compactItems
+          : compactItems[0];
+        
+      }
+      
       result["type"] = "Document";
       if (this.id != null) result["id"] = formatIri(this.id);
-      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1","https://gotosocial.org/ns"];
+      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2","https://w3id.org/fep/ef61","https://gotosocial.org/ns"];
       return result;
     }
     
@@ -52680,6 +52914,21 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
     }
     
+    array = [];
+    for (const v of this.#_2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase) {
+      const element = (
+    { "@value": v }
+      );
+    array.push(element);;
+    }
+    if (array.length > 0) {
+      const propValue = (
+    array
+      );
+      values["https://www.w3.org/ns/credentials/v2#digestMultibase"] = propValue;
+    
+    }
+    
     values["@type"] = ["https://www.w3.org/ns/activitystreams#Document"];
     if (this.id != null) values["@id"] = formatIri(this.id);
     if (options.format === "expand") {
@@ -52689,7 +52938,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       );
     }
     const docContext = options.context ??
-      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1","https://gotosocial.org/ns"];
+      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2","https://w3id.org/fep/ef61","https://gotosocial.org/ns"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -52889,6 +53138,24 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       _2cGKFeFJMmiNpGZFEF75mCwFQsKb_height.push(decoded);
     }
     instance.#_2cGKFeFJMmiNpGZFEF75mCwFQsKb_height = _2cGKFeFJMmiNpGZFEF75mCwFQsKb_height;
+    const _2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase: (string)[] = [];
+
+    let _2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase__array = values["https://www.w3.org/ns/credentials/v2#digestMultibase"];
+    
+    for (
+      const v of _2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase__array == null
+        ? []
+        : _2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase__array.length === 1 && "@list" in _2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase__array[0]
+        ? _2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase__array[0]["@list"]
+        : _2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase__array
+    ) {
+      if (v == null) continue;
+    
+      const decoded = v["@value"];
+      if (typeof decoded === "undefined") continue;
+      _2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase.push(decoded);
+    }
+    instance.#_2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase = _2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase;
     
     if (!("_fromSubclass" in options) || !options._fromSubclass) {
       try {
@@ -52957,6 +53224,26 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         proxy.height = _2cGKFeFJMmiNpGZFEF75mCwFQsKb_height[0];
       }
       
+      const _2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase = this.#_2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase
+        // deno-lint-ignore no-explicit-any
+        .map((v: any) => v instanceof URL
+          ? {
+              [Symbol.for("Deno.customInspect")]: (
+                inspect: typeof Deno.inspect,
+                options: Deno.InspectOptions,
+              ): string => "URL " + inspect(v.href, options),
+              [Symbol.for("nodejs.util.inspect.custom")]: (
+                _depth: number,
+                options: unknown,
+                inspect: (value: unknown, options: unknown) => string,
+              ): string => "URL " + inspect(v.href, options),
+            }
+          : v);
+    
+      if (_2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase.length == 1) {
+        proxy.digestMultibase = _2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase[0];
+      }
+      
     return proxy;
   }
   }
@@ -53020,7 +53307,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;digestMultibase?: string | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -53056,7 +53343,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;digestMultibase?: string | null;}
 
     = {},
     options: {
@@ -53118,7 +53405,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
       result["type"] = "Audio";
       if (this.id != null) result["id"] = formatIri(this.id);
-      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1","https://gotosocial.org/ns"];
+      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2","https://w3id.org/fep/ef61","https://gotosocial.org/ns"];
       return result;
     }
     
@@ -53144,7 +53431,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       );
     }
     const docContext = options.context ??
-      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1","https://gotosocial.org/ns"];
+      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2","https://w3id.org/fep/ef61","https://gotosocial.org/ns"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -58712,7 +58999,8 @@ export class Group extends Object {
     
       #_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod: (Multikey | URL)[] = [];
       #_trust_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod: Set<number> = new Set();
-    #_36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers: (boolean)[] = [];
+    #_hQiaHhZP8hqxckxTBrpsGNs57E3: (URL)[] = [];
+#_36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers: (boolean)[] = [];
 
       #_3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox: (OrderedCollection | OrderedCollectionPage | URL)[] = [];
       #_trust_3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox: Set<number> = new Set();
@@ -58785,7 +59073,8 @@ bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration |
 proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;preferredUsername?: string | LanguageString | null;
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
-assertionMethods?: (Multikey | URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
+assertionMethods?: (Multikey | URL)[];gateway?: URL | null;
+gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
 aliases?: (Application | Group | Organization | Person | Service | URL)[];service?: DidService | URL | null;
 services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | null;}
 ,
@@ -58908,6 +59197,42 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
             throw new TypeError(
               "The assertionMethods must be an array of type " +
               "Multikey | URL" + ".",
+            );
+          }
+        }
+      
+        if ("gateway" in values &&             values.gateway != null) {
+          if (values.gateway instanceof URL) {
+            // @ts-ignore: type is checked above.
+            this.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = [values.gateway];
+      
+          } else {
+            throw new TypeError(
+              "The gateway must be of type " +
+              "URL" + ".",
+            );
+          }
+        }
+      
+        if ("gateways" in values &&             values.gateways != null) {
+      
+          if ("gateway" in values &&
+              values.gateway != null) {
+            throw new TypeError(
+              "Cannot initialize both gateway and " +
+                "gateways at the same time.",
+            );
+          }
+        
+          if (Array.isArray(values.gateways) &&
+              values.gateways.every(v => v instanceof URL)) {
+            // @ts-ignore: type is checked above.
+            this.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = values.gateways;
+      
+          } else {
+            throw new TypeError(
+              "The gateways must be an array of type " +
+              "URL" + ".",
             );
           }
         }
@@ -59262,7 +59587,8 @@ bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration |
 proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;preferredUsername?: string | LanguageString | null;
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
-assertionMethods?: (Multikey | URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
+assertionMethods?: (Multikey | URL)[];gateway?: URL | null;
+gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
 aliases?: (Application | Group | Organization | Person | Service | URL)[];service?: DidService | URL | null;
 services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | null;}
 
@@ -59395,6 +59721,42 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
             throw new TypeError(
               "The assertionMethods must be an array of type " +
               "Multikey | URL" + ".",
+            );
+          }
+        }
+      clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = this.#_hQiaHhZP8hqxckxTBrpsGNs57E3;
+        if ("gateway" in values &&             values.gateway != null) {
+          if (values.gateway instanceof URL) {
+            // @ts-ignore: type is checked above.
+            clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = [values.gateway];
+      
+          } else {
+            throw new TypeError(
+              "The gateway must be of type " +
+              "URL" + ".",
+            );
+          }
+        }
+      
+        if ("gateways" in values &&             values.gateways != null) {
+      
+          if ("gateway" in values &&
+              values.gateway != null) {
+            throw new TypeError(
+              "Cannot update both gateway and " +
+                "gateways at the same time.",
+            );
+          }
+        
+          if (Array.isArray(values.gateways) &&
+              values.gateways.every(v => v instanceof URL)) {
+            // @ts-ignore: type is checked above.
+            clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = values.gateways;
+      
+          } else {
+            throw new TypeError(
+              "The gateways must be an array of type " +
+              "URL" + ".",
             );
           }
         }
@@ -60418,6 +60780,33 @@ get preferredUsernames(): ((string | LanguageString))[] {
           }
           yield v;
         }
+      }
+      
+/** Gateways where the latest version of this portable actor object can be
+ * retrieved.
+ * 
+ * See [FEP-ef61](https://w3id.org/fep/ef61) for details.
+ * 
+ */
+ get gateway(): (URL | null) {
+        if (this._warning != null) {
+          getLogger(this._warning.category).warn(
+            this._warning.message,
+            this._warning.values
+          );
+        }
+        if (this.#_hQiaHhZP8hqxckxTBrpsGNs57E3.length < 1) return null;
+        return this.#_hQiaHhZP8hqxckxTBrpsGNs57E3[0];
+      }
+      
+/** Gateways where the latest version of this portable actor object can be
+ * retrieved.
+ * 
+ * See [FEP-ef61](https://w3id.org/fep/ef61) for details.
+ * 
+ */
+get gateways(): (URL)[] {
+        return this.#_hQiaHhZP8hqxckxTBrpsGNs57E3;
       }
       
 /** When \`true\`, conveys that for this actor, follow requests are not usually
@@ -63729,6 +64118,19 @@ get preferredUsernames(): ((string | LanguageString))[] {
       }
       
       compactItems = [];
+      for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
+        const item = (
+      formatIri(v)
+        );
+        compactItems.push(item);
+      }
+      if (compactItems.length > 0) {
+      
+        result["gateways"] = compactItems;
+        
+      }
+      
+      compactItems = [];
       for (const v of this.#_36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers) {
         const item = (
       v
@@ -64142,7 +64544,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       result["type"] = "Group";
       if (this.id != null) result["id"] = formatIri(this.id);
-      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/v1","https://w3id.org/security/data-integrity/v1","https://www.w3.org/ns/did/v1","https://w3id.org/security/multikey/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"alsoKnownAs":{"@id":"as:alsoKnownAs","@type":"@id"},"featuredCollections":{"@id":"https://w3id.org/fep/7aa9#featuredCollections","@type":"@id"},"manuallyApprovesFollowers":"as:manuallyApprovesFollowers","movedTo":{"@id":"as:movedTo","@type":"@id"},"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji","featured":{"@id":"toot:featured","@type":"@id"},"featuredTags":{"@id":"toot:featuredTags","@type":"@id"},"discoverable":"toot:discoverable","suspended":"toot:suspended","memorial":"toot:memorial","indexable":"toot:indexable","schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value","misskey":"https://misskey-hub.net/ns#","_misskey_followedMessage":"misskey:_misskey_followedMessage","isCat":"misskey:isCat"}];
+      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/fep/ef61","https://w3id.org/security/v1","https://w3id.org/security/data-integrity/v1","https://www.w3.org/ns/did/v1","https://w3id.org/security/multikey/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"alsoKnownAs":{"@id":"as:alsoKnownAs","@type":"@id"},"featuredCollections":{"@id":"https://w3id.org/fep/7aa9#featuredCollections","@type":"@id"},"manuallyApprovesFollowers":"as:manuallyApprovesFollowers","movedTo":{"@id":"as:movedTo","@type":"@id"},"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji","featured":{"@id":"toot:featured","@type":"@id"},"featuredTags":{"@id":"toot:featuredTags","@type":"@id"},"discoverable":"toot:discoverable","suspended":"toot:suspended","memorial":"toot:memorial","indexable":"toot:indexable","schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value","misskey":"https://misskey-hub.net/ns#","_misskey_followedMessage":"misskey:_misskey_followedMessage","isCat":"misskey:isCat"}];
       return result;
     }
     
@@ -64204,6 +64606,21 @@ get preferredUsernames(): ((string | LanguageString))[] {
     array
       );
       values["https://w3id.org/security#assertionMethod"] = propValue;
+    
+    }
+    
+    array = [];
+    for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
+      const element = (
+    { "@value": formatIri(v) }
+      );
+    array.push(element);;
+    }
+    if (array.length > 0) {
+      const propValue = (
+    { "@list": array }
+      );
+      values["https://w3id.org/fep/ef61/gateways"] = propValue;
     
     }
     
@@ -64516,7 +64933,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       );
     }
     const docContext = options.context ??
-      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/v1","https://w3id.org/security/data-integrity/v1","https://www.w3.org/ns/did/v1","https://w3id.org/security/multikey/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"alsoKnownAs":{"@id":"as:alsoKnownAs","@type":"@id"},"featuredCollections":{"@id":"https://w3id.org/fep/7aa9#featuredCollections","@type":"@id"},"manuallyApprovesFollowers":"as:manuallyApprovesFollowers","movedTo":{"@id":"as:movedTo","@type":"@id"},"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji","featured":{"@id":"toot:featured","@type":"@id"},"featuredTags":{"@id":"toot:featuredTags","@type":"@id"},"discoverable":"toot:discoverable","suspended":"toot:suspended","memorial":"toot:memorial","indexable":"toot:indexable","schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value","misskey":"https://misskey-hub.net/ns#","_misskey_followedMessage":"misskey:_misskey_followedMessage","isCat":"misskey:isCat"}];
+      ["https://www.w3.org/ns/activitystreams","https://w3id.org/fep/ef61","https://w3id.org/security/v1","https://w3id.org/security/data-integrity/v1","https://www.w3.org/ns/did/v1","https://w3id.org/security/multikey/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"alsoKnownAs":{"@id":"as:alsoKnownAs","@type":"@id"},"featuredCollections":{"@id":"https://w3id.org/fep/7aa9#featuredCollections","@type":"@id"},"manuallyApprovesFollowers":"as:manuallyApprovesFollowers","movedTo":{"@id":"as:movedTo","@type":"@id"},"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji","featured":{"@id":"toot:featured","@type":"@id"},"featuredTags":{"@id":"toot:featuredTags","@type":"@id"},"discoverable":"toot:discoverable","suspended":"toot:suspended","memorial":"toot:memorial","indexable":"toot:indexable","schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value","misskey":"https://misskey-hub.net/ns#","_misskey_followedMessage":"misskey:_misskey_followedMessage","isCat":"misskey:isCat"}];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -64758,6 +65175,24 @@ get preferredUsernames(): ((string | LanguageString))[] {
       _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.push(decoded);
     }
     instance.#_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod = _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod;
+    const _hQiaHhZP8hqxckxTBrpsGNs57E3: (URL)[] = [];
+
+    let _hQiaHhZP8hqxckxTBrpsGNs57E3__array = values["https://w3id.org/fep/ef61/gateways"];
+    
+    for (
+      const v of _hQiaHhZP8hqxckxTBrpsGNs57E3__array == null
+        ? []
+        : _hQiaHhZP8hqxckxTBrpsGNs57E3__array.length === 1 && "@list" in _hQiaHhZP8hqxckxTBrpsGNs57E3__array[0]
+        ? _hQiaHhZP8hqxckxTBrpsGNs57E3__array[0]["@list"]
+        : _hQiaHhZP8hqxckxTBrpsGNs57E3__array
+    ) {
+      if (v == null) continue;
+    
+      const decoded = parseIri(v["@value"]);
+      if (typeof decoded === "undefined") continue;
+      _hQiaHhZP8hqxckxTBrpsGNs57E3.push(decoded);
+    }
+    instance.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = _hQiaHhZP8hqxckxTBrpsGNs57E3;
     const _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers: (boolean)[] = [];
 
     let _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers__array = values["https://www.w3.org/ns/activitystreams#manuallyApprovesFollowers"];
@@ -65429,6 +65864,32 @@ get preferredUsernames(): ((string | LanguageString))[] {
         proxy.assertionMethods = _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod;
       }
       
+      const _hQiaHhZP8hqxckxTBrpsGNs57E3 = this.#_hQiaHhZP8hqxckxTBrpsGNs57E3
+        // deno-lint-ignore no-explicit-any
+        .map((v: any) => v instanceof URL
+          ? {
+              [Symbol.for("Deno.customInspect")]: (
+                inspect: typeof Deno.inspect,
+                options: Deno.InspectOptions,
+              ): string => "URL " + inspect(v.href, options),
+              [Symbol.for("nodejs.util.inspect.custom")]: (
+                _depth: number,
+                options: unknown,
+                inspect: (value: unknown, options: unknown) => string,
+              ): string => "URL " + inspect(v.href, options),
+            }
+          : v);
+    
+      if (_hQiaHhZP8hqxckxTBrpsGNs57E3.length == 1) {
+        proxy.gateway = _hQiaHhZP8hqxckxTBrpsGNs57E3[0];
+      }
+      
+      if (_hQiaHhZP8hqxckxTBrpsGNs57E3.length > 1
+          || !("gateway" in proxy)
+          && _hQiaHhZP8hqxckxTBrpsGNs57E3.length > 0) {
+        proxy.gateways = _hQiaHhZP8hqxckxTBrpsGNs57E3;
+      }
+      
       const _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers = this.#_36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers
         // deno-lint-ignore no-explicit-any
         .map((v: any) => v instanceof URL
@@ -65935,6 +66396,7 @@ export class Link {
   #_pVjLsybKQdmkjuU7MHjiVmNnuj7_href: (URL)[] = [];
 #_2a1c5GkfkQsnyyLybF8UXBQfFuHZ_rel: (string)[] = [];
 #_3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType: (string)[] = [];
+#_2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase: (string)[] = [];
 #_4ZHbBuK7PrsvGgrjM8wgc6KMWjav_name: ((string | LanguageString))[] = [];
 #_f57HKWCp1YRBbTJE8PF12RbDJGf_hreflang: (Intl.Locale)[] = [];
 #_2cGKFeFJMmiNpGZFEF75mCwFQsKb_height: (number)[] = [];
@@ -65953,7 +66415,7 @@ export class Link {
   {
 id?: URL | null;
 href?: URL | null;rel?: string | null;
-rels?: (string)[];mediaType?: string | null;name?: string | LanguageString | null;
+rels?: (string)[];mediaType?: string | null;digestMultibase?: string | null;name?: string | LanguageString | null;
 names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: number | null;width?: number | null;previews?: (Link | Object | URL)[];}
 ,
     options: {
@@ -66038,6 +66500,19 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
           } else {
             throw new TypeError(
               "The mediaType must be of type " +
+              "string" + ".",
+            );
+          }
+        }
+      
+        if ("digestMultibase" in values &&             values.digestMultibase != null) {
+          if (typeof values.digestMultibase === "string") {
+            // @ts-ignore: type is checked above.
+            this.#_2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase = [values.digestMultibase];
+      
+          } else {
+            throw new TypeError(
+              "The digestMultibase must be of type " +
               "string" + ".",
             );
           }
@@ -66149,7 +66624,7 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
   {
 id?: URL | null;
 href?: URL | null;rel?: string | null;
-rels?: (string)[];mediaType?: string | null;name?: string | LanguageString | null;
+rels?: (string)[];mediaType?: string | null;digestMultibase?: string | null;name?: string | LanguageString | null;
 names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: number | null;width?: number | null;previews?: (Link | Object | URL)[];}
 
     = {},
@@ -66230,6 +66705,19 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
           } else {
             throw new TypeError(
               "The mediaType must be of type " +
+              "string" + ".",
+            );
+          }
+        }
+      clone.#_2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase = this.#_2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase;
+        if ("digestMultibase" in values &&             values.digestMultibase != null) {
+          if (typeof values.digestMultibase === "string") {
+            // @ts-ignore: type is checked above.
+            clone.#_2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase = [values.digestMultibase];
+      
+          } else {
+            throw new TypeError(
+              "The digestMultibase must be of type " +
               "string" + ".",
             );
           }
@@ -66390,6 +66878,22 @@ get rels(): (string)[] {
         }
         if (this.#_3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType.length < 1) return null;
         return this.#_3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType[0];
+      }
+      
+/** The multibase-encoded integrity digest of the linked resource.
+ * 
+ * See [FEP-ef61](https://w3id.org/fep/ef61) for details.
+ * 
+ */
+ get digestMultibase(): (string | null) {
+        if (this._warning != null) {
+          getLogger(this._warning.category).warn(
+            this._warning.message,
+            this._warning.values
+          );
+        }
+        if (this.#_2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase.length < 1) return null;
+        return this.#_2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase[0];
       }
       
 /** A simple, human-readable, plain-text name for the object. HTML markup MUST
@@ -66782,6 +67286,22 @@ get names(): ((string | LanguageString))[] {
       }
       
       compactItems = [];
+      for (const v of this.#_2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase) {
+        const item = (
+      v
+        );
+        compactItems.push(item);
+      }
+      if (compactItems.length > 0) {
+      
+        result["digestMultibase"]
+          = compactItems.length > 1
+          ? compactItems
+          : compactItems[0];
+        
+      }
+      
+      compactItems = [];
       for (const v of this.#_4ZHbBuK7PrsvGgrjM8wgc6KMWjav_name) {
         const item = (
       typeof v === "string" ? v : {
@@ -66874,7 +67394,7 @@ get names(): ((string | LanguageString))[] {
       
       result["type"] = "Link";
       if (this.id != null) result["id"] = formatIri(this.id);
-      result["@context"] = "https://www.w3.org/ns/activitystreams";
+      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/fep/ef61"];
       return result;
     }
     
@@ -66923,6 +67443,21 @@ get names(): ((string | LanguageString))[] {
     array
       );
       values["https://www.w3.org/ns/activitystreams#mediaType"] = propValue;
+    
+    }
+    
+    array = [];
+    for (const v of this.#_2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase) {
+      const element = (
+    { "@value": v }
+      );
+    array.push(element);;
+    }
+    if (array.length > 0) {
+      const propValue = (
+    array
+      );
+      values["https://www.w3.org/ns/credentials/v2#digestMultibase"] = propValue;
     
     }
     
@@ -67019,7 +67554,7 @@ get names(): ((string | LanguageString))[] {
       );
     }
     const docContext = options.context ??
-      "https://www.w3.org/ns/activitystreams";
+      ["https://www.w3.org/ns/activitystreams","https://w3id.org/fep/ef61"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -67220,6 +67755,24 @@ get names(): ((string | LanguageString))[] {
       _3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType.push(decoded);
     }
     instance.#_3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType = _3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType;
+    const _2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase: (string)[] = [];
+
+    let _2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase__array = values["https://www.w3.org/ns/credentials/v2#digestMultibase"];
+    
+    for (
+      const v of _2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase__array == null
+        ? []
+        : _2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase__array.length === 1 && "@list" in _2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase__array[0]
+        ? _2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase__array[0]["@list"]
+        : _2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase__array
+    ) {
+      if (v == null) continue;
+    
+      const decoded = v["@value"];
+      if (typeof decoded === "undefined") continue;
+      _2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase.push(decoded);
+    }
+    instance.#_2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase = _2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase;
     const _4ZHbBuK7PrsvGgrjM8wgc6KMWjav_name: ((string | LanguageString))[] = [];
 
     let _4ZHbBuK7PrsvGgrjM8wgc6KMWjav_name__array = values["https://www.w3.org/ns/activitystreams#name"];
@@ -67447,6 +68000,26 @@ get names(): ((string | LanguageString))[] {
         proxy.mediaType = _3BLrzmscsjHCw8TF5BHRW9WkPnX8_mediaType[0];
       }
       
+      const _2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase = this.#_2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase
+        // deno-lint-ignore no-explicit-any
+        .map((v: any) => v instanceof URL
+          ? {
+              [Symbol.for("Deno.customInspect")]: (
+                inspect: typeof Deno.inspect,
+                options: Deno.InspectOptions,
+              ): string => "URL " + inspect(v.href, options),
+              [Symbol.for("nodejs.util.inspect.custom")]: (
+                _depth: number,
+                options: unknown,
+                inspect: (value: unknown, options: unknown) => string,
+              ): string => "URL " + inspect(v.href, options),
+            }
+          : v);
+    
+      if (_2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase.length == 1) {
+        proxy.digestMultibase = _2ydcBe182LRq82jFGE6Rxw6VfvEM_digestMultibase[0];
+      }
+      
       const _4ZHbBuK7PrsvGgrjM8wgc6KMWjav_name = this.#_4ZHbBuK7PrsvGgrjM8wgc6KMWjav_name
         // deno-lint-ignore no-explicit-any
         .map((v: any) => v instanceof URL
@@ -67606,7 +68179,7 @@ export class Hashtag extends Link {
   {
 id?: URL | null;
 href?: URL | null;rel?: string | null;
-rels?: (string)[];mediaType?: string | null;name?: string | LanguageString | null;
+rels?: (string)[];mediaType?: string | null;digestMultibase?: string | null;name?: string | LanguageString | null;
 names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: number | null;width?: number | null;previews?: (Link | Object | URL)[];}
 ,
     options: {
@@ -67628,7 +68201,7 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
   {
 id?: URL | null;
 href?: URL | null;rel?: string | null;
-rels?: (string)[];mediaType?: string | null;name?: string | LanguageString | null;
+rels?: (string)[];mediaType?: string | null;digestMultibase?: string | null;name?: string | LanguageString | null;
 names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: number | null;width?: number | null;previews?: (Link | Object | URL)[];}
 
     = {},
@@ -67945,7 +68518,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;digestMultibase?: string | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -67981,7 +68554,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;digestMultibase?: string | null;}
 
     = {},
     options: {
@@ -68043,7 +68616,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
       result["type"] = "Image";
       if (this.id != null) result["id"] = formatIri(this.id);
-      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1","https://gotosocial.org/ns"];
+      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2","https://w3id.org/fep/ef61","https://gotosocial.org/ns"];
       return result;
     }
     
@@ -68069,7 +68642,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       );
     }
     const docContext = options.context ??
-      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1","https://gotosocial.org/ns"];
+      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2","https://w3id.org/fep/ef61","https://gotosocial.org/ns"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -70456,7 +71029,7 @@ export class Mention extends Link {
   {
 id?: URL | null;
 href?: URL | null;rel?: string | null;
-rels?: (string)[];mediaType?: string | null;name?: string | LanguageString | null;
+rels?: (string)[];mediaType?: string | null;digestMultibase?: string | null;name?: string | LanguageString | null;
 names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: number | null;width?: number | null;previews?: (Link | Object | URL)[];}
 ,
     options: {
@@ -70478,7 +71051,7 @@ names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: num
   {
 id?: URL | null;
 href?: URL | null;rel?: string | null;
-rels?: (string)[];mediaType?: string | null;name?: string | LanguageString | null;
+rels?: (string)[];mediaType?: string | null;digestMultibase?: string | null;name?: string | LanguageString | null;
 names?: ((string | LanguageString))[];language?: Intl.Locale | null;height?: number | null;width?: number | null;previews?: (Link | Object | URL)[];}
 
     = {},
@@ -73187,7 +73760,8 @@ export class Organization extends Object {
     
       #_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod: (Multikey | URL)[] = [];
       #_trust_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod: Set<number> = new Set();
-    #_36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers: (boolean)[] = [];
+    #_hQiaHhZP8hqxckxTBrpsGNs57E3: (URL)[] = [];
+#_36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers: (boolean)[] = [];
 
       #_3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox: (OrderedCollection | OrderedCollectionPage | URL)[] = [];
       #_trust_3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox: Set<number> = new Set();
@@ -73260,7 +73834,8 @@ bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration |
 proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;preferredUsername?: string | LanguageString | null;
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
-assertionMethods?: (Multikey | URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
+assertionMethods?: (Multikey | URL)[];gateway?: URL | null;
+gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
 aliases?: (Application | Group | Organization | Person | Service | URL)[];service?: DidService | URL | null;
 services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | null;}
 ,
@@ -73383,6 +73958,42 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
             throw new TypeError(
               "The assertionMethods must be an array of type " +
               "Multikey | URL" + ".",
+            );
+          }
+        }
+      
+        if ("gateway" in values &&             values.gateway != null) {
+          if (values.gateway instanceof URL) {
+            // @ts-ignore: type is checked above.
+            this.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = [values.gateway];
+      
+          } else {
+            throw new TypeError(
+              "The gateway must be of type " +
+              "URL" + ".",
+            );
+          }
+        }
+      
+        if ("gateways" in values &&             values.gateways != null) {
+      
+          if ("gateway" in values &&
+              values.gateway != null) {
+            throw new TypeError(
+              "Cannot initialize both gateway and " +
+                "gateways at the same time.",
+            );
+          }
+        
+          if (Array.isArray(values.gateways) &&
+              values.gateways.every(v => v instanceof URL)) {
+            // @ts-ignore: type is checked above.
+            this.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = values.gateways;
+      
+          } else {
+            throw new TypeError(
+              "The gateways must be an array of type " +
+              "URL" + ".",
             );
           }
         }
@@ -73737,7 +74348,8 @@ bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration |
 proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;preferredUsername?: string | LanguageString | null;
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
-assertionMethods?: (Multikey | URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
+assertionMethods?: (Multikey | URL)[];gateway?: URL | null;
+gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
 aliases?: (Application | Group | Organization | Person | Service | URL)[];service?: DidService | URL | null;
 services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | null;}
 
@@ -73870,6 +74482,42 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
             throw new TypeError(
               "The assertionMethods must be an array of type " +
               "Multikey | URL" + ".",
+            );
+          }
+        }
+      clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = this.#_hQiaHhZP8hqxckxTBrpsGNs57E3;
+        if ("gateway" in values &&             values.gateway != null) {
+          if (values.gateway instanceof URL) {
+            // @ts-ignore: type is checked above.
+            clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = [values.gateway];
+      
+          } else {
+            throw new TypeError(
+              "The gateway must be of type " +
+              "URL" + ".",
+            );
+          }
+        }
+      
+        if ("gateways" in values &&             values.gateways != null) {
+      
+          if ("gateway" in values &&
+              values.gateway != null) {
+            throw new TypeError(
+              "Cannot update both gateway and " +
+                "gateways at the same time.",
+            );
+          }
+        
+          if (Array.isArray(values.gateways) &&
+              values.gateways.every(v => v instanceof URL)) {
+            // @ts-ignore: type is checked above.
+            clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = values.gateways;
+      
+          } else {
+            throw new TypeError(
+              "The gateways must be an array of type " +
+              "URL" + ".",
             );
           }
         }
@@ -74893,6 +75541,33 @@ get preferredUsernames(): ((string | LanguageString))[] {
           }
           yield v;
         }
+      }
+      
+/** Gateways where the latest version of this portable actor object can be
+ * retrieved.
+ * 
+ * See [FEP-ef61](https://w3id.org/fep/ef61) for details.
+ * 
+ */
+ get gateway(): (URL | null) {
+        if (this._warning != null) {
+          getLogger(this._warning.category).warn(
+            this._warning.message,
+            this._warning.values
+          );
+        }
+        if (this.#_hQiaHhZP8hqxckxTBrpsGNs57E3.length < 1) return null;
+        return this.#_hQiaHhZP8hqxckxTBrpsGNs57E3[0];
+      }
+      
+/** Gateways where the latest version of this portable actor object can be
+ * retrieved.
+ * 
+ * See [FEP-ef61](https://w3id.org/fep/ef61) for details.
+ * 
+ */
+get gateways(): (URL)[] {
+        return this.#_hQiaHhZP8hqxckxTBrpsGNs57E3;
       }
       
 /** When \`true\`, conveys that for this actor, follow requests are not usually
@@ -78204,6 +78879,19 @@ get preferredUsernames(): ((string | LanguageString))[] {
       }
       
       compactItems = [];
+      for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
+        const item = (
+      formatIri(v)
+        );
+        compactItems.push(item);
+      }
+      if (compactItems.length > 0) {
+      
+        result["gateways"] = compactItems;
+        
+      }
+      
+      compactItems = [];
       for (const v of this.#_36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers) {
         const item = (
       v
@@ -78617,7 +79305,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       result["type"] = "Organization";
       if (this.id != null) result["id"] = formatIri(this.id);
-      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/v1","https://w3id.org/security/data-integrity/v1","https://www.w3.org/ns/did/v1","https://w3id.org/security/multikey/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"alsoKnownAs":{"@id":"as:alsoKnownAs","@type":"@id"},"featuredCollections":{"@id":"https://w3id.org/fep/7aa9#featuredCollections","@type":"@id"},"manuallyApprovesFollowers":"as:manuallyApprovesFollowers","movedTo":{"@id":"as:movedTo","@type":"@id"},"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji","featured":{"@id":"toot:featured","@type":"@id"},"featuredTags":{"@id":"toot:featuredTags","@type":"@id"},"discoverable":"toot:discoverable","suspended":"toot:suspended","memorial":"toot:memorial","indexable":"toot:indexable","schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value","misskey":"https://misskey-hub.net/ns#","_misskey_followedMessage":"misskey:_misskey_followedMessage","isCat":"misskey:isCat"}];
+      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/fep/ef61","https://w3id.org/security/v1","https://w3id.org/security/data-integrity/v1","https://www.w3.org/ns/did/v1","https://w3id.org/security/multikey/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"alsoKnownAs":{"@id":"as:alsoKnownAs","@type":"@id"},"featuredCollections":{"@id":"https://w3id.org/fep/7aa9#featuredCollections","@type":"@id"},"manuallyApprovesFollowers":"as:manuallyApprovesFollowers","movedTo":{"@id":"as:movedTo","@type":"@id"},"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji","featured":{"@id":"toot:featured","@type":"@id"},"featuredTags":{"@id":"toot:featuredTags","@type":"@id"},"discoverable":"toot:discoverable","suspended":"toot:suspended","memorial":"toot:memorial","indexable":"toot:indexable","schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value","misskey":"https://misskey-hub.net/ns#","_misskey_followedMessage":"misskey:_misskey_followedMessage","isCat":"misskey:isCat"}];
       return result;
     }
     
@@ -78679,6 +79367,21 @@ get preferredUsernames(): ((string | LanguageString))[] {
     array
       );
       values["https://w3id.org/security#assertionMethod"] = propValue;
+    
+    }
+    
+    array = [];
+    for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
+      const element = (
+    { "@value": formatIri(v) }
+      );
+    array.push(element);;
+    }
+    if (array.length > 0) {
+      const propValue = (
+    { "@list": array }
+      );
+      values["https://w3id.org/fep/ef61/gateways"] = propValue;
     
     }
     
@@ -78991,7 +79694,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       );
     }
     const docContext = options.context ??
-      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/v1","https://w3id.org/security/data-integrity/v1","https://www.w3.org/ns/did/v1","https://w3id.org/security/multikey/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"alsoKnownAs":{"@id":"as:alsoKnownAs","@type":"@id"},"featuredCollections":{"@id":"https://w3id.org/fep/7aa9#featuredCollections","@type":"@id"},"manuallyApprovesFollowers":"as:manuallyApprovesFollowers","movedTo":{"@id":"as:movedTo","@type":"@id"},"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji","featured":{"@id":"toot:featured","@type":"@id"},"featuredTags":{"@id":"toot:featuredTags","@type":"@id"},"discoverable":"toot:discoverable","suspended":"toot:suspended","memorial":"toot:memorial","indexable":"toot:indexable","schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value","misskey":"https://misskey-hub.net/ns#","_misskey_followedMessage":"misskey:_misskey_followedMessage","isCat":"misskey:isCat"}];
+      ["https://www.w3.org/ns/activitystreams","https://w3id.org/fep/ef61","https://w3id.org/security/v1","https://w3id.org/security/data-integrity/v1","https://www.w3.org/ns/did/v1","https://w3id.org/security/multikey/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"alsoKnownAs":{"@id":"as:alsoKnownAs","@type":"@id"},"featuredCollections":{"@id":"https://w3id.org/fep/7aa9#featuredCollections","@type":"@id"},"manuallyApprovesFollowers":"as:manuallyApprovesFollowers","movedTo":{"@id":"as:movedTo","@type":"@id"},"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji","featured":{"@id":"toot:featured","@type":"@id"},"featuredTags":{"@id":"toot:featuredTags","@type":"@id"},"discoverable":"toot:discoverable","suspended":"toot:suspended","memorial":"toot:memorial","indexable":"toot:indexable","schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value","misskey":"https://misskey-hub.net/ns#","_misskey_followedMessage":"misskey:_misskey_followedMessage","isCat":"misskey:isCat"}];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -79233,6 +79936,24 @@ get preferredUsernames(): ((string | LanguageString))[] {
       _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.push(decoded);
     }
     instance.#_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod = _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod;
+    const _hQiaHhZP8hqxckxTBrpsGNs57E3: (URL)[] = [];
+
+    let _hQiaHhZP8hqxckxTBrpsGNs57E3__array = values["https://w3id.org/fep/ef61/gateways"];
+    
+    for (
+      const v of _hQiaHhZP8hqxckxTBrpsGNs57E3__array == null
+        ? []
+        : _hQiaHhZP8hqxckxTBrpsGNs57E3__array.length === 1 && "@list" in _hQiaHhZP8hqxckxTBrpsGNs57E3__array[0]
+        ? _hQiaHhZP8hqxckxTBrpsGNs57E3__array[0]["@list"]
+        : _hQiaHhZP8hqxckxTBrpsGNs57E3__array
+    ) {
+      if (v == null) continue;
+    
+      const decoded = parseIri(v["@value"]);
+      if (typeof decoded === "undefined") continue;
+      _hQiaHhZP8hqxckxTBrpsGNs57E3.push(decoded);
+    }
+    instance.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = _hQiaHhZP8hqxckxTBrpsGNs57E3;
     const _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers: (boolean)[] = [];
 
     let _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers__array = values["https://www.w3.org/ns/activitystreams#manuallyApprovesFollowers"];
@@ -79904,6 +80625,32 @@ get preferredUsernames(): ((string | LanguageString))[] {
         proxy.assertionMethods = _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod;
       }
       
+      const _hQiaHhZP8hqxckxTBrpsGNs57E3 = this.#_hQiaHhZP8hqxckxTBrpsGNs57E3
+        // deno-lint-ignore no-explicit-any
+        .map((v: any) => v instanceof URL
+          ? {
+              [Symbol.for("Deno.customInspect")]: (
+                inspect: typeof Deno.inspect,
+                options: Deno.InspectOptions,
+              ): string => "URL " + inspect(v.href, options),
+              [Symbol.for("nodejs.util.inspect.custom")]: (
+                _depth: number,
+                options: unknown,
+                inspect: (value: unknown, options: unknown) => string,
+              ): string => "URL " + inspect(v.href, options),
+            }
+          : v);
+    
+      if (_hQiaHhZP8hqxckxTBrpsGNs57E3.length == 1) {
+        proxy.gateway = _hQiaHhZP8hqxckxTBrpsGNs57E3[0];
+      }
+      
+      if (_hQiaHhZP8hqxckxTBrpsGNs57E3.length > 1
+          || !("gateway" in proxy)
+          && _hQiaHhZP8hqxckxTBrpsGNs57E3.length > 0) {
+        proxy.gateways = _hQiaHhZP8hqxckxTBrpsGNs57E3;
+      }
+      
       const _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers = this.#_36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers
         // deno-lint-ignore no-explicit-any
         .map((v: any) => v instanceof URL
@@ -80381,7 +81128,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;digestMultibase?: string | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -80417,7 +81164,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;digestMultibase?: string | null;}
 
     = {},
     options: {
@@ -80479,7 +81226,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
       result["type"] = "Page";
       if (this.id != null) result["id"] = formatIri(this.id);
-      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1","https://gotosocial.org/ns"];
+      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2","https://w3id.org/fep/ef61","https://gotosocial.org/ns"];
       return result;
     }
     
@@ -80505,7 +81252,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       );
     }
     const docContext = options.context ??
-      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1","https://gotosocial.org/ns"];
+      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2","https://w3id.org/fep/ef61","https://gotosocial.org/ns"];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -80725,7 +81472,8 @@ export class Person extends Object {
     
       #_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod: (Multikey | URL)[] = [];
       #_trust_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod: Set<number> = new Set();
-    #_36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers: (boolean)[] = [];
+    #_hQiaHhZP8hqxckxTBrpsGNs57E3: (URL)[] = [];
+#_36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers: (boolean)[] = [];
 
       #_3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox: (OrderedCollection | OrderedCollectionPage | URL)[] = [];
       #_trust_3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox: Set<number> = new Set();
@@ -80798,7 +81546,8 @@ bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration |
 proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;preferredUsername?: string | LanguageString | null;
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
-assertionMethods?: (Multikey | URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
+assertionMethods?: (Multikey | URL)[];gateway?: URL | null;
+gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
 aliases?: (Application | Group | Organization | Person | Service | URL)[];service?: DidService | URL | null;
 services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | null;}
 ,
@@ -80921,6 +81670,42 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
             throw new TypeError(
               "The assertionMethods must be an array of type " +
               "Multikey | URL" + ".",
+            );
+          }
+        }
+      
+        if ("gateway" in values &&             values.gateway != null) {
+          if (values.gateway instanceof URL) {
+            // @ts-ignore: type is checked above.
+            this.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = [values.gateway];
+      
+          } else {
+            throw new TypeError(
+              "The gateway must be of type " +
+              "URL" + ".",
+            );
+          }
+        }
+      
+        if ("gateways" in values &&             values.gateways != null) {
+      
+          if ("gateway" in values &&
+              values.gateway != null) {
+            throw new TypeError(
+              "Cannot initialize both gateway and " +
+                "gateways at the same time.",
+            );
+          }
+        
+          if (Array.isArray(values.gateways) &&
+              values.gateways.every(v => v instanceof URL)) {
+            // @ts-ignore: type is checked above.
+            this.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = values.gateways;
+      
+          } else {
+            throw new TypeError(
+              "The gateways must be an array of type " +
+              "URL" + ".",
             );
           }
         }
@@ -81275,7 +82060,8 @@ bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration |
 proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;preferredUsername?: string | LanguageString | null;
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
-assertionMethods?: (Multikey | URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
+assertionMethods?: (Multikey | URL)[];gateway?: URL | null;
+gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
 aliases?: (Application | Group | Organization | Person | Service | URL)[];service?: DidService | URL | null;
 services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | null;}
 
@@ -81408,6 +82194,42 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
             throw new TypeError(
               "The assertionMethods must be an array of type " +
               "Multikey | URL" + ".",
+            );
+          }
+        }
+      clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = this.#_hQiaHhZP8hqxckxTBrpsGNs57E3;
+        if ("gateway" in values &&             values.gateway != null) {
+          if (values.gateway instanceof URL) {
+            // @ts-ignore: type is checked above.
+            clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = [values.gateway];
+      
+          } else {
+            throw new TypeError(
+              "The gateway must be of type " +
+              "URL" + ".",
+            );
+          }
+        }
+      
+        if ("gateways" in values &&             values.gateways != null) {
+      
+          if ("gateway" in values &&
+              values.gateway != null) {
+            throw new TypeError(
+              "Cannot update both gateway and " +
+                "gateways at the same time.",
+            );
+          }
+        
+          if (Array.isArray(values.gateways) &&
+              values.gateways.every(v => v instanceof URL)) {
+            // @ts-ignore: type is checked above.
+            clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = values.gateways;
+      
+          } else {
+            throw new TypeError(
+              "The gateways must be an array of type " +
+              "URL" + ".",
             );
           }
         }
@@ -82431,6 +83253,33 @@ get preferredUsernames(): ((string | LanguageString))[] {
           }
           yield v;
         }
+      }
+      
+/** Gateways where the latest version of this portable actor object can be
+ * retrieved.
+ * 
+ * See [FEP-ef61](https://w3id.org/fep/ef61) for details.
+ * 
+ */
+ get gateway(): (URL | null) {
+        if (this._warning != null) {
+          getLogger(this._warning.category).warn(
+            this._warning.message,
+            this._warning.values
+          );
+        }
+        if (this.#_hQiaHhZP8hqxckxTBrpsGNs57E3.length < 1) return null;
+        return this.#_hQiaHhZP8hqxckxTBrpsGNs57E3[0];
+      }
+      
+/** Gateways where the latest version of this portable actor object can be
+ * retrieved.
+ * 
+ * See [FEP-ef61](https://w3id.org/fep/ef61) for details.
+ * 
+ */
+get gateways(): (URL)[] {
+        return this.#_hQiaHhZP8hqxckxTBrpsGNs57E3;
       }
       
 /** When \`true\`, conveys that for this actor, follow requests are not usually
@@ -85742,6 +86591,19 @@ get preferredUsernames(): ((string | LanguageString))[] {
       }
       
       compactItems = [];
+      for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
+        const item = (
+      formatIri(v)
+        );
+        compactItems.push(item);
+      }
+      if (compactItems.length > 0) {
+      
+        result["gateways"] = compactItems;
+        
+      }
+      
+      compactItems = [];
       for (const v of this.#_36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers) {
         const item = (
       v
@@ -86155,7 +87017,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       result["type"] = "Person";
       if (this.id != null) result["id"] = formatIri(this.id);
-      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/v1","https://w3id.org/security/data-integrity/v1","https://www.w3.org/ns/did/v1","https://w3id.org/security/multikey/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"alsoKnownAs":{"@id":"as:alsoKnownAs","@type":"@id"},"featuredCollections":{"@id":"https://w3id.org/fep/7aa9#featuredCollections","@type":"@id"},"manuallyApprovesFollowers":"as:manuallyApprovesFollowers","movedTo":{"@id":"as:movedTo","@type":"@id"},"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji","featured":{"@id":"toot:featured","@type":"@id"},"featuredTags":{"@id":"toot:featuredTags","@type":"@id"},"discoverable":"toot:discoverable","suspended":"toot:suspended","memorial":"toot:memorial","indexable":"toot:indexable","schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value","misskey":"https://misskey-hub.net/ns#","_misskey_followedMessage":"misskey:_misskey_followedMessage","isCat":"misskey:isCat"}];
+      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/fep/ef61","https://w3id.org/security/v1","https://w3id.org/security/data-integrity/v1","https://www.w3.org/ns/did/v1","https://w3id.org/security/multikey/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"alsoKnownAs":{"@id":"as:alsoKnownAs","@type":"@id"},"featuredCollections":{"@id":"https://w3id.org/fep/7aa9#featuredCollections","@type":"@id"},"manuallyApprovesFollowers":"as:manuallyApprovesFollowers","movedTo":{"@id":"as:movedTo","@type":"@id"},"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji","featured":{"@id":"toot:featured","@type":"@id"},"featuredTags":{"@id":"toot:featuredTags","@type":"@id"},"discoverable":"toot:discoverable","suspended":"toot:suspended","memorial":"toot:memorial","indexable":"toot:indexable","schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value","misskey":"https://misskey-hub.net/ns#","_misskey_followedMessage":"misskey:_misskey_followedMessage","isCat":"misskey:isCat"}];
       return result;
     }
     
@@ -86217,6 +87079,21 @@ get preferredUsernames(): ((string | LanguageString))[] {
     array
       );
       values["https://w3id.org/security#assertionMethod"] = propValue;
+    
+    }
+    
+    array = [];
+    for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
+      const element = (
+    { "@value": formatIri(v) }
+      );
+    array.push(element);;
+    }
+    if (array.length > 0) {
+      const propValue = (
+    { "@list": array }
+      );
+      values["https://w3id.org/fep/ef61/gateways"] = propValue;
     
     }
     
@@ -86529,7 +87406,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       );
     }
     const docContext = options.context ??
-      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/v1","https://w3id.org/security/data-integrity/v1","https://www.w3.org/ns/did/v1","https://w3id.org/security/multikey/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"alsoKnownAs":{"@id":"as:alsoKnownAs","@type":"@id"},"featuredCollections":{"@id":"https://w3id.org/fep/7aa9#featuredCollections","@type":"@id"},"manuallyApprovesFollowers":"as:manuallyApprovesFollowers","movedTo":{"@id":"as:movedTo","@type":"@id"},"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji","featured":{"@id":"toot:featured","@type":"@id"},"featuredTags":{"@id":"toot:featuredTags","@type":"@id"},"discoverable":"toot:discoverable","suspended":"toot:suspended","memorial":"toot:memorial","indexable":"toot:indexable","schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value","misskey":"https://misskey-hub.net/ns#","_misskey_followedMessage":"misskey:_misskey_followedMessage","isCat":"misskey:isCat"}];
+      ["https://www.w3.org/ns/activitystreams","https://w3id.org/fep/ef61","https://w3id.org/security/v1","https://w3id.org/security/data-integrity/v1","https://www.w3.org/ns/did/v1","https://w3id.org/security/multikey/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"alsoKnownAs":{"@id":"as:alsoKnownAs","@type":"@id"},"featuredCollections":{"@id":"https://w3id.org/fep/7aa9#featuredCollections","@type":"@id"},"manuallyApprovesFollowers":"as:manuallyApprovesFollowers","movedTo":{"@id":"as:movedTo","@type":"@id"},"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji","featured":{"@id":"toot:featured","@type":"@id"},"featuredTags":{"@id":"toot:featuredTags","@type":"@id"},"discoverable":"toot:discoverable","suspended":"toot:suspended","memorial":"toot:memorial","indexable":"toot:indexable","schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value","misskey":"https://misskey-hub.net/ns#","_misskey_followedMessage":"misskey:_misskey_followedMessage","isCat":"misskey:isCat"}];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -86771,6 +87648,24 @@ get preferredUsernames(): ((string | LanguageString))[] {
       _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.push(decoded);
     }
     instance.#_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod = _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod;
+    const _hQiaHhZP8hqxckxTBrpsGNs57E3: (URL)[] = [];
+
+    let _hQiaHhZP8hqxckxTBrpsGNs57E3__array = values["https://w3id.org/fep/ef61/gateways"];
+    
+    for (
+      const v of _hQiaHhZP8hqxckxTBrpsGNs57E3__array == null
+        ? []
+        : _hQiaHhZP8hqxckxTBrpsGNs57E3__array.length === 1 && "@list" in _hQiaHhZP8hqxckxTBrpsGNs57E3__array[0]
+        ? _hQiaHhZP8hqxckxTBrpsGNs57E3__array[0]["@list"]
+        : _hQiaHhZP8hqxckxTBrpsGNs57E3__array
+    ) {
+      if (v == null) continue;
+    
+      const decoded = parseIri(v["@value"]);
+      if (typeof decoded === "undefined") continue;
+      _hQiaHhZP8hqxckxTBrpsGNs57E3.push(decoded);
+    }
+    instance.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = _hQiaHhZP8hqxckxTBrpsGNs57E3;
     const _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers: (boolean)[] = [];
 
     let _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers__array = values["https://www.w3.org/ns/activitystreams#manuallyApprovesFollowers"];
@@ -87440,6 +88335,32 @@ get preferredUsernames(): ((string | LanguageString))[] {
           || !("assertionMethod" in proxy)
           && _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.length > 0) {
         proxy.assertionMethods = _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod;
+      }
+      
+      const _hQiaHhZP8hqxckxTBrpsGNs57E3 = this.#_hQiaHhZP8hqxckxTBrpsGNs57E3
+        // deno-lint-ignore no-explicit-any
+        .map((v: any) => v instanceof URL
+          ? {
+              [Symbol.for("Deno.customInspect")]: (
+                inspect: typeof Deno.inspect,
+                options: Deno.InspectOptions,
+              ): string => "URL " + inspect(v.href, options),
+              [Symbol.for("nodejs.util.inspect.custom")]: (
+                _depth: number,
+                options: unknown,
+                inspect: (value: unknown, options: unknown) => string,
+              ): string => "URL " + inspect(v.href, options),
+            }
+          : v);
+    
+      if (_hQiaHhZP8hqxckxTBrpsGNs57E3.length == 1) {
+        proxy.gateway = _hQiaHhZP8hqxckxTBrpsGNs57E3[0];
+      }
+      
+      if (_hQiaHhZP8hqxckxTBrpsGNs57E3.length > 1
+          || !("gateway" in proxy)
+          && _hQiaHhZP8hqxckxTBrpsGNs57E3.length > 0) {
+        proxy.gateways = _hQiaHhZP8hqxckxTBrpsGNs57E3;
       }
       
       const _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers = this.#_36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers
@@ -94501,7 +95422,8 @@ export class Service extends Object {
     
       #_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod: (Multikey | URL)[] = [];
       #_trust_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod: Set<number> = new Set();
-    #_36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers: (boolean)[] = [];
+    #_hQiaHhZP8hqxckxTBrpsGNs57E3: (URL)[] = [];
+#_36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers: (boolean)[] = [];
 
       #_3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox: (OrderedCollection | OrderedCollectionPage | URL)[] = [];
       #_trust_3ghX3VfZXXbLvhCRH7QJqpzLrXjB_inbox: Set<number> = new Set();
@@ -94574,7 +95496,8 @@ bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration |
 proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;preferredUsername?: string | LanguageString | null;
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
-assertionMethods?: (Multikey | URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
+assertionMethods?: (Multikey | URL)[];gateway?: URL | null;
+gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
 aliases?: (Application | Group | Organization | Person | Service | URL)[];service?: DidService | URL | null;
 services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | null;}
 ,
@@ -94697,6 +95620,42 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
             throw new TypeError(
               "The assertionMethods must be an array of type " +
               "Multikey | URL" + ".",
+            );
+          }
+        }
+      
+        if ("gateway" in values &&             values.gateway != null) {
+          if (values.gateway instanceof URL) {
+            // @ts-ignore: type is checked above.
+            this.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = [values.gateway];
+      
+          } else {
+            throw new TypeError(
+              "The gateway must be of type " +
+              "URL" + ".",
+            );
+          }
+        }
+      
+        if ("gateways" in values &&             values.gateways != null) {
+      
+          if ("gateway" in values &&
+              values.gateway != null) {
+            throw new TypeError(
+              "Cannot initialize both gateway and " +
+                "gateways at the same time.",
+            );
+          }
+        
+          if (Array.isArray(values.gateways) &&
+              values.gateways.every(v => v instanceof URL)) {
+            // @ts-ignore: type is checked above.
+            this.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = values.gateways;
+      
+          } else {
+            throw new TypeError(
+              "The gateways must be an array of type " +
+              "URL" + ".",
             );
           }
         }
@@ -95051,7 +96010,8 @@ bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration |
 proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;preferredUsername?: string | LanguageString | null;
 preferredUsernames?: ((string | LanguageString))[];publicKey?: CryptographicKey | URL | null;
 publicKeys?: (CryptographicKey | URL)[];assertionMethod?: Multikey | URL | null;
-assertionMethods?: (Multikey | URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
+assertionMethods?: (Multikey | URL)[];gateway?: URL | null;
+gateways?: (URL)[];manuallyApprovesFollowers?: boolean | null;inbox?: OrderedCollection | OrderedCollectionPage | URL | null;outbox?: OrderedCollection | OrderedCollectionPage | URL | null;following?: Collection | URL | null;followers?: Collection | URL | null;liked?: Collection | URL | null;featured?: Collection | URL | null;featuredTags?: Collection | URL | null;featuredCollections?: Collection | URL | null;streams?: (Collection | URL)[];endpoints?: Endpoints | null;discoverable?: boolean | null;suspended?: boolean | null;memorial?: boolean | null;indexable?: boolean | null;successor?: Application | Group | Organization | Person | Service | URL | null;alias?: Application | Group | Organization | Person | Service | URL | null;
 aliases?: (Application | Group | Organization | Person | Service | URL)[];service?: DidService | URL | null;
 services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | null;}
 
@@ -95184,6 +96144,42 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
             throw new TypeError(
               "The assertionMethods must be an array of type " +
               "Multikey | URL" + ".",
+            );
+          }
+        }
+      clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = this.#_hQiaHhZP8hqxckxTBrpsGNs57E3;
+        if ("gateway" in values &&             values.gateway != null) {
+          if (values.gateway instanceof URL) {
+            // @ts-ignore: type is checked above.
+            clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = [values.gateway];
+      
+          } else {
+            throw new TypeError(
+              "The gateway must be of type " +
+              "URL" + ".",
+            );
+          }
+        }
+      
+        if ("gateways" in values &&             values.gateways != null) {
+      
+          if ("gateway" in values &&
+              values.gateway != null) {
+            throw new TypeError(
+              "Cannot update both gateway and " +
+                "gateways at the same time.",
+            );
+          }
+        
+          if (Array.isArray(values.gateways) &&
+              values.gateways.every(v => v instanceof URL)) {
+            // @ts-ignore: type is checked above.
+            clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = values.gateways;
+      
+          } else {
+            throw new TypeError(
+              "The gateways must be an array of type " +
+              "URL" + ".",
             );
           }
         }
@@ -96207,6 +97203,33 @@ get preferredUsernames(): ((string | LanguageString))[] {
           }
           yield v;
         }
+      }
+      
+/** Gateways where the latest version of this portable actor object can be
+ * retrieved.
+ * 
+ * See [FEP-ef61](https://w3id.org/fep/ef61) for details.
+ * 
+ */
+ get gateway(): (URL | null) {
+        if (this._warning != null) {
+          getLogger(this._warning.category).warn(
+            this._warning.message,
+            this._warning.values
+          );
+        }
+        if (this.#_hQiaHhZP8hqxckxTBrpsGNs57E3.length < 1) return null;
+        return this.#_hQiaHhZP8hqxckxTBrpsGNs57E3[0];
+      }
+      
+/** Gateways where the latest version of this portable actor object can be
+ * retrieved.
+ * 
+ * See [FEP-ef61](https://w3id.org/fep/ef61) for details.
+ * 
+ */
+get gateways(): (URL)[] {
+        return this.#_hQiaHhZP8hqxckxTBrpsGNs57E3;
       }
       
 /** When \`true\`, conveys that for this actor, follow requests are not usually
@@ -99518,6 +100541,19 @@ get preferredUsernames(): ((string | LanguageString))[] {
       }
       
       compactItems = [];
+      for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
+        const item = (
+      formatIri(v)
+        );
+        compactItems.push(item);
+      }
+      if (compactItems.length > 0) {
+      
+        result["gateways"] = compactItems;
+        
+      }
+      
+      compactItems = [];
       for (const v of this.#_36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers) {
         const item = (
       v
@@ -99931,7 +100967,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       
       result["type"] = "Service";
       if (this.id != null) result["id"] = formatIri(this.id);
-      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/v1","https://w3id.org/security/data-integrity/v1","https://www.w3.org/ns/did/v1","https://w3id.org/security/multikey/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"alsoKnownAs":{"@id":"as:alsoKnownAs","@type":"@id"},"featuredCollections":{"@id":"https://w3id.org/fep/7aa9#featuredCollections","@type":"@id"},"manuallyApprovesFollowers":"as:manuallyApprovesFollowers","movedTo":{"@id":"as:movedTo","@type":"@id"},"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji","featured":{"@id":"toot:featured","@type":"@id"},"featuredTags":{"@id":"toot:featuredTags","@type":"@id"},"discoverable":"toot:discoverable","suspended":"toot:suspended","memorial":"toot:memorial","indexable":"toot:indexable","schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value","misskey":"https://misskey-hub.net/ns#","_misskey_followedMessage":"misskey:_misskey_followedMessage","isCat":"misskey:isCat"}];
+      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/fep/ef61","https://w3id.org/security/v1","https://w3id.org/security/data-integrity/v1","https://www.w3.org/ns/did/v1","https://w3id.org/security/multikey/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"alsoKnownAs":{"@id":"as:alsoKnownAs","@type":"@id"},"featuredCollections":{"@id":"https://w3id.org/fep/7aa9#featuredCollections","@type":"@id"},"manuallyApprovesFollowers":"as:manuallyApprovesFollowers","movedTo":{"@id":"as:movedTo","@type":"@id"},"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji","featured":{"@id":"toot:featured","@type":"@id"},"featuredTags":{"@id":"toot:featuredTags","@type":"@id"},"discoverable":"toot:discoverable","suspended":"toot:suspended","memorial":"toot:memorial","indexable":"toot:indexable","schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value","misskey":"https://misskey-hub.net/ns#","_misskey_followedMessage":"misskey:_misskey_followedMessage","isCat":"misskey:isCat"}];
       return result;
     }
     
@@ -99993,6 +101029,21 @@ get preferredUsernames(): ((string | LanguageString))[] {
     array
       );
       values["https://w3id.org/security#assertionMethod"] = propValue;
+    
+    }
+    
+    array = [];
+    for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
+      const element = (
+    { "@value": formatIri(v) }
+      );
+    array.push(element);;
+    }
+    if (array.length > 0) {
+      const propValue = (
+    { "@list": array }
+      );
+      values["https://w3id.org/fep/ef61/gateways"] = propValue;
     
     }
     
@@ -100305,7 +101356,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
       );
     }
     const docContext = options.context ??
-      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/v1","https://w3id.org/security/data-integrity/v1","https://www.w3.org/ns/did/v1","https://w3id.org/security/multikey/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"alsoKnownAs":{"@id":"as:alsoKnownAs","@type":"@id"},"featuredCollections":{"@id":"https://w3id.org/fep/7aa9#featuredCollections","@type":"@id"},"manuallyApprovesFollowers":"as:manuallyApprovesFollowers","movedTo":{"@id":"as:movedTo","@type":"@id"},"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji","featured":{"@id":"toot:featured","@type":"@id"},"featuredTags":{"@id":"toot:featuredTags","@type":"@id"},"discoverable":"toot:discoverable","suspended":"toot:suspended","memorial":"toot:memorial","indexable":"toot:indexable","schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value","misskey":"https://misskey-hub.net/ns#","_misskey_followedMessage":"misskey:_misskey_followedMessage","isCat":"misskey:isCat"}];
+      ["https://www.w3.org/ns/activitystreams","https://w3id.org/fep/ef61","https://w3id.org/security/v1","https://w3id.org/security/data-integrity/v1","https://www.w3.org/ns/did/v1","https://w3id.org/security/multikey/v1","https://gotosocial.org/ns","https://w3id.org/fep/7aa9",{"alsoKnownAs":{"@id":"as:alsoKnownAs","@type":"@id"},"featuredCollections":{"@id":"https://w3id.org/fep/7aa9#featuredCollections","@type":"@id"},"manuallyApprovesFollowers":"as:manuallyApprovesFollowers","movedTo":{"@id":"as:movedTo","@type":"@id"},"toot":"http://joinmastodon.org/ns#","Emoji":"toot:Emoji","featured":{"@id":"toot:featured","@type":"@id"},"featuredTags":{"@id":"toot:featuredTags","@type":"@id"},"discoverable":"toot:discoverable","suspended":"toot:suspended","memorial":"toot:memorial","indexable":"toot:indexable","schema":"http://schema.org#","PropertyValue":"schema:PropertyValue","value":"schema:value","misskey":"https://misskey-hub.net/ns#","_misskey_followedMessage":"misskey:_misskey_followedMessage","isCat":"misskey:isCat"}];
     const compacted = await jsonld.compact(
       values,
       docContext,
@@ -100547,6 +101598,24 @@ get preferredUsernames(): ((string | LanguageString))[] {
       _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.push(decoded);
     }
     instance.#_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod = _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod;
+    const _hQiaHhZP8hqxckxTBrpsGNs57E3: (URL)[] = [];
+
+    let _hQiaHhZP8hqxckxTBrpsGNs57E3__array = values["https://w3id.org/fep/ef61/gateways"];
+    
+    for (
+      const v of _hQiaHhZP8hqxckxTBrpsGNs57E3__array == null
+        ? []
+        : _hQiaHhZP8hqxckxTBrpsGNs57E3__array.length === 1 && "@list" in _hQiaHhZP8hqxckxTBrpsGNs57E3__array[0]
+        ? _hQiaHhZP8hqxckxTBrpsGNs57E3__array[0]["@list"]
+        : _hQiaHhZP8hqxckxTBrpsGNs57E3__array
+    ) {
+      if (v == null) continue;
+    
+      const decoded = parseIri(v["@value"]);
+      if (typeof decoded === "undefined") continue;
+      _hQiaHhZP8hqxckxTBrpsGNs57E3.push(decoded);
+    }
+    instance.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = _hQiaHhZP8hqxckxTBrpsGNs57E3;
     const _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers: (boolean)[] = [];
 
     let _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers__array = values["https://www.w3.org/ns/activitystreams#manuallyApprovesFollowers"];
@@ -101216,6 +102285,32 @@ get preferredUsernames(): ((string | LanguageString))[] {
           || !("assertionMethod" in proxy)
           && _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod.length > 0) {
         proxy.assertionMethods = _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod;
+      }
+      
+      const _hQiaHhZP8hqxckxTBrpsGNs57E3 = this.#_hQiaHhZP8hqxckxTBrpsGNs57E3
+        // deno-lint-ignore no-explicit-any
+        .map((v: any) => v instanceof URL
+          ? {
+              [Symbol.for("Deno.customInspect")]: (
+                inspect: typeof Deno.inspect,
+                options: Deno.InspectOptions,
+              ): string => "URL " + inspect(v.href, options),
+              [Symbol.for("nodejs.util.inspect.custom")]: (
+                _depth: number,
+                options: unknown,
+                inspect: (value: unknown, options: unknown) => string,
+              ): string => "URL " + inspect(v.href, options),
+            }
+          : v);
+    
+      if (_hQiaHhZP8hqxckxTBrpsGNs57E3.length == 1) {
+        proxy.gateway = _hQiaHhZP8hqxckxTBrpsGNs57E3[0];
+      }
+      
+      if (_hQiaHhZP8hqxckxTBrpsGNs57E3.length > 1
+          || !("gateway" in proxy)
+          && _hQiaHhZP8hqxckxTBrpsGNs57E3.length > 0) {
+        proxy.gateways = _hQiaHhZP8hqxckxTBrpsGNs57E3;
       }
       
       const _36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers = this.#_36QNc9MxfkKf6h8sEUQSHnV9NZA_manuallyApprovesFollowers
@@ -104859,7 +105954,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;digestMultibase?: string | null;}
 ,
     options: {
       documentLoader?: DocumentLoader,
@@ -104895,7 +105990,7 @@ tos?: (Object | URL)[];bto?: Object | URL | null;
 btos?: (Object | URL)[];cc?: Object | URL | null;
 ccs?: (Object | URL)[];bcc?: Object | URL | null;
 bccs?: (Object | URL)[];mediaType?: string | null;duration?: Temporal.Duration | null;sensitive?: boolean | null;source?: Source | null;proof?: DataIntegrityProof | URL | null;
-proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;}
+proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | null;approvedBy?: URL | null;likeAuthorization?: LikeAuthorization | URL | null;replyAuthorization?: ReplyAuthorization | URL | null;announceAuthorization?: AnnounceAuthorization | URL | null;width?: number | null;height?: number | null;digestMultibase?: string | null;}
 
     = {},
     options: {
@@ -104957,7 +106052,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
     
       result["type"] = "Video";
       if (this.id != null) result["id"] = formatIri(this.id);
-      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1","https://gotosocial.org/ns"];
+      result["@context"] = ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2","https://w3id.org/fep/ef61","https://gotosocial.org/ns"];
       return result;
     }
     
@@ -104983,7 +106078,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       );
     }
     const docContext = options.context ??
-      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v1","https://gotosocial.org/ns"];
+      ["https://www.w3.org/ns/activitystreams","https://w3id.org/security/data-integrity/v2","https://w3id.org/fep/ef61","https://gotosocial.org/ns"];
     const compacted = await jsonld.compact(
       values,
       docContext,

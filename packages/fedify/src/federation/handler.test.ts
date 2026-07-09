@@ -170,6 +170,7 @@ test("handleActor()", async () => {
   assertEquals(await response.json(), {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/fep/ef61",
       "https://w3id.org/security/v1",
       "https://w3id.org/security/data-integrity/v1",
       "https://www.w3.org/ns/did/v1",
@@ -278,6 +279,7 @@ test("handleActor()", async () => {
   assertEquals(await response.json(), {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/fep/ef61",
       "https://w3id.org/security/v1",
       "https://w3id.org/security/data-integrity/v1",
       "https://www.w3.org/ns/did/v1",

@@ -7,6 +7,7 @@ entity: true
 description: Represents an individual person.
 defaultContext:
 - "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/fep/ef61"
 - "https://w3id.org/security/v1"
 - "https://w3id.org/security/data-integrity/v1"
 - "https://www.w3.org/ns/did/v1"
@@ -77,6 +78,20 @@ properties:
     [FEP-521a]: https://w3id.org/fep/521a
   range:
   - "https://w3id.org/security#Multikey"
+
+- pluralName: gateways
+  singularName: gateway
+  singularAccessor: true
+  compactName: gateways
+  uri: "https://w3id.org/fep/ef61/gateways"
+  container: list
+  description: |
+    Gateways where the latest version of this portable actor object can be
+    retrieved.
+
+    See [FEP-ef61](https://w3id.org/fep/ef61) for details.
+  range:
+  - "fedify:url"
 
 - singularName: manuallyApprovesFollowers
   functional: true
