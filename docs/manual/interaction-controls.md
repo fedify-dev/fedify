@@ -279,11 +279,3 @@ const authorizationKey = formatAuthorizationKey(
 The keys are plain strings.  Use them with your existing database or key–value
 store to record pending requests, accepted authorizations, and revoked
 authorizations.
-
-
-References
-----------
-
- -  [GoToSocial interaction controls]
- -  [FEP-044f]
- -  [FEP-7aa9]
