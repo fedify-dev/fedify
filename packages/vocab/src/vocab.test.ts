@@ -47,6 +47,7 @@ import {
   InteractionRule,
   Link,
   Measure,
+  Multikey,
   Note,
   Object,
   Offer,
@@ -3800,6 +3801,30 @@ test("FEP-fe34: Same origin objects are trusted", async () => {
   deepStrictEqual(result?.content, "This is a legitimate note");
 });
 
+test("FEP-fe34: Same-authority non-FE34 embedded objects are trusted", async () => {
+  const create = await Create.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "@type": "Create",
+    "@id": "at://did:plc:example/collection/item",
+    "actor": "at://did:plc:example/actor/self",
+    "object": {
+      "@type": "Note",
+      "@id": "at://did:plc:example/collection/reply",
+      "content": "Embedded AT Protocol note",
+    },
+  });
+
+  const result = await create.getObject({
+    // deno-lint-ignore require-await
+    documentLoader: async (url) => {
+      throw new Error(`Unexpected fetch: ${url}`);
+    },
+  });
+
+  assertInstanceOf(result, Note);
+  deepStrictEqual(result.content, "Embedded AT Protocol note");
+});
+
 test(
   "FEP-fe34: Embedded cross-origin objects from JSON-LD are ignored by default",
   async () => {
@@ -3948,6 +3973,74 @@ test(
     const result = await create.getObject({ documentLoader });
     assertInstanceOf(result, Note);
     deepStrictEqual(result.content, "Fetched portable note");
+  },
+);
+
+test(
+  "FEP-fe34: DID verification methods share portable actor cryptographic origin",
+  async () => {
+    const person = await Person.fromJsonLd({
+      "@id": "ap://did:key:z6MkOwner/actor",
+      "@type": ["https://www.w3.org/ns/activitystreams#Person"],
+      "https://w3id.org/security#assertionMethod": [{
+        "@id": "did:key:z6MkOwner#z6MkOwner",
+        "@type": ["https://w3id.org/security#Multikey"],
+        "https://w3id.org/security#controller": [{
+          "@id": "did:key:z6MkOwner",
+        }],
+      }],
+    });
+
+    // deno-lint-ignore require-await
+    const documentLoader = async (url: string) => {
+      throw new Error(`Unexpected fetch: ${url}`);
+    };
+
+    const methods = [];
+    for await (const method of person.getAssertionMethods({ documentLoader })) {
+      methods.push(method);
+    }
+
+    deepStrictEqual(methods.length, 1);
+    assertInstanceOf(methods[0], Multikey);
+    deepStrictEqual(
+      methods[0].id,
+      new URL("did:key:z6MkOwner#z6MkOwner"),
+    );
+  },
+);
+
+test(
+  "FEP-fe34: DID verification methods from another cryptographic origin are untrusted",
+  async () => {
+    const person = await Person.fromJsonLd({
+      "@id": "ap://did:key:z6MkOwner/actor",
+      "@type": ["https://www.w3.org/ns/activitystreams#Person"],
+      "https://w3id.org/security#assertionMethod": [{
+        "@id": "did:key:z6MkOther#z6MkOther",
+        "@type": ["https://w3id.org/security#Multikey"],
+        "https://w3id.org/security#controller": [{
+          "@id": "did:key:z6MkOther",
+        }],
+      }],
+    });
+
+    let fetches = 0;
+    const methods = [];
+    for await (
+      const method of person.getAssertionMethods({
+        suppressError: true,
+        // deno-lint-ignore require-await
+        documentLoader: async (url) => {
+          fetches++;
+          throw new Error(`Unexpected fetch: ${url}`);
+        },
+      })
+    ) {
+      methods.push(method);
+    }
+    deepStrictEqual(methods, []);
+    deepStrictEqual(fetches, 1);
   },
 );
 

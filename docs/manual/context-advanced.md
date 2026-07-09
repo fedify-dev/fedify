@@ -446,6 +446,11 @@ contains an `@id` with a different origin from the requested URL, the method
 returns `null` by default to prevent content-spoofing attacks. Control this
 behavior with the `crossOrigin` option:
 
+HTTP(S) IDs are compared by web origin.  Portable `ap:`/`ap+ef61:` IDs and DID
+URLs are compared by their cryptographic DID origin, so
+`ap+ef61://did:key:z.../actor` and `did:key:z...#z...` are same-origin when the
+DID matches.
+
 ~~~~ typescript twoslash
 import { type Context } from "@fedify/fedify";
 const ctx = null as unknown as Context<void>;

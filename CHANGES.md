@@ -10,6 +10,11 @@ To be released.
 
 ### @fedify/fedify
 
+ -  Updated `verifyObject()` so [FEP-8b32] proofs signed by `did:key`
+    verification methods can authenticate portable objects whose owner is an
+    `ap:` or `ap+ef61:` URI with the same [FEP-fe34] cryptographic origin.
+    [[#829], [#926]]
+
  -  Added local `did:key` verification method resolution for
     [FEP-8b32] Object Integrity Proofs.  `verifyProof()` can now verify
     Ed25519 `eddsa-jcs-2022` proofs whose `verificationMethod` is a
@@ -63,6 +68,7 @@ To be released.
     `esnext.temporal` lib reference.  [[#823], [#925]]
 
 [FEP-8b32]: https://w3id.org/fep/8b32
+[FEP-fe34]: https://w3id.org/fep/fe34
 [FEP-ef61]: https://w3id.org/fep/ef61
 [Standard Schema]: https://standardschema.dev/
 [#206]: https://github.com/fedify-dev/fedify/issues/206
@@ -74,11 +80,19 @@ To be released.
 [#812]: https://github.com/fedify-dev/fedify/pull/812
 [#823]: https://github.com/fedify-dev/fedify/issues/823
 [#827]: https://github.com/fedify-dev/fedify/issues/827
+[#829]: https://github.com/fedify-dev/fedify/issues/829
 [#915]: https://github.com/fedify-dev/fedify/pull/915
 [#923]: https://github.com/fedify-dev/fedify/pull/923
 [#925]: https://github.com/fedify-dev/fedify/pull/925
+[#926]: https://github.com/fedify-dev/fedify/pull/926
 
 ### @fedify/vocab
+
+ -  Updated [FEP-fe34] cross-origin checks to understand cryptographic origins
+    for [FEP-ef61] portable ActivityPub IDs and DID URLs.  Generated property
+    accessors and `lookupObject()` now treat `ap:`/`ap+ef61:` IDs and matching
+    `did:key` verification method IDs as same-origin when their DID components
+    match.  [[#829], [#926]]
 
  -  Added support for [FEP-ef61] portable ActivityPub IRIs in generated
     vocabulary codecs.  `ap:` and `ap+ef61:` values with decoded or
@@ -103,6 +117,12 @@ To be released.
 [#914]: https://github.com/fedify-dev/fedify/pull/914
 
 ### @fedify/vocab-runtime
+
+ -  Added `getFe34Origin()` and `haveSameFe34Origin()` for comparing ordinary
+    web origins and [FEP-ef61] cryptographic origins with one shared
+    [FEP-fe34] helper.  HTTP(S) URLs keep web-origin semantics, while
+    `ap:`/`ap+ef61:` URIs and DID URLs use their DID component as the origin.
+    [[#829], [#926]]
 
  -  Added `canonicalizePortableUri()` and `arePortableUrisEqual()` for
     comparing [FEP-ef61] portable ActivityPub URI strings.  The helpers accept
@@ -3363,7 +3383,6 @@ Released on October 14, 2025.
     Node.js's `--experimental-require-module` flag and resolves dual package
     hazard issues.  [[#429], [#431]]
 
-[FEP-fe34]: https://w3id.org/fep/fe34
 [RFC 6570]: https://tools.ietf.org/html/rfc6570
 [FEP-5711]: https://w3id.org/fep/5711
 [OStatus 1.0 Draft 2]: https://www.w3.org/community/ostatus/wiki/images/9/93/OStatus_1.0_Draft_2.pdf

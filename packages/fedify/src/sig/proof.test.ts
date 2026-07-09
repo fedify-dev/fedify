@@ -1019,3 +1019,217 @@ test("verifyObject()", async () => {
   assertInstanceOf(note, Note);
   assertEquals(note.content, "Hello world");
 });
+
+test("verifyObject() accepts did:key proofs for matching portable attribution origin", async () => {
+  const did = await exportDidKey(ed25519PublicKey.publicKey);
+  const keyId = new URL(`${did}#${did.substring("did:key:".length)}`);
+  const note = new Note({
+    id: parseIri(`ap://did:key:${did.substring("did:key:".length)}/objects/1`),
+    attribution: parseIri(
+      `ap://did:key:${did.substring("did:key:".length)}/actor`,
+    ),
+    content: "Portable note",
+  });
+  const signed = await signObject(note, ed25519PrivateKey, keyId, {
+    contextLoader: mockDocumentLoader,
+    context: [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+  });
+  const jsonLd = await signed.toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+    context: [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+  });
+
+  const verified = await verifyObject(Note, jsonLd, {
+    documentLoader() {
+      throw new TypeError("did:key must not use the document loader");
+    },
+    contextLoader: mockDocumentLoader,
+  });
+
+  assertInstanceOf(verified, Note);
+  assertEquals(verified.content, "Portable note");
+});
+
+test("verifyObject() accepts multiple portable attributions from the same did:key origin", async () => {
+  const did = await exportDidKey(ed25519PublicKey.publicKey);
+  const method = did.substring("did:key:".length);
+  const keyId = new URL(`${did}#${method}`);
+  const create = new Create({
+    id: parseIri(`ap://did:key:${method}/activities/1`),
+    actor: parseIri(`ap://did:key:${method}/actor`),
+    attribution: parseIri(`ap://did:key:${method}/profile`),
+    object: new Note({
+      id: parseIri(`ap://did:key:${method}/objects/1`),
+      content: "Portable note",
+    }),
+  });
+  const signed = await signObject(create, ed25519PrivateKey, keyId, {
+    contextLoader: mockDocumentLoader,
+    context: [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+  });
+  const jsonLd = await signed.toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+    context: [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+  });
+
+  const verified = await verifyObject(Create, jsonLd, {
+    documentLoader() {
+      throw new TypeError("did:key must not use the document loader");
+    },
+    contextLoader: mockDocumentLoader,
+  });
+
+  assertInstanceOf(verified, Create);
+  assertEquals(verified.actorId, parseIri(`ap://did:key:${method}/actor`));
+  assertEquals(
+    verified.attributionId,
+    parseIri(`ap://did:key:${method}/profile`),
+  );
+});
+
+test("verifyObject() rejects HTTPS keys claiming a portable DID controller", async () => {
+  const victimDid = "did:key:z6MkVictim";
+  const keyId = new URL("https://attacker.example/keys/ed25519");
+  const note = new Note({
+    id: parseIri("ap://did:key:z6MkVictim/objects/1"),
+    attribution: parseIri("ap://did:key:z6MkVictim/actor"),
+    content: "Spoofed portable note",
+  });
+  const signed = await signObject(note, ed25519PrivateKey, keyId, {
+    contextLoader: mockDocumentLoader,
+    context: [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+  });
+  const jsonLd = await signed.toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+    context: [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+  });
+
+  const verified = await verifyObject(Note, jsonLd, {
+    documentLoader: async (url) => {
+      if (url === keyId.href) {
+        return {
+          documentUrl: url,
+          contextUrl: null,
+          document: {
+            "@context": "https://w3id.org/security/multikey/v1",
+            id: keyId.href,
+            type: "Multikey",
+            controller: victimDid,
+            publicKeyMultibase: await exportMultibaseKey(
+              ed25519PublicKey.publicKey,
+            ),
+          },
+        };
+      }
+      throw new TypeError(`Unexpected fetch: ${url}`);
+    },
+    contextLoader: mockDocumentLoader,
+  });
+
+  assertEquals(verified, null);
+});
+
+test("verifyObject() rejects HTTPS keys claiming an exact DID attribution", async () => {
+  const victimDid = "did:key:z6MkVictim";
+  const keyId = new URL("https://attacker.example/keys/ed25519");
+  const note = new Note({
+    id: parseIri("ap://did:key:z6MkVictim/objects/1"),
+    attribution: new URL(victimDid),
+    content: "Spoofed DID-attributed note",
+  });
+  const signed = await signObject(note, ed25519PrivateKey, keyId, {
+    contextLoader: mockDocumentLoader,
+    context: [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+  });
+  const jsonLd = await signed.toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+    context: [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+  });
+
+  const verified = await verifyObject(Note, jsonLd, {
+    documentLoader: async (url) => {
+      if (url === keyId.href) {
+        return {
+          documentUrl: url,
+          contextUrl: null,
+          document: {
+            "@context": "https://w3id.org/security/multikey/v1",
+            id: keyId.href,
+            type: "Multikey",
+            controller: victimDid,
+            publicKeyMultibase: await exportMultibaseKey(
+              ed25519PublicKey.publicKey,
+            ),
+          },
+        };
+      }
+      throw new TypeError(`Unexpected fetch: ${url}`);
+    },
+    contextLoader: mockDocumentLoader,
+  });
+
+  assertEquals(verified, null);
+});
+
+test("verifyObject() rejects did:key proofs from another portable attribution origin", async () => {
+  const did = await exportDidKey(ed25519PublicKey.publicKey);
+  const keyId = new URL(`${did}#${did.substring("did:key:".length)}`);
+  const note = new Note({
+    id: parseIri(`ap://did:key:${did.substring("did:key:".length)}/objects/1`),
+    attribution: parseIri("ap://did:key:z6MkOther/actor"),
+    content: "Portable note",
+  });
+  const signed = await signObject(note, ed25519PrivateKey, keyId, {
+    contextLoader: mockDocumentLoader,
+    context: [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+  });
+  const jsonLd = await signed.toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+    context: [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+  });
+
+  assertEquals(
+    await verifyObject(Note, jsonLd, {
+      documentLoader() {
+        throw new TypeError("did:key must not use the document loader");
+      },
+      contextLoader: mockDocumentLoader,
+    }),
+    null,
+  );
+});

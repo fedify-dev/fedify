@@ -58,6 +58,8 @@ export {
   canonicalizePortableUri,
   expandIPv6Address,
   formatIri,
+  getFe34Origin,
+  haveSameFe34Origin,
   haveSameIriOrigin,
   isValidPublicIPv4Address,
   isValidPublicIPv6Address,

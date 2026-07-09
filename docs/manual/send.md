@@ -1090,6 +1090,9 @@ is a DID URL such as `did:key:z...#z...` does not require fetching that
 verification method as a JSON-LD document.  This is the key lookup mechanism
 used by [FEP-ef61] portable objects; policy checks that relate a portable
 object ID to its proof are handled separately from proof verification itself.
+When `verifyObject()` checks whether a proof authenticates an object's actor or
+attribution, it treats matching portable `ap:`/`ap+ef61:` IDs and `did:key`
+controllers as the same [FEP-fe34] cryptographic origin.
 
 > [!TIP]
 > HTTPS Signatures, Linked Data Signatures, and Object Integrity Proofs can
@@ -1108,6 +1111,7 @@ object ID to its proof are handled separately from proof verification itself.
 
 [FEP-8b32]: https://w3id.org/fep/8b32
 [FEP-ef61]: https://w3id.org/fep/ef61
+[FEP-fe34]: https://w3id.org/fep/fe34
 
 
 Activity transformers

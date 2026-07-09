@@ -93,7 +93,7 @@ export function canonicalizePortableUri(input: string): string {
   // decodePortableAuthority() reverses the shared percent-encoded authority
   // path here rather than the raw did:-prefixed branch.
   const authority = normalizePortableAuthority(
-    decodePortableAuthority(parsed.host).replace(DID_SCHEME_PATTERN, "did:"),
+    getDidUrlOrigin(decodePortableAuthority(parsed.host)),
   );
   // Keep path and fragment text from the raw match to avoid URL dot-segment
   // normalization, but still encode raw characters and normalize
@@ -132,6 +132,56 @@ export function arePortableUrisEqual(
 }
 
 /**
+ * Computes an IRI's FEP-fe34 origin.
+ *
+ * HTTP(S) IRIs use their web origin.  FEP-ef61 portable ActivityPub IRIs and
+ * DID URLs use their DID as a cryptographic origin.
+ *
+ * @throws {TypeError} If the IRI does not have a supported FEP-fe34 origin.
+ * @since 2.4.0
+ */
+export function getFe34Origin(input: string | URL): string {
+  if (input instanceof URL) {
+    const portable = normalizePortableUrl(input);
+    if (portable != null) return getPortableCryptographicOrigin(portable);
+    if (input.protocol === "did:") return getDidUrlOrigin(input.href);
+    if (input.protocol === "http:" || input.protocol === "https:") {
+      return input.origin;
+    }
+    throw new TypeError("Unsupported FEP-fe34 origin IRI.");
+  }
+
+  const portable = parsePortableIri(input);
+  if (portable != null) return getPortableCryptographicOrigin(portable);
+  if (DID_SCHEME_PATTERN.test(input)) return getDidUrlOrigin(input);
+
+  const parsed = new URL(input);
+  if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+    return parsed.origin;
+  }
+  throw new TypeError("Unsupported FEP-fe34 origin IRI.");
+}
+
+/**
+ * Checks whether two IRIs have the same FEP-fe34 origin.
+ *
+ * Malformed or unsupported IRIs are treated as non-matching.
+ *
+ * @since 2.4.0
+ */
+export function haveSameFe34Origin(
+  left: string | URL,
+  right: string | URL,
+): boolean {
+  try {
+    return getFe34Origin(left) === getFe34Origin(right);
+  } catch (error) {
+    if (error instanceof TypeError) return false;
+    throw error;
+  }
+}
+
+/**
  * Checks whether two IRIs have the same origin.
  */
 export function haveSameIriOrigin(left: URL, right: URL): boolean {
@@ -144,12 +194,24 @@ function getComparableIriOrigin(iri: URL): string {
   if (iri.host !== "") {
     const host = iri.protocol === "ap+ef61:"
       ? encodeURIComponent(
-        decodePortableAuthority(iri.host).replace(DID_SCHEME_PATTERN, "did:"),
+        getDidUrlOrigin(decodePortableAuthority(iri.host)),
       )
       : iri.host;
     return `${iri.protocol}//${host}`;
   }
   return iri.href;
+}
+
+function getPortableCryptographicOrigin(iri: URL): string {
+  return getDidUrlOrigin(decodePortableAuthority(iri.host));
+}
+
+function getDidUrlOrigin(iri: string): string {
+  const did = iri.split(/[/?#]/, 1)[0].replace(DID_SCHEME_PATTERN, "did:");
+  if (!DID_PATTERN.test(did)) throw new TypeError("Invalid DID URL.");
+  const parts = did.split(":");
+  parts[1] = parts[1].toLowerCase();
+  return normalizePortableAuthority(parts.join(":"));
 }
 
 function parsePortableIri(iri: string): URL | null {
@@ -160,7 +222,7 @@ function parsePortableIri(iri: string): URL | null {
   // current FEP-ef61 interoperability, but normalize it to a percent-encoded
   // URL authority internally.  The ap: URI syntax may change later; see:
   // https://bnewbold.leaflet.pub/3mph4hzvbdc2v
-  const authority = decodePortableAuthority(match[2]);
+  const authority = getDidUrlOrigin(decodePortableAuthority(match[2]));
   if (!DID_PATTERN.test(authority)) {
     throw new TypeError("Invalid portable ActivityPub IRI authority.");
   }
