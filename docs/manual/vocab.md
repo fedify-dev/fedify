@@ -210,10 +210,11 @@ FEP-ef61 portable objects
 *This section is applicable since Fedify 2.4.0.*
 
 Fedify accepts [FEP-ef61] portable ActivityPub IRIs in JSON-LD input.  Both
-the `ap:` and `ap+ef61:` schemes are accepted, whether the DID authority is
-decoded (e.g., `ap+ef61://did%3Akey%3A.../actor`) or percent-encoded.  Fedify
-stores these IRIs as `URL` objects with a URL-safe authority internally, and
-serializes them as canonical `ap+ef61:` IRIs with the decoded DID authority.
+the `ap:` and `ap+ef61:` schemes are accepted.  DID delimiters in the authority
+can be percent-encoded for URL-safe input, as in
+`ap+ef61://did%3Akey%3A.../actor`.  Fedify stores these IRIs as `URL` objects
+with a URL-safe authority internally, and serializes them as canonical
+`ap+ef61:` IRIs with the decoded DID authority.
 
 When comparing portable object IDs, use `canonicalizePortableUri()` or
 `arePortableUrisEqual()` from `@fedify/vocab-runtime`; these helpers remove
@@ -241,6 +242,8 @@ const actor = new Person({
   ],
 });
 ~~~~
+
+Each gateway must be an HTTP(S) base URI with no path, query, or fragment.
 
 Links and media/document objects expose `digestMultibase` for the integrity
 digest required when portable objects reference external resources:

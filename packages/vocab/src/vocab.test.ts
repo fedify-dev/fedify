@@ -686,6 +686,49 @@ test("FEP-ef61: actor gateways preserve single, empty, and invalid cases", async
   );
 });
 
+test("FEP-ef61: actor gateways must be HTTP(S) base URIs", async () => {
+  const validGateways = [
+    new URL("https://server.example/"),
+    new URL("http://server.example/"),
+  ];
+  const actor = new Person({
+    id: new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
+    gateways: validGateways,
+  });
+  deepStrictEqual(actor.gateways, validGateways);
+
+  for (
+    const gateway of [
+      "ftp://server.example/",
+      "https://server.example/path",
+      "https://server.example/?x=1",
+      "https://server.example/#fragment",
+    ]
+  ) {
+    throws(
+      () =>
+        new Person({
+          id: new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
+          gateways: [new URL(gateway)],
+        }),
+      TypeError,
+    );
+
+    await rejects(
+      () =>
+        Person.fromJsonLd({
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            "https://w3id.org/fep/ef61",
+          ],
+          type: "Person",
+          gateways: [gateway],
+        }),
+      TypeError,
+    );
+  }
+});
+
 test("FEP-ef61: digestMultibase round-trips on links and media objects", async () => {
   const digestMultibase = "zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n";
 
@@ -4910,6 +4953,7 @@ const sampleValues: Record<string, any> = {
   ]),
   "fedify:langTag": new Intl.Locale("en-Latn-US"),
   "fedify:url": new URL("https://fedify.dev/"),
+  "fedify:gatewayUrl": new URL("https://gateway.example/"),
   "fedify:publicKey": rsaPublicKey.publicKey,
   "fedify:multibaseKey": ed25519PublicKey.publicKey,
   "fedify:proofPurpose": "assertionMethod",

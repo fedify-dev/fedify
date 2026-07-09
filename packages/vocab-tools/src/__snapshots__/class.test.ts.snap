@@ -19,8 +19,10 @@ import {
     importMultibaseKey,
     importPem,
     isDecimal,
+    isGatewayUrl,
     LanguageString,
     parseDecimal,
+    parseGatewayUrl,
     parseIri,
     parseJsonLdId,
     type RemoteDocument
@@ -36,7 +38,7 @@ import {
     isTemporalInstant,
 } from "@fedify/vocab-runtime/temporal";
 const PORTABLE_IRI_PATTERN = /^ap(?:\\+ef61)?:\\/\\//i;
-const PORTABLE_IRI_KEYS: ReadonlySet<string> = new Set(["@id","_misskey_quote","actor","alsoKnownAs","announceAuthorization","anyOf","approvedBy","assertionMethod","attachment","attributedTo","audience","automaticApproval","bcc","bto","cc","context","controller","current","describes","emojiReactions","featureAuthorization","featured","featuredCollections","featuredObject","featuredTags","first","followers","followersOf","following","followingOf","gateways","generator","href","http://fedibird.com/ns#emojiReactions","http://fedibird.com/ns#quoteUri","http://joinmastodon.org/ns#featured","http://joinmastodon.org/ns#featuredTags","http://www.w3.org/ns/ldp#inbox","https://gotosocial.org/ns#announceAuthorization","https://gotosocial.org/ns#approvedBy","https://gotosocial.org/ns#automaticApproval","https://gotosocial.org/ns#interactingObject","https://gotosocial.org/ns#interactionTarget","https://gotosocial.org/ns#likeAuthorization","https://gotosocial.org/ns#manualApproval","https://gotosocial.org/ns#replyAuthorization","https://misskey-hub.net/ns#_misskey_quote","https://w3id.org/fep/044f#quote","https://w3id.org/fep/044f#quoteAuthorization","https://w3id.org/fep/5711#followersOf","https://w3id.org/fep/5711#followingOf","https://w3id.org/fep/5711#inboxOf","https://w3id.org/fep/5711#likedOf","https://w3id.org/fep/5711#likesOf","https://w3id.org/fep/5711#outboxOf","https://w3id.org/fep/5711#repliesOf","https://w3id.org/fep/5711#sharesOf","https://w3id.org/fep/7aa9#featureAuthorization","https://w3id.org/fep/7aa9#featuredCollections","https://w3id.org/fep/7aa9#featuredObject","https://w3id.org/fep/ef61/gateways","https://w3id.org/security#assertionMethod","https://w3id.org/security#controller","https://w3id.org/security#owner","https://w3id.org/security#proof","https://w3id.org/security#publicKey","https://w3id.org/security#verificationMethod","https://w3id.org/valueflows/ont/vf#resourceConformsTo","https://w3id.org/valueflows/ont/vf#satisfies","https://www.w3.org/ns/activitystreams#actor","https://www.w3.org/ns/activitystreams#alsoKnownAs","https://www.w3.org/ns/activitystreams#anyOf","https://www.w3.org/ns/activitystreams#attachment","https://www.w3.org/ns/activitystreams#attributedTo","https://www.w3.org/ns/activitystreams#audience","https://www.w3.org/ns/activitystreams#bcc","https://www.w3.org/ns/activitystreams#bto","https://www.w3.org/ns/activitystreams#cc","https://www.w3.org/ns/activitystreams#context","https://www.w3.org/ns/activitystreams#current","https://www.w3.org/ns/activitystreams#describes","https://www.w3.org/ns/activitystreams#first","https://www.w3.org/ns/activitystreams#followers","https://www.w3.org/ns/activitystreams#following","https://www.w3.org/ns/activitystreams#generator","https://www.w3.org/ns/activitystreams#href","https://www.w3.org/ns/activitystreams#icon","https://www.w3.org/ns/activitystreams#image","https://www.w3.org/ns/activitystreams#inReplyTo","https://www.w3.org/ns/activitystreams#instrument","https://www.w3.org/ns/activitystreams#items","https://www.w3.org/ns/activitystreams#last","https://www.w3.org/ns/activitystreams#liked","https://www.w3.org/ns/activitystreams#likes","https://www.w3.org/ns/activitystreams#location","https://www.w3.org/ns/activitystreams#movedTo","https://www.w3.org/ns/activitystreams#next","https://www.w3.org/ns/activitystreams#oauthAuthorizationEndpoint","https://www.w3.org/ns/activitystreams#oauthTokenEndpoint","https://www.w3.org/ns/activitystreams#object","https://www.w3.org/ns/activitystreams#oneOf","https://www.w3.org/ns/activitystreams#origin","https://www.w3.org/ns/activitystreams#outbox","https://www.w3.org/ns/activitystreams#partOf","https://www.w3.org/ns/activitystreams#prev","https://www.w3.org/ns/activitystreams#preview","https://www.w3.org/ns/activitystreams#provideClientKey","https://www.w3.org/ns/activitystreams#proxyUrl","https://www.w3.org/ns/activitystreams#quoteUrl","https://www.w3.org/ns/activitystreams#relationship","https://www.w3.org/ns/activitystreams#replies","https://www.w3.org/ns/activitystreams#result","https://www.w3.org/ns/activitystreams#sharedInbox","https://www.w3.org/ns/activitystreams#shares","https://www.w3.org/ns/activitystreams#signClientKey","https://www.w3.org/ns/activitystreams#streams","https://www.w3.org/ns/activitystreams#subject","https://www.w3.org/ns/activitystreams#tag","https://www.w3.org/ns/activitystreams#target","https://www.w3.org/ns/activitystreams#to","https://www.w3.org/ns/activitystreams#units","https://www.w3.org/ns/activitystreams#url","https://www.w3.org/ns/did#service","https://www.w3.org/ns/did#serviceEndpoint","icon","id","image","inReplyTo","inbox","inboxOf","instrument","interactingObject","interactionTarget","items","last","likeAuthorization","liked","likedOf","likes","likesOf","location","manualApproval","movedTo","next","oauthAuthorizationEndpoint","oauthTokenEndpoint","object","oneOf","orderedItems","origin","outbox","outboxOf","owner","partOf","prev","preview","proof","provideClientKey","proxyUrl","publicKey","quote","quoteAuthorization","quoteUri","quoteUrl","relationship","replies","repliesOf","replyAuthorization","resourceConformsTo","result","satisfies","service","sharedInbox","shares","sharesOf","signClientKey","streams","subject","tag","target","to","units","url"]);
+const PORTABLE_IRI_KEYS: ReadonlySet<string> = new Set(["@id","_misskey_quote","actor","alsoKnownAs","announceAuthorization","anyOf","approvedBy","assertionMethod","attachment","attributedTo","audience","automaticApproval","bcc","bto","cc","context","controller","current","describes","emojiReactions","featureAuthorization","featured","featuredCollections","featuredObject","featuredTags","first","followers","followersOf","following","followingOf","generator","href","http://fedibird.com/ns#emojiReactions","http://fedibird.com/ns#quoteUri","http://joinmastodon.org/ns#featured","http://joinmastodon.org/ns#featuredTags","http://www.w3.org/ns/ldp#inbox","https://gotosocial.org/ns#announceAuthorization","https://gotosocial.org/ns#approvedBy","https://gotosocial.org/ns#automaticApproval","https://gotosocial.org/ns#interactingObject","https://gotosocial.org/ns#interactionTarget","https://gotosocial.org/ns#likeAuthorization","https://gotosocial.org/ns#manualApproval","https://gotosocial.org/ns#replyAuthorization","https://misskey-hub.net/ns#_misskey_quote","https://w3id.org/fep/044f#quote","https://w3id.org/fep/044f#quoteAuthorization","https://w3id.org/fep/5711#followersOf","https://w3id.org/fep/5711#followingOf","https://w3id.org/fep/5711#inboxOf","https://w3id.org/fep/5711#likedOf","https://w3id.org/fep/5711#likesOf","https://w3id.org/fep/5711#outboxOf","https://w3id.org/fep/5711#repliesOf","https://w3id.org/fep/5711#sharesOf","https://w3id.org/fep/7aa9#featureAuthorization","https://w3id.org/fep/7aa9#featuredCollections","https://w3id.org/fep/7aa9#featuredObject","https://w3id.org/security#assertionMethod","https://w3id.org/security#controller","https://w3id.org/security#owner","https://w3id.org/security#proof","https://w3id.org/security#publicKey","https://w3id.org/security#verificationMethod","https://w3id.org/valueflows/ont/vf#resourceConformsTo","https://w3id.org/valueflows/ont/vf#satisfies","https://www.w3.org/ns/activitystreams#actor","https://www.w3.org/ns/activitystreams#alsoKnownAs","https://www.w3.org/ns/activitystreams#anyOf","https://www.w3.org/ns/activitystreams#attachment","https://www.w3.org/ns/activitystreams#attributedTo","https://www.w3.org/ns/activitystreams#audience","https://www.w3.org/ns/activitystreams#bcc","https://www.w3.org/ns/activitystreams#bto","https://www.w3.org/ns/activitystreams#cc","https://www.w3.org/ns/activitystreams#context","https://www.w3.org/ns/activitystreams#current","https://www.w3.org/ns/activitystreams#describes","https://www.w3.org/ns/activitystreams#first","https://www.w3.org/ns/activitystreams#followers","https://www.w3.org/ns/activitystreams#following","https://www.w3.org/ns/activitystreams#generator","https://www.w3.org/ns/activitystreams#href","https://www.w3.org/ns/activitystreams#icon","https://www.w3.org/ns/activitystreams#image","https://www.w3.org/ns/activitystreams#inReplyTo","https://www.w3.org/ns/activitystreams#instrument","https://www.w3.org/ns/activitystreams#items","https://www.w3.org/ns/activitystreams#last","https://www.w3.org/ns/activitystreams#liked","https://www.w3.org/ns/activitystreams#likes","https://www.w3.org/ns/activitystreams#location","https://www.w3.org/ns/activitystreams#movedTo","https://www.w3.org/ns/activitystreams#next","https://www.w3.org/ns/activitystreams#oauthAuthorizationEndpoint","https://www.w3.org/ns/activitystreams#oauthTokenEndpoint","https://www.w3.org/ns/activitystreams#object","https://www.w3.org/ns/activitystreams#oneOf","https://www.w3.org/ns/activitystreams#origin","https://www.w3.org/ns/activitystreams#outbox","https://www.w3.org/ns/activitystreams#partOf","https://www.w3.org/ns/activitystreams#prev","https://www.w3.org/ns/activitystreams#preview","https://www.w3.org/ns/activitystreams#provideClientKey","https://www.w3.org/ns/activitystreams#proxyUrl","https://www.w3.org/ns/activitystreams#quoteUrl","https://www.w3.org/ns/activitystreams#relationship","https://www.w3.org/ns/activitystreams#replies","https://www.w3.org/ns/activitystreams#result","https://www.w3.org/ns/activitystreams#sharedInbox","https://www.w3.org/ns/activitystreams#shares","https://www.w3.org/ns/activitystreams#signClientKey","https://www.w3.org/ns/activitystreams#streams","https://www.w3.org/ns/activitystreams#subject","https://www.w3.org/ns/activitystreams#tag","https://www.w3.org/ns/activitystreams#target","https://www.w3.org/ns/activitystreams#to","https://www.w3.org/ns/activitystreams#units","https://www.w3.org/ns/activitystreams#url","https://www.w3.org/ns/did#service","https://www.w3.org/ns/did#serviceEndpoint","icon","id","image","inReplyTo","inbox","inboxOf","instrument","interactingObject","interactionTarget","items","last","likeAuthorization","liked","likedOf","likes","likesOf","location","manualApproval","movedTo","next","oauthAuthorizationEndpoint","oauthTokenEndpoint","object","oneOf","orderedItems","origin","outbox","outboxOf","owner","partOf","prev","preview","proof","provideClientKey","proxyUrl","publicKey","quote","quoteAuthorization","quoteUri","quoteUrl","relationship","replies","repliesOf","replyAuthorization","resourceConformsTo","result","satisfies","service","sharedInbox","shares","sharesOf","signClientKey","streams","subject","tag","target","to","units","url"]);
 
 import * as _ppM0 from "./preprocessors.ts";
 
@@ -43499,7 +43501,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
         }
       
         if ("gateway" in values &&             values.gateway != null) {
-          if (values.gateway instanceof URL) {
+          if (values.gateway instanceof URL && isGatewayUrl(values.gateway)) {
             // @ts-ignore: type is checked above.
             this.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = [values.gateway];
       
@@ -43522,7 +43524,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
           }
         
           if (Array.isArray(values.gateways) &&
-              values.gateways.every(v => v instanceof URL)) {
+              values.gateways.every(v => v instanceof URL && isGatewayUrl(v))) {
             // @ts-ignore: type is checked above.
             this.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = values.gateways;
       
@@ -44023,7 +44025,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
         }
       clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = this.#_hQiaHhZP8hqxckxTBrpsGNs57E3;
         if ("gateway" in values &&             values.gateway != null) {
-          if (values.gateway instanceof URL) {
+          if (values.gateway instanceof URL && isGatewayUrl(values.gateway)) {
             // @ts-ignore: type is checked above.
             clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = [values.gateway];
       
@@ -44046,7 +44048,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
           }
         
           if (Array.isArray(values.gateways) &&
-              values.gateways.every(v => v instanceof URL)) {
+              values.gateways.every(v => v instanceof URL && isGatewayUrl(v))) {
             // @ts-ignore: type is checked above.
             clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = values.gateways;
       
@@ -49485,7 +49487,7 @@ get gateways(): (URL)[] {
     ) {
       if (v == null) continue;
     
-      const decoded = parseIri(v["@value"]);
+      const decoded = parseGatewayUrl(v["@value"]);
       if (typeof decoded === "undefined") continue;
       _hQiaHhZP8hqxckxTBrpsGNs57E3.push(decoded);
     }
@@ -59202,7 +59204,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
         }
       
         if ("gateway" in values &&             values.gateway != null) {
-          if (values.gateway instanceof URL) {
+          if (values.gateway instanceof URL && isGatewayUrl(values.gateway)) {
             // @ts-ignore: type is checked above.
             this.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = [values.gateway];
       
@@ -59225,7 +59227,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
           }
         
           if (Array.isArray(values.gateways) &&
-              values.gateways.every(v => v instanceof URL)) {
+              values.gateways.every(v => v instanceof URL && isGatewayUrl(v))) {
             // @ts-ignore: type is checked above.
             this.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = values.gateways;
       
@@ -59726,7 +59728,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
         }
       clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = this.#_hQiaHhZP8hqxckxTBrpsGNs57E3;
         if ("gateway" in values &&             values.gateway != null) {
-          if (values.gateway instanceof URL) {
+          if (values.gateway instanceof URL && isGatewayUrl(values.gateway)) {
             // @ts-ignore: type is checked above.
             clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = [values.gateway];
       
@@ -59749,7 +59751,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
           }
         
           if (Array.isArray(values.gateways) &&
-              values.gateways.every(v => v instanceof URL)) {
+              values.gateways.every(v => v instanceof URL && isGatewayUrl(v))) {
             // @ts-ignore: type is checked above.
             clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = values.gateways;
       
@@ -65188,7 +65190,7 @@ get gateways(): (URL)[] {
     ) {
       if (v == null) continue;
     
-      const decoded = parseIri(v["@value"]);
+      const decoded = parseGatewayUrl(v["@value"]);
       if (typeof decoded === "undefined") continue;
       _hQiaHhZP8hqxckxTBrpsGNs57E3.push(decoded);
     }
@@ -73963,7 +73965,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
         }
       
         if ("gateway" in values &&             values.gateway != null) {
-          if (values.gateway instanceof URL) {
+          if (values.gateway instanceof URL && isGatewayUrl(values.gateway)) {
             // @ts-ignore: type is checked above.
             this.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = [values.gateway];
       
@@ -73986,7 +73988,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
           }
         
           if (Array.isArray(values.gateways) &&
-              values.gateways.every(v => v instanceof URL)) {
+              values.gateways.every(v => v instanceof URL && isGatewayUrl(v))) {
             // @ts-ignore: type is checked above.
             this.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = values.gateways;
       
@@ -74487,7 +74489,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
         }
       clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = this.#_hQiaHhZP8hqxckxTBrpsGNs57E3;
         if ("gateway" in values &&             values.gateway != null) {
-          if (values.gateway instanceof URL) {
+          if (values.gateway instanceof URL && isGatewayUrl(values.gateway)) {
             // @ts-ignore: type is checked above.
             clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = [values.gateway];
       
@@ -74510,7 +74512,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
           }
         
           if (Array.isArray(values.gateways) &&
-              values.gateways.every(v => v instanceof URL)) {
+              values.gateways.every(v => v instanceof URL && isGatewayUrl(v))) {
             // @ts-ignore: type is checked above.
             clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = values.gateways;
       
@@ -79949,7 +79951,7 @@ get gateways(): (URL)[] {
     ) {
       if (v == null) continue;
     
-      const decoded = parseIri(v["@value"]);
+      const decoded = parseGatewayUrl(v["@value"]);
       if (typeof decoded === "undefined") continue;
       _hQiaHhZP8hqxckxTBrpsGNs57E3.push(decoded);
     }
@@ -81675,7 +81677,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
         }
       
         if ("gateway" in values &&             values.gateway != null) {
-          if (values.gateway instanceof URL) {
+          if (values.gateway instanceof URL && isGatewayUrl(values.gateway)) {
             // @ts-ignore: type is checked above.
             this.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = [values.gateway];
       
@@ -81698,7 +81700,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
           }
         
           if (Array.isArray(values.gateways) &&
-              values.gateways.every(v => v instanceof URL)) {
+              values.gateways.every(v => v instanceof URL && isGatewayUrl(v))) {
             // @ts-ignore: type is checked above.
             this.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = values.gateways;
       
@@ -82199,7 +82201,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
         }
       clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = this.#_hQiaHhZP8hqxckxTBrpsGNs57E3;
         if ("gateway" in values &&             values.gateway != null) {
-          if (values.gateway instanceof URL) {
+          if (values.gateway instanceof URL && isGatewayUrl(values.gateway)) {
             // @ts-ignore: type is checked above.
             clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = [values.gateway];
       
@@ -82222,7 +82224,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
           }
         
           if (Array.isArray(values.gateways) &&
-              values.gateways.every(v => v instanceof URL)) {
+              values.gateways.every(v => v instanceof URL && isGatewayUrl(v))) {
             // @ts-ignore: type is checked above.
             clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = values.gateways;
       
@@ -87661,7 +87663,7 @@ get gateways(): (URL)[] {
     ) {
       if (v == null) continue;
     
-      const decoded = parseIri(v["@value"]);
+      const decoded = parseGatewayUrl(v["@value"]);
       if (typeof decoded === "undefined") continue;
       _hQiaHhZP8hqxckxTBrpsGNs57E3.push(decoded);
     }
@@ -95625,7 +95627,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
         }
       
         if ("gateway" in values &&             values.gateway != null) {
-          if (values.gateway instanceof URL) {
+          if (values.gateway instanceof URL && isGatewayUrl(values.gateway)) {
             // @ts-ignore: type is checked above.
             this.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = [values.gateway];
       
@@ -95648,7 +95650,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
           }
         
           if (Array.isArray(values.gateways) &&
-              values.gateways.every(v => v instanceof URL)) {
+              values.gateways.every(v => v instanceof URL && isGatewayUrl(v))) {
             // @ts-ignore: type is checked above.
             this.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = values.gateways;
       
@@ -96149,7 +96151,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
         }
       clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = this.#_hQiaHhZP8hqxckxTBrpsGNs57E3;
         if ("gateway" in values &&             values.gateway != null) {
-          if (values.gateway instanceof URL) {
+          if (values.gateway instanceof URL && isGatewayUrl(values.gateway)) {
             // @ts-ignore: type is checked above.
             clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = [values.gateway];
       
@@ -96172,7 +96174,7 @@ services?: (DidService | URL)[];followedMessage?: string | null;cat?: boolean | 
           }
         
           if (Array.isArray(values.gateways) &&
-              values.gateways.every(v => v instanceof URL)) {
+              values.gateways.every(v => v instanceof URL && isGatewayUrl(v))) {
             // @ts-ignore: type is checked above.
             clone.#_hQiaHhZP8hqxckxTBrpsGNs57E3 = values.gateways;
       
@@ -101611,7 +101613,7 @@ get gateways(): (URL)[] {
     ) {
       if (v == null) continue;
     
-      const decoded = parseIri(v["@value"]);
+      const decoded = parseGatewayUrl(v["@value"]);
       if (typeof decoded === "undefined") continue;
       _hQiaHhZP8hqxckxTBrpsGNs57E3.push(decoded);
     }

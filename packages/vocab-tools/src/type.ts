@@ -326,6 +326,26 @@ const scalarTypes: Record<string, ScalarType> = {
       return `parseIri(${v}["@value"])`;
     },
   },
+  "fedify:gatewayUrl": {
+    name: "URL",
+    typeGuard(v) {
+      return `${v} instanceof URL && isGatewayUrl(${v})`;
+    },
+    encoder(v) {
+      return `{ "@value": formatIri(${v}) }`;
+    },
+    compactEncoder(v) {
+      return `formatIri(${v})`;
+    },
+    dataCheck(v) {
+      return `typeof ${v} === "object" && "@value" in ${v}
+        && typeof ${v}["@value"] === "string"
+        && ${v}["@value"] !== "" && ${v}["@value"] !== "/"`;
+    },
+    decoder(v) {
+      return `parseGatewayUrl(${v}["@value"])`;
+    },
+  },
   "fedify:publicKey": {
     name: "CryptoKey",
     typeGuard(v) {

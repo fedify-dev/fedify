@@ -91,7 +91,7 @@ properties:
 
     See [FEP-ef61](https://w3id.org/fep/ef61) for details.
   range:
-  - "fedify:url"
+  - "fedify:gatewayUrl"
 
 - singularName: manuallyApprovesFollowers
   functional: true
