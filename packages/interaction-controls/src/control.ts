@@ -97,6 +97,7 @@ interface ControlConfig<
 
 export interface DereferenceOptions {
   readonly documentLoader?: DocumentLoader;
+  readonly contextLoader?: DocumentLoader;
   readonly suppressError?: boolean;
 }
 
@@ -324,6 +325,7 @@ async function verifyRequest<
   }
   const dereferenceOptions = {
     documentLoader,
+    contextLoader: documentLoader,
     suppressError: true,
   };
   const interactionTarget = await config.getInteractionTarget(

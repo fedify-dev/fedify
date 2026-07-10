@@ -1,5 +1,6 @@
 import type { Context } from "@fedify/fedify";
 import type { DocumentLoader } from "@fedify/vocab-runtime";
+import type { Temporal } from "temporal-polyfill";
 import type {
   Accept,
   Activity,

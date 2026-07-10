@@ -559,12 +559,59 @@ test("likeInteraction dereferences request fields with context loaders", async (
     instrument: new Like({ id: likeId, actor, object: targetId }),
   });
   const loaderContext = {
-    documentLoader: async (url: string) => {
+    documentLoader: withContextFallback(async (url: string) => {
       assert.equal(url, targetId.href);
       return remoteDocument(
         targetId,
         await new Note({ id: targetId, attribution: author }).toJsonLd(),
       );
+    }),
+  } as unknown as Context<void>;
+
+  const result = await likeInteraction.verifyRequest(loaderContext, {
+    request,
+  });
+
+  assert.equal(result.verified, true);
+  assert.equal(result.interactionTargetId.href, targetId.href);
+});
+
+test("likeInteraction uses request loaders for dereferenced field contexts", async () => {
+  const contextUrl = new URL("https://example.net/contexts/note");
+  const request = new LikeRequest({
+    id: new URL("https://example.com/requests/1"),
+    actor,
+    object: targetId,
+    instrument: new Like({ id: likeId, actor, object: targetId }),
+  });
+  let loadedContext = false;
+  const loaderContext = {
+    documentLoader: async (url: string) => {
+      await Promise.resolve();
+      switch (url) {
+        case targetId.href:
+          return remoteDocument(targetId, {
+            "@context": contextUrl.href,
+            id: targetId.href,
+            type: "Note",
+            attributedTo: author.href,
+          });
+        case contextUrl.href:
+          loadedContext = true;
+          return remoteDocument(contextUrl, {
+            "@context": {
+              id: "@id",
+              type: "@type",
+              Note: "https://www.w3.org/ns/activitystreams#Note",
+              attributedTo: {
+                "@id": "https://www.w3.org/ns/activitystreams#attributedTo",
+                "@type": "@id",
+              },
+            },
+          });
+        default:
+          throw new Error(`Unexpected document load: ${url}`);
+      }
     },
   } as unknown as Context<void>;
 
@@ -572,6 +619,7 @@ test("likeInteraction dereferences request fields with context loaders", async (
     request,
   });
 
+  assert.equal(loadedContext, true);
   assert.equal(result.verified, true);
   assert.equal(result.interactionTargetId.href, targetId.href);
 });
