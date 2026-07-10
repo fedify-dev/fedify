@@ -504,6 +504,8 @@ The repository is organized as a monorepo with the following packages:
  -  *packages/init/*: Project initializer (@fedify/init) for Fedify.
     Separated from @fedify/cli to enable standalone use and
     `npm init @fedify`.
+ -  *packages/interaction-controls/*: Interaction control helpers
+    (@fedify/interaction-controls) for Fedify.
  -  *packages/koa/*: Koa integration (@fedify/koa) for Fedify.
  -  *packages/lint/*: Linting utilities (@fedify/lint) for Fedify.
  -  *packages/mysql/*: MySQL/MariaDB drivers (@fedify/mysql) for Fedify.
