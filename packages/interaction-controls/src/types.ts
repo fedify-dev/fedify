@@ -303,7 +303,7 @@ export type InteractionAuthorizationVerificationFailure =
   }
   | {
     readonly category: "unauthorized";
-    readonly type: "missingId";
+    readonly type: "missingId" | "missingObjectId" | "missingTargetId";
   }
   | {
     readonly category: "unauthorized";

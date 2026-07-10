@@ -197,6 +197,34 @@ test("likeInteraction checks later collections after earlier failures", async ()
   );
 });
 
+test("likeInteraction checks manual fallback after failed automatic collections", async () => {
+  const followers = new URL("https://example.net/users/bob/followers");
+  const target = new Note({
+    id: targetId,
+    attribution: author,
+    interactionPolicy: new InteractionPolicy({
+      canLike: new InteractionRule({
+        automaticApproval: followers,
+        manualApproval: PUBLIC_COLLECTION,
+      }),
+    }),
+  });
+
+  assert.deepEqual(
+    await likeInteraction.evaluatePolicy(context, {
+      subject: target,
+      requester: actor,
+      matchesApprovalCollection: () => {
+        throw new Error("collection unavailable");
+      },
+    }),
+    {
+      result: "manual",
+      reason: { type: "public" },
+    },
+  );
+});
+
 test("likeInteraction evaluates actor rules before public rules", async () => {
   const target = new Note({
     id: targetId,
@@ -791,6 +819,48 @@ test("likeInteraction rejects missing authorization grantors", async () => {
 
   assert.equal(result.verified, false);
   assert.equal(result.failure.type, "missingAttribution");
+});
+
+test("likeInteraction rejects id-less authorization interactions", async () => {
+  const target = new Note({ id: targetId, attribution: author });
+  const like = new Like({ actor, object: target });
+  const authorization = new LikeAuthorization({
+    id: authorizationId,
+    attribution: author,
+    interactingObject: likeId,
+    interactionTarget: targetId,
+  });
+
+  const result = await likeInteraction.verifyAuthorization(context, {
+    authorization,
+    interactingObject: like,
+    interactionTarget: target,
+    verifyAuthenticity,
+  });
+
+  assert.equal(result.verified, false);
+  assert.equal(result.failure.type, "missingObjectId");
+});
+
+test("likeInteraction rejects id-less authorization targets", async () => {
+  const target = new Note({ attribution: author });
+  const like = new Like({ id: likeId, actor, object: target });
+  const authorization = new LikeAuthorization({
+    id: authorizationId,
+    attribution: author,
+    interactingObject: likeId,
+    interactionTarget: targetId,
+  });
+
+  const result = await likeInteraction.verifyAuthorization(context, {
+    authorization,
+    interactingObject: like,
+    interactionTarget: target,
+    verifyAuthenticity,
+  });
+
+  assert.equal(result.verified, false);
+  assert.equal(result.failure.type, "missingTargetId");
 });
 
 test("likeInteraction rejects unauthenticated embedded authorizations", async () => {

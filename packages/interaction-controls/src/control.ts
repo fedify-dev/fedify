@@ -560,14 +560,24 @@ async function verifyAuthorization<
       failure: { category: "revoked", type: "deleted", ...revocation },
     };
   }
-  const interactingObjectId = getRequiredId(
-    options.interactingObject,
-    "interactingObject",
-  );
-  const interactionTargetId = getRequiredId(
-    options.interactionTarget,
-    "interactionTarget",
-  );
+  const interactingObjectId = getId(options.interactingObject);
+  if (interactingObjectId == null) {
+    return {
+      verified: false,
+      authorization,
+      authorizationId: authorization.id,
+      failure: { category: "unauthorized", type: "missingObjectId" },
+    };
+  }
+  const interactionTargetId = getId(options.interactionTarget);
+  if (interactionTargetId == null) {
+    return {
+      verified: false,
+      authorization,
+      authorizationId: authorization.id,
+      failure: { category: "unauthorized", type: "missingTargetId" },
+    };
+  }
   const actualInteractingId = (
     authorization as ASObject & { readonly interactingObjectId?: URL | null }
   ).interactingObjectId;
@@ -840,9 +850,11 @@ async function evaluatePolicy<
     context,
     options.matchesApprovalCollection,
   );
-  if (broadAutomatic?.result === "unverifiableCollection") {
-    return deniedUnverifiableCollection(broadAutomatic.collection);
-  } else if (broadAutomatic != null) {
+  const unverifiableAutomatic = broadAutomatic?.result ===
+      "unverifiableCollection"
+    ? broadAutomatic.collection
+    : null;
+  if (broadAutomatic?.result === "matched") {
     return { result: "automatic", reason: broadAutomatic.reason };
   }
   const broadManual = await matchRule(
@@ -853,8 +865,11 @@ async function evaluatePolicy<
   );
   if (broadManual?.result === "unverifiableCollection") {
     return deniedUnverifiableCollection(broadManual.collection);
-  } else if (broadManual != null) {
+  } else if (broadManual?.result === "matched") {
     return { result: "manual", reason: broadManual.reason };
+  }
+  if (unverifiableAutomatic != null) {
+    return deniedUnverifiableCollection(unverifiableAutomatic);
   }
   return { result: "denied", reason: { type: "noMatch" } };
 }
