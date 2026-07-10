@@ -1015,9 +1015,8 @@ function deniedUnverifiableCollection(
 function getAuthorizationOrigin(id: URL): string {
   try {
     return getFe34Origin(id);
-  } catch (error) {
-    if (error instanceof TypeError) return id.origin;
-    throw error;
+  } catch {
+    return id.origin;
   }
 }
 
