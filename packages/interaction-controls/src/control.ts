@@ -759,6 +759,7 @@ async function materialize<T extends ASObject>(
       ok: true,
       object: await constructor.fromJsonLd(remoteDocument.document, {
         documentLoader: loader,
+        contextLoader: loader,
         baseUrl: value,
       }),
     };
@@ -820,9 +821,7 @@ async function evaluatePolicy<
     options.matchesApprovalCollection,
     { actorOnly: true },
   );
-  if (automatic?.result === "unverifiableCollection") {
-    return deniedUnverifiableCollection(automatic.collection);
-  } else if (automatic != null) {
+  if (automatic?.result === "matched") {
     return { result: "automatic", reason: automatic.reason };
   }
   const manual = await matchRule(
@@ -832,9 +831,7 @@ async function evaluatePolicy<
     options.matchesApprovalCollection,
     { actorOnly: true },
   );
-  if (manual?.result === "unverifiableCollection") {
-    return deniedUnverifiableCollection(manual.collection);
-  } else if (manual != null) {
+  if (manual?.result === "matched") {
     return { result: "manual", reason: manual.reason };
   }
   const broadAutomatic = await matchRule(
@@ -960,6 +957,7 @@ async function matchRule<TContextData>(
     }
   }
   if (matchesApprovalCollection != null) {
+    let unverifiableCollection: URL | null = null;
     for (const entry of entries) {
       if (
         entry.href === PUBLIC_COLLECTION.href || entry.href === requester.href
@@ -970,7 +968,8 @@ async function matchRule<TContextData>(
       try {
         matched = await matchesApprovalCollection(entry, requester, context);
       } catch {
-        return { result: "unverifiableCollection", collection: entry };
+        unverifiableCollection ??= entry;
+        continue;
       }
       if (matched) {
         return {
@@ -978,6 +977,12 @@ async function matchRule<TContextData>(
           reason: { type: "collection", collection: entry },
         };
       }
+    }
+    if (unverifiableCollection != null) {
+      return {
+        result: "unverifiableCollection",
+        collection: unverifiableCollection,
+      };
     }
   }
   return null;

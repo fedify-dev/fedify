@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Context } from "@fedify/fedify";
-import type { DocumentLoader, RemoteDocument } from "@fedify/vocab-runtime";
+import {
+  type DocumentLoader,
+  getDocumentLoader,
+  type RemoteDocument,
+} from "@fedify/vocab-runtime";
 import {
   Accept,
   Announce,
@@ -30,9 +34,22 @@ const throwingDocumentLoader: DocumentLoader = async () => {
   throw new Error("not dereferenceable");
 };
 const verifyAuthenticity = () => true;
+const preloadedDocumentLoader = getDocumentLoader();
 
 function remoteDocument(url: URL, document: unknown): RemoteDocument {
   return { contextUrl: null, document, documentUrl: url.href };
+}
+
+function withContextFallback(loader: DocumentLoader): DocumentLoader {
+  return async (url: string) => {
+    try {
+      return await loader(url);
+    } catch (error) {
+      const preloaded = await preloadedDocumentLoader(url);
+      if (preloaded != null) return preloaded;
+      throw error;
+    }
+  };
 }
 
 test("likeInteraction creates typed requests", () => {
@@ -141,6 +158,41 @@ test("likeInteraction denies failed collection policy checks", async () => {
         type: "unverifiableCollection",
         collection: followers,
       },
+    },
+  );
+});
+
+test("likeInteraction checks later collections after earlier failures", async () => {
+  const brokenFollowers = new URL(
+    "https://example.net/users/bob/followers-unavailable",
+  );
+  const matchingFollowers = new URL(
+    "https://example.net/users/bob/followers",
+  );
+  const target = new Note({
+    id: targetId,
+    attribution: author,
+    interactionPolicy: new InteractionPolicy({
+      canLike: new InteractionRule({
+        automaticApprovals: [brokenFollowers, matchingFollowers],
+      }),
+    }),
+  });
+
+  assert.deepEqual(
+    await likeInteraction.evaluatePolicy(context, {
+      subject: target,
+      requester: actor,
+      matchesApprovalCollection: (collection) => {
+        if (collection.href === brokenFollowers.href) {
+          throw new Error("collection unavailable");
+        }
+        return collection.href === matchingFollowers.href;
+      },
+    }),
+    {
+      result: "automatic",
+      reason: { type: "collection", collection: matchingFollowers },
     },
   );
 });
@@ -262,10 +314,10 @@ test("likeInteraction verifies authorization URLs with context document loaders"
     interactionTarget: targetId,
   });
   const loaderContext = {
-    documentLoader: async (url: string) => {
+    documentLoader: withContextFallback(async (url: string) => {
       assert.equal(url, authorizationId.href);
       return remoteDocument(authorizationId, await authorization.toJsonLd());
-    },
+    }),
   } as unknown as Context<void>;
 
   const result = await likeInteraction.verifyAuthorization(loaderContext, {
@@ -372,10 +424,10 @@ test("likeInteraction rejects dereferenced requests with mismatched IDs", async 
 
   const result = await likeInteraction.verifyRequest(context, {
     request: requestUrl,
-    documentLoader: async (url) => {
+    documentLoader: withContextFallback(async (url) => {
       assert.equal(url, requestUrl.href);
       return remoteDocument(requestUrl, await request.toJsonLd());
-    },
+    }),
   });
 
   assert.equal(result.verified, false);
@@ -396,19 +448,77 @@ test("likeInteraction verifies request URLs with context document loaders", asyn
     instrument: like,
   });
   const loaderContext = {
-    documentLoader: async (url: string) => {
+    documentLoader: withContextFallback(async (url: string) => {
       if (url === requestUrl.href) {
         return remoteDocument(requestUrl, await request.toJsonLd());
       }
       assert.equal(url, targetId.href);
       return remoteDocument(targetId, await target.toJsonLd());
-    },
+    }),
   } as unknown as Context<void>;
 
   const result = await likeInteraction.verifyRequest(loaderContext, {
     request: requestUrl,
   });
 
+  assert.equal(result.verified, true);
+  assert.equal(result.requestId.href, requestUrl.href);
+});
+
+test("likeInteraction uses request loaders for remote contexts", async () => {
+  const requestUrl = new URL("https://example.com/requests/1");
+  const contextUrl = new URL("https://example.com/contexts/interaction");
+  const target = new Note({ id: targetId, attribution: author });
+  const like = new Like({ id: likeId, actor, object: targetId });
+  let loadedContext = false;
+  const loaderContext = {
+    documentLoader: withContextFallback(async (url: string) => {
+      switch (url) {
+        case requestUrl.href:
+          return remoteDocument(requestUrl, {
+            "@context": contextUrl.href,
+            id: requestUrl.href,
+            type: "LikeRequest",
+            actor: actor.href,
+            object: targetId.href,
+            instrument: likeId.href,
+          });
+        case contextUrl.href:
+          loadedContext = true;
+          return remoteDocument(contextUrl, {
+            "@context": {
+              id: "@id",
+              type: "@type",
+              LikeRequest: "https://gotosocial.org/ns#LikeRequest",
+              actor: {
+                "@id": "https://www.w3.org/ns/activitystreams#actor",
+                "@type": "@id",
+              },
+              object: {
+                "@id": "https://www.w3.org/ns/activitystreams#object",
+                "@type": "@id",
+              },
+              instrument: {
+                "@id": "https://www.w3.org/ns/activitystreams#instrument",
+                "@type": "@id",
+              },
+            },
+          });
+        case targetId.href:
+          return remoteDocument(targetId, await target.toJsonLd());
+        case likeId.href:
+          return remoteDocument(likeId, await like.toJsonLd());
+        default:
+          throw new Error(`Unexpected document load: ${url}`);
+      }
+    }),
+  } as unknown as Context<void>;
+
+  const result = await likeInteraction.verifyRequest(loaderContext, {
+    request: requestUrl,
+  });
+
+  assert.equal(loadedContext, true);
   assert.equal(result.verified, true);
   assert.equal(result.requestId.href, requestUrl.href);
 });
