@@ -571,7 +571,11 @@ async function verifyAuthorization<
       },
     };
   }
-  if (authorization.id.origin !== expectedAttribution.origin) {
+  if (
+    authorization.id.origin === "null" ||
+    expectedAttribution.origin === "null" ||
+    authorization.id.origin !== expectedAttribution.origin
+  ) {
     return {
       verified: false,
       authorization,

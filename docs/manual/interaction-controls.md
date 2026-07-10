@@ -238,6 +238,9 @@ const context = {} as Context<void>;
 const authorization = null as unknown as LikeAuthorization;
 const like = null as unknown as Like;
 const target = null as unknown as Note;
+const verifyEmbeddedAuthorization = async (
+  authorization: LikeAuthorization,
+) => authorization.id?.origin === "https://example.com";
 // ---cut-before---
 
 const verified = await likeInteraction.verifyAuthorization(context, {
@@ -245,7 +248,7 @@ const verified = await likeInteraction.verifyAuthorization(context, {
   interactingObject: like,
   interactionTarget: target,
   attributedTo: target.attributionId ?? undefined,
-  verifyAuthenticity: () => true,
+  verifyAuthenticity: verifyEmbeddedAuthorization,
 });
 if (!verified.verified) {
   throw new Error(`Invalid authorization: ${verified.failure.type}`);

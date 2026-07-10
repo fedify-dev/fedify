@@ -319,6 +319,28 @@ test("likeInteraction rejects unverifiable authorization grantors", async () => 
   assert.equal(result.failure.type, "attributionMismatch");
 });
 
+test("likeInteraction rejects authorization grantors without origins", async () => {
+  const opaqueAuthor = new URL("urn:example:users:bob");
+  const target = new Note({ id: targetId, attribution: opaqueAuthor });
+  const like = new Like({ id: likeId, actor, object: target });
+  const authorization = new LikeAuthorization({
+    id: new URL("urn:example:authorizations:1"),
+    attribution: opaqueAuthor,
+    interactingObject: likeId,
+    interactionTarget: targetId,
+  });
+
+  const result = await likeInteraction.verifyAuthorization(context, {
+    authorization,
+    interactingObject: like,
+    interactionTarget: target,
+    verifyAuthenticity,
+  });
+
+  assert.equal(result.verified, false);
+  assert.equal(result.failure.type, "originMismatch");
+});
+
 test("likeInteraction rejects missing authorization grantors", async () => {
   const target = new Note({ id: targetId });
   const like = new Like({ id: likeId, actor, object: target });
