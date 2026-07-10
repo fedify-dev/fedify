@@ -428,6 +428,7 @@ async function verifyAuthorization<
     TImpoliteSource
   >,
 ): Promise<InteractionAuthorizationVerification<TAuthorization>> {
+  const embeddedAuthorization = !(options.authorization instanceof URL);
   const expectedAuthorizationId = options.authorization instanceof URL
     ? options.authorization
     : null;
@@ -583,6 +584,18 @@ async function verifyAuthorization<
       },
     };
   }
+  if (embeddedAuthorization && options.verifyAuthenticity == null) {
+    return {
+      verified: false,
+      authorization,
+      authorizationId: authorization.id,
+      failure: {
+        category: "unauthorized",
+        type: "notAuthentic",
+        detail: "Embedded authorizations require authenticity verification.",
+      },
+    };
+  }
   if (options.verifyAuthenticity != null) {
     const authentic = await options.verifyAuthenticity(authorization, context);
     if (!authentic) {
@@ -687,8 +700,10 @@ async function evaluatePolicy<
   if (policy == null) return missingPolicyDecision(config);
   const rule = policy[config.policyProperty] as InteractionRule | null;
   if (rule == null) return missingRuleDecision(config);
+  const automaticApprovals = rule.automaticApprovals ?? [];
+  const manualApprovals = rule.manualApprovals ?? [];
   const automatic = await matchRule(
-    rule.automaticApprovals,
+    automaticApprovals,
     options.requester,
     context,
     options.matchesApprovalCollection,
@@ -698,7 +713,7 @@ async function evaluatePolicy<
     return { result: "automatic", reason: automatic };
   }
   const manual = await matchRule(
-    rule.manualApprovals,
+    manualApprovals,
     options.requester,
     context,
     options.matchesApprovalCollection,
@@ -708,7 +723,7 @@ async function evaluatePolicy<
     return { result: "manual", reason: manual };
   }
   const broadAutomatic = await matchRule(
-    rule.automaticApprovals,
+    automaticApprovals,
     options.requester,
     context,
     options.matchesApprovalCollection,
@@ -717,7 +732,7 @@ async function evaluatePolicy<
     return { result: "automatic", reason: broadAutomatic };
   }
   const broadManual = await matchRule(
-    rule.manualApprovals,
+    manualApprovals,
     options.requester,
     context,
     options.matchesApprovalCollection,
@@ -726,7 +741,7 @@ async function evaluatePolicy<
     return { result: "manual", reason: broadManual };
   }
   const unknownCollection = firstUnverifiableCollection(
-    [...rule.automaticApprovals, ...rule.manualApprovals],
+    [...automaticApprovals, ...manualApprovals],
     options.matchesApprovalCollection,
   );
   if (unknownCollection != null) {

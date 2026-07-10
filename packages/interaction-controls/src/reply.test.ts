@@ -17,6 +17,7 @@ const author = new URL("https://example.net/users/bob");
 const targetId = new URL("https://example.net/notes/1");
 const replyId = new URL("https://example.com/notes/2");
 const authorizationId = new URL("https://example.net/authorizations/2");
+const verifyAuthenticity = () => true;
 
 test("replyInteraction creates and verifies requests", async () => {
   const target = new Note({ id: targetId, attribution: author });
@@ -104,6 +105,7 @@ test("replyInteraction creates and verifies authorizations", async () => {
     interactingObject: reply,
     interactionTarget: target,
     attributedTo: author,
+    verifyAuthenticity,
   });
 
   assert.equal(result.verified, true);

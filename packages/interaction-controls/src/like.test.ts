@@ -29,6 +29,7 @@ const throwingDocumentLoader: DocumentLoader = async () => {
   await Promise.resolve();
   throw new Error("not dereferenceable");
 };
+const verifyAuthenticity = () => true;
 
 test("likeInteraction creates typed requests", () => {
   const target = new Note({ id: targetId, attribution: author });
@@ -136,6 +137,30 @@ test("likeInteraction evaluates actor rules before public rules", async () => {
   );
 });
 
+test("likeInteraction tolerates missing parsed approval arrays", async () => {
+  const rule = new InteractionRule({});
+  Object.defineProperties(rule, {
+    automaticApprovals: { value: null },
+    manualApprovals: { value: null },
+  });
+  const target = new Note({
+    id: targetId,
+    attribution: author,
+    interactionPolicy: new InteractionPolicy({ canLike: rule }),
+  });
+
+  assert.deepEqual(
+    await likeInteraction.evaluatePolicy(context, {
+      subject: target,
+      requester: actor,
+    }),
+    {
+      result: "denied",
+      reason: { type: "noMatch" },
+    },
+  );
+});
+
 test("likeInteraction creates and verifies authorizations", async () => {
   const target = new Note({ id: targetId, attribution: author });
   const like = new Like({ id: likeId, actor, object: target });
@@ -156,6 +181,7 @@ test("likeInteraction creates and verifies authorizations", async () => {
     interactingObject: like,
     interactionTarget: target,
     attributedTo: author,
+    verifyAuthenticity,
   });
 
   assert.equal(result.verified, true);
@@ -165,6 +191,7 @@ test("likeInteraction creates and verifies authorizations", async () => {
     authorization,
     interactingObject: like,
     interactionTarget: target,
+    verifyAuthenticity,
   });
 
   assert.equal(inferredResult.verified, true);
@@ -309,6 +336,26 @@ test("likeInteraction rejects missing authorization grantors", async () => {
 
   assert.equal(result.verified, false);
   assert.equal(result.failure.type, "missingAttribution");
+});
+
+test("likeInteraction rejects unauthenticated embedded authorizations", async () => {
+  const target = new Note({ id: targetId, attribution: author });
+  const like = new Like({ id: likeId, actor, object: target });
+  const authorization = new LikeAuthorization({
+    id: authorizationId,
+    attribution: author,
+    interactingObject: likeId,
+    interactionTarget: targetId,
+  });
+
+  const result = await likeInteraction.verifyAuthorization(context, {
+    authorization,
+    interactingObject: like,
+    interactionTarget: target,
+  });
+
+  assert.equal(result.verified, false);
+  assert.equal(result.failure.type, "notAuthentic");
 });
 
 test("likeInteraction builds responses and revocations", () => {

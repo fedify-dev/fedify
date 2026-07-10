@@ -18,6 +18,7 @@ const actor = new URL("https://example.com/users/alice");
 const targetId = new URL("https://example.net/users/bob");
 const collectionId = new URL("https://example.com/users/alice/featured");
 const authorizationId = new URL("https://example.net/authorizations/5");
+const verifyAuthenticity = () => true;
 
 test("featureInteraction creates and verifies requests", async () => {
   const target = new Person({ id: targetId });
@@ -170,6 +171,7 @@ test("featureInteraction creates and verifies authorizations", async () => {
     interactingObject: collection,
     interactionTarget: target,
     attributedTo: targetId,
+    verifyAuthenticity,
   });
 
   assert.equal(result.verified, true);
@@ -178,6 +180,7 @@ test("featureInteraction creates and verifies authorizations", async () => {
     authorization,
     interactingObject: collection,
     interactionTarget: target,
+    verifyAuthenticity,
   });
 
   assert.equal(inferredResult.verified, true);
@@ -200,6 +203,7 @@ test("featureInteraction verifies actorless authorizations", async () => {
     interactingObject: collection,
     interactionTarget: target,
     attributedTo: targetId,
+    verifyAuthenticity,
   });
 
   assert.equal(result.verified, true);

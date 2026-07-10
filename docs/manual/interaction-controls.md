@@ -225,7 +225,9 @@ const authorization = likeInteraction.createAuthorization({
 
 When a signed interaction arrives with an authorization, verify that the
 authorization still refers to the same interaction object and target, and that
-the grant came from the target owner:
+the grant came from the target owner.  If you pass an embedded authorization
+object instead of a URL, provide `verifyAuthenticity` so your HTTP signature,
+object proof, or transport-level trust decision is part of verification:
 
 ~~~~ typescript twoslash
 import type { Context } from "@fedify/fedify";
@@ -243,6 +245,7 @@ const verified = await likeInteraction.verifyAuthorization(context, {
   interactingObject: like,
   interactionTarget: target,
   attributedTo: target.attributionId ?? undefined,
+  verifyAuthenticity: () => true,
 });
 if (!verified.verified) {
   throw new Error(`Invalid authorization: ${verified.failure.type}`);

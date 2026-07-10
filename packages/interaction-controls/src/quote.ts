@@ -54,6 +54,16 @@ export const quoteInteraction: InteractionControl<
     request.getObject(options) as Promise<ASObject | null>,
   validateRequest: (request, quote, target) => {
     const targetId = getRequiredId(target, "interactionTarget");
+    if (
+      quote.quoteId != null && quote.quoteUrl != null &&
+      !idsEqual(quote.quoteUrl, quote.quoteId)
+    ) {
+      return {
+        type: "objectMismatch",
+        expected: quote.quoteId,
+        actual: quote.quoteUrl,
+      };
+    }
     const quoteTargetId = getQuoteTargetId(quote);
     if (!idsEqual(quoteTargetId, targetId)) {
       return {
