@@ -89,6 +89,10 @@ interface ControlConfig<
       TImpoliteSource
     >
     | null;
+  readonly getImplicitAutomaticActors?: (
+    subject: TTarget,
+    options: DereferenceOptions,
+  ) => AsyncIterable<URL> | Iterable<URL>;
 }
 
 export interface DereferenceOptions {
@@ -742,6 +746,18 @@ async function evaluatePolicy<
   if (idsEqual(selfActor, options.requester)) {
     return { result: "automatic", reason: { type: "self" } };
   }
+  const implicitAutomatic = await matchImplicitAutomaticActors(
+    options.subject,
+    options.requester,
+    {
+      documentLoader: options.documentLoader ?? context.documentLoader,
+      suppressError: true,
+    },
+    config,
+  );
+  if (implicitAutomatic != null) {
+    return { result: "automatic", reason: implicitAutomatic };
+  }
   const policy = options.subject.interactionPolicy;
   if (policy == null) return missingPolicyDecision(config);
   const rule = policy[config.policyProperty] as InteractionRule | null;
@@ -797,6 +813,35 @@ async function evaluatePolicy<
     };
   }
   return { result: "denied", reason: { type: "noMatch" } };
+}
+
+async function matchImplicitAutomaticActors<
+  TRequest extends Activity,
+  TAuthorization extends ASObject,
+  TInteracting extends ASObject,
+  TTarget extends ASObject,
+  TImpoliteSource extends ASObject,
+>(
+  subject: TTarget,
+  requester: URL,
+  options: DereferenceOptions,
+  config: ControlConfig<
+    TRequest,
+    TAuthorization,
+    TInteracting,
+    TTarget,
+    TImpoliteSource
+  >,
+): Promise<InteractionPolicyMatchReason | null> {
+  if (config.getImplicitAutomaticActors == null) return null;
+  for await (
+    const actor of config.getImplicitAutomaticActors(subject, options)
+  ) {
+    if (idsEqual(actor, requester)) {
+      return { type: "actor", actor };
+    }
+  }
+  return null;
 }
 
 function missingPolicyDecision<

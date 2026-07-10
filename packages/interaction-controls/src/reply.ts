@@ -2,8 +2,9 @@ import {
   Article,
   ChatMessage,
   Create,
+  Mention,
   Note,
-  type Object as ASObject,
+  Object as ASObject,
   Question,
   ReplyAuthorization,
   ReplyRequest,
@@ -15,6 +16,7 @@ import {
   recognized,
 } from "./control.ts";
 import type { InteractionControl } from "./types.ts";
+import type { DereferenceOptions } from "./control.ts";
 
 export type ReplyPost = Note | Article | Question | ChatMessage;
 
@@ -67,6 +69,7 @@ export const replyInteraction: InteractionControl<
     return null;
   },
   getSelfActor: (subject) => subject.attributionId,
+  getImplicitAutomaticActors: getReplyParticipants,
   defaultMissingPolicy: "automatic",
   recognizeImpolite: (source) => {
     if (source instanceof Create) return null;
@@ -80,3 +83,16 @@ export const replyInteraction: InteractionControl<
     });
   },
 });
+
+async function* getReplyParticipants(
+  subject: ASObject,
+  options: DereferenceOptions,
+): AsyncIterable<URL> {
+  const replyTarget = await subject.getReplyTarget(options);
+  if (replyTarget instanceof ASObject && replyTarget.attributionId != null) {
+    yield replyTarget.attributionId;
+  }
+  for await (const tag of subject.getTags(options)) {
+    if (tag instanceof Mention && tag.href != null) yield tag.href;
+  }
+}

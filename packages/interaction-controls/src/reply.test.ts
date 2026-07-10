@@ -4,6 +4,7 @@ import type { Context } from "@fedify/fedify";
 import {
   InteractionPolicy,
   InteractionRule,
+  Mention,
   Note,
   PUBLIC_COLLECTION,
   ReplyAuthorization,
@@ -80,6 +81,55 @@ test("replyInteraction evaluates canReply rules", async () => {
     {
       result: "manual",
       reason: { type: "public" },
+    },
+  );
+});
+
+test("replyInteraction auto-approves mentioned participants", async () => {
+  const target = new Note({
+    id: targetId,
+    attribution: author,
+    tags: [new Mention({ href: actor })],
+    interactionPolicy: new InteractionPolicy({
+      canReply: new InteractionRule({ manualApproval: PUBLIC_COLLECTION }),
+    }),
+  });
+
+  assert.deepEqual(
+    await replyInteraction.evaluatePolicy(context, {
+      subject: target,
+      requester: actor,
+    }),
+    {
+      result: "automatic",
+      reason: { type: "actor", actor },
+    },
+  );
+});
+
+test("replyInteraction auto-approves replied-to actors", async () => {
+  const parentAuthor = new URL("https://example.org/users/carol");
+  const parent = new Note({
+    id: new URL("https://example.org/notes/parent"),
+    attribution: parentAuthor,
+  });
+  const target = new Note({
+    id: targetId,
+    attribution: author,
+    replyTarget: parent,
+    interactionPolicy: new InteractionPolicy({
+      canReply: new InteractionRule({ manualApproval: PUBLIC_COLLECTION }),
+    }),
+  });
+
+  assert.deepEqual(
+    await replyInteraction.evaluatePolicy(context, {
+      subject: target,
+      requester: parentAuthor,
+    }),
+    {
+      result: "automatic",
+      reason: { type: "actor", actor: parentAuthor },
     },
   );
 });
