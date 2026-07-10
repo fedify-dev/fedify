@@ -393,6 +393,66 @@ test("likeInteraction rejects authorization IDs without origins", async () => {
   assert.equal(result.failure.type, "originMismatch");
 });
 
+test("likeInteraction accepts matching portable authorization origins", async () => {
+  const portableAuthor = new URL("ap://did%3Akey%3Az6Mkabc/users/bob");
+  const portableTargetId = new URL("ap://did%3Akey%3Az6Mkabc/notes/1");
+  const portableAuthorizationId = new URL(
+    "ap://did%3Akey%3Az6Mkabc/authorizations/1",
+  );
+  const target = new Note({
+    id: portableTargetId,
+    attribution: portableAuthor,
+  });
+  const like = new Like({ id: likeId, actor, object: target });
+  const authorization = new LikeAuthorization({
+    id: portableAuthorizationId,
+    attribution: portableAuthor,
+    interactingObject: likeId,
+    interactionTarget: portableTargetId,
+  });
+
+  const result = await likeInteraction.verifyAuthorization(context, {
+    authorization,
+    interactingObject: like,
+    interactionTarget: target,
+    verifyAuthenticity,
+  });
+
+  assert.equal(result.verified, true);
+  assert.equal(result.authorizationId.href, portableAuthorizationId.href);
+});
+
+test("likeInteraction rejects mismatched portable authorization origins", async () => {
+  const portableAuthor = new URL("ap://did%3Akey%3Az6Mkabc/users/bob");
+  const portableTargetId = new URL("ap://did%3Akey%3Az6Mkabc/notes/1");
+  const portableAuthorizationId = new URL(
+    "ap://did%3Akey%3Az6Mkdef/authorizations/1",
+  );
+  const target = new Note({
+    id: portableTargetId,
+    attribution: portableAuthor,
+  });
+  const like = new Like({ id: likeId, actor, object: target });
+  const authorization = new LikeAuthorization({
+    id: portableAuthorizationId,
+    attribution: portableAuthor,
+    interactingObject: likeId,
+    interactionTarget: portableTargetId,
+  });
+
+  const result = await likeInteraction.verifyAuthorization(context, {
+    authorization,
+    interactingObject: like,
+    interactionTarget: target,
+    verifyAuthenticity,
+  });
+
+  assert.equal(result.verified, false);
+  assert.equal(result.failure.type, "originMismatch");
+  assert.equal(result.failure.expectedOrigin, "did:key:z6Mkabc");
+  assert.equal(result.failure.actualOrigin, "did:key:z6Mkdef");
+});
+
 test("likeInteraction rejects missing authorization grantors", async () => {
   const target = new Note({ id: targetId });
   const like = new Like({ id: likeId, actor, object: target });

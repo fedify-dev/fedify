@@ -1,5 +1,5 @@
 import type { Context } from "@fedify/fedify";
-import type { DocumentLoader } from "@fedify/vocab-runtime";
+import { type DocumentLoader, getFe34Origin } from "@fedify/vocab-runtime";
 import {
   Accept,
   type Activity,
@@ -590,10 +590,12 @@ async function verifyAuthorization<
       },
     };
   }
+  const expectedOrigin = getAuthorizationOrigin(expectedAttribution);
+  const actualOrigin = getAuthorizationOrigin(authorization.id);
   if (
-    authorization.id.origin === "null" ||
-    expectedAttribution.origin === "null" ||
-    authorization.id.origin !== expectedAttribution.origin
+    expectedOrigin === "null" ||
+    actualOrigin === "null" ||
+    expectedOrigin !== actualOrigin
   ) {
     return {
       verified: false,
@@ -602,8 +604,8 @@ async function verifyAuthorization<
       failure: {
         category: "unauthorized",
         type: "originMismatch",
-        expectedOrigin: expectedAttribution.origin,
-        actualOrigin: authorization.id.origin,
+        expectedOrigin,
+        actualOrigin,
       },
     };
   }
@@ -854,18 +856,28 @@ async function matchRule<TContextData>(
       return { type: "public" };
     }
   }
-  for (const entry of entries) {
-    if (
-      entry.href === PUBLIC_COLLECTION.href || entry.href === requester.href
-    ) {
-      continue;
-    }
-    if (matchesApprovalCollection == null) continue;
-    if (await matchesApprovalCollection(entry, requester, context)) {
-      return { type: "collection", collection: entry };
+  if (matchesApprovalCollection != null) {
+    for (const entry of entries) {
+      if (
+        entry.href === PUBLIC_COLLECTION.href || entry.href === requester.href
+      ) {
+        continue;
+      }
+      if (await matchesApprovalCollection(entry, requester, context)) {
+        return { type: "collection", collection: entry };
+      }
     }
   }
   return null;
+}
+
+function getAuthorizationOrigin(id: URL): string {
+  try {
+    return getFe34Origin(id);
+  } catch (error) {
+    if (error instanceof TypeError) return id.origin;
+    throw error;
+  }
 }
 
 function firstUnverifiableCollection<TContextData>(
