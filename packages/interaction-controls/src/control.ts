@@ -91,7 +91,7 @@ interface ControlConfig<
     | null;
 }
 
-interface DereferenceOptions {
+export interface DereferenceOptions {
   readonly documentLoader?: DocumentLoader;
   readonly suppressError?: boolean;
 }
@@ -240,7 +240,7 @@ async function verifyRequest<
   TImpoliteSource extends ASObject,
   TContextData,
 >(
-  _context: Context<TContextData>,
+  context: Context<TContextData>,
   options: InteractionRequestVerificationOptions<TRequest>,
   config: ControlConfig<
     TRequest,
@@ -250,13 +250,14 @@ async function verifyRequest<
     TImpoliteSource
   >,
 ): Promise<InteractionRequestVerification<TRequest, TInteracting, TTarget>> {
+  const documentLoader = options.documentLoader ?? context.documentLoader;
   const expectedRequestId = options.request instanceof URL
     ? options.request
     : null;
   const requestResult = await materialize(
     options.request,
     config.requestClass,
-    options.documentLoader,
+    documentLoader,
   );
   if (!requestResult.ok) {
     return {
@@ -299,7 +300,7 @@ async function verifyRequest<
     };
   }
   const dereferenceOptions = {
-    documentLoader: options.documentLoader,
+    documentLoader,
     suppressError: true,
   };
   const interactionTarget = await config.getInteractionTarget(
@@ -454,7 +455,7 @@ async function verifyAuthorization<
   const authorizationResult = await materialize(
     options.authorization,
     config.authorizationClass,
-    options.documentLoader,
+    options.documentLoader ?? context.documentLoader,
   );
   if (!authorizationResult.ok) {
     return { verified: false, failure: authorizationResult.failure };
@@ -690,6 +691,16 @@ async function materialize<T extends ASObject>(
         type: "notDereferenceable",
         url: value,
         cause,
+      },
+    };
+  }
+  if (remoteDocument == null) {
+    return {
+      ok: false,
+      failure: {
+        category: "unverifiable",
+        type: "notDereferenceable",
+        url: value,
       },
     };
   }

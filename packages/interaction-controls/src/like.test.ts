@@ -201,6 +201,32 @@ test("likeInteraction creates and verifies authorizations", async () => {
   assert.equal(inferredResult.verified, true);
 });
 
+test("likeInteraction verifies authorization URLs with context document loaders", async () => {
+  const target = new Note({ id: targetId, attribution: author });
+  const like = new Like({ id: likeId, actor, object: target });
+  const authorization = new LikeAuthorization({
+    id: authorizationId,
+    attribution: author,
+    interactingObject: likeId,
+    interactionTarget: targetId,
+  });
+  const loaderContext = {
+    documentLoader: async (url: string) => {
+      assert.equal(url, authorizationId.href);
+      return remoteDocument(authorizationId, await authorization.toJsonLd());
+    },
+  } as unknown as Context<void>;
+
+  const result = await likeInteraction.verifyAuthorization(loaderContext, {
+    authorization: authorizationId,
+    interactingObject: like,
+    interactionTarget: target,
+  });
+
+  assert.equal(result.verified, true);
+  assert.equal(result.authorizationId.href, authorizationId.href);
+});
+
 test("likeInteraction verifies requests", async () => {
   const target = new Note({ id: targetId, attribution: author });
   const like = new Like({ id: likeId, actor, object: targetId });
@@ -244,6 +270,78 @@ test("likeInteraction rejects dereferenced requests with mismatched IDs", async 
   assert.equal(result.failure.type, "idMismatch");
   assert.equal(result.failure.expected.href, requestUrl.href);
   assert.equal(result.failure.actual?.href, actualRequestId.href);
+});
+
+test("likeInteraction verifies request URLs with context document loaders", async () => {
+  const requestUrl = new URL("https://example.com/requests/1");
+  const target = new Note({ id: targetId, attribution: author });
+  const like = new Like({ id: likeId, actor, object: targetId });
+  const request = new LikeRequest({
+    id: requestUrl,
+    actor,
+    object: target,
+    instrument: like,
+  });
+  const loaderContext = {
+    documentLoader: async (url: string) => {
+      if (url === requestUrl.href) {
+        return remoteDocument(requestUrl, await request.toJsonLd());
+      }
+      assert.equal(url, targetId.href);
+      return remoteDocument(targetId, await target.toJsonLd());
+    },
+  } as unknown as Context<void>;
+
+  const result = await likeInteraction.verifyRequest(loaderContext, {
+    request: requestUrl,
+  });
+
+  assert.equal(result.verified, true);
+  assert.equal(result.requestId.href, requestUrl.href);
+});
+
+test("likeInteraction dereferences request fields with context loaders", async () => {
+  const request = new LikeRequest({
+    id: new URL("https://example.com/requests/1"),
+    actor,
+    object: targetId,
+    instrument: new Like({ id: likeId, actor, object: targetId }),
+  });
+  const loaderContext = {
+    documentLoader: async (url: string) => {
+      assert.equal(url, targetId.href);
+      return remoteDocument(
+        targetId,
+        await new Note({ id: targetId, attribution: author }).toJsonLd(),
+      );
+    },
+  } as unknown as Context<void>;
+
+  const result = await likeInteraction.verifyRequest(loaderContext, {
+    request,
+  });
+
+  assert.equal(result.verified, true);
+  assert.equal(result.interactionTargetId.href, targetId.href);
+});
+
+test("likeInteraction reports null remote documents as not dereferenceable", async () => {
+  const requestUrl = new URL("https://example.com/requests/1");
+  let called = false;
+
+  const result = await likeInteraction.verifyRequest(context, {
+    request: requestUrl,
+    documentLoader: async () => {
+      await Promise.resolve();
+      called = true;
+      return null as unknown as RemoteDocument;
+    },
+  });
+
+  assert.equal(called, true);
+  assert.equal(result.verified, false);
+  assert.equal(result.failure.type, "notDereferenceable");
+  assert.equal(result.failure.url.href, requestUrl.href);
 });
 
 test("likeInteraction rejects wrong request instrument types", async () => {

@@ -186,6 +186,7 @@ export interface InteractionPolicyEvaluationOptions<
 > {
   readonly subject: TTarget;
   readonly requester: URL;
+  readonly documentLoader?: DocumentLoader;
   readonly matchesApprovalCollection?: MatchesApprovalCollection<TContextData>;
 }
 
