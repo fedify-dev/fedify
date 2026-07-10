@@ -169,7 +169,7 @@ export type InteractionRequestVerificationFailure =
   }
   | {
     readonly category: "invalid";
-    readonly type: "objectMismatch" | "instrumentMismatch";
+    readonly type: "idMismatch" | "objectMismatch" | "instrumentMismatch";
     readonly expected: URL;
     readonly actual?: URL;
   }

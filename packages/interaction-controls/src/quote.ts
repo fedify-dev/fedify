@@ -52,7 +52,7 @@ export const quoteInteraction: InteractionControl<
   ],
   getInteractionTarget: (request, options) =>
     request.getObject(options) as Promise<ASObject | null>,
-  validateRequest: (request, quote, target) => {
+  validateRequest: (_request, quote, target, requester) => {
     const targetId = getRequiredId(target, "interactionTarget");
     if (
       quote.quoteId != null && quote.quoteUrl != null &&
@@ -72,12 +72,10 @@ export const quoteInteraction: InteractionControl<
         actual: quoteTargetId ?? undefined,
       };
     }
-    if (
-      !idsEqual(quote.attributionId, request.actorId ?? new URL("about:blank"))
-    ) {
+    if (!idsEqual(quote.attributionId, requester)) {
       return {
         type: "requesterMismatch",
-        expected: request.actorId ?? new URL("about:blank"),
+        expected: requester,
         actual: quote.attributionId ?? undefined,
       };
     }

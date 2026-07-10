@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Context } from "@fedify/fedify";
-import type { DocumentLoader } from "@fedify/vocab-runtime";
+import type { DocumentLoader, RemoteDocument } from "@fedify/vocab-runtime";
 import {
   Accept,
   Announce,
@@ -30,6 +30,10 @@ const throwingDocumentLoader: DocumentLoader = async () => {
   throw new Error("not dereferenceable");
 };
 const verifyAuthenticity = () => true;
+
+function remoteDocument(url: URL, document: unknown): RemoteDocument {
+  return { contextUrl: null, document, documentUrl: url.href };
+}
 
 test("likeInteraction creates typed requests", () => {
   const target = new Note({ id: targetId, attribution: author });
@@ -213,6 +217,33 @@ test("likeInteraction verifies requests", async () => {
   assert.equal(result.requester.href, actor.href);
   assert.equal(result.interactingObjectId.href, likeId.href);
   assert.equal(result.interactionTargetId.href, targetId.href);
+});
+
+test("likeInteraction rejects dereferenced requests with mismatched IDs", async () => {
+  const requestUrl = new URL("https://example.com/requests/1");
+  const actualRequestId = new URL("https://example.com/requests/other");
+  const target = new Note({ id: targetId, attribution: author });
+  const like = new Like({ id: likeId, actor, object: targetId });
+  const request = new LikeRequest({
+    id: actualRequestId,
+    actor,
+    object: target,
+    instrument: like,
+  });
+
+  const result = await likeInteraction.verifyRequest(context, {
+    request: requestUrl,
+    documentLoader: async (url) => {
+      assert.equal(url, requestUrl.href);
+      return remoteDocument(requestUrl, await request.toJsonLd());
+    },
+  });
+
+  assert.equal(result.verified, false);
+  assert.equal(result.requestId?.href, actualRequestId.href);
+  assert.equal(result.failure.type, "idMismatch");
+  assert.equal(result.failure.expected.href, requestUrl.href);
+  assert.equal(result.failure.actual?.href, actualRequestId.href);
 });
 
 test("likeInteraction rejects wrong request instrument types", async () => {
@@ -399,6 +430,31 @@ test("likeInteraction rejects unauthenticated embedded authorizations", async ()
 
   assert.equal(result.verified, false);
   assert.equal(result.failure.type, "notAuthentic");
+});
+
+test("likeInteraction reports authenticity verification errors", async () => {
+  const target = new Note({ id: targetId, attribution: author });
+  const like = new Like({ id: likeId, actor, object: target });
+  const authorization = new LikeAuthorization({
+    id: authorizationId,
+    attribution: author,
+    interactingObject: likeId,
+    interactionTarget: targetId,
+  });
+  const cause = new Error("bad proof");
+
+  const result = await likeInteraction.verifyAuthorization(context, {
+    authorization,
+    interactingObject: like,
+    interactionTarget: target,
+    verifyAuthenticity: () => {
+      throw cause;
+    },
+  });
+
+  assert.equal(result.verified, false);
+  assert.equal(result.failure.type, "notAuthentic");
+  assert.equal(result.failure.cause, cause);
 });
 
 test("likeInteraction builds responses and revocations", () => {

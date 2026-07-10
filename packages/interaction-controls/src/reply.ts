@@ -48,7 +48,7 @@ export const replyInteraction: InteractionControl<
   ],
   getInteractionTarget: (request, options) =>
     request.getObject(options) as Promise<ASObject | null>,
-  validateRequest: (request, reply, target) => {
+  validateRequest: (_request, reply, target, requester) => {
     const targetId = getRequiredId(target, "interactionTarget");
     if (!idsEqual(reply.replyTargetId, targetId)) {
       return {
@@ -57,12 +57,10 @@ export const replyInteraction: InteractionControl<
         actual: reply.replyTargetId ?? undefined,
       };
     }
-    if (
-      !idsEqual(reply.attributionId, request.actorId ?? new URL("about:blank"))
-    ) {
+    if (!idsEqual(reply.attributionId, requester)) {
       return {
         type: "requesterMismatch",
-        expected: request.actorId ?? new URL("about:blank"),
+        expected: requester,
         actual: reply.attributionId ?? undefined,
       };
     }

@@ -30,7 +30,7 @@ export const announceInteraction: InteractionControl<
   interactingObjectTypes: [Announce.typeId],
   getInteractionTarget: (request, options) =>
     request.getObject(options) as Promise<ASObject | null>,
-  validateRequest: (request, announce, target) => {
+  validateRequest: (_request, announce, target, requester) => {
     const targetId = getRequiredId(target, "interactionTarget");
     if (!idsEqual(announce.objectId, targetId)) {
       return {
@@ -39,12 +39,10 @@ export const announceInteraction: InteractionControl<
         actual: announce.objectId ?? undefined,
       };
     }
-    if (
-      !idsEqual(announce.actorId, request.actorId ?? new URL("about:blank"))
-    ) {
+    if (!idsEqual(announce.actorId, requester)) {
       return {
         type: "requesterMismatch",
-        expected: request.actorId ?? new URL("about:blank"),
+        expected: requester,
         actual: announce.actorId ?? undefined,
       };
     }

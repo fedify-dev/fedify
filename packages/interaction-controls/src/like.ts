@@ -29,7 +29,7 @@ export const likeInteraction: InteractionControl<
   interactingObjectTypes: [Like.typeId],
   getInteractionTarget: (request, options) =>
     request.getObject(options) as Promise<ASObject | null>,
-  validateRequest: (request, like, target) => {
+  validateRequest: (_request, like, target, requester) => {
     const targetId = getRequiredId(target, "interactionTarget");
     if (!idsEqual(like.objectId, targetId)) {
       return {
@@ -38,10 +38,10 @@ export const likeInteraction: InteractionControl<
         actual: like.objectId ?? undefined,
       };
     }
-    if (!idsEqual(like.actorId, request.actorId ?? new URL("about:blank"))) {
+    if (!idsEqual(like.actorId, requester)) {
       return {
         type: "requesterMismatch",
-        expected: request.actorId ?? new URL("about:blank"),
+        expected: requester,
         actual: like.actorId ?? undefined,
       };
     }

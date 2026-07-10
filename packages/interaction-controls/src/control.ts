@@ -221,8 +221,11 @@ function getId(value: ASObject | URL): URL | null {
   return value instanceof URL ? value : value.id;
 }
 
-export function idsEqual(left: URL | null | undefined, right: URL): boolean {
-  return left != null && left.href === right.href;
+export function idsEqual(
+  left: URL | null | undefined,
+  right: URL | null | undefined,
+): boolean {
+  return left != null && right != null && left.href === right.href;
 }
 
 export function getTypeId(object: ASObject): URL {
@@ -247,6 +250,9 @@ async function verifyRequest<
     TImpoliteSource
   >,
 ): Promise<InteractionRequestVerification<TRequest, TInteracting, TTarget>> {
+  const expectedRequestId = options.request instanceof URL
+    ? options.request
+    : null;
   const requestResult = await materialize(
     options.request,
     config.requestClass,
@@ -277,6 +283,19 @@ async function verifyRequest<
       verified: false,
       request,
       failure: { category: "invalid", type: "missingId" },
+    };
+  }
+  if (expectedRequestId != null && !idsEqual(request.id, expectedRequestId)) {
+    return {
+      verified: false,
+      request,
+      requestId: request.id,
+      failure: {
+        category: "invalid",
+        type: "idMismatch",
+        expected: expectedRequestId,
+        actual: request.id,
+      },
     };
   }
   const dereferenceOptions = {
@@ -601,7 +620,17 @@ async function verifyAuthorization<
     };
   }
   if (options.verifyAuthenticity != null) {
-    const authentic = await options.verifyAuthenticity(authorization, context);
+    let authentic: boolean;
+    try {
+      authentic = await options.verifyAuthenticity(authorization, context);
+    } catch (cause) {
+      return {
+        verified: false,
+        authorization,
+        authorizationId: authorization.id,
+        failure: { category: "unauthorized", type: "notAuthentic", cause },
+      };
+    }
     if (!authentic) {
       return {
         verified: false,
