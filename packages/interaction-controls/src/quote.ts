@@ -82,7 +82,7 @@ export const quoteInteraction: InteractionControl<
     return null;
   },
   getSelfActor: (subject) => subject.attributionId,
-  defaultMissingPolicy: "automatic",
+  defaultMissingPolicy: "denied",
   recognizeImpolite: (source) => {
     if (source instanceof Create) return null;
     return recognized({

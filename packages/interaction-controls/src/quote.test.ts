@@ -145,6 +145,21 @@ test("quoteInteraction evaluates canQuote rules", async () => {
   );
 });
 
+test("quoteInteraction denies missing canQuote by default", async () => {
+  const target = new Note({ id: targetId, attribution: author });
+
+  assert.deepEqual(
+    await quoteInteraction.evaluatePolicy(context, {
+      subject: target,
+      requester: actor,
+    }),
+    {
+      result: "denied",
+      reason: { type: "missingPolicy" },
+    },
+  );
+});
+
 test("quoteInteraction creates and verifies authorizations", async () => {
   const target = new Note({ id: targetId, attribution: author });
   const quote = new Note({

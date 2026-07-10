@@ -89,11 +89,14 @@ application should store the request for review and create the authorization
 only after approval.  A decision with `result: "denied"` means the request
 does not match the policy.
 
-Missing policy is handled conservatively for feature requests and permissively
-for the other interactions:
+Missing policy is handled conservatively for feature and quote requests, and
+permissively for legacy-compatible interactions:
 
- -  Like, reply, announce, and quote helpers treat missing policy as automatic
+ -  Like, reply, and announce helpers treat missing policy as automatic
     approval for compatibility with existing ActivityPub objects.
+ -  The quote helper treats missing `canQuote` policy as denied, because
+    FEP-044f quote authorization is consent-based unless the object owner
+    explicitly advertises automatic approval.
  -  The feature helper treats missing `canFeature` policy as denied, because
     featuring another actor is a profile/discovery action.
 
