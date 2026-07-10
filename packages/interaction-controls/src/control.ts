@@ -208,8 +208,16 @@ function audience(
   const to = options.to;
   const cc = options.cc;
   return {
-    ...(to == null ? {} : to instanceof URL ? { to } : { tos: [...to] }),
-    ...(cc == null ? {} : cc instanceof URL ? { cc } : { ccs: [...cc] }),
+    ...(to == null
+      ? {}
+      : Array.isArray(to)
+      ? { tos: to as URL[] }
+      : { to: to as URL }),
+    ...(cc == null
+      ? {}
+      : Array.isArray(cc)
+      ? { ccs: cc as URL[] }
+      : { cc: cc as URL }),
   };
 }
 
@@ -456,6 +464,30 @@ async function verifyAuthorization<
   const expectedAuthorizationId = options.authorization instanceof URL
     ? options.authorization
     : null;
+  const expectedAttribution = options.attributedTo ??
+    (!(options.interactionTarget instanceof URL)
+      ? config.getSelfActor(options.interactionTarget)
+      : null);
+  if (expectedAuthorizationId != null && expectedAttribution != null) {
+    const expectedOrigin = getAuthorizationOrigin(expectedAttribution);
+    const actualOrigin = getAuthorizationOrigin(expectedAuthorizationId);
+    if (
+      expectedOrigin === "null" ||
+      actualOrigin === "null" ||
+      expectedOrigin !== actualOrigin
+    ) {
+      return {
+        verified: false,
+        authorizationId: expectedAuthorizationId,
+        failure: {
+          category: "unauthorized",
+          type: "originMismatch",
+          expectedOrigin,
+          actualOrigin,
+        },
+      };
+    }
+  }
   const authorizationResult = await materialize(
     options.authorization,
     config.authorizationClass,
@@ -550,10 +582,6 @@ async function verifyAuthorization<
       },
     };
   }
-  const expectedAttribution = options.attributedTo ??
-    (!(options.interactionTarget instanceof URL)
-      ? config.getSelfActor(options.interactionTarget)
-      : null);
   if (expectedAttribution == null) {
     return {
       verified: false,
@@ -764,6 +792,9 @@ async function evaluatePolicy<
   if (rule == null) return missingRuleDecision(config);
   const automaticApprovals = rule.automaticApprovals ?? [];
   const manualApprovals = rule.manualApprovals ?? [];
+  if (automaticApprovals.length < 1 && manualApprovals.length < 1) {
+    return missingRuleDecision(config);
+  }
   const automatic = await matchRule(
     automaticApprovals,
     options.requester,
@@ -801,16 +832,6 @@ async function evaluatePolicy<
   );
   if (broadManual != null) {
     return { result: "manual", reason: broadManual };
-  }
-  const unknownCollection = firstUnverifiableCollection(
-    [...automaticApprovals, ...manualApprovals],
-    options.matchesApprovalCollection,
-  );
-  if (unknownCollection != null) {
-    return {
-      result: "denied",
-      reason: { type: "unverifiableCollection", collection: unknownCollection },
-    };
   }
   return { result: "denied", reason: { type: "noMatch" } };
 }
@@ -934,16 +955,6 @@ function getAuthorizationOrigin(id: URL): string {
     if (error instanceof TypeError) return id.origin;
     throw error;
   }
-}
-
-function firstUnverifiableCollection<TContextData>(
-  entries: readonly URL[],
-  matchesApprovalCollection:
-    | MatchesApprovalCollection<TContextData>
-    | undefined,
-): URL | null {
-  if (matchesApprovalCollection != null) return null;
-  return entries.find((entry) => entry.href !== PUBLIC_COLLECTION.href) ?? null;
 }
 
 function createAccept<

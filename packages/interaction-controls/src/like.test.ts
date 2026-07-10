@@ -159,6 +159,29 @@ test("likeInteraction tolerates missing parsed approval arrays", async () => {
       requester: actor,
     }),
     {
+      result: "automatic",
+      reason: { type: "default", default: "publicAutomatic" },
+    },
+  );
+});
+
+test("likeInteraction reports no match for unmatched actor rules", async () => {
+  const target = new Note({
+    id: targetId,
+    attribution: author,
+    interactionPolicy: new InteractionPolicy({
+      canLike: new InteractionRule({
+        automaticApproval: new URL("https://example.org/users/carol"),
+      }),
+    }),
+  });
+
+  assert.deepEqual(
+    await likeInteraction.evaluatePolicy(context, {
+      subject: target,
+      requester: actor,
+    }),
+    {
       result: "denied",
       reason: { type: "noMatch" },
     },
@@ -225,6 +248,40 @@ test("likeInteraction verifies authorization URLs with context document loaders"
 
   assert.equal(result.verified, true);
   assert.equal(result.authorizationId.href, authorizationId.href);
+});
+
+test("likeInteraction rejects mismatched authorization URL origins before fetching", async () => {
+  const target = new Note({ id: targetId, attribution: author });
+  const like = new Like({ id: likeId, actor, object: target });
+  const mismatchedAuthorizationId = new URL(
+    "https://example.org/authorizations/1",
+  );
+  let called = false;
+
+  const result = await likeInteraction.verifyAuthorization(context, {
+    authorization: mismatchedAuthorizationId,
+    interactingObject: like,
+    interactionTarget: target,
+    documentLoader: async () => {
+      called = true;
+      return remoteDocument(
+        mismatchedAuthorizationId,
+        await new LikeAuthorization({
+          id: mismatchedAuthorizationId,
+          attribution: author,
+          interactingObject: likeId,
+          interactionTarget: targetId,
+        }).toJsonLd(),
+      );
+    },
+  });
+
+  assert.equal(called, false);
+  assert.equal(result.verified, false);
+  assert.equal(result.authorizationId?.href, mismatchedAuthorizationId.href);
+  assert.equal(result.failure.type, "originMismatch");
+  assert.equal(result.failure.expectedOrigin, author.origin);
+  assert.equal(result.failure.actualOrigin, mismatchedAuthorizationId.origin);
 });
 
 test("likeInteraction verifies requests", async () => {
