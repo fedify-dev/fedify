@@ -324,8 +324,29 @@ test("likeInteraction rejects authorization grantors without origins", async () 
   const target = new Note({ id: targetId, attribution: opaqueAuthor });
   const like = new Like({ id: likeId, actor, object: target });
   const authorization = new LikeAuthorization({
-    id: new URL("urn:example:authorizations:1"),
+    id: authorizationId,
     attribution: opaqueAuthor,
+    interactingObject: likeId,
+    interactionTarget: targetId,
+  });
+
+  const result = await likeInteraction.verifyAuthorization(context, {
+    authorization,
+    interactingObject: like,
+    interactionTarget: target,
+    verifyAuthenticity,
+  });
+
+  assert.equal(result.verified, false);
+  assert.equal(result.failure.type, "originMismatch");
+});
+
+test("likeInteraction rejects authorization IDs without origins", async () => {
+  const target = new Note({ id: targetId, attribution: author });
+  const like = new Like({ id: likeId, actor, object: target });
+  const authorization = new LikeAuthorization({
+    id: new URL("urn:example:authorizations:1"),
+    attribution: author,
     interactingObject: likeId,
     interactionTarget: targetId,
   });
