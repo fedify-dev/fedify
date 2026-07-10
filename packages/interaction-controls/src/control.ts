@@ -112,6 +112,17 @@ type RequestValidationFailure =
     readonly actual?: URL;
   };
 
+type RuleMatchResult =
+  | {
+    readonly result: "matched";
+    readonly reason: InteractionPolicyMatchReason;
+  }
+  | {
+    readonly result: "unverifiableCollection";
+    readonly collection: URL;
+  }
+  | null;
+
 export function createInteractionControl<
   TRequest extends Activity,
   TAuthorization extends ASObject,
@@ -468,6 +479,13 @@ async function verifyAuthorization<
     (!(options.interactionTarget instanceof URL)
       ? config.getSelfActor(options.interactionTarget)
       : null);
+  if (expectedAuthorizationId != null && expectedAttribution == null) {
+    return {
+      verified: false,
+      authorizationId: expectedAuthorizationId,
+      failure: { category: "unauthorized", type: "missingAttribution" },
+    };
+  }
   if (expectedAuthorizationId != null && expectedAttribution != null) {
     const expectedOrigin = getAuthorizationOrigin(expectedAttribution);
     const actualOrigin = getAuthorizationOrigin(expectedAuthorizationId);
@@ -802,8 +820,10 @@ async function evaluatePolicy<
     options.matchesApprovalCollection,
     { actorOnly: true },
   );
-  if (automatic != null) {
-    return { result: "automatic", reason: automatic };
+  if (automatic?.result === "unverifiableCollection") {
+    return deniedUnverifiableCollection(automatic.collection);
+  } else if (automatic != null) {
+    return { result: "automatic", reason: automatic.reason };
   }
   const manual = await matchRule(
     manualApprovals,
@@ -812,8 +832,10 @@ async function evaluatePolicy<
     options.matchesApprovalCollection,
     { actorOnly: true },
   );
-  if (manual != null) {
-    return { result: "manual", reason: manual };
+  if (manual?.result === "unverifiableCollection") {
+    return deniedUnverifiableCollection(manual.collection);
+  } else if (manual != null) {
+    return { result: "manual", reason: manual.reason };
   }
   const broadAutomatic = await matchRule(
     automaticApprovals,
@@ -821,8 +843,10 @@ async function evaluatePolicy<
     context,
     options.matchesApprovalCollection,
   );
-  if (broadAutomatic != null) {
-    return { result: "automatic", reason: broadAutomatic };
+  if (broadAutomatic?.result === "unverifiableCollection") {
+    return deniedUnverifiableCollection(broadAutomatic.collection);
+  } else if (broadAutomatic != null) {
+    return { result: "automatic", reason: broadAutomatic.reason };
   }
   const broadManual = await matchRule(
     manualApprovals,
@@ -830,8 +854,10 @@ async function evaluatePolicy<
     context,
     options.matchesApprovalCollection,
   );
-  if (broadManual != null) {
-    return { result: "manual", reason: broadManual };
+  if (broadManual?.result === "unverifiableCollection") {
+    return deniedUnverifiableCollection(broadManual.collection);
+  } else if (broadManual != null) {
+    return { result: "manual", reason: broadManual.reason };
   }
   return { result: "denied", reason: { type: "noMatch" } };
 }
@@ -921,16 +947,16 @@ async function matchRule<TContextData>(
     | MatchesApprovalCollection<TContextData>
     | undefined,
   options: { readonly actorOnly?: boolean } = {},
-): Promise<InteractionPolicyMatchReason | null> {
+): Promise<RuleMatchResult> {
   for (const entry of entries) {
     if (entry.href === requester.href) {
-      return { type: "actor", actor: entry };
+      return { result: "matched", reason: { type: "actor", actor: entry } };
     }
   }
   if (options.actorOnly) return null;
   for (const entry of entries) {
     if (entry.href === PUBLIC_COLLECTION.href) {
-      return { type: "public" };
+      return { result: "matched", reason: { type: "public" } };
     }
   }
   if (matchesApprovalCollection != null) {
@@ -940,12 +966,30 @@ async function matchRule<TContextData>(
       ) {
         continue;
       }
-      if (await matchesApprovalCollection(entry, requester, context)) {
-        return { type: "collection", collection: entry };
+      let matched;
+      try {
+        matched = await matchesApprovalCollection(entry, requester, context);
+      } catch {
+        return { result: "unverifiableCollection", collection: entry };
+      }
+      if (matched) {
+        return {
+          result: "matched",
+          reason: { type: "collection", collection: entry },
+        };
       }
     }
   }
   return null;
+}
+
+function deniedUnverifiableCollection(
+  collection: URL,
+): InteractionPolicyDecision {
+  return {
+    result: "denied",
+    reason: { type: "unverifiableCollection", collection },
+  };
 }
 
 function getAuthorizationOrigin(id: URL): string {

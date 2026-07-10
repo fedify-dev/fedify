@@ -117,6 +117,34 @@ test("likeInteraction evaluates explicit policy rules", async () => {
   );
 });
 
+test("likeInteraction denies failed collection policy checks", async () => {
+  const followers = new URL("https://example.net/users/bob/followers");
+  const target = new Note({
+    id: targetId,
+    attribution: author,
+    interactionPolicy: new InteractionPolicy({
+      canLike: new InteractionRule({ automaticApproval: followers }),
+    }),
+  });
+
+  assert.deepEqual(
+    await likeInteraction.evaluatePolicy(context, {
+      subject: target,
+      requester: actor,
+      matchesApprovalCollection: () => {
+        throw new Error("collection unavailable");
+      },
+    }),
+    {
+      result: "denied",
+      reason: {
+        type: "unverifiableCollection",
+        collection: followers,
+      },
+    },
+  );
+});
+
 test("likeInteraction evaluates actor rules before public rules", async () => {
   const target = new Note({
     id: targetId,
@@ -282,6 +310,34 @@ test("likeInteraction rejects mismatched authorization URL origins before fetchi
   assert.equal(result.failure.type, "originMismatch");
   assert.equal(result.failure.expectedOrigin, author.origin);
   assert.equal(result.failure.actualOrigin, mismatchedAuthorizationId.origin);
+});
+
+test("likeInteraction rejects unknown authorization grantors before fetching", async () => {
+  const like = new Like({ id: likeId, actor, object: targetId });
+  let called = false;
+
+  const result = await likeInteraction.verifyAuthorization(context, {
+    authorization: authorizationId,
+    interactingObject: like,
+    interactionTarget: targetId,
+    documentLoader: async () => {
+      called = true;
+      return remoteDocument(
+        authorizationId,
+        await new LikeAuthorization({
+          id: authorizationId,
+          attribution: author,
+          interactingObject: likeId,
+          interactionTarget: targetId,
+        }).toJsonLd(),
+      );
+    },
+  });
+
+  assert.equal(called, false);
+  assert.equal(result.verified, false);
+  assert.equal(result.authorizationId?.href, authorizationId.href);
+  assert.equal(result.failure.type, "missingAttribution");
 });
 
 test("likeInteraction verifies requests", async () => {
