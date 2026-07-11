@@ -1221,6 +1221,7 @@ The following implementations support ordering keys:
 | [`AmqpMessageQueue`]     | Yes[^1]              |
 | [`SqliteMessageQueue`]   | Yes                  |
 | `WorkersMessageQueue`    | Yes[^2]              |
+| [`NetlifyMessageQueue`]  | Yes[^3]              |
 
 > [!NOTE]
 > When using `ParallelMessageQueue`, the ordering guarantee is preserved
@@ -1242,6 +1243,8 @@ The following implementations support ordering keys:
       ordering key locks. Due to Workers KV's eventual consistency, the ordering
       guarantee is best-effort. For strict ordering requirements, consider using
       Durable Objects.
+[^3]: `NetlifyMessageQueue` requires a `KvStore` with `cas()` to be provided
+      through its `orderingKv` option.
 
 [`rabbitmq_consistent_hash_exchange`]: https://www.rabbitmq.com/docs/consistent-hash-exchange
 
