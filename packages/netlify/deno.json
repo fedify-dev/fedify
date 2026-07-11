@@ -1,0 +1,29 @@
+{
+  "name": "@fedify/netlify",
+  "version": "2.4.0",
+  "license": "MIT",
+  "imports": {
+    "@netlify/database": "npm:@netlify/database@^1.1.0",
+    "@netlify/async-workloads": "npm:@netlify/async-workloads@^0.0.106",
+    "postgres": "npm:postgres@^3.4.7"
+  },
+  "exports": {
+    ".": "./src/mod.ts"
+  },
+  "exclude": [
+    "dist",
+    "node_modules"
+  ],
+  "publish": {
+    "exclude": [
+      "**/*.test.ts",
+      "fixtures",
+      "test",
+      "tsdown.config.ts"
+    ]
+  },
+  "tasks": {
+    "check": "deno fmt --check && deno lint && deno check src/*.ts",
+    "test": "deno test --allow-env --allow-read"
+  }
+}

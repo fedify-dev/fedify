@@ -32,14 +32,74 @@ test("PostgresKvStore.initialize()", { skip: dbUrl == null }, async () => {
   try {
     await store.initialize();
     const result = await sql`
-      SELECT to_regclass(${tableName}) IS NOT NULL AS exists;
+      SELECT relpersistence
+      FROM pg_class
+      WHERE oid = to_regclass(${tableName});
     `;
-    assert(result[0].exists);
+    assert.strictEqual(result[0].relpersistence, "p");
   } finally {
     await store.drop();
     await sql.end();
   }
 });
+
+test(
+  "PostgresKvStore.initialize() converts an existing unlogged table",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+
+    const sql = postgres(dbUrl);
+    const tableName = `fedify_kv_test_${Math.random().toString(36).slice(5)}`;
+    const store = new PostgresKvStore(sql, { tableName });
+    try {
+      await sql`
+        CREATE UNLOGGED TABLE ${sql(tableName)} (
+          key text[] PRIMARY KEY,
+          value jsonb NOT NULL,
+          created timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+          ttl interval
+        );
+      `;
+
+      await store.initialize();
+
+      const result = await sql`
+        SELECT relpersistence
+        FROM pg_class
+        WHERE oid = to_regclass(${tableName});
+      `;
+      assert.strictEqual(result[0].relpersistence, "p");
+    } finally {
+      await store.drop();
+      await sql.end();
+    }
+  },
+);
+
+test(
+  "PostgresKvStore.initialize() supports opt-in unlogged storage",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+
+    const sql = postgres(dbUrl);
+    const tableName = `fedify_kv_test_${Math.random().toString(36).slice(5)}`;
+    const store = new PostgresKvStore(sql, { tableName, unlogged: true });
+    try {
+      await store.initialize();
+      const result = await sql`
+        SELECT relpersistence
+        FROM pg_class
+        WHERE oid = to_regclass(${tableName});
+      `;
+      assert.strictEqual(result[0].relpersistence, "u");
+    } finally {
+      await store.drop();
+      await sql.end();
+    }
+  },
+);
 
 test("PostgresKvStore.get()", { skip: dbUrl == null }, async () => {
   if (dbUrl == null) return; // Bun does not support skip option
@@ -123,6 +183,98 @@ test("PostgresKvStore.delete()", { skip: dbUrl == null }, async () => {
     await sql.end();
   }
 });
+
+test("PostgresKvStore.cas()", { skip: dbUrl == null }, async () => {
+  if (dbUrl == null) return; // Bun does not support skip option
+
+  const { sql, store } = getStore();
+  try {
+    assert.strictEqual(
+      await store.cas(["cas", "missing"], "wrong", "value"),
+      false,
+    );
+    assert.strictEqual(
+      await store.cas(["cas", "missing"], undefined, "created"),
+      true,
+    );
+    assert.strictEqual(await store.get(["cas", "missing"]), "created");
+
+    assert.strictEqual(
+      await store.cas(["cas", "missing"], "wrong", "updated"),
+      false,
+    );
+    assert.strictEqual(
+      await store.cas(["cas", "missing"], "created", "updated"),
+      true,
+    );
+    assert.strictEqual(await store.get(["cas", "missing"]), "updated");
+
+    assert.strictEqual(
+      await store.cas(["cas", "missing"], "updated", undefined),
+      true,
+    );
+    assert.strictEqual(await store.get(["cas", "missing"]), undefined);
+  } finally {
+    await store.drop();
+    await sql.end();
+  }
+});
+
+test(
+  "PostgresKvStore.cas() honors TTL and token-safe release",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+
+    const { sql, store } = getStore();
+    try {
+      const key = ["cas", "ttl"] as const;
+      assert.strictEqual(
+        await store.cas(key, undefined, "old-token", {
+          ttl: Temporal.Duration.from({ milliseconds: 10 }),
+        }),
+        true,
+      );
+      await delay(30);
+      assert.strictEqual(
+        await store.cas(key, undefined, "new-token", {
+          ttl: Temporal.Duration.from({ minutes: 1 }),
+        }),
+        true,
+      );
+      assert.strictEqual(
+        await store.cas(key, "old-token", undefined),
+        false,
+      );
+      assert.strictEqual(await store.get(key), "new-token");
+    } finally {
+      await store.drop();
+      await sql.end();
+    }
+  },
+);
+
+test(
+  "PostgresKvStore.cas() allows only one concurrent create",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+
+    const { sql, store } = getStore();
+    try {
+      const results = await Promise.all(
+        Array.from(
+          { length: 8 },
+          (_, index) => store.cas(["cas", "race"], undefined, index),
+        ),
+      );
+      assert.strictEqual(results.filter(Boolean).length, 1);
+    } finally {
+      await store.drop();
+      await sql.end();
+    }
+  },
+);
 
 test("PostgresKvStore.drop()", { skip: dbUrl == null }, async () => {
   if (dbUrl == null) return; // Bun does not support skip option

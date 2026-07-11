@@ -1,4 +1,5 @@
 .claude/settings.local.json
+.env
 .DS_Store
 .playwright-mcp/
 .pnpm-store/

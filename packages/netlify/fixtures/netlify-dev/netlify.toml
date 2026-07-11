@@ -1,0 +1,9 @@
+[build]
+publish = "public"
+
+[functions]
+directory = "netlify/functions"
+
+[dev]
+framework = "#static"
+publish = "public"

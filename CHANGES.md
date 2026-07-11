@@ -236,7 +236,30 @@ To be released.
     `temporal-polyfill`, while type declarations rely on the standard
     `esnext.temporal` lib reference.  [[#823], [#925]]
 
+### @fedify/netlify
+
+ -  Added the new *@fedify/netlify* package for processing Fedify message queue
+    jobs with Netlify Async Workloads.  It provides `NetlifyMessageQueue` for
+    durable event submission and `createNetlifyQueueHandler()` for Netlify
+    Function consumers, including delayed delivery, native retry delegation,
+    non-retryable malformed-event handling, durable per-key FIFO ordering, and
+    explicit recovery for unobservable dead-letter failures.
+    [[#930], [#934]]
+
+[#930]: https://github.com/fedify-dev/fedify/issues/930
+[#934]: https://github.com/fedify-dev/fedify/pull/934
+
 ### @fedify/postgres
+
+ -  Added `PostgresKvStore.cas()`, including atomic creation, replacement, and
+    deletion with TTL-aware comparison.  This allows PostgreSQL-backed stores,
+    including Netlify Database, to enforce queue ordering and other Fedify CAS
+    operations.  [[#930], [#934]]
+
+ -  `PostgresKvStore` now creates crash-safe logged tables by default and
+    migrates existing unlogged tables during initialization.  Transient
+    unlogged storage remains available with the `unlogged` option.
+    [[#930], [#934]]
 
  -  Fixed the CommonJS PostgreSQL adapter build so it no longer requires
     `@js-temporal/polyfill` at runtime.  The build now bundles

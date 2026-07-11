@@ -25,6 +25,10 @@ const federation = createFederation({
 });
 ~~~~
 
+`PostgresKvStore` uses a crash-safe logged table by default.  For transient
+data where losing the table contents after a PostgreSQL crash is acceptable,
+pass `{ unlogged: true }` as its second constructor argument.
+
 [JSR badge]: https://jsr.io/badges/@fedify/postgres
 [JSR]: https://jsr.io/@fedify/postgres
 [npm badge]: https://img.shields.io/npm/v/@fedify/postgres?logo=npm
