@@ -28,6 +28,13 @@ test("computeDigestMultibase() computes a SHA-256 multihash", async () => {
   );
 });
 
+test("digest helpers accept SharedArrayBuffer-backed bytes", async () => {
+  const sharedBytes = new Uint8Array(new SharedArrayBuffer(bytes.length));
+  sharedBytes.set(bytes);
+  equal(await computeDigestMultibase(sharedBytes), digestMultibase);
+  equal(await verifyDigestMultibase(sharedBytes, digestMultibase), true);
+});
+
 test("createHashlink() and parseHashlink() round-trip simple hashlinks", () => {
   equal(createHashlink(digestMultibase), hashlink);
   deepStrictEqual(parseHashlink(hashlink), { digestMultibase });

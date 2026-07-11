@@ -24,6 +24,12 @@ function isCanonicalVarintPrefix(
   return true;
 }
 
+function toWebCryptoBytes(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
+  return bytes.buffer instanceof ArrayBuffer
+    ? new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+    : bytes.slice();
+}
+
 /**
  * A parsed SHA-256 resource digest.
  *
@@ -60,7 +66,7 @@ export async function computeDigestMultibase(
   bytes: Uint8Array,
 ): Promise<string> {
   const digest = new Uint8Array(
-    await crypto.subtle.digest("SHA-256", bytes.slice()),
+    await crypto.subtle.digest("SHA-256", toWebCryptoBytes(bytes)),
   );
   const lengthAndDigest = addMulticodecPrefix(digest.length, digest);
   const multihash = addMulticodecPrefix(
@@ -175,7 +181,7 @@ export async function verifyDigestMultibase(
 ): Promise<boolean> {
   const expected = parseDigestMultibase(digestMultibase).digest;
   const actual = new Uint8Array(
-    await crypto.subtle.digest("SHA-256", bytes.slice()),
+    await crypto.subtle.digest("SHA-256", toWebCryptoBytes(bytes)),
   );
   let difference = expected.length ^ actual.length;
   const length = Math.max(expected.length, actual.length);
