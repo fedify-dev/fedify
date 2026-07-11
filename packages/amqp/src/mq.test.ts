@@ -14,6 +14,11 @@ const AMQP_URL = process.env.AMQP_URL;
 const unitTest = suite(import.meta);
 const test = AMQP_URL ? unitTest : unitTest.skip;
 
+unitTest("AmqpMessageQueue declares non-atomic batch enqueueing", () => {
+  const mq = new AmqpMessageQueue({} as ChannelModel);
+  assertFalse(mq.atomicEnqueueMany);
+});
+
 class FakeDepthChannel {
   #closed = false;
 

@@ -132,6 +132,8 @@ export interface AmqpMessageQueueOptions {
  * ```
  */
 export class AmqpMessageQueue implements MessageQueue {
+  readonly atomicEnqueueMany = false;
+
   #connection: ChannelModel;
   #queue: string;
   #delayedQueuePrefix: string;
