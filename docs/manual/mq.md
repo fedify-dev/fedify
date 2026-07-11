@@ -688,6 +688,33 @@ bun add @fedify/netlify @netlify/async-workloads
 
 :::
 
+The PostgreSQL-backed `orderingKv` example below also needs
+*@fedify/postgres* and *postgres*:
+
+::: code-group
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/postgres npm:postgres
+~~~~
+
+~~~~ bash [npm]
+npm add @fedify/postgres postgres
+~~~~
+
+~~~~ bash [pnpm]
+pnpm add @fedify/postgres postgres
+~~~~
+
+~~~~ bash [Yarn]
+yarn add @fedify/postgres postgres
+~~~~
+
+~~~~ bash [Bun]
+bun add @fedify/postgres postgres
+~~~~
+
+:::
+
 `NetlifyMessageQueue` publishes queue jobs as [Netlify Async Workloads]
 events.  Netlify delivers each event to a request-scoped Function and owns
 retries and dead-letter handling.

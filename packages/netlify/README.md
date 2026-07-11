@@ -38,6 +38,17 @@ yarn add     @fedify/netlify @netlify/async-workloads     # Yarn
 bun  add     @fedify/netlify @netlify/async-workloads     # Bun
 ~~~~
 
+The PostgreSQL-backed `orderingKv` example below also needs
+`@fedify/postgres`, `@netlify/database`, and `postgres`:
+
+~~~~ sh
+deno add jsr:@fedify/postgres npm:@netlify/database npm:postgres  # Deno
+npm  add     @fedify/postgres @netlify/database postgres          # npm
+pnpm add     @fedify/postgres @netlify/database postgres          # pnpm
+yarn add     @fedify/postgres @netlify/database postgres          # Yarn
+bun  add     @fedify/postgres @netlify/database postgres          # Bun
+~~~~
+
 
 Usage
 -----
