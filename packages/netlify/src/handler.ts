@@ -168,11 +168,21 @@ export function createNetlifyQueueEventHandler<TContextData>(
     }
 
     try {
-      const federation = await options.federation(event);
-      const contextData = options.contextData == null
-        ? undefined as TContextData
-        : await options.contextData(event);
-      await federation.processQueuedTask(contextData, data.message);
+      const process = async () => {
+        const federation = await options.federation(event);
+        const contextData = options.contextData == null
+          ? undefined as TContextData
+          : await options.contextData(event);
+        await federation.processQueuedTask(contextData, data.message);
+      };
+      if (data.orderingKey != null && data.orderingSequence != null) {
+        await event.step.run("fedify-process-queued-task", async () => {
+          await process();
+          return null;
+        });
+      } else {
+        await process();
+      }
     } catch (error) {
       if (
         data.orderingKey != null && data.orderingSequence != null &&

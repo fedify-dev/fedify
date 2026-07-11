@@ -1,5 +1,10 @@
 import "temporal-polyfill/global";
-import type { Federation, Message } from "@fedify/fedify/federation";
+import type {
+  Federation,
+  KvKey,
+  KvStoreSetOptions,
+  Message,
+} from "@fedify/fedify/federation";
 import { MemoryKvStore } from "@fedify/fedify/federation";
 import {
   type AsyncWorkloadEvent,
@@ -21,6 +26,22 @@ import type { NetlifyAsyncWorkloadsClient } from "../src/types.ts";
 const client: NetlifyAsyncWorkloadsClient = {
   send: () => Promise.resolve({ eventId: "unused", sendStatus: "succeeded" }),
 };
+
+class FailSecondCasKvStore extends MemoryKvStore {
+  readonly failure = new Error("ordering state unavailable");
+  #casCalls = 0;
+
+  override cas(
+    key: KvKey,
+    expectedValue: unknown,
+    newValue: unknown,
+    options?: KvStoreSetOptions,
+  ): Promise<boolean> {
+    this.#casCalls++;
+    if (this.#casCalls === 2) return Promise.reject(this.failure);
+    return super.cas(key, expectedValue, newValue, options);
+  }
+}
 
 const message: Message = {
   type: "task",
@@ -281,6 +302,50 @@ describe("createNetlifyQueueHandler", () => {
     await second;
 
     assert.equal(overlapped, false);
+  });
+
+  it("does not rerun a task when ordering completion is retried", async () => {
+    const kv = new FailSecondCasKvStore();
+    let sent: NetlifyQueueEvent["eventData"] | undefined;
+    const queue = new NetlifyMessageQueue({
+      client: {
+        send: (_eventName, options) => {
+          sent = options?.data as NetlifyQueueEvent["eventData"];
+          return Promise.resolve({
+            eventId: "event-1",
+            sendStatus: "succeeded",
+          });
+        },
+      },
+      orderingKv: kv,
+    });
+    await queue.enqueue(message, { orderingKey: "actor:alice" });
+
+    let processed = 0;
+    const handler = createNetlifyQueueEventHandler({
+      queue,
+      federation: () =>
+        federation(() => {
+          processed++;
+          return Promise.resolve();
+        }),
+    });
+    const workload = event(sent);
+    const stepResults = new Map<string, unknown>();
+    workload.step.run = async <T>(
+      stepId: string,
+      callback: () => Promise<T> | T,
+    ): Promise<T> => {
+      if (stepResults.has(stepId)) return stepResults.get(stepId) as T;
+      const result = await callback();
+      stepResults.set(stepId, result);
+      return result;
+    };
+
+    await assert.rejects(handler(workload), kv.failure);
+    await handler(workload);
+
+    assert.equal(processed, 1);
   });
 
   it("waits with durable sleep instead of consuming failure retries", async () => {
