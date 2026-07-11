@@ -174,6 +174,17 @@ test("parseDigestMultibase() rejects malformed values", async () => {
 });
 
 test("simple hashlink helpers reject metadata and malformed forms", async () => {
+  for (const terminator of ["\n", "\r", "\r\n", "\u2028", "\u2029"]) {
+    const malformedHashlink = `${hashlink}${terminator}`;
+    throws(
+      () => parseHashlink(malformedHashlink),
+      new TypeError("Invalid simple hashlink."),
+    );
+    await rejects(
+      () => verifyHashlink(bytes, malformedHashlink),
+      new TypeError("Invalid simple hashlink."),
+    );
+  }
   throws(
     () => parseHashlink(`${hashlink}:zmetadata`),
     new TypeError("Invalid simple hashlink."),

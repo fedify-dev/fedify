@@ -147,8 +147,10 @@ export function parseDigestMultibase(value: string): ParsedDigestMultibase {
 
 function extractDigestMultibase(value: string | URL): string {
   const hashlink = value instanceof URL ? value.href : value;
-  const match = /^hl:([^:]+)$/i.exec(hashlink);
-  if (match == null) throw new TypeError("Invalid simple hashlink.");
+  const match = /^hl:([^:\r\n\u2028\u2029]+)$/i.exec(hashlink);
+  if (match == null || match[0].length !== hashlink.length) {
+    throw new TypeError("Invalid simple hashlink.");
+  }
   return match[1];
 }
 
