@@ -246,21 +246,40 @@ const actor = new Person({
 Each gateway must be an HTTP(S) base URI with no path, query, or fragment.
 
 Links and media/document objects expose `digestMultibase` for the integrity
-digest required when portable objects reference external resources:
+digest required when portable objects reference external resources.  Use
+`computeDigestMultibase()` to compute the SHA-256 multihash and
+`createHashlink()` to construct a metadata-free `hl:` URI:
 
 ~~~~ typescript twoslash
 import { Image } from "@fedify/vocab";
+import {
+  computeDigestMultibase,
+  createHashlink,
+  verifyDigestMultibase,
+  verifyHashlink,
+} from "@fedify/vocab-runtime";
+
+const bytes = new TextEncoder().encode("image data");
+const digestMultibase = await computeDigestMultibase(bytes);
+const hashlink = createHashlink(digestMultibase);
 
 const image = new Image({
-  url: new URL("hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n"),
+  url: new URL(hashlink),
   mediaType: "image/png",
-  digestMultibase: "zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n",
+  digestMultibase,
 });
+
+await verifyDigestMultibase(bytes, digestMultibase);  // true
+await verifyHashlink(bytes, hashlink);  // true
 ~~~~
 
 The vocabulary layer stores and serializes the `digestMultibase` value exactly
-as provided.  Computing SHA-256 digests, parsing hashlinks, and verifying media
-bytes are handled by separate helper APIs.
+as provided.  The verification helpers return `false` when the bytes do not
+match.  `parseDigestMultibase()` and `parseHashlink()` validate values when the
+decoded digest or hashlink components are needed.  These helpers accept only
+SHA-256 digests and simple `hl:` URIs without metadata; malformed values,
+unsupported hash algorithms, metadata-bearing hashlinks, and legacy `?hl=`
+URLs cause a `TypeError`.
 
 [FEP-ef61]: https://w3id.org/fep/ef61
 

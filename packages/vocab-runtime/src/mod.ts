@@ -34,6 +34,16 @@ export {
   isDecimal,
   parseDecimal,
 } from "./decimal.ts";
+export {
+  computeDigestMultibase,
+  createHashlink,
+  type ParsedDigestMultibase,
+  type ParsedHashlink,
+  parseDigestMultibase,
+  parseHashlink,
+  verifyDigestMultibase,
+  verifyHashlink,
+} from "./digest.ts";
 export { LanguageString } from "./langstr.ts";
 export {
   decodeMultibase,
