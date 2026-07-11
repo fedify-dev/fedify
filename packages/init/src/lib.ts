@@ -149,6 +149,14 @@ export const readTemplate = async (
 export const getDevCommand = (pm: PackageManager) =>
   pm === "deno" ? "deno task dev" : pm === "bun" ? "bun dev" : `${pm} run dev`;
 
+/** Returns the command to build for the given package manager. */
+export const getBuildCommand = (pm: PackageManager) =>
+  pm === "deno"
+    ? ["deno", "task", "build"]
+    : pm === "bun"
+    ? ["bun", "run", "build"]
+    : [pm, "run", "build"];
+
 async function isCommandAvailable(
   { checkCommand, outputPattern }: {
     checkCommand: [string, ...string[]];

@@ -10,18 +10,30 @@
 *This package is available since Fedify 2.1.0.*
 
 This package provides a simple way to integrate [Fedify] with [Astro].
+Astro 5, 6, and 7 are supported.
+
+Fedify needs Astro's on-demand rendering, so install a server adapter for your
+runtime.  The following Node.js configuration uses `@astrojs/node` 11 with
+Astro 7:
 
 First, add the integration to your *astro.config.mjs*:
 
 ~~~~ typescript
 import { defineConfig } from "astro/config";
 import { fedifyIntegration } from "@fedify/astro";
+import node from "@astrojs/node";
 
 export default defineConfig({
   integrations: [fedifyIntegration()],
   output: "server",
+  adapter: node({ mode: "standalone" }),
 });
 ~~~~
+
+The `"server"` output is the simplest default because Fedify handles endpoints
+such as WebFinger and inboxes that do not have corresponding Astro page files.
+Individual Astro pages can still opt into prerendering with
+`export const prerender = true`.
 
 Then, create your middleware in *src/middleware.ts*:
 
@@ -36,6 +48,20 @@ const federation = createFederation<void>({
 export const onRequest = fedifyMiddleware(
   federation,
   (context) => void 0,
+);
+~~~~
+
+If your application has other middleware, compose it with the Fedify
+middleware using `sequence()`:
+
+~~~~ typescript
+import { fedifyMiddleware } from "@fedify/astro";
+import { sequence } from "astro:middleware";
+import federation from "./federation.ts";
+
+export const onRequest = sequence(
+  otherMiddleware,
+  fedifyMiddleware(federation, () => undefined),
 );
 ~~~~
 
@@ -84,18 +110,19 @@ instead of `astro`:
 For Bun users
 -------------
 
-If you are using Bun, install `@nurodev/astro-bun` and configure it as the
-Astro adapter:
+Astro 7 does not have a compatible Bun-specific adapter.  The tested Bun
+configuration uses `@astrojs/node` 11 in standalone mode, builds Astro with
+Bun, and runs the resulting server entry point with Bun:
 
 ~~~~ typescript
 import { defineConfig } from "astro/config";
 import { fedifyIntegration } from "@fedify/astro";
-import bun from "@nurodev/astro-bun";
+import node from "@astrojs/node";
 
 export default defineConfig({
   integrations: [fedifyIntegration()],
   output: "server",
-  adapter: bun(),
+  adapter: node({ mode: "standalone" }),
 });
 ~~~~
 

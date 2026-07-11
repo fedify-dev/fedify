@@ -5,7 +5,7 @@ import { appendFile, mkdir, stat } from "node:fs/promises";
 import { join, sep } from "node:path";
 import process from "node:process";
 import packageManagers from "../json/pm.json" with { type: "json" };
-import { kvStores, messageQueues } from "../lib.ts";
+import { getBuildCommand, kvStores, messageQueues } from "../lib.ts";
 import type {
   KvStore,
   MessageQueue,
@@ -38,7 +38,11 @@ async (
     .spawn();
   await saveOutputs(testDir, result);
   if (result.code === 0) {
-    if (!dry && !(await validateDevToolScripts(testDir, options))) {
+    if (
+      !dry &&
+      (!(await validateDevToolScripts(testDir, options)) ||
+        !(await validateFrameworkBuild(testDir, options)))
+    ) {
       printMessage`  Fail: ${vals}`;
       printMessage`    Check out these files for more details: \
 ${join(testDir, "out.txt")} and \
@@ -123,7 +127,7 @@ async function validateDevToolScripts(
   dir: string,
   options: GeneratedType<ReturnType<typeof generateTestCases>>,
 ): Promise<boolean> {
-  const [, packageManager] = options as [
+  const [webFramework, packageManager] = options as [
     WebFramework,
     PackageManager,
     KvStore,
@@ -131,6 +135,18 @@ async function validateDevToolScripts(
   ];
   if (packageManager === "deno") return true;
   if (!(await hasInstalledNodeDependencies(dir))) return true;
+
+  if (webFramework === "astro") {
+    const format = await $`${[packageManager, "run", "format"]}`
+      .cwd(dir)
+      .stdin("null")
+      .stdout("piped")
+      .stderr("piped")
+      .noThrow()
+      .spawn();
+    await saveOutputs(dir, format);
+    if (format.code !== 0) return false;
+  }
 
   for (const script of ["format:check", "lint"]) {
     const result = await $`${[packageManager, "run", script]}`
@@ -152,6 +168,28 @@ async function hasInstalledNodeDependencies(dir: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+async function validateFrameworkBuild(
+  dir: string,
+  options: GeneratedType<ReturnType<typeof generateTestCases>>,
+): Promise<boolean> {
+  const [webFramework, packageManager] = options as [
+    WebFramework,
+    PackageManager,
+    KvStore,
+    MessageQueue,
+  ];
+  if (webFramework !== "astro" || packageManager === "deno") return true;
+  const result = await $`${getBuildCommand(packageManager)}`
+    .cwd(dir)
+    .stdin("null")
+    .stdout("piped")
+    .stderr("piped")
+    .noThrow()
+    .spawn();
+  await saveOutputs(dir, result);
+  return result.code === 0;
 }
 
 export function filterOptions(

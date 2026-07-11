@@ -36,8 +36,40 @@ test(
   },
 );
 
+test("Astro init pins the Astro 7 scaffolder and dependencies", async () => {
+  for (const packageManager of ["npm", "deno", "bun"] as const) {
+    const result = await astroDescription.init({
+      command: "init",
+      dir: packageDir,
+      dryRun: true,
+      allowNonEmpty: false,
+      skipInstall: false,
+      kvStore: "in-memory",
+      messageQueue: "in-process",
+      packageManager,
+      projectName: "fedify-test",
+      testMode: true,
+      webFramework: "astro",
+    });
+    ok(result.command != null);
+    strictEqual(result.command.includes("astro@^5.2.2"), true);
+    const refIndex = result.command.indexOf("--ref");
+    strictEqual(result.command[refIndex + 1], "astro@7.0.7");
+    strictEqual(
+      result.dependencies?.astro,
+      packageManager === "deno" ? "npm:astro@^7.0.7" : "^7.0.7",
+    );
+    if (packageManager === "deno") {
+      strictEqual(
+        result.dependencies?.["@deno/astro-adapter"],
+        "npm:@deno/astro-adapter@^0.6.0",
+      );
+    }
+  }
+});
+
 test(
-  "Astro init uses the Bun adapter for Bun projects",
+  "Astro init uses the Node adapter for Bun projects",
   async () => {
     const packageJson = JSON.parse(
       await readFile(resolve(packageDir, "package.json"), "utf8"),
@@ -63,15 +95,18 @@ test(
     const tasks = result.tasks as Record<string, string>;
     const files = result.files as Record<string, string>;
 
-    strictEqual(dependencies["@nurodev/astro-bun"], "^2.1.2");
+    strictEqual(dependencies["@astrojs/node"], "^11.0.2");
     strictEqual(dependencies["@fedify/astro"], packageJson.version);
     strictEqual(tasks.dev, "bunx --bun astro dev");
     strictEqual(tasks.build, "bunx --bun astro build");
     strictEqual(tasks.preview, "bun ./dist/server/entry.mjs");
     match(
       files["astro.config.ts"],
-      /import bun from "@nurodev\/astro-bun";/,
+      /import node from "@astrojs\/node";/,
     );
-    match(files["astro.config.ts"], /adapter: bun\(\),/);
+    match(
+      files["astro.config.ts"],
+      /adapter: node\(\{ mode: "standalone" \}\),/,
+    );
   },
 );

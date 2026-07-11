@@ -270,7 +270,14 @@ run = "pnpm run --recursive --parallel --filter '!{docs}' --config.enable-pre-po
 
 [tasks.test]
 description = "Run the test suite across all environments (Deno, Node.js, Bun)"
-depends = ["check", "test:deno", "test:node", "test:bun", "test:temporal-polyfill"]
+depends = [
+  "check",
+  "test:deno",
+  "test:node",
+  "test:bun",
+  "test:astro-compat",
+  "test:temporal-polyfill",
+]
 
 [tasks."test:temporal-polyfill"]
 description = "Check Temporal polyfill packaging"
@@ -300,6 +307,11 @@ description = "Run tests for all example projects"
 # both are needed by the lint/oxlint example.
 depends = ["build"]
 run = "deno run -A examples/test-examples/mod.ts"
+
+[tasks."test:astro-compat"]
+description = "Test @fedify/astro against supported Astro and runtime versions"
+depends = ["build"]
+run = "deno run -A packages/astro/compat/run.ts"
 
 [tasks."test:monitoring"]
 description = "Validate the monitoring example configuration"

@@ -26,6 +26,7 @@ const astroDescription: WebFrameworkDescription = {
     const dependencies: Record<string, string> = pm === "deno"
       ? {
         ...defaultDenoDependencies,
+        astro: `npm:astro@${deps["npm:astro"]}`,
         "@deno/astro-adapter": `npm:@deno/astro-adapter@${
           deps["npm:@deno/astro-adapter"]
         }`,
@@ -33,13 +34,15 @@ const astroDescription: WebFrameworkDescription = {
       }
       : pm === "bun"
       ? {
+        "@astrojs/node": deps["npm:@astrojs/node"],
         "@fedify/astro": PACKAGE_VERSION,
-        "@nurodev/astro-bun": deps["npm:@nurodev/astro-bun"],
+        astro: deps["npm:astro"],
       }
       : {
         "@astrojs/node": deps["npm:@astrojs/node"],
         "@fedify/astro": PACKAGE_VERSION,
         "@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
+        astro: deps["npm:astro"],
       };
 
     return {
@@ -81,12 +84,14 @@ function* getAstroInitCommand(
   pm: PackageManager,
 ): Generator<string> {
   yield* createAstroAppCommand(pm);
-  yield "astro@latest";
+  yield `astro@${deps["npm:create-astro"]}`;
   yield ".";
   yield "--";
   yield "--no-git";
   yield "--skip-houston";
   yield "-y";
+  yield "--ref";
+  yield `astro@${deps["npm:astro"].replace(/^\D+/, "")}`;
   if (pm !== "deno") yield "--no-install";
   yield "&&";
   yield "rm";
