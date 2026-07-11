@@ -8,5 +8,5 @@
 import $ from "@david/dax";
 import deno from "../deno.json" with { type: "json" };
 
-const result = await $`deno check ${deno.workspace}`.noThrow();
+const result = await $`deno --quiet check ${deno.workspace}`.noThrow();
 Deno.exit(result.code);
