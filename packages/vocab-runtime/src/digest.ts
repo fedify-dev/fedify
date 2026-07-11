@@ -142,6 +142,13 @@ export function parseDigestMultibase(value: string): ParsedDigestMultibase {
   return { algorithm: "sha2-256", digest };
 }
 
+function extractDigestMultibase(value: string | URL): string {
+  const hashlink = value instanceof URL ? value.href : value;
+  const match = /^hl:([^:]+)$/i.exec(hashlink);
+  if (match == null) throw new TypeError("Invalid simple hashlink.");
+  return match[1];
+}
+
 /**
  * Parses a metadata-free `hl:` hashlink and validates its resource digest.
  *
@@ -152,10 +159,7 @@ export function parseDigestMultibase(value: string): ParsedDigestMultibase {
  * @since 2.4.0
  */
 export function parseHashlink(value: string | URL): ParsedHashlink {
-  const hashlink = value instanceof URL ? value.href : value;
-  const match = /^hl:([^:]+)$/i.exec(hashlink);
-  if (match == null) throw new TypeError("Invalid simple hashlink.");
-  const digestMultibase = match[1];
+  const digestMultibase = extractDigestMultibase(value);
   parseDigestMultibase(digestMultibase);
   return { digestMultibase };
 }
@@ -190,10 +194,10 @@ export async function verifyDigestMultibase(
   const actual = new Uint8Array(
     await crypto.subtle.digest("SHA-256", toWebCryptoBytes(bytes)),
   );
-  let difference = expected.length ^ actual.length;
-  const length = Math.max(expected.length, actual.length);
-  for (let i = 0; i < length; i++) {
-    difference |= (expected[i] ?? 0) ^ (actual[i] ?? 0);
+  if (expected.length !== actual.length) return false;
+  let difference = 0;
+  for (let i = 0; i < expected.length; i++) {
+    difference |= expected[i] ^ actual[i];
   }
   return difference === 0;
 }
@@ -211,6 +215,6 @@ export async function verifyHashlink(
   bytes: Uint8Array,
   hashlink: string | URL,
 ): Promise<boolean> {
-  const { digestMultibase } = parseHashlink(hashlink);
+  const digestMultibase = extractDigestMultibase(hashlink);
   return await verifyDigestMultibase(bytes, digestMultibase);
 }

@@ -173,9 +173,13 @@ test("parseDigestMultibase() rejects malformed values", async () => {
   );
 });
 
-test("simple hashlink helpers reject metadata and malformed forms", () => {
+test("simple hashlink helpers reject metadata and malformed forms", async () => {
   throws(
     () => parseHashlink(`${hashlink}:zmetadata`),
+    new TypeError("Invalid simple hashlink."),
+  );
+  await rejects(
+    () => verifyHashlink(bytes, `${hashlink}:zmetadata`),
     new TypeError("Invalid simple hashlink."),
   );
   throws(
@@ -184,6 +188,10 @@ test("simple hashlink helpers reject metadata and malformed forms", () => {
   );
   throws(
     () => parseHashlink("hl:not-multibase"),
+    new TypeError("Invalid digestMultibase encoding."),
+  );
+  await rejects(
+    () => verifyHashlink(bytes, "hl:not-multibase"),
     new TypeError("Invalid digestMultibase encoding."),
   );
   throws(
