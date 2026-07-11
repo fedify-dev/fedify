@@ -150,6 +150,35 @@ describe("NetlifyMessageQueue", () => {
     );
   });
 
+  it("scopes ordering sequences to the event name", async () => {
+    const client = new FakeClient();
+    const orderingKv = new MemoryKvStore();
+    const firstQueue = new NetlifyMessageQueue({
+      client,
+      eventName: "fedify:inbox",
+      orderingKv,
+    });
+    const secondQueue = new NetlifyMessageQueue({
+      client,
+      eventName: "fedify:outbox",
+      orderingKv,
+    });
+    const sameEventQueue = new NetlifyMessageQueue({
+      client,
+      eventName: "FEDIFY:INBOX",
+      orderingKv,
+    });
+
+    await firstQueue.enqueue(message, { orderingKey: "actor:alice" });
+    await secondQueue.enqueue(message, { orderingKey: "actor:alice" });
+    await sameEventQueue.enqueue(message, { orderingKey: "actor:alice" });
+
+    assert.deepEqual(
+      client.calls.map((call) => call.options?.data?.orderingSequence),
+      [1, 1, 2],
+    );
+  });
+
   it("preserves input order in an ordered enqueueMany call", async () => {
     const client = new FakeClient();
     const queue = new NetlifyMessageQueue({

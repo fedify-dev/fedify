@@ -158,9 +158,16 @@ export function getOrderingKv(
 }
 
 function getOrderingStateKey(
+  queue: NetlifyMessageQueue,
   orderingKey: string,
-): readonly [string, string, string, string] {
-  return ["fedify", "netlify", "ordering", orderingKey];
+): readonly [string, string, string, string, string] {
+  return [
+    "fedify",
+    "netlify",
+    "ordering",
+    queue.eventName.toLowerCase(),
+    orderingKey,
+  ];
 }
 
 function compactOrderingState(state: OrderingState): OrderingState {
@@ -213,7 +220,7 @@ async function updateOrderingState<T>(
   update: (state: OrderingState) => readonly [OrderingState, T],
 ): Promise<T> {
   const kv = getOrderingKv(queue, orderingKey);
-  const key = getOrderingStateKey(orderingKey);
+  const key = getOrderingStateKey(queue, orderingKey);
   while (true) {
     const stored = await kv.get(key);
     const state = validateOrderingState(stored);
@@ -261,7 +268,7 @@ export async function getCompletedOrderingSequence(
 ): Promise<number> {
   const kv = getOrderingKv(queue, orderingKey);
   const state = validateOrderingState(
-    await kv.get(getOrderingStateKey(orderingKey)),
+    await kv.get(getOrderingStateKey(queue, orderingKey)),
   );
   return state.completedSequence;
 }
