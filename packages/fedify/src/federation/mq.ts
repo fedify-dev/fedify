@@ -456,7 +456,9 @@ export class ParallelMessageQueue implements MessageQueue {
     this.workers = workers;
     this.nativeRetrial = queue.nativeRetrial;
     this.nativeDeduplication = queue.nativeDeduplication;
-    this.atomicEnqueueMany = queue.atomicEnqueueMany;
+    this.atomicEnqueueMany = queue.enqueueMany == null
+      ? false
+      : queue.atomicEnqueueMany;
     if (queue.getDepth != null) {
       this.getDepth = () => queue.getDepth!();
     }

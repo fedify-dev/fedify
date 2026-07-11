@@ -511,6 +511,7 @@ test(
 
     const inner = new NoBulkQueue();
     const workers = new ParallelMessageQueue(inner, 5);
+    assertFalse(workers.atomicEnqueueMany);
     await assertRejects(
       () =>
         workers.enqueueMany([{ x: 1 }, { x: 2 }], { deduplicationKey: "k" }),

@@ -11,7 +11,7 @@ import { context, type MeterProvider, propagation } from "@opentelemetry/api";
 import type { KvKey } from "../kv.ts";
 import { getFederationMetrics } from "../metrics.ts";
 import type { FederationImpl } from "../middleware.ts";
-import { type MessageQueue, ParallelMessageQueue } from "../mq.ts";
+import type { MessageQueue } from "../mq.ts";
 import type { TaskMessage } from "../queue.ts";
 import type TaskCodec from "./codec.ts";
 import type { TaskDefinition, TaskEnqueueOptions } from "./task.ts";
@@ -159,8 +159,7 @@ function planDeduplication<TContextData>(
   const native = queue.nativeDeduplication === true;
   const canCas = ctx.federation.kv.cas != null;
   const canBatchAtomically = queue.enqueueMany != null &&
-    queue.atomicEnqueueMany !== false &&
-    !(queue instanceof ParallelMessageQueue && queue.queue.enqueueMany == null);
+    queue.atomicEnqueueMany !== false;
   if (itemCount > 1 && !canBatchAtomically && (native || canCas)) {
     throw new TypeError(
       `Task ${
