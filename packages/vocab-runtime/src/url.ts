@@ -324,6 +324,29 @@ function parseAtUri(uri: string): URL {
 }
 
 /**
+ * Checks whether the URL is an FEP-ef61 gateway base URI.
+ */
+export function isGatewayUrl(url: URL): boolean {
+  return (url.protocol === "http:" || url.protocol === "https:") &&
+    url.username === "" && url.password === "" &&
+    url.pathname === "/" && url.search === "" && url.hash === "";
+}
+
+/**
+ * Parses and validates an FEP-ef61 gateway base URI.
+ */
+export function parseGatewayUrl(url: string): URL {
+  const parsed = parseIri(url);
+  if (!isGatewayUrl(parsed)) {
+    throw new TypeError(
+      "FEP-ef61 gateways must be HTTP(S) base URIs with no credentials, " +
+        "path, query, or fragment.",
+    );
+  }
+  return parsed;
+}
+
+/**
  * Validates a URL to prevent SSRF attacks.
  */
 export async function validatePublicUrl(url: string): Promise<void> {

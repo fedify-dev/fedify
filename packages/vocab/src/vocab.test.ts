@@ -28,6 +28,7 @@ import {
   Activity,
   Agreement,
   Announce,
+  Application,
   Collection,
   Commitment,
   Create,
@@ -41,7 +42,9 @@ import {
   FeaturedItem,
   FeatureRequest,
   Follow,
+  Group,
   Hashtag,
+  Image,
   Intent,
   InteractionPolicy,
   InteractionRule,
@@ -52,6 +55,7 @@ import {
   Object,
   Offer,
   OrderedCollectionPage,
+  Organization,
   Person,
   Place,
   Proposal,
@@ -59,6 +63,7 @@ import {
   QuoteAuthorization,
   QuoteRequest,
   Reject,
+  Service,
   Source,
   Tombstone,
 } from "./vocab.ts";
@@ -621,6 +626,242 @@ test("fromJsonLd() handles portable ActivityPub IRIs", async () => {
     pageJson.prev,
     "ap+ef61://did:key:z6Mkabc/actor/outbox?page=1",
   );
+});
+
+test("FEP-ef61: actor gateways round-trip as an ordered URI list", async () => {
+  const actorClasses = [Application, Group, Organization, Person, Service];
+  const gateways = [
+    new URL("https://server1.example/"),
+    new URL("https://server2.example/"),
+  ];
+
+  for (const ActorClass of actorClasses) {
+    const actor = await ActorClass.fromJsonLd({
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/fep/ef61",
+      ],
+      type: ActorClass.name,
+      id: "ap+ef61://did:key:z6Mkabc/actor",
+      gateways: gateways.map((gateway) => gateway.href),
+    });
+    deepStrictEqual(actor.gateways, gateways);
+
+    const jsonLd = await actor.toJsonLd() as Record<string, unknown>;
+    deepStrictEqual(jsonLd.type, ActorClass.name);
+    deepStrictEqual(jsonLd.gateways, gateways.map((gateway) => gateway.href));
+
+    const restored = await ActorClass.fromJsonLd(jsonLd);
+    deepStrictEqual(restored.gateways, gateways);
+  }
+});
+
+test("FEP-ef61: actor gateways preserve single, empty, and invalid cases", async () => {
+  const singleGateway = new Person({
+    id: new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
+    gateways: [new URL("https://server.example/")],
+  });
+  deepStrictEqual(
+    (await singleGateway.toJsonLd() as Record<string, unknown>).gateways,
+    ["https://server.example/"],
+  );
+
+  const noGateways = new Person({
+    id: new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
+    gateways: [],
+  });
+  ok(!("gateways" in (await noGateways.toJsonLd() as Record<string, unknown>)));
+
+  await rejects(
+    () =>
+      Person.fromJsonLd({
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/fep/ef61",
+        ],
+        type: "Person",
+        gateways: ["not a uri"],
+      }),
+    TypeError,
+  );
+});
+
+test("FEP-ef61: actor gateways accept @id typed JSON-LD references", async () => {
+  const actor = await Person.fromJsonLd({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      {
+        gateways: {
+          "@id": "https://w3id.org/fep/ef61/gateways",
+          "@type": "@id",
+          "@container": "@list",
+        },
+      },
+    ],
+    type: "Person",
+    id: "ap+ef61://did:key:z6Mkabc/actor",
+    gateways: ["https://gateway.example/"],
+  });
+
+  deepStrictEqual(actor.gateways, [new URL("https://gateway.example/")]);
+});
+
+test("FEP-ef61: actor gateways must be HTTP(S) base URIs", async () => {
+  const validGateways = [
+    new URL("https://server.example/"),
+    new URL("http://server.example/"),
+  ];
+  const actor = new Person({
+    id: new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
+    gateways: validGateways,
+  });
+  deepStrictEqual(actor.gateways, validGateways);
+
+  for (
+    const gateway of [
+      "ftp://server.example/",
+      "https://user:pass@server.example/",
+      "https://user@server.example/",
+      "https://server.example/path",
+      "https://server.example/?x=1",
+      "https://server.example/#fragment",
+    ]
+  ) {
+    throws(
+      () =>
+        new Person({
+          id: new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
+          gateways: [new URL(gateway)],
+        }),
+      TypeError,
+    );
+
+    await rejects(
+      () =>
+        Person.fromJsonLd({
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            "https://w3id.org/fep/ef61",
+          ],
+          type: "Person",
+          gateways: [gateway],
+        }),
+      TypeError,
+    );
+  }
+});
+
+test("FEP-ef61: digestMultibase round-trips on links and media objects", async () => {
+  const digestMultibase = "zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n";
+
+  const link = await Link.fromJsonLd({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/fep/ef61",
+    ],
+    type: "Link",
+    href: "hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n",
+    digestMultibase,
+  });
+  deepStrictEqual(link.digestMultibase, digestMultibase);
+  deepStrictEqual(
+    (await link.toJsonLd() as Record<string, unknown>).digestMultibase,
+    digestMultibase,
+  );
+
+  for (const cls of [Document, Image]) {
+    const media = await cls.fromJsonLd({
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/fep/ef61",
+      ],
+      type: cls.name,
+      url: "hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n",
+      mediaType: "image/png",
+      digestMultibase,
+    });
+    deepStrictEqual(media.digestMultibase, digestMultibase);
+    const jsonLd = await media.toJsonLd() as Record<string, unknown>;
+    deepStrictEqual(jsonLd.type, cls.name);
+    deepStrictEqual(jsonLd.digestMultibase, digestMultibase);
+  }
+});
+
+test("FEP-ef61: digestMultibase avoids Data Integrity context conflicts", async () => {
+  const digestMultibase = "zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n";
+  const image = new Image({
+    url: new URL("hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n"),
+    mediaType: "image/png",
+    digestMultibase,
+  });
+
+  const expanded = await image.toJsonLd({ format: "expand" });
+  deepStrictEqual(
+    (expanded as Record<string, unknown>[])[0][
+      "https://www.w3.org/ns/credentials/v2#digestMultibase"
+    ],
+    [{ "@value": digestMultibase }],
+  );
+  ok(
+    !(
+      "https://w3id.org/security#digestMultibase" in
+        (expanded as Record<string, unknown>[])[0]
+    ),
+  );
+
+  const compact = await image.toJsonLd() as Record<string, unknown>;
+  deepStrictEqual(compact.digestMultibase, digestMultibase);
+  ok(
+    !(compact["@context"] as unknown[]).includes("https://w3id.org/fep/ef61"),
+  );
+  ok(
+    (compact["@context"] as unknown[]).some((context) =>
+      context != null && typeof context === "object" &&
+      (context as Record<string, unknown>).digestMultibase ===
+        "https://www.w3.org/ns/credentials/v2#digestMultibase"
+    ),
+  );
+});
+
+test("FEP-ef61: digestMultibase parses after Data Integrity v1 contexts", async () => {
+  const digestMultibase = "zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n";
+  const image = await Image.fromJsonLd({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+      "https://w3id.org/fep/ef61",
+    ],
+    type: "Image",
+    url: "hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n",
+    mediaType: "image/png",
+    digestMultibase,
+  });
+
+  deepStrictEqual(image.digestMultibase, digestMultibase);
+});
+
+test("FEP-ef61: Link image normalization preserves digestMultibase", async () => {
+  const digestMultibase = "zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n";
+  const obj = await Object.fromJsonLd({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+      "https://w3id.org/fep/ef61",
+    ],
+    type: "Note",
+    image: {
+      type: "Link",
+      href: "hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n",
+      mediaType: "image/png",
+      digestMultibase,
+    },
+  });
+  const images = [];
+  for await (const img of obj.getImages()) {
+    images.push(img);
+  }
+
+  deepStrictEqual(images[0]?.digestMultibase, digestMultibase);
 });
 
 test("fromJsonLd() caches text that mentions portable ActivityPub IRIs", async () => {
@@ -1751,6 +1992,7 @@ test("Person.toJsonLd()", async () => {
   deepStrictEqual(await person.toJsonLd(), {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/fep/ef61",
       "https://w3id.org/security/v1",
       "https://w3id.org/security/data-integrity/v1",
       "https://www.w3.org/ns/did/v1",
@@ -2531,6 +2773,7 @@ test("InteractionPolicy.canFeature", async () => {
   const expected = {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/fep/ef61",
       "https://w3id.org/security/v1",
       "https://w3id.org/security/data-integrity/v1",
       "https://www.w3.org/ns/did/v1",
@@ -4780,6 +5023,7 @@ const sampleValues: Record<string, any> = {
   ]),
   "fedify:langTag": new Intl.Locale("en-Latn-US"),
   "fedify:url": new URL("https://fedify.dev/"),
+  "fedify:gatewayUrl": new URL("https://gateway.example/"),
   "fedify:publicKey": rsaPublicKey.publicKey,
   "fedify:multibaseKey": ed25519PublicKey.publicKey,
   "fedify:proofPurpose": "assertionMethod",

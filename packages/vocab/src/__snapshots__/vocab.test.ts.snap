@@ -3352,6 +3352,7 @@ snapshot[`Deno.inspect(Application) [auto] 1`] = `
   preferredUsernames: [ "hello", <en> "hello" ],
   publicKey: CryptographicKey {},
   assertionMethod: Multikey {},
+  gateway: URL "https://gateway.example/",
   manuallyApprovesFollowers: true,
   inbox: OrderedCollection {},
   outbox: OrderedCollection {},
@@ -3418,6 +3419,7 @@ snapshot[`Deno.inspect(Application) [auto] 2`] = `
   preferredUsernames: [ "hello", <en> "hello" ],
   publicKey: URL "https://example.com/",
   assertionMethod: URL "https://example.com/",
+  gateway: URL "https://gateway.example/",
   manuallyApprovesFollowers: true,
   inbox: URL "https://example.com/",
   outbox: URL "https://example.com/",
@@ -3484,6 +3486,7 @@ snapshot[`Deno.inspect(Application) [auto] 3`] = `
   preferredUsernames: [ "hello", "hello" ],
   publicKeys: [ CryptographicKey {}, CryptographicKey {} ],
   assertionMethods: [ Multikey {}, Multikey {} ],
+  gateways: [ URL "https://gateway.example/", URL "https://gateway.example/" ],
   manuallyApprovesFollowers: true,
   inbox: OrderedCollection {},
   outbox: OrderedCollection {},
@@ -3833,7 +3836,8 @@ snapshot[`Deno.inspect(Audio) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   width: 123,
-  height: 123
+  height: 123,
+  digestMultibase: "hello"
 }'
 `;
 
@@ -3878,7 +3882,8 @@ snapshot[`Deno.inspect(Audio) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   width: 123,
-  height: 123
+  height: 123,
+  digestMultibase: "hello"
 }'
 `;
 
@@ -3923,7 +3928,8 @@ snapshot[`Deno.inspect(Audio) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   width: 123,
-  height: 123
+  height: 123,
+  digestMultibase: "hello"
 }'
 `;
 
@@ -4901,7 +4907,8 @@ snapshot[`Deno.inspect(Document) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   width: 123,
-  height: 123
+  height: 123,
+  digestMultibase: "hello"
 }'
 `;
 
@@ -4946,7 +4953,8 @@ snapshot[`Deno.inspect(Document) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   width: 123,
-  height: 123
+  height: 123,
+  digestMultibase: "hello"
 }'
 `;
 
@@ -4991,7 +4999,8 @@ snapshot[`Deno.inspect(Document) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   width: 123,
-  height: 123
+  height: 123,
+  digestMultibase: "hello"
 }'
 `;
 
@@ -5500,6 +5509,7 @@ snapshot[`Deno.inspect(Group) [auto] 1`] = `
   preferredUsernames: [ "hello", <en> "hello" ],
   publicKey: CryptographicKey {},
   assertionMethod: Multikey {},
+  gateway: URL "https://gateway.example/",
   manuallyApprovesFollowers: true,
   inbox: OrderedCollection {},
   outbox: OrderedCollection {},
@@ -5566,6 +5576,7 @@ snapshot[`Deno.inspect(Group) [auto] 2`] = `
   preferredUsernames: [ "hello", <en> "hello" ],
   publicKey: URL "https://example.com/",
   assertionMethod: URL "https://example.com/",
+  gateway: URL "https://gateway.example/",
   manuallyApprovesFollowers: true,
   inbox: URL "https://example.com/",
   outbox: URL "https://example.com/",
@@ -5632,6 +5643,7 @@ snapshot[`Deno.inspect(Group) [auto] 3`] = `
   preferredUsernames: [ "hello", "hello" ],
   publicKeys: [ CryptographicKey {}, CryptographicKey {} ],
   assertionMethods: [ Multikey {}, Multikey {} ],
+  gateways: [ URL "https://gateway.example/", URL "https://gateway.example/" ],
   manuallyApprovesFollowers: true,
   inbox: OrderedCollection {},
   outbox: OrderedCollection {},
@@ -5661,6 +5673,7 @@ snapshot[`Deno.inspect(Hashtag) [auto] 1`] = `
   href: URL "https://example.com/",
   rel: "hello",
   mediaType: "hello",
+  digestMultibase: "hello",
   names: [ "hello", <en> "hello" ],
   language: Locale [Intl.Locale] {
     baseName: "en-Latn-US",
@@ -5686,6 +5699,7 @@ snapshot[`Deno.inspect(Hashtag) [auto] 2`] = `
   href: URL "https://example.com/",
   rel: "hello",
   mediaType: "hello",
+  digestMultibase: "hello",
   names: [ "hello", <en> "hello" ],
   language: Locale [Intl.Locale] {
     baseName: "en-Latn-US",
@@ -5711,6 +5725,7 @@ snapshot[`Deno.inspect(Hashtag) [auto] 3`] = `
   href: URL "https://example.com/",
   rels: [ "hello", "hello" ],
   mediaType: "hello",
+  digestMultibase: "hello",
   names: [ "hello", "hello" ],
   language: Locale [Intl.Locale] {
     baseName: "en-Latn-US",
@@ -5918,7 +5933,8 @@ snapshot[`Deno.inspect(Image) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   width: 123,
-  height: 123
+  height: 123,
+  digestMultibase: "hello"
 }'
 `;
 
@@ -5963,7 +5979,8 @@ snapshot[`Deno.inspect(Image) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   width: 123,
-  height: 123
+  height: 123,
+  digestMultibase: "hello"
 }'
 `;
 
@@ -6008,7 +6025,8 @@ snapshot[`Deno.inspect(Image) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   width: 123,
-  height: 123
+  height: 123,
+  digestMultibase: "hello"
 }'
 `;
 
@@ -6753,6 +6771,7 @@ snapshot[`Deno.inspect(Link) [auto] 1`] = `
   href: URL "https://example.com/",
   rel: "hello",
   mediaType: "hello",
+  digestMultibase: "hello",
   names: [ "hello", <en> "hello" ],
   language: Locale [Intl.Locale] {
     baseName: "en-Latn-US",
@@ -6778,6 +6797,7 @@ snapshot[`Deno.inspect(Link) [auto] 2`] = `
   href: URL "https://example.com/",
   rel: "hello",
   mediaType: "hello",
+  digestMultibase: "hello",
   names: [ "hello", <en> "hello" ],
   language: Locale [Intl.Locale] {
     baseName: "en-Latn-US",
@@ -6803,6 +6823,7 @@ snapshot[`Deno.inspect(Link) [auto] 3`] = `
   href: URL "https://example.com/",
   rels: [ "hello", "hello" ],
   mediaType: "hello",
+  digestMultibase: "hello",
   names: [ "hello", "hello" ],
   language: Locale [Intl.Locale] {
     baseName: "en-Latn-US",
@@ -6975,6 +6996,7 @@ snapshot[`Deno.inspect(Mention) [auto] 1`] = `
   href: URL "https://example.com/",
   rel: "hello",
   mediaType: "hello",
+  digestMultibase: "hello",
   names: [ "hello", <en> "hello" ],
   language: Locale [Intl.Locale] {
     baseName: "en-Latn-US",
@@ -7000,6 +7022,7 @@ snapshot[`Deno.inspect(Mention) [auto] 2`] = `
   href: URL "https://example.com/",
   rel: "hello",
   mediaType: "hello",
+  digestMultibase: "hello",
   names: [ "hello", <en> "hello" ],
   language: Locale [Intl.Locale] {
     baseName: "en-Latn-US",
@@ -7025,6 +7048,7 @@ snapshot[`Deno.inspect(Mention) [auto] 3`] = `
   href: URL "https://example.com/",
   rels: [ "hello", "hello" ],
   mediaType: "hello",
+  digestMultibase: "hello",
   names: [ "hello", "hello" ],
   language: Locale [Intl.Locale] {
     baseName: "en-Latn-US",
@@ -7996,6 +8020,7 @@ snapshot[`Deno.inspect(Organization) [auto] 1`] = `
   preferredUsernames: [ "hello", <en> "hello" ],
   publicKey: CryptographicKey {},
   assertionMethod: Multikey {},
+  gateway: URL "https://gateway.example/",
   manuallyApprovesFollowers: true,
   inbox: OrderedCollection {},
   outbox: OrderedCollection {},
@@ -8062,6 +8087,7 @@ snapshot[`Deno.inspect(Organization) [auto] 2`] = `
   preferredUsernames: [ "hello", <en> "hello" ],
   publicKey: URL "https://example.com/",
   assertionMethod: URL "https://example.com/",
+  gateway: URL "https://gateway.example/",
   manuallyApprovesFollowers: true,
   inbox: URL "https://example.com/",
   outbox: URL "https://example.com/",
@@ -8128,6 +8154,7 @@ snapshot[`Deno.inspect(Organization) [auto] 3`] = `
   preferredUsernames: [ "hello", "hello" ],
   publicKeys: [ CryptographicKey {}, CryptographicKey {} ],
   assertionMethods: [ Multikey {}, Multikey {} ],
+  gateways: [ URL "https://gateway.example/", URL "https://gateway.example/" ],
   manuallyApprovesFollowers: true,
   inbox: OrderedCollection {},
   outbox: OrderedCollection {},
@@ -8192,7 +8219,8 @@ snapshot[`Deno.inspect(Page) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   width: 123,
-  height: 123
+  height: 123,
+  digestMultibase: "hello"
 }'
 `;
 
@@ -8237,7 +8265,8 @@ snapshot[`Deno.inspect(Page) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   width: 123,
-  height: 123
+  height: 123,
+  digestMultibase: "hello"
 }'
 `;
 
@@ -8282,7 +8311,8 @@ snapshot[`Deno.inspect(Page) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   width: 123,
-  height: 123
+  height: 123,
+  digestMultibase: "hello"
 }'
 `;
 
@@ -8329,6 +8359,7 @@ snapshot[`Deno.inspect(Person) [auto] 1`] = `
   preferredUsernames: [ "hello", <en> "hello" ],
   publicKey: CryptographicKey {},
   assertionMethod: Multikey {},
+  gateway: URL "https://gateway.example/",
   manuallyApprovesFollowers: true,
   inbox: OrderedCollection {},
   outbox: OrderedCollection {},
@@ -8395,6 +8426,7 @@ snapshot[`Deno.inspect(Person) [auto] 2`] = `
   preferredUsernames: [ "hello", <en> "hello" ],
   publicKey: URL "https://example.com/",
   assertionMethod: URL "https://example.com/",
+  gateway: URL "https://gateway.example/",
   manuallyApprovesFollowers: true,
   inbox: URL "https://example.com/",
   outbox: URL "https://example.com/",
@@ -8461,6 +8493,7 @@ snapshot[`Deno.inspect(Person) [auto] 3`] = `
   preferredUsernames: [ "hello", "hello" ],
   publicKeys: [ CryptographicKey {}, CryptographicKey {} ],
   assertionMethods: [ Multikey {}, Multikey {} ],
+  gateways: [ URL "https://gateway.example/", URL "https://gateway.example/" ],
   manuallyApprovesFollowers: true,
   inbox: OrderedCollection {},
   outbox: OrderedCollection {},
@@ -9553,6 +9586,7 @@ snapshot[`Deno.inspect(Service) [auto] 1`] = `
   preferredUsernames: [ "hello", <en> "hello" ],
   publicKey: CryptographicKey {},
   assertionMethod: Multikey {},
+  gateway: URL "https://gateway.example/",
   manuallyApprovesFollowers: true,
   inbox: OrderedCollection {},
   outbox: OrderedCollection {},
@@ -9619,6 +9653,7 @@ snapshot[`Deno.inspect(Service) [auto] 2`] = `
   preferredUsernames: [ "hello", <en> "hello" ],
   publicKey: URL "https://example.com/",
   assertionMethod: URL "https://example.com/",
+  gateway: URL "https://gateway.example/",
   manuallyApprovesFollowers: true,
   inbox: URL "https://example.com/",
   outbox: URL "https://example.com/",
@@ -9685,6 +9720,7 @@ snapshot[`Deno.inspect(Service) [auto] 3`] = `
   preferredUsernames: [ "hello", "hello" ],
   publicKeys: [ CryptographicKey {}, CryptographicKey {} ],
   assertionMethods: [ Multikey {}, Multikey {} ],
+  gateways: [ URL "https://gateway.example/", URL "https://gateway.example/" ],
   manuallyApprovesFollowers: true,
   inbox: OrderedCollection {},
   outbox: OrderedCollection {},
@@ -10643,7 +10679,8 @@ snapshot[`Deno.inspect(Video) [auto] 1`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   width: 123,
-  height: 123
+  height: 123,
+  digestMultibase: "hello"
 }'
 `;
 
@@ -10688,7 +10725,8 @@ snapshot[`Deno.inspect(Video) [auto] 2`] = `
   replyAuthorization: URL "https://example.com/",
   announceAuthorization: URL "https://example.com/",
   width: 123,
-  height: 123
+  height: 123,
+  digestMultibase: "hello"
 }'
 `;
 
@@ -10733,7 +10771,8 @@ snapshot[`Deno.inspect(Video) [auto] 3`] = `
   replyAuthorization: ReplyAuthorization {},
   announceAuthorization: AnnounceAuthorization {},
   width: 123,
-  height: 123
+  height: 123,
+  digestMultibase: "hello"
 }'
 `;
 

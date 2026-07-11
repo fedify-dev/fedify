@@ -7,7 +7,8 @@ entity: true
 description: Represents a document of any kind.
 defaultContext:
 - "https://www.w3.org/ns/activitystreams"
-- "https://w3id.org/security/data-integrity/v1"
+- "https://w3id.org/security/data-integrity/v2"
+- digestMultibase: "https://www.w3.org/ns/credentials/v2#digestMultibase"
 - "https://gotosocial.org/ns"
 
 properties:
@@ -30,3 +31,15 @@ properties:
     device-independent pixels of the linked resource.
   range:
   - "http://www.w3.org/2001/XMLSchema#nonNegativeInteger"
+
+- singularName: digestMultibase
+  functional: true
+  compactName: digestMultibase
+  uri: "https://www.w3.org/ns/credentials/v2#digestMultibase"
+  description: |
+    The multibase-encoded integrity digest of an external resource represented
+    by this document.
+
+    See [FEP-ef61](https://w3id.org/fep/ef61) for details.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#string"

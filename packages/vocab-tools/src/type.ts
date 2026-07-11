@@ -6,8 +6,10 @@ const HEURISTICS_CONTEXTS: string[] = [
   "https://www.w3.org/ns/activitystreams",
   "https://w3id.org/security/v1",
   "https://w3id.org/security/data-integrity/v1",
+  "https://w3id.org/security/data-integrity/v2",
   "https://www.w3.org/ns/did/v1",
   "https://w3id.org/security/multikey/v1",
+  "https://w3id.org/fep/ef61",
 ];
 
 interface ScalarType {
@@ -322,6 +324,28 @@ const scalarTypes: Record<string, ScalarType> = {
     },
     decoder(v) {
       return `parseIri(${v}["@value"])`;
+    },
+  },
+  "fedify:gatewayUrl": {
+    name: "URL",
+    typeGuard(v) {
+      return `${v} instanceof URL && isGatewayUrl(${v})`;
+    },
+    encoder(v) {
+      return `{ "@id": formatIri(${v}) }`;
+    },
+    compactEncoder(v) {
+      return `formatIri(${v})`;
+    },
+    dataCheck(v) {
+      return `${v} != null && typeof ${v} === "object" &&
+        (("@id" in ${v} && typeof ${v}["@id"] === "string" &&
+          ${v}["@id"] !== "" && ${v}["@id"] !== "/") ||
+        ("@value" in ${v} && typeof ${v}["@value"] === "string" &&
+          ${v}["@value"] !== "" && ${v}["@value"] !== "/"))`;
+    },
+    decoder(v) {
+      return `parseGatewayUrl(typeof ${v}["@id"] === "string" ? ${v}["@id"] : ${v}["@value"])`;
     },
   },
   "fedify:publicKey": {

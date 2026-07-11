@@ -8,8 +8,10 @@ import {
   getFe34Origin,
   haveSameFe34Origin,
   haveSameIriOrigin,
+  isGatewayUrl,
   isValidPublicIPv4Address,
   isValidPublicIPv6Address,
+  parseGatewayUrl,
   parseIri,
   parseJsonLdId,
   UrlError,
@@ -636,6 +638,27 @@ test("parseIri() preserves encoded percent signs while decoding delimiters", () 
     formatIri(parsed),
     "ap+ef61://did:web:example.com%00/u/1",
   );
+});
+
+test("parseGatewayUrl() accepts only HTTP(S) base URIs", () => {
+  for (const url of ["https://server.example/", "http://server.example/"]) {
+    deepStrictEqual(parseGatewayUrl(url), new URL(url));
+    ok(isGatewayUrl(new URL(url)));
+  }
+
+  for (
+    const url of [
+      "ftp://server.example/",
+      "https://user:pass@server.example/",
+      "https://user@server.example/",
+      "https://server.example/path",
+      "https://server.example/?x=1",
+      "https://server.example/#fragment",
+    ]
+  ) {
+    throws(() => parseGatewayUrl(url), TypeError);
+    ok(!isGatewayUrl(new URL(url)));
+  }
 });
 
 test("validatePublicUrl()", async () => {
