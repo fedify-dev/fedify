@@ -25,9 +25,10 @@ function isCanonicalVarintPrefix(
 }
 
 function toWebCryptoBytes(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
-  return bytes.buffer instanceof ArrayBuffer
-    ? new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength)
-    : bytes.slice();
+  return Object.prototype.toString.call(bytes.buffer) ===
+      "[object SharedArrayBuffer]"
+    ? bytes.slice()
+    : bytes as Uint8Array<ArrayBuffer>;
 }
 
 /**
