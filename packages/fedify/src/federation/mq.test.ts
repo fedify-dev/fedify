@@ -611,8 +611,11 @@ for (const mqName in queues) {
         assertEquals(workers.nativeDeduplication, mq.nativeDeduplication);
       });
 
-      await t.step("atomicEnqueueMany property inheritance", () => {
-        assertEquals(workers.atomicEnqueueMany, mq.atomicEnqueueMany);
+      await t.step("atomicEnqueueMany capability propagation", () => {
+        assertEquals(
+          workers.atomicEnqueueMany,
+          mq.enqueueMany == null ? false : mq.atomicEnqueueMany,
+        );
       });
 
       await t.step("getDepth() delegation", async () => {
