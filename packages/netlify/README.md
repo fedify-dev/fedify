@@ -137,6 +137,13 @@ table by default; do not pass `unlogged: true` for `orderingKv`.
 Netlify limits an event payload to 500 KB.  Fedify messages, including any
 embedded activity, must remain below that limit.
 
+`enqueueMany()` sends one Async Workloads event per message because Netlify's
+public client has no batch operation.  The queue therefore declares
+`atomicEnqueueMany` as `false`: ordinary batches still send concurrently, but
+Fedify rejects a multi-message `enqueueTaskMany()` call with one
+`deduplicationKey` before sending anything.  Such a key requires an atomic
+batch enqueue so a failed partial send cannot produce duplicates on retry.
+
 See the [deployment manual] and the [Netlify Astro example] for a complete
 setup with Netlify Database.
 

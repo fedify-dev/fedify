@@ -29,6 +29,11 @@ const federation = createFederation({
 data where losing the table contents after a PostgreSQL crash is acceptable,
 pass `{ unlogged: true }` as its second constructor argument.
 
+When a store created by an earlier version still uses an unlogged table, its
+next initialization converts that table to logged storage.  PostgreSQL rewrites
+the table and takes an `ACCESS EXCLUSIVE` lock during this one-time migration,
+so schedule the upgrade accordingly for a large or busy table.
+
 [JSR badge]: https://jsr.io/badges/@fedify/postgres
 [JSR]: https://jsr.io/@fedify/postgres
 [npm badge]: https://img.shields.io/npm/v/@fedify/postgres?logo=npm

@@ -728,6 +728,13 @@ const federation = await builder.build({
 Function instead of exposing a polling API, so `NetlifyMessageQueue.listen()`
 throws an actionable `TypeError`.
 
+Netlify's public client has no atomic batch operation, so this adapter's
+`enqueueMany()` sends one event per message and declares
+`atomicEnqueueMany: false`.  Ordinary batches still send concurrently.  Fedify
+rejects a multi-message `enqueueTaskMany()` call with one `deduplicationKey`
+before sending, because retrying a partially accepted batch could duplicate
+the accepted tasks.
+
 Export the consumer from *netlify/functions/fedify-queue.ts*:
 
 ~~~~ typescript

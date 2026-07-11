@@ -49,13 +49,17 @@ builder
         privateKey: await exportJwk(keyPair.privateKey),
         publicKey: await exportJwk(keyPair.publicKey),
       };
-      const created = context.data.kv.cas == null
-        ? (await context.data.kv.set(keyPairKey, serialized), true)
-        : await context.data.kv.cas(
+      let created: boolean;
+      if (context.data.kv.cas == null) {
+        await context.data.kv.set(keyPairKey, serialized);
+        created = true;
+      } else {
+        created = await context.data.kv.cas(
           keyPairKey,
           undefined,
           serialized,
         );
+      }
       if (created) return [keyPair];
       stored = await context.data.kv.get<StoredKeyPair>(keyPairKey);
       if (stored == null) throw new Error("Failed to persist the actor key.");

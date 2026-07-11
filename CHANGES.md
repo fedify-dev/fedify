@@ -78,9 +78,14 @@ To be released.
         The marker TTL and the no-`cas` fallback are tunable with the new
         `FederationOptions.taskDeduplicationTtl` and
         `FederationOptions.taskDeduplicationFallback` options.
+        [[#206], [#797], [#798], [#799], [#803], [#806], [#812], [#923] by
+        ChanHaeng Lee]
 
-    [[#206], [#797], [#798], [#799], [#803], [#806], [#812], [#923] by
-    ChanHaeng Lee]
+ -  Added `MessageQueue.atomicEnqueueMany` for queues that implement
+    `enqueueMany()` with separate sends.  Fedify still uses their batch path
+    normally, but rejects a multi-message batch governed by one
+    `deduplicationKey` before a partial send can undermine deduplication.
+    [[#930], [#934]]
 
  -  Fixed CommonJS distribution files that use Temporal so they no longer
     require `@js-temporal/polyfill` at runtime.  The CommonJS build now
@@ -108,6 +113,8 @@ To be released.
 [#925]: https://github.com/fedify-dev/fedify/pull/925
 [#926]: https://github.com/fedify-dev/fedify/pull/926
 [#927]: https://github.com/fedify-dev/fedify/pull/927
+[#930]: https://github.com/fedify-dev/fedify/issues/930
+[#934]: https://github.com/fedify-dev/fedify/pull/934
 
 ### @fedify/vocab
 
@@ -246,9 +253,6 @@ To be released.
     explicit recovery for unobservable dead-letter failures.
     [[#930], [#934]]
 
-[#930]: https://github.com/fedify-dev/fedify/issues/930
-[#934]: https://github.com/fedify-dev/fedify/pull/934
-
 ### @fedify/postgres
 
  -  Added `PostgresKvStore.cas()`, including atomic creation, replacement, and
@@ -258,8 +262,10 @@ To be released.
 
  -  `PostgresKvStore` now creates crash-safe logged tables by default and
     migrates existing unlogged tables during initialization.  Transient
-    unlogged storage remains available with the `unlogged` option.
-    [[#930], [#934]]
+    unlogged storage remains available with the `unlogged` option.  The
+    one-time migration rewrites and exclusively locks an existing table, so
+    upgrades with large or busy key–value tables should schedule it
+    accordingly.  [[#930], [#934]]
 
  -  Fixed the CommonJS PostgreSQL adapter build so it no longer requires
     `@js-temporal/polyfill` at runtime.  The build now bundles

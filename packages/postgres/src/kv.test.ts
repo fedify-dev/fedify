@@ -78,6 +78,47 @@ test(
 );
 
 test(
+  "PostgresKvStore.initialize() converts a qualified mixed-case table",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+
+    const sql = postgres(dbUrl);
+    const suffix = Math.random().toString(36).slice(5);
+    const schemaName = `FedifyKvSchema${suffix}`;
+    const relationName = `FedifyKvTest${suffix}`;
+    const tableName = `${schemaName}.${relationName}`;
+    const store = new PostgresKvStore(sql, { tableName });
+    try {
+      await sql`CREATE SCHEMA ${sql(schemaName)};`;
+      await sql`
+        CREATE UNLOGGED TABLE ${sql(tableName)} (
+          key text[] PRIMARY KEY,
+          value jsonb NOT NULL,
+          created timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+          ttl interval
+        );
+      `;
+
+      await store.initialize();
+
+      const result = await sql`
+        SELECT c.relpersistence
+        FROM pg_class AS c
+        JOIN pg_namespace AS n ON n.oid = c.relnamespace
+        WHERE n.nspname = ${schemaName}
+          AND c.relname = ${relationName};
+      `;
+      assert.strictEqual(result[0].relpersistence, "p");
+    } finally {
+      await store.drop();
+      await sql`DROP SCHEMA IF EXISTS ${sql(schemaName)};`;
+      await sql.end();
+    }
+  },
+);
+
+test(
   "PostgresKvStore.initialize() supports opt-in unlogged storage",
   { skip: dbUrl == null },
   async () => {

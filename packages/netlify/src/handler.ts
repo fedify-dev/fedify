@@ -70,15 +70,14 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value != null && !Array.isArray(value);
 }
 
-function decodeEventData(value: unknown): NetlifyQueueEventData {
-  if (!isObject(value) || !isObject(value.message)) {
+type OrderingMetadata = Pick<
+  NetlifyQueueEventData,
+  "orderingKey" | "orderingSequence"
+>;
+
+function decodeOrderingMetadata(value: unknown): OrderingMetadata {
+  if (!isObject(value)) {
     throw new ErrorDoNotRetry("Invalid Fedify queue event envelope.");
-  }
-  if (
-    typeof value.message.type !== "string" ||
-    !messageTypes.has(value.message.type)
-  ) {
-    throw new ErrorDoNotRetry("Invalid Fedify queue message type.");
   }
   if (
     value.orderingKey !== undefined &&
@@ -100,10 +99,25 @@ function decodeEventData(value: unknown): NetlifyQueueEventData {
   ) {
     throw new ErrorDoNotRetry("Incomplete Fedify queue ordering metadata.");
   }
+  return { orderingKey: value.orderingKey, orderingSequence };
+}
+
+function decodeEventData(
+  value: unknown,
+  ordering: OrderingMetadata,
+): NetlifyQueueEventData {
+  if (!isObject(value) || !isObject(value.message)) {
+    throw new ErrorDoNotRetry("Invalid Fedify queue event envelope.");
+  }
+  if (
+    typeof value.message.type !== "string" ||
+    !messageTypes.has(value.message.type)
+  ) {
+    throw new ErrorDoNotRetry("Invalid Fedify queue message type.");
+  }
   return {
     message: value.message as unknown as Message,
-    orderingKey: value.orderingKey,
-    orderingSequence,
+    ...ordering,
   };
 }
 
@@ -119,7 +133,23 @@ export function createNetlifyQueueEventHandler<TContextData>(
     throw new RangeError("maxRetries must be a non-negative safe integer.");
   }
   return async (event) => {
-    const data = decodeEventData(event.eventData);
+    const orderingMetadata = decodeOrderingMetadata(event.eventData);
+    let data: NetlifyQueueEventData;
+    try {
+      data = decodeEventData(event.eventData, orderingMetadata);
+    } catch (error) {
+      if (
+        error instanceof ErrorDoNotRetry &&
+        orderingMetadata.orderingKey != null &&
+        orderingMetadata.orderingSequence != null
+      ) {
+        await options.queue.skipOrderingSequence(
+          orderingMetadata.orderingKey,
+          orderingMetadata.orderingSequence,
+        );
+      }
+      throw error;
+    }
     const ordering = getOrderingOptions(options.queue);
     if (data.orderingKey != null && data.orderingSequence != null) {
       let wait = 0;
@@ -146,8 +176,13 @@ export function createNetlifyQueueEventHandler<TContextData>(
     } catch (error) {
       if (
         data.orderingKey != null && data.orderingSequence != null &&
+        // Async Workloads numbers the initial invocation 0, so maxRetries is
+        // also the number of the final invocation.
         (error instanceof ErrorDoNotRetry || event.attempt >= maxRetries)
       ) {
+        // Do not hide a failed skip.  In particular, replacing
+        // ErrorDoNotRetry with a state error lets Netlify retry the cleanup
+        // instead of dead-lettering an event that still blocks its successors.
         await options.queue.skipOrderingSequence(
           data.orderingKey,
           data.orderingSequence,

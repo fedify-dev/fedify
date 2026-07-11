@@ -159,15 +159,17 @@ function planDeduplication<TContextData>(
   const native = queue.nativeDeduplication === true;
   const canCas = ctx.federation.kv.cas != null;
   const canBatchAtomically = queue.enqueueMany != null &&
+    queue.atomicEnqueueMany !== false &&
     !(queue instanceof ParallelMessageQueue && queue.queue.enqueueMany == null);
   if (itemCount > 1 && !canBatchAtomically && (native || canCas)) {
     throw new TypeError(
       `Task ${
         JSON.stringify(taskName)
       } was enqueued as a batch with a deduplicationKey, but its message ` +
-        "queue does not implement enqueueMany; a multi-item batch cannot be " +
-        "deduplicated atomically without it.  Implement enqueueMany on the " +
-        "queue, or enqueue the tasks individually with enqueueTask().",
+        "queue does not provide an atomic enqueueMany implementation; a " +
+        "multi-item batch cannot be deduplicated atomically without it.  " +
+        "Use a queue with atomic batch enqueueing, or enqueue the tasks " +
+        "individually with enqueueTask().",
     );
   }
   if (native) return { kind: "native", key };

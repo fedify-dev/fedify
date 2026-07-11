@@ -312,9 +312,9 @@ How the key is resolved depends on the queue and the key–value store:
     });
     ~~~~
 
-Among the first-party adapters, the in-memory, Deno KV, SQLite, and MySQL
-key–value stores implement `~KvStore.cas`; PostgreSQL, Redis, and
-Cloudflare Workers KV do not yet, so those deployments take the
+Among the first-party adapters, the in-memory, Deno KV, SQLite, MySQL, and
+PostgreSQL key–value stores implement `~KvStore.cas`; Redis and Cloudflare
+Workers KV do not yet, so those deployments take the
 `taskDeduplicationFallback` branch until per-adapter follow-ups add it.
 
 For `~Context.enqueueTaskMany()`, a single `deduplicationKey` applies to the
@@ -331,11 +331,13 @@ key–value store with `~KvStore.cas`—Fedify rejects a multi-item batch with a
 `deduplicationKey` on a queue without `~MessageQueue.enqueueMany()` instead of
 risking duplicates.  Under the `"open"` fallback (no native deduplication and no
 `cas`), no marker is taken, so the batch simply fans out without deduplication.
+The same rejection applies when a queue implements `enqueueMany()` by sending
+messages separately and declares `atomicEnqueueMany: false`.
 
 This applies through `ParallelMessageQueue` as well: wrapping a queue that
-lacks `~MessageQueue.enqueueMany()` does not make batch enqueue atomic, so a
-deduplicated multi-item batch on such a wrapper is likewise rejected rather than
-collapsed onto one message.
+lacks an atomic `~MessageQueue.enqueueMany()` does not make batch enqueue
+atomic, so a deduplicated multi-item batch on such a wrapper is likewise
+rejected rather than collapsed onto one message.
 
 > [!WARNING]
 > The key–value fallback is *best-effort, not transactional*.  The marker

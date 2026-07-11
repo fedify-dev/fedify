@@ -94,6 +94,7 @@ describe("NetlifyMessageQueue", () => {
     assert.equal(queue.eventName, "fedify:queue");
     assert.equal(queue.nativeRetrial, true);
     assert.equal(queue.nativeDeduplication, false);
+    assert.equal(queue.atomicEnqueueMany, false);
     assert.deepEqual(client.calls, [{
       eventName: "fedify:queue",
       options: {

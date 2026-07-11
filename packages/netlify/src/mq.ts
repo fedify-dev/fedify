@@ -304,6 +304,7 @@ export class NetlifyMessageQueue implements MessageQueue {
   readonly eventName: string;
   readonly nativeRetrial = true;
   readonly nativeDeduplication = false;
+  readonly atomicEnqueueMany = false;
 
   readonly #client: NetlifyAsyncWorkloadsClient;
 

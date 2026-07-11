@@ -10,6 +10,10 @@ import { driverSerializesJson } from "./utils.ts";
 
 const logger = getLogger(["fedify", "postgres", "kv"]);
 
+function quoteIdentifier(identifier: string): string {
+  return `"${identifier.replaceAll('"', '""').replaceAll(".", '"."')}"`;
+}
+
 /**
  * Options for the PostgreSQL key–value store.
  */
@@ -252,7 +256,7 @@ export class PostgresKvStore implements KvStore {
         const persistence = await this.#sql`
           SELECT relpersistence
           FROM pg_class
-          WHERE oid = to_regclass(${this.#tableName});
+          WHERE oid = to_regclass(${quoteIdentifier(this.#tableName)});
         `;
         if (persistence[0]?.relpersistence === "u") {
           await this.#sql`

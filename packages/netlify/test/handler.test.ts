@@ -45,7 +45,7 @@ function event(
     request: new Request("https://example.net/.netlify/functions/queue", {
       headers: { "x-nf-deploy-id": "deploy-1" },
     }),
-    attempt: 1,
+    attempt: 0,
     step: {
       run: (_id, callback) => Promise.resolve(callback()),
       sleep,
@@ -127,6 +127,48 @@ describe("createNetlifyQueueHandler", () => {
       await assert.rejects(handler(event(malformed)), ErrorDoNotRetry);
     });
   }
+
+  it("releases an ordered sequence for a malformed message", async () => {
+    const kv = new MemoryKvStore();
+    const sent: NetlifyQueueEvent["eventData"][] = [];
+    const orderingClient: NetlifyAsyncWorkloadsClient = {
+      send: (_eventName, options) => {
+        sent.push(options?.data as NetlifyQueueEvent["eventData"]);
+        return Promise.resolve({
+          eventId: `event-${sent.length}`,
+          sendStatus: "succeeded",
+        });
+      },
+    };
+    const queue = new NetlifyMessageQueue({
+      client: orderingClient,
+      orderingKv: kv,
+    });
+    await queue.enqueue(message, { orderingKey: "actor:alice" });
+    await queue.enqueue(message, { orderingKey: "actor:alice" });
+    const processed: number[] = [];
+    const handler = createNetlifyQueueEventHandler({
+      queue,
+      federation: (received) =>
+        federation(() => {
+          processed.push(received.eventData.orderingSequence!);
+          return Promise.resolve();
+        }),
+    });
+
+    await assert.rejects(
+      handler(event({
+        ...sent[0],
+        message: { ...message, type: "unknown" },
+      })),
+      ErrorDoNotRetry,
+    );
+    await handler(event(sent[1], () => {
+      throw new Error("The second sequence should not need to wait.");
+    }));
+
+    assert.deepEqual(processed, [2]);
+  });
 
   it("processes later arrivals in their reserved FIFO order", async () => {
     const kv = new MemoryKvStore();
