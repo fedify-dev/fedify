@@ -1648,7 +1648,7 @@ Released on March 31, 2026.
 
  -  Restored the npm entrypoint contract for `@fedify/init` after the `tsdown`
     upgrade started publishing `dist/*.mjs` files while the package metadata
-    still exported `dist/*.js` and `dist/*.d.ts`.  Node consumers such as
+    still exported `dist/*.js` and `dist/*.d.ts`.  Node.js consumers such as
     `@fedify/cli` can start again, including `npx -y @fedify/cli --help`.
     [[#655]]
 
@@ -2150,7 +2150,7 @@ Released on March 31, 2026.
 
  -  Restored the npm entrypoint contract for `@fedify/init` after the `tsdown`
     upgrade started publishing `dist/*.mjs` files while the package metadata
-    still exported `dist/*.js` and `dist/*.d.ts`.  Node consumers such as
+    still exported `dist/*.js` and `dist/*.d.ts`.  Node.js consumers such as
     `@fedify/cli` can start again, including `npx -y @fedify/cli --help`.
     [[#655]]
 
