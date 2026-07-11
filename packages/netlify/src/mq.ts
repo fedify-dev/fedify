@@ -217,7 +217,7 @@ function validateOrderingState(value: unknown): OrderingState {
 async function updateOrderingState<T>(
   queue: NetlifyMessageQueue,
   orderingKey: string,
-  update: (state: OrderingState) => readonly [OrderingState, T],
+  update: (state: OrderingState) => readonly [OrderingState | undefined, T],
 ): Promise<T> {
   const kv = getOrderingKv(queue, orderingKey);
   const key = getOrderingStateKey(queue, orderingKey);
@@ -225,6 +225,7 @@ async function updateOrderingState<T>(
     const stored = await kv.get(key);
     const state = validateOrderingState(stored);
     const [updated, result] = update(state);
+    if (updated === undefined) return result;
     if (await kv.cas(key, stored, updated)) return result;
   }
 }
@@ -250,7 +251,7 @@ async function cancelOrderingSequence(
         `Netlify queue ordering sequence ${sequence} has not been reserved.`,
       );
     }
-    if (sequence <= state.completedSequence) return [state, undefined];
+    if (sequence <= state.completedSequence) return [undefined, undefined];
     return [
       compactOrderingState({
         ...state,
@@ -280,7 +281,7 @@ export async function completeOrderingSequence(
   sequence: number,
 ): Promise<void> {
   await updateOrderingState(queue, orderingKey, (state) => {
-    if (state.completedSequence >= sequence) return [state, undefined];
+    if (state.completedSequence >= sequence) return [undefined, undefined];
     if (state.completedSequence !== sequence - 1) {
       throw new Error(
         `Cannot complete Netlify queue ordering sequence ${sequence} after ` +

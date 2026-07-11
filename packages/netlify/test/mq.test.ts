@@ -73,6 +73,20 @@ class NoCasKvStore implements KvStore {
   }
 }
 
+class CountingKvStore extends MemoryKvStore {
+  casCalls = 0;
+
+  override cas(
+    key: KvKey,
+    expectedValue: unknown,
+    newValue: unknown,
+    options?: KvStoreSetOptions,
+  ): Promise<boolean> {
+    this.casCalls++;
+    return super.cas(key, expectedValue, newValue, options);
+  }
+}
+
 const message: Message = {
   type: "task",
   id: crypto.randomUUID(),
@@ -177,6 +191,21 @@ describe("NetlifyMessageQueue", () => {
       client.calls.map((call) => call.options?.data?.orderingSequence),
       [1, 1, 2],
     );
+  });
+
+  it("does not rewrite state when skipping a completed sequence", async () => {
+    const orderingKv = new CountingKvStore();
+    const queue = new NetlifyMessageQueue({
+      client: new FakeClient(),
+      orderingKv,
+    });
+    await queue.enqueue(message, { orderingKey: "actor:alice" });
+    await queue.skipOrderingSequence("actor:alice", 1);
+    const casCalls = orderingKv.casCalls;
+
+    await queue.skipOrderingSequence("actor:alice", 1);
+
+    assert.equal(orderingKv.casCalls, casCalls);
   });
 
   it("preserves input order in an ordered enqueueMany call", async () => {
