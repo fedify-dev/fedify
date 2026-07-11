@@ -10,6 +10,7 @@ import {
 
 const SHA2_256_MULTIHASH_CODE = 0x12;
 const SHA2_256_DIGEST_LENGTH = 32;
+const MAX_DIGEST_MULTIBASE_LENGTH = 1 + (SHA2_256_DIGEST_LENGTH + 2) * 8;
 const textDecoder = new TextDecoder();
 const getArrayBufferByteLength = Object.getOwnPropertyDescriptor(
   ArrayBuffer.prototype,
@@ -96,6 +97,9 @@ export async function computeDigestMultibase(
  * @since 2.4.0
  */
 export function parseDigestMultibase(value: string): ParsedDigestMultibase {
+  if (value.length > MAX_DIGEST_MULTIBASE_LENGTH) {
+    throw new TypeError("Invalid digestMultibase encoding.");
+  }
   let multihash: Uint8Array;
   try {
     multihash = decodeMultibase(value);

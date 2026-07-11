@@ -123,6 +123,14 @@ test("parseDigestMultibase() rejects malformed values", async () => {
     0x12,
     addMulticodecPrefix(32, new Uint8Array(32)),
   );
+  const base2 = decoder.decode(encodeMultibase("base2", multihash));
+  equal(base2.length, 273);
+  deepStrictEqual(parseDigestMultibase(base2).digest, new Uint8Array(32));
+  throws(
+    () => parseDigestMultibase(`${base2}0`),
+    new TypeError("Invalid digestMultibase encoding."),
+  );
+
   const padded = decoder.decode(encodeMultibase("base64pad", multihash));
   equal(padded.endsWith("=="), true);
   deepStrictEqual(parseDigestMultibase(padded).digest, new Uint8Array(32));
