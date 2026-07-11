@@ -147,7 +147,8 @@ export class PostgresKvStore implements KvStore {
     let result;
     if (expectedValue === undefined) {
       result = await this.#sql`
-        INSERT INTO ${this.#sql(this.#tableName)} (key, value, created, ttl)
+        INSERT INTO ${this.#sql(this.#tableName)} AS existing
+          (key, value, created, ttl)
         VALUES (
           ${key},
           ${this.#json(newValue)},
@@ -159,9 +160,8 @@ export class PostgresKvStore implements KvStore {
             value = EXCLUDED.value,
             created = EXCLUDED.created,
             ttl = EXCLUDED.ttl
-          WHERE ${this.#sql(this.#tableName)}.ttl IS NOT NULL
-            AND ${this.#sql(this.#tableName)}.created
-              + ${this.#sql(this.#tableName)}.ttl <= CURRENT_TIMESTAMP
+          WHERE existing.ttl IS NOT NULL
+            AND existing.created + existing.ttl <= CURRENT_TIMESTAMP
         RETURNING key;
       `;
     } else if (newValue === undefined) {

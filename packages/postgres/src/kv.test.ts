@@ -296,6 +296,42 @@ test(
 );
 
 test(
+  "PostgresKvStore.cas() replaces expired rows in a qualified table",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+
+    const sql = postgres(dbUrl);
+    const suffix = Math.random().toString(36).slice(5);
+    const schemaName = `FedifyKvSchema${suffix}`;
+    const relationName = `FedifyKvTest${suffix}`;
+    const store = new PostgresKvStore(sql, {
+      tableName: `${schemaName}.${relationName}`,
+    });
+    try {
+      await sql`CREATE SCHEMA ${sql(schemaName)};`;
+      await store.set(["cas", "qualified"], "expired", {
+        ttl: Temporal.Duration.from({ milliseconds: 10 }),
+      });
+      await delay(30);
+
+      assert.strictEqual(
+        await store.cas(["cas", "qualified"], undefined, "replacement"),
+        true,
+      );
+      assert.strictEqual(
+        await store.get(["cas", "qualified"]),
+        "replacement",
+      );
+    } finally {
+      await store.drop();
+      await sql`DROP SCHEMA IF EXISTS ${sql(schemaName)};`;
+      await sql.end();
+    }
+  },
+);
+
+test(
   "PostgresKvStore.cas() allows only one concurrent create",
   { skip: dbUrl == null },
   async () => {
