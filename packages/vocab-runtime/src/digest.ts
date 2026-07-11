@@ -11,6 +11,10 @@ import {
 const SHA2_256_MULTIHASH_CODE = 0x12;
 const SHA2_256_DIGEST_LENGTH = 32;
 const textDecoder = new TextDecoder();
+const getArrayBufferByteLength = Object.getOwnPropertyDescriptor(
+  ArrayBuffer.prototype,
+  "byteLength",
+)!.get!;
 
 function isCanonicalVarintPrefix(
   data: Uint8Array,
@@ -25,10 +29,12 @@ function isCanonicalVarintPrefix(
 }
 
 function toWebCryptoBytes(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
-  return Object.prototype.toString.call(bytes.buffer) ===
-      "[object SharedArrayBuffer]"
-    ? bytes.slice()
-    : bytes as Uint8Array<ArrayBuffer>;
+  try {
+    getArrayBufferByteLength.call(bytes.buffer);
+    return bytes as Uint8Array<ArrayBuffer>;
+  } catch {
+    return new Uint8Array(bytes);
+  }
 }
 
 /**

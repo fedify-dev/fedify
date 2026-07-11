@@ -31,8 +31,27 @@ test("computeDigestMultibase() computes a SHA-256 multihash", async () => {
 test("digest helpers accept SharedArrayBuffer-backed bytes", async () => {
   const sharedBytes = new Uint8Array(new SharedArrayBuffer(bytes.length));
   sharedBytes.set(bytes);
+  Object.defineProperty(sharedBytes, "slice", {
+    value: () => {
+      throw new Error("Shared input must not be copied with slice().");
+    },
+  });
   equal(await computeDigestMultibase(sharedBytes), digestMultibase);
   equal(await verifyDigestMultibase(sharedBytes, digestMultibase), true);
+});
+
+test("digest helpers ignore spoofed shared buffer tags", async () => {
+  const taggedBytes = bytes.slice();
+  Object.defineProperty(taggedBytes.buffer, Symbol.toStringTag, {
+    value: "SharedArrayBuffer",
+  });
+  Object.defineProperty(taggedBytes, "slice", {
+    value: () => {
+      throw new Error("ArrayBuffer input must not be copied.");
+    },
+  });
+  equal(await computeDigestMultibase(taggedBytes), digestMultibase);
+  equal(await verifyDigestMultibase(taggedBytes, digestMultibase), true);
 });
 
 test("createHashlink() and parseHashlink() round-trip simple hashlinks", () => {
