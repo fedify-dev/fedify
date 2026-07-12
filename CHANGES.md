@@ -151,6 +151,10 @@ To be released.
 
 ### @fedify/vocab-runtime
 
+ -  Added SHA-256 `digestMultibase` and simple `hl:` hashlink helpers for
+    computing, parsing, creating, and verifying portable media resource
+    digests as required by [FEP-ef61].  [[#831], [#935]]
+
  -  Added the [FEP-ef61] JSON-LD context to the preloaded context registry so
     portable actor and media documents can compact and expand `gateways` and
     `digestMultibase` without fetching the context remotely.  [[#830], [#928]]
@@ -184,9 +188,11 @@ To be released.
     content type, rather than generic JSON parser crashes.  [[#912], [#913]]
 
 [#828]: https://github.com/fedify-dev/fedify/issues/828
+[#831]: https://github.com/fedify-dev/fedify/issues/831
 [#912]: https://github.com/fedify-dev/fedify/issues/912
 [#913]: https://github.com/fedify-dev/fedify/pull/913
 [#924]: https://github.com/fedify-dev/fedify/pull/924
+[#935]: https://github.com/fedify-dev/fedify/pull/935
 
 ### @fedify/cli
 
