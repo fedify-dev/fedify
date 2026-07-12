@@ -196,6 +196,8 @@ async function exerciseServer(
     stderr: "piped",
   });
   const process = command.spawn();
+  const stdoutPromise = new Response(process.stdout).text();
+  const stderrPromise = new Response(process.stderr).text();
   try {
     await waitUntilReady(`http://127.0.0.1:${port}/users/alice`);
     const html = await fetch(`http://127.0.0.1:${port}/users/alice`, {
@@ -268,9 +270,12 @@ async function exerciseServer(
     } catch {
       // The server may have exited before the readiness check failed.
     }
-    const output = await process.output();
-    console.error(new TextDecoder().decode(output.stdout));
-    console.error(new TextDecoder().decode(output.stderr));
+    const [stdout, stderr] = await Promise.all([
+      stdoutPromise,
+      stderrPromise,
+    ]);
+    console.error(stdout);
+    console.error(stderr);
     throw error;
   } finally {
     try {
@@ -278,7 +283,7 @@ async function exerciseServer(
     } catch {
       // The server may already have exited.
     }
-    await process.status;
+    await Promise.all([process.status, stdoutPromise, stderrPromise]);
   }
 }
 
