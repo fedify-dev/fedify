@@ -200,11 +200,21 @@ async function validateFrameworkBuild(
   return result.code === 0;
 }
 
+interface DenoTestConfig {
+  links: string[];
+}
+
+interface PackageMetadata {
+  name: string;
+}
+
 async function linkDenoWorkspacePackages(dir: string): Promise<void> {
-  const config = JSON.parse(await readFile(join(dir, "deno.json"), "utf8"));
+  const config: DenoTestConfig = JSON.parse(
+    await readFile(join(dir, "deno.json"), "utf8"),
+  );
   for (const link of config.links ?? []) {
     const packageDir = resolve(dir, link);
-    const metadata = JSON.parse(
+    const metadata: PackageMetadata = JSON.parse(
       await readFile(join(packageDir, "package.json"), "utf8"),
     );
     const target = join(dir, "node_modules", ...metadata.name.split("/"));
