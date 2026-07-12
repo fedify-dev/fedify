@@ -1,7 +1,14 @@
 import $ from "@david/dax";
 import { filter, isEmpty, pipe, toArray } from "@fxts/core";
 import { values } from "@optique/core";
-import { appendFile, mkdir, readFile, stat, symlink } from "node:fs/promises";
+import {
+  appendFile,
+  lstat,
+  mkdir,
+  readFile,
+  stat,
+  symlink,
+} from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 import process from "node:process";
 import packageManagers from "../json/pm.json" with { type: "json" };
@@ -203,7 +210,7 @@ async function linkDenoWorkspacePackages(dir: string): Promise<void> {
     const target = join(dir, "node_modules", ...metadata.name.split("/"));
     await mkdir(dirname(target), { recursive: true });
     try {
-      await stat(target);
+      await lstat(target);
     } catch {
       await symlink(packageDir, target, "junction");
     }
