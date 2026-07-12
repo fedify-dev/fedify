@@ -18,6 +18,8 @@ const astroNodeBunDevToolTasks = {
   lint: "oxlint .",
 } as const;
 
+const astroDenoCommand = `deno run -A npm:astro@${deps["npm:astro"]}`;
+
 const ASTRO_NODE_VERSION_CHECK = `
 const [major, minor] = process.versions.node.split(".").map(Number);
 if (major < 22 || (major === 22 && minor < 12)) {
@@ -125,9 +127,9 @@ const createAstroAppCommand = (pm: PackageManager): string[] =>
 
 const TASKS = {
   "deno": {
-    dev: "deno run -A npm:astro dev",
-    build: "deno run -A npm:astro build",
-    preview: "deno run -A npm:astro preview",
+    dev: `${astroDenoCommand} dev`,
+    build: `${astroDenoCommand} build`,
+    preview: `${astroDenoCommand} preview`,
   },
   "bun": {
     dev: "bunx --bun astro dev",

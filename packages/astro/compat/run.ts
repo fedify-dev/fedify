@@ -89,7 +89,7 @@ async function testCompatibility(testCase: CompatibilityCase): Promise<void> {
     );
 
     await run(["pnpm", "install", "--strict-peer-dependencies"], tempDir);
-    await run(getBuildCommand(testCase.runtime), tempDir);
+    await run(getBuildCommand(testCase), tempDir);
     await exerciseServer(tempDir, testCase.runtime, port);
     console.log(`Passed ${label}.`);
   } finally {
@@ -102,10 +102,14 @@ async function testCompatibility(testCase: CompatibilityCase): Promise<void> {
 }
 
 function getBuildCommand(
-  runtime: "node" | "deno" | "bun",
+  testCase: CompatibilityCase,
 ): string[] {
-  if (runtime === "deno") return ["deno", "run", "-A", "npm:astro", "build"];
-  if (runtime === "bun") return ["bunx", "--bun", "astro", "build"];
+  if (testCase.runtime === "deno") {
+    return ["deno", "run", "-A", `npm:astro@${testCase.astro}`, "build"];
+  }
+  if (testCase.runtime === "bun") {
+    return ["bunx", "--bun", "astro", "build"];
+  }
   return ["pnpm", "exec", "astro", "build"];
 }
 
