@@ -171,7 +171,10 @@ async function packFedifyPackages(
     );
     for await (const entry of Deno.readDir(outputDir)) {
       if (entry.isFile && entry.name.endsWith(".tgz")) {
-        tarballs.set(packageJson.name, `file:${join(outputDir, entry.name)}`);
+        tarballs.set(
+          packageJson.name,
+          `file:./packages/${packageName}/${entry.name}`,
+        );
       }
     }
   }
@@ -236,21 +239,29 @@ async function exerciseServer(
     );
 
     const notFound = await fetch(`http://127.0.0.1:${port}/unrelated`);
-    assertEquals(notFound.status, 404, "Astro fallback status");
+    try {
+      assertEquals(notFound.status, 404, "Astro fallback status");
+    } finally {
+      await notFound.body?.cancel();
+    }
 
     const notAcceptable = await fetch(`http://127.0.0.1:${port}/objects/test`, {
       headers: { Accept: "text/html" },
     });
-    assertEquals(
-      notAcceptable.status,
-      406,
-      "unacceptable representation status",
-    );
-    assertIncludes(
-      notAcceptable.headers.get("Vary") ?? "",
-      "Accept",
-      "Vary header",
-    );
+    try {
+      assertEquals(
+        notAcceptable.status,
+        406,
+        "unacceptable representation status",
+      );
+      assertIncludes(
+        notAcceptable.headers.get("Vary") ?? "",
+        "Accept",
+        "Vary header",
+      );
+    } finally {
+      await notAcceptable.body?.cancel();
+    }
   } catch (error) {
     try {
       process.kill("SIGTERM");
