@@ -170,7 +170,7 @@ Installation
 ------------
 
 ~~~~ sh
-deno add jsr:@fedify/astro  # Deno
+deno add npm:@fedify/astro  # Deno
 npm  add     @fedify/astro  # npm
 pnpm add     @fedify/astro  # pnpm
 yarn add     @fedify/astro  # Yarn
