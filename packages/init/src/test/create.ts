@@ -1,8 +1,8 @@
 import $ from "@david/dax";
 import { filter, isEmpty, pipe, toArray } from "@fxts/core";
 import { values } from "@optique/core";
-import { appendFile, mkdir, stat } from "node:fs/promises";
-import { join, sep } from "node:path";
+import { appendFile, mkdir, readFile, stat, symlink } from "node:fs/promises";
+import { dirname, join, resolve, sep } from "node:path";
 import process from "node:process";
 import packageManagers from "../json/pm.json" with { type: "json" };
 import { getBuildCommand, kvStores, messageQueues } from "../lib.ts";
@@ -180,7 +180,8 @@ async function validateFrameworkBuild(
     KvStore,
     MessageQueue,
   ];
-  if (webFramework !== "astro" || packageManager === "deno") return true;
+  if (webFramework !== "astro") return true;
+  if (packageManager === "deno") await linkDenoWorkspacePackages(dir);
   const result = await $`${getBuildCommand(packageManager)}`
     .cwd(dir)
     .stdin("null")
@@ -190,6 +191,23 @@ async function validateFrameworkBuild(
     .spawn();
   await saveOutputs(dir, result);
   return result.code === 0;
+}
+
+async function linkDenoWorkspacePackages(dir: string): Promise<void> {
+  const config = JSON.parse(await readFile(join(dir, "deno.json"), "utf8"));
+  for (const link of config.links ?? []) {
+    const packageDir = resolve(dir, link);
+    const metadata = JSON.parse(
+      await readFile(join(packageDir, "package.json"), "utf8"),
+    );
+    const target = join(dir, "node_modules", ...metadata.name.split("/"));
+    await mkdir(dirname(target), { recursive: true });
+    try {
+      await stat(target);
+    } catch {
+      await symlink(packageDir, target, "junction");
+    }
+  }
 }
 
 export function filterOptions(

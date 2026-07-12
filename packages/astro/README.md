@@ -78,6 +78,10 @@ export const onRequest = sequence(
 For Deno users
 --------------
 
+Install `@fedify/astro` and the other packages loaded by Astro from npm.  Vite
+resolves these imports through *node\_modules/* rather than Deno's JSR import
+map.
+
 If you are using Deno, you should import `@deno/astro-adapter` in
 *astro.config.mjs* and use it as the adapter:
 

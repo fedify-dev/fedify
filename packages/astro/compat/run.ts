@@ -57,11 +57,12 @@ async function testCompatibility(testCase: CompatibilityCase): Promise<void> {
     `Astro ${testCase.astro}, ${adapterName} ${testCase.adapter}, ${testCase.runtime}`;
   console.log(`Testing ${label}...`);
   const tempDir = await Deno.makeTempDir({ prefix: "fedify-astro-compat-" });
+  const port = reservePort();
   try {
     const tarballs = await packFedifyPackages(tempDir);
     await Deno.writeTextFile(
       join(tempDir, "astro.config.mjs"),
-      await getAstroConfig(testCase),
+      await getAstroConfig(testCase, port),
     );
     await copy(join(compatDir, "src"), join(tempDir, "src"));
     await Deno.writeTextFile(
@@ -89,7 +90,7 @@ async function testCompatibility(testCase: CompatibilityCase): Promise<void> {
 
     await run(["pnpm", "install", "--strict-peer-dependencies"], tempDir);
     await run(["pnpm", "exec", "astro", "build"], tempDir);
-    await exerciseServer(tempDir, testCase.runtime);
+    await exerciseServer(tempDir, testCase.runtime, port);
     console.log(`Passed ${label}.`);
   } finally {
     if (Deno.env.get("KEEP_ASTRO_COMPAT") == null) {
@@ -100,7 +101,10 @@ async function testCompatibility(testCase: CompatibilityCase): Promise<void> {
   }
 }
 
-async function getAstroConfig(testCase: CompatibilityCase): Promise<string> {
+async function getAstroConfig(
+  testCase: CompatibilityCase,
+  port: number,
+): Promise<string> {
   if (!testCase.astro.startsWith("^7.")) {
     return await Deno.readTextFile(join(compatDir, "astro.config.mjs.tpl"));
   }
@@ -122,6 +126,16 @@ async function getAstroConfig(testCase: CompatibilityCase): Promise<string> {
   });
   const config = initializer.files?.["astro.config.ts"];
   if (config == null) throw new Error("Astro initializer produced no config");
+  if (testCase.runtime === "deno") {
+    const configured = config.replace(
+      "adapter: deno(),",
+      `adapter: deno({ port: ${port} }),`,
+    );
+    if (configured === config) {
+      throw new Error("Could not configure the Deno compatibility test port");
+    }
+    return configured;
+  }
   return config;
 }
 
@@ -167,8 +181,8 @@ async function packFedifyPackages(
 async function exerciseServer(
   dir: string,
   runtime: "node" | "deno" | "bun",
+  port: number,
 ): Promise<void> {
-  const port = runtime === "deno" ? 8085 : reservePort();
   const command = new Deno.Command(runtime, {
     args: runtime === "deno"
       ? ["run", "-A", "dist/server/entry.mjs"]

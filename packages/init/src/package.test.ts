@@ -3,6 +3,7 @@ import { access, readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { PACKAGE_VERSION } from "./lib.ts";
 import astroDescription from "./webframeworks/astro.ts";
 
 const packageDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -60,6 +61,10 @@ test("Astro init pins the Astro 7 scaffolder and dependencies", async () => {
       packageManager === "deno" ? "npm:astro@^7.0.7" : "^7.0.7",
     );
     if (packageManager === "deno") {
+      strictEqual(
+        result.dependencies?.["@fedify/astro"],
+        `npm:@fedify/astro@${PACKAGE_VERSION}`,
+      );
       strictEqual(
         result.dependencies?.["@deno/astro-adapter"],
         "npm:@deno/astro-adapter@^0.6.0",

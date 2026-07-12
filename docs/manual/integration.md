@@ -879,7 +879,7 @@ to integrate Fedify with Astro:
 ::: code-group
 
 ~~~~ sh [Deno]
-deno add jsr:@fedify/astro
+deno add npm:@fedify/astro
 ~~~~
 
 ~~~~ sh [npm]
@@ -956,6 +956,10 @@ export const onRequest = sequence(
 [Astro]: https://astro.build/
 
 ### For Deno users
+
+Install packages that Astro loads through Vite from npm.  Vite resolves these
+imports through *node\_modules/* rather than Deno's JSR import map;
+`fedify init` selects npm packages for this reason.
 
 If you are using Deno, you should import `@deno/astro-adapter` in
 _astro.config.ts_ and use it as the adapter:

@@ -124,7 +124,7 @@ const getLinks = <
   T extends Pick<InitCommandData, "kv" | "mq" | "initializer" | "dir">,
 >({ kv, mq, initializer, dir }: T) =>
   pipe(
-    { "@fedify/fedify": "" },
+    { "@fedify/fedify": "", "@fedify/vocab": "" },
     merge(initializer.dependencies),
     merge(kv.dependencies),
     merge(mq.dependencies),

@@ -26,11 +26,14 @@ const astroDescription: WebFrameworkDescription = {
     const dependencies: Record<string, string> = pm === "deno"
       ? {
         ...defaultDenoDependencies,
+        "@fedify/fedify": `npm:@fedify/fedify@${PACKAGE_VERSION}`,
+        "@fedify/vocab": `npm:@fedify/vocab@${PACKAGE_VERSION}`,
+        "@logtape/logtape": `npm:@logtape/logtape@${deps["@logtape/logtape"]}`,
         astro: `npm:astro@${deps["npm:astro"]}`,
         "@deno/astro-adapter": `npm:@deno/astro-adapter@${
           deps["npm:@deno/astro-adapter"]
         }`,
-        "@fedify/astro": PACKAGE_VERSION,
+        "@fedify/astro": `npm:@fedify/astro@${PACKAGE_VERSION}`,
       }
       : pm === "bun"
       ? {
