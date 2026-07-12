@@ -57,7 +57,7 @@ How it works
      -  Inbox listeners for `Follow` and `Undo` activities
      -  `Note` object dispatcher at `/users/{identifier}/posts/{id}`
      -  Followers collection at `/users/{identifier}/followers`
- -  `src/middleware.ts` composes an additional Astro middleware with
+ -  *src/middleware.ts* composes an additional Astro middleware with
     `fedifyMiddleware()` using `sequence()`.
  -  `src/pages/users/[identifier]/index.astro` renders an HTML profile page.
     Fedify and Astro share the route and do content negotiation depending on
