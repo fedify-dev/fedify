@@ -56,8 +56,11 @@ middleware using `sequence()`:
 
 ~~~~ typescript
 import { fedifyMiddleware } from "@fedify/astro";
+import type { MiddlewareHandler } from "astro";
 import { sequence } from "astro:middleware";
 import federation from "./federation.ts";
+
+const otherMiddleware: MiddlewareHandler = (_context, next) => next();
 
 export const onRequest = sequence(
   otherMiddleware,
