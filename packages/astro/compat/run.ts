@@ -265,11 +265,7 @@ async function exerciseServer(
       await notAcceptable.body?.cancel();
     }
   } catch (error) {
-    try {
-      process.kill("SIGTERM");
-    } catch {
-      // The server may have exited before the readiness check failed.
-    }
+    await stopProcess(process);
     const [stdout, stderr] = await Promise.all([
       stdoutPromise,
       stderrPromise,
@@ -278,13 +274,43 @@ async function exerciseServer(
     console.error(stderr);
     throw error;
   } finally {
-    try {
-      process.kill("SIGTERM");
-    } catch {
-      // The server may already have exited.
-    }
-    await Promise.all([process.status, stdoutPromise, stderrPromise]);
+    await Promise.all([stopProcess(process), stdoutPromise, stderrPromise]);
   }
+}
+
+async function stopProcess(process: Deno.ChildProcess): Promise<void> {
+  const status = process.status;
+  try {
+    process.kill(Deno.build.os === "windows" ? "SIGKILL" : "SIGTERM");
+  } catch {
+    await status;
+    return;
+  }
+  if (Deno.build.os === "windows") {
+    await status;
+    return;
+  }
+
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  let exited: boolean;
+  try {
+    exited = await Promise.race([
+      status.then(() => true),
+      new Promise<false>((resolve) => {
+        timeoutId = setTimeout(() => resolve(false), 1_000);
+      }),
+    ]);
+  } finally {
+    if (timeoutId != null) clearTimeout(timeoutId);
+  }
+  if (!exited) {
+    try {
+      process.kill("SIGKILL");
+    } catch {
+      // The server may have exited after the grace period elapsed.
+    }
+  }
+  await status;
 }
 
 function reservePort(): number {
