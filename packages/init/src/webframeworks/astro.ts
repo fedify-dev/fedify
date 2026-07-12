@@ -18,6 +18,14 @@ const astroNodeBunDevToolTasks = {
   lint: "oxlint .",
 } as const;
 
+const ASTRO_NODE_VERSION_CHECK = `
+const [major, minor] = process.versions.node.split(".").map(Number);
+if (major < 22 || (major === 22 && minor < 12)) {
+  console.error("Astro 7 requires Node.js 22.12 or later.");
+  process.exit(1);
+}
+`.trim();
+
 const astroDescription: WebFrameworkDescription = {
   label: "Astro",
   packageManagers: PACKAGE_MANAGER,
@@ -90,6 +98,12 @@ export default astroDescription;
 function* getAstroInitCommand(
   pm: PackageManager,
 ): Generator<string> {
+  if (pm !== "deno" && pm !== "bun") {
+    yield "node";
+    yield "-e";
+    yield ASTRO_NODE_VERSION_CHECK;
+    yield "&&";
+  }
   yield* createAstroAppCommand(pm);
   yield `astro@${deps["npm:create-astro"]}`;
   yield ".";
