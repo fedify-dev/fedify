@@ -58,6 +58,7 @@ async function testCompatibility(testCase: CompatibilityCase): Promise<void> {
   console.log(`Testing ${label}...`);
   const tempDir = await Deno.makeTempDir({ prefix: "fedify-astro-compat-" });
   const port = reservePort();
+  let testFailed = false;
   try {
     const tarballs = await packFedifyPackages(tempDir);
     await Deno.writeTextFile(
@@ -92,12 +93,27 @@ async function testCompatibility(testCase: CompatibilityCase): Promise<void> {
     await run(getBuildCommand(testCase), tempDir);
     await exerciseServer(tempDir, testCase.runtime, port);
     console.log(`Passed ${label}.`);
+  } catch (error) {
+    testFailed = true;
+    throw error;
   } finally {
     if (Deno.env.get("KEEP_ASTRO_COMPAT") == null) {
-      await Deno.remove(tempDir, { recursive: true });
+      await removeTempDir(tempDir, testFailed);
     } else {
       console.log(`Kept compatibility fixture at ${tempDir}.`);
     }
+  }
+}
+
+async function removeTempDir(tempDir: string, testFailed: boolean) {
+  try {
+    await Deno.remove(tempDir, { recursive: true });
+  } catch (error) {
+    if (!testFailed) throw error;
+    console.error(
+      `Failed to remove temporary directory ${tempDir}:`,
+      error,
+    );
   }
 }
 
