@@ -23,6 +23,10 @@ const astroDescription: WebFrameworkDescription = {
   packageManagers: PACKAGE_MANAGER,
   defaultPort: 4321,
   init: async ({ packageManager: pm }) => {
+    // Astro loads integrations and middleware through Vite.  Vite resolves
+    // bare imports from node_modules rather than Deno's JSR import map, so
+    // keep Vite-loaded dependencies on npm even though @fedify/astro is also
+    // published on JSR.
     const dependencies: Record<string, string> = pm === "deno"
       ? {
         ...defaultDenoDependencies,

@@ -900,6 +900,11 @@ bun add @fedify/astro
 
 :::
 
+The *@fedify/astro* package is also published on JSR.  Deno-based Astro
+projects use its npm package because Astro loads integrations and middleware
+through Vite, which resolves bare imports through *node\_modules/* rather than
+Deno's JSR import map.
+
 Fedify requires on-demand rendering, so install a server adapter for your
 runtime.  For Astro 7 on Node.js, add `@astrojs/node` 11 and configure it with
 the Fedify integration in _astro.config.ts_:
