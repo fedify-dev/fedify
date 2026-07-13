@@ -150,7 +150,7 @@ fedify init microblog
 ~~~~
 
 When you run the `fedify init` command, you'll see a series of prompts.
-Select *Hono*, *npm*, *Hono*, *In-process*, and *In-memory* in order:
+Select *Hono*, *npm*, *in-process*, and *in-memory* in order:
 
 ~~~~ console
              ___      _____        _ _  __
