@@ -150,7 +150,7 @@ fedify init microblog
 ~~~~
 
 When you run the `fedify init` command, you'll see a series of prompts.
-Select *Node.js*, *npm*, *Hono*, *In-memory*, and *In-process* in order:
+Select *Hono*, *npm*, *in-process*, and *in-memory* in order:
 
 ~~~~ console
              ___      _____        _ _  __
@@ -159,36 +159,39 @@ Select *Node.js*, *npm*, *Hono*, *In-memory*, and *In-process* in order:
    __/       /       |  _|  __/ (_| | |  _| |_| |
   <__.|_|-|_|        |_|  \___|\__,_|_|_|  \__, |
                                            |___/
+? Choose the web framework to use
+  Bare-bones
+❯ Hono
+  Nitro
+  Next.js
+  ElysiaJS
+  Astro
+  Express
+  Nuxt
+  SolidStart
 
-? Choose the JavaScript runtime to use
-  Deno
-  Bun
-❯ Node.js
 
 ? Choose the package manager to use
-❯ npm
-  Yarn
+  deno
   pnpm
+  bun
+  yarn
+❯ npm
 
-? Choose the web framework to integrate Fedify with
-  Bare-bones
-  Fresh
-❯ Hono
-  Express
-  Nitro
+? Choose the message queue to use
+❯ in-process
+  redis
+  postgres
+  mysql
+  amqp
+- denokv (not supported with npm) (disabled)
 
-? Choose the key–value store to use for caching
-❯ In-memory
-  Redis
-  PostgreSQL
-  Deno KV
-
-? Choose the message queue to use for background jobs
-❯ In-process
-  Redis
-  PostgreSQL
-  AMQP (e.g., RabbitMQ)
-  Deno KV
+? Choose the key-value store to use
+❯ in-memory
+  redis
+  postgres
+  mysql
+- denokv (not supported with npm) (disabled)
 ~~~~
 
 > [!NOTE]
