@@ -339,6 +339,52 @@ test("FederationBuilder", async (t) => {
     );
   });
 
+  await t.step("should validate media uploader paths", () => {
+    const noop = () => Promise.resolve(new URL("https://example.com/"));
+
+    // A media uploader may only be registered once.
+    const builder = createFederationBuilder<void>();
+    builder.setMediaUploader("/users/{identifier}/media", noop);
+    assertThrows(
+      () => builder.setMediaUploader("/users/{identifier}/media2", noop),
+      RouterError,
+    );
+
+    // The path must contain exactly one {identifier} variable.
+    assertThrows(
+      () =>
+        createFederationBuilder<void>().setMediaUploader(
+          "/users/media" as `${string}{identifier}${string}`,
+          noop,
+        ),
+      RouteTemplateOptionsNotMatchedError,
+    );
+    assertThrows(
+      () =>
+        createFederationBuilder<void>().setMediaUploader(
+          "/users/{identifier}/media/{extra}",
+          noop,
+        ),
+      RouterError,
+    );
+    assertThrows(
+      () =>
+        createFederationBuilder<void>().setMediaUploader(
+          "/users/{identifier*}/media" as `${string}{identifier}${string}`,
+          noop,
+        ),
+      DisallowedVarSpecModifierError,
+    );
+    assertThrows(
+      () =>
+        createFederationBuilder<void>().setMediaUploader(
+          "/users{?identifier}/media",
+          noop,
+        ),
+      DisallowedOperatorError,
+    );
+  });
+
   await t.step(
     "rejects non-segment-boundary identifier operators at registration " +
       "for required-identifier routes",

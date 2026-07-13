@@ -1,6 +1,6 @@
 import type { DocumentLoader } from "../docloader.ts";
 import jsonld from "../jsonld.ts";
-import { formatIri, haveSameIriOrigin } from "../url.ts";
+import { formatIri, haveSameFe34Origin, haveSameIriOrigin } from "../url.ts";
 
 const noJsonLdContext = Symbol("noJsonLdContext");
 
@@ -28,7 +28,8 @@ export function isTrustedIriOrigin(
   right: URL | null | undefined,
 ): boolean {
   return options.crossOrigin === "trust" || left == null ||
-    (right != null && haveSameIriOrigin(left, right));
+    (right != null &&
+      (haveSameIriOrigin(left, right) || haveSameFe34Origin(left, right)));
 }
 
 /**

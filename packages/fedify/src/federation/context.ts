@@ -142,6 +142,17 @@ export interface Context<TContextData> {
   getOutboxUri(identifier: string): URL;
 
   /**
+   * Builds the URI of an actor's media upload endpoint with the given
+   * identifier.  This is the endpoint advertised under `endpoints.uploadMedia`
+   * in the actor document.
+   * @param identifier The actor's identifier.
+   * @returns The actor's media upload endpoint URI.
+   * @throws {RouterError} If no media uploader is registered.
+   * @since 2.4.0
+   */
+  getMediaUploaderUri(identifier: string): URL;
+
+  /**
    * Builds the URI of the shared inbox.
    * @returns The shared inbox URI.
    * @throws {RouterError} If no inbox listener is available.

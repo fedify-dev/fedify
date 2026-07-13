@@ -8,6 +8,7 @@ import activitystreams from "./contexts/activitystreams.json" with {
 import didV1 from "./contexts/did-v1.json" with { type: "json" };
 import fep5711 from "./contexts/fep-5711.json" with { type: "json" };
 import fep7aa9 from "./contexts/fep-7aa9.json" with { type: "json" };
+import fepEf61 from "./contexts/fep-ef61.json" with { type: "json" };
 import gotosocial from "./contexts/gotosocial.json" with { type: "json" };
 import identityV1 from "./contexts/identity-v1.json" with { type: "json" };
 import joinLemmyContext from "./contexts/join-lemmy.json" with { type: "json" };
@@ -37,6 +38,7 @@ const preloadedContexts: Record<string, unknown> = {
   "https://gotosocial.org/ns": gotosocial,
   "https://w3id.org/fep/5711": fep5711,
   "https://w3id.org/fep/7aa9": fep7aa9,
+  "https://w3id.org/fep/ef61": fepEf61,
 
   // Lemmy's context document is served as application/json without the JSON-LD
   // context Link header.  The default document loader treats that as a regular

@@ -84,3 +84,17 @@ properties:
     objects which are not addressed to the `Public`` endpoint.
   range:
   - "http://www.w3.org/2001/XMLSchema#anyURI"
+
+- singularName: uploadMedia
+  functional: true
+  compactName: uploadMedia
+  uri: "https://www.w3.org/ns/activitystreams#uploadMedia"
+  description: |
+    Upload endpoint URI for this user for binary data, such as an image or
+    video, as described in the [ActivityPub Media
+    Upload](https://www.w3.org/wiki/SocialCG/ActivityPub/MediaUpload) extension.
+    Clients `POST` a `multipart/form-data` request containing a `file` part
+    (the binary payload) and an `object` part (an ActivityStreams object shell)
+    to this endpoint.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#anyURI"

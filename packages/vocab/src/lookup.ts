@@ -2,6 +2,7 @@ import type { GetUserAgentOptions } from "@fedify/vocab-runtime";
 import {
   type DocumentLoader,
   getDocumentLoader,
+  haveSameFe34Origin,
   haveSameIriOrigin,
   parseIri,
   type RemoteDocument,
@@ -335,7 +336,8 @@ async function lookupObjectInternal(
   }
   if (
     options.crossOrigin !== "trust" && object.id != null &&
-    !haveSameIriOrigin(object.id, documentUrl)
+    !haveSameIriOrigin(object.id, documentUrl) &&
+    !haveSameFe34Origin(object.id, documentUrl)
   ) {
     if (options.crossOrigin === "throw") {
       throw new Error(

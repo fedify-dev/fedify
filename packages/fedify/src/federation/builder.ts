@@ -32,6 +32,7 @@ import type {
   CustomCollectionDispatcher,
   InboxErrorHandler,
   InboxListener,
+  MediaUploaderCallback,
   NodeInfoDispatcher,
   ObjectAuthorizePredicate,
   ObjectDispatcher,
@@ -59,6 +60,7 @@ import type {
   IdempotencyKeyCallback,
   IdempotencyStrategy,
   InboxListenerSetters,
+  MediaUploaderSetters,
   ObjectCallbackSetters,
   OutboxListenerSetters,
   Rfc6570Expression,
@@ -169,6 +171,9 @@ export class FederationBuilderImpl<TContextData>
   inboxErrorHandler?: InboxErrorHandler<TContextData>;
   outboxListenerErrorHandler?: OutboxListenerErrorHandler<TContextData>;
   outboxAuthorizePredicate?: AuthorizePredicate<TContextData>;
+  mediaUploaderPath?: string;
+  mediaUploaderCallback?: MediaUploaderCallback<TContextData>;
+  mediaUploaderAuthorizePredicate?: AuthorizePredicate<TContextData>;
   sharedInboxKeyDispatcher?: SharedInboxKeyDispatcher<TContextData>;
   unverifiedActivityHandler?: UnverifiedActivityHandler<TContextData>;
   outboxPermanentFailureHandler?: OutboxPermanentFailureHandler<TContextData>;
@@ -265,6 +270,9 @@ export class FederationBuilderImpl<TContextData>
     f.inboxErrorHandler = this.inboxErrorHandler;
     f.outboxListenerErrorHandler = this.outboxListenerErrorHandler;
     f.outboxAuthorizePredicate = this.outboxAuthorizePredicate;
+    f.mediaUploaderPath = this.mediaUploaderPath;
+    f.mediaUploaderCallback = this.mediaUploaderCallback;
+    f.mediaUploaderAuthorizePredicate = this.mediaUploaderAuthorizePredicate;
     f.sharedInboxKeyDispatcher = this.sharedInboxKeyDispatcher;
     f.unverifiedActivityHandler = this.unverifiedActivityHandler;
     f.outboxPermanentFailureHandler = this.outboxPermanentFailureHandler;
@@ -505,6 +513,25 @@ export class FederationBuilderImpl<TContextData>
               "You configured a key pairs dispatcher, but the actor does " +
                 "not have an assertionMethod property.  Set the property " +
                 "with Context.getActorKeyPairs(identifier).",
+            );
+          }
+        }
+        if (this.mediaUploaderCallback != null) {
+          if (actor.endpoints == null || actor.endpoints.uploadMedia == null) {
+            logger.warn(
+              "You configured a media uploader, but the actor does not have " +
+                "a endpoints.uploadMedia property.  Set the property with " +
+                "Context.getMediaUploaderUri(identifier).",
+            );
+          } else if (
+            actor.endpoints.uploadMedia.href !=
+              context.getMediaUploaderUri(identifier).href
+          ) {
+            logger.warn(
+              "You configured a media uploader, but the actor's " +
+                "endpoints.uploadMedia property does not match the media " +
+                "upload endpoint URI.  Set the property with " +
+                "Context.getMediaUploaderUri(identifier).",
             );
           }
         }
@@ -887,6 +914,29 @@ export class FederationBuilderImpl<TContextData>
         predicate: AuthorizePredicate<TContextData>,
       ): OutboxListenerSetters<TContextData> => {
         this.outboxAuthorizePredicate = predicate;
+        return setters;
+      },
+    };
+    return setters;
+  }
+
+  setMediaUploader(
+    path: `${string}${Rfc6570Expression<"identifier">}${string}`,
+    callback: MediaUploaderCallback<TContextData>,
+  ): MediaUploaderSetters<TContextData> {
+    if (this.mediaUploaderCallback != null) {
+      throw new RouterError("Media uploader already set.");
+    }
+    assertPath(path);
+    this.router.add(path, "mediaUploader", identifierSingular);
+    this.mediaUploaderPath = path;
+    this.mediaUploaderCallback = callback;
+
+    const setters: MediaUploaderSetters<TContextData> = {
+      authorize: (
+        predicate: AuthorizePredicate<TContextData>,
+      ): MediaUploaderSetters<TContextData> => {
+        this.mediaUploaderAuthorizePredicate = predicate;
         return setters;
       },
     };

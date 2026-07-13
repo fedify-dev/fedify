@@ -10,12 +10,37 @@ To be released.
 
 ### @fedify/fedify
 
+ -  Updated `verifyObject()` so [FEP-8b32] proofs signed by `did:key`
+    verification methods can authenticate portable objects whose owner is an
+    `ap:` or `ap+ef61:` URI with the same [FEP-fe34] cryptographic origin.
+    [[#829], [#926]]
+
  -  Added local `did:key` verification method resolution for
     [FEP-8b32] Object Integrity Proofs.  `verifyProof()` can now verify
     Ed25519 `eddsa-jcs-2022` proofs whose `verificationMethod` is a
     `did:key:z...#z...` DID URL without fetching the verification method
     as a remote JSON-LD document, which is required for [FEP-ef61]
     portable objects.  [[#827], [#915]]
+
+ -  Added support for the [ActivityPub Media Upload extension] so that servers
+    can accept client-to-server media uploads:  [[#754], [#927]]
+
+     -  `Federation` and `FederationBuilder` gained a `setMediaUploader()`
+        method (through the new `MediaUploaderSetters` interface) that registers
+        a `multipart/form-data` upload endpoint.  Its callback finalizes the
+        uploaded `file` alongside the posted `object` shell and returns either
+        the created object (`201 Created`) or the `URL` at which it will become
+        available once processing finishes (`202 Accepted`).
+     -  `Context` gained a `getMediaUploaderUri()` method for building the
+        endpoint URI, which actor dispatchers advertise under the new
+        `Endpoints.uploadMedia` property.
+     -  A new metric endpoint category, `media_upload`, classifies these
+        requests in the `fedify.endpoint` attribute.
+     -  Fedify logs a runtime warning when a callback's returned URI does not
+        point at a registered object dispatcher route, when a registered
+        media uploader is not advertised under `endpoints.uploadMedia`, or
+        when a media uploader is registered without an `authorize()` hook (so
+        the endpoint would accept uploads from anyone).
 
  -  Added a custom background task API that generalizes Fedify's
     enqueue-and-process-later pattern to arbitrary application-defined jobs:
@@ -63,9 +88,12 @@ To be released.
     `esnext.temporal` lib reference.  [[#823], [#925]]
 
 [FEP-8b32]: https://w3id.org/fep/8b32
+[FEP-fe34]: https://w3id.org/fep/fe34
 [FEP-ef61]: https://w3id.org/fep/ef61
+[ActivityPub Media Upload extension]: https://www.w3.org/wiki/SocialCG/ActivityPub/MediaUpload
 [Standard Schema]: https://standardschema.dev/
 [#206]: https://github.com/fedify-dev/fedify/issues/206
+[#754]: https://github.com/fedify-dev/fedify/issues/754
 [#797]: https://github.com/fedify-dev/fedify/issues/797
 [#798]: https://github.com/fedify-dev/fedify/issues/798
 [#799]: https://github.com/fedify-dev/fedify/issues/799
@@ -74,11 +102,25 @@ To be released.
 [#812]: https://github.com/fedify-dev/fedify/pull/812
 [#823]: https://github.com/fedify-dev/fedify/issues/823
 [#827]: https://github.com/fedify-dev/fedify/issues/827
+[#829]: https://github.com/fedify-dev/fedify/issues/829
 [#915]: https://github.com/fedify-dev/fedify/pull/915
 [#923]: https://github.com/fedify-dev/fedify/pull/923
 [#925]: https://github.com/fedify-dev/fedify/pull/925
+[#926]: https://github.com/fedify-dev/fedify/pull/926
+[#927]: https://github.com/fedify-dev/fedify/pull/927
 
 ### @fedify/vocab
+
+ -  Added [FEP-ef61] vocabulary terms for portable ActivityPub objects.
+    Actor classes now expose ordered `gateways` lists, and `Link` plus
+    document/media classes expose `digestMultibase` for external resource
+    integrity metadata.  [[#830], [#928]]
+
+ -  Updated [FEP-fe34] cross-origin checks to understand cryptographic origins
+    for [FEP-ef61] portable ActivityPub IDs and DID URLs.  Generated property
+    accessors and `lookupObject()` now treat `ap:`/`ap+ef61:` IDs and matching
+    `did:key` verification method IDs as same-origin when their DID components
+    match.  [[#829], [#926]]
 
  -  Added support for [FEP-ef61] portable ActivityPub IRIs in generated
     vocabulary codecs.  `ap:` and `ap+ef61:` values with decoded or
@@ -91,6 +133,9 @@ To be released.
     `FeatureAuthorization`, plus actor `featuredCollections` and
     `InteractionPolicy.canFeature` properties.  [[#810], [#914]]
 
+ -  Added the `Endpoints.uploadMedia` property, the standard ActivityStreams
+    endpoint for the [ActivityPub Media Upload extension].  [[#754], [#927]]
+
  -  Fixed the CommonJS vocabulary build so it no longer requires
     `@js-temporal/polyfill` at runtime.  The build now bundles
     `temporal-polyfill`, while type declarations rely on the standard
@@ -99,10 +144,40 @@ To be released.
 [FEP-7aa9]: https://w3id.org/fep/7aa9
 [#810]: https://github.com/fedify-dev/fedify/issues/810
 [#826]: https://github.com/fedify-dev/fedify/issues/826
+[#830]: https://github.com/fedify-dev/fedify/issues/830
 [#850]: https://github.com/fedify-dev/fedify/pull/850
 [#914]: https://github.com/fedify-dev/fedify/pull/914
+[#928]: https://github.com/fedify-dev/fedify/pull/928
+
+### @fedify/interaction-controls
+
+ -  Added the new `@fedify/interaction-controls` package for implementing
+    [GoToSocial interaction controls], [FEP-044f], and [FEP-7aa9].  It provides
+    immutable TypeScript APIs for creating and verifying interaction requests
+    and authorizations, evaluating `InteractionPolicy`, recognizing bare
+    interactions, and formatting stable storage keys for like, reply, announce,
+    quote, and feature interactions.  [[#811], [#929]]
+
+[GoToSocial interaction controls]: https://docs.gotosocial.org/en/v0.21.1/federation/interaction_controls/
+[FEP-044f]: https://w3id.org/fep/044f
+[#811]: https://github.com/fedify-dev/fedify/issues/811
+[#929]: https://github.com/fedify-dev/fedify/pull/929
 
 ### @fedify/vocab-runtime
+
+ -  Added SHA-256 `digestMultibase` and simple `hl:` hashlink helpers for
+    computing, parsing, creating, and verifying portable media resource
+    digests as required by [FEP-ef61].  [[#831], [#935]]
+
+ -  Added the [FEP-ef61] JSON-LD context to the preloaded context registry so
+    portable actor and media documents can compact and expand `gateways` and
+    `digestMultibase` without fetching the context remotely.  [[#830], [#928]]
+
+ -  Added `getFe34Origin()` and `haveSameFe34Origin()` for comparing ordinary
+    web origins and [FEP-ef61] cryptographic origins with one shared
+    [FEP-fe34] helper.  HTTP(S) URLs keep web-origin semantics, while
+    `ap:`/`ap+ef61:` URIs and DID URLs use their DID component as the origin.
+    [[#829], [#926]]
 
  -  Added `canonicalizePortableUri()` and `arePortableUrisEqual()` for
     comparing [FEP-ef61] portable ActivityPub URI strings.  The helpers accept
@@ -127,9 +202,11 @@ To be released.
     content type, rather than generic JSON parser crashes.  [[#912], [#913]]
 
 [#828]: https://github.com/fedify-dev/fedify/issues/828
+[#831]: https://github.com/fedify-dev/fedify/issues/831
 [#912]: https://github.com/fedify-dev/fedify/issues/912
 [#913]: https://github.com/fedify-dev/fedify/pull/913
 [#924]: https://github.com/fedify-dev/fedify/pull/924
+[#935]: https://github.com/fedify-dev/fedify/pull/935
 
 ### @fedify/cli
 
@@ -184,6 +261,22 @@ To be released.
     `@js-temporal/polyfill` at runtime.  The build now bundles
     `temporal-polyfill`, while type declarations rely on the standard
     `esnext.temporal` lib reference.  [[#823], [#925]]
+
+### @fedify/lint
+
+ -  Added four lint rules for the media upload endpoint introduced in
+    `@fedify/fedify`:  [[#754], [#927]]
+
+     -  `media-uploader-object-uri-required` warns when a `setMediaUploader()`
+        callback does not derive its return value from `ctx.getObjectUri()`.
+     -  `media-uploader-authorization-required` warns when `setMediaUploader()`
+        is registered without an `.authorize()` hook.
+     -  `actor-upload-media-property-required` warns when a media uploader is
+        registered but the actor dispatcher does not advertise
+        `endpoints.uploadMedia`.
+     -  `actor-upload-media-property-mismatch` warns when
+        `endpoints.uploadMedia` is not built with
+        `ctx.getMediaUploaderUri(identifier)`.
 
 
 Version 2.3.2
@@ -1143,7 +1236,6 @@ Released on April 28, 2026.
      -  Added `Measure` class for representing quantities with units of
         measure, with `unit` and `numericalValue` properties.
 
-[FEP-044f]: https://w3id.org/fep/044f
 [#452]: https://github.com/fedify-dev/fedify/issues/452
 [#578]: https://github.com/fedify-dev/fedify/issues/578
 [#645]: https://github.com/fedify-dev/fedify/issues/645
@@ -3627,7 +3719,6 @@ Released on October 14, 2025.
     Node.js's `--experimental-require-module` flag and resolves dual package
     hazard issues.  [[#429], [#431]]
 
-[FEP-fe34]: https://w3id.org/fep/fe34
 [RFC 6570]: https://tools.ietf.org/html/rfc6570
 [FEP-5711]: https://w3id.org/fep/5711
 [OStatus 1.0 Draft 2]: https://www.w3.org/community/ostatus/wiki/images/9/93/OStatus_1.0_Draft_2.pdf

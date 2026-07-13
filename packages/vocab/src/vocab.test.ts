@@ -28,6 +28,7 @@ import {
   Activity,
   Agreement,
   Announce,
+  Application,
   Collection,
   Commitment,
   Create,
@@ -41,16 +42,20 @@ import {
   FeaturedItem,
   FeatureRequest,
   Follow,
+  Group,
   Hashtag,
+  Image,
   Intent,
   InteractionPolicy,
   InteractionRule,
   Link,
   Measure,
+  Multikey,
   Note,
   Object,
   Offer,
   OrderedCollectionPage,
+  Organization,
   Person,
   Place,
   PropertyValue,
@@ -59,6 +64,7 @@ import {
   QuoteAuthorization,
   QuoteRequest,
   Reject,
+  Service,
   Source,
   Tombstone,
 } from "./vocab.ts";
@@ -656,6 +662,242 @@ test("fromJsonLd() handles portable ActivityPub IRIs", async () => {
     pageJson.prev,
     "ap+ef61://did:key:z6Mkabc/actor/outbox?page=1",
   );
+});
+
+test("FEP-ef61: actor gateways round-trip as an ordered URI list", async () => {
+  const actorClasses = [Application, Group, Organization, Person, Service];
+  const gateways = [
+    new URL("https://server1.example/"),
+    new URL("https://server2.example/"),
+  ];
+
+  for (const ActorClass of actorClasses) {
+    const actor = await ActorClass.fromJsonLd({
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/fep/ef61",
+      ],
+      type: ActorClass.name,
+      id: "ap+ef61://did:key:z6Mkabc/actor",
+      gateways: gateways.map((gateway) => gateway.href),
+    });
+    deepStrictEqual(actor.gateways, gateways);
+
+    const jsonLd = await actor.toJsonLd() as Record<string, unknown>;
+    deepStrictEqual(jsonLd.type, ActorClass.name);
+    deepStrictEqual(jsonLd.gateways, gateways.map((gateway) => gateway.href));
+
+    const restored = await ActorClass.fromJsonLd(jsonLd);
+    deepStrictEqual(restored.gateways, gateways);
+  }
+});
+
+test("FEP-ef61: actor gateways preserve single, empty, and invalid cases", async () => {
+  const singleGateway = new Person({
+    id: new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
+    gateways: [new URL("https://server.example/")],
+  });
+  deepStrictEqual(
+    (await singleGateway.toJsonLd() as Record<string, unknown>).gateways,
+    ["https://server.example/"],
+  );
+
+  const noGateways = new Person({
+    id: new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
+    gateways: [],
+  });
+  ok(!("gateways" in (await noGateways.toJsonLd() as Record<string, unknown>)));
+
+  await rejects(
+    () =>
+      Person.fromJsonLd({
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/fep/ef61",
+        ],
+        type: "Person",
+        gateways: ["not a uri"],
+      }),
+    TypeError,
+  );
+});
+
+test("FEP-ef61: actor gateways accept @id typed JSON-LD references", async () => {
+  const actor = await Person.fromJsonLd({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      {
+        gateways: {
+          "@id": "https://w3id.org/fep/ef61/gateways",
+          "@type": "@id",
+          "@container": "@list",
+        },
+      },
+    ],
+    type: "Person",
+    id: "ap+ef61://did:key:z6Mkabc/actor",
+    gateways: ["https://gateway.example/"],
+  });
+
+  deepStrictEqual(actor.gateways, [new URL("https://gateway.example/")]);
+});
+
+test("FEP-ef61: actor gateways must be HTTP(S) base URIs", async () => {
+  const validGateways = [
+    new URL("https://server.example/"),
+    new URL("http://server.example/"),
+  ];
+  const actor = new Person({
+    id: new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
+    gateways: validGateways,
+  });
+  deepStrictEqual(actor.gateways, validGateways);
+
+  for (
+    const gateway of [
+      "ftp://server.example/",
+      "https://user:pass@server.example/",
+      "https://user@server.example/",
+      "https://server.example/path",
+      "https://server.example/?x=1",
+      "https://server.example/#fragment",
+    ]
+  ) {
+    throws(
+      () =>
+        new Person({
+          id: new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
+          gateways: [new URL(gateway)],
+        }),
+      TypeError,
+    );
+
+    await rejects(
+      () =>
+        Person.fromJsonLd({
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            "https://w3id.org/fep/ef61",
+          ],
+          type: "Person",
+          gateways: [gateway],
+        }),
+      TypeError,
+    );
+  }
+});
+
+test("FEP-ef61: digestMultibase round-trips on links and media objects", async () => {
+  const digestMultibase = "zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n";
+
+  const link = await Link.fromJsonLd({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/fep/ef61",
+    ],
+    type: "Link",
+    href: "hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n",
+    digestMultibase,
+  });
+  deepStrictEqual(link.digestMultibase, digestMultibase);
+  deepStrictEqual(
+    (await link.toJsonLd() as Record<string, unknown>).digestMultibase,
+    digestMultibase,
+  );
+
+  for (const cls of [Document, Image]) {
+    const media = await cls.fromJsonLd({
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/fep/ef61",
+      ],
+      type: cls.name,
+      url: "hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n",
+      mediaType: "image/png",
+      digestMultibase,
+    });
+    deepStrictEqual(media.digestMultibase, digestMultibase);
+    const jsonLd = await media.toJsonLd() as Record<string, unknown>;
+    deepStrictEqual(jsonLd.type, cls.name);
+    deepStrictEqual(jsonLd.digestMultibase, digestMultibase);
+  }
+});
+
+test("FEP-ef61: digestMultibase avoids Data Integrity context conflicts", async () => {
+  const digestMultibase = "zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n";
+  const image = new Image({
+    url: new URL("hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n"),
+    mediaType: "image/png",
+    digestMultibase,
+  });
+
+  const expanded = await image.toJsonLd({ format: "expand" });
+  deepStrictEqual(
+    (expanded as Record<string, unknown>[])[0][
+      "https://www.w3.org/ns/credentials/v2#digestMultibase"
+    ],
+    [{ "@value": digestMultibase }],
+  );
+  ok(
+    !(
+      "https://w3id.org/security#digestMultibase" in
+        (expanded as Record<string, unknown>[])[0]
+    ),
+  );
+
+  const compact = await image.toJsonLd() as Record<string, unknown>;
+  deepStrictEqual(compact.digestMultibase, digestMultibase);
+  ok(
+    !(compact["@context"] as unknown[]).includes("https://w3id.org/fep/ef61"),
+  );
+  ok(
+    (compact["@context"] as unknown[]).some((context) =>
+      context != null && typeof context === "object" &&
+      (context as Record<string, unknown>).digestMultibase ===
+        "https://www.w3.org/ns/credentials/v2#digestMultibase"
+    ),
+  );
+});
+
+test("FEP-ef61: digestMultibase parses after Data Integrity v1 contexts", async () => {
+  const digestMultibase = "zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n";
+  const image = await Image.fromJsonLd({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+      "https://w3id.org/fep/ef61",
+    ],
+    type: "Image",
+    url: "hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n",
+    mediaType: "image/png",
+    digestMultibase,
+  });
+
+  deepStrictEqual(image.digestMultibase, digestMultibase);
+});
+
+test("FEP-ef61: Link image normalization preserves digestMultibase", async () => {
+  const digestMultibase = "zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n";
+  const obj = await Object.fromJsonLd({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+      "https://w3id.org/fep/ef61",
+    ],
+    type: "Note",
+    image: {
+      type: "Link",
+      href: "hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n",
+      mediaType: "image/png",
+      digestMultibase,
+    },
+  });
+  const images = [];
+  for await (const img of obj.getImages()) {
+    images.push(img);
+  }
+
+  deepStrictEqual(images[0]?.digestMultibase, digestMultibase);
 });
 
 test("fromJsonLd() caches text that mentions portable ActivityPub IRIs", async () => {
@@ -1786,6 +2028,7 @@ test("Person.toJsonLd()", async () => {
   deepStrictEqual(await person.toJsonLd(), {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/fep/ef61",
       "https://w3id.org/security/v1",
       "https://w3id.org/security/data-integrity/v1",
       "https://www.w3.org/ns/did/v1",
@@ -1999,6 +2242,39 @@ test("Endpoints.toJsonLd() omits type", async () => {
   deepStrictEqual(restored, ep);
 });
 
+test("Endpoints.uploadMedia round-trips", async () => {
+  const ep = new Endpoints({
+    uploadMedia: new URL("https://example.com/users/alice/media"),
+  });
+  deepStrictEqual(
+    ep.uploadMedia?.href,
+    "https://example.com/users/alice/media",
+  );
+
+  const compact = await ep.toJsonLd() as Record<string, unknown>;
+  deepStrictEqual(
+    compact["uploadMedia"],
+    "https://example.com/users/alice/media",
+  );
+
+  // Round-trip through every format under the standard AS term.
+  for (const format of [undefined, "compact" as const, "expand" as const]) {
+    const jsonLd = await ep.toJsonLd({
+      format,
+      contextLoader: mockDocumentLoader,
+    });
+    const restored = await Endpoints.fromJsonLd(jsonLd, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    });
+    deepStrictEqual(
+      restored.uploadMedia?.href,
+      "https://example.com/users/alice/media",
+      `round-trip failed for format=${format ?? "heuristic"}`,
+    );
+  }
+});
+
 test("Source.toJsonLd() omits type", async () => {
   const src = new Source({
     content: "Hello, world!",
@@ -2065,6 +2341,7 @@ test("Endpoints with all properties set omits type", async () => {
     provideClientKey: new URL("https://example.com/provide-key"),
     signClientKey: new URL("https://example.com/sign-key"),
     sharedInbox: new URL("https://example.com/inbox"),
+    uploadMedia: new URL("https://example.com/upload-media"),
   });
 
   // Compact heuristic path
@@ -2085,6 +2362,7 @@ test("Endpoints with all properties set omits type", async () => {
   );
   deepStrictEqual(compact["signClientKey"], "https://example.com/sign-key");
   deepStrictEqual(compact["sharedInbox"], "https://example.com/inbox");
+  deepStrictEqual(compact["uploadMedia"], "https://example.com/upload-media");
 
   // Round-trip all three formats
   for (
@@ -2531,6 +2809,7 @@ test("InteractionPolicy.canFeature", async () => {
   const expected = {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/fep/ef61",
       "https://w3id.org/security/v1",
       "https://w3id.org/security/data-integrity/v1",
       "https://www.w3.org/ns/did/v1",
@@ -3836,6 +4115,30 @@ test("FEP-fe34: Same origin objects are trusted", async () => {
   deepStrictEqual(result?.content, "This is a legitimate note");
 });
 
+test("FEP-fe34: Same-authority non-FE34 embedded objects are trusted", async () => {
+  const create = await Create.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    "@type": "Create",
+    "@id": "at://did:plc:example/collection/item",
+    "actor": "at://did:plc:example/actor/self",
+    "object": {
+      "@type": "Note",
+      "@id": "at://did:plc:example/collection/reply",
+      "content": "Embedded AT Protocol note",
+    },
+  });
+
+  const result = await create.getObject({
+    // deno-lint-ignore require-await
+    documentLoader: async (url) => {
+      throw new Error(`Unexpected fetch: ${url}`);
+    },
+  });
+
+  assertInstanceOf(result, Note);
+  deepStrictEqual(result.content, "Embedded AT Protocol note");
+});
+
 test(
   "FEP-fe34: Embedded cross-origin objects from JSON-LD are ignored by default",
   async () => {
@@ -3984,6 +4287,74 @@ test(
     const result = await create.getObject({ documentLoader });
     assertInstanceOf(result, Note);
     deepStrictEqual(result.content, "Fetched portable note");
+  },
+);
+
+test(
+  "FEP-fe34: DID verification methods share portable actor cryptographic origin",
+  async () => {
+    const person = await Person.fromJsonLd({
+      "@id": "ap://did:key:z6MkOwner/actor",
+      "@type": ["https://www.w3.org/ns/activitystreams#Person"],
+      "https://w3id.org/security#assertionMethod": [{
+        "@id": "did:key:z6MkOwner#z6MkOwner",
+        "@type": ["https://w3id.org/security#Multikey"],
+        "https://w3id.org/security#controller": [{
+          "@id": "did:key:z6MkOwner",
+        }],
+      }],
+    });
+
+    // deno-lint-ignore require-await
+    const documentLoader = async (url: string) => {
+      throw new Error(`Unexpected fetch: ${url}`);
+    };
+
+    const methods = [];
+    for await (const method of person.getAssertionMethods({ documentLoader })) {
+      methods.push(method);
+    }
+
+    deepStrictEqual(methods.length, 1);
+    assertInstanceOf(methods[0], Multikey);
+    deepStrictEqual(
+      methods[0].id,
+      new URL("did:key:z6MkOwner#z6MkOwner"),
+    );
+  },
+);
+
+test(
+  "FEP-fe34: DID verification methods from another cryptographic origin are untrusted",
+  async () => {
+    const person = await Person.fromJsonLd({
+      "@id": "ap://did:key:z6MkOwner/actor",
+      "@type": ["https://www.w3.org/ns/activitystreams#Person"],
+      "https://w3id.org/security#assertionMethod": [{
+        "@id": "did:key:z6MkOther#z6MkOther",
+        "@type": ["https://w3id.org/security#Multikey"],
+        "https://w3id.org/security#controller": [{
+          "@id": "did:key:z6MkOther",
+        }],
+      }],
+    });
+
+    let fetches = 0;
+    const methods = [];
+    for await (
+      const method of person.getAssertionMethods({
+        suppressError: true,
+        // deno-lint-ignore require-await
+        documentLoader: async (url) => {
+          fetches++;
+          throw new Error(`Unexpected fetch: ${url}`);
+        },
+      })
+    ) {
+      methods.push(method);
+    }
+    deepStrictEqual(methods, []);
+    deepStrictEqual(fetches, 1);
   },
 );
 
@@ -4688,6 +5059,7 @@ const sampleValues: Record<string, any> = {
   ]),
   "fedify:langTag": new Intl.Locale("en-Latn-US"),
   "fedify:url": new URL("https://fedify.dev/"),
+  "fedify:gatewayUrl": new URL("https://gateway.example/"),
   "fedify:publicKey": rsaPublicKey.publicKey,
   "fedify:multibaseKey": ed25519PublicKey.publicKey,
   "fedify:proofPurpose": "assertionMethod",

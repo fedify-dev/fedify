@@ -5,9 +5,13 @@ import {
   canonicalizePortableUri,
   expandIPv6Address,
   formatIri,
+  getFe34Origin,
+  haveSameFe34Origin,
   haveSameIriOrigin,
+  isGatewayUrl,
   isValidPublicIPv4Address,
   isValidPublicIPv6Address,
+  parseGatewayUrl,
   parseIri,
   parseJsonLdId,
   UrlError,
@@ -30,15 +34,16 @@ test("parseIri() accepts portable ActivityPub URI schemes", () => {
   }
 });
 
-test("parseIri() accepts DID schemes case-insensitively", () => {
+test("parseIri() normalizes DID scheme and method casing", () => {
   const cases = [
     "ap://DID:key:z6Mkabc/actor",
     "ap://DID%3Akey%3Az6Mkabc/actor",
+    "ap://did:KEY:z6Mkabc/actor",
   ];
   for (const iri of cases) {
     deepStrictEqual(
       parseIri(iri),
-      new URL("ap+ef61://DID%3Akey%3Az6Mkabc/actor"),
+      new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
     );
   }
 });
@@ -140,6 +145,14 @@ test("parseIri() rejects malformed portable DID authorities", () => {
 
 test("haveSameIriOrigin() compares portable IRI authorities", () => {
   ok(haveSameIriOrigin(
+    new URL("ftp://example.com/pub/1"),
+    new URL("ftp://example.com/pub/2"),
+  ));
+  ok(haveSameIriOrigin(
+    new URL("mailto:alice@example.com"),
+    new URL("mailto:alice@example.com"),
+  ));
+  ok(haveSameIriOrigin(
     parseIri("ap://did:key:z6Mkabc/actor"),
     parseIri("ap://did:key:z6Mkabc/outbox"),
   ));
@@ -161,6 +174,122 @@ test("haveSameIriOrigin() compares portable IRI authorities", () => {
       parseIri("ap://did:key:z6Mkdef/actor"),
     ),
   );
+});
+
+test("getFe34Origin() computes web and cryptographic origins", () => {
+  deepStrictEqual(
+    getFe34Origin("https://Example.COM:443/users/alice"),
+    "https://example.com",
+  );
+  deepStrictEqual(
+    getFe34Origin(new URL("http://example.com:8080/notes/1")),
+    "http://example.com:8080",
+  );
+  deepStrictEqual(
+    getFe34Origin(
+      "ap://did:key:z6Mkabc/actor?gateways=https%3A%2F%2Fa.example",
+    ),
+    "did:key:z6Mkabc",
+  );
+  deepStrictEqual(
+    getFe34Origin("ap+ef61://did%3Akey%3Az6Mkabc/objects/1#fragment"),
+    "did:key:z6Mkabc",
+  );
+  deepStrictEqual(
+    getFe34Origin(new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor")),
+    "did:key:z6Mkabc",
+  );
+  deepStrictEqual(
+    getFe34Origin("did:key:z6Mkabc#z6Mkabc"),
+    "did:key:z6Mkabc",
+  );
+  deepStrictEqual(
+    getFe34Origin(new URL("did:key:z6Mkabc?service=activitypub#key")),
+    "did:key:z6Mkabc",
+  );
+  deepStrictEqual(
+    getFe34Origin("did:key:z6Mkabc/path/to/resource?service=activitypub#key"),
+    "did:key:z6Mkabc",
+  );
+  deepStrictEqual(
+    getFe34Origin("did:KEY:z6Mkabc#z6Mkabc"),
+    "did:key:z6Mkabc",
+  );
+  deepStrictEqual(
+    getFe34Origin("ap://did%3Aweb%3Afoo%2Dbar.example/actor"),
+    "did:web:foo-bar.example",
+  );
+  deepStrictEqual(
+    getFe34Origin("did:web:foo%2dbar.example#key"),
+    "did:web:foo-bar.example",
+  );
+});
+
+test("getFe34Origin() rejects unsupported or malformed identifiers", () => {
+  for (
+    const iri of [
+      "mailto:alice@example.com",
+      "ap://not-a-did/actor",
+      "ap://did:key/actor",
+      "did:key",
+      "did:key:",
+      "did:",
+    ]
+  ) {
+    throws(() => getFe34Origin(iri), TypeError);
+  }
+});
+
+test("haveSameFe34Origin() compares web and cryptographic origins", () => {
+  ok(haveSameFe34Origin(
+    "https://example.com/users/alice",
+    "https://example.com/notes/1",
+  ));
+  ok(
+    !haveSameFe34Origin(
+      "https://example.com/users/alice",
+      "http://example.com/users/alice",
+    ),
+  );
+  ok(
+    !haveSameFe34Origin(
+      "https://example.com/users/alice",
+      "https://example.com:8443/users/alice",
+    ),
+  );
+  ok(haveSameFe34Origin(
+    "ap://did:key:z6Mkabc/actor",
+    "ap+ef61://did%3Akey%3Az6Mkabc/objects/1",
+  ));
+  ok(haveSameFe34Origin(
+    "ap+ef61://did:key:z6Mkabc/actor",
+    "did:key:z6Mkabc#z6Mkabc",
+  ));
+  ok(haveSameFe34Origin(
+    "ap://did:KEY:z6Mkabc/actor",
+    "did:key:z6Mkabc#z6Mkabc",
+  ));
+  ok(haveSameFe34Origin(
+    "ap://did%3Aweb%3Afoo%2Dbar.example/actor",
+    "ap://did:web:foo-bar.example/note",
+  ));
+  ok(haveSameFe34Origin(
+    "ap://did%3Aexample%3Aabc%252fdef/actor",
+    "did:example:abc%2Fdef#key",
+  ));
+  ok(
+    !haveSameFe34Origin(
+      "ap+ef61://did:key:z6Mkabc/actor",
+      "did:key:z6Mkdef#z6Mkdef",
+    ),
+  );
+  ok(
+    !haveSameFe34Origin(
+      "ap+ef61://did:key:z6Mkabc/actor",
+      "https://example.com/actor",
+    ),
+  );
+  ok(!haveSameFe34Origin("ap://not-a-did/actor", "ap://not-a-did/actor"));
 });
 
 test("parseIri() normalizes portable URL instances", () => {
@@ -509,6 +638,27 @@ test("parseIri() preserves encoded percent signs while decoding delimiters", () 
     formatIri(parsed),
     "ap+ef61://did:web:example.com%00/u/1",
   );
+});
+
+test("parseGatewayUrl() accepts only HTTP(S) base URIs", () => {
+  for (const url of ["https://server.example/", "http://server.example/"]) {
+    deepStrictEqual(parseGatewayUrl(url), new URL(url));
+    ok(isGatewayUrl(new URL(url)));
+  }
+
+  for (
+    const url of [
+      "ftp://server.example/",
+      "https://user:pass@server.example/",
+      "https://user@server.example/",
+      "https://server.example/path",
+      "https://server.example/?x=1",
+      "https://server.example/#fragment",
+    ]
+  ) {
+    throws(() => parseGatewayUrl(url), TypeError);
+    ok(!isGatewayUrl(new URL(url)));
+  }
 });
 
 test("validatePublicUrl()", async () => {

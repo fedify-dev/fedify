@@ -101,6 +101,7 @@ shows the methods:
  -  `~Context.getObjectUri()`
  -  `~Context.getInboxUri()`
  -  `~Context.getOutboxUri()`
+ -  `~Context.getMediaUploaderUri()`
  -  `~Context.getFollowingUri()`
  -  `~Context.getFollowersUri()`
  -  `~Context.getLikedUri()`
@@ -455,6 +456,8 @@ const note = await ctx.lookupObject(
 > For example, if you request `https://example.com/notes/123` but the fetched
 > document has `@id: "https://malicious.com/notes/456"`, the method will
 > refuse to return the object and log a warning instead.
+> For portable `ap:`/`ap+ef61:` IDs and DID URLs, Fedify compares the
+> cryptographic DID origin rather than an HTTP origin.
 >
 > You can control this behavior using the `crossOrigin` option:
 >

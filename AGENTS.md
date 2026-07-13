@@ -104,6 +104,8 @@ for the complete package list.
 
  -  *packages/init/*: Project initializer (`@fedify/init`) for Fedify.
     Separated from `@fedify/cli` to enable standalone use.
+ -  *packages/interaction-controls/*: Interaction control helpers
+    (`@fedify/interaction-controls`) for Fedify.
  -  *packages/nuxt/*: Nuxt integration (`@fedify/nuxt`) for Fedify.
  -  *packages/create/*: Standalone CLI (`@fedify/create`)
     for creating new Fedify projects via `npm init @fedify`.

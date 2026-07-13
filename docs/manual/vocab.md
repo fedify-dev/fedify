@@ -108,25 +108,12 @@ const create = new Create({
 Note that every URI is represented as a [`URL`] object.  This is for
 distinguishing the URIs from the other strings.
 
-Fedify also accepts [FEP-ef61] portable ActivityPub IRIs in JSON-LD input.
-Both the `ap:` and `ap+ef61:` schemes are accepted, whether the DID authority
-is decoded (e.g., `ap+ef61://did:key:.../actor`) or percent-encoded.  Fedify
-stores these IRIs as `URL` objects with a URL-safe authority internally, and
-serializes them as canonical `ap+ef61:` IRIs with the decoded DID authority.
-When comparing portable object IDs, use `canonicalizePortableUri()` or
-`arePortableUrisEqual()` from `@fedify/vocab-runtime`; these helpers remove
-query hints such as `gateways` according to [FEP-ef61].  Pass raw URI strings
-to these comparison helpers, because JavaScript `URL` objects normalize opaque
-path segments before Fedify can compare them.  Serialization keeps those query
-hints intact.
-
 > [!TIP]
 > You can instantiate an object from a JSON-LD document by calling the
 > `fromJsonLd()` method of the object.  See the [*JSON-LD* section](#json-ld)
 > for details.
 
 [`URL`]: https://developer.mozilla.org/en-US/docs/Web/API/URL
-[FEP-ef61]: https://w3id.org/fep/ef61
 
 
 Properties
@@ -215,6 +202,86 @@ property.
 [`_misskey_followedMessage`]: https://misskey-hub.net/ns#_misskey_followedmessage
 [`_misskey_quote`]: https://misskey-hub.net/ns#_misskey_quote
 [FEP-044f]: https://w3id.org/fep/044f
+
+
+FEP-ef61 portable objects
+-------------------------
+
+*This section is applicable since Fedify 2.4.0.*
+
+Fedify accepts [FEP-ef61] portable ActivityPub IRIs in JSON-LD input.  Both
+the `ap:` and `ap+ef61:` schemes are accepted.  DID delimiters in the authority
+can be percent-encoded for URL-safe input, as in
+`ap+ef61://did%3Akey%3A.../actor`.  Fedify stores these IRIs as `URL` objects
+with a URL-safe authority internally, and serializes them as canonical
+`ap+ef61:` IRIs with the decoded DID authority.
+
+When comparing portable object IDs, use `canonicalizePortableUri()` or
+`arePortableUrisEqual()` from `@fedify/vocab-runtime`; these helpers remove
+query hints such as `gateways` according to FEP-ef61.  Pass raw URI strings to
+these comparison helpers, because JavaScript `URL` objects normalize opaque
+path segments before Fedify can compare them.  Serialization keeps those query
+hints intact.
+
+Portable IDs also participate in Fedify's origin-based security model.  An
+`ap:` or `ap+ef61:` URI is owned by the DID in its authority component, and a
+DID URL such as `did:key:z...#z...` is owned by its DID component.  See the
+[*Origin-based security model* section](#origin-based-security-model) for how
+this affects property access.
+
+Actor classes expose the FEP-ef61 `gateways` term as an ordered list:
+
+~~~~ typescript twoslash
+import { Person } from "@fedify/vocab";
+
+const actor = new Person({
+  id: new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),
+  gateways: [
+    new URL("https://server1.example/"),
+    new URL("https://server2.example/"),
+  ],
+});
+~~~~
+
+Each gateway must be an HTTP(S) base URI with no path, query, or fragment.
+
+Links and media/document objects expose `digestMultibase` for the integrity
+digest required when portable objects reference external resources.  Use
+`computeDigestMultibase()` to compute the SHA-256 multihash and
+`createHashlink()` to construct a metadata-free `hl:` URI:
+
+~~~~ typescript twoslash
+import { Image } from "@fedify/vocab";
+import {
+  computeDigestMultibase,
+  createHashlink,
+  verifyDigestMultibase,
+  verifyHashlink,
+} from "@fedify/vocab-runtime";
+
+const bytes = new TextEncoder().encode("image data");
+const digestMultibase = await computeDigestMultibase(bytes);
+const hashlink = createHashlink(digestMultibase);
+
+const image = new Image({
+  url: new URL(hashlink),
+  mediaType: "image/png",
+  digestMultibase,
+});
+
+await verifyDigestMultibase(bytes, digestMultibase);  // true
+await verifyHashlink(bytes, hashlink);  // true
+~~~~
+
+The vocabulary layer stores and serializes the `digestMultibase` value exactly
+as provided.  The verification helpers return `false` when the bytes do not
+match.  `parseDigestMultibase()` and `parseHashlink()` validate values when the
+decoded digest or hashlink components are needed.  These helpers accept only
+SHA-256 digests and simple `hl:` URIs without metadata; malformed values,
+unsupported hash algorithms, metadata-bearing hashlinks, and legacy `?hl=`
+URLs cause a `TypeError`.
+
+[FEP-ef61]: https://w3id.org/fep/ef61
 
 
 Object IDs and remote objects
@@ -601,6 +668,10 @@ This security model ensures that objects and their properties respect origin
 boundaries, preventing malicious actors from impersonating content from other
 servers.
 
+For ordinary HTTP(S) object IDs, the origin is the web origin: scheme, host,
+and port.  For FEP-ef61 portable IDs, Fedify uses the cryptographic origin
+defined by the portable identifier.
+
 [FEP-fe34]: https://w3id.org/fep/fe34
 
 ### Same-origin policy for properties
@@ -632,6 +703,11 @@ Fedify will not trust the embedded `Note` object because its `@id` has a
 different origin (`different-origin.com`) than the parent activity's origin
 (`example.com`).  Instead, it will fetch the `Note` object directly from
 `https://different-origin.com/notes/456` to verify its authenticity.
+
+The same rule applies to cryptographic origins.  For example,
+`ap+ef61://did:key:zAlice/actor` and `did:key:zAlice#zAlice` share the
+`did:key:zAlice` origin, but `ap+ef61://did:key:zBob/actor` is a different
+origin.
 
 ### Controlling origin checks
 

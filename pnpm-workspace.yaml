@@ -14,6 +14,7 @@ packages:
 - packages/h3
 - packages/hono
 - packages/init
+- packages/interaction-controls
 - packages/koa
 - packages/lint
 - packages/mysql

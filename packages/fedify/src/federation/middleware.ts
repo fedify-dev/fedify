@@ -124,6 +124,7 @@ import {
   handleCollection,
   handleCustomCollection,
   handleInbox,
+  handleMediaUpload,
   handleObject,
   handleOrderedCollection,
   handleOutbox,
@@ -633,6 +634,7 @@ export class FederationImpl<TContextData>
   benchmarkMode: boolean;
   benchmarkMetricReader?: BenchmarkMetricReader;
   benchmarkTriggerOptions: BenchmarkTriggerOptions;
+  #mediaUploaderNoAuthWarned = false;
   readonly #queueDepthGaugeSourceId = `fedify-${
     (++nextQueueDepthGaugeSourceId).toString(36)
   }`;
@@ -2705,6 +2707,46 @@ export class FederationImpl<TContextData>
           context,
           this.benchmarkTriggerOptions,
         );
+      case "mediaUploader":
+        // The media upload endpoint accepts a multipart/form-data POST and is
+        // not subject to JSON-LD content negotiation, so it is handled here,
+        // before the Accept gate below.  Any non-POST method is 405.
+        if (request.method !== "POST" || this.mediaUploaderCallback == null) {
+          return new Response("Method not allowed.", {
+            status: 405,
+            headers: {
+              Allow: "POST",
+              "Content-Type": "text/plain; charset=utf-8",
+            },
+          });
+        }
+        if (
+          this.mediaUploaderAuthorizePredicate == null &&
+          !this.#mediaUploaderNoAuthWarned
+        ) {
+          // Warn once: a media uploader without an authorize hook accepts
+          // uploads from anyone who can reach the URL.  This is a serious
+          // exposure for an endpoint that stores files, so surface it unless
+          // a public upload endpoint is genuinely intended.
+          this.#mediaUploaderNoAuthWarned = true;
+          getLogger(["fedify", "federation", "mediaUploader"]).warn(
+            "The media uploader is registered without an authorize() hook, " +
+              "so it accepts uploads from anyone who can reach the endpoint.  " +
+              "Protect it with .authorize() unless a public upload endpoint " +
+              "is intended.",
+          );
+        }
+        return await handleMediaUpload(request, {
+          identifier: route.values.identifier,
+          context,
+          mediaUploaderCallback: this.mediaUploaderCallback,
+          actorDispatcher: this.actorCallbacks?.dispatcher,
+          authorizePredicate: this.mediaUploaderAuthorizePredicate,
+          isRegisteredObjectUri: (uri) =>
+            context.parseUri(uri)?.type === "object",
+          onUnauthorized,
+          onNotFound,
+        });
     }
 
     // Routes that require JSON-LD Accepts header:
@@ -2987,6 +3029,7 @@ type FedifyEndpoint =
   | "inbox"
   | "shared_inbox"
   | "outbox"
+  | "media_upload"
   | "object"
   | "following"
   | "followers"
@@ -3027,6 +3070,8 @@ function getEndpointCategory(routeName: string): FedifyEndpoint {
       return "shared_inbox";
     case "outbox":
       return "outbox";
+    case "mediaUploader":
+      return "media_upload";
     case "following":
       return "following";
     case "followers":
@@ -3250,6 +3295,17 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     );
     if (path == null) {
       throw new RouterError("No outbox dispatcher registered.");
+    }
+    return new URL(path, this.canonicalOrigin);
+  }
+
+  getMediaUploaderUri(identifier: string): URL {
+    const path = this.federation.router.build(
+      "mediaUploader",
+      { identifier },
+    );
+    if (path == null) {
+      throw new RouterError("No media uploader registered.");
     }
     return new URL(path, this.canonicalOrigin);
   }

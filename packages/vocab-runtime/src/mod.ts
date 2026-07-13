@@ -34,6 +34,16 @@ export {
   isDecimal,
   parseDecimal,
 } from "./decimal.ts";
+export {
+  computeDigestMultibase,
+  createHashlink,
+  type ParsedDigestMultibase,
+  type ParsedHashlink,
+  parseDigestMultibase,
+  parseHashlink,
+  verifyDigestMultibase,
+  verifyHashlink,
+} from "./digest.ts";
 export { LanguageString } from "./langstr.ts";
 export {
   decodeMultibase,
@@ -58,9 +68,13 @@ export {
   canonicalizePortableUri,
   expandIPv6Address,
   formatIri,
+  getFe34Origin,
+  haveSameFe34Origin,
   haveSameIriOrigin,
+  isGatewayUrl,
   isValidPublicIPv4Address,
   isValidPublicIPv6Address,
+  parseGatewayUrl,
   parseIri,
   parseJsonLdId,
   UrlError,

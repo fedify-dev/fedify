@@ -276,6 +276,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   public actorPath?: string;
   public inboxPath?: string;
   public outboxPath?: string;
+  public mediaUploaderPath?: string;
   public followingPath?: string;
   public followersPath?: string;
   public likedPath?: string;
@@ -291,6 +292,8 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   private outboxAuthorizePredicate?: any;
   private outboxDispatcherAuthorizePredicate?: any;
   private outboxListenerErrorHandler?: any;
+  private mediaUploaderCallback?: any;
+  private mediaUploaderAuthorizePredicate?: any;
   private followingDispatcher?: any;
   private followersDispatcher?: any;
   private likedDispatcher?: any;
@@ -498,6 +501,22 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       },
       authorize(predicate: any): any {
         self.outboxAuthorizePredicate = predicate;
+        return this;
+      },
+    };
+  }
+
+  setMediaUploader(path: any, callback: any): any {
+    if (this.mediaUploaderCallback != null) {
+      throw new TypeError("Media uploader already set.");
+    }
+    this.mediaUploaderPath = path;
+    this.mediaUploaderCallback = callback;
+    // deno-lint-ignore no-this-alias
+    const self = this;
+    return {
+      authorize(predicate: any): any {
+        self.mediaUploaderAuthorizePredicate = predicate;
         return this;
       },
     };
@@ -1082,6 +1101,19 @@ class MockContext<TContextData> implements Context<TContextData> {
       return new URL(path, this.origin);
     }
     return new URL(`/users/${identifier}/outbox`, this.origin);
+  }
+
+  getMediaUploaderUri(identifier: string): URL {
+    if (
+      this.federation instanceof MockFederation &&
+      this.federation.mediaUploaderPath
+    ) {
+      const path = expandUriTemplate(this.federation.mediaUploaderPath, {
+        identifier,
+      });
+      return new URL(path, this.origin);
+    }
+    return new URL(`/users/${identifier}/media`, this.origin);
   }
 
   getInboxUri(identifier?: any): URL {
