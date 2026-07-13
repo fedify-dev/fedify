@@ -67,6 +67,7 @@
 # by Jiwon Kwon ("@fedify/relay", "@fedify/backfill").
 /packages/relay/                                          @sij411 @dahlia
 /packages/backfill/                                       @sij411 @dahlia
+/packages/interaction-controls/                           @dahlia
 
 # Testing utilities and fixtures, owned by Hong Minhee with
 # ChanHaeng Lee contributing.

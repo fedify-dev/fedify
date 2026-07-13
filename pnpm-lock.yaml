@@ -232,6 +232,9 @@ importers:
       '@fedify/hono':
         specifier: workspace:^
         version: link:../packages/hono
+      '@fedify/interaction-controls':
+        specifier: workspace:^
+        version: link:../packages/interaction-controls
       '@fedify/koa':
         specifier: workspace:^
         version: link:../packages/koa
@@ -1409,6 +1412,28 @@ importers:
         specifier: 'catalog:'
         version: 6.0.3
 
+  packages/interaction-controls:
+    dependencies:
+      '@fedify/fedify':
+        specifier: workspace:^
+        version: link:../fedify
+      '@fedify/vocab':
+        specifier: workspace:*
+        version: link:../vocab
+      '@fedify/vocab-runtime':
+        specifier: workspace:^
+        version: link:../vocab-runtime
+      temporal-polyfill:
+        specifier: 'catalog:'
+        version: 1.0.1
+    devDependencies:
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.22.0(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.34(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+
   packages/koa:
     dependencies:
       '@fedify/fedify':
@@ -1741,6 +1766,12 @@ importers:
       '@fedify/fedify':
         specifier: workspace:^
         version: link:../fedify
+      '@fedify/vocab':
+        specifier: workspace:*
+        version: link:../vocab
+      '@fedify/vocab-runtime':
+        specifier: workspace:^
+        version: link:../vocab-runtime
       es-toolkit:
         specifier: 'catalog:'
         version: 1.46.1

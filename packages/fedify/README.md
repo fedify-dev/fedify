@@ -95,42 +95,43 @@ which provides the core functionality of the framework.  Other packages provide
 integrations with various web frameworks, database drivers, and other features.
 Here is the list of packages:
 
-| Package                                           | JSR                              | npm                              | Description                              |
-| ------------------------------------------------- | -------------------------------- | -------------------------------- | ---------------------------------------- |
-| [@fedify/fedify](/packages/fedify/)               | [JSR]                            | [npm]                            | The core framework of Fedify             |
-| [@fedify/cli](/packages/cli/)                     | [JSR][jsr:@fedify/cli]           | [npm][npm:@fedify/cli]           | CLI toolchain for testing and debugging  |
-| [@fedify/create](/packages/create/)               |                                  | [npm][npm:@fedify/create]        | Create a new Fedify project              |
-| [@fedify/amqp](/packages/amqp/)                   | [JSR][jsr:@fedify/amqp]          | [npm][npm:@fedify/amqp]          | AMQP/RabbitMQ driver                     |
-| [@fedify/astro](/packages/astro/)                 | [JSR][jsr:@fedify/astro]         | [npm][npm:@fedify/astro]         | Astro integration                        |
-| [@fedify/backfill](/packages/backfill/)           | [JSR][jsr:@fedify/backfill]      | [npm][npm:@fedify/backfill]      | ActivityPub backfill support             |
-| [@fedify/cfworkers](/packages/cfworkers/)         | [JSR][jsr:@fedify/cfworkers]     | [npm][npm:@fedify/cfworkers]     | Cloudflare Workers integration           |
-| [@fedify/debugger](/packages/debugger/)           | [JSR][jsr:@fedify/debugger]      | [npm][npm:@fedify/debugger]      | Embedded ActivityPub debug dashboard     |
-| [@fedify/denokv](/packages/denokv/)               | [JSR][jsr:@fedify/denokv]        |                                  | Deno KV integration                      |
-| [@fedify/elysia](/packages/elysia/)               |                                  | [npm][npm:@fedify/elysia]        | Elysia integration                       |
-| [@fedify/express](/packages/express/)             | [JSR][jsr:@fedify/express]       | [npm][npm:@fedify/express]       | Express integration                      |
-| [@fedify/fastify](/packages/fastify/)             | [JSR][jsr:@fedify/fastify]       | [npm][npm:@fedify/fastify]       | Fastify integration                      |
-| [@fedify/fresh](/packages/fresh/)                 | [JSR][jsr:@fedify/fresh]         |                                  | Fresh integration                        |
-| [@fedify/h3](/packages/h3/)                       | [JSR][jsr:@fedify/h3]            | [npm][npm:@fedify/h3]            | H3 integration                           |
-| [@fedify/hono](/packages/hono/)                   | [JSR][jsr:@fedify/hono]          | [npm][npm:@fedify/hono]          | Hono integration                         |
-| [@fedify/init](/packages/init/)                   | [JSR][jsr:@fedify/init]          | [npm][npm:@fedify/init]          | Project initializer for Fedify           |
-| [@fedify/koa](/packages/koa/)                     | [JSR][jsr:@fedify/koa]           | [npm][npm:@fedify/koa]           | Koa integration                          |
-| [@fedify/lint](/packages/lint/)                   | [JSR][jsr:@fedify/lint]          | [npm][npm:@fedify/lint]          | Linting utilities                        |
-| [@fedify/nestjs](/packages/nestjs/)               |                                  | [npm][npm:@fedify/nestjs]        | NestJS integration                       |
-| [@fedify/next](/packages/next/)                   |                                  | [npm][npm:@fedify/next]          | Next.js integration                      |
-| [@fedify/nuxt](/packages/nuxt/)                   | [JSR][jsr:@fedify/nuxt]          | [npm][npm:@fedify/nuxt]          | Nuxt integration                         |
-| [@fedify/mysql](/packages/mysql/)                 | [JSR][jsr:@fedify/mysql]         | [npm][npm:@fedify/mysql]         | MySQL/MariaDB driver                     |
-| [@fedify/postgres](/packages/postgres/)           | [JSR][jsr:@fedify/postgres]      | [npm][npm:@fedify/postgres]      | PostgreSQL driver                        |
-| [@fedify/redis](/packages/redis/)                 | [JSR][jsr:@fedify/redis]         | [npm][npm:@fedify/redis]         | Redis driver                             |
-| [@fedify/relay](/packages/relay/)                 | [JSR][jsr:@fedify/relay]         | [npm][npm:@fedify/relay]         | ActivityPub relay support                |
-| [@fedify/solidstart](/packages/solidstart/)       | [JSR][jsr:@fedify/solidstart]    | [npm][npm:@fedify/solidstart]    | SolidStart integration                   |
-| [@fedify/sqlite](/packages/sqlite/)               | [JSR][jsr:@fedify/sqlite]        | [npm][npm:@fedify/sqlite]        | SQLite driver                            |
-| [@fedify/sveltekit](/packages/sveltekit/)         | [JSR][jsr:@fedify/sveltekit]     | [npm][npm:@fedify/sveltekit]     | SvelteKit integration                    |
-| [@fedify/testing](/packages/testing/)             | [JSR][jsr:@fedify/testing]       | [npm][npm:@fedify/testing]       | Testing utilities                        |
-| [@fedify/uri-template](/packages/uri-template/)   | [JSR][jsr:@fedify/uri-template]  | [npm][npm:@fedify/uri-template]  | RFC 6570 URI Template library            |
-| [@fedify/vocab](/packages/vocab/)                 | [JSR][jsr:@fedify/vocab]         | [npm][npm:@fedify/vocab]         | Activity Vocabulary library              |
-| [@fedify/vocab-runtime](/packages/vocab-runtime/) | [JSR][jsr:@fedify/vocab-runtime] | [npm][npm:@fedify/vocab-runtime] | Runtime library for code-generated vocab |
-| [@fedify/vocab-tools](/packages/vocab-tools/)     | [JSR][jsr:@fedify/vocab-tools]   | [npm][npm:@fedify/vocab-tools]   | Code generation tools for Activity Vocab |
-| [@fedify/webfinger](/packages/webfinger/)         | [JSR][jsr:@fedify/webfinger]     | [npm][npm:@fedify/webfinger]     | WebFinger client library for ActivityPub |
+| Package                                                         | JSR                                     | npm                                     | Description                              |
+| --------------------------------------------------------------- | --------------------------------------- | --------------------------------------- | ---------------------------------------- |
+| [@fedify/fedify](/packages/fedify/)                             | [JSR]                                   | [npm]                                   | The core framework of Fedify             |
+| [@fedify/cli](/packages/cli/)                                   | [JSR][jsr:@fedify/cli]                  | [npm][npm:@fedify/cli]                  | CLI toolchain for testing and debugging  |
+| [@fedify/create](/packages/create/)                             |                                         | [npm][npm:@fedify/create]               | Create a new Fedify project              |
+| [@fedify/amqp](/packages/amqp/)                                 | [JSR][jsr:@fedify/amqp]                 | [npm][npm:@fedify/amqp]                 | AMQP/RabbitMQ driver                     |
+| [@fedify/astro](/packages/astro/)                               | [JSR][jsr:@fedify/astro]                | [npm][npm:@fedify/astro]                | Astro integration                        |
+| [@fedify/backfill](/packages/backfill/)                         | [JSR][jsr:@fedify/backfill]             | [npm][npm:@fedify/backfill]             | ActivityPub backfill support             |
+| [@fedify/cfworkers](/packages/cfworkers/)                       | [JSR][jsr:@fedify/cfworkers]            | [npm][npm:@fedify/cfworkers]            | Cloudflare Workers integration           |
+| [@fedify/debugger](/packages/debugger/)                         | [JSR][jsr:@fedify/debugger]             | [npm][npm:@fedify/debugger]             | Embedded ActivityPub debug dashboard     |
+| [@fedify/denokv](/packages/denokv/)                             | [JSR][jsr:@fedify/denokv]               |                                         | Deno KV integration                      |
+| [@fedify/elysia](/packages/elysia/)                             |                                         | [npm][npm:@fedify/elysia]               | Elysia integration                       |
+| [@fedify/express](/packages/express/)                           | [JSR][jsr:@fedify/express]              | [npm][npm:@fedify/express]              | Express integration                      |
+| [@fedify/fastify](/packages/fastify/)                           | [JSR][jsr:@fedify/fastify]              | [npm][npm:@fedify/fastify]              | Fastify integration                      |
+| [@fedify/fresh](/packages/fresh/)                               | [JSR][jsr:@fedify/fresh]                |                                         | Fresh integration                        |
+| [@fedify/h3](/packages/h3/)                                     | [JSR][jsr:@fedify/h3]                   | [npm][npm:@fedify/h3]                   | H3 integration                           |
+| [@fedify/hono](/packages/hono/)                                 | [JSR][jsr:@fedify/hono]                 | [npm][npm:@fedify/hono]                 | Hono integration                         |
+| [@fedify/init](/packages/init/)                                 | [JSR][jsr:@fedify/init]                 | [npm][npm:@fedify/init]                 | Project initializer for Fedify           |
+| [@fedify/interaction-controls](/packages/interaction-controls/) | [JSR][jsr:@fedify/interaction-controls] | [npm][npm:@fedify/interaction-controls] | Interaction control helpers              |
+| [@fedify/koa](/packages/koa/)                                   | [JSR][jsr:@fedify/koa]                  | [npm][npm:@fedify/koa]                  | Koa integration                          |
+| [@fedify/lint](/packages/lint/)                                 | [JSR][jsr:@fedify/lint]                 | [npm][npm:@fedify/lint]                 | Linting utilities                        |
+| [@fedify/nestjs](/packages/nestjs/)                             |                                         | [npm][npm:@fedify/nestjs]               | NestJS integration                       |
+| [@fedify/next](/packages/next/)                                 |                                         | [npm][npm:@fedify/next]                 | Next.js integration                      |
+| [@fedify/nuxt](/packages/nuxt/)                                 | [JSR][jsr:@fedify/nuxt]                 | [npm][npm:@fedify/nuxt]                 | Nuxt integration                         |
+| [@fedify/mysql](/packages/mysql/)                               | [JSR][jsr:@fedify/mysql]                | [npm][npm:@fedify/mysql]                | MySQL/MariaDB driver                     |
+| [@fedify/postgres](/packages/postgres/)                         | [JSR][jsr:@fedify/postgres]             | [npm][npm:@fedify/postgres]             | PostgreSQL driver                        |
+| [@fedify/redis](/packages/redis/)                               | [JSR][jsr:@fedify/redis]                | [npm][npm:@fedify/redis]                | Redis driver                             |
+| [@fedify/relay](/packages/relay/)                               | [JSR][jsr:@fedify/relay]                | [npm][npm:@fedify/relay]                | ActivityPub relay support                |
+| [@fedify/solidstart](/packages/solidstart/)                     | [JSR][jsr:@fedify/solidstart]           | [npm][npm:@fedify/solidstart]           | SolidStart integration                   |
+| [@fedify/sqlite](/packages/sqlite/)                             | [JSR][jsr:@fedify/sqlite]               | [npm][npm:@fedify/sqlite]               | SQLite driver                            |
+| [@fedify/sveltekit](/packages/sveltekit/)                       | [JSR][jsr:@fedify/sveltekit]            | [npm][npm:@fedify/sveltekit]            | SvelteKit integration                    |
+| [@fedify/testing](/packages/testing/)                           | [JSR][jsr:@fedify/testing]              | [npm][npm:@fedify/testing]              | Testing utilities                        |
+| [@fedify/uri-template](/packages/uri-template/)                 | [JSR][jsr:@fedify/uri-template]         | [npm][npm:@fedify/uri-template]         | RFC 6570 URI Template library            |
+| [@fedify/vocab](/packages/vocab/)                               | [JSR][jsr:@fedify/vocab]                | [npm][npm:@fedify/vocab]                | Activity Vocabulary library              |
+| [@fedify/vocab-runtime](/packages/vocab-runtime/)               | [JSR][jsr:@fedify/vocab-runtime]        | [npm][npm:@fedify/vocab-runtime]        | Runtime library for code-generated vocab |
+| [@fedify/vocab-tools](/packages/vocab-tools/)                   | [JSR][jsr:@fedify/vocab-tools]          | [npm][npm:@fedify/vocab-tools]          | Code generation tools for Activity Vocab |
+| [@fedify/webfinger](/packages/webfinger/)                       | [JSR][jsr:@fedify/webfinger]            | [npm][npm:@fedify/webfinger]            | WebFinger client library for ActivityPub |
 
 [jsr:@fedify/cli]: https://jsr.io/@fedify/cli
 [npm:@fedify/cli]: https://www.npmjs.com/package/@fedify/cli
@@ -158,6 +159,8 @@ Here is the list of packages:
 [npm:@fedify/hono]: https://www.npmjs.com/package/@fedify/hono
 [jsr:@fedify/init]: https://jsr.io/@fedify/init
 [npm:@fedify/init]: https://www.npmjs.com/package/@fedify/init
+[jsr:@fedify/interaction-controls]: https://jsr.io/@fedify/interaction-controls
+[npm:@fedify/interaction-controls]: https://www.npmjs.com/package/@fedify/interaction-controls
 [jsr:@fedify/koa]: https://jsr.io/@fedify/koa
 [npm:@fedify/koa]: https://www.npmjs.com/package/@fedify/koa
 [jsr:@fedify/lint]: https://jsr.io/@fedify/lint

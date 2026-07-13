@@ -1,13 +1,12 @@
 {
-  "name": "@fedify/testing",
+  "name": "@fedify/interaction-controls",
   "version": "2.4.0",
-  "description": "Testing utilities for Fedify applications",
+  "description": "Interaction control helpers for Fedify",
   "keywords": [
-    "fedify",
-    "testing",
-    "mock",
-    "federation",
-    "activitypub"
+    "ActivityPub",
+    "Fedify",
+    "fediverse",
+    "interaction controls"
   ],
   "license": "MIT",
   "author": {
@@ -19,7 +18,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/fedify-dev/fedify.git",
-    "directory": "packages/testing"
+    "directory": "packages/interaction-controls"
   },
   "bugs": {
     "url": "https://github.com/fedify-dev/fedify/issues"
@@ -43,8 +42,9 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "dist",
-    "package.json"
+    "dist/",
+    "package.json",
+    "README.md"
   ],
   "peerDependencies": {
     "@fedify/fedify": "workspace:^"
@@ -52,20 +52,15 @@
   "dependencies": {
     "@fedify/vocab": "workspace:*",
     "@fedify/vocab-runtime": "workspace:^",
-    "es-toolkit": "catalog:",
     "temporal-polyfill": "catalog:"
   },
   "devDependencies": {
-    "@fedify/fixture": "workspace:^",
-    "@standard-schema/spec": "catalog:",
-    "@std/assert": "catalog:",
-    "@std/async": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },
   "scripts": {
     "build:self": "tsdown",
-    "build": "pnpm --filter @fedify/testing... run build:self",
+    "build": "pnpm --filter @fedify/interaction-controls... run build:self",
     "prepack": "pnpm build",
     "prepublish": "pnpm build",
     "pretest": "pnpm build",
