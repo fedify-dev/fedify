@@ -19,6 +19,7 @@
     "jsr:@fresh/core@^2.3.3": "2.3.3",
     "jsr:@fresh/plugin-vite@^1.0.7": "1.1.2",
     "jsr:@hongminhee/localtunnel@0.3": "0.3.0",
+    "jsr:@hongminhee/localtunnel@~0.3.1": "0.3.1",
     "jsr:@hono/hono@^4.7.1": "4.12.26",
     "jsr:@hono/hono@^4.8.3": "4.12.26",
     "jsr:@logtape/file@^2.2.0": "2.2.0",
@@ -79,7 +80,7 @@
     "npm:@cloudflare/workers-types@^4.20260511.1": "4.20260511.1",
     "npm:@deno/astro-adapter@~0.3.2": "0.3.2_@opentelemetry+api@1.9.1_astro@5.18.1__@types+node@24.12.2__mysql2@3.22.3___@types+node@24.12.2_@types+node@24.12.2_mysql2@3.22.3__@types+node@24.12.2",
     "npm:@fxts/core@^1.21.1": "1.26.0",
-    "npm:@hongminhee/localtunnel@0.3": "0.3.0",
+    "npm:@hongminhee/localtunnel@~0.3.1": "0.3.1",
     "npm:@inquirer/prompts@^7.8.4": "7.10.1_@types+node@24.12.2",
     "npm:@jimp/core@^1.6.1": "1.6.1",
     "npm:@jimp/wasm-webp@^1.6.1": "1.6.1",
@@ -284,6 +285,12 @@
     },
     "@hongminhee/localtunnel@0.3.0": {
       "integrity": "4ad858acd963b5fad45b188d54cf751ac8fbe0aae495e1d3ce607e3730270ff4",
+      "dependencies": [
+        "jsr:@logtape/logtape@^1.0.4"
+      ]
+    },
+    "@hongminhee/localtunnel@0.3.1": {
+      "integrity": "7f390d0b4c19c747418d8995e968c1f8476d76eb3f7658bc6cc24fc3d58269f6",
       "dependencies": [
         "jsr:@logtape/logtape@^1.0.4"
       ]
@@ -1548,8 +1555,8 @@
         "tslib"
       ]
     },
-    "@hongminhee/localtunnel@0.3.0": {
-      "integrity": "sha512-GRn02MyJIal6DjgDiaLDQhaiTvYlqTLq97bpTNqp2qGnwy4c77pHm6kWPBdSOjmLGPCf2bb/USFKQBgUhafbuA==",
+    "@hongminhee/localtunnel@0.3.1": {
+      "integrity": "sha512-XRrFsPxrx1fOL5cQyfbVk8LDWfZTKSp4ZcdEbmZTrP82aFON/rO+aTuScW9FPpKGAd8pYIfXTIkljaM81Nslbg==",
       "dependencies": [
         "@logtape/logtape"
       ]
@@ -2422,8 +2429,8 @@
       "integrity": "sha512-6xReMW9p+paJgqoFRpOE2nogJFvzPfaLHLIlyADYjKMUcwDyjKZxryIbgcU+gxiTygn8yCjld1HoI0ET4/iZeA==",
       "tarball": "https://npm.jsr.io/~/11/@jsr/std__internal/1.0.12.tgz"
     },
-    "@logtape/logtape@1.3.7": {
-      "integrity": "sha512-YgF+q9op97oLLPwc7TcTNIllTArVtTwkwyKky6XVzAXQcBrvFXXtMuwJSryONAyOUSItrx994O/HABOrszZyFg=="
+    "@logtape/logtape@1.3.11": {
+      "integrity": "sha512-mxkQOyySbjNGweavPudypBf0qZJxLOTXl2NAXYnsZF/ds5dQpTLA7YMSJbc8uFWlTkG+YjAnVL8tQWivIVPOJg=="
     },
     "@lukeed/csprng@1.1.0": {
       "integrity": "sha512-Z7C/xXCiGWsg0KuKsHTKJxbWhpI3Vs5GwLfOean7MGyVFGqdRgBbAjOCh6u4bbjPc/8MJ2pZmK/0DLdCbivLDA=="
@@ -9575,7 +9582,7 @@
       },
       "packages/cli": {
         "dependencies": [
-          "jsr:@hongminhee/localtunnel@0.3",
+          "jsr:@hongminhee/localtunnel@~0.3.1",
           "jsr:@hono/hono@^4.8.3",
           "jsr:@valibot/valibot@^1.4.0",
           "npm:@cfworker/json-schema@^4.1.1",
@@ -9598,7 +9605,7 @@
         "packageJson": {
           "dependencies": [
             "npm:@cfworker/json-schema@^4.1.1",
-            "npm:@hongminhee/localtunnel@0.3",
+            "npm:@hongminhee/localtunnel@~0.3.1",
             "npm:@inquirer/prompts@^7.8.4",
             "npm:@jimp/core@^1.6.1",
             "npm:@jimp/wasm-webp@^1.6.1",
