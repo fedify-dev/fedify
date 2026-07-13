@@ -167,6 +167,9 @@ Select *Hono*, *npm*, *in-process*, and *in-memory* in order:
   ElysiaJS
   Astro
   Express
+  Nuxt
+  SolidStart
+
 
 ? Choose the package manager to use
   deno
