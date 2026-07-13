@@ -1,3 +1,4 @@
+import { SERVICES } from "@hongminhee/localtunnel";
 import { createConfigContext } from "@optique/config";
 import { message } from "@optique/core";
 import { printError } from "@optique/run";
@@ -126,7 +127,7 @@ export const configSchema = object({
   debug: optional(boolean()),
   userAgent: optional(string()),
   tunnelService: optional(
-    picklist(["localhost.run", "serveo.net", "pinggy.io"]),
+    picklist(Object.keys(SERVICES) as (keyof typeof SERVICES)[]),
   ),
 
   // Command-specific sections

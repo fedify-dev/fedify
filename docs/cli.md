@@ -177,7 +177,7 @@ Below is an example configuration file showing all available options:
 # Global settings (apply to all commands)
 debug = false
 userAgent = "MyApp/1.0"
-tunnelService = "localhost.run"  # "localhost.run", "serveo.net", or "pinggy.io"
+tunnelService = "pinggy.io"  # "serveo.net" or "pinggy.io"
 
 [webfinger]
 allowPrivateAddress = false

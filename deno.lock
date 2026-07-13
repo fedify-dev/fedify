@@ -18,17 +18,21 @@
     "jsr:@fresh/core@^2.1.4": "2.3.3",
     "jsr:@fresh/core@^2.3.3": "2.3.3",
     "jsr:@fresh/plugin-vite@^1.0.7": "1.1.2",
-    "jsr:@hongminhee/localtunnel@0.3": "0.3.0",
-    "jsr:@hono/hono@^4.7.1": "4.12.26",
-    "jsr:@hono/hono@^4.8.3": "4.12.26",
-    "jsr:@logtape/file@^2.2.0": "2.2.0",
+    "jsr:@hongminhee/localtunnel@0.3": "0.3.1",
+    "jsr:@hongminhee/localtunnel@0.5": "0.5.0",
+    "jsr:@hono/hono@^4.7.1": "4.12.30",
+    "jsr:@hono/hono@^4.8.3": "4.12.30",
+    "jsr:@logtape/file@^2.2.0": "2.2.4",
     "jsr:@logtape/logtape@^1.0.4": "1.3.11",
-    "jsr:@logtape/logtape@^2.2.0": "2.2.0",
-    "jsr:@optique/config@^1.1.0": "1.1.0",
-    "jsr:@optique/core@^1.1.0": "1.1.0",
+    "jsr:@logtape/logtape@^2.2.0": "2.2.4",
+    "jsr:@logtape/logtape@^2.2.4": "2.2.4",
+    "jsr:@optique/config@^1.1.0": "1.1.1",
+    "jsr:@optique/core@^1.1.0": "1.1.1",
+    "jsr:@optique/core@^1.1.1": "1.1.1",
     "jsr:@optique/discover@1.1.0": "1.1.0",
-    "jsr:@optique/discover@^1.1.0": "1.1.0",
-    "jsr:@optique/run@^1.1.0": "1.1.0",
+    "jsr:@optique/discover@^1.1.0": "1.1.1",
+    "jsr:@optique/run@^1.1.0": "1.1.1",
+    "jsr:@optique/run@^1.1.1": "1.1.1",
     "jsr:@standard-schema/spec@^1.1.0": "1.1.0",
     "jsr:@std/assert@0.224": "0.224.0",
     "jsr:@std/assert@0.226": "0.226.0",
@@ -39,7 +43,8 @@
     "jsr:@std/data-structures@0.224": "0.224.1",
     "jsr:@std/data-structures@^1.0.11": "1.0.11",
     "jsr:@std/dotenv@~0.225.5": "0.225.7",
-    "jsr:@std/encoding@^1.0.10": "1.0.10",
+    "jsr:@std/encoding@^1.0.10": "1.0.11",
+    "jsr:@std/encoding@^1.0.11": "1.0.11",
     "jsr:@std/fmt@0.224": "0.224.0",
     "jsr:@std/fmt@1": "1.0.10",
     "jsr:@std/fmt@^1.0.7": "1.0.10",
@@ -48,7 +53,7 @@
     "jsr:@std/fs@^1.0.19": "1.0.24",
     "jsr:@std/fs@^1.0.3": "1.0.24",
     "jsr:@std/html@^1.0.5": "1.0.7",
-    "jsr:@std/http@^1.0.21": "1.1.1",
+    "jsr:@std/http@^1.0.21": "1.1.2",
     "jsr:@std/internal@0.224": "0.224.0",
     "jsr:@std/internal@1": "1.0.14",
     "jsr:@std/internal@^1.0.12": "1.0.14",
@@ -60,17 +65,17 @@
     "jsr:@std/media-types@^1.1.0": "1.1.0",
     "jsr:@std/net@^1.0.6": "1.0.6",
     "jsr:@std/path@0.224": "0.224.0",
-    "jsr:@std/path@1": "1.1.5",
-    "jsr:@std/path@^1.0.6": "1.1.5",
-    "jsr:@std/path@^1.1.0": "1.1.5",
-    "jsr:@std/path@^1.1.1": "1.1.5",
-    "jsr:@std/path@^1.1.2": "1.1.5",
-    "jsr:@std/path@^1.1.5": "1.1.5",
+    "jsr:@std/path@1": "1.1.6",
+    "jsr:@std/path@^1.0.6": "1.1.6",
+    "jsr:@std/path@^1.1.0": "1.1.6",
+    "jsr:@std/path@^1.1.1": "1.1.6",
+    "jsr:@std/path@^1.1.2": "1.1.6",
+    "jsr:@std/path@^1.1.5": "1.1.6",
     "jsr:@std/semver@^1.0.6": "1.0.8",
     "jsr:@std/testing@0.224": "0.224.0",
     "jsr:@std/uuid@^1.0.9": "1.1.1",
     "jsr:@std/yaml@^1.0.8": "1.1.0",
-    "jsr:@valibot/valibot@^1.4.0": "1.4.1",
+    "jsr:@valibot/valibot@^1.4.0": "1.4.2",
     "npm:@alinea/suite@~0.6.3": "0.6.3",
     "npm:@astrojs/node@^10.0.3": "10.0.5_astro@5.18.1__@types+node@24.12.2__mysql2@3.22.3___@types+node@24.12.2_@types+node@24.12.2_mysql2@3.22.3__@types+node@24.12.2",
     "npm:@babel/preset-react@^7.27.1": "7.28.5_@babel+core@7.29.7",
@@ -79,7 +84,7 @@
     "npm:@cloudflare/workers-types@^4.20260511.1": "4.20260511.1",
     "npm:@deno/astro-adapter@~0.3.2": "0.3.2_@opentelemetry+api@1.9.1_astro@5.18.1__@types+node@24.12.2__mysql2@3.22.3___@types+node@24.12.2_@types+node@24.12.2_mysql2@3.22.3__@types+node@24.12.2",
     "npm:@fxts/core@^1.21.1": "1.26.0",
-    "npm:@hongminhee/localtunnel@0.3": "0.3.0",
+    "npm:@hongminhee/localtunnel@0.5": "0.5.0",
     "npm:@inquirer/prompts@^7.8.4": "7.10.1_@types+node@24.12.2",
     "npm:@jimp/core@^1.6.1": "1.6.1",
     "npm:@jimp/wasm-webp@^1.6.1": "1.6.1",
@@ -236,7 +241,7 @@
     "@fresh/build-id@1.0.1": {
       "integrity": "12a2ec25fd52ae9ec68c26848a5696cd1c9b537f7c983c7e56e4fb1e7e816c20",
       "dependencies": [
-        "jsr:@std/encoding"
+        "jsr:@std/encoding@^1.0.10"
       ]
     },
     "@fresh/core@2.3.3": {
@@ -244,7 +249,7 @@
       "dependencies": [
         "jsr:@deno/esbuild-plugin",
         "jsr:@fresh/build-id",
-        "jsr:@std/encoding",
+        "jsr:@std/encoding@^1.0.10",
         "jsr:@std/fmt@^1.0.8",
         "jsr:@std/fs@^1.0.19",
         "jsr:@std/html",
@@ -282,8 +287,14 @@
         "npm:vite@^7.1.4"
       ]
     },
-    "@hongminhee/localtunnel@0.3.0": {
-      "integrity": "4ad858acd963b5fad45b188d54cf751ac8fbe0aae495e1d3ce607e3730270ff4",
+    "@hongminhee/localtunnel@0.3.1": {
+      "integrity": "7f390d0b4c19c747418d8995e968c1f8476d76eb3f7658bc6cc24fc3d58269f6",
+      "dependencies": [
+        "jsr:@logtape/logtape@^1.0.4"
+      ]
+    },
+    "@hongminhee/localtunnel@0.5.0": {
+      "integrity": "74cf3cf764efecfa178e19526ceba97ebe4632d47301813f534c69b744fd8229",
       "dependencies": [
         "jsr:@logtape/logtape@^1.0.4"
       ]
@@ -297,10 +308,20 @@
     "@hono/hono@4.12.26": {
       "integrity": "f473c70caaa2bb4aad40354195aef58a58c685692d701e1349d1abbf08da22bd"
     },
+    "@hono/hono@4.12.30": {
+      "integrity": "cd8e61aedab7e765e4e262728273ee0fdea3bc667af5eb6badd2772223b544fc"
+    },
     "@logtape/file@2.2.0": {
       "integrity": "60a1a8ec1256b88aacc65464f3f82a554bc49252cc9d4e4e4b2736237a227d52",
       "dependencies": [
         "jsr:@logtape/logtape@^2.2.0",
+        "jsr:@std/path@^1.1.0"
+      ]
+    },
+    "@logtape/file@2.2.4": {
+      "integrity": "04c8fe76b30fa854ad903eff380af90060163cc1289f268d3d43b541b4c3c7e1",
+      "dependencies": [
+        "jsr:@logtape/logtape@^2.2.4",
         "jsr:@std/path@^1.1.0"
       ]
     },
@@ -316,27 +337,53 @@
     "@logtape/logtape@2.2.0": {
       "integrity": "537ceb4de93d00780a5d81ca8e053c4774ee95b1d32ab665a3d07ae302e8ea53"
     },
+    "@logtape/logtape@2.2.4": {
+      "integrity": "8ee23b7c8d4b2e28c43a3a16027a7a27ed3d453c395c7d91b9960640399201ec"
+    },
     "@optique/config@1.1.0": {
       "integrity": "9f9425156860e72f46717b8be8b01f0868f47465e9cd1d3788f4ba5038a355c9",
       "dependencies": [
-        "jsr:@optique/core",
+        "jsr:@optique/core@^1.1.0",
+        "npm:@standard-schema/spec@^1.1.0"
+      ]
+    },
+    "@optique/config@1.1.1": {
+      "integrity": "59dcdcb723b74a1ecf5ac0d3a0dc7fde172b81cfd10aec7d9eaf95e49b5c6634",
+      "dependencies": [
+        "jsr:@optique/core@^1.1.1",
         "npm:@standard-schema/spec@^1.1.0"
       ]
     },
     "@optique/core@1.1.0": {
       "integrity": "f864b1918415fd2a94c0b8ee6a31b6e6faeb2a972e6e75f0be4cf2d201e3fcf4"
     },
+    "@optique/core@1.1.1": {
+      "integrity": "8288c0adcf42951c59fb450de016873ece1a71f976ccaca3da9618e56e284447"
+    },
     "@optique/discover@1.1.0": {
       "integrity": "dec51dd8ba79e70a1557e4f55e58a792c4ab10cbf63f7382dad80c902801d1b6",
       "dependencies": [
-        "jsr:@optique/core",
-        "jsr:@optique/run"
+        "jsr:@optique/core@^1.1.0",
+        "jsr:@optique/run@^1.1.0"
+      ]
+    },
+    "@optique/discover@1.1.1": {
+      "integrity": "1f406072542af8187bffe33269f1798dd5ad81635b53817558f0e3fe71cdb885",
+      "dependencies": [
+        "jsr:@optique/core@^1.1.1",
+        "jsr:@optique/run@^1.1.1"
       ]
     },
     "@optique/run@1.1.0": {
       "integrity": "4773919cde888d4b35dc8e34a3e87fab544ab9d00c7d5312de5a77b230a0cffe",
       "dependencies": [
-        "jsr:@optique/core"
+        "jsr:@optique/core@^1.1.0"
+      ]
+    },
+    "@optique/run@1.1.1": {
+      "integrity": "a05a670c360ba9725b20c37dde4265b1661265edb71dbaaae05a11bb09d833eb",
+      "dependencies": [
+        "jsr:@optique/core@^1.1.1"
       ]
     },
     "@standard-schema/spec@1.1.0": {
@@ -388,6 +435,9 @@
     "@std/encoding@1.0.10": {
       "integrity": "8783c6384a2d13abd5e9e87a7ae0520a30e9f56aeeaa3bdf910a3eaaf5c811a1"
     },
+    "@std/encoding@1.0.11": {
+      "integrity": "e7cef2f0b3153bccc17431e7c864a1de03a4b6d9647389c43e08aaa775d37385"
+    },
     "@std/fmt@0.224.0": {
       "integrity": "e20e9a2312a8b5393272c26191c0a68eda8d2c4b08b046bad1673148f1d69851"
     },
@@ -413,7 +463,13 @@
     "@std/http@1.1.1": {
       "integrity": "e343a9a80aea07c716b91be5c79df764144430ad2dd7c9121ed7443f08dc74f7",
       "dependencies": [
-        "jsr:@std/encoding"
+        "jsr:@std/encoding@^1.0.10"
+      ]
+    },
+    "@std/http@1.1.2": {
+      "integrity": "1c0473590d5e5b75b30b2be4833c08047dd799aeea35624fd34ec58d67fc9240",
+      "dependencies": [
+        "jsr:@std/encoding@^1.0.11"
       ]
     },
     "@std/internal@0.224.0": {
@@ -455,6 +511,12 @@
         "jsr:@std/internal@^1.0.14"
       ]
     },
+    "@std/path@1.1.6": {
+      "integrity": "c68485c2a4dfbb5ae3cc74fae4e8c4e5d874cf8a8ed12927917235c758b46cbe",
+      "dependencies": [
+        "jsr:@std/internal@^1.0.14"
+      ]
+    },
     "@std/semver@1.0.8": {
       "integrity": "dc830e8b8b6a380c895d53fbfd1258dc253704ca57bbe1629ac65fd7830179b7"
     },
@@ -489,6 +551,9 @@
     },
     "@valibot/valibot@1.4.1": {
       "integrity": "9be12a3f73f3fd00fa44ae189bc1bb3ab4d9088ec2e32a6ab370ae4fca29ee6e"
+    },
+    "@valibot/valibot@1.4.2": {
+      "integrity": "14f7fbb7474a8ade216224062d1e8b23cd17ecbb5176fc23595e846778c4725d"
     }
   },
   "npm": {
@@ -1548,8 +1613,8 @@
         "tslib"
       ]
     },
-    "@hongminhee/localtunnel@0.3.0": {
-      "integrity": "sha512-GRn02MyJIal6DjgDiaLDQhaiTvYlqTLq97bpTNqp2qGnwy4c77pHm6kWPBdSOjmLGPCf2bb/USFKQBgUhafbuA==",
+    "@hongminhee/localtunnel@0.5.0": {
+      "integrity": "sha512-1UZvlLwQJQ2vMmVY5+VdzR+7XIg0uA0TDZDv6m+vTipBX5uG0mnCPW2wRc+ZdqjMW11AygbfLskuDC6IuTxQ0w==",
       "dependencies": [
         "@logtape/logtape"
       ]
@@ -2422,8 +2487,8 @@
       "integrity": "sha512-6xReMW9p+paJgqoFRpOE2nogJFvzPfaLHLIlyADYjKMUcwDyjKZxryIbgcU+gxiTygn8yCjld1HoI0ET4/iZeA==",
       "tarball": "https://npm.jsr.io/~/11/@jsr/std__internal/1.0.12.tgz"
     },
-    "@logtape/logtape@1.3.7": {
-      "integrity": "sha512-YgF+q9op97oLLPwc7TcTNIllTArVtTwkwyKky6XVzAXQcBrvFXXtMuwJSryONAyOUSItrx994O/HABOrszZyFg=="
+    "@logtape/logtape@1.3.11": {
+      "integrity": "sha512-mxkQOyySbjNGweavPudypBf0qZJxLOTXl2NAXYnsZF/ds5dQpTLA7YMSJbc8uFWlTkG+YjAnVL8tQWivIVPOJg=="
     },
     "@lukeed/csprng@1.1.0": {
       "integrity": "sha512-Z7C/xXCiGWsg0KuKsHTKJxbWhpI3Vs5GwLfOean7MGyVFGqdRgBbAjOCh6u4bbjPc/8MJ2pZmK/0DLdCbivLDA=="
@@ -9575,7 +9640,7 @@
       },
       "packages/cli": {
         "dependencies": [
-          "jsr:@hongminhee/localtunnel@0.3",
+          "jsr:@hongminhee/localtunnel@0.5",
           "jsr:@hono/hono@^4.8.3",
           "jsr:@valibot/valibot@^1.4.0",
           "npm:@cfworker/json-schema@^4.1.1",
@@ -9598,7 +9663,7 @@
         "packageJson": {
           "dependencies": [
             "npm:@cfworker/json-schema@^4.1.1",
-            "npm:@hongminhee/localtunnel@0.3",
+            "npm:@hongminhee/localtunnel@0.5",
             "npm:@inquirer/prompts@^7.8.4",
             "npm:@jimp/core@^1.6.1",
             "npm:@jimp/wasm-webp@^1.6.1",

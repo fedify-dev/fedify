@@ -23,7 +23,6 @@ that help you do that:
  -  [`fedify tunnel`](../cli.md#fedify-tunnel-exposing-a-local-http-server-to-the-public-internet)
  -  [ngrok]
  -  [serveo]
- -  [localhost.run]
  -  [Tailscale Funnel]
 
 > [!NOTE]
@@ -52,7 +51,6 @@ that help you do that:
 
 [ngrok]: https://ngrok.com/
 [serveo]: https://serveo.net/
-[localhost.run]: https://localhost.run/
 [Tailscale Funnel]: https://tailscale.com/kb/1223/funnel
 [x-forwarded-fetch]: https://github.com/dahlia/x-forwarded-fetch
 

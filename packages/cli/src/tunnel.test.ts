@@ -1,10 +1,10 @@
-import type { Tunnel, TunnelOptions } from "@hongminhee/localtunnel";
+import type { Tunnel } from "@hongminhee/localtunnel";
 import { runSync } from "@optique/run";
 import { deepEqual, rejects } from "node:assert/strict";
 import test from "node:test";
 import { runCli } from "./runner.ts";
 import type { Ora } from "ora";
-import { runTunnel, tunnelCommand } from "./tunnel.ts";
+import { runTunnel, tunnelCommand, type TunnelDeps } from "./tunnel.ts";
 
 test("tunnel command structure", () => {
   const testCommandWithOptions = runSync(tunnelCommand, {
@@ -73,6 +73,14 @@ test("relay runner accepts tunnel options without a tunnel service", async () =>
   deepEqual((result as { tunnelService?: unknown }).tunnelService, undefined);
 });
 
+interface RuntimeTunnelOptions {
+  readonly port: number;
+  readonly services?: object;
+  readonly service?: string;
+  readonly exclude?: readonly string[];
+  readonly startupTimeout?: number;
+}
+
 test("tunnel successfully creates and manages tunnel", async () => {
   const mockCommand = {
     command: "tunnel" as const,
@@ -98,15 +106,15 @@ test("tunnel successfully creates and manages tunnel", async () => {
   let openTunnelFailed = false;
   let spinnerMsg;
 
-  const mockDeps = {
-    openTunnel: (args: TunnelOptions) => {
+  const mockDeps: TunnelDeps = {
+    openTunnel(args: RuntimeTunnelOptions) {
       openTunnelCalled = true;
       openTunnelPort = args.port;
       openTunnelService = args.service;
       return Promise.resolve(mockTunnel);
     },
-    ora: () =>
-      ({
+    ora() {
+      return ({
         start() {
           spinnerCalled = true;
           return this;
@@ -121,8 +129,9 @@ test("tunnel successfully creates and manages tunnel", async () => {
           spinnerMsg = msg;
           return this;
         },
-      }) as unknown as Ora,
-    exit: (): never => {
+      }) as unknown as Ora;
+    },
+    exit(): never {
       throw new Error();
     },
   };
@@ -161,15 +170,15 @@ test("tunnel fails to create a secure tunnel and handles error", async () => {
   let openTunnelFailed = false;
   let spinnerMsg;
 
-  const mockDeps = {
-    openTunnel: (args: TunnelOptions) => {
+  const mockDeps: TunnelDeps = {
+    openTunnel(args: RuntimeTunnelOptions) {
       openTunnelCalled = true;
       openTunnelPort = args.port;
       openTunnelService = args.service;
       return Promise.reject();
     },
-    ora: () =>
-      ({
+    ora() {
+      return ({
         start() {
           spinnerCalled = true;
           return this;
@@ -184,8 +193,9 @@ test("tunnel fails to create a secure tunnel and handles error", async () => {
           spinnerMsg = msg;
           return this;
         },
-      }) as unknown as Ora,
-    exit: (): never => {
+      }) as unknown as Ora;
+    },
+    exit(): never {
       throw new Error("Process exit called");
     },
   };

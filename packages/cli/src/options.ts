@@ -1,4 +1,5 @@
 import { getUserAgent } from "@fedify/vocab-runtime";
+import { SERVICES } from "@hongminhee/localtunnel";
 import { bindConfig } from "@optique/config";
 import {
   choice,
@@ -21,11 +22,9 @@ import { type Config, configContext } from "./config.ts";
 /**
  * Available tunneling services for exposing local servers to the public internet.
  */
-export const TUNNEL_SERVICES = [
-  "localhost.run",
-  "serveo.net",
-  "pinggy.io",
-] as const;
+export const TUNNEL_SERVICES = Object.keys(
+  SERVICES,
+) as readonly (keyof typeof SERVICES)[];
 
 /**
  * Type representing a valid tunneling service.

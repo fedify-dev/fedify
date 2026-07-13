@@ -46,13 +46,15 @@ export const tunnelCommand = command(
   tunnelMetadata,
 );
 
+export interface TunnelDeps {
+  readonly openTunnel: typeof openTunnel;
+  readonly ora: typeof ora;
+  readonly exit: typeof process.exit;
+}
+
 export async function runTunnel(
   command: InferValue<typeof tunnelCommand> & GlobalOptions,
-  deps: {
-    openTunnel: typeof openTunnel;
-    ora: typeof ora;
-    exit: typeof process.exit;
-  } = {
+  deps: TunnelDeps = {
     openTunnel,
     ora,
     exit: process.exit,
