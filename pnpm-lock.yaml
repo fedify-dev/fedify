@@ -778,8 +778,8 @@ importers:
         specifier: 'catalog:'
         version: 1.20.0
       '@hongminhee/localtunnel':
-        specifier: ^0.3.0
-        version: 0.3.0
+        specifier: ^0.3.1
+        version: 0.3.1
       '@inquirer/prompts':
         specifier: ^7.8.4
         version: 7.10.1(@types/node@22.19.1)
@@ -2535,8 +2535,8 @@ packages:
     engines: {node: '>=6'}
     hasBin: true
 
-  '@hongminhee/localtunnel@0.3.0':
-    resolution: {integrity: sha512-GRn02MyJIal6DjgDiaLDQhaiTvYlqTLq97bpTNqp2qGnwy4c77pHm6kWPBdSOjmLGPCf2bb/USFKQBgUhafbuA==}
+  '@hongminhee/localtunnel@0.3.1':
+    resolution: {integrity: sha512-XRrFsPxrx1fOL5cQyfbVk8LDWfZTKSp4ZcdEbmZTrP82aFON/rO+aTuScW9FPpKGAd8pYIfXTIkljaM81Nslbg==}
     engines: {bun: '>=1.2.0', deno: '>=2.3.0', node: '>=20.0.0'}
 
   '@hono/node-server@1.14.4':
@@ -10515,7 +10515,7 @@ snapshots:
       protobufjs: 7.5.3
       yargs: 17.7.2
 
-  '@hongminhee/localtunnel@0.3.0':
+  '@hongminhee/localtunnel@0.3.1':
     dependencies:
       '@logtape/logtape': 1.3.5
 
