@@ -14,6 +14,7 @@ import process from "node:process";
 import ora from "ora";
 import { configureLogging } from "./log.ts";
 import { createTunnelServiceOption, type GlobalOptions } from "./options.ts";
+import { TUNNEL_SERVICE_REGISTRY } from "./tunnelservice.ts";
 
 export const tunnelOptions = merge(
   "Tunnel options",
@@ -46,13 +47,15 @@ export const tunnelCommand = command(
   tunnelMetadata,
 );
 
+export interface TunnelDeps {
+  readonly openTunnel: typeof openTunnel;
+  readonly ora: typeof ora;
+  readonly exit: typeof process.exit;
+}
+
 export async function runTunnel(
   command: InferValue<typeof tunnelCommand> & GlobalOptions,
-  deps: {
-    openTunnel: typeof openTunnel;
-    ora: typeof ora;
-    exit: typeof process.exit;
-  } = {
+  deps: TunnelDeps = {
     openTunnel,
     ora,
     exit: process.exit,
@@ -69,6 +72,7 @@ export async function runTunnel(
   try {
     tunnel = await deps.openTunnel({
       port: command.port,
+      services: TUNNEL_SERVICE_REGISTRY,
       service: command.service,
     });
   } catch (error) {

@@ -1049,7 +1049,7 @@ You'll see output like this after a few seconds:
 
 > [!NOTE]
 > The tunnel uses one of several free tunneling services
-> (localhost.run, serveo.net, or pinggy.io).  The URL changes each
+> (fedify.com.es, serveo.net, or pinggy.io).  The URL changes each
 > time you run the command.  Once you've introduced SQLite persistence
 > (in a later chapter), delete *blog.db* whenever the tunnel URL
 > changes—otherwise the ActivityPub IDs stored in the database (actor
