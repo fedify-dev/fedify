@@ -13,6 +13,9 @@ test("tunnel command structure", () => {
   const testCommandWithoutOptions = runSync(tunnelCommand, {
     args: ["tunnel", "3000"],
   });
+  const testCommandWithFedify = runSync(tunnelCommand, {
+    args: ["tunnel", "3002", "-s", "fedify.com.es"],
+  });
 
   deepEqual(testCommandWithOptions.command, "tunnel");
   deepEqual(testCommandWithOptions.port, 3001);
@@ -20,6 +23,9 @@ test("tunnel command structure", () => {
 
   deepEqual(testCommandWithoutOptions.port, 3000);
   deepEqual(testCommandWithoutOptions.service, undefined);
+
+  deepEqual(testCommandWithFedify.port, 3002);
+  deepEqual(testCommandWithFedify.service, "fedify.com.es");
 });
 
 test("tunnel runner accepts omitted tunnel service", async () => {
@@ -101,6 +107,7 @@ test("tunnel successfully creates and manages tunnel", async () => {
   let openTunnelCalled = false;
   let openTunnelPort;
   let openTunnelService;
+  let openTunnelServices: object | undefined;
   let spinnerCalled = false;
   let openTunnelSucceed = false;
   let openTunnelFailed = false;
@@ -111,6 +118,7 @@ test("tunnel successfully creates and manages tunnel", async () => {
       openTunnelCalled = true;
       openTunnelPort = args.port;
       openTunnelService = args.service;
+      openTunnelServices = args.services;
       return Promise.resolve(mockTunnel);
     },
     ora() {
@@ -142,6 +150,10 @@ test("tunnel successfully creates and manages tunnel", async () => {
     deepEqual(openTunnelCalled, true);
     deepEqual(openTunnelPort, 3001);
     deepEqual(openTunnelService, "pinggy.io");
+    deepEqual(
+      Object.keys(openTunnelServices ?? {}),
+      ["serveo.net", "pinggy.io", "fedify.com.es"],
+    );
     deepEqual(openTunnelSucceed, true);
     deepEqual(openTunnelFailed, false);
     deepEqual(spinnerCalled, true);
@@ -165,6 +177,7 @@ test("tunnel fails to create a secure tunnel and handles error", async () => {
   let openTunnelCalled = false;
   let openTunnelPort;
   let openTunnelService;
+  let openTunnelServices: object | undefined;
   let spinnerCalled = false;
   let openTunnelSucceed = false;
   let openTunnelFailed = false;
@@ -175,6 +188,7 @@ test("tunnel fails to create a secure tunnel and handles error", async () => {
       openTunnelCalled = true;
       openTunnelPort = args.port;
       openTunnelService = args.service;
+      openTunnelServices = args.services;
       return Promise.reject();
     },
     ora() {
@@ -210,6 +224,10 @@ test("tunnel fails to create a secure tunnel and handles error", async () => {
     deepEqual(openTunnelCalled, true);
     deepEqual(openTunnelPort, 3001);
     deepEqual(openTunnelService, undefined);
+    deepEqual(
+      Object.keys(openTunnelServices ?? {}),
+      ["serveo.net", "pinggy.io", "fedify.com.es"],
+    );
     deepEqual(openTunnelSucceed, false);
     deepEqual(openTunnelFailed, true);
     deepEqual(spinnerCalled, true);

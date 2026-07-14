@@ -177,7 +177,7 @@ Below is an example configuration file showing all available options:
 # Global settings (apply to all commands)
 debug = false
 userAgent = "MyApp/1.0"
-tunnelService = "pinggy.io"  # "serveo.net" or "pinggy.io"
+tunnelService = "fedify.com.es"  # Or "serveo.net" or "pinggy.io"
 
 [webfinger]
 allowPrivateAddress = false
@@ -1018,10 +1018,10 @@ when using the `-a`/`--authorized-fetch` option.  The authorized fetch feature
 requires a temporary server to be exposed to the public internet, and this
 option allows you to choose the tunneling service.  Available services can be
 found in the output of the `fedify lookup --help` command.  For example, to use
-serveo.net as the tunneling service:
+fedify.com.es as the tunneling service:
 
 ~~~~ sh
-fedify lookup --authorized-fetch --tunnel-service serveo.net @user@example.com
+fedify lookup --authorized-fetch --tunnel-service fedify.com.es @user@example.com
 ~~~~
 
 ### `-u`/`--user-agent`: Custom `User-Agent` header
@@ -1248,10 +1248,10 @@ about the security implications of exposing the server to the public internet.
 The `--tunnel-service` option is used to specify which tunneling service to use
 for exposing the ephemeral inbox server to the public internet.  Available
 services can be found in the output of the `fedify inbox --help` command.
-For example, to use serveo.net as the tunneling service:
+For example, to use fedify.com.es as the tunneling service:
 
 ~~~~ sh
-fedify inbox --tunnel-service serveo.net
+fedify inbox --tunnel-service fedify.com.es
 ~~~~
 
 > [!NOTE]
@@ -1502,10 +1502,10 @@ fedify relay -p mastodon --no-tunnel
 The `--tunnel-service` option specifies which tunneling service to use for
 exposing the relay server to the public internet.  Available services can be
 found in the output of the `fedify relay --help` command.  For example, to use
-serveo.net as the tunneling service:
+fedify.com.es as the tunneling service:
 
 ~~~~ sh
-fedify relay -p mastodon --tunnel-service serveo.net
+fedify relay -p mastodon --tunnel-service fedify.com.es
 ~~~~
 
 > [!NOTE]
@@ -1556,11 +1556,11 @@ fedify tunnel 3000
 The `-s`/`--service` option is used to specify the tunneling service to use.
 The `--tunnel-service` is an alias for consistency with other commands that
 support tunneling.  Available services can be found in the output of the
-`fedify tunnel --help` command.  For example, to use serveo.net, run the below
-command:
+`fedify tunnel --help` command.  For example, to use fedify.com.es, run the
+below command:
 
 ~~~~ sh
-fedify tunnel --service serveo.net 3000
+fedify tunnel --service fedify.com.es 3000
 ~~~~
 
 

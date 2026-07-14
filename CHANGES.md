@@ -210,8 +210,14 @@ To be released.
 
 ### @fedify/cli
 
+ -  Added `fedify.com.es` as a tunneling service.  The CLI pins the service's
+    SSH host key and rejects a mismatched server before exposing a local port.
+    [[#940]]
+
  -  Switched the CLI's Temporal runtime dependency from
     `@js-temporal/polyfill` to `temporal-polyfill`.  [[#823], [#925]]
+
+[#940]: https://github.com/fedify-dev/fedify/pull/940
 
 ### @fedify/debugger
 

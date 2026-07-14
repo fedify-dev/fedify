@@ -2,6 +2,7 @@ import { openTunnel } from "@hongminhee/localtunnel";
 import { getLogger } from "@logtape/logtape";
 import { serve } from "srvx";
 import type { TunnelService } from "./options.ts";
+import { TUNNEL_SERVICE_REGISTRY } from "./tunnelservice.ts";
 
 const logger = getLogger(["fedify", "cli", "tempserver"]);
 
@@ -84,6 +85,7 @@ export async function spawnTemporaryServer(
   logger.debug("Temporary server is listening on port {port}.", { port });
   const tun = await openTunnel({
     port: parseInt(port),
+    services: TUNNEL_SERVICE_REGISTRY,
     service: options.service,
   });
   logger.debug("Temporary server is tunneled to {url}.", { url: tun.url.href });

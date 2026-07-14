@@ -1,5 +1,4 @@
 import { getUserAgent } from "@fedify/vocab-runtime";
-import { SERVICES } from "@hongminhee/localtunnel";
 import { bindConfig } from "@optique/config";
 import {
   choice,
@@ -18,18 +17,17 @@ import {
   withDefault,
 } from "@optique/core";
 import { type Config, configContext } from "./config.ts";
+import { TUNNEL_SERVICE_NAMES } from "./tunnelservice.ts";
 
 /**
  * Available tunneling services for exposing local servers to the public internet.
  */
-export const TUNNEL_SERVICES = Object.keys(
-  SERVICES,
-) as readonly (keyof typeof SERVICES)[];
+export const TUNNEL_SERVICES = TUNNEL_SERVICE_NAMES;
 
 /**
  * Type representing a valid tunneling service.
  */
-export type TunnelService = typeof TUNNEL_SERVICES[number];
+export type { TunnelService } from "./tunnelservice.ts";
 
 /**
  * Creates a tunnel service option with customizable option names.
