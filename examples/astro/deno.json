@@ -3,7 +3,7 @@
     "moduleResolution": "nodenext"
   },
   "imports": {
-    "@deno/astro-adapter": "npm:@deno/astro-adapter@^0.3.2"
+    "@deno/astro-adapter": "npm:@deno/astro-adapter@^0.6.0"
   },
   "tasks": {
     "dev": "deno run -A npm:astro dev --config astro.config.deno.ts",

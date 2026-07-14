@@ -724,7 +724,7 @@ of these as a follow-up project.
 
 Create a helper module for password hashing first.  Passwords must never be
 stored as plain text; instead, we store a one-way *hash* computed with a
-deliberately slow function, [scrypt], built into Node's standard library:
+deliberately slow function, [scrypt], built into the Node.js standard library:
 
 ~~~~ typescript [lib/auth.ts]
 import {

@@ -18,28 +18,48 @@ const astroNodeBunDevToolTasks = {
   lint: "oxlint .",
 } as const;
 
+const astroDenoCommand = `deno run -A npm:astro@${deps["npm:astro"]}`;
+
+const ASTRO_NODE_VERSION_CHECK = `
+const [major, minor] = process.versions.node.split(".").map(Number);
+if (major < 22 || (major === 22 && minor < 12)) {
+  console.error("Astro 7 requires Node.js 22.12 or later.");
+  process.exit(1);
+}
+`.trim();
+
 const astroDescription: WebFrameworkDescription = {
   label: "Astro",
   packageManagers: PACKAGE_MANAGER,
   defaultPort: 4321,
   init: async ({ packageManager: pm }) => {
+    // Astro loads integrations and middleware through Vite.  Vite resolves
+    // bare imports from node_modules rather than Deno's JSR import map, so
+    // keep Vite-loaded dependencies on npm even though @fedify/astro is also
+    // published on JSR.
     const dependencies: Record<string, string> = pm === "deno"
       ? {
         ...defaultDenoDependencies,
+        "@fedify/fedify": `npm:@fedify/fedify@${PACKAGE_VERSION}`,
+        "@fedify/vocab": `npm:@fedify/vocab@${PACKAGE_VERSION}`,
+        "@logtape/logtape": `npm:@logtape/logtape@${deps["@logtape/logtape"]}`,
+        astro: `npm:astro@${deps["npm:astro"]}`,
         "@deno/astro-adapter": `npm:@deno/astro-adapter@${
           deps["npm:@deno/astro-adapter"]
         }`,
-        "@fedify/astro": PACKAGE_VERSION,
+        "@fedify/astro": `npm:@fedify/astro@${PACKAGE_VERSION}`,
       }
       : pm === "bun"
       ? {
+        "@astrojs/node": deps["npm:@astrojs/node"],
         "@fedify/astro": PACKAGE_VERSION,
-        "@nurodev/astro-bun": deps["npm:@nurodev/astro-bun"],
+        astro: deps["npm:astro"],
       }
       : {
         "@astrojs/node": deps["npm:@astrojs/node"],
         "@fedify/astro": PACKAGE_VERSION,
         "@dotenvx/dotenvx": deps["npm:@dotenvx/dotenvx"],
+        astro: deps["npm:astro"],
       };
 
     return {
@@ -80,13 +100,21 @@ export default astroDescription;
 function* getAstroInitCommand(
   pm: PackageManager,
 ): Generator<string> {
+  if (pm !== "deno" && pm !== "bun") {
+    yield "node";
+    yield "-e";
+    yield ASTRO_NODE_VERSION_CHECK;
+    yield "&&";
+  }
   yield* createAstroAppCommand(pm);
-  yield "astro@latest";
+  yield `astro@${deps["npm:create-astro"]}`;
   yield ".";
   yield "--";
   yield "--no-git";
   yield "--skip-houston";
   yield "-y";
+  yield "--ref";
+  yield `astro@${deps["npm:astro"].replace(/^\D+/, "")}`;
   if (pm !== "deno") yield "--no-install";
   yield "&&";
   yield "rm";
@@ -99,9 +127,9 @@ const createAstroAppCommand = (pm: PackageManager): string[] =>
 
 const TASKS = {
   "deno": {
-    dev: "deno run -A npm:astro dev",
-    build: "deno run -A npm:astro build",
-    preview: "deno run -A npm:astro preview",
+    dev: `${astroDenoCommand} dev`,
+    build: `${astroDenoCommand} build`,
+    preview: `${astroDenoCommand} preview`,
   },
   "bun": {
     dev: "bunx --bun astro dev",

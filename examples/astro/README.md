@@ -10,6 +10,9 @@ server that can interact with other federated platforms like Mastodon, Pleroma,
 and other ActivityPub implementations.  It supports [Deno], [Node.js], and
 [Bun] runtimes.
 
+The example uses Astro 7.  The `@fedify/astro` package also supports Astro 5
+and 6 through its dedicated compatibility matrix.
+
 [Fedify]: https://fedify.dev
 [Astro]: https://astro.build/
 [`@fedify/astro`]: https://jsr.io/@fedify/astro
@@ -45,7 +48,7 @@ How it works
  -  *astro.config.node.ts* registers `fedifyIntegration()` and uses
     `@astrojs/node` for Node.js.
  -  *astro.config.bun.ts* registers `fedifyIntegration()` and uses
-    `@nurodev/astro-bun` for Bun.
+    `@astrojs/node` standalone output, which is built and run with Bun.
  -  *src/lib/store.ts* defines in-memory stores for key pairs, follower
     relationships, and posts.
  -  *src/lib/federation.ts* sets up the full `Federation` instance with:
@@ -54,8 +57,8 @@ How it works
      -  Inbox listeners for `Follow` and `Undo` activities
      -  `Note` object dispatcher at `/users/{identifier}/posts/{id}`
      -  Followers collection at `/users/{identifier}/followers`
- -  `src/middleware.ts` wires the federation into Astro via
-    `fedifyMiddleware()`.
+ -  *src/middleware.ts* composes an additional Astro middleware with
+    `fedifyMiddleware()` using `sequence()`.
  -  `src/pages/users/[identifier]/index.astro` renders an HTML profile page.
     Fedify and Astro share the route and do content negotiation depending on
     the `Accept` header.
@@ -131,6 +134,9 @@ To build and run the Bun server bundle:
 bun run build:bun
 bun run preview:bun
 ~~~~
+
+The Bun setup intentionally uses `@astrojs/node` 11.  The previously used
+`@nurodev/astro-bun` adapter only declares compatibility with Astro 5.
 
 ### Testing
 

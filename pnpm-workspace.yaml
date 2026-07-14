@@ -95,7 +95,7 @@ catalog:
   "@nestjs/common": ^11.0.1
   "@nuxt/kit": ^4.4.2
   "@nuxt/schema": ^4.4.2
-  astro: ^5.0.0
+  astro: ^7.0.0
   amqplib: ^0.10.9
   asn1js: ^3.0.10
   better-sqlite3: ^12.9.0

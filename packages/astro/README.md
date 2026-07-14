@@ -10,18 +10,30 @@
 *This package is available since Fedify 2.1.0.*
 
 This package provides a simple way to integrate [Fedify] with [Astro].
+Astro 5, 6, and 7 are supported.
+
+Fedify needs Astro's on-demand rendering, so install a server adapter for your
+runtime.  The following Node.js configuration uses `@astrojs/node` 11 with
+Astro 7:
 
 First, add the integration to your *astro.config.mjs*:
 
 ~~~~ typescript
 import { defineConfig } from "astro/config";
 import { fedifyIntegration } from "@fedify/astro";
+import node from "@astrojs/node";
 
 export default defineConfig({
   integrations: [fedifyIntegration()],
   output: "server",
+  adapter: node({ mode: "standalone" }),
 });
 ~~~~
+
+The `"server"` output is the simplest default because Fedify handles endpoints
+such as WebFinger and inboxes that do not have corresponding Astro page files.
+Individual Astro pages can still opt into prerendering with
+`export const prerender = true`.
 
 Then, create your middleware in *src/middleware.ts*:
 
@@ -39,6 +51,23 @@ export const onRequest = fedifyMiddleware(
 );
 ~~~~
 
+If your application has other middleware, compose it with the Fedify
+middleware using `sequence()`:
+
+~~~~ typescript
+import { fedifyMiddleware } from "@fedify/astro";
+import type { MiddlewareHandler } from "astro";
+import { sequence } from "astro:middleware";
+import federation from "./federation.ts";
+
+const otherMiddleware: MiddlewareHandler = (_context, next) => next();
+
+export const onRequest = sequence(
+  otherMiddleware,
+  fedifyMiddleware(federation, () => undefined),
+);
+~~~~
+
 [JSR badge]: https://jsr.io/badges/@fedify/astro
 [JSR]: https://jsr.io/@fedify/astro
 [npm badge]: https://img.shields.io/npm/v/@fedify/astro?logo=npm
@@ -51,6 +80,12 @@ export const onRequest = fedifyMiddleware(
 
 For Deno users
 --------------
+
+`@fedify/astro` remains available on JSR, but Deno-based Astro projects should
+install it and the other packages loaded by Astro from npm.  Astro loads
+integrations and middleware through Vite, which resolves bare imports through
+*node\_modules/* rather than Deno's JSR import map.  The npm specifiers let Deno
+populate *node\_modules/* for Vite.
 
 If you are using Deno, you should import `@deno/astro-adapter` in
 *astro.config.mjs* and use it as the adapter:
@@ -84,18 +119,19 @@ instead of `astro`:
 For Bun users
 -------------
 
-If you are using Bun, install `@nurodev/astro-bun` and configure it as the
-Astro adapter:
+Astro 7 does not have a compatible Bun-specific adapter.  The tested Bun
+configuration uses `@astrojs/node` 11 in standalone mode, builds Astro with
+Bun, and runs the resulting server entry point with Bun:
 
 ~~~~ typescript
 import { defineConfig } from "astro/config";
 import { fedifyIntegration } from "@fedify/astro";
-import bun from "@nurodev/astro-bun";
+import node from "@astrojs/node";
 
 export default defineConfig({
   integrations: [fedifyIntegration()],
   output: "server",
-  adapter: bun(),
+  adapter: node({ mode: "standalone" }),
 });
 ~~~~
 
@@ -139,7 +175,7 @@ Installation
 ------------
 
 ~~~~ sh
-deno add jsr:@fedify/astro  # Deno
+deno add npm:@fedify/astro  # Deno
 npm  add     @fedify/astro  # npm
 pnpm add     @fedify/astro  # pnpm
 yarn add     @fedify/astro  # Yarn

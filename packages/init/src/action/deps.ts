@@ -26,9 +26,15 @@ type Deps = Record<string, string>;
  * @returns A record of dependencies with their versions
  */
 export const getDependencies = (
-  { initializer, kv, mq, env, testMode, packageManager }: Pick<
+  { initializer, kv, mq, env, testMode, packageManager, webFramework }: Pick<
     InitCommandData,
-    "initializer" | "kv" | "mq" | "env" | "packageManager" | "testMode"
+    | "initializer"
+    | "kv"
+    | "mq"
+    | "env"
+    | "packageManager"
+    | "testMode"
+    | "webFramework"
   >,
 ): Deps =>
   pipe(
@@ -43,10 +49,27 @@ export const getDependencies = (
     merge(kv.dependencies),
     merge(mq.dependencies),
     when(
+      always(packageManager === "deno" && webFramework === "astro"),
+      useNpmForFedifyPackages,
+    ),
+    when(
       always(testMode),
       isDeno({ packageManager }) ? removeFedifyDeps : addLocalFedifyDeps,
     ),
     normalizePackageNames(packageManager),
+  );
+
+const useNpmForFedifyPackages = (deps: Deps): Deps =>
+  pipe(
+    deps,
+    entries,
+    map(([name, version]) =>
+      name.startsWith("@fedify/") && name !== "@fedify/lint" &&
+        !version.startsWith("npm:")
+        ? [name, `npm:${name}@${version}`] as const
+        : [name, version] as const
+    ),
+    fromEntries,
   );
 
 const removeFedifyDeps = (deps: Deps): Deps =>

@@ -3,6 +3,8 @@ import { access, readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import deps from "./json/deps.json" with { type: "json" };
+import { PACKAGE_VERSION } from "./lib.ts";
 import astroDescription from "./webframeworks/astro.ts";
 
 const packageDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -36,8 +38,72 @@ test(
   },
 );
 
+test("Astro init pins the Astro 7 scaffolder and dependencies", async () => {
+  for (
+    const packageManager of ["npm", "pnpm", "yarn", "deno", "bun"] as const
+  ) {
+    const result = await astroDescription.init({
+      command: "init",
+      dir: packageDir,
+      dryRun: true,
+      allowNonEmpty: false,
+      skipInstall: false,
+      kvStore: "in-memory",
+      messageQueue: "in-process",
+      packageManager,
+      projectName: "fedify-test",
+      testMode: true,
+      webFramework: "astro",
+    });
+    ok(result.command != null);
+    if (packageManager !== "deno" && packageManager !== "bun") {
+      strictEqual(result.command[0], "node");
+      strictEqual(result.command[1], "-e");
+      strictEqual(result.command[2].includes("22.12"), true);
+    }
+    strictEqual(
+      result.command.includes(`astro@${deps["npm:create-astro"]}`),
+      true,
+    );
+    const refIndex = result.command.indexOf("--ref");
+    strictEqual(
+      result.command[refIndex + 1],
+      `astro@${deps["npm:astro"].replace(/^\D+/, "")}`,
+    );
+    strictEqual(
+      result.dependencies?.astro,
+      packageManager === "deno"
+        ? `npm:astro@${deps["npm:astro"]}`
+        : deps["npm:astro"],
+    );
+    if (packageManager === "deno") {
+      const tasks = result.tasks as Record<string, string>;
+      strictEqual(
+        result.dependencies?.["@fedify/astro"],
+        `npm:@fedify/astro@${PACKAGE_VERSION}`,
+      );
+      strictEqual(
+        result.dependencies?.["@deno/astro-adapter"],
+        `npm:@deno/astro-adapter@${deps["npm:@deno/astro-adapter"]}`,
+      );
+      strictEqual(
+        tasks.dev,
+        `deno run -A npm:astro@${deps["npm:astro"]} dev`,
+      );
+      strictEqual(
+        tasks.build,
+        `deno run -A npm:astro@${deps["npm:astro"]} build`,
+      );
+      strictEqual(
+        tasks.preview,
+        `deno run -A npm:astro@${deps["npm:astro"]} preview`,
+      );
+    }
+  }
+});
+
 test(
-  "Astro init uses the Bun adapter for Bun projects",
+  "Astro init uses the Node adapter for Bun projects",
   async () => {
     const packageJson = JSON.parse(
       await readFile(resolve(packageDir, "package.json"), "utf8"),
@@ -63,15 +129,18 @@ test(
     const tasks = result.tasks as Record<string, string>;
     const files = result.files as Record<string, string>;
 
-    strictEqual(dependencies["@nurodev/astro-bun"], "^2.1.2");
+    strictEqual(dependencies["@astrojs/node"], deps["npm:@astrojs/node"]);
     strictEqual(dependencies["@fedify/astro"], packageJson.version);
     strictEqual(tasks.dev, "bunx --bun astro dev");
     strictEqual(tasks.build, "bunx --bun astro build");
     strictEqual(tasks.preview, "bun ./dist/server/entry.mjs");
     match(
       files["astro.config.ts"],
-      /import bun from "@nurodev\/astro-bun";/,
+      /import node from "@astrojs\/node";/,
     );
-    match(files["astro.config.ts"], /adapter: bun\(\),/);
+    match(
+      files["astro.config.ts"],
+      /adapter: node\(\{ mode: "standalone" \}\),/,
+    );
   },
 );

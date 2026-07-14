@@ -1,4 +1,5 @@
 import $ from "@david/dax";
+import { readFile, writeFile } from "node:fs/promises";
 import { join as joinPath } from "node:path";
 import type { InitCommandData } from "../types.ts";
 
@@ -88,8 +89,24 @@ export function stringifyEnvs(object: Record<string, string>): string {
  * Runs `<packageManager> install` in the project directory to install all
  * dependencies. Logs an error message if the installation fails.
  */
-export const installDependencies = ({ packageManager, dir }: InitCommandData) =>
-  $`${packageManager} install`.cwd(dir).spawn();
+export const installDependencies = async (data: InitCommandData) => {
+  const { packageManager, dir, testMode } = data;
+  if (packageManager !== "deno" || !testMode) {
+    return await $`${packageManager} install`.cwd(dir).spawn();
+  }
+
+  const configPath = joinPath(dir, "deno.json");
+  const config = JSON.parse(await readFile(configPath, "utf8"));
+  const links = config.links;
+  delete config.links;
+  await writeFile(configPath, JSON.stringify(config, null, 2) + "\n");
+  try {
+    return await $`${packageManager} install`.cwd(dir).spawn();
+  } finally {
+    config.links = links;
+    await writeFile(configPath, JSON.stringify(config, null, 2) + "\n");
+  }
+};
 
 /**
  * Runs the precommand specified in the initializer to set up the project.
