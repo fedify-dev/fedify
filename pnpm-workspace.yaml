@@ -18,6 +18,7 @@ packages:
 - packages/koa
 - packages/lint
 - packages/mysql
+- packages/netlify
 - packages/nestjs
 - packages/next
 - packages/nuxt
@@ -44,6 +45,7 @@ packages:
 - examples/fastify
 - examples/next14-app-router
 - examples/next15-app-router
+- examples/netlify-astro
 - examples/nuxt
 - examples/solidstart
 - examples/sveltekit-sample
@@ -57,7 +59,11 @@ allowBuilds:
   workerd: true
 
 catalog:
+  "@astrojs/netlify": ^6.6.5
   "@cloudflare/workers-types": ^4.20260511.1
+  "@netlify/database": ^1.1.0
+  netlify-cli: ^26.2.0
+  "@netlify/async-workloads": ^0.0.106
   "@fxts/core": ^1.20.0
   "@js-temporal/polyfill": ^0.5.1
   "@logtape/file": ^2.2.0

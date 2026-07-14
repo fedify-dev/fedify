@@ -107,6 +107,8 @@ for the complete package list.
  -  *packages/interaction-controls/*: Interaction control helpers
     (`@fedify/interaction-controls`) for Fedify.
  -  *packages/nuxt/*: Nuxt integration (`@fedify/nuxt`) for Fedify.
+ -  *packages/netlify/*: Netlify Async Workloads integration
+    (`@fedify/netlify`) for Fedify.
  -  *packages/create/*: Standalone CLI (`@fedify/create`)
     for creating new Fedify projects via `npm init @fedify`.
  -  *docs/*: Documentation built with VitePress (see *docs/README.md*)

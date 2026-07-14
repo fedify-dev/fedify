@@ -1,0 +1,77 @@
+{
+  "name": "@fedify/netlify",
+  "version": "2.4.0",
+  "description": "Integrate Fedify with Netlify Async Workloads",
+  "keywords": [
+    "Fedify",
+    "ActivityPub",
+    "Fediverse",
+    "Netlify",
+    "Async Workloads"
+  ],
+  "author": {
+    "name": "Hong Minhee",
+    "email": "hong@minhee.org",
+    "url": "https://hongminhee.org/"
+  },
+  "homepage": "https://fedify.dev/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fedify-dev/fedify.git",
+    "directory": "packages/netlify"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/fedify-dev/fedify/issues"
+  },
+  "funding": "https://opencollective.com/fedify",
+  "type": "module",
+  "main": "./dist/mod.cjs",
+  "module": "./dist/mod.js",
+  "types": "./dist/mod.d.ts",
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/mod.d.ts",
+        "require": "./dist/mod.d.cts",
+        "default": "./dist/mod.d.ts"
+      },
+      "import": "./dist/mod.js",
+      "require": "./dist/mod.cjs",
+      "default": "./dist/mod.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "package.json"
+  ],
+  "dependencies": {
+    "temporal-polyfill": "catalog:"
+  },
+  "peerDependencies": {
+    "@fedify/fedify": "workspace:^",
+    "@netlify/async-workloads": "catalog:"
+  },
+  "devDependencies": {
+    "@fedify/postgres": "workspace:^",
+    "@js-temporal/polyfill": "catalog:",
+    "@netlify/database": "catalog:",
+    "@standard-schema/spec": "catalog:",
+    "@types/node": "catalog:",
+    "netlify-cli": "catalog:",
+    "postgres": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  },
+  "scripts": {
+    "build:self": "tsdown",
+    "build": "pnpm --filter @fedify/netlify... run build:self",
+    "prepack": "pnpm build",
+    "prepublish": "pnpm build",
+    "pretest": "pnpm build",
+    "test": "node --experimental-transform-types --test",
+    "pretest:bun": "pnpm build",
+    "test:bun": "bun test"
+  }
+}

@@ -1,0 +1,33 @@
+---
+export const prerender = true;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Fedify on Netlify</title>
+    <style>
+      :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+      main { margin: 12vh auto; max-width: 44rem; padding: 0 1.5rem; }
+      h1 { font-size: clamp(2rem, 8vw, 4rem); line-height: 1; }
+      code { background: color-mix(in srgb, currentColor 12%, transparent); padding: .2em .4em; }
+      li { margin-block: .8rem; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Fedify on Netlify</h1>
+      <p>
+        This Astro application serves an ActivityPub actor through Netlify
+        Functions and processes outgoing jobs with Netlify Async Workloads.
+      </p>
+      <p>Follow <code>@netlify@{Astro.url.host}</code> from the fediverse.</p>
+      <ul>
+        <li>Actor state and ordering sequences use Netlify Database.</li>
+        <li>Fedify queue messages use durable Async Workloads events.</li>
+        <li>This page remains prerendered; federation routes run on demand.</li>
+      </ul>
+    </main>
+  </body>
+</html>

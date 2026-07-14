@@ -19,6 +19,7 @@
     "./packages/koa",
     "./packages/lint",
     "./packages/mysql",
+    "./packages/netlify",
     "./packages/nuxt",
     "./packages/postgres",
     "./packages/redis",

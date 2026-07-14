@@ -1089,6 +1089,49 @@ test(
 );
 
 test(
+  "a non-atomic enqueueMany is rejected for batch deduplication",
+  async () => {
+    class NonAtomicBatchQueue extends MockQueue {
+      readonly atomicEnqueueMany = false;
+
+      constructor() {
+        super({ supportsEnqueueMany: true });
+      }
+    }
+
+    const queue = new NonAtomicBatchQueue();
+    const kv = new MemoryKvStore();
+    const federation = createFederation<void>({
+      ...baseOptions,
+      kv,
+      queue: { task: queue },
+    });
+    const task = federation.defineTask("cas-non-atomic-batch", {
+      schema: stringSchema,
+      handler: () => {},
+    });
+    const ctx = federation.createContext(
+      new URL("https://example.com/"),
+      undefined,
+    );
+
+    await rejects(
+      () =>
+        ctx.enqueueTaskMany(task, ["a", "b", "c"], {
+          deduplicationKey: "batch",
+        }),
+      { name: "TypeError", message: /atomically/ },
+    );
+    strictEqual(queue.enqueued.length, 0);
+    strictEqual(queue.enqueuedMany.length, 0);
+    deepStrictEqual(await collectKeys(kv, TASK_DEDUP_PREFIX), []);
+
+    await ctx.enqueueTaskMany(task, ["a", "b", "c"]);
+    strictEqual(queue.enqueuedMany.length, 1);
+  },
+);
+
+test(
   "a failed rollback is swallowed; the original enqueue error reaches the caller",
   async () => {
     class ClearFailingKvStore implements KvStore {

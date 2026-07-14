@@ -172,15 +172,16 @@ The in-memory defaults are for development only.
 in-flight activity; neither survives horizontal scaling.  Pick a persistent
 backend before you take traffic:
 
-| Backend                | KV store          | Message queue          | When to choose                        |
-| ---------------------- | ----------------- | ---------------------- | ------------------------------------- |
-| PostgreSQL             | `PostgresKvStore` | `PostgresMessageQueue` | You already run Postgres for app data |
-| Redis                  | `RedisKvStore`    | `RedisMessageQueue`    | Dedicated cache/queue infrastructure  |
-| MySQL/MariaDB          | `MysqlKvStore`    | `MysqlMessageQueue`    | You already run MySQL or MariaDB      |
-| SQLite                 | `SqliteKvStore`   | `SqliteMessageQueue`   | Single-node/embedded deployments      |
-| RabbitMQ               | —                 | `AmqpMessageQueue`     | Existing AMQP infrastructure          |
-| Deno KV                | `DenoKvStore`     | `DenoKvMessageQueue`   | Deno Deploy                           |
-| Cloudflare KV + Queues | `WorkersKvStore`  | `WorkersMessageQueue`  | Cloudflare Workers                    |
+| Backend                            | KV store          | Message queue          | When to choose                        |
+| ---------------------------------- | ----------------- | ---------------------- | ------------------------------------- |
+| PostgreSQL                         | `PostgresKvStore` | `PostgresMessageQueue` | You already run Postgres for app data |
+| Redis                              | `RedisKvStore`    | `RedisMessageQueue`    | Dedicated cache/queue infrastructure  |
+| MySQL/MariaDB                      | `MysqlKvStore`    | `MysqlMessageQueue`    | You already run MySQL or MariaDB      |
+| SQLite                             | `SqliteKvStore`   | `SqliteMessageQueue`   | Single-node/embedded deployments      |
+| RabbitMQ                           | —                 | `AmqpMessageQueue`     | Existing AMQP infrastructure          |
+| Deno KV                            | `DenoKvStore`     | `DenoKvMessageQueue`   | Deno Deploy                           |
+| Cloudflare KV + Queues             | `WorkersKvStore`  | `WorkersMessageQueue`  | Cloudflare Workers                    |
+| Netlify Database + Async Workloads | `PostgresKvStore` | `NetlifyMessageQueue`  | Netlify Functions                     |
 
 See the [*Key–value store*](./kv.md) and [*Message queue*](./mq.md) chapters
 for setup details and trade-offs between backends (connection pooling,
@@ -982,6 +983,136 @@ deployed to Workers.
 [Cloudflare Workers]: https://workers.cloudflare.com/
 [Node.js compatibility]: https://developers.cloudflare.com/workers/runtime-apis/nodejs/
 [Cloudflare Workers example]: https://github.com/fedify-dev/fedify/tree/main/examples/cloudflare-workers
+
+### Netlify Functions
+
+*Netlify Functions support is available in Fedify 2.4.0 and later.*
+
+Fedify can serve ActivityPub requests through an existing web framework
+integration, such as [`@fedify/astro`].  [Netlify Database] provides the
+persistent PostgreSQL connection used by `PostgresKvStore`, while
+[Netlify Async Workloads] replaces the long-running queue listener that a
+request-scoped Function cannot host.
+
+First, provision Netlify Database and install Async Workloads for the site.
+Provisioning is intentionally outside *@fedify/netlify*: follow Netlify's
+[database setup] and [Async Workloads setup] instructions.  Install the
+packages used by the Function:
+
+~~~~ sh
+pnpm add @fedify/netlify @fedify/postgres \
+  @netlify/async-workloads @netlify/database postgres
+~~~~
+
+#### Database and queue producer
+
+Use `getConnectionString()` to create a regular PostgreSQL client.  The same
+`PostgresKvStore` can hold Fedify state and the CAS sequence state that enforces
+per-key FIFO queue processing:
+
+~~~~ typescript
+import { AsyncWorkloadsClient } from "@netlify/async-workloads";
+import { getConnectionString } from "@netlify/database";
+import { NetlifyMessageQueue } from "@fedify/netlify";
+import { PostgresKvStore } from "@fedify/postgres";
+import postgres from "postgres";
+
+export const sql = postgres(getConnectionString());
+export const kv = new PostgresKvStore(sql);
+export const queue = new NetlifyMessageQueue({
+  client: new AsyncWorkloadsClient(),
+  eventName: "fedify:queue",
+  orderingKv: kv,
+});
+~~~~
+
+Build the federation with `manuallyStartQueue: true` in both the web request
+path and workload Function.  Without it, Fedify attempts the unsupported
+`NetlifyMessageQueue.listen()` path:
+
+~~~~ typescript
+const federation = await builder.build({
+  kv,
+  queue,
+  manuallyStartQueue: true,
+});
+~~~~
+
+#### Async workload consumer
+
+Create *netlify/functions/fedify-queue.ts* and export the handler returned by
+`createNetlifyQueueHandler()`:
+
+~~~~ typescript
+import type { AsyncWorkloadConfig } from "@netlify/async-workloads";
+import { createNetlifyQueueHandler } from "@fedify/netlify";
+import { builder, kv, queue } from "../../src/federation.ts";
+
+export default createNetlifyQueueHandler({
+  queue,
+  maxRetries: 6,
+  federation: () => builder.build({
+    kv,
+    queue,
+    manuallyStartQueue: true,
+  }),
+  contextData: (event) => ({
+    deployId: event.request.headers.get("x-nf-deploy-id"),
+  }),
+});
+
+export const asyncWorkloadConfig: AsyncWorkloadConfig = {
+  events: [queue.eventName],
+  maxRetries: 6,
+  backoffSchedule: (attempt) => 5_000 * 2 ** attempt,
+};
+~~~~
+
+Exceptions from `processQueuedTask()` are transient failures and are left to
+Async Workloads.  Configure retry count and backoff with `maxRetries` and
+`backoffSchedule`; exhausted events remain available through Netlify's
+dead-letter handling.  Malformed queue envelopes are marked non-retryable.
+The handler's `maxRetries` must match the workload configuration so an ordered
+message that fails its last attempt does not block all later messages.
+
+Timeouts and abrupt Function termination cannot execute the handler's final
+cleanup.  After confirming such an event is permanently dead-lettered, read
+`orderingKey` and `orderingSequence` from its event data and call
+`queue.skipOrderingSequence()`.  Do not skip events that may still be retried.
+Unacknowledged sends are similarly left reserved because the router may have
+accepted the request before its response was lost.
+
+#### Preview deployments and limits
+
+Async Workloads runs continuously for production deploys.  Non-production
+deploys are reactive, but a deploy preview can still expose a second copy of
+your actor and federation endpoints.  Keep federation delivery disabled on
+deploy previews unless preview federation is deliberate.  For example, mark
+the workload disabled outside production:
+
+~~~~ typescript
+export const asyncWorkloadConfig: AsyncWorkloadConfig = {
+  events: [queue.eventName],
+  status: process.env.CONTEXT === "production" ? undefined : "disabled",
+};
+~~~~
+
+Apply the same production guard to the web application's federation
+middleware, or give previews an isolated hostname and database.  Do not let a
+preview publish activities as the production actor.
+
+Async Workloads event payloads must be smaller than 500 KB.  The serialized
+Fedify message includes its activity data, so large attachments should be
+stored separately and referenced by URL.
+
+For a complete Astro application, see the [Netlify Astro example].
+
+[`@fedify/astro`]: https://jsr.io/@fedify/astro
+[Netlify Database]: https://docs.netlify.com/build/data-and-storage/netlify-database/
+[Netlify Async Workloads]: https://docs.netlify.com/build/async-workloads/get-started/
+[database setup]: https://docs.netlify.com/build/data-and-storage/netlify-database/
+[Async Workloads setup]: https://docs.netlify.com/build/async-workloads/get-started/
+[Netlify Astro example]: https://github.com/fedify-dev/fedify/tree/main/examples/netlify-astro
 
 
 Security
