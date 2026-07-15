@@ -294,6 +294,19 @@ const SERVER_EXAMPLES: ServerExample[] = [
     readyUrl: "http://localhost:3000/",
     readyTimeout: 30_000,
   },
+  {
+    // SolidStart sample using @fedify/solidstart; actor path is
+    // /users/{identifier}.  Built with vinxi build; served with vinxi start
+    // on port 3000.
+    name: "solidstart",
+    dir: "solidstart",
+    buildCmd: ["pnpm", "build"],
+    startCmd: ["pnpm", "start"],
+    port: 3000,
+    actor: "demo",
+    readyUrl: "http://localhost:3000/",
+    readyTimeout: 30_000,
+  },
 ];
 
 const SCRIPT_EXAMPLES: ScriptExample[] = [
@@ -349,6 +362,32 @@ const SKIPPED_EXAMPLES: SkippedExample[] = [
       "Requires live interaction with external fediverse servers (Bonfire, Mastodon)",
   },
 ];
+
+export function getRegisteredExampleNames(): Set<string> {
+  return new Set([
+    ...SERVER_EXAMPLES.map((e) => e.name),
+    ...SCRIPT_EXAMPLES.map((e) => e.name),
+    ...MULTI_HANDLE_EXAMPLES.map((e) => e.name),
+    ...SKIPPED_EXAMPLES.map((e) => e.name),
+  ]);
+}
+
+/**
+ * Scans the examples/ directory and returns the names of sub-directories
+ * that are not registered in any of the registries above.
+ */
+export async function scanUnregisteredExamples(): Promise<string[]> {
+  const registeredNames = getRegisteredExampleNames();
+  const unregistered: string[] = [];
+  for await (const entry of Deno.readDir(EXAMPLES_DIR)) {
+    if (!entry.isDirectory) continue;
+    if (entry.name === "test-examples") continue;
+    if (!registeredNames.has(entry.name)) {
+      unregistered.push(entry.name);
+    }
+  }
+  return unregistered;
+}
 
 // ─── ANSI Colors ──────────────────────────────────────────────────────────────
 
@@ -805,24 +844,8 @@ async function main(): Promise<void> {
   }
 
   // ── Unregistered examples ────────────────────────────────────────────────
-  // Collect every example name that appears in any registry.
-  const registeredNames = new Set([
-    ...SERVER_EXAMPLES.map((e) => e.name),
-    ...SCRIPT_EXAMPLES.map((e) => e.name),
-    ...MULTI_HANDLE_EXAMPLES.map((e) => e.name),
-    ...SKIPPED_EXAMPLES.map((e) => e.name),
-  ]);
-
   // Scan the examples/ directory for sub-directories that are not registered.
-  const unregistered: string[] = [];
-  for await (const entry of Deno.readDir(EXAMPLES_DIR)) {
-    if (!entry.isDirectory) continue;
-    // The test-examples directory is the test runner itself—skip it.
-    if (entry.name === "test-examples") continue;
-    if (!registeredNames.has(entry.name)) {
-      unregistered.push(entry.name);
-    }
-  }
+  const unregistered = await scanUnregisteredExamples();
 
   // ── Summary ──────────────────────────────────────────────────────────────
   const passed = results.filter((r) => r.status === "pass");
@@ -871,4 +894,8 @@ async function main(): Promise<void> {
   Deno.exit(0);
 }
 
-await main();
+// Run the test runner only when this module is executed directly, so that
+// mod.test.ts can import the registry helpers above without side effects.
+if (import.meta.main) {
+  await main();
+}
