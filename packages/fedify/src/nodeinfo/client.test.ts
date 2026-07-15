@@ -102,6 +102,95 @@ test("getNodeInfo()", async (t) => {
   fetchMock.hardReset();
 });
 
+test("getNodeInfo() blocks SSRF", async (t) => {
+  fetchMock.spyGlobal();
+
+  await t.step("link href pointing to a loopback address", async () => {
+    fetchMock.removeRoutes();
+    fetchMock.get("https://example.com/.well-known/nodeinfo", {
+      body: {
+        links: [
+          {
+            rel: "http://nodeinfo.diaspora.software/ns/schema/2.1",
+            href: "http://127.0.0.1:8080/internal",
+          },
+        ],
+      },
+    });
+    let internalFetched = false;
+    fetchMock.get("http://127.0.0.1:8080/internal", () => {
+      internalFetched = true;
+      return { body: { secret: "INTERNAL_DATA_LEAKED" } };
+    });
+
+    const info = await getNodeInfo("https://example.com/", { parse: "none" });
+    assertEquals(info, undefined);
+    assertEquals(internalFetched, false);
+  });
+
+  await t.step("link href using a data: URL", async () => {
+    fetchMock.removeRoutes();
+    fetchMock.get("https://example.com/.well-known/nodeinfo", {
+      body: {
+        links: [
+          {
+            rel: "http://nodeinfo.diaspora.software/ns/schema/2.0",
+            href: 'data:application/json,{"software":{"name":"x"}}',
+          },
+        ],
+      },
+    });
+
+    const info = await getNodeInfo("https://example.com/", { parse: "none" });
+    assertEquals(info, undefined);
+  });
+
+  await t.step("redirect to a private address", async () => {
+    fetchMock.removeRoutes();
+    fetchMock.get("https://example.com/.well-known/nodeinfo", {
+      body: {
+        links: [
+          {
+            rel: "http://nodeinfo.diaspora.software/ns/schema/2.1",
+            href: "https://example.com/nodeinfo/2.1",
+          },
+        ],
+      },
+    });
+    fetchMock.get("https://example.com/nodeinfo/2.1", {
+      status: 302,
+      headers: { Location: "https://127.0.0.1:8080/internal" },
+    });
+    let internalFetched = false;
+    fetchMock.get("https://127.0.0.1:8080/internal", () => {
+      internalFetched = true;
+      return { body: { secret: "INTERNAL_DATA_LEAKED" } };
+    });
+
+    const info = await getNodeInfo("https://example.com/", { parse: "none" });
+    assertEquals(info, undefined);
+    assertEquals(internalFetched, false);
+  });
+
+  await t.step("direct fetch of a private address", async () => {
+    fetchMock.removeRoutes();
+    let internalFetched = false;
+    fetchMock.get("http://127.0.0.1:8080/nodeinfo", () => {
+      internalFetched = true;
+      return { body: { software: { name: "x", version: "1.0.0" } } };
+    });
+
+    const info = await getNodeInfo("http://127.0.0.1:8080/nodeinfo", {
+      direct: true,
+      parse: "none",
+    });
+    assertEquals(info, undefined);
+    assertEquals(internalFetched, false);
+  });
+
+  fetchMock.hardReset();
+});
+
 test("parseNodeInfo()", () => {
   const input = {
     software: {
