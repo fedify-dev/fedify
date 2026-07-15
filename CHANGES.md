@@ -20,9 +20,9 @@ To be released.
     caller.  Both requests, including any redirect hops, are now validated
     against private and non-public addresses, consistent with the protections
     already applied to WebFinger lookups and the built-in document loader.
-    [[GHSA-hqph-j65v-8cq5]]
+    [[CVE-2026-62857]]
 
-[GHSA-hqph-j65v-8cq5]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-hqph-j65v-8cq5
+[CVE-2026-62857]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-hqph-j65v-8cq5
 
 
 Version 1.9.12
