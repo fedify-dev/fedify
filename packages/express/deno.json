@@ -1,6 +1,6 @@
 {
   "name": "@fedify/express",
-  "version": "2.1.18",
+  "version": "2.1.19",
   "license": "MIT",
   "exports": {
     ".": "./src/index.ts"
