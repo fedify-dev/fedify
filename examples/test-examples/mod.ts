@@ -108,7 +108,7 @@ interface MultiHandleExample {
   name: string;
   dir: string;
   /** Command prefix—the handle is appended as the final argument. */
-  cmdPrefix?: string[];
+  cmd: string[];
   /** Handles to try, in order.  Pass if any succeeds. */
   handles: string[];
   description: string;
