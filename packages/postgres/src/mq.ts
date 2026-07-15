@@ -130,6 +130,8 @@ export interface PostgresMessageQueueOptions {
  * ```
  */
 export class PostgresMessageQueue implements MessageQueue {
+  readonly atomicEnqueueMany = false;
+
   // deno-lint-ignore ban-types
   readonly #sql: Sql<{}>;
   readonly #tableName: string;

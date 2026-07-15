@@ -98,6 +98,7 @@
 /packages/koa/                                            @dahlia
 /packages/nestjs/                                         @dahlia
 /packages/next/                                           @2chanhaeng @dahlia
+/packages/netlify/                                        @dahlia
 /packages/nuxt/                                           @2chanhaeng @dahlia
 /packages/solidstart/                                     @2chanhaeng @dahlia
 /packages/sveltekit/                                      @dahlia @2chanhaeng

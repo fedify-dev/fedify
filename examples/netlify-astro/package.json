@@ -1,0 +1,24 @@
+{
+  "name": "netlify-astro-example",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro check && astro build",
+    "preview": "astro dev"
+  },
+  "dependencies": {
+    "@astrojs/check": "^0.9.4",
+    "@astrojs/netlify": "catalog:",
+    "@fedify/astro": "workspace:^",
+    "@fedify/fedify": "workspace:^",
+    "@fedify/netlify": "workspace:^",
+    "@fedify/postgres": "workspace:^",
+    "@fedify/vocab": "workspace:^",
+    "@netlify/async-workloads": "catalog:",
+    "@netlify/database": "catalog:",
+    "astro": "catalog:",
+    "postgres": "catalog:"
+  }
+}

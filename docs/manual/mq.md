@@ -657,6 +657,171 @@ export default {
 [Cloudflare Workers]: https://workers.cloudflare.com/
 [Cloudflare Queues]: https://developers.cloudflare.com/queues/
 
+### `NetlifyMessageQueue` (Netlify Functions only)
+
+*This API is available since Fedify 2.4.0.*
+
+To use [`NetlifyMessageQueue`], install *@fedify/netlify* and Netlify's Async
+Workloads SDK:
+
+::: code-group
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/netlify npm:@netlify/async-workloads
+~~~~
+
+~~~~ bash [npm]
+npm add @fedify/netlify @netlify/async-workloads
+~~~~
+
+~~~~ bash [pnpm]
+pnpm add @fedify/netlify @netlify/async-workloads
+~~~~
+
+~~~~ bash [Yarn]
+yarn add @fedify/netlify @netlify/async-workloads
+~~~~
+
+~~~~ bash [Bun]
+bun add @fedify/netlify @netlify/async-workloads
+~~~~
+
+:::
+
+The PostgreSQL-backed `orderingKv` example below also needs
+*@fedify/postgres* and *postgres*:
+
+::: code-group
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/postgres npm:postgres
+~~~~
+
+~~~~ bash [npm]
+npm add @fedify/postgres postgres
+~~~~
+
+~~~~ bash [pnpm]
+pnpm add @fedify/postgres postgres
+~~~~
+
+~~~~ bash [Yarn]
+yarn add @fedify/postgres postgres
+~~~~
+
+~~~~ bash [Bun]
+bun add @fedify/postgres postgres
+~~~~
+
+:::
+
+`NetlifyMessageQueue` publishes queue jobs as [Netlify Async Workloads]
+events.  Netlify delivers each event to a request-scoped Function and owns
+retries and dead-letter handling.
+
+Best for
+:   Fedify applications deployed as Netlify Functions.
+
+Pros
+:   Durable delayed delivery, configurable retries and backoff, dead-letter
+    storage, and no long-running queue process to operate.
+
+Cons
+:   Only supported in Netlify Functions; event payloads are limited to 500 KB.
+
+Create the queue where you build the web application's federation instance:
+
+~~~~ typescript
+import { AsyncWorkloadsClient } from "@netlify/async-workloads";
+import { NetlifyMessageQueue } from "@fedify/netlify";
+import { PostgresKvStore } from "@fedify/postgres";
+import postgres from "postgres";
+
+const sql = postgres(process.env.NETLIFY_DB_URL!);
+const kv = new PostgresKvStore(sql);
+const queue = new NetlifyMessageQueue({
+  client: new AsyncWorkloadsClient(),
+  orderingKv: kv,
+});
+
+const federation = await builder.build({
+  kv,
+  queue,
+  manuallyStartQueue: true,
+});
+~~~~
+
+`manuallyStartQueue: true` is required.  Async Workloads invokes a consumer
+Function instead of exposing a polling API, so `NetlifyMessageQueue.listen()`
+throws an actionable `TypeError`.
+
+Netlify's public client has no atomic batch operation, so this adapter's
+`enqueueMany()` sends one event per message and declares
+`atomicEnqueueMany: false`.  Ordinary batches still send concurrently.  Fedify
+rejects a multi-message `enqueueTaskMany()` call with one `deduplicationKey`
+before sending, because retrying a partially accepted batch could duplicate
+the accepted tasks.
+
+Export the consumer from *netlify/functions/fedify-queue.ts*:
+
+~~~~ typescript
+import type { AsyncWorkloadConfig } from "@netlify/async-workloads";
+import { createNetlifyQueueHandler } from "@fedify/netlify";
+import { builder, kv, queue } from "../../src/federation.ts";
+
+export default createNetlifyQueueHandler({
+  queue,
+  maxRetries: 4,
+  federation: () => builder.build({
+    kv,
+    queue,
+    manuallyStartQueue: true,
+  }),
+});
+
+export const asyncWorkloadConfig: AsyncWorkloadConfig = {
+  events: [queue.eventName],
+  maxRetries: 4,
+};
+~~~~
+
+The federation factory runs once for every event.  Errors from
+`Federation.processQueuedTask()` escape the Function so Async Workloads can
+retry them.  Invalid event envelopes instead produce Netlify's
+`ErrorDoNotRetry`.
+
+Async Workloads routes events in FIFO order but may process many concurrently.
+When a message has an `orderingKey`, `NetlifyMessageQueue` therefore reserves a
+monotonic sequence with CAS.  A later consumer waits for its sequence with
+Async Workloads' durable `step.sleep()`, so waiting does not use the workload's
+failure-retry budget and long-running tasks remain exclusive.  Supply a
+`KvStore` with `cas()` through `orderingKv`; `PostgresKvStore` with Netlify
+Database is the recommended choice.  The durable sleep interval can be changed
+with `orderingRetryDelay`.
+
+The handler's `maxRetries` must match `asyncWorkloadConfig.maxRetries`.  A
+processing error on the last attempt releases its sequence before Netlify
+dead-letters the event.  A timeout or abrupt Function termination cannot run
+that cleanup; after confirming the event is permanently dead-lettered, use its
+stored ordering metadata to unblock later messages:
+
+~~~~ typescript
+await queue.skipOrderingSequence(orderingKey, orderingSequence);
+~~~~
+
+Never skip an event that Netlify might still deliver or retry.  Likewise, an
+unacknowledged send keeps its sequence reserved instead of risking message
+loss.  `NetlifyMessageQueueSendError` exposes the affected `orderingKey` and
+`orderingSequence` for deliberate recovery.  The `orderingKv` must also be
+crash-safe; `PostgresKvStore` uses a logged table by default, so do not opt into
+`unlogged: true` for ordering state.
+
+See [*Netlify Functions*](./deploy.md#netlify-functions) for provisioning,
+preview-deploy safety, and retry configuration.
+
+[`NetlifyMessageQueue`]: https://jsr.io/@fedify/netlify/doc/~/NetlifyMessageQueue
+[Netlify Async Workloads]: https://docs.netlify.com/build/async-workloads/get-started/
+
 
 Implementing a custom `MessageQueue`
 ------------------------------------
@@ -1083,6 +1248,7 @@ The following implementations support ordering keys:
 | [`AmqpMessageQueue`]     | Yes[^1]              |
 | [`SqliteMessageQueue`]   | Yes                  |
 | `WorkersMessageQueue`    | Yes[^2]              |
+| [`NetlifyMessageQueue`]  | Yes[^3]              |
 
 > [!NOTE]
 > When using `ParallelMessageQueue`, the ordering guarantee is preserved
@@ -1104,6 +1270,8 @@ The following implementations support ordering keys:
       ordering key locks. Due to Workers KV's eventual consistency, the ordering
       guarantee is best-effort. For strict ordering requirements, consider using
       Durable Objects.
+[^3]: `NetlifyMessageQueue` requires a `KvStore` with `cas()` to be provided
+      through its `orderingKv` option.
 
 [`rabbitmq_consistent_hash_exchange`]: https://www.rabbitmq.com/docs/consistent-hash-exchange
 

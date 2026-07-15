@@ -880,7 +880,7 @@ the Accept as a plain object; Fedify's vocab classes enforce the shape.
 
 ActivityKit exposes `core.publishActivity(actor, activity)` from inside a
 plugin, and the delivery loop is driven by the middleware.  There is no
-durable queue: if the Node process is restarted during fan-out, remaining
+durable queue: if the Node.js process is restarted during fan-out, remaining
 deliveries are lost.
 
 ~~~~ javascript
@@ -1178,7 +1178,7 @@ verification, activity coverage, and delivery reliability.
     and `Block` are silently dropped, so remote actors that leave cannot
     actually leave.
  -  *No delivery queue.*  Outbound POSTs run serially inside the request
-    handler; if the Node process crashes mid-fan-out, the remaining
+    handler; if the Node.js process crashes mid-fan-out, the remaining
     recipients never hear from you.  Fedify routes every send through a
     durable [message queue](./mq.md).
  -  *Deprecated `request` dependency.*  The hand-rolled snippet uses the
@@ -1924,7 +1924,7 @@ const note = new Note({
     translate directly.  Construct with the right value the first time, or
     use `obj.clone({ name: y })` to derive a modified copy.
  -  *No streams parser equivalent.*  `activitystrea.ms` can consume JSON
-    from a Node `Readable` via `new as.Stream()`.  `@fedify/vocab` only
+    from a Node.js `Readable` via `new as.Stream()`.  `@fedify/vocab` only
     parses complete JSON objects; decode the stream into a `Buffer` or
     parsed JSON first, then call `fromJsonLd`.
  -  *Timestamps are `Temporal.Instant`, not `Date`.*  If your application

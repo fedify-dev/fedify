@@ -114,6 +114,18 @@ export interface MessageQueue {
   readonly nativeDeduplication?: boolean;
 
   /**
+   * Whether {@link enqueueMany} accepts either every message or no messages.
+   * Backends that implement `enqueueMany()` by sending messages individually
+   * must set this to `false`, so Fedify does not use that method for a batch
+   * governed by one `deduplicationKey`.  `true` by default when `enqueueMany`
+   * is implemented.
+   *
+   * @default `true`
+   * @since 2.4.0
+   */
+  readonly atomicEnqueueMany?: boolean;
+
+  /**
    * Enqueues a message in the queue.
    * @param message The message to enqueue.
    * @param options Additional options for enqueuing the message.
@@ -123,7 +135,9 @@ export interface MessageQueue {
   /**
    * Enqueues multiple messages in the queue.  This operation is optional,
    * and may not be supported by all implementations.  If not supported,
-   * Fedify will invoke {@link enqueue} for each message.
+   * Fedify will invoke {@link enqueue} for each message.  An implementation
+   * that may accept only part of a batch before rejecting must declare
+   * {@link atomicEnqueueMany} `false`.
    *
    * @param messages The messages to enqueue.
    * @param options Additional options for enqueuing the messages.
@@ -403,6 +417,11 @@ export class ParallelMessageQueue implements MessageQueue {
    * @since 2.4.0
    */
   readonly nativeDeduplication?: boolean;
+  /**
+   * Inherits the atomic batch capability from the wrapped queue.
+   * @since 2.4.0
+   */
+  readonly atomicEnqueueMany?: boolean;
   readonly getDepth?: () => Promise<MessageQueueDepth>;
 
   /**
@@ -437,6 +456,9 @@ export class ParallelMessageQueue implements MessageQueue {
     this.workers = workers;
     this.nativeRetrial = queue.nativeRetrial;
     this.nativeDeduplication = queue.nativeDeduplication;
+    this.atomicEnqueueMany = queue.enqueueMany == null
+      ? false
+      : queue.atomicEnqueueMany;
     if (queue.getDepth != null) {
       this.getDepth = () => queue.getDepth!();
     }

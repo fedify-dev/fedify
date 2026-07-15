@@ -6,7 +6,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
 import { message } from "@optique/core";
-import { kvStores, messageQueues } from "../lib.ts";
+import { kvStores, messageQueues, PACKAGE_VERSION } from "../lib.ts";
 import type { InitCommandData } from "../types.ts";
 import bareBonesDescription from "../webframeworks/bare-bones.ts";
 import astroDescription from "../webframeworks/astro.ts";
@@ -110,6 +110,44 @@ test("loadDenoConfig keeps unstable.temporal before Deno 2.7.0", () => {
   } finally {
     restoreDeno(originalDeno);
   }
+});
+
+test("loadDenoConfig uses npm for Astro Fedify adapters", async () => {
+  const initializer = await astroDescription.init({
+    command: "init",
+    projectName: "example",
+    packageManager: "deno",
+    webFramework: "astro",
+    kvStore: "redis",
+    messageQueue: "amqp",
+    dryRun: false,
+    allowNonEmpty: false,
+    skipInstall: false,
+    testMode: false,
+    dir: "/tmp/example",
+  });
+  const config = loadDenoConfig({
+    ...createInitData(),
+    webFramework: "astro",
+    kvStore: "redis",
+    messageQueue: "amqp",
+    initializer,
+    kv: kvStores.redis,
+    mq: messageQueues.amqp,
+  }).data;
+
+  assert.strictEqual(
+    config.imports["@fedify/redis"],
+    `npm:@fedify/redis@${PACKAGE_VERSION}`,
+  );
+  assert.strictEqual(
+    config.imports["@fedify/amqp"],
+    `npm:@fedify/amqp@${PACKAGE_VERSION}`,
+  );
+  assert.strictEqual(
+    config.imports["@fedify/lint"],
+    `jsr:@fedify/lint@${PACKAGE_VERSION}`,
+  );
 });
 
 test("patchFiles creates Oxfmt and Oxlint configs for npm projects", async () => {

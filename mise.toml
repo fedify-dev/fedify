@@ -38,6 +38,7 @@ linux-arm64 = "hongdown-*-aarch64-unknown-linux-musl.tar.bz2"
 # Generate the ActivityPub vocabulary types from their YAML definitions.
 [deps.codegen]
 auto = true
+env = { DENO_LOG = "error" }
 sources = [
   # loadSchemaFiles() matches /\.ya?ml$/i, so track both extensions: a schema
   # added or renamed with the .yml spelling must still invalidate this cache.
@@ -51,7 +52,7 @@ sources = [
   "packages/vocab-tools/src/**/*.yml",
 ]
 outputs = ["packages/vocab/src/vocab.ts"]
-run = "deno task -f @fedify/vocab compile"
+run = "deno --quiet task -f @fedify/vocab compile"
 
 # Pre-cache every workspace member's Deno exports (writes a freshness stamp).
 [deps.deno-cache]
@@ -191,12 +192,13 @@ run = "deno fmt --check"
 
 [tasks."check:lint"]
 description = "Check code linting"
-run = "deno lint"
+run = "deno --quiet lint"
 
 [tasks."check:types"]
 description = "Check TypeScript types"
 depends = ["codegen"]
-run = "deno run --allow-read --allow-env --allow-run --allow-sys scripts/check_types.ts"
+env = { DENO_LOG = "error" }
+run = "deno --quiet run --allow-read --allow-env --allow-run --allow-sys scripts/check_types.ts"
 
 [tasks."check:md"]
 description = "Check Markdown formatting"
@@ -268,7 +270,14 @@ run = "pnpm run --recursive --parallel --filter '!{docs}' --config.enable-pre-po
 
 [tasks.test]
 description = "Run the test suite across all environments (Deno, Node.js, Bun)"
-depends = ["check", "test:deno", "test:node", "test:bun", "test:temporal-polyfill"]
+depends = [
+  "check",
+  "test:deno",
+  "test:node",
+  "test:bun",
+  "test:astro-compat",
+  "test:temporal-polyfill",
+]
 
 [tasks."test:temporal-polyfill"]
 description = "Check Temporal polyfill packaging"
@@ -298,6 +307,11 @@ description = "Run tests for all example projects"
 # both are needed by the lint/oxlint example.
 depends = ["build"]
 run = "deno run -A examples/test-examples/mod.ts"
+
+[tasks."test:astro-compat"]
+description = "Test @fedify/astro against supported Astro and runtime versions"
+depends = ["build"]
+run = "deno run -A packages/astro/compat/run.ts"
 
 [tasks."test:monitoring"]
 description = "Validate the monitoring example configuration"

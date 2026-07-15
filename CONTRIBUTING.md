@@ -509,6 +509,8 @@ The repository is organized as a monorepo with the following packages:
  -  *packages/koa/*: Koa integration (@fedify/koa) for Fedify.
  -  *packages/lint/*: Linting utilities (@fedify/lint) for Fedify.
  -  *packages/mysql/*: MySQL/MariaDB drivers (@fedify/mysql) for Fedify.
+ -  *packages/netlify/*: Netlify Async Workloads integration (@fedify/netlify)
+    for Fedify.
  -  *packages/nestjs/*: NestJS integration (@fedify/nestjs) for Fedify.
  -  *packages/next/*: Next.js integration (@fedify/next) for Fedify.
  -  *packages/nuxt/*: Nuxt integration (@fedify/nuxt) for Fedify.

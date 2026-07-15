@@ -78,9 +78,14 @@ To be released.
         The marker TTL and the no-`cas` fallback are tunable with the new
         `FederationOptions.taskDeduplicationTtl` and
         `FederationOptions.taskDeduplicationFallback` options.
+        [[#206], [#797], [#798], [#799], [#803], [#806], [#812], [#923] by
+        ChanHaeng Lee]
 
-    [[#206], [#797], [#798], [#799], [#803], [#806], [#812], [#923] by
-    ChanHaeng Lee]
+ -  Added `MessageQueue.atomicEnqueueMany` for queues that implement
+    `enqueueMany()` with separate sends.  Fedify still uses their batch path
+    normally, but rejects a multi-message batch governed by one
+    `deduplicationKey` before a partial send can undermine deduplication.
+    [[#930], [#934]]
 
  -  Fixed CommonJS distribution files that use Temporal so they no longer
     require `@js-temporal/polyfill` at runtime.  The CommonJS build now
@@ -108,6 +113,19 @@ To be released.
 [#925]: https://github.com/fedify-dev/fedify/pull/925
 [#926]: https://github.com/fedify-dev/fedify/pull/926
 [#927]: https://github.com/fedify-dev/fedify/pull/927
+[#930]: https://github.com/fedify-dev/fedify/issues/930
+[#934]: https://github.com/fedify-dev/fedify/pull/934
+
+### @fedify/astro
+
+ -  Added and continuously tested support for Astro 6 and 7 while retaining
+    Astro 5 compatibility.  The Astro example and `fedify init` templates now
+    use Astro 7 with current Node.js and Deno adapters; Bun uses the tested
+    `@astrojs/node` standalone output instead of the Astro-5-only
+    `@nurodev/astro-bun` adapter.  [[#931], [#936]]
+
+[#931]: https://github.com/fedify-dev/fedify/issues/931
+[#936]: https://github.com/fedify-dev/fedify/pull/936
 
 ### @fedify/vocab
 
@@ -210,8 +228,17 @@ To be released.
 
 ### @fedify/cli
 
+ -  Added `fedify.com.es` as a tunneling service.  The CLI pins the service's
+    SSH host key and rejects a mismatched server before exposing a local port.
+    [[#940]]
+
+ -  Removed `localhost.run` as a tunneling service.  The service is no longer
+    available, and the CLI now rejects attempts to use it.  [[#940]]
+
  -  Switched the CLI's Temporal runtime dependency from
     `@js-temporal/polyfill` to `temporal-polyfill`.  [[#823], [#925]]
+
+[#940]: https://github.com/fedify-dev/fedify/pull/940
 
 ### @fedify/debugger
 
@@ -227,7 +254,29 @@ To be released.
     `temporal-polyfill`, while type declarations rely on the standard
     `esnext.temporal` lib reference.  [[#823], [#925]]
 
+### @fedify/netlify
+
+ -  Added the new *@fedify/netlify* package for processing Fedify message queue
+    jobs with Netlify Async Workloads.  It provides `NetlifyMessageQueue` for
+    durable event submission and `createNetlifyQueueHandler()` for Netlify
+    Function consumers, including delayed delivery, native retry delegation,
+    non-retryable malformed-event handling, durable per-key FIFO ordering, and
+    explicit recovery for unobservable dead-letter failures.
+    [[#930], [#934]]
+
 ### @fedify/postgres
+
+ -  Added `PostgresKvStore.cas()`, including atomic creation, replacement, and
+    deletion with TTL-aware comparison.  This allows PostgreSQL-backed stores,
+    including Netlify Database, to enforce queue ordering and other Fedify CAS
+    operations.  [[#930], [#934]]
+
+ -  `PostgresKvStore` now creates crash-safe logged tables by default and
+    migrates existing unlogged tables during initialization.  Transient
+    unlogged storage remains available with the `unlogged` option.  The
+    one-time migration rewrites and exclusively locks an existing table, so
+    upgrades with large or busy key–value tables should schedule it
+    accordingly.  [[#930], [#934]]
 
  -  Fixed the CommonJS PostgreSQL adapter build so it no longer requires
     `@js-temporal/polyfill` at runtime.  The build now bundles
@@ -1774,7 +1823,7 @@ Released on March 31, 2026.
 
  -  Restored the npm entrypoint contract for `@fedify/init` after the `tsdown`
     upgrade started publishing `dist/*.mjs` files while the package metadata
-    still exported `dist/*.js` and `dist/*.d.ts`.  Node consumers such as
+    still exported `dist/*.js` and `dist/*.d.ts`.  Node.js consumers such as
     `@fedify/cli` can start again, including `npx -y @fedify/cli --help`.
     [[#655]]
 
@@ -2325,7 +2374,7 @@ Released on March 31, 2026.
 
  -  Restored the npm entrypoint contract for `@fedify/init` after the `tsdown`
     upgrade started publishing `dist/*.mjs` files while the package metadata
-    still exported `dist/*.js` and `dist/*.d.ts`.  Node consumers such as
+    still exported `dist/*.js` and `dist/*.d.ts`.  Node.js consumers such as
     `@fedify/cli` can start again, including `npx -y @fedify/cli --help`.
     [[#655]]
 

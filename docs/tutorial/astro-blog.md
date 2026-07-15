@@ -235,7 +235,7 @@ bun run dev
 You should see output like this:
 
 ~~~~ console
- astro  v6.x.x ready in xxx ms
+ astro  v7.x.x ready in xxx ms
 ┃ Local    http://localhost:4321/
 ┃ Network  use --host to expose
 ~~~~
@@ -1049,7 +1049,7 @@ You'll see output like this after a few seconds:
 
 > [!NOTE]
 > The tunnel uses one of several free tunneling services
-> (localhost.run, serveo.net, or pinggy.io).  The URL changes each
+> (fedify.com.es, serveo.net, or pinggy.io).  The URL changes each
 > time you run the command.  Once you've introduced SQLite persistence
 > (in a later chapter), delete *blog.db* whenever the tunnel URL
 > changes—otherwise the ActivityPub IDs stored in the database (actor
@@ -1098,13 +1098,13 @@ Also update *astro.config.ts* to allow requests from external hostnames
 
 ~~~~ typescript{9-18} [astro.config.ts]
 import { fedifyIntegration } from "@fedify/astro";
-import bun from "@nurodev/astro-bun";
+import node from "@astrojs/node";
 import { defineConfig } from "astro/config";
 
 export default defineConfig({
   integrations: [fedifyIntegration()],
   output: "server",
-  adapter: bun(),
+  adapter: node({ mode: "standalone" }),
   security: {
     // Trust any forwarded host so the server works correctly behind a
     // reverse proxy or tunnel (e.g. `fedify tunnel`, Cloudflare Tunnel).
@@ -2969,7 +2969,7 @@ const db = new Database(process.env.DB_PATH ?? "blog.db");
 ~~~~
 
 Make sure your *Dockerfile* runs `bun run build` and starts the server
-with `bun dist/server/entry.mjs` (the `@nurodev/astro-bun` adapter's
+with `bun dist/server/entry.mjs` (the `@astrojs/node` standalone adapter's
 output).
 
 For general guidance on running Fedify applications in production—key–value

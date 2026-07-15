@@ -11,6 +11,13 @@ const Temporal = globalThis.Temporal ?? temporal.Temporal;
 
 const dbUrl = process.env.POSTGRES_URL;
 
+nodeTest("PostgresMessageQueue declares non-atomic batch enqueueing", () => {
+  const mq = new PostgresMessageQueue(
+    {} as unknown as postgres.Sql,
+  );
+  deepStrictEqual(mq.atomicEnqueueMany, false);
+});
+
 test("PostgresMessageQueue", { ignore: dbUrl == null }, () => {
   if (dbUrl == null) return; // Bun does not support skip option
 

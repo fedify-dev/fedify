@@ -1907,10 +1907,10 @@ the commands below.
 
 > [!TIP]
 > `fedify tunnel` rotates between three free SSH-based services
-> (`localhost.run`, `serveo.net`, `pinggy.io`) so it does not depend
+> (`fedify.com.es`, `serveo.net`, `pinggy.io`) so it does not depend
 > on you signing up for anything.  If a session drops or refuses to
 > start, run the command again, or pin a specific service with `-s`,
-> for example `fedify tunnel -s localhost.run 3000`.  When all three
+> for example `fedify tunnel -s pinggy.io 3000`.  When all three
 > misbehave, [`cloudflared tunnel --url http://localhost:3000`] and
 > [`ngrok http 3000`] are good fallbacks; the rest of the tutorial
 > works with whichever public URL you ended up with.

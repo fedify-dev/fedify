@@ -18,6 +18,7 @@ import {
   pipe,
   string,
 } from "valibot";
+import { TUNNEL_SERVICE_NAMES } from "./tunnelservice.ts";
 
 /**
  * Schema for the webfinger command configuration.
@@ -125,9 +126,7 @@ export const configSchema = object({
   // Global settings
   debug: optional(boolean()),
   userAgent: optional(string()),
-  tunnelService: optional(
-    picklist(["localhost.run", "serveo.net", "pinggy.io"]),
-  ),
+  tunnelService: optional(picklist(TUNNEL_SERVICE_NAMES)),
 
   // Command-specific sections
   webfinger: optional(webfingerSchema),

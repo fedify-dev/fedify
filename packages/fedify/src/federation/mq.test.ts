@@ -440,6 +440,24 @@ test("ParallelMessageQueue inherits nativeDeduplication", () => {
   assert(workers.nativeDeduplication);
 });
 
+test("ParallelMessageQueue inherits atomicEnqueueMany", () => {
+  class NonAtomicBatchQueue implements MessageQueue {
+    readonly atomicEnqueueMany = false;
+    enqueue(): Promise<void> {
+      return Promise.resolve();
+    }
+    enqueueMany(): Promise<void> {
+      return Promise.resolve();
+    }
+    listen(): Promise<void> {
+      return Promise.resolve();
+    }
+  }
+
+  const workers = new ParallelMessageQueue(new NonAtomicBatchQueue(), 5);
+  assertFalse(workers.atomicEnqueueMany);
+});
+
 test(
   "ParallelMessageQueue forwards deduplicationKey to the wrapped queue",
   async () => {
@@ -493,6 +511,7 @@ test(
 
     const inner = new NoBulkQueue();
     const workers = new ParallelMessageQueue(inner, 5);
+    assertFalse(workers.atomicEnqueueMany);
     await assertRejects(
       () =>
         workers.enqueueMany([{ x: 1 }, { x: 2 }], { deduplicationKey: "k" }),
@@ -590,6 +609,13 @@ for (const mqName in queues) {
 
       await t.step("nativeDeduplication property inheritance", () => {
         assertEquals(workers.nativeDeduplication, mq.nativeDeduplication);
+      });
+
+      await t.step("atomicEnqueueMany capability propagation", () => {
+        assertEquals(
+          workers.atomicEnqueueMany,
+          mq.enqueueMany == null ? false : mq.atomicEnqueueMany,
+        );
       });
 
       await t.step("getDepth() delegation", async () => {

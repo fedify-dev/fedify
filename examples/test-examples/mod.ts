@@ -270,6 +270,18 @@ const SERVER_EXAMPLES: ServerExample[] = [
     readyUrl: "http://localhost:4321/",
   },
   {
+    // Astro with the Netlify adapter.  The local fallback uses in-process
+    // storage while the production build wires Database and Async Workloads.
+    name: "netlify-astro",
+    dir: "netlify-astro",
+    buildCmd: ["pnpm", "build"],
+    startCmd: ["pnpm", "dev"],
+    port: 4321,
+    actor: "netlify",
+    readyUrl: "http://localhost:4321/",
+    readyTimeout: 30_000,
+  },
+  {
     // Nuxt sample using @fedify/nuxt; actor path is /users/{identifier}.
     // Built with nuxt build; served with node .output/server/index.mjs
     // on port 3000.

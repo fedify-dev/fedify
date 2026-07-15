@@ -1,4 +1,4 @@
-import bun from "@nurodev/astro-bun";
+import node from "@astrojs/node";
 import { fedifyIntegration } from "@fedify/astro";
 import { defineConfig } from "astro/config";
 
@@ -6,7 +6,7 @@ import { defineConfig } from "astro/config";
 export default defineConfig({
   integrations: [fedifyIntegration()],
   output: "server",
-  adapter: bun(),
+  adapter: node({ mode: "standalone" }),
   server: { host: true, allowedHosts: true },
   security: { allowedDomains: [{}] },
 });

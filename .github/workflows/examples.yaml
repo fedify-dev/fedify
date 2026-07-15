@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+name: examples
+on: [push, pull_request]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test-astro-compat:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        persist-credentials: false
+    - uses: ./.github/actions/setup-mise
+    - run: mise run --skip-deps test:astro-compat
+
+  build-astro:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        runtime: [node, deno, bun]
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        persist-credentials: false
+    - uses: ./.github/actions/setup-mise
+    - if: matrix.runtime == 'node'
+      run: pnpm build
+      working-directory: ${{ github.workspace }}/examples/astro
+    - if: matrix.runtime == 'deno'
+      run: pnpm build:deno
+      working-directory: ${{ github.workspace }}/examples/astro
+    - if: matrix.runtime == 'bun'
+      run: pnpm build:bun
+      working-directory: ${{ github.workspace }}/examples/astro
