@@ -20,7 +20,7 @@ To be released.
     caller.  Both requests, including any redirect hops, are now validated
     against private and non-public addresses, consistent with the protections
     already applied to WebFinger lookups and the built-in document loader.
-    [[GHSA-hqph-j65v-8cq5]]
+    [[CVE-2026-62857]]
 
  -  Fixed custom collection dispatchers registered through
     `FederationBuilder.setCollectionDispatcher()` and
@@ -50,7 +50,7 @@ To be released.
     npm publish artifact skipped the `prepack` step that materializes the
     symlinked skill directory before packing.
 
-[GHSA-hqph-j65v-8cq5]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-hqph-j65v-8cq5
+[CVE-2026-62857]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-hqph-j65v-8cq5
 [#849]: https://github.com/fedify-dev/fedify/issues/849
 [#851]: https://github.com/fedify-dev/fedify/pull/851
 [#916]: https://github.com/fedify-dev/fedify/issues/916
@@ -639,7 +639,7 @@ Released on June 25, 2026.
 Version 2.2.7
 -------------
 
-To be released.
+Released on July 15, 2026.
 
 ### @fedify/fedify
 
@@ -653,7 +653,7 @@ To be released.
     caller.  Both requests, including any redirect hops, are now validated
     against private and non-public addresses, consistent with the protections
     already applied to WebFinger lookups and the built-in document loader.
-    [[GHSA-hqph-j65v-8cq5]]
+    [[CVE-2026-62857]]
 
  -  Fixed custom collection dispatchers registered through
     `FederationBuilder.setCollectionDispatcher()` and
@@ -1114,7 +1114,7 @@ Released on April 28, 2026.
 Version 2.1.18
 --------------
 
-To be released.
+Released on July 15, 2026.
 
 ### @fedify/fedify
 
@@ -1128,7 +1128,7 @@ To be released.
     caller.  Both requests, including any redirect hops, are now validated
     against private and non-public addresses, consistent with the protections
     already applied to WebFinger lookups and the built-in document loader.
-    [[GHSA-hqph-j65v-8cq5]]
+    [[CVE-2026-62857]]
 
  -  Fixed custom collection dispatchers registered through
     `FederationBuilder.setCollectionDispatcher()` and
@@ -1753,7 +1753,7 @@ Released on March 24, 2026.
 Version 2.0.22
 --------------
 
-To be released.
+Released on July 15, 2026.
 
 ### @fedify/fedify
 
@@ -1767,7 +1767,7 @@ To be released.
     caller.  Both requests, including any redirect hops, are now validated
     against private and non-public addresses, consistent with the protections
     already applied to WebFinger lookups and the built-in document loader.
-    [[GHSA-hqph-j65v-8cq5]]
+    [[CVE-2026-62857]]
 
  -  Fixed custom collection dispatchers registered through
     `FederationBuilder.setCollectionDispatcher()` and
@@ -2813,7 +2813,7 @@ Released on February 22, 2026.
 Version 1.10.12
 ---------------
 
-To be released.
+Released on July 15, 2026.
 
 ### @fedify/fedify
 
@@ -2827,7 +2827,7 @@ To be released.
     caller.  Both requests, including any redirect hops, are now validated
     against private and non-public addresses, consistent with the protections
     already applied to WebFinger lookups and the built-in document loader.
-    [[GHSA-hqph-j65v-8cq5]]
+    [[CVE-2026-62857]]
 
 
 Version 1.10.11
@@ -3097,7 +3097,7 @@ Released on December 24, 2025.
 Version 1.9.13
 --------------
 
-To be released.
+Released on July 15, 2026.
 
 ### @fedify/fedify
 
@@ -3111,7 +3111,7 @@ To be released.
     caller.  Both requests, including any redirect hops, are now validated
     against private and non-public addresses, consistent with the protections
     already applied to WebFinger lookups and the built-in document loader.
-    [[GHSA-hqph-j65v-8cq5]]
+    [[CVE-2026-62857]]
 
 
 Version 1.9.12
