@@ -365,11 +365,11 @@ const SKIPPED_EXAMPLES: SkippedExample[] = [
 
 export function getRegisteredExampleNames(): Set<string> {
   return new Set([
-    ...SERVER_EXAMPLES.map((e) => e.name),
-    ...SCRIPT_EXAMPLES.map((e) => e.name),
-    ...MULTI_HANDLE_EXAMPLES.map((e) => e.name),
-    ...SKIPPED_EXAMPLES.map((e) => e.name),
-  ]);
+    ...SERVER_EXAMPLES,
+    ...SCRIPT_EXAMPLES,
+    ...MULTI_HANDLE_EXAMPLES,
+    ...SKIPPED_EXAMPLES,
+  ].map((e) => e.name));
 }
 
 /**
