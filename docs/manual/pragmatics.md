@@ -810,6 +810,56 @@ thread.  Ensure the `Mention.href`, `Mention.name`, and the mention link in
 not use `PUBLIC_COLLECTION` or the followers collection; address only the actors
 who should be able to see the conversation instead.
 
+### Allowing quotes
+
+[FEP-044f] defines consent-respecting quote posts.  To allow anyone to quote a
+`Note` automatically, set its `interactionPolicy.canQuote.automaticApproval`
+property to `PUBLIC_COLLECTION`:
+
+~~~~ typescript twoslash
+import { InteractionPolicy, InteractionRule, Note, PUBLIC_COLLECTION } from "@fedify/vocab";
+// ---cut-before---
+new Note({
+  content: "<p>Anyone may quote this note.</p>",
+  interactionPolicy: new InteractionPolicy({  // [!code highlight]
+    canQuote: new InteractionRule({  // [!code highlight]
+      automaticApproval: PUBLIC_COLLECTION,  // [!code highlight]
+    }),
+  }),
+})
+~~~~
+
+Advertising this policy improves interoperability with quote-aware
+implementations.  Mastodon 4.4 verifies and displays remote FEP-044f quotes,
+and Mastodon 4.5 can author quotes and set automatic quote policies.
+[Hackers' Pub] and [Hollo] also support FEP-044f quote policies and the
+authorization flow.
+
+> [!NOTE]
+> Misskey's `_misskey_quote` property is a non-standard extension that only
+> identifies the quoted object's URL.  FEP-044f's `quote` property represents
+> the same relationship, but its `interactionPolicy.canQuote`, `QuoteRequest`,
+> and `QuoteAuthorization` terms also let implementations obtain, verify, and
+> revoke the original author's consent.  Fedify's `Note.quoteUrl` supports the
+> legacy `_misskey_quote`, `quoteUrl`, and `quoteUri` properties for
+> compatibility, while `Note.quote` and `Note.quoteId` represent FEP-044f's
+> `quote` property.
+
+To require the author's approval instead, use `manualApproval` with the actors
+or collections that may request a quote.  The policy advertises whether a quote
+is expected to be allowed, but it does not authorize a quote by itself.  Under
+FEP-044f, the quoting actor sends a `QuoteRequest`; after accepting it, the
+original author returns an `Accept` activity whose `result` is a
+`QuoteAuthorization`.  The quote post then references that authorization.
+
+See the [interaction controls] documentation for the helpers that evaluate
+`canQuote` policies and create or verify quote authorizations.
+
+[FEP-044f]: https://helge.codeberg.page/fep/fep/044f/
+[Hackers' Pub]: https://hackers.pub/
+[Hollo]: https://hollo.social/
+[interaction controls]: ./interaction-controls.md
+
 ### Microformats
 
 [Microformats 2] is a convention for embedding machine-readable metadata in
