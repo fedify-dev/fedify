@@ -155,7 +155,7 @@ async function validateDevToolScripts(
     if (format.code !== 0) return false;
   }
 
-  for (const script of ["format:check", "lint"]) {
+  for (const script of ["format", "format:check", "lint"]) {
     const result = await $`${[packageManager, "run", script]}`
       .cwd(dir)
       .stdin("null")
