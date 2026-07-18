@@ -25,17 +25,20 @@ Supported options
 
 The initializer supports the following project configurations:
 
- -  **Web frameworks**: Bare-bones, [Hono], [Nitro], [Next.js], [Elysia],
-    [Express]
+ -  **Web frameworks**: Bare-bones, [Astro], [Elysia], [Express], [Hono],
+    [Next.js], [Nitro], [Nuxt], [SolidStart]
  -  **Package managers**: Deno, pnpm, Bun, Yarn, npm
  -  **Key-value stores**: In-Memory, Deno KV, Redis, PostgreSQL
  -  **Message queues**: In-Process, Deno KV, Redis, PostgreSQL, AMQP
 
-[Hono]: https://hono.dev/
-[Nitro]: https://nitro.build/
-[Next.js]: https://nextjs.org/
+[Astro]: https://astro.build/
 [Elysia]: https://elysiajs.com/
 [Express]: https://expressjs.com/
+[Hono]: https://hono.dev/
+[Next.js]: https://nextjs.org/
+[Nitro]: https://nitro.build/
+[Nuxt]: https://nuxt.com/
+[SolidStart]: https://start.solidjs.com/
 
 
 Installation
