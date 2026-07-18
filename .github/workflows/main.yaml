@@ -292,6 +292,7 @@ jobs:
     steps:
     - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-mise
+    - uses: ./.github/actions/cache-docs
     - run: pnpm run build
       working-directory: ${{ github.workspace }}/docs/
     - uses: actions/upload-artifact@v7
@@ -497,6 +498,7 @@ jobs:
     steps:
     - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-mise
+    - uses: ./.github/actions/cache-docs
     - run: |
         set -ex
         if [[ "$GITHUB_REF_TYPE" = "tag" ]]; then
