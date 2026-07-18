@@ -1,12 +1,13 @@
 no_inherit = true
 include = ["*.md", "**/*.md"]
 exclude = [
+  ".git/**",
   "**/node_modules/**",
   "**/dist/**",
   ".agents/skills/**",
   ".claude/skills/**",
   ".github/copilot-instructions.md",
-  "AGENT.md",
+  "AGENTS.md",
   "CLAUDE.md",
   "GEMINI.md",
   "WARP.md",
