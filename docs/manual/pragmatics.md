@@ -760,3 +760,52 @@ For example, the above `Emoji` object is displayed like the following in
 Mastodon:
 
 ![Screenshot: A rendered custom emoji in Mastodon](pragmatics/mastodon-emoji.png)
+
+### Replies
+
+To reply to an object, create a `Note` whose `replyTarget` is the object being
+replied to, a `Link` to it, or its canonical URL.  Fedify serializes
+`replyTarget` as the standard ActivityStreams `inReplyTo` property in JSON-LD.
+
+For a public reply, address the public collection in `to`, and add the replying
+actor's followers and the parent object's author to `cc`.  Also add a `Mention`
+tag for the parent author, with a matching mention link in `content`:
+
+~~~~ typescript twoslash
+import type { Context } from "@fedify/fedify";
+import { Mention, Note, PUBLIC_COLLECTION } from "@fedify/vocab";
+const ctx = null as unknown as Context<void>;
+const identifier = "alice";
+const parentNote = new URL("https://example.net/notes/123");
+const parentAuthor = new URL("https://example.net/users/bob");
+// ---cut-before---
+new Note({
+  content:  // [!code highlight]
+    '<p><a class="mention u-url" href="https://example.net/users/bob">' +
+    "@bob@example.net</a> Thanks for sharing this!</p>",
+  replyTarget: parentNote,  // [!code highlight]
+  to: PUBLIC_COLLECTION,  // [!code highlight]
+  ccs: [  // [!code highlight]
+    ctx.getFollowersUri(identifier),
+    parentAuthor,
+  ],
+  tags: [  // [!code highlight]
+    new Mention({
+      href: parentAuthor,
+      name: "@bob@example.net",
+    }),
+  ],
+})
+~~~~
+
+The `to` and `cc` values are audience addresses, not inbox URLs.  In particular,
+use the parent author's actor URL in `cc`, then deliver the `Create` activity to
+that actor through `Context.sendActivity()`.  Give the enclosing `Create`
+activity the same `to` and `cc` values as its `Note` object.
+
+Mastodon and Pixelfed can require a remote reply to both `cc` the parent author
+and include a matching `Mention` tag before they add it to the parent object's
+thread.  Ensure the `Mention.href`, `Mention.name`, and the mention link in
+`content` all identify the same actor.  For a non-public or direct reply, do
+not use `PUBLIC_COLLECTION` or the followers collection; address only the actors
+who should be able to see the conversation instead.
