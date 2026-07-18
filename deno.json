@@ -39,6 +39,7 @@
     "./examples/lint/oxlint",
     "./examples/monitoring",
     "./examples/rfc-9421-test",
+    "./examples/test-examples",
     "./test/smoke/harness"
   ],
   "imports": {
