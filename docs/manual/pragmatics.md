@@ -809,3 +809,48 @@ thread.  Ensure the `Mention.href`, `Mention.name`, and the mention link in
 `content` all identify the same actor.  For a non-public or direct reply, do
 not use `PUBLIC_COLLECTION` or the followers collection; address only the actors
 who should be able to see the conversation instead.
+
+### Microformats
+
+[Microformats 2] is a convention for embedding machine-readable metadata in
+HTML with CSS class names.  In federated posts, `Note.content` is HTML, so a
+receiving implementation cannot reliably infer whether an arbitrary link is an
+account mention, a hashtag, or an ordinary external link from its visible text
+alone.  The classes provide that missing semantic information.
+
+> [!TIP]
+> Microformats are not required by ActivityPub, so a post remains valid without
+> them.  Nevertheless, adding them is recommended for interoperability with
+> Mastodon, Misskey, and other implementations that recognize these conventions.
+> See Mastodon's [Microformats specification] for the classes it supports.
+
+For example, write a mention as an `h-card` containing a `u-url` link.  The
+`h-card` identifies the linked text as a person or organization, and `u-url`
+identifies the link as that account's profile permalink.  Mastodon also uses
+its `mention` class to open the link as an in-app account mention instead of a
+generic URL:
+
+~~~~ html
+<p>Hello
+  <span class="h-card">
+    <a class="u-url mention" href="https://example.com/users/friend">
+      <span class="p-name">@friend@example.com</span>
+    </a>
+  </span>!
+</p>
+~~~~
+
+The `mention` class is a Mastodon-specific extension, not a Microformats class.
+Likewise, use `class="hashtag"` and `rel="tag"` on hashtag links so Mastodon
+can treat them as hashtags rather than ordinary links.  These classes describe
+the HTML representation only; they do not replace ActivityPub metadata.  Keep
+the corresponding `Mention` or `Hashtag` object in `Note.tags`, with the same
+URL and displayed name, so implementations can correctly process the post,
+including notifications and thread handling.
+
+When generating `content`, preserve these classes through HTML sanitization.
+Removing them may leave the link clickable, but Mastodon-compatible clients can
+lose its mention or hashtag behavior.
+
+[Microformats 2]: https://microformats.io/
+[Microformats specification]: https://docs.joinmastodon.org/spec/microformats/
