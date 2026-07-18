@@ -42,7 +42,6 @@ sequenceDiagram
   participant WF as Web framework
 
   Client ->> Fedify: GET /users/alice<br/>(Accept: application/activity+json)
-  Fedify -->> Client: 200 OK
   Fedify ->> AD: GET /users/alice
   AD -->> Fedify: 200 OK
   Fedify -->> Client: 200 OK
