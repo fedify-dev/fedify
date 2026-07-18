@@ -434,6 +434,37 @@ to these objects through their `tags` property.  The exact way ActivityPub
 implementations render these objects differs, but Mastodon and Misskey already
 share a number of de facto conventions.
 
+### `to`, `cc`
+
+> [!NOTE]
+> You can find more information in the [Specifying an activity] document.
+
+The objects described above can have `to` and `cc` properties that address
+their intended audience.  These properties can also be used on other
+ActivityStreams objects, including activities.
+The `to` property identifies primary recipients, while `cc` identifies
+secondary recipients.  To address multiple recipients, use the `tos` and `ccs`
+properties.
+
+~~~~ typescript twoslash
+import { Note, PUBLIC_COLLECTION } from "@fedify/vocab";
+import { type Context } from "@fedify/fedify";
+const ctx = null as unknown as Context<void>;
+const identifier: string = "";
+// ---cut-before---
+new Note({
+  to: PUBLIC_COLLECTION,
+  cc: ctx.getFollowersUri(identifier),
+  // additional things...
+});
+~~~~
+
+This combination addresses the public collection as the primary audience and
+the actor's followers as the secondary audience.  Mastodon uses this convention
+for public posts.
+
+[Specifying an activity]: ./send.md#specifying-an-activity
+
 ### `Note`: Short posts
 
 The `Note` type is the most common object type for short posts.  In Mastodon,
