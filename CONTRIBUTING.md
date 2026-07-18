@@ -3,235 +3,283 @@
 Contributing guide
 ==================
 
-Thank you for considering contributing to Fedify!  This document explains how to
-contribute to the project.
+Thank you for considering contributing to Fedify.  This guide covers the
+project's contribution policy, development workflow, and coding conventions.
+It applies to both human contributors and coding agents.  *AGENTS.md* and
+*CLAUDE.md* point to this file so that everyone works from the same rules.
 
 
-First contributions
--------------------
+Before you contribute
+---------------------
 
-If this is your first contribution to Fedify, please read this section before
-opening a pull request.  It exists because low-effort, AI-generated pull
-requests have grown common enough to burden maintainers and crowd out genuine
-work.  None of this is meant to discourage you; it is meant to help your first
-contribution land.
+### First contributions
+
+If this is your first contribution to Fedify, read this section before opening
+a pull request.  It exists because low-effort, AI-generated pull requests have
+grown common enough to burden maintainers and crowd out genuine work.  None of
+this is meant to discourage you.  It is meant to help your first contribution
+land.
 
 For anything beyond a trivial fix, there should be an *accepted issue* before
 you open a pull request:
 
  -  If an issue already describes the work, comment on it and wait for a
     maintainer to assign it to you.
- -  If no issue exists, open one first (see [*Bug reports*](#bug-reports) or
-    [*Feature requests*](#feature-requests) below) and let a maintainer confirm
-    the change is wanted.
+ -  If no issue exists, open one first and let a maintainer confirm that the
+    change is wanted.
 
 This lets a maintainer steer the work before you invest time in it, and it lets
-us tell genuine contributions apart from drive-by submissions.  The same
-requirement already applies to any AI-assisted pull request; see
-*[AI_POLICY.md]*.
+us tell genuine contributions apart from drive-by submissions.
 
-Fixing a typo or improving the documentation is exempt: you can open a pull
-request directly, without an issue (see [*Docs*](#docs) below).
+Fixing a typo or improving the documentation is exempt.  You can open a pull
+request for such a change without an issue.  This exception does not override
+the AI usage policy in *AI\_POLICY.md*: an AI-assisted pull request from an
+outside contributor must still address an accepted issue.
 
-We also do not want this to get in the way of people who already know the
-problem domain.  If you are already active in the fediverse or in related
-F/OSS work and are confident the change will be welcome, you may open a
-pull request directly.  In that case, please make it easy for us to see where
-you are coming from, for example by linking your fediverse account or your
-other work.  This is an invitation, not a credential check.
+We also do not want this process to get in the way of people who already know
+the problem domain.  If you are active in the fediverse or related F/OSS work
+and are confident the change will be welcome, you may open a pull request
+directly.  Make it easy for us to see where you are coming from, for example by
+linking your fediverse account or related work.  This is an invitation, not a
+credential check.
 
-A pull request that follows none of the above may be closed without further
-comment.  Treat this section as that notice: if you have read this far, you
-have already received the explanation a closing comment would give.  It is not
-a judgment of you, and once there is an accepted issue, or you have shown the
-familiarity described above, you are welcome to reopen the pull request or open
-a new one.
-
-[AI_POLICY.md]: AI_POLICY.md
-
-
-Bug reports
------------
-
-If you find a bug in Fedify, first of all, please search the
-[GitHub issue tracker] to see if the bug has already been reported.  If it
-hasn't been reported yet, please open a new issue.  When you open an issue,
-please provide the following information:
-
- -  The version of Fedify you are using.
- -  The version of Deno you are using.
- -  The version of the operating system you are using.
- -  The steps to reproduce the bug.
- -  The expected behavior.
- -  The actual behavior.
-
-[GitHub issue tracker]: https://github.com/fedify-dev/fedify/issues
-
-
-Feature requests
-----------------
-
-If you have a feature request for Fedify, please search the
-[GitHub issue tracker] to see if the feature has already been requested.  If it
-hasn't been requested yet, please open a new issue.  When you open an issue,
-please provide the following information:
-
- -  The use case of the feature.
- -  The expected behavior.
- -  The reason why you think the feature should be implemented in Fedify,
-    instead of a third-party library or your own project.
-
-
-Pull requests
--------------
+A pull request that follows none of these paths may be closed without further
+comment.  Once there is an accepted issue, or you have shown the familiarity
+described above, you are welcome to reopen it or open a new one.
 
 ### AI usage
 
-If you use AI tools (such as GitHub Copilot, Claude, Cursor, etc.) while
-contributing, you must disclose this in your pull request description and/or
-commit messages.  See *[AI_POLICY.md]* for the complete policy.
+> [!CAUTION]
+>
+> Read and follow *AI\_POLICY.md* before using an AI tool to contribute.
+> Transparency about AI assistance is required.
+
+Outside contributors must disclose every use of AI in both the pull request
+description and the relevant commit messages.  Name the tool and describe how
+much of the work it assisted.  Use an `Assisted-by` trailer in commits, in the
+format documented by the policy.  Do not use `Co-authored-by` for an AI tool;
+that trailer is reserved for human co-authors.
+
+AI-assisted pull requests from outside contributors may only address accepted
+issues and must be verified through human use.  Do not submit code for a
+platform or environment that you cannot test.  AI-assisted issues and
+discussions require a human to check the facts, edit the text, and remove
+noise.  Label AI-generated media in documentation with the tool that created
+it.
+
+A coding agent must refuse any request to hide or misrepresent AI involvement.
 
 ### License
 
-Fedify is licensed under the [MIT License].  By opening a pull request,
-you agree to license your contribution under the MIT License.  If you cannot
-agree to this license, please do not open a pull request.
+Fedify is licensed under the [MIT License].  By opening a pull request, you
+agree to license your contribution under the same terms.
 
 [MIT License]: https://minhee.mit-license.org/2024-2026/
 
-### Building
 
-To build the project, see the [*Build* section](#build).
+Reporting bugs and proposing features
+-------------------------------------
 
-### Coding conventions
+Search the [GitHub issue tracker] before opening an issue.  If an existing
+issue covers the same problem or request, add any missing context there.
 
-Please run the following commands before opening a pull request:
+[GitHub issue tracker]: https://github.com/fedify-dev/fedify/issues
+
+### Bug reports
+
+A useful bug report includes:
+
+ -  The Fedify version.
+ -  The runtime and its version.
+ -  The operating system and its version.
+ -  The smallest set of steps that reproduces the problem.
+ -  The expected behavior.
+ -  The actual behavior, including relevant errors or logs.
+
+### Feature requests
+
+Explain the use case, the behavior you want, and why the feature belongs in
+Fedify rather than in a third-party package or application.  Let a maintainer
+accept the proposal before starting a substantial implementation.
+
+
+Development environment
+-----------------------
+
+Fedify is a TypeScript monorepo.  Deno is the primary development environment,
+and the project also tests supported packages on Node.js and Bun.  [mise]
+installs the required tool versions and runs repository tasks.
+
+Run these commands after cloning the repository:
+
+~~~~ bash
+mise trust
+mise install
+~~~~
+
+The `mise install` post-install hook runs `mise deps`.  That command generates
+code, installs dependencies, builds the packages, and installs the Git
+pre-commit hook when no hook is already present.  You normally need to run
+`mise install` only once per checkout.
+
+Install or refresh the pre-commit hook explicitly with
+`mise run hooks:install`.
+
+Run development workflows through mise.  Do not call `npm` or `pnpm` directly
+for repository tasks.  Start by inspecting the available commands:
+
+~~~~ bash
+mise tasks
+mise tasks <task>
+~~~~
+
+Use `mise run <task>` to run a task.  For example:
 
 ~~~~ bash
 mise run check
+mise run test:deno
 ~~~~
 
-### Docs
+The recommended editor is [Visual Studio Code] with the [Deno extension], but
+any editor with Deno support will work.
 
-If you want to fix a typo or improve the documentation, you can open a pull
-request without opening an issue.
+[mise]: https://mise.jdx.dev/
+[Visual Studio Code]: https://code.visualstudio.com/
+[Deno extension]: https://marketplace.visualstudio.com/items?itemName=denoland.vscode-deno
 
-For Markdown, we have the following conventions:
+### Repository layout
 
- -  80 characters at most per line, except for code blocks and URLs.
- -  Prefer [reference links] over [inline links].
- -  Prefer [setext headings] over [ATX headings].
- -  Use sentence case for headings (capitalize only the first word and proper
-    nouns), not Title Case.
- -  Two new lines before opening an H1/H2 heading.
- -  One space before and two spaces after a bullet.
- -  Wrap file paths in asterisks.
- -  Wrap inline code in backticks.
- -  Wrap code blocks in quadruple tildes (`~~~~`), and specify the language with
-    a single space after the opening tildes (e.g., `~~~~ bash`).
- -  Em dash (—): In narrative text, use em dashes without surrounding
-    spaces (e.g., `word—word`).  Keep spaces only for list separators
-    (`- Item — Description`) or table placeholders.
+The repository uses a few top-level directories:
 
-In order to build the docs,
-see the [*Building the docs* section](#building-the-docs).
+ -  *packages/* contains the libraries, integrations, adapters, and tools.
+ -  *docs/* contains the VitePress documentation site.
+ -  *examples/* contains example applications.
+ -  *.agents/skills/* contains task-specific guides that coding agents can
+    follow and human contributors can consult.
 
-[reference links]: https://spec.commonmark.org/0.31.2/#shortcut-reference-link
-[inline links]: https://spec.commonmark.org/0.31.2/#inline-link
-[setext headings]: https://spec.commonmark.org/0.31.2/#setext-headings
-[ATX headings]: https://spec.commonmark.org/0.31.2/#atx-headings
+See the “Packages” section of *README.md* for the current package list.  Do not
+duplicate that inventory in contribution guides.
 
-### Branch policy
+### Generated code and builds
 
-Fedify follows a structured branching strategy for managing releases and
-maintenance:
+Vocabulary code is regenerated automatically before mise tasks when its YAML
+inputs or `@fedify/vocab-tools` change.  Run the code generator directly when
+you need to refresh generated files for an editor or language server:
 
-#### Branch types
+~~~~ bash
+mise run codegen
+~~~~
 
- -  **next**: Contains unreleased development for the next major version.
- -  **main**: Contains unreleased development for the next minor version.
- -  **x.y-maintenance**: Maintenance branches for released major/minor versions
-    (e.g., *1.5-maintenance*, *1.6-maintenance*).
+Build the whole repository with `mise run build`.  While working on a small
+set of packages, rebuild only those packages, without the `@fedify/` prefix:
 
-#### Target branches
+~~~~ bash
+mise run prepare-each fedify vocab
+~~~~
 
- -  **Breaking changes**: Target the *next* branch.
- -  **New features**: Target the *main* branch.
- -  **Bug fixes**: Target the oldest applicable maintenance branch that contains
-    the bug.
+### Running the CLI
 
-#### Release and merge strategy
+Use the `cli` task to run the local Fedify CLI through Deno:
 
-When a bug is fixed in a maintenance branch:
+~~~~ bash
+mise run cli -- lookup @fedify@hackers.pub
+~~~~
 
-1.  Fix the bug in the oldest affected maintenance branch
-    (e.g., *1.5-maintenance*).
-2.  Create a new patch release tag (e.g., `1.5.1`).
-3.  Merge the fix into the next maintenance branch (e.g., *1.6-maintenance*).
-4.  Create a new patch release tag for that branch (e.g., `1.6.1`).
-5.  Continue merging forward through all subsequent maintenance branches.
-6.  Merge into *main*.
-7.  Finally merge into *next*.
+The released CLI is also tested on Node.js and Bun.  The local `cli` task is a
+quick development path, not a replacement for the multi-runtime tests.
 
-This ensures that all maintenance branches and the development branches
-include the fix.
 
-### Bug fix
+Implementation guidelines
+-------------------------
 
-If you want to fix a bug in Fedify, please search the [GitHub issue tracker] to
-see if the bug has already been reported.  If it hasn't been reported yet,
-please open a new issue to discuss the bug.
+Keep public APIs strictly typed.  Use generics where applications need to
+supply their own types, such as federation context data.  Runtime-neutral code
+must work on every runtime supported by its package.  Avoid platform-specific
+APIs unless the package is explicitly tied to that platform.
 
-When you open a pull request, please provide the issue number that the pull
-request is related to.
+Follow the patterns already used near the code you change.  In federation
+code, this usually means fluent methods on `FederationBuilder` and callbacks
+that map routes to dispatchers.  Vocabulary objects belong to `@fedify/vocab`,
+not the main package.
 
-A patch set should include the following:
+Several old paths under *packages/fedify/src/* have moved:
 
- -  The regression test that demonstrates the bug.  It should fail without the
-    patch and pass with the patch.
- -  The fix for the bug.
- -  The *CHANGES.md* entry.  The entry should include the issue number,
-    the pull request number, and your name (unless you want to be anonymous).
+ -  Code generation moved from *src/codegen/* to `@fedify/vocab-tools`.
+ -  Vocabulary runtime support moved from *src/runtime/* to
+    `@fedify/vocab-runtime` and *src/utils/*.
+ -  Vocabulary objects moved from *src/vocab/* to `@fedify/vocab`.
+ -  WebFinger support moved from *src/webfinger/* to `@fedify/webfinger`.
 
-Bug fix pull requests should target the oldest maintenance branch that
-the bug affects.  If you are not sure which branch to target, please ask in the
-issue tracker.
+Do not add new code to the moved directories or recommend those imports to
+users.
 
-### Feature implementation
+### Federation and security
 
-If you want to contribute to Fedify, please open a new issue in the
-[GitHub issue tracker] to discuss the change you want to make.  If the change
-is accepted, you can start working on the change.  When you open a pull
-request, please provide the following information:
+Incoming federation data crosses a trust boundary.  Verify HTTP signatures
+where the surrounding protocol requires them, validate input, and use Object
+Integrity Proofs when verifying signed objects.  Follow the existing key
+management, queue, and inbox or outbox patterns.  Public endpoints should
+account for abuse and rate limiting.
 
- -  The issue number that the pull request is related to.
- -  The description of the change.
- -  The reason why the change is needed.
- -  The steps to test the change.
+Keep ActivityPub interoperability in mind.  A locally valid implementation can
+still fail when another server serializes an object differently or supports a
+smaller part of the protocol.
 
-A patch set should include the following:
+### Public APIs
 
- -  The unit tests that demonstrate the feature.
- -  The implementation of the feature.
- -  If any API change was made, the documentation update for the API.
- -  Check if examples work with the change, and update the examples if needed.
- -  The *CHANGES.md* entry.  The entry should include the issue number,
-    the pull request number, and your name (unless you want to be anonymous).
+Add JSDoc to public APIs.  Update the documentation when behavior or signatures
+change, and include an example when the API is not self-explanatory.  Check the
+affected examples before submitting the change.
 
-Feature pull requests should target the *main* branch for non-breaking changes,
-or the *next* branch for breaking changes.
 
-### Writing tests with `node:test`
+Testing
+-------
 
-Deno, Node.js, and Bun all support the `node:test` and `node:assert/strict`
-built-in modules, so use them directly in new test files unless your package
-requires Cloudflare Workers testing (see the exception below).
+Add tests for new behavior and regression tests for bug fixes.  Prefer a
+focused Deno test while developing because Deno runs the TypeScript sources
+directly.  Use in-memory stores unless the test is specifically exercising a
+database adapter:
 
-A typical test file looks like this:
+~~~~ bash
+mise run test:deno path/to/file.test.ts --filter "test name"
+~~~~
+
+Use `test:node` or `test:bun` instead when the behavior is specific to one of
+those runtimes.  Once the change is stable, run the affected package suites in
+all supported runtimes:
+
+~~~~ bash
+mise run test-each fedify vocab
+~~~~
+
+Run the repository-wide suite before a release or when the change has broad
+effects:
+
+~~~~ bash
+mise run test
+~~~~
+
+### Updating vocabulary snapshots
+
+Changes to `@fedify/vocab-tools` or the vocabulary YAML schemas can affect the
+generated output recorded in snapshots.  Update the Deno, Node.js, and Bun
+snapshots together from the repository root:
+
+~~~~ bash
+mise run test:update_snapshots
+~~~~
+
+Review and commit every changed snapshot file.  Do not update only one
+runtime's snapshot.
+
+### Test APIs
+
+Most packages use `node:test` and `node:assert/strict`, which Deno, Node.js,
+and Bun all support:
 
 ~~~~ typescript
+import { deepStrictEqual } from "node:assert/strict";
 import { describe, it } from "node:test";
-import { deepStrictEqual, ok } from "node:assert/strict";
 
 describe("my feature", () => {
   it("does the thing", () => {
@@ -240,493 +288,369 @@ describe("my feature", () => {
 });
 ~~~~
 
-Run the tests with `mise run test:deno`, `mise run test:node`, or
-`mise run test:bun` as appropriate.
-
-### Cloudflare Workers exception: `@fedify/fixture`
-
-The `@fedify/fedify` and `@fedify/vocab` packages must continue using the
-`test()` function from the monorepo-private [`@fedify/fixture`] package.
-Those packages include a Cloudflare Workers test harness
-(*packages/fedify/src/cfworkers/*) that drives the test suite by iterating
-over the `testDefinitions` array exported from `@fedify/fixture`.  Using
-`node:test` directly would not populate that array, breaking CF Workers tests.
-
-For these two packages, use the `@fedify/fixture` `test()` wrapper:
+The `@fedify/fedify` and `@fedify/vocab` packages are exceptions.  Their
+Cloudflare Workers test harness consumes the `testDefinitions` registry from
+the private `@fedify/fixture` package, so their tests must use its `test()`
+wrapper:
 
 ~~~~ typescript
-import { test } from "@fedify/fixture";
 import { deepStrictEqual } from "node:assert/strict";
+import { test } from "@fedify/fixture";
 
 test("my feature does the thing", () => {
   deepStrictEqual(1 + 1, 2);
 });
 ~~~~
 
-The `@fedify/fixture` package also provides utilities that any package can
-import in `*.test.ts` files, regardless of which test runner is used:
-
- -  `mockDocumentLoader()`: A document loader that resolves
-    ActivityPub/JSON-LD URLs from on-disk fixtures instead of issuing real
-    HTTP requests.
- -  `TestSpanExporter`/`createTestTracerProvider()`: Helpers for asserting
-    on OpenTelemetry spans and events recorded by the code under test.
-
-See *[packages/fixture/README.md]* for the full API, fixture layout, and
-runtime-specific notes.
-
-> [!CAUTION]
->
-> `@fedify/fixture` is a private workspace package and is **not** published
-> to npm or JSR.  Importing it from any file that ships to end users will
-> break consumers as soon as they install the package from a registry.
->
-> Restrict every import of `@fedify/fixture` to files matching
-> `**/*.test.ts`.  Keeping the boundary at the filename level makes it
-> trivial to audit. You can check this with `mise run check:fixture-usage`.
-
-[`@fedify/fixture`]: packages/fixture/
-[packages/fixture/README.md]: packages/fixture/README.md
-
-### Adding a new package
-
-When adding a new package to the monorepo, the following files must be updated:
-
-**Required updates:**
-
-1.  *AGENTS.md* and *CONTRIBUTING.md*: Add the package to the repository
-    structure list.
-2.  *README.md*: Add the package to the “Packages” section table.
-3.  *package.json*: Add the `repository` field to the package metadata.
-    This is required for provenance information when publishing to npm.
-4.  Root *deno.json*: Add the package path to the `workspace` array.
-5.  *pnpm-workspace.yaml*: Add the package path to the `packages` array.
-6.  *.github/CODEOWNERS*: Add the package path under the section that
-    matches its category (e.g., framework integration, database
-    adapter) and list its owner(s).
-
-**Conditional updates:**
-
- -  If the package is a web framework integration: Update
-    *docs/manual/integration.md*.
- -  If the package implements `KvStore`: Update *docs/manual/kv.md*.
- -  If the package implements `MessageQueue`: Update *docs/manual/mq.md*.
- -  If the package is published to JSR: Ensure the package's *deno.json*
-    contains the correct `name` and `publish` metadata.  The docs “References”
-    section is generated automatically from publishable workspace packages, so
-    no manual change to *docs/.vitepress/config.mts* is needed.
-
-**Optional updates:**
-
- -  If special dependencies are needed: Add to `imports` in root *deno.json*.
- -  If using pnpm catalog for dependency management: Add to `catalog` in
-    *pnpm-workspace.yaml*.
-
-### Adding a web framework integration
-
-A step-by-step guide for implementing a web framework integration package is
-available in *.agents/skills/create-integration-package/SKILL.md*.  Although
-the file is primarily designed for AI coding agents, the instructions are
-written so that human contributors can also read and follow them.  The guide
-covers the entire workflow from researching the framework through creating
-the package, adding it to `fedify init`, testing, and writing an example.
-
-### Dependency management
-
-Fedify uses two package managers:
-
- -  **Deno**: For Deno-based packages.  The lockfile is *deno.lock*.
- -  **pnpm**: For Node.js-based packages.  The lockfile is *pnpm-lock.yaml*.
-
-Both lockfiles are committed to the repository to ensure reproducible builds and
-consistent dependency resolution across all environments.  When you add, update,
-or remove dependencies, you must commit the updated lockfile(s) along with your
-changes.
-
-To update both lockfiles at once, run:
+Any test file may import `mockDocumentLoader()`, `TestSpanExporter`, or
+`createTestTracerProvider()` from `@fedify/fixture`.  The package is not
+published to npm or JSR, so restrict every such import to a file matching
+`**/*.test.ts`.  Verify that boundary with:
 
 ~~~~ bash
-mise deps
+mise run check:fixture-usage
 ~~~~
 
-When reviewing pull requests, please check that lockfile changes are included
-for any dependency-related changes.
+Reuse helpers from `@fedify/testing`, or from
+*packages/fedify/src/testing/* when they depend on the main package, before
+creating new test infrastructure.
 
-#### Adding dependencies
+See *packages/fixture/README.md* for the fixture APIs and runtime-specific
+notes.
 
-Because this project supports both Deno and Node.js/Bun, dependencies must
-be added to *both* configuration files:
+### Testing the initializer
 
- -  *deno.json*: Add to the `imports` field (for Deno).
- -  *package.json*: Add to `dependencies` or `devDependencies` (for
-    Node.js/Bun).
-
-For workspace packages, use the pnpm catalog (*pnpm-workspace.yaml*) to manage
-versions centrally.  In *package.json*, reference catalog versions with
-`"catalog:"` instead of hardcoding version numbers.
-
-When adding dependencies that are published to both JSR and npm (like Optique),
-use the appropriate package registry for each configuration:
-
- -  *deno.json*: Use the JSR package (e.g., `jsr:@optique/core`).
- -  *package.json*: Use the npm package (e.g., `@optique/core`).
-
-This ensures optimal compatibility with each runtime environment while
-maintaining the same functionality across both Deno and Node.js/Bun.
-
-When the JSR and npm package names differ (like Hono: `jsr:@hono/hono` vs
-`hono`), align imports to the npm package name in *deno.json* using an alias:
-
-~~~~
-"hono": "jsr:@hono/hono@^4.0.0"
-~~~~
-
-This allows consistent imports across both environments using the npm package
-name (e.g., `import { Hono } from "hono"`).
-
-Forgetting to add a dependency to *package.json* will cause Node.js and Bun
-tests to fail with `ERR_MODULE_NOT_FOUND`, even if Deno tests pass.
-
-#### Updating `fedify init` template dependencies
-
-The `fedify init` command generates projects with third-party dependencies
-whose versions are defined in *packages/init/src/json/*.  Most web-framework
-and common tool versions live in *deps.json*, while KV store and message queue
-versions are in *kv.json* and *mq.json* respectively.
-
-To update all of these to the latest releases automatically, run:
-
-~~~~ bash
-mise run update-init-deps
-~~~~
-
-The script queries the npm and JSR registries for the latest version of each
-package, respecting the current major version (caret range).  After running
-it, verify the init package still works:
+The `test:init` task exercises `fedify init` across web frameworks, package
+managers, key-value stores, and message queues:
 
 ~~~~ bash
 mise run test:init
 ~~~~
 
-When adding a new third-party dependency to a web-framework template, add it to
-*deps.json* and reference it from the TypeScript file via the `deps` import.
-Dependencies that are specific to KV stores or message queues should be added
-directly to *kv.json* or *mq.json* instead.
-
-### Commit messages
-
- -  Do not use Conventional Commits (no `fix:`, `feat:`, etc. prefixes).
-    Keep the first line under 50 characters when possible.
-
- -  Focus on *why* the change was made, not just *what* changed.
-
- -  When referencing issues or PRs, use permalink URLs instead of just
-    numbers (e.g., `#123`).  This preserves context if the repository
-    is moved later.
-
- -  When listing items after a colon, add a blank line after the colon:
-
-    ~~~~
-    This commit includes the following changes:
-
-    - Added foo
-    - Fixed bar
-    ~~~~
-
-### Changelog entries
-
-When adding entries to *CHANGES.md*, follow these conventions:
-
- -  Use ` -  ` (one space, hyphen, two spaces) for list items.
-
- -  Wrap lines at approximately 80 characters, and indent continuation lines
-    by 4 spaces so they align with the bullet text.
-
- -  Write concrete, user-facing descriptions.  Include what changed, why it
-    changed, and what users should do differently (especially for breaking
-    changes).
-
- -  Use `[[#123]]` markers for issue/PR references, with reference links at
-    the end of the version section:
-
-    ~~~~
-     -  Fixed a bug where foo would bar.  [[#123]]
-
-    [#123]: https://github.com/fedify-dev/fedify/pull/123
-    ~~~~
-
- -  When the reference is for a PR authored by an external contributor, append
-    `by <NAME>` after the reference marker (e.g., `[[#123] by John Doe]`).
-
-### Pull request builds
-
-Pre-release versions can be published for pull requests on request.  If you need
-a pre-release version to test your changes, ask a maintainer in the PR comments.
-A maintainer can then trigger the pre-release build from the GitHub Actions tab.
-
-The version number of the pre-release version consists of the base version
-number, the pull request number, the build number, and the commit hash, which
-looks like `1.2.3-pr.456.789+abcdef01`.  Once published, a comment will be
-posted on the PR with the exact version numbers and installation instructions.
-
-
-Build
------
-
-### Directories
-
-The repository is organized as a monorepo with the following packages:
-
- -  *packages/fedify/*: The main Fedify library (@fedify/fedify).  The library
-    is built with Deno, and tested with Deno, Node.js, and [Bun].
- -  *packages/cli/*: The Fedify CLI (@fedify/cli).  Built with [Deno] and
-    tested with Deno, Node.js, and [Bun].  Uses `deno compile` to create
-    standalone executables.
- -  *packages/create/*: Standalone CLI (@fedify/create) for
-    creating new Fedify projects.  Wraps @fedify/init.
- -  *packages/amqp/*: AMQP/RabbitMQ driver (@fedify/amqp) for Fedify.
- -  *packages/astro/*: Astro integration (@fedify/astro) for Fedify.
- -  *packages/backfill/*: ActivityPub conversation backfill support
-    (@fedify/backfill) for Fedify.
- -  *packages/cfworkers/*: Cloudflare Workers integration (@fedify/cfworkers)
-    for Fedify.
- -  *packages/debugger/*: Embedded ActivityPub debug dashboard
-    (@fedify/debugger) for Fedify.
- -  *packages/denokv/*: Deno KV integration (@fedify/denokv) for Fedify.
- -  *packages/elysia/*: Elysia integration (@fedify/elysia) for Fedify.
- -  *packages/express/*: Express integration (@fedify/express) for Fedify.
- -  *packages/fastify/*: Fastify integration (@fedify/fastify) for Fedify.
- -  *packages/fixture/*: Testing utilities (@fedify/fixture) providing
-    runtime-agnostic test adapters.
- -  *packages/fresh/*: Fresh integration (@fedify/fresh) for Fedify.
- -  *packages/h3/*: h3 framework integration (@fedify/h3) for Fedify.
- -  *packages/hono/*: Hono integration (@fedify/hono) for Fedify.
- -  *packages/init/*: Project initializer (@fedify/init) for Fedify.
-    Separated from @fedify/cli to enable standalone use and
-    `npm init @fedify`.
- -  *packages/interaction-controls/*: Interaction control helpers
-    (@fedify/interaction-controls) for Fedify.
- -  *packages/koa/*: Koa integration (@fedify/koa) for Fedify.
- -  *packages/lint/*: Linting utilities (@fedify/lint) for Fedify.
- -  *packages/mysql/*: MySQL/MariaDB drivers (@fedify/mysql) for Fedify.
- -  *packages/netlify/*: Netlify Async Workloads integration (@fedify/netlify)
-    for Fedify.
- -  *packages/nestjs/*: NestJS integration (@fedify/nestjs) for Fedify.
- -  *packages/next/*: Next.js integration (@fedify/next) for Fedify.
- -  *packages/nuxt/*: Nuxt integration (@fedify/nuxt) for Fedify.
- -  *packages/postgres/*: PostgreSQL drivers (@fedify/postgres) for Fedify.
- -  *packages/redis/*: Redis drivers (@fedify/redis) for Fedify.
- -  *packages/relay/*: ActivityPub relay support (@fedify/relay) for Fedify.
- -  *packages/sqlite/*: SQLite driver (@fedify/sqlite) for Fedify.
- -  *packages/sveltekit/*: SvelteKit integration (@fedify/sveltekit) for Fedify.
- -  *packages/testing/*: Testing utilities (@fedify/testing) for Fedify.
- -  *packages/vocab/*: Activity Vocabulary library (@fedify/vocab) for Fedify.
- -  *packages/vocab-runtime/*: Runtime library for code-generated vocab
-    (@fedify/vocab-runtime) for Fedify.
- -  *packages/vocab-tools/*: Code generation tools for Activity Vocabulary
-    (@fedify/vocab-tools) for Fedify.
- -  *packages/webfinger/*: WebFinger client library (@fedify/webfinger) for
-    ActivityPub.
- -  *docs/*: The Fedify docs.  The docs are built with [Node.js] and
-    [VitePress].
- -  *examples/*: The example projects.  Some examples are built with Deno, and
-    some are built with Node.js.
-
-[Bun]: https://bun.sh/
-[Deno]: https://deno.com/
-[Node.js]: https://nodejs.org/
-[VitePress]: https://vitepress.dev/
-
-### Development environment
-
-Fedify uses [mise] to manage development tools and run tasks.  You need to
-install mise first, then run the following commands to set up the development
-environment:
+Pass options after `--` to limit the matrix:
 
 ~~~~ bash
-mise trust
-mise install
+mise run test:init -- -w hono -p deno
+mise run test:init -- -w hono -w express -p deno -p npm -k denokv -m denokv
 ~~~~
 
-This installs [Deno], [Node.js], [Bun], and the other tools with the correct
-versions specified in *mise.toml*.  A `postinstall` hook then runs `mise deps`,
-which generates code, installs dependencies, builds all packages, and (on first
-setup) installs the Git pre-commit hook, so the checkout is ready to use.
+The test artifacts are written under */tmp/fedify-init/&lt;run-id&gt;/* on Unix.
+The internal `test-init` command uses `FEDIFY_TEST_MODE` to select local
+workspace packages and is not part of the public CLI.
 
-The recommended editor for Fedify is [Visual Studio Code] with
-the [Deno extension] installed.  Or you can use any editor that supports Deno;
-see the [*Set Up Your Environment* section][1] in the Deno manual.
+### Testing examples
 
-> [!CAUTION]
->
-> Fedify heavily depends on code generation and all packages must be built
-> before coding or testing. The `mise install` step above handles code
-> generation and builds all packages for you.
-
-With the tools and dependencies installed by the setup commands above, open the
-repository in Visual Studio Code to get ready to hack on Fedify:
-
-~~~~ bash
-code .
-~~~~
-
-> [!TIP]
-> The Git pre-commit hook, which runs `mise run check` before each commit, is
-> installed automatically by `mise install` (unless one is already present).
-> To (re)install it explicitly, run:
->
-> ~~~~ bash
-> mise run hooks:install
-> ~~~~
-
-You only need to run `mise install` once, right after checkout. When you change
-dependencies or code generation inputs, mise's deps providers pick the change
-up automatically before the next task runs (or run `mise deps` explicitly).
-
-Since this is a monorepo, you can also work on individual packages by
-navigating to their directories and using package-specific tasks.
-
-Immediately after running the `code .` command, Visual Studio Code will open
-the repository, and you can start hacking on Fedify.  If you encounter the
-following message:
-
-> Do you want to install recommended ‘Deno’ extension from denoland for
-> this repository?
-
-Please click the *Install* button to install the Deno extension.
-
-[mise]: https://mise.jdx.dev/
-[Visual Studio Code]: https://code.visualstudio.com/
-[Deno extension]: https://marketplace.visualstudio.com/items?itemName=denoland.vscode-deno
-[1]: https://docs.deno.com/runtime/manual/getting_started/setup_your_environment/
-
-### Running the Fedify CLI
-
-If you want to test your changes in the Fedify CLI, you can run
-`mise run cli` command from the root.  For example, if you want to test
-the `fedify lookup` subcommand, you can run the following command:
-
-~~~~ bash
-mise run cli -- lookup @fedify@hackers.pub
-~~~~
-
-> [!NOTE]
->
-> The Fedify CLI is tested with Deno, Node.js, and Bun like other packages.
-> However, for quick local testing during development, `mise run cli` uses
-> Deno directly without requiring a full multi-runtime test run.
-
-#### Running the tests
-
-If you want to test your changes in the Fedify library, you can run
-the following command from the root:
-
-~~~~ bash
-mise run test:deno
-~~~~
-
-Or you can test a specific package:
-
-~~~~ bash
-deno task -f @fedify/fedify test
-~~~~
-
-You can use `--filter` option to run a specific test.  For example, if you
-want to run the `verifyRequest` test:
-
-~~~~ bash
-deno task -f @fedify/fedify test --filter verifyRequest
-~~~~
-
-If the tests pass, you should run `mise run test` command to test
-all packages with Deno, Node.js, and [Bun]:
-
-~~~~ bash
-mise run test
-~~~~
-
-To test individual packages with specific runtimes:
-
-~~~~ bash
-# Test with Node.js
-mise run test:node
-
-# Test with Bun
-mise run test:bun
-~~~~
-
-Of course, Node.js and Bun should be installed on your system to run the tests
-with Node.js and Bun.  If you followed the setup instructions above using
-`mise install`, these tools are already available.
-
-#### Testing the `init` command
-
-If you want to test some integration packages like `@fedify/hono` or
-`@fedify/denokv`, you can test them with `test:init` task.  This task runs
-the `fedify init` command with various combinations of web frameworks,
-package managers, KvStore implementations, and MessageQueue implementations.
-
-~~~~ bash
-mise test:init
-~~~~
-
-You can also specify specific options to test:
-
-~~~~ bash
-# Test with specific web framework and package manager
-mise test:init -w hono -p deno
-
-# Test with multiple options
-mise test:init -w hono -w express -p deno -p npm -k denokv -m denokv
-~~~~
-
-If some options are not specified, all combinations are tested by default.
-
-You can skip dry run or hydration tests:
-
-~~~~ bash
-mise test:init --no-dry-run   # Only run hydration tests
-mise test:init --no-hyd-run   # Only run dry-run tests
-~~~~
-
-The test results are stored in `/tmp/fedify-init/<run-id>/`(UNIX).
-
-> [!NOTE]
->
-> The `test-init` command is for contributors only and is not exposed in the
-> public CLI. It uses the `FEDIFY_TEST_MODE` environment variable internally
-> to configure the init command to use local workspace packages instead of
-> published versions.
-
-#### Testing the examples
-
-If you want to test the example projects, you can run the following command
-from the root:
+Run all example tests, or name the examples that your change affects:
 
 ~~~~ bash
 mise run test:examples
+mise run test:examples -- astro sveltekit-sample
 ~~~~
 
-This command runs the tests for all example projects.
 
-If you want to test specific examples, you can test them by adding arguments:
+Dependencies
+------------
 
-~~~~ bash
-mise run test:examples astro sveltekit-sample
+The repository commits both *deno.lock* and *pnpm-lock.yaml*.  Use `mise deps`
+after adding, updating, or removing a dependency, and commit the lockfile
+changes that it produces.
+
+A dependency used by code that runs on Deno and Node.js or Bun must be declared
+in both places:
+
+ -  Add the Deno mapping to `imports` in the root *deno.json*.
+ -  Add the npm package to `dependencies` or `devDependencies` in the relevant
+    *package.json* file.
+
+Forgetting the npm declaration can leave Deno tests passing while Node.js and
+Bun fail with `ERR_MODULE_NOT_FOUND`.
+
+Use the pnpm catalog in *pnpm-workspace.yaml* for shared versions.  Refer to a
+catalog entry from *package.json* with `"catalog:"` instead of copying the
+version.
+
+When a dependency is published to both JSR and npm, use its JSR specifier in
+*deno.json* and its npm package in *package.json*.  If the package names differ,
+map the npm import name to the JSR package in *deno.json*.  Hono is an example:
+
+~~~~ json
+{
+  "imports": {
+    "hono": "jsr:@hono/hono@^4.0.0"
+  }
+}
 ~~~~
 
-### Building the docs
+Check the current release before choosing a version.  You can query npm with
+`npm view <package> version` or use the [JSR API].
 
-If you want to change the Fedify docs, you would like to preview the changes
-in the browser.  To do that, you need to install [Node.js] and [pnpm] first.
-Then you can run the following commands at the repository root:
+[JSR API]: https://jsr.io/docs/api
+
+### Initializer dependencies
+
+Third-party versions used by `fedify init` live in
+*packages/init/src/json/*.  Web framework and common tool versions usually
+belong in *deps.json*.  Key-value store and message queue versions belong in
+*kv.json* and *mq.json*.
+
+Update the existing version ranges and test the generated projects with:
 
 ~~~~ bash
-mise install
+mise run update-init-deps
+mise run test:init
+~~~~
+
+When a framework template needs a new dependency, add it to *deps.json* and
+refer to it through the template's `deps` import.
+
+
+Common repository changes
+-------------------------
+
+### Adding a package
+
+Do not add a package to this guide's repository overview.  The current package
+inventory belongs in *README.md*.
+
+A new package requires these updates:
+
+1.  Add the package directory and its metadata.  Published npm packages need a
+    `repository` field for provenance.
+2.  Add the package path to the `workspace` array in the root *deno.json* when
+    Deno should include it.
+3.  Add the path to `packages` in *pnpm-workspace.yaml*.
+4.  Add the package to the table in *README.md*.
+5.  Add its path and owners to *.github/CODEOWNERS*.
+
+Some packages need more updates:
+
+ -  Add web framework integrations to *docs/manual/integration.md*.
+ -  Add `KvStore` implementations to *docs/manual/kv.md*.
+ -  Add `MessageQueue` implementations to *docs/manual/mq.md*.
+ -  Give JSR packages the correct `name` and `publish` metadata in their
+    *deno.json* file.  The documentation reference list is generated from
+    publishable workspace packages, so do not edit
+    *docs/.vitepress/config.mts* for it.
+ -  Add shared dependency versions to the pnpm catalog when appropriate.
+
+### Adding a web framework integration
+
+The integration workflow is documented in three guides:
+
+ -  *.agents/skills/create-integration-package/SKILL.md* covers feasibility
+    research and the integration package.
+ -  *.agents/skills/add-to-fedify-init/SKILL.md* covers `fedify init`.
+ -  *.agents/skills/create-example-app-with-integration/SKILL.md* covers the
+    example application.
+
+The guides are written for coding agents but are also useful as checklists for
+human contributors.  Test initializer changes with `mise run test:init` and
+examples with `mise run test:examples`.
+
+### Adding vocabulary types
+
+Vocabulary schemas live under *packages/vocab/src/*.  Follow the existing
+YAML files and run `mise run codegen`.  Generated vocabulary types are exported
+automatically, so do not edit *packages/vocab/src/vocab.ts* or add exports by
+hand.  The detailed workflow is in *.agents/skills/add-vocab/SKILL.md*.
+
+### Adding database adapters
+
+The core `KvStore` and `MessageQueue` interfaces live in
+*packages/fedify/src/federation/kv.ts* and
+*packages/fedify/src/federation/mq.ts*.  A database-specific implementation
+belongs in its own package.  Follow a nearby adapter and implement both
+interfaces when the backend can support them.
+
+
+Documentation
+-------------
+
+Use the same style in repository documentation, issue descriptions, pull
+request descriptions, and comments unless a section below says otherwise.
+
+### Markdown style
+
+Most Markdown formatting is enforced by [Hongdown].  Follow these conventions
+when writing or reviewing prose:
+
+ -  Let Hongdown wrap prose in repository Markdown.  URLs and code blocks are
+    exempt.
+ -  Prefer reference links over inline links outside *docs/*.
+ -  Use setext headings for document titles and sections.  Use ATX headings
+    only for subsections.
+ -  Use sentence case for headings.
+ -  Leave two blank lines before a level-one or level-two heading.
+ -  Use one space before and two spaces after a list marker.
+ -  Wrap file paths and document names in asterisks.
+ -  Wrap commands, package names, identifiers, and inline code in backticks.
+ -  Use quadruple tildes for code blocks and specify the language after one
+    space.
+ -  Avoid bold text.  Use headings for structure and admonitions for warnings.
+ -  In narrative text, write an em dash without surrounding spaces.  Spaces
+    are allowed when it separates a term and description in a list or stands
+    in for an empty table cell.
+
+Run `mise run fmt` to format code and documentation when a check reports a
+formatting problem.
+
+[Hongdown]: https://github.com/dahlia/hongdown
+
+### VitePress documentation
+
+Read *docs/README.md* before changing the VitePress site.  It documents
+internal links, Twoslash blocks, fixtures, code groups, and definition lists.
+
+Preview the site while writing, then run the production build to check
+Twoslash and the generated site:
+
+~~~~ bash
 mise run docs
+mise run docs:build
 ~~~~
 
-Once the development server is running, you can open your browser and navigate
-to *http://localhost:5173/* to view the docs.
 
-[pnpm]: https://pnpm.io/
+Pull requests
+-------------
+
+### Branch policy
+
+Choose the target branch from the kind of change:
+
+ -  Breaking changes target *next*.
+ -  New, backward-compatible features target *main*.
+ -  Bug fixes target the oldest maintenance branch that contains the bug.
+
+Maintenance branches are named *x.y-maintenance*, such as
+*1.5-maintenance*.  Fixes move forward through later maintenance branches,
+then *main*, and finally *next*.  Ask in the issue if you are unsure which
+branch contains the bug.
+
+### Bug fixes
+
+A bug-fix pull request should include:
+
+ -  A regression test that fails without the patch and passes with it.
+ -  The fix.
+ -  A *CHANGES.md* entry with the issue, pull request, and contributor name,
+    unless the contributor wants to remain anonymous.
+
+Link the accepted issue in the pull request.
+
+### Features
+
+A feature pull request should include:
+
+ -  Tests for the new behavior.
+ -  The implementation.
+ -  Documentation for public API changes.
+ -  Any example changes needed to keep the examples working.
+ -  A *CHANGES.md* entry.
+
+Describe the change, why it is needed, and how it was tested.  Link the
+accepted issue.
+
+### Issue and pull request descriptions
+
+Explain the background and motivation, not only the resulting diff.  Keep each
+prose paragraph on one source line and use `#123` for issue and pull request
+references.
+
+Before submitting an issue or pull request, pass its description to Hongdown on
+standard input and use the formatted output:
+
+~~~~ bash
+hongdown --stdin --no-line-width
+~~~~
+
+This applies the repository's Markdown style without adding line breaks to
+prose paragraphs.
+
+Disclose AI assistance as required by *AI\_POLICY.md*.
+
+### Pull request builds
+
+A maintainer can publish a pre-release build for a pull request on request.
+Ask in the pull request comments.  Published versions include the base version,
+pull request number, build number, and commit hash, for example
+`1.2.3-pr.456.789+abcdef01`.  The publishing workflow comments with the exact
+versions and installation commands.
+
+
+Commits and changelog entries
+-----------------------------
+
+### Commit messages
+
+Do not use Conventional Commit prefixes such as `fix:` or `feat:`.  Keep the
+subject under 50 characters when practical and explain why the change was
+made.  Use permalink URLs for issues and pull requests so references survive a
+repository move.
+
+Leave a blank line after a colon before starting a list:
+
+~~~~
+This commit includes the following changes:
+
+- Added foo
+- Fixed bar
+~~~~
+
+When an AI tool assists with a commit, add the trailer required by
+*AI\_POLICY.md*:
+
+~~~~
+Assisted-by: AGENT_NAME:MODEL_VERSION
+~~~~
+
+Use one trailer for each tool.  Do not use `Co-authored-by` for AI assistance.
+
+### Changelog entries
+
+Keep *CHANGES.md* entries in reverse chronological order.  Version sections use
+setext headings and unreleased versions begin with `To be released.`
+
+Use ` -  ` for list items and indent continuation lines by four spaces.
+Describe the user-visible change, why it was made, and what users should do
+differently.  Add a `[[#123]]` marker and define its reference link at the end
+of the version section:
+
+~~~~ markdown
+ -  Fixed a bug where foo would bar.  [[#123]]
+
+[#123]: https://github.com/fedify-dev/fedify/pull/123
+~~~~
+
+For an external contributor, add their name after the marker, for example
+`[[#123] by John Doe]`.
+
+
+Final checks
+------------
+
+Run focused checks while working.  Before committing, check every package that
+the change affects:
+
+~~~~ bash
+mise run check-each fedify vocab
+mise run test-each fedify vocab
+~~~~
+
+For documentation-only changes, run the Markdown check and build the docs when
+the rendered site is affected:
+
+~~~~ bash
+mise run check:md
+mise run docs:build
+~~~~
+
+Run the repository-wide checks when a change crosses package boundaries or is
+ready for release:
+
+~~~~ bash
+mise run check
+mise run test
+~~~~
+
+Do not submit hypothetical code.  Verify the behavior in every environment
+that the pull request claims to support, and report what you actually ran.

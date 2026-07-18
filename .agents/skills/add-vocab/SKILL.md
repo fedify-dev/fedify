@@ -7,7 +7,6 @@ description: >-
   implementing FEPs, extending ActivityStreams vocabulary, or adding third-party
   vocab types such as Mastodon extensions, Litepub types, or other fediverse
   vocabularies.
-version: 1.0.0
 ---
 
 Adding vocabulary to @fedify/vocab
@@ -52,12 +51,17 @@ Workflow
 5.  If a new context URL is needed, add it to
     `packages/vocab-runtime/src/contexts.ts`
 6.  Run `mise run codegen` to generate TypeScript classes
-7.  Run `mise run check` to verify everything compiles
-8.  Ask the user to review the YAML definition and generated code carefully
+7.  Run `mise run test:update_snapshots` to update the Deno, Node.js, and Bun
+    snapshots
+8.  Run `mise run check` to verify everything compiles
+9.  Ask the user to review the YAML definition and generated code carefully
     before committing
 
 The generated TypeScript class is automatically exported from `@fedify/vocab`
 via `packages/vocab/src/vocab.ts` (generated) and `packages/vocab/src/mod.ts`.
+The `@fedify/vocab-tools` snapshots are stored separately for Deno, Node.js,
+and Bun.  Always update all three with the aggregate task when generated output
+changes; do not update only one runtime's snapshot.
 
 
 YAML file format
