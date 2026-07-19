@@ -14,6 +14,7 @@ import {
 } from "vitepress-plugin-group-icons";
 import llmstxt from "vitepress-plugin-llms";
 import { withMermaid } from "vitepress-plugin-mermaid";
+import { createFedifyTwoslashCache } from "./twoslash-cache.mts";
 
 const jsrRefVersion = process.env.JSR_REF_VERSION ?? "unstable";
 
@@ -355,6 +356,7 @@ export default withMermaid(defineConfig({
     ],
     codeTransformers: [
       transformerTwoslash({
+        typesCache: createFedifyTwoslashCache(),
         twoslashOptions: {
           compilerOptions: {
             moduleResolution: ModuleResolutionKind.Bundler,

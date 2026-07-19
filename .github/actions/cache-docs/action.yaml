@@ -1,0 +1,19 @@
+name: Cache documentation build
+description: Restore the VitePress and Twoslash build caches
+
+runs:
+  using: composite
+  steps:
+  - id: cache-key
+    shell: bash
+    run: |
+      namespace=$(node --input-type=module --eval \
+        "import { getFedifyTwoslashCacheNamespace } from './docs/.vitepress/twoslash-cache.mts'; console.log(getFedifyTwoslashCacheNamespace());")
+      echo "namespace=$namespace" >> "$GITHUB_OUTPUT"
+      echo "docs-tree=$(git rev-parse HEAD:docs)" >> "$GITHUB_OUTPUT"
+  - uses: actions/cache@v6
+    with:
+      path: docs/.vitepress/cache
+      key: ${{ runner.os }}-${{ runner.arch }}-vitepress-${{ steps.cache-key.outputs.namespace }}-${{ steps.cache-key.outputs.docs-tree }}
+      restore-keys: |
+        ${{ runner.os }}-${{ runner.arch }}-vitepress-${{ steps.cache-key.outputs.namespace }}-
