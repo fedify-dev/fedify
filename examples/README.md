@@ -17,6 +17,7 @@ added in the future.[^1]
  -  [Hono integration sample](./hono-sample/)
  -  [Fastify integration example](./fastify/)
  -  [Fedify–Express integration example](./express/)
+ -  [Fedify–h3 integration example](./h3/)
  -  [Fedify monitoring example](./monitoring/)
  -  [Fedify–Next.js 16 integration example using `@fedify/next`](./next-integration/)
  -  [Fedify–Next.js 14 integration example](./next14-app-router/)
