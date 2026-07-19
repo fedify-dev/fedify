@@ -3,8 +3,8 @@ import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 
 export class UrlError extends Error {
-  constructor(message: string) {
-    super(message);
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
     this.name = "UrlError";
   }
 }
@@ -51,8 +51,8 @@ export async function validatePublicUrl(url: string): Promise<void> {
   let addresses: LookupAddress[];
   try {
     addresses = await lookup(hostname, { all: true });
-  } catch {
-    addresses = [];
+  } catch (error) {
+    throw new UrlError("DNS lookup failed", { cause: error });
   }
   validateLookupAddresses(addresses);
 }
@@ -77,8 +77,8 @@ export function validateLookupAddresses(
     ipAddressCount++;
     validatePublicIpAddress(address, family);
   }
-  if (addresses.length > 0 && ipAddressCount === 0) {
-    throw new UrlError("DNS lookup did not return an IP address");
+  if (ipAddressCount === 0) {
+    throw new UrlError("DNS lookup did not return any IP address");
   }
 }
 
