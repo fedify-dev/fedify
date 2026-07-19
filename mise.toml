@@ -15,17 +15,11 @@ bun = "1.2.22"
 deno = "2.8.3"
 node = "22"
 pnpm = "10.28.0"
+"aqua:dahlia/hongdown" = "0.5.1"
 # Nushell powers the cross-platform orchestration tasks (prepare-each,
 # check-each, test-each, check-versions) so they run identically on Windows,
 # macOS, and Linux without Bash.
 "aqua:nushell/nushell" = "0.113.1"
-
-[tools."github:dahlia/hongdown"]
-version = "0.5.0"
-
-[tools."github:dahlia/hongdown".platforms]
-linux-x64 = "hongdown-*-x86_64-unknown-linux-musl.tar.bz2"
-linux-arm64 = "hongdown-*-aarch64-unknown-linux-musl.tar.bz2"
 
 # Dependency providers <https://mise.jdx.dev/dev-tools/deps.html>
 #
