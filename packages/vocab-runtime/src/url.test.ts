@@ -66,7 +66,7 @@ test("validatePublicUrl()", async () => {
   await validatePublicUrl("https://[64:ff9b::8.8.8.8]");
 });
 
-test("validateLookupAddresses() ignores CNAME results", () => {
+test("validateLookupAddresses() tolerates Cloudflare Workers CNAME entries", () => {
   validateLookupAddresses([
     { address: "app-host.example.net.", family: 4 },
     { address: "93.184.216.34", family: 4 },
@@ -74,7 +74,7 @@ test("validateLookupAddresses() ignores CNAME results", () => {
   ]);
 });
 
-test("validateLookupAddresses() rejects unsafe or alias-only results", () => {
+test("validateLookupAddresses() rejects unsafe or CNAME-only Cloudflare Workers results", () => {
   throws(
     () =>
       validateLookupAddresses([

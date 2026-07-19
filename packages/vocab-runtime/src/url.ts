@@ -60,10 +60,17 @@ export async function validatePublicUrl(url: string): Promise<void> {
 /**
  * Validates the IP addresses returned by `node:dns.lookup()`.
  *
- * Some Node.js-compatible runtimes include CNAME records in lookup results,
- * even though Node.js specifies that the `address` field contains an IPv4 or
- * IPv6 address. Ignore those aliases as long as the lookup also returned an
- * actual IP address, while continuing to reject every non-public IP address.
+ * Cloudflare Workers' `node:dns` implementation currently maps every record
+ * in a DNS-over-HTTPS `Answer` array—including CNAME records—to a
+ * `LookupAddress`, even though Node.js specifies that the `address` field must
+ * contain an IPv4 or IPv6 literal.  See:
+ * https://github.com/cloudflare/workerd/issues/6886
+ *
+ * Work around that bug by ignoring non-IP entries only when the lookup also
+ * returns at least one actual IP address.  This remains fail-closed: a result
+ * containing no IP addresses is rejected, and every returned IP address is
+ * still validated and must be public.  This workaround can be revisited once
+ * the Workerd issue is fixed in supported Cloudflare Workers runtimes.
  *
  * @internal
  */
