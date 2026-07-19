@@ -8,6 +8,18 @@ Version 2.0.23
 
 To be released.
 
+### @fedify/cfworkers
+
+ -  Fixed `WorkersMessageQueue.enqueueMany()` failing when the given messages
+    exceeded Cloudflare Queues' batch limits of 100 messages or 256 KB per
+    batch, which could happen when delivering activities to a large audience.
+    The method now estimates the serialized size of each message and splits
+    the messages into multiple `sendBatch()` calls that stay within the
+    limits.  [[#958], [#960] by SJang1]
+
+[#958]: https://github.com/fedify-dev/fedify/issues/958
+[#960]: https://github.com/fedify-dev/fedify/pull/960
+
 
 Version 2.0.22
 --------------
