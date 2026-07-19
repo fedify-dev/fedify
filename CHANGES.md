@@ -8,6 +8,29 @@ Version 2.1.19
 
 To be released.
 
+### @fedify/vocab-runtime
+
+ -  Fixed document loaders rejecting public URLs backed by CNAMEs on
+    Cloudflare Workers.  `validatePublicUrl()` now ignores non-IP aliases
+    returned alongside DNS lookup results while continuing to validate every
+    resolved IP address, and rejects lookups that return no IP addresses.
+    [[#956], [#957] by SJang1]
+
+[#956]: https://github.com/fedify-dev/fedify/issues/956
+[#957]: https://github.com/fedify-dev/fedify/pull/957
+
+### @fedify/cfworkers
+
+ -  Fixed `WorkersMessageQueue.enqueueMany()` failing when the given messages
+    exceeded Cloudflare Queues' batch limits of 100 messages or 256 KB per
+    batch, which could happen when delivering activities to a large audience.
+    The method now estimates the serialized size of each message and splits
+    the messages into multiple `sendBatch()` calls that stay within the
+    limits.  [[#958], [#960] by SJang1]
+
+[#958]: https://github.com/fedify-dev/fedify/issues/958
+[#960]: https://github.com/fedify-dev/fedify/pull/960
+
 
 Version 2.1.18
 --------------
@@ -676,6 +699,29 @@ Released on March 24, 2026.
 [#586]: https://github.com/fedify-dev/fedify/issues/586
 [#597]: https://github.com/fedify-dev/fedify/pull/597
 [#599]: https://github.com/fedify-dev/fedify/pull/599
+
+
+Version 2.0.23
+--------------
+
+Released on July 19, 2026.
+
+### @fedify/vocab-runtime
+
+ -  Fixed document loaders rejecting public URLs backed by CNAMEs on
+    Cloudflare Workers.  `validatePublicUrl()` now ignores non-IP aliases
+    returned alongside DNS lookup results while continuing to validate every
+    resolved IP address, and rejects lookups that return no IP addresses.
+    [[#956], [#957] by SJang1]
+
+### @fedify/cfworkers
+
+ -  Fixed `WorkersMessageQueue.enqueueMany()` failing when the given messages
+    exceeded Cloudflare Queues' batch limits of 100 messages or 256 KB per
+    batch, which could happen when delivering activities to a large audience.
+    The method now estimates the serialized size of each message and splits
+    the messages into multiple `sendBatch()` calls that stay within the
+    limits.  [[#958], [#960] by SJang1]
 
 
 Version 2.0.22

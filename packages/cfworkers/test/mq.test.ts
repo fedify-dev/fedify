@@ -131,6 +131,104 @@ describe("WorkersMessageQueue", () => {
     sendBatchSpy.mockRestore();
   });
 
+  it("enqueueMany() splits batches at the 100-message limit", async () => {
+    const sendBatchSpy = vi
+      .spyOn(env.Q1, "sendBatch")
+      .mockImplementation(async () => {});
+
+    const queue = new WorkersMessageQueue(env.Q1);
+    const messages = Array.from({ length: 101 }, (_, id) => ({ id }));
+    await queue.enqueueMany(messages);
+
+    expect(sendBatchSpy).toHaveBeenCalledTimes(2);
+    expect(
+      sendBatchSpy.mock.calls.map(([requests]) =>
+        Array.from(requests).length
+      ),
+    ).toEqual([100, 1]);
+
+    sendBatchSpy.mockRestore();
+  });
+
+  it.each([
+    ["single-byte ASCII", "a", 90_000],
+    ["multi-byte Unicode", "🙂", 22_500],
+  ])(
+    "enqueueMany() splits %s payloads by serialized UTF-8 size",
+    async (_label, character, repetitions) => {
+      const sendBatchSpy = vi
+        .spyOn(env.Q1, "sendBatch")
+        .mockImplementation(async () => {});
+
+      const queue = new WorkersMessageQueue(env.Q1);
+      const messages = Array.from({ length: 3 }, (_, id) => ({
+        id,
+        content: character.repeat(repetitions),
+      }));
+      await queue.enqueueMany(messages);
+
+      expect(sendBatchSpy).toHaveBeenCalledTimes(2);
+      expect(
+        sendBatchSpy.mock.calls.map(([requests]) =>
+          Array.from(requests).length
+        ),
+      ).toEqual([2, 1]);
+
+      const queuedIds = sendBatchSpy.mock.calls.flatMap(([requests]) =>
+        Array.from(requests, (request) => {
+          const body = request.body as {
+            __fedify_payload__: { id: number };
+          };
+          return body.__fedify_payload__.id;
+        })
+      );
+      expect(queuedIds).toEqual([0, 1, 2]);
+
+      sendBatchSpy.mockRestore();
+    },
+  );
+
+  it("enqueueMany() preserves options across split batches", async () => {
+    const sendBatchSpy = vi
+      .spyOn(env.Q1, "sendBatch")
+      .mockImplementation(async () => {});
+
+    const queue = new WorkersMessageQueue(env.Q1);
+    const messages = Array.from({ length: 3 }, (_, id) => ({
+      id,
+      content: "a".repeat(90_000),
+    }));
+    await queue.enqueueMany(messages, {
+      orderingKey: "activity:123",
+      delay: mockDuration(5) as unknown as Temporal.Duration,
+    });
+
+    expect(sendBatchSpy).toHaveBeenCalledTimes(2);
+    for (const [requests, options] of sendBatchSpy.mock.calls) {
+      expect(options).toEqual({ delaySeconds: 5 });
+      for (const request of requests) {
+        expect(request.body).toMatchObject({
+          __fedify_ordering_key__: "activity:123",
+        });
+      }
+    }
+
+    sendBatchSpy.mockRestore();
+  });
+
+  it("enqueueMany() does not send an empty batch", async () => {
+    const sendBatchSpy = vi
+      .spyOn(env.Q1, "sendBatch")
+      .mockImplementation(async () => {});
+
+    const queue = new WorkersMessageQueue(env.Q1);
+    await queue.enqueueMany([]);
+
+    expect(sendBatchSpy).not.toHaveBeenCalled();
+
+    sendBatchSpy.mockRestore();
+  });
+
   it("listen() throws TypeError", () => {
     const queue = new WorkersMessageQueue(env.Q1);
     expect(() => queue.listen(() => {})).toThrow(TypeError);

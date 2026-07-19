@@ -94,6 +94,13 @@ interface WrappedMessage {
 }
 
 /**
+ * enqueueMany Limit settings.
+ */
+const MAX_BATCH_MESSAGES = 100;
+const MAX_ESTIMATED_BATCH_BYTES = 240_000;
+const ESTIMATED_METADATA_BYTES_PER_MESSAGE = 128;
+
+/**
  * Result from {@link WorkersMessageQueue.processMessage}.
  * @since 2.0.0
  */
@@ -339,16 +346,57 @@ export class WorkersMessageQueue implements MessageQueue {
     messages: readonly any[],
     options?: MessageQueueEnqueueOptions,
   ): Promise<void> {
-    const requests: MessageSendRequest[] = messages.map((msg) => ({
-      body: {
+    const utf8Encoder = new TextEncoder();
+
+    const estimateMessageBytes = (body: WrappedMessage): number => {
+      const serialized = JSON.stringify(body);
+
+      if (serialized === undefined) {
+        throw new TypeError("Queue message must be JSON-serializable.");
+      }
+
+      return utf8Encoder.encode(serialized).byteLength +
+        ESTIMATED_METADATA_BYTES_PER_MESSAGE;
+    };
+
+    const delaySeconds = options?.delay?.total("seconds") ?? 0;
+
+    let batch: MessageSendRequest[] = [];
+    let estimatedBatchBytes = 0;
+
+    const flush = async (): Promise<void> => {
+      if (batch.length === 0) return;
+
+      await this.#queue.sendBatch(batch, { delaySeconds });
+
+      batch = [];
+      estimatedBatchBytes = 0;
+    };
+
+    for (const message of messages) {
+      const body = {
         __fedify_ordering_key__: options?.orderingKey,
-        __fedify_payload__: msg,
-      } satisfies WrappedMessage,
-      contentType: "json",
-    }));
-    await this.#queue.sendBatch(requests, {
-      delaySeconds: options?.delay?.total("seconds") ?? 0,
-    });
+        __fedify_payload__: message,
+      } satisfies WrappedMessage;
+
+      const request = {
+        body,
+        contentType: "json",
+      } satisfies MessageSendRequest;
+
+      const messageBytes = estimateMessageBytes(body);
+      const exceedsBatchLimit = batch.length >= MAX_BATCH_MESSAGES ||
+        estimatedBatchBytes + messageBytes > MAX_ESTIMATED_BATCH_BYTES;
+
+      if (batch.length > 0 && exceedsBatchLimit) {
+        await flush();
+      }
+
+      batch.push(request);
+      estimatedBatchBytes += messageBytes;
+    }
+
+    await flush();
   }
 
   /**
