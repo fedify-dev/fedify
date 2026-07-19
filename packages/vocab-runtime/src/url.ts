@@ -54,8 +54,31 @@ export async function validatePublicUrl(url: string): Promise<void> {
   } catch {
     addresses = [];
   }
-  for (const { address, family } of addresses) {
+  validateLookupAddresses(addresses);
+}
+
+/**
+ * Validates the IP addresses returned by `node:dns.lookup()`.
+ *
+ * Some Node.js-compatible runtimes include CNAME records in lookup results,
+ * even though Node.js specifies that the `address` field contains an IPv4 or
+ * IPv6 address. Ignore those aliases as long as the lookup also returned an
+ * actual IP address, while continuing to reject every non-public IP address.
+ *
+ * @internal
+ */
+export function validateLookupAddresses(
+  addresses: readonly LookupAddress[],
+): void {
+  let ipAddressCount = 0;
+  for (const { address } of addresses) {
+    const family = isIP(address);
+    if (family === 0) continue;
+    ipAddressCount++;
     validatePublicIpAddress(address, family);
+  }
+  if (addresses.length > 0 && ipAddressCount === 0) {
+    throw new UrlError("DNS lookup did not return an IP address");
   }
 }
 

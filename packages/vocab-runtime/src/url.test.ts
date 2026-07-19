@@ -1,10 +1,11 @@
-import { deepStrictEqual, ok, rejects } from "node:assert";
+import { deepStrictEqual, ok, rejects, throws } from "node:assert";
 import { test } from "node:test";
 import {
   expandIPv6Address,
   isValidPublicIPv4Address,
   isValidPublicIPv6Address,
   UrlError,
+  validateLookupAddresses,
   validatePublicUrl,
 } from "./url.ts";
 
@@ -63,6 +64,32 @@ test("validatePublicUrl()", async () => {
   }
   await validatePublicUrl("https://[2001:db8::1]");
   await validatePublicUrl("https://[64:ff9b::8.8.8.8]");
+});
+
+test("validateLookupAddresses() ignores CNAME results", () => {
+  validateLookupAddresses([
+    { address: "app-host.example.net.", family: 4 },
+    { address: "93.184.216.34", family: 4 },
+    { address: "2606:2800:220:1:248:1893:25c8:1946", family: 6 },
+  ]);
+});
+
+test("validateLookupAddresses() rejects unsafe or alias-only results", () => {
+  throws(
+    () =>
+      validateLookupAddresses([
+        { address: "private-host.example.net.", family: 4 },
+        { address: "127.0.0.1", family: 4 },
+      ]),
+    UrlError,
+  );
+  throws(
+    () =>
+      validateLookupAddresses([
+        { address: "app-host.example.net.", family: 4 },
+      ]),
+    UrlError,
+  );
 });
 
 test("isValidPublicIPv4Address()", () => {
