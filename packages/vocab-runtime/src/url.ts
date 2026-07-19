@@ -3,8 +3,8 @@ import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 
 export class UrlError extends Error {
-  constructor(message: string) {
-    super(message);
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
     this.name = "UrlError";
   }
 }
@@ -51,11 +51,41 @@ export async function validatePublicUrl(url: string): Promise<void> {
   let addresses: LookupAddress[];
   try {
     addresses = await lookup(hostname, { all: true });
-  } catch {
-    addresses = [];
+  } catch (error) {
+    throw new UrlError("DNS lookup failed", { cause: error });
   }
-  for (const { address, family } of addresses) {
+  validateLookupAddresses(addresses);
+}
+
+/**
+ * Validates the IP addresses returned by `node:dns.lookup()`.
+ *
+ * Cloudflare Workers' `node:dns` implementation currently maps every record
+ * in a DNS-over-HTTPS `Answer` array—including CNAME records—to a
+ * `LookupAddress`, even though Node.js specifies that the `address` field must
+ * contain an IPv4 or IPv6 literal.  See:
+ * https://github.com/cloudflare/workerd/issues/6886
+ *
+ * Work around that bug by ignoring non-IP entries only when the lookup also
+ * returns at least one actual IP address.  This remains fail-closed: a result
+ * containing no IP addresses is rejected, and every returned IP address is
+ * still validated and must be public.  This workaround can be revisited once
+ * the Workerd issue is fixed in supported Cloudflare Workers runtimes.
+ *
+ * @internal
+ */
+export function validateLookupAddresses(
+  addresses: readonly LookupAddress[],
+): void {
+  let ipAddressCount = 0;
+  for (const { address } of addresses) {
+    const family = isIP(address);
+    if (family === 0) continue;
+    ipAddressCount++;
     validatePublicIpAddress(address, family);
+  }
+  if (ipAddressCount === 0) {
+    throw new UrlError("DNS lookup did not return any IP address");
   }
 }
 

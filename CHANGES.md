@@ -8,6 +8,17 @@ Version 2.0.23
 
 To be released.
 
+### @fedify/vocab-runtime
+
+ -  Fixed document loaders rejecting public URLs backed by CNAMEs on
+    Cloudflare Workers.  `validatePublicUrl()` now ignores non-IP aliases
+    returned alongside DNS lookup results while continuing to validate every
+    resolved IP address, and rejects lookups that return no IP addresses.
+    [[#956], [#957] by SJang1]
+
+[#956]: https://github.com/fedify-dev/fedify/issues/956
+[#957]: https://github.com/fedify-dev/fedify/pull/957
+
 ### @fedify/cfworkers
 
  -  Fixed `WorkersMessageQueue.enqueueMany()` failing when the given messages
