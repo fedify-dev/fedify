@@ -3,6 +3,7 @@
 // cSpell: disable
 
 import joinLemmyContext from "./contexts/join-lemmy.json" with { type: "json" };
+import miscellany from "./contexts/miscellany.json" with { type: "json" };
 
 const preloadedContexts: Record<string, unknown> = {
   "https://www.w3.org/ns/activitystreams": {
@@ -4363,6 +4364,18 @@ const preloadedContexts: Record<string, unknown> = {
       },
     },
   },
+
+  // The SWICG "ActivityPub Miscellaneous Terms" context.  Bridgy Fed (via
+  // granary) references this URL in the @context of every activity it sends,
+  // and other implementations use it as the recommended home for widely
+  // deployed extension terms like as:Hashtag and as:sensitive.  It is served
+  // through purl.archive.org (Internet Archive's PURL service), which suffers
+  // recurring outages; while it is unreachable, every activity referencing
+  // this URL fails JSON-LD expansion before application handlers run.  The
+  // document is a deliberately stable, versioned SWICG deliverable, so we
+  // ship a built-in copy.
+  // See: https://swicg.github.io/miscellany/
+  "https://purl.archive.org/miscellany": miscellany,
 };
 
 export default preloadedContexts;
