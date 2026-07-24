@@ -134,7 +134,7 @@ async function validateDevToolScripts(
   dir: string,
   options: GeneratedType<ReturnType<typeof generateTestCases>>,
 ): Promise<boolean> {
-  const [webFramework, packageManager] = options as [
+  const [_, packageManager] = options as [
     WebFramework,
     PackageManager,
     KvStore,
@@ -143,19 +143,7 @@ async function validateDevToolScripts(
   if (packageManager === "deno") return true;
   if (!(await hasInstalledNodeDependencies(dir))) return true;
 
-  if (webFramework === "astro") {
-    const format = await $`${[packageManager, "run", "format"]}`
-      .cwd(dir)
-      .stdin("null")
-      .stdout("piped")
-      .stderr("piped")
-      .noThrow()
-      .spawn();
-    await saveOutputs(dir, format);
-    if (format.code !== 0) return false;
-  }
-
-  for (const script of ["format:check", "lint"]) {
+  for (const script of ["format", "format:check", "lint"]) {
     const result = await $`${[packageManager, "run", script]}`
       .cwd(dir)
       .stdin("null")
