@@ -872,7 +872,7 @@ alone.  The classes provide that missing semantic information.
 > [!TIP]
 > Microformats are not required by ActivityPub, so a post remains valid without
 > them.  Nevertheless, adding them is recommended for interoperability with
-> Mastodon, Misskey, and other implementations that recognize these conventions.
+> Mastodon and other implementations that recognize these conventions.
 > See Mastodon's [Microformats specification] for the classes it supports.
 
 For example, write a mention as an `h-card` containing a `u-url` link.  The
