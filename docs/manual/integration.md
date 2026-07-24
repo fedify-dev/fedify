@@ -12,6 +12,13 @@ Integration
 Fedify is designed to be used together with web frameworks.  This document
 explains how to integrate Fedify with web frameworks.
 
+When changing an integration package, run its focused check with the package
+name.  For example, after changing *@fedify/express*, run:
+
+~~~~ sh
+mise run check-each express
+~~~~
+
 
 How it works
 ------------
