@@ -803,12 +803,13 @@ use the parent author's actor URL in `cc`, then deliver the `Create` activity to
 that actor through `Context.sendActivity()`.  Give the enclosing `Create`
 activity the same `to` and `cc` values as its `Note` object.
 
-Mastodon and Pixelfed can require a remote reply to both `cc` the parent author
-and include a matching `Mention` tag before they add it to the parent object's
-thread.  Ensure the `Mention.href`, `Mention.name`, and the mention link in
-`content` all identify the same actor.  For a non-public or direct reply, do
-not use `PUBLIC_COLLECTION` or the followers collection; address only the actors
-who should be able to see the conversation instead.
+Mastodon uses the `inReplyTo` property to attach a reply to its parent thread.
+Addressing the parent author in `cc` delivers the reply to them, while a
+matching `Mention` tag creates a notification; neither establishes the thread
+relationship.  Ensure the `Mention.href`, `Mention.name`, and the mention link
+in `content` all identify the same actor.  For a non-public or direct reply, do
+not use `PUBLIC_COLLECTION` or the followers collection; address only the
+actors who should be able to see the conversation instead.
 
 ### Allowing quotes
 
