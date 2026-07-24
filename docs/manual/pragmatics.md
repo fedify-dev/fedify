@@ -434,6 +434,37 @@ to these objects through their `tags` property.  The exact way ActivityPub
 implementations render these objects differs, but Mastodon and Misskey already
 share a number of de facto conventions.
 
+### `to`, `cc`
+
+> [!NOTE]
+> You can find more information in the [Specifying an activity] document.
+
+The objects described above can have `to` and `cc` properties that address
+their intended audience.  These properties can also be used on other
+ActivityStreams objects, including activities.
+The `to` property identifies primary recipients, while `cc` identifies
+secondary recipients.  To address multiple recipients, use the `tos` and `ccs`
+properties.
+
+~~~~ typescript twoslash
+import { Note, PUBLIC_COLLECTION } from "@fedify/vocab";
+import { type Context } from "@fedify/fedify";
+const ctx = null as unknown as Context<void>;
+const identifier: string = "";
+// ---cut-before---
+new Note({
+  to: PUBLIC_COLLECTION,
+  cc: ctx.getFollowersUri(identifier),
+  // additional things...
+});
+~~~~
+
+This combination addresses the public collection as the primary audience and
+the actor's followers as the secondary audience.  Mastodon uses this convention
+for public posts.
+
+[Specifying an activity]: ./send.md#specifying-an-activity
+
 ### `Note`: Short posts
 
 The `Note` type is the most common object type for short posts.  In Mastodon,
@@ -729,3 +760,148 @@ For example, the above `Emoji` object is displayed like the following in
 Mastodon:
 
 ![Screenshot: A rendered custom emoji in Mastodon](pragmatics/mastodon-emoji.png)
+
+### Replies
+
+To reply to an object, create a `Note` whose `replyTarget` is the object being
+replied to, a `Link` to it, or its canonical URL.  Fedify serializes
+`replyTarget` as the standard ActivityStreams `inReplyTo` property in JSON-LD.
+
+For a public reply, address the public collection in `to`, and add the replying
+actor's followers and the parent object's author to `cc`.  Also add a `Mention`
+tag for the parent author, with a matching mention link in `content`:
+
+~~~~ typescript twoslash
+import type { Context } from "@fedify/fedify";
+import { Mention, Note, PUBLIC_COLLECTION } from "@fedify/vocab";
+const ctx = null as unknown as Context<void>;
+const identifier = "alice";
+const parentNote = new URL("https://example.net/notes/123");
+const parentAuthor = new URL("https://example.net/users/bob");
+// ---cut-before---
+new Note({
+  content:  // [!code highlight]
+    '<p><a class="mention u-url" href="https://example.net/users/bob">' +
+    "@bob@example.net</a> Thanks for sharing this!</p>",
+  replyTarget: parentNote,  // [!code highlight]
+  to: PUBLIC_COLLECTION,  // [!code highlight]
+  ccs: [  // [!code highlight]
+    ctx.getFollowersUri(identifier),
+    parentAuthor,
+  ],
+  tags: [  // [!code highlight]
+    new Mention({
+      href: parentAuthor,
+      name: "@bob@example.net",
+    }),
+  ],
+})
+~~~~
+
+The `to` and `cc` values are audience addresses, not inbox URLs.  In particular,
+use the parent author's actor URL in `cc`, then deliver the `Create` activity to
+that actor through `Context.sendActivity()`.  Give the enclosing `Create`
+activity the same `to` and `cc` values as its `Note` object.
+
+Mastodon uses the `inReplyTo` property to attach a reply to its parent thread.
+Addressing the parent author in `cc` delivers the reply to them, while a
+matching `Mention` tag creates a notification; neither establishes the thread
+relationship.  Ensure the `Mention.href`, `Mention.name`, and the mention link
+in `content` all identify the same actor.  For a non-public or direct reply, do
+not use `PUBLIC_COLLECTION` or the followers collection; address only the
+actors who should be able to see the conversation instead.
+
+### Allowing quotes
+
+[FEP-044f] defines consent-respecting quote posts.  To allow anyone to quote a
+`Note` automatically, set its `interactionPolicy.canQuote.automaticApproval`
+property to `PUBLIC_COLLECTION`:
+
+~~~~ typescript twoslash
+import { InteractionPolicy, InteractionRule, Note, PUBLIC_COLLECTION } from "@fedify/vocab";
+// ---cut-before---
+new Note({
+  content: "<p>Anyone may quote this note.</p>",
+  interactionPolicy: new InteractionPolicy({  // [!code highlight]
+    canQuote: new InteractionRule({  // [!code highlight]
+      automaticApproval: PUBLIC_COLLECTION,  // [!code highlight]
+    }),
+  }),
+})
+~~~~
+
+Advertising this policy improves interoperability with quote-aware
+implementations.  Mastodon 4.4 verifies and displays remote FEP-044f quotes,
+and Mastodon 4.5 can author quotes and set automatic quote policies.
+[Hackers' Pub] and [Hollo] also support FEP-044f quote policies and the
+authorization flow.
+
+> [!NOTE]
+> Misskey's `_misskey_quote` property is a non-standard extension that only
+> identifies the quoted object's URL.  FEP-044f's `quote` property represents
+> the same relationship, but its `interactionPolicy.canQuote`, `QuoteRequest`,
+> and `QuoteAuthorization` terms also let implementations obtain, verify, and
+> revoke the original author's consent.  Fedify's `Note.quoteUrl` supports the
+> legacy `_misskey_quote`, `quoteUrl`, and `quoteUri` properties for
+> compatibility, while `Note.getQuote()` and `Note.quoteId` represent FEP-044f's
+> `quote` property.
+
+To require the author's approval instead, use `manualApproval` with the actors
+or collections that may request a quote.  The policy advertises whether a quote
+is expected to be allowed, but it does not authorize a quote by itself.  Under
+FEP-044f, the quoting actor sends a `QuoteRequest`; after accepting it, the
+original author returns an `Accept` activity whose `result` is a
+`QuoteAuthorization`.  The quote post then references that authorization.
+
+See the [interaction controls] documentation for the helpers that evaluate
+`canQuote` policies and create or verify quote authorizations.
+
+[FEP-044f]: https://helge.codeberg.page/fep/fep/044f/
+[Hackers' Pub]: https://hackers.pub/
+[Hollo]: https://hollo.social/
+[interaction controls]: ./interaction-controls.md
+
+### Microformats
+
+[Microformats 2] is a convention for embedding machine-readable metadata in
+HTML with CSS class names.  In federated posts, `Note.content` is HTML, so a
+receiving implementation cannot reliably infer whether an arbitrary link is an
+account mention, a hashtag, or an ordinary external link from its visible text
+alone.  The classes provide that missing semantic information.
+
+> [!TIP]
+> Microformats are not required by ActivityPub, so a post remains valid without
+> them.  Nevertheless, adding them is recommended for interoperability with
+> Mastodon and other implementations that recognize these conventions.
+> See Mastodon's [Microformats specification] for the classes it supports.
+
+For example, write a mention as an `h-card` containing a `u-url` link.  The
+`h-card` identifies the linked text as a person or organization, and `u-url`
+identifies the link as that account's profile permalink.  Mastodon also uses
+its `mention` class to open the link as an in-app account mention instead of a
+generic URL:
+
+~~~~ html
+<p>Hello
+  <span class="h-card">
+    <a class="u-url mention" href="https://example.com/users/friend">
+      <span class="p-name">@friend@example.com</span>
+    </a>
+  </span>!
+</p>
+~~~~
+
+The `mention` class is a Mastodon-specific extension, not a Microformats class.
+Likewise, use `class="hashtag"` and `rel="tag"` on hashtag links so Mastodon
+can treat them as hashtags rather than ordinary links.  These classes describe
+the HTML representation only; they do not replace ActivityPub metadata.  Keep
+the corresponding `Mention` or `Hashtag` object in `Note.tags`, with the same
+URL and displayed name, so implementations can correctly process the post,
+including notifications and thread handling.
+
+When generating `content`, preserve these classes through HTML sanitization.
+Removing them may leave the link clickable, but Mastodon-compatible clients can
+lose its mention or hashtag behavior.
+
+[Microformats 2]: https://microformats.io/
+[Microformats specification]: https://docs.joinmastodon.org/spec/microformats/
