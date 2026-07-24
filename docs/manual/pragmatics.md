@@ -843,7 +843,7 @@ authorization flow.
 > and `QuoteAuthorization` terms also let implementations obtain, verify, and
 > revoke the original author's consent.  Fedify's `Note.quoteUrl` supports the
 > legacy `_misskey_quote`, `quoteUrl`, and `quoteUri` properties for
-> compatibility, while `Note.quote` and `Note.quoteId` represent FEP-044f's
+> compatibility, while `Note.getQuote()` and `Note.quoteId` represent FEP-044f's
 > `quote` property.
 
 To require the author's approval instead, use `manualApproval` with the actors
