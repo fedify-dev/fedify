@@ -11,3 +11,14 @@ test("Accept header detection", () => {
 
   assert.strictEqual(isFederationRequest(request), true);
 });
+
+test("Content-Type header detection", () => {
+  const request = new Request("https://example.com/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/activity+json",
+    },
+  });
+
+  assert.strictEqual(isFederationRequest(request), true);
+});
