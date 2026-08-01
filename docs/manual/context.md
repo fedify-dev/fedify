@@ -153,7 +153,7 @@ federation
   .setInboxListeners("/users/{identifier}/inbox", "/inbox")
   .on(Follow, async (ctx, follow) => {
     // In order to send an activity, we need the identifier of the sender actor:
-    if (follow.objectId == null) return;
+    if (follow.id == null || follow.objectId == null) return;
     const parsed = ctx.parseUri(follow.objectId);
     if (parsed?.type !== "actor") return;
     const recipient = await follow.getActor(ctx);
@@ -161,7 +161,7 @@ federation
     await ctx.sendActivity(
       { identifier: parsed.identifier }, // sender
       recipient,
-      new Accept({ actor: follow.objectId, object: follow }),
+      new Accept({ actor: follow.objectId, object: follow.id }),
     );
   });
 ~~~~

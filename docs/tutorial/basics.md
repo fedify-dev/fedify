@@ -1125,7 +1125,7 @@ federation
     await ctx.sendActivity(
       { identifier: parsed.identifier },
       follower,
-      new Accept({ actor: follow.objectId, object: follow }),
+      new Accept({ actor: follow.objectId, object: follow.id }),
     );
   });
 ~~~~
@@ -1133,6 +1133,11 @@ federation
 Restart the server, and make a follow request from your Mastodon account to
 the actor *me*.  You should see the server immediately accept the follow
 request.
+
+The `Accept` refers to the original `Follow` by its ID instead of embedding
+the whole activity.  The `Follow` belongs to the remote server's origin, so a
+copy embedded in our `Accept` would not be authoritative under Fedify's
+[origin-based security model](../manual/vocab.md#origin-based-security-model).
 
 > [!TIP]
 > If you are curious about sending activities further, see the [*Sending
@@ -1165,7 +1170,7 @@ federation
     await ctx.sendActivity(
       { identifier: parsed.identifier },
       follower,
-      new Accept({ actor: follow.objectId, object: follow }),
+      new Accept({ actor: follow.objectId, object: follow.id }),
     );
     // Store the follower in the key–value store:
     await kv.set(["followers", follow.id.href], follow.actorId.href);

@@ -2181,6 +2181,7 @@ export const follows = sqliteTable(
     followerInbox: text("follower_inbox").notNull(),
     followerSharedInbox: text("follower_shared_inbox"),
     followedUri: text("followed_uri").notNull(),
+    followActivityId: text("follow_activity_id").notNull(),
     accepted: integer("accepted", { mode: "boolean" }).notNull().default(false),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
@@ -2194,12 +2195,13 @@ export const follows = sqliteTable(
 export type Follow = typeof follows.$inferSelect;
 ~~~~
 
-A row holds both sides of a subscription as plain ActivityPub URIs,
-plus the follower's inbox and optional shared inbox (denormalised so
-fan-out doesn't have to re-fetch the actor).  `accepted` starts false
-and flips to true once we've seen (or sent) the corresponding
-`Accept(Follow)`.  The unique index on `(followerUri, followedUri)`
-keeps the table from sprouting duplicate subscriptions.
+A row holds both sides of a subscription as plain ActivityPub URIs, the
+original `Follow` ID, and the follower's inbox and optional shared inbox
+(denormalised so fan-out doesn't have to re-fetch the actor).  `accepted`
+starts false and flips to true once we've seen (or sent) the corresponding
+`Accept(Follow)`.  The unique index on `(followerUri, followedUri)` keeps the
+table from sprouting duplicate subscriptions, while the stored activity ID
+lets an `Accept` identify one row even through the shared inbox.
 
 Re-run `npm run db:push`.
 
@@ -2299,6 +2301,7 @@ federation
         followerInbox: actor.inboxId.href,
         followerSharedInbox: actor.endpoints?.sharedInbox?.href ?? null,
         followedUri: follow.objectId.href,
+        followActivityId: follow.id.href,
         accepted: true,
       })
       .onConflictDoUpdate({
@@ -2306,6 +2309,7 @@ federation
         set: {
           followerInbox: actor.inboxId.href,
           followerSharedInbox: actor.endpoints?.sharedInbox?.href ?? null,
+          followActivityId: follow.id.href,
           accepted: true,
         },
       })
@@ -2320,7 +2324,7 @@ federation
           follow.objectId,
         ),
         actor: follow.objectId,
-        object: follow,
+        object: follow.id,
       }),
     );
   });
@@ -2349,24 +2353,64 @@ listener:
 
 ~~~~ typescript [federation/index.ts]
   .on(Accept, async (ctx, accept) => {
-    const enclosed = await accept.getObject(ctx);
-    if (!(enclosed instanceof Follow)) return;
-    if (!enclosed.actorId || !enclosed.objectId) return;
+    if (accept.actorId == null || accept.objectId == null) {
+      return;
+    }
+    const followerUri = ctx.recipient == null
+      ? null
+      : ctx.getActorUri(ctx.recipient).href;
+    const exactResult = db.update(follows)
+      .set({ accepted: true })
+      .where(
+        and(
+          followerUri == null
+            ? undefined
+            : eq(follows.followerUri, followerUri),
+          eq(follows.followedUri, accept.actorId.href),
+          eq(follows.followActivityId, accept.objectId.href),
+          eq(follows.accepted, false),
+        ),
+      )
+      .run();
+    if (exactResult.changes > 0) return;
+    if (accept.objectId.origin === ctx.canonicalOrigin) return;
+
+    const candidates = db
+      .select({ followerUri: follows.followerUri })
+      .from(follows)
+      .where(
+        and(
+          followerUri == null
+            ? undefined
+            : eq(follows.followerUri, followerUri),
+          eq(follows.followedUri, accept.actorId.href),
+          eq(follows.accepted, false),
+        ),
+      )
+      .limit(2)
+      .all();
+    if (candidates.length !== 1) return;
     db.update(follows)
       .set({ accepted: true })
       .where(
         and(
-          eq(follows.followerUri, enclosed.actorId.href),
-          eq(follows.followedUri, enclosed.objectId.href),
+          eq(follows.followerUri, candidates[0].followerUri),
+          eq(follows.followedUri, accept.actorId.href),
+          eq(follows.accepted, false),
         ),
       )
       .run();
   });
 ~~~~
 
-`accept.getObject` returns the object the `Accept` wraps.  Only when
-that object is a `Follow` do we flip the corresponding row's
-`accepted` flag.
+The `Accept` comes from a different origin than our original `Follow`, so we
+do not dereference or trust an embedded copy of that activity.  Its `objectId`
+is enough to match the pending row together with the remote actor that sent the
+`Accept`, including when it arrives through the shared inbox.  If a peer mints
+a different ID on its own origin, the handler falls back only when the receiving
+local actor identifies one pending row—or, for the shared inbox, when there is
+only one possible local actor.  A mismatched ID on our own origin never falls
+back.
 
 ### Sending an outbound `Follow`
 
@@ -2468,6 +2512,10 @@ export async function followCommunity(formData: FormData): Promise<void> {
   const followerUri = ctx.getActorUri(user.username);
   const followerInbox = ctx.getInboxUri(user.username);
   const sharedInbox = ctx.getInboxUri();
+  const requestedFollowActivityId = new URL(
+    `#follow/${crypto.randomUUID()}`,
+    followerUri,
+  );
 
   db.insert(follows)
     .values({
@@ -2475,16 +2523,29 @@ export async function followCommunity(formData: FormData): Promise<void> {
       followerInbox: followerInbox.href,
       followerSharedInbox: sharedInbox.href,
       followedUri: actor.id.href,
+      followActivityId: requestedFollowActivityId.href,
       accepted: false,
     })
     .onConflictDoNothing()
     .run();
+  const row = db
+    .select({ followActivityId: follows.followActivityId })
+    .from(follows)
+    .where(
+      and(
+        eq(follows.followerUri, followerUri.href),
+        eq(follows.followedUri, actor.id.href),
+      ),
+    )
+    .get();
+  if (row == null) throw new Error("Failed to store the follow request");
+  const followActivityId = new URL(row.followActivityId);
 
   await ctx.sendActivity(
     { identifier: user.username },
     actor,
     new Follow({
-      id: new URL(`#follow/${Date.now()}`, followerUri),
+      id: followActivityId,
       actor: followerUri,
       object: actor.id,
     }),
@@ -2502,9 +2563,10 @@ export async function followCommunity(formData: FormData): Promise<void> {
 then fetches the actor JSON the handle points at.  `isActor(actor)`
 and `actor instanceof Group` narrow the result to the type we want
 to follow.  We record the follow row as `accepted: false` up front so
-the UI could, if we wanted, show a “pending” badge; when the remote
-server sends back `Accept(Follow)`, the inbox listener we wrote above
-flips it to true.
+the UI could, if we wanted, show a “pending” badge.  If the row already
+exists, we reuse its activity ID so that a later `Accept` still matches our
+local state.  When the remote server sends back `Accept(Follow)`, the inbox
+listener we wrote above flips it to true.
 
 ### Verifying with ActivityPub.Academy
 

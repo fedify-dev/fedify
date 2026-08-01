@@ -4588,7 +4588,7 @@ import {
   InProcessMessageQueue,
   MemoryKvStore,
 } from "@fedify/fedify";
-import { Accept, Follow } from "@fedify/vocab";
+import { Accept } from "@fedify/vocab";
 import { eq, or } from "drizzle-orm";
 import { db } from "./db/client";
 import { following } from "./db/schema";
@@ -4601,23 +4601,21 @@ export const federation = createFederation<void>({
 federation
   .setInboxListeners("/users/{identifier}/inbox", "/inbox")
 // ---cut---
-.on(Accept, async (_ctx, accept) => {
+.on(Accept, async (ctx, accept) => {
   // The remote server has accepted alice's outbound Follow.
   // Match the Accept against our `following` row by either the
   // original Follow's `id` (when the peer echoes it) or the
   // remote actor URI (Pixelfed sometimes mints a fresh id on the
   // way back), and flip the row's status to "accepted".
-  if (accept.actorId == null) return;
-  const followObject = await accept.getObject();
-  const followActivityId =
-    followObject instanceof Follow ? followObject.id?.href : null;
+  if (accept.actorId == null || accept.objectId == null) return;
+  const followActivityId = accept.objectId.href;
   const remoteActorUri = accept.actorId.href;
-  const matcher = followActivityId
-    ? or(
-        eq(following.followActivityId, followActivityId),
-        eq(following.actorUri, remoteActorUri),
-      )
-    : eq(following.actorUri, remoteActorUri);
+  const matcher = accept.objectId.origin === ctx.canonicalOrigin
+    ? eq(following.followActivityId, followActivityId)
+    : or(
+      eq(following.followActivityId, followActivityId),
+      eq(following.actorUri, remoteActorUri),
+    );
   await db
     .update(following)
     .set({ status: "accepted" })
@@ -4625,13 +4623,13 @@ federation
 });
 ~~~~
 
-`accept.getObject()` resolves the embedded Follow.
-Mastodon and GoToSocial both keep the original Follow's `id`,
-which makes matching unambiguous.  Pixelfed, in contrast, often
-returns a freshly-minted Follow with a different `id`, so even
-when an `id` is present it may not be the one we sent.  Combining
-the two predicates with `or` lets the row flip to *accepted*
-whichever path the peer took.
+`accept.objectId` reads the referenced activity's ID without trusting or
+dereferencing an embedded `Follow` from another origin.  Mastodon and
+GoToSocial keep the original `Follow` ID, which makes matching unambiguous.
+Pixelfed often returns a freshly minted ID instead, so the remote actor URI
+remains the interoperability fallback in this single-user application.  The
+handler only uses that fallback for an ID minted on another origin; a mismatched
+ID on our own origin is rejected instead of accepting an unrelated activity.
 
 > [!TIP]
 > If you ship multiple local users later (the closing chapter
