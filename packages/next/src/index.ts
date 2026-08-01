@@ -12,7 +12,7 @@
  * @since 1.9.0
  */
 import type { Federation, FederationFetchOptions } from "@fedify/fedify";
-import { NextResponse } from "next/server";
+import { NextResponse } from "next/server.js";
 
 interface ContextDataFactory<TContextData> {
   (request: Request):
