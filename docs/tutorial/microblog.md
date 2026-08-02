@@ -3935,11 +3935,14 @@ The handler first tries to match `accept.objectId` against the exact activity ID
 we stored.  Some implementations mint a different ID on their own origin for
 the nested `Follow`, so it falls back to the pending request for the
 authenticated remote actor.  It never falls back for a mismatched ID on our own
-origin, and it never reads fields from the cross-origin inline `Follow`.  This
-also works when the `Accept` is delivered through the shared inbox.  After the
-match succeeds, it inserts the relationship into `follows` and marks the stored
-activity as accepted in one transaction.  The stored activity remains
-available through its object dispatcher.
+origin, and it never reads fields from the cross-origin inline `Follow`.
+Because this tutorial permits only one local account, the fallback can match at
+most one pending request, even when the `Accept` arrives through the shared
+inbox.  A multi-user application would need to narrow the match by the local
+recipient and reject ambiguous shared-inbox deliveries.  After the match
+succeeds, it inserts the relationship into `follows` and marks the stored
+activity as accepted in one transaction.  The stored activity remains available
+through its object dispatcher.
 
 ### Testing
 
