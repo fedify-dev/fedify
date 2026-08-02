@@ -92,7 +92,7 @@ builder
           ctx.getActorUri(result.identifier),
         ),
         actor: follow.objectId,
-        object: follow,
+        object: follow.id,
       }),
     );
     await ctx.data.kv.put(

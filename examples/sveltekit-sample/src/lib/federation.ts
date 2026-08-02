@@ -81,7 +81,7 @@ federation
           context.getActorUri(IDENTIFIER),
         ),
         actor: follow.objectId,
-        object: follow,
+        object: follow.id,
       }),
     );
     relationStore.set(follower.id.href, follower);
