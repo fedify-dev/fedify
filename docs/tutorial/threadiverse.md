@@ -2479,6 +2479,7 @@ Now write the follow action in *app/follow/actions.ts*:
 "use server";
 
 import { Follow, Group, isActor } from "@fedify/vocab";
+import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db, follows } from "@/db";
 import federation from "@/federation";
