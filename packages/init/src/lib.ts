@@ -16,6 +16,7 @@ import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join as joinPath } from "node:path";
 import process from "node:process";
 import metadata from "../deno.json" with { type: "json" };
+import { RUNTIME } from "./const.ts";
 import kv from "./json/kv.json" with { type: "json" };
 import mq from "./json/mq.json" with { type: "json" };
 import pm from "./json/pm.json" with { type: "json" };
@@ -25,6 +26,8 @@ import type {
   MessageQueues,
   PackageManager,
   PackageManagers,
+  Runtime,
+  RuntimeCheck,
   Runtimes,
 } from "./types.ts";
 import { CommandError, isNotFoundError, runSubCommand } from "./utils.ts";
@@ -178,6 +181,116 @@ async function isCommandAvailable(
     );
     throw error;
   }
+}
+
+/**
+ * Compares two dotted version strings segment by segment and returns whether
+ * `detected` is higher than or equal to `required`.
+ */
+export function verifyRuntimeVersion(detected: string, required: string) {
+  const detectedParts = detected.split(".").map(Number);
+  const requiredParts = required.split(".").map(Number);
+
+  for (
+    let i = 0;
+    i < Math.max(detectedParts.length, requiredParts.length);
+    i++
+  ) {
+    const detectedPart = detectedParts[i] ?? 0;
+    const requiredPart = requiredParts[i] ?? 0;
+    if (detectedPart > requiredPart) {
+      return true;
+    }
+    if (detectedPart < requiredPart) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Runs a runtime's version command and classifies the result as `"ok"`,
+ * `"unsupported"`, `"missing"`, or `"malformed"` against its `minVersion`.
+ */
+export async function checkRuntimeVersion(
+  { checkCommand, outputPattern, minVersion }: {
+    checkCommand: [string, ...string[]];
+    outputPattern: RegExp;
+    minVersion: string;
+  },
+): Promise<
+  | { status: "ok" | "unsupported"; detected: string; required: string }
+  | { status: "missing" | "malformed"; detected: null; required: string }
+> {
+  try {
+    const { stdout } = await $`${checkCommand}`.stdout("piped").spawn();
+    logger.debug(
+      "The stdout of the command {command} is: {stdout}",
+      { command: checkCommand, stdout },
+    );
+    const detected = outputPattern.exec(stdout.trim())?.[1] ?? null;
+    if (detected == null) {
+      return { status: "malformed", detected: null, required: minVersion };
+    }
+    if (!verifyRuntimeVersion(detected, minVersion)) {
+      return { status: "unsupported", detected, required: minVersion };
+    }
+    return { status: "ok", detected, required: minVersion };
+  } catch (error) {
+    if (isNotFoundError(error)) {
+      return { status: "missing", detected: null, required: minVersion };
+    }
+    logger.debug(
+      "The command {command} failed with the error: {error}",
+      { command: checkCommand, error },
+    );
+    throw error;
+  }
+}
+
+/**
+ * Resolves the required version for `runtime` as the higher of its base minimum
+ * and an optional framework `override`.
+ */
+export function resolveRequiredVersion(
+  runtime: Runtime,
+  override?: string,
+): string {
+  const base = runtimes[runtime].minVersion;
+  return override != null && verifyRuntimeVersion(override, base)
+    ? override
+    : base;
+}
+
+/**
+ * Checks whether `runtime` meets its required version, applying framework
+ * `overrides` on top of the base minimum.
+ */
+export function checkRuntimeRequirement(
+  runtime: Runtime,
+  overrides: Partial<Record<Runtime, string>> = {},
+): Promise<RuntimeCheck> {
+  return checkRuntimeVersion({
+    ...runtimes[runtime],
+    minVersion: resolveRequiredVersion(runtime, overrides[runtime]),
+  });
+}
+
+/**
+ * Checks every supported runtime once and returns a map from each runtime
+ * identifier to its {@link checkRuntimeRequirement} result.
+ */
+export async function checkAllRuntimes(
+  overrides: Partial<Record<Runtime, string>> = {},
+): Promise<
+  Record<Runtime, RuntimeCheck>
+> {
+  const checked = await Promise.all(
+    RUNTIME.map(async (runtime) =>
+      [runtime, await checkRuntimeRequirement(runtime, overrides)] as const
+    ),
+  );
+  return Object.fromEntries(checked) as Record<Runtime, RuntimeCheck>;
 }
 
 /**

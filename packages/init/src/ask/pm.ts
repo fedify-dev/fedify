@@ -2,8 +2,11 @@ import { pipe, when } from "@fxts/core";
 import { select } from "@inquirer/prompts";
 import { message } from "@optique/core/message";
 import { print } from "@optique/run";
+import process from "node:process";
 import { PACKAGE_MANAGER } from "../const.ts";
 import {
+  checkAllRuntimes,
+  checkRuntimeRequirement,
   getInstallUrl,
   isPackageManagerAvailable,
   kvStores,
@@ -11,8 +14,15 @@ import {
   packageManagers,
   runtimes,
 } from "../lib.ts";
-import type { PackageManager, WebFramework } from "../types.ts";
+import type {
+  PackageManager,
+  Runtime,
+  RuntimeCheck,
+  WebFramework,
+} from "../types.ts";
+import { printErrorMessage } from "../utils.ts";
 import webFrameworks from "../webframeworks/mod.ts";
+import { pmToRt } from "../webframeworks/utils.ts";
 
 /**
  * Fills in the package manager by prompting the user if not provided.
@@ -27,7 +37,31 @@ const fillPackageManager: //
   (options: T) => //
   Promise<Omit<T, "packageManager"> & { packageManager: PackageManager }> = //
   async ({ packageManager, ...options }) => {
-    const pm = packageManager ?? await askPackageManager(options.webFramework);
+    if (packageManager != null) {
+      const pm = packageManager;
+      if (!await isPackageManagerAvailable(pm)) {
+        noticeInstallUrl(pm);
+        process.exit(1);
+      }
+      const result = await checkRuntimeRequirement(
+        pmToRt(pm),
+        webFrameworks[options.webFramework].minRuntimeVersions,
+      );
+      if (result.status === "ok") {
+        return ({ ...options, packageManager: pm });
+      }
+      if (result.status === "missing") {
+        printErrorMessage`The runtime for package manager ${pm} is missing.`;
+      }
+      if (result.status === "unsupported") {
+        printErrorMessage`The runtime for package manager ${pm} is unsupported. Detected: ${result.detected}, Required: ${result.required}.`;
+      }
+      if (result.status === "malformed") {
+        printErrorMessage`The detected runtime version for package manager ${pm} is malformed.`;
+      }
+      process.exit(1);
+    }
+    const pm = await askPackageManager(options.webFramework);
     if (await isPackageManagerAvailable(pm)) {
       return ({ ...options, packageManager: pm });
     }
@@ -38,19 +72,44 @@ const fillPackageManager: //
 
 export default fillPackageManager;
 
-const askPackageManager = (wf: WebFramework) =>
-  select<PackageManager>({
+const askPackageManager = async (wf: WebFramework) => {
+  const runtimeChecks = await checkAllRuntimes(
+    webFrameworks[wf].minRuntimeVersions,
+  );
+  const choices = PACKAGE_MANAGER.map(choicePackageManager(wf, runtimeChecks));
+  if (choices.every((choice) => choice.disabled)) {
+    printErrorMessage`No package manager with a supported runtime is available for ${
+      webFrameworks[wf].label
+    }.`;
+    process.exit(1);
+  }
+  return select<PackageManager>({
     message: "Choose the package manager to use",
-    choices: PACKAGE_MANAGER.map(choicePackageManager(wf)),
+    choices,
   });
+};
 
-const choicePackageManager = (wf: WebFramework) => (value: PackageManager) => ({
-  name: isWfSupportsPm(wf, value)
-    ? value
-    : `${value} (not supported with ${webFrameworks[wf].label})`,
-  value,
-  disabled: !isWfSupportsPm(wf, value),
-});
+const choicePackageManager =
+  (wf: WebFramework, runtimeChecks: Record<Runtime, RuntimeCheck>) =>
+  (value: PackageManager) => {
+    const check = runtimeChecks[pmToRt(value)];
+    const label = runtimes[pmToRt(value)].label;
+    const reason = !isWfSupportsPm(wf, value)
+      ? `not supported with ${webFrameworks[wf].label}`
+      : check.status === "unsupported"
+      ? `requires ${label} ${check.required} or later`
+      : check.status === "missing"
+      ? `requires ${label} which is not installed`
+      : check.status === "malformed"
+      ? `could not detect ${label} version`
+      : "";
+    const disabled = !isWfSupportsPm(wf, value) || check.status !== "ok";
+    return {
+      name: disabled ? `${value} (${reason})` : value,
+      value,
+      disabled,
+    };
+  };
 
 const isWfSupportsPm = (
   wf: WebFramework,

@@ -5,7 +5,8 @@
       "deno",
       "--version"
     ],
-    "outputPattern": "^deno\\s+\\d+\\.\\d+\\.\\d+\\b"
+    "outputPattern": "^deno\\s+(\\d+\\.\\d+\\.\\d+\\b)",
+    "minVersion": "2.0.0"
   },
   "bun": {
     "label": "Bun",
@@ -13,30 +14,16 @@
       "bun",
       "--version"
     ],
-    "outputPattern": "^\\d+\\.\\d+\\.\\d+$"
+    "outputPattern": "^(\\d+\\.\\d+\\.\\d+$)",
+    "minVersion": "1.1.0"
   },
-  "pnpm": {
+  "node": {
     "label": "Node.js",
     "checkCommand": [
       "node",
       "--version"
     ],
-    "outputPattern": "^v\\d+\\.\\d+\\.\\d+$"
-  },
-  "yarn": {
-    "label": "Node.js",
-    "checkCommand": [
-      "node",
-      "--version"
-    ],
-    "outputPattern": "^v\\d+\\.\\d+\\.\\d+$"
-  },
-  "npm": {
-    "label": "Node.js",
-    "checkCommand": [
-      "node",
-      "--version"
-    ],
-    "outputPattern": "^v\\d+\\.\\d+\\.\\d+$"
+    "outputPattern": "^v(\\d+\\.\\d+\\.\\d+$)",
+    "minVersion": "22.0.0"
   }
 }
