@@ -50,13 +50,13 @@ const fillPackageManager: //
       }
       return ({ ...options, packageManager: pm });
     }
-    const pm = await askPackageManager(choices);
-    if (await isPackageManagerAvailable(pm)) {
-      return ({ ...options, packageManager: pm });
+    while (true) {
+      const pm = await askPackageManager(choices);
+      if (await isPackageManagerAvailable(pm)) {
+        return ({ ...options, packageManager: pm });
+      }
+      noticeInstallUrl(pm);
     }
-    noticeInstallUrl(pm);
-    return await fillPackageManager(options) as //
-    typeof options & { packageManager: PackageManager };
   };
 
 export default fillPackageManager;
