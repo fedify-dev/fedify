@@ -175,6 +175,12 @@ To be released.
 
 ### @fedify/init
 
+ -  Added runtime version verification to `fedify init`. It checks that the
+    selected Deno, Bun, or Node.js meets Fedify's minimum version, or a higher
+    version required by a framework (such as Astro's Node.js 22.12), before
+    generating a project. A missing, malformed, or unsupported runtime now
+    produces a clear error in non-interactive mode and disables the affected
+    package managers in interactive mode.  [[#964], [#981] by Lee Jeongmin\]
  -  Fixed `fedify init`'s hydration test validation to run `format` before
     `format:check`, which previously caused the entire test suite to fail when
     the package manager is `npm` or `pnpm`:
@@ -185,6 +191,8 @@ To be released.
 
 [#950]: https://github.com/fedify-dev/fedify/issues/950
 [#952]: https://github.com/fedify-dev/fedify/pull/952
+[#964]: https://github.com/fedify-dev/fedify/issues/964
+[#981]: https://github.com/fedify-dev/fedify/issues/981
 
 ### @fedify/interaction-controls
 

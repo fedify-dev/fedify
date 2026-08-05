@@ -4,9 +4,13 @@ import type {
   KV_STORE,
   MESSAGE_QUEUE,
   PACKAGE_MANAGER,
+  RUNTIME,
   WEB_FRAMEWORK,
 } from "./const.ts";
 import type { RequiredNotNull } from "./utils.ts";
+
+/** Supported runtime identifiers: `"deno"`, `"bun"`, `"node"`. */
+export type Runtime = typeof RUNTIME[number];
 
 /** Supported package manager identifiers: `"deno"`, `"pnpm"`, `"bun"`, `"yarn"`, `"npm"`. */
 export type PackageManager = typeof PACKAGE_MANAGER[number];
@@ -32,8 +36,13 @@ export type WebFrameworks = Record<WebFramework, WebFrameworkDescription>;
 /** A mapping from each {@link PackageManager} identifier to its description. */
 export type PackageManagers = Record<PackageManager, PackageManagerDescription>;
 
-/** A mapping from each {@link PackageManager} identifier to its runtime description. */
-export type Runtimes = Record<PackageManager, RuntimeDescription>;
+/** A mapping from each {@link Runtime} identifier to its description. */
+export type Runtimes = Record<Runtime, RuntimeDescription>;
+
+/** The result of checking a runtime's installed version against its minimum. */
+export type RuntimeCheck =
+  | { status: "ok" | "unsupported"; detected: string; required: string }
+  | { status: "missing" | "malformed"; detected: null; required: string };
 
 /**
  * Describes a JavaScript runtime (Deno, Node.js, or Bun) and how to check
@@ -45,6 +54,7 @@ export interface RuntimeDescription {
   checkCommand: [string, ...string[]];
   /** Regex to match against the command's stdout to confirm the runtime is installed. */
   outputPattern: RegExp;
+  minVersion: string;
 }
 
 /**
@@ -122,6 +132,8 @@ export interface WebFrameworkDescription {
   packageManagers: readonly PackageManager[];
   /** Default port for the development server. */
   defaultPort: number;
+  /** Minimum runtime versions this framework requires, if higher than Fedify's baseline. */
+  minRuntimeVersions?: Partial<Record<Runtime, string>>;
   /**
    * Factory function that returns the initializer configuration for this
    * framework, given the user's selected options.

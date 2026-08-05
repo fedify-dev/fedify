@@ -32,6 +32,7 @@ const astroDescription: WebFrameworkDescription = {
   label: "Astro",
   packageManagers: PACKAGE_MANAGER,
   defaultPort: 4321,
+  minRuntimeVersions: { node: "22.12.0" },
   init: async ({ packageManager: pm }) => {
     // Astro loads integrations and middleware through Vite.  Vite resolves
     // bare imports from node_modules rather than Deno's JSR import map, so
