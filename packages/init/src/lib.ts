@@ -263,7 +263,7 @@ export function resolveRequiredVersion(
  * Checks whether `runtime` meets its required version, applying framework
  * `overrides` on top of the base minimum.
  */
-export function checkRuntimeRequirement(
+function checkRuntimeRequirement(
   runtime: Runtime,
   overrides: Partial<Record<Runtime, string>> = {},
 ): Promise<RuntimeCheck> {

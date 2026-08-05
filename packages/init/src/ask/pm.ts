@@ -1,12 +1,11 @@
 import { pipe, when } from "@fxts/core";
 import { select } from "@inquirer/prompts";
-import { message } from "@optique/core/message";
+import { message, optionName, text } from "@optique/core/message";
 import { print } from "@optique/run";
 import process from "node:process";
 import { PACKAGE_MANAGER } from "../const.ts";
 import {
   checkAllRuntimes,
-  checkRuntimeRequirement,
   getInstallUrl,
   isPackageManagerAvailable,
   kvStores,
@@ -37,31 +36,21 @@ const fillPackageManager: //
   (options: T) => //
   Promise<Omit<T, "packageManager"> & { packageManager: PackageManager }> = //
   async ({ packageManager, ...options }) => {
+    const choices = await calculateChoices(options.webFramework);
     if (packageManager != null) {
       const pm = packageManager;
+      const choice = choices.find(({ value }) => value === pm)!;
+      if (choice.disabled != null) {
+        print(message`${optionName(choice.name)} ${text(choice.disabled)}`);
+        process.exit(1);
+      }
       if (!await isPackageManagerAvailable(pm)) {
         noticeInstallUrl(pm);
         process.exit(1);
       }
-      const result = await checkRuntimeRequirement(
-        pmToRt(pm),
-        webFrameworks[options.webFramework].minRuntimeVersions,
-      );
-      if (result.status === "ok") {
-        return ({ ...options, packageManager: pm });
-      }
-      if (result.status === "missing") {
-        printErrorMessage`The runtime for package manager ${pm} is missing.`;
-      }
-      if (result.status === "unsupported") {
-        printErrorMessage`The runtime for package manager ${pm} is unsupported. Detected: ${result.detected}, Required: ${result.required}.`;
-      }
-      if (result.status === "malformed") {
-        printErrorMessage`The detected runtime version for package manager ${pm} is malformed.`;
-      }
-      process.exit(1);
+      return ({ ...options, packageManager: pm });
     }
-    const pm = await askPackageManager(options.webFramework);
+    const pm = await askPackageManager(choices);
     if (await isPackageManagerAvailable(pm)) {
       return ({ ...options, packageManager: pm });
     }
@@ -72,7 +61,7 @@ const fillPackageManager: //
 
 export default fillPackageManager;
 
-const askPackageManager = async (wf: WebFramework) => {
+const calculateChoices = async (wf: WebFramework) => {
   const runtimeChecks = await checkAllRuntimes(
     webFrameworks[wf].minRuntimeVersions,
   );
@@ -83,18 +72,23 @@ const askPackageManager = async (wf: WebFramework) => {
     }.`;
     process.exit(1);
   }
-  return select<PackageManager>({
+  return choices;
+};
+
+const askPackageManager = (
+  choices: Awaited<ReturnType<typeof calculateChoices>>,
+) =>
+  select<PackageManager>({
     message: "Choose the package manager to use",
     choices,
   });
-};
 
 const choicePackageManager =
   (wf: WebFramework, runtimeChecks: Record<Runtime, RuntimeCheck>) =>
   (value: PackageManager) => {
     const check = runtimeChecks[pmToRt(value)];
     const label = runtimes[pmToRt(value)].label;
-    const reason = !isWfSupportsPm(wf, value)
+    const disabled = !isWfSupportsPm(wf, value)
       ? `not supported with ${webFrameworks[wf].label}`
       : check.status === "unsupported"
       ? `requires ${label} ${check.required} or later`
@@ -103,9 +97,8 @@ const choicePackageManager =
       : check.status === "malformed"
       ? `could not detect ${label} version`
       : "";
-    const disabled = !isWfSupportsPm(wf, value) || check.status !== "ok";
-    return {
-      name: disabled ? `${value} (${reason})` : value,
+    return disabled === "" ? { name: value, value } : {
+      name: value,
       value,
       disabled,
     };
