@@ -212,16 +212,13 @@ export function verifyRuntimeVersion(detected: string, required: string) {
  * Runs a runtime's version command and classifies the result as `"ok"`,
  * `"unsupported"`, `"missing"`, or `"malformed"` against its `minVersion`.
  */
-export async function checkRuntimeVersion(
+async function checkRuntimeVersion(
   { checkCommand, outputPattern, minVersion }: {
     checkCommand: [string, ...string[]];
     outputPattern: RegExp;
     minVersion: string;
   },
-): Promise<
-  | { status: "ok" | "unsupported"; detected: string; required: string }
-  | { status: "missing" | "malformed"; detected: null; required: string }
-> {
+): Promise<RuntimeCheck> {
   try {
     const { stdout } = await $`${checkCommand}`.stdout("piped").spawn();
     logger.debug(
