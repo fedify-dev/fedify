@@ -583,64 +583,64 @@ describe("LitePubRelay", () => {
     strictEqual(followerData.state, "accepted");
   });
 
-  test("handles Undo Follow activity", async () => {
-    const kv = new MemoryKvStore();
+  for (const state of ["pending", "accepted"] as const) {
+    test(`handles Undo Follow activity for ${state} follower`, async () => {
+      const kv = new MemoryKvStore();
 
-    // Pre-populate with an accepted follower
-    const followerId = "https://remote.example.com/users/alice";
-    const follower = new Person({
-      id: new URL(followerId),
-      preferredUsername: "alice",
-      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+      const followerId = "https://remote.example.com/users/alice";
+      const follower = new Person({
+        id: new URL(followerId),
+        preferredUsername: "alice",
+        inbox: new URL("https://remote.example.com/users/alice/inbox"),
+      });
+
+      await kv.set(
+        ["follower", followerId],
+        { actor: await follower.toJsonLd(), state },
+      );
+
+      const relay = createRelay("litepub", {
+        kv,
+        origin: "https://relay.example.com",
+        documentLoaderFactory: () => mockDocumentLoader,
+        authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
+        subscriptionHandler: () => Promise.resolve(true),
+      });
+
+      const originalFollow = new Follow({
+        id: new URL("https://remote.example.com/activities/follow/1"),
+        actor: new URL(followerId),
+        object: new URL("https://relay.example.com/users/relay"),
+      });
+
+      const undoActivity = new Undo({
+        id: new URL("https://remote.example.com/activities/undo/1"),
+        actor: new URL(followerId),
+        object: originalFollow,
+      });
+
+      let request = new Request("https://relay.example.com/inbox", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/activity+json",
+        },
+        body: JSON.stringify(
+          await undoActivity.toJsonLd({ contextLoader: mockDocumentLoader }),
+        ),
+      });
+
+      request = await signRequest(
+        request,
+        rsaKeyPair.privateKey,
+        rsaPublicKey.id,
+      );
+
+      await relay.fetch(request);
+
+      const followerData = await kv.get(["follower", followerId]);
+      strictEqual(followerData, undefined);
     });
-
-    await kv.set(
-      ["follower", followerId],
-      { actor: await follower.toJsonLd(), state: "accepted" },
-    );
-
-    const relay = createRelay("litepub", {
-      kv,
-      origin: "https://relay.example.com",
-      documentLoaderFactory: () => mockDocumentLoader,
-      authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
-      subscriptionHandler: () => Promise.resolve(true),
-    });
-
-    const originalFollow = new Follow({
-      id: new URL("https://remote.example.com/activities/follow/1"),
-      actor: new URL(followerId),
-      object: new URL("https://relay.example.com/users/relay"),
-    });
-
-    const undoActivity = new Undo({
-      id: new URL("https://remote.example.com/activities/undo/1"),
-      actor: new URL(followerId),
-      object: originalFollow,
-    });
-
-    let request = new Request("https://relay.example.com/inbox", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/activity+json",
-      },
-      body: JSON.stringify(
-        await undoActivity.toJsonLd({ contextLoader: mockDocumentLoader }),
-      ),
-    });
-
-    request = await signRequest(
-      request,
-      rsaKeyPair.privateKey,
-      rsaPublicKey.id,
-    );
-
-    await relay.fetch(request);
-
-    // Verify follower was removed
-    const followerData = await kv.get(["follower", followerId]);
-    strictEqual(followerData, undefined);
-  });
+  }
 
   test("handles Create activity with Announce forwarding", async () => {
     const kv = new MemoryKvStore();

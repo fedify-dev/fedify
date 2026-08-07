@@ -2,6 +2,7 @@
 import { MemoryKvStore, signRequest } from "@fedify/fedify";
 import { createRelay, type RelayOptions } from "@fedify/relay";
 import {
+  Announce,
   Create,
   Delete,
   Follow,
@@ -389,12 +390,13 @@ describe("MastodonRelay", () => {
     strictEqual(handlerCalled, true);
     ok(handlerActor);
 
-    // Verify follower was stored
+    // Verify follower was immediately accepted
     const followerData = await kv.get([
       "follower",
       "https://remote.example.com/users/alice",
     ]);
-    ok(followerData);
+    ok(isRelayFollowerData(followerData));
+    strictEqual(followerData.state, "accepted");
   });
 
   test("handles Follow activity with subscription rejection", async () => {
@@ -673,6 +675,45 @@ describe("MastodonRelay", () => {
       },
       body: JSON.stringify(
         await moveActivity.toJsonLd({ contextLoader: mockDocumentLoader }),
+      ),
+    });
+
+    request = await signRequest(
+      request,
+      rsaKeyPair.privateKey,
+      rsaPublicKey.id,
+    );
+
+    const response = await relay.fetch(request);
+
+    // Verify the request was accepted
+    ok(response.status === 200 || response.status === 202);
+  });
+
+  test("handles Announce activity forwarding", async () => {
+    const kv = new MemoryKvStore();
+
+    const relay = createRelay("mastodon", {
+      kv,
+      origin: "https://relay.example.com",
+      documentLoaderFactory: () => mockDocumentLoader,
+      authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
+      subscriptionHandler: () => Promise.resolve(true),
+    });
+
+    const announceActivity = new Announce({
+      id: new URL("https://remote.example.com/activities/announce/1"),
+      actor: new URL("https://remote.example.com/users/alice"),
+      object: new URL("https://remote.example.com/notes/1"),
+    });
+
+    let request = new Request("https://relay.example.com/inbox", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/activity+json",
+      },
+      body: JSON.stringify(
+        await announceActivity.toJsonLd({ contextLoader: mockDocumentLoader }),
       ),
     });
 

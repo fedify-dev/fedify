@@ -13,6 +13,13 @@ export const RELAY_SERVER_ACTOR = "relay";
 export type RelayType = "mastodon" | "litepub";
 
 /**
+ * A follower's subscription state.
+ *
+ * @internal
+ */
+export type RelayFollowerState = "pending" | "accepted";
+
+/**
  * Handler for subscription requests (Follow/Undo activities).
  */
 export type SubscriptionRequestHandler = (
@@ -79,7 +86,7 @@ export interface RelayFollowerData {
   /** The actor's JSON-LD representation (serialized for storage). */
   readonly actor: unknown;
   /** The follower's state. */
-  readonly state: "pending" | "accepted";
+  readonly state: RelayFollowerState;
 }
 
 /**
@@ -94,7 +101,7 @@ export interface RelayFollower {
   /** The validated Actor object. */
   readonly actor: Actor;
   /** The follower's state. */
-  readonly state: "pending" | "accepted";
+  readonly state: RelayFollowerState;
 }
 
 /**
