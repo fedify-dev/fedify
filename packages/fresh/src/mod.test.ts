@@ -29,7 +29,8 @@ Deno.test("integrateFetchOptions() - onNotFound delegates to ctx.next with corre
   const options = integrateFetchOptions(mockCtx);
   const request = new Request("https://example.com/some-page");
 
-  const response = await options.onNotFound!(request);
+  assertExists(options.onNotFound);
+  const response = await options.onNotFound(request);
 
   assertStrictEquals(capturedThis, mockCtx);
   assertStrictEquals(passedRequest, request);
@@ -45,8 +46,8 @@ Deno.test("onNotAcceptable() returns Fresh response when not 404", async () => {
   assertExists(options.onNotAcceptable);
   const response = await options.onNotAcceptable(ctx.req);
 
-  assertEquals(response.status, 200);
-  assertEquals(await response.text(), "ok");
+  assertStrictEquals(response.status, 200);
+  assertStrictEquals(await response.text(), "ok");
 });
 
 Deno.test("onNotAcceptable() returns 406 when Fresh returns 404", async () => {
@@ -58,9 +59,9 @@ Deno.test("onNotAcceptable() returns 406 when Fresh returns 404", async () => {
   assertExists(options.onNotAcceptable);
   const response = await options.onNotAcceptable(ctx.req);
 
-  assertEquals(response.status, 406);
-  assertEquals(response.headers.get("Vary"), "Accept");
-  assertEquals(response.headers.get("Content-Type"), "text/plain");
+  assertStrictEquals(response.status, 406);
+  assertStrictEquals(response.headers.get("Vary"), "Accept");
+  assertStrictEquals(response.headers.get("Content-Type"), "text/plain");
 });
 
 Deno.test("integrateHandler() calls createContextData and passes result to federation.fetch()", async () => {
@@ -85,7 +86,7 @@ Deno.test("integrateHandler() calls createContextData and passes result to feder
   const handler = integrateHandler(mockFederation, createContextData);
   const response = await handler(ctx);
 
-  assertEquals(receivedContextData, expectedContextData);
+  assertStrictEquals(receivedContextData, expectedContextData);
   assertStrictEquals(receivedRequest, ctx.req);
   assertEquals(await response.text(), "ok");
 });
@@ -107,5 +108,5 @@ Deno.test("integrateHandler() supports an async createContextData factory", asyn
   const handler = integrateHandler(mockFederation, createContextData);
   await handler(ctx);
 
-  assertEquals(receivedContextData, expectedContextData);
+  assertStrictEquals(receivedContextData, expectedContextData);
 });
