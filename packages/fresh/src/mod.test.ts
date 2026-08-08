@@ -35,8 +35,8 @@ Deno.test("integrateFetchOptions() - onNotFound delegates to ctx.next with corre
   // 1. this(receiver)가 mockCtx 자신인지 검증 (this 바인딩 유지 여부)
   assertStrictEquals(capturedThis, mockCtx);
   // 2. Request 전달 및 응답 검증
-  assertEquals(passedRequest, request);
-  assertEquals(response.status, 404);
+  assertStrictEquals(passedRequest, request);
+  assertStrictEquals(response, notFoundResponse);
 });
 
 Deno.test("onNotAcceptable() returns Fresh response when not 404", async () => {
