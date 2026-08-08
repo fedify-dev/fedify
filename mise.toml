@@ -304,12 +304,18 @@ shell = "nu -c"
 run = '''
 let pkgs = ($env.usage_packages | split row " " | where ($it | is-not-empty))
 mise run prepare-each ...$pkgs
-mise run check-each ...$pkgs
 for pkg in $pkgs {
-  print $"Running tests for package: ($pkg)"
-  deno task --filter $"@fedify/($pkg)" test
-  pnpm --filter $"@fedify/($pkg)" test
-  pnpm --filter $"@fedify/($pkg)" test:bun
+  if ($"packages/($pkg)/deno.json" | path exists) {
+    mise run check-each $pkg
+    print $"Running Deno tests for package: ($pkg)"
+    deno task --filter $"@fedify/($pkg)" test
+  }
+  if ($"packages/($pkg)/package.json" | path exists) {
+    print $"Running Node.js tests for package: ($pkg)"
+    pnpm --filter $"@fedify/($pkg)" test
+    print $"Running Bun tests for package: ($pkg)"
+    pnpm --filter $"@fedify/($pkg)" test:bun
+  }
 }
 '''
 

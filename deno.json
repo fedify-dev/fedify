@@ -129,7 +129,8 @@
       "./packages"
     ],
     "exclude": [
-      "./packages/init/src/templates/**"
+      "./packages/init/src/templates/**",
+      "./packages/next/**"
     ]
   }
 }
