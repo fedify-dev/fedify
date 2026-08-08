@@ -13,21 +13,30 @@ function createMockContext<TState>(
   } as Context<TState>;
 }
 
-Deno.test("integrateFetchOptions() wires onNotFound to ctx.next()", async () => {
-  let nextCalled = false;
-  const ctx = createMockContext({
-    next: () => {
-      nextCalled = true;
-      return Promise.resolve(new Response("fresh page"));
+Deno.test("integrateFetchOptions() - onNotFound delegates to ctx.next with correct receiver", async () => {
+  const notFoundResponse = new Response("Not Found", { status: 404 });
+  let passedRequest: Request | undefined;
+  let capturedThis: unknown;
+
+  // 화살표 함수 대신 일반 function을 사용하여 this 바인딩을 검증
+  const mockCtx = {
+    next(req?: Request) {
+      capturedThis = this; // 실행 시점의 this(receiver)를 기록
+      passedRequest = req;
+      return Promise.resolve(notFoundResponse);
     },
-  });
+  } as unknown as Context<unknown>;
 
-  const options = integrateFetchOptions(ctx);
-  assertExists(options.onNotFound);
-  const response = await options.onNotFound(ctx.req);
+  const options = integrateFetchOptions(mockCtx);
+  const request = new Request("https://example.com/some-page");
 
-  assertEquals(nextCalled, true);
-  assertEquals(await response.text(), "fresh page");
+  const response = await options.onNotFound!(request);
+
+  // 1. this(receiver)가 mockCtx 자신인지 검증 (this 바인딩 유지 여부)
+  assertStrictEquals(capturedThis, mockCtx);
+  // 2. Request 전달 및 응답 검증
+  assertEquals(passedRequest, request);
+  assertEquals(response.status, 404);
 });
 
 Deno.test("onNotAcceptable() returns Fresh response when not 404", async () => {
