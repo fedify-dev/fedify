@@ -18,10 +18,9 @@ Deno.test("integrateFetchOptions() - onNotFound delegates to ctx.next with corre
   let passedRequest: Request | undefined;
   let capturedThis: unknown;
 
-  // 화살표 함수 대신 일반 function을 사용하여 this 바인딩을 검증
   const mockCtx = {
     next(req?: Request) {
-      capturedThis = this; // 실행 시점의 this(receiver)를 기록
+      capturedThis = this;
       passedRequest = req;
       return Promise.resolve(notFoundResponse);
     },
@@ -32,9 +31,7 @@ Deno.test("integrateFetchOptions() - onNotFound delegates to ctx.next with corre
 
   const response = await options.onNotFound!(request);
 
-  // 1. this(receiver)가 mockCtx 자신인지 검증 (this 바인딩 유지 여부)
   assertStrictEquals(capturedThis, mockCtx);
-  // 2. Request 전달 및 응답 검증
   assertStrictEquals(passedRequest, request);
   assertStrictEquals(response, notFoundResponse);
 });
