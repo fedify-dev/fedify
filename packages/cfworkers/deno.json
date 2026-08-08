@@ -13,6 +13,11 @@
     "node_modules",
     "test"
   ],
+  "test": {
+    "exclude": [
+      "src/**/*.test.ts"
+    ]
+  },
   "publish": {
     "exclude": [
       "**/*.test.ts",
