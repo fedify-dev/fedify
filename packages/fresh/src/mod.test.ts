@@ -1,6 +1,6 @@
 import type { Federation } from "@fedify/fedify";
 import { integrateFetchOptions, integrateHandler } from "@fedify/fresh";
-import { assertEquals, assertExists, assertStrictEquals } from "@std/assert";
+import { assertExists, assertStrictEquals } from "@std/assert";
 import type { Context } from "fresh";
 
 function createMockContext<TState>(
@@ -88,7 +88,7 @@ Deno.test("integrateHandler() calls createContextData and passes result to feder
 
   assertStrictEquals(receivedContextData, expectedContextData);
   assertStrictEquals(receivedRequest, ctx.req);
-  assertEquals(await response.text(), "ok");
+  assertStrictEquals(await response.text(), "ok");
 });
 
 Deno.test("integrateHandler() supports an async createContextData factory", async () => {
