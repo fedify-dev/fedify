@@ -19,6 +19,7 @@
     ]
   },
   "tasks": {
-    "check": "deno fmt --check && deno lint && deno check src/*.ts"
+    "check": "deno fmt --check && deno lint && deno check src/*.ts",
+    "test": "deno test --allow-all src/mod.test.ts"
   }
 }
