@@ -1,7 +1,7 @@
 import $ from "@david/dax";
 import { identity, pipe, when } from "@fxts/core";
 import { input } from "@inquirer/prompts";
-import { message } from "@optique/core/message";
+import { type Message, message } from "@optique/core/message";
 import { printError } from "@optique/run";
 import toggle from "inquirer-toggle";
 import { isDirectoryEmpty, logger } from "../lib.ts";
@@ -28,12 +28,14 @@ const fillDir: <T extends { allowNonEmpty: boolean; dir?: string }>(
 
 export default fillDir;
 
+type DirActionMode = "trash" | "permanent";
+
 const askDir = (cwd: string) =>
   input({ message: "Project directory:", default: cwd });
 
 const askIfNonEmpty = async (dir: string) => {
   if (await isDirectoryEmpty(dir)) return true;
-  if (await askNonEmpty(dir)) return await moveDirToTrash(dir);
+  if (await askNonEmpty(dir)) return await moveOrDeleteDir(dir);
   return false;
 };
 
@@ -44,77 +46,91 @@ Do you want to use it anyway?`,
     default: false,
   });
 
-const moveDirToTrash = (dir: string) =>
-  pipe(dir, askMoveToTrash, when(identity, moveToTrash(dir)));
-
-const askMoveToTrash = (dir: string) =>
+const moveOrDeleteDir = (dir: string) =>
   pipe(
-    getOsType(),
-    getDeleteAction,
-    (fn) => fn(dir),
+    dir,
+    buildMoveOrDelete,
+    (action) =>
+      pipe(
+        action.confirm,
+        when(identity, runAction(action.command, action.error)),
+      ),
   );
 
-const getDeleteAction = (os: NodeJS.Platform) => {
-  if (
-    trashSupported[os as keyof typeof trashSupported] ?? trashSupported.linux
-  ) return moveToTrashAction;
-  return deletePermanentlyAction;
+const buildMoveOrDelete = (dir: string) =>
+  pipe(
+    getOsType(),
+    detectSupportedAction,
+    (fn) => {
+      return {
+        confirm: fn.confirmAction(dir),
+        command: fn.actionPlan.command(dir),
+        error: errorMessages[fn.actionPlan.mode](dir),
+      };
+    },
+  );
+
+const detectSupportedAction = (os: NodeJS.Platform) => {
+  const actionPlan =
+    trashOrDeleteCommands[os as keyof typeof trashOrDeleteCommands] ??
+      trashOrDeleteCommands.linux;
+
+  return {
+    confirmAction: (actionPlan.mode === "trash")
+      ? moveToTrashConfirm
+      : deletePermanentlyConfirm,
+    actionPlan,
+  };
 };
 
-const trashSupported: Record<
-  Extract<NodeJS.Platform, "darwin" | "win32" | "linux">,
-  boolean
-> = {
-  "darwin": true,
-  "win32": true,
-  "linux": false,
-};
-
-const moveToTrashAction = (dir: string) =>
+const moveToTrashConfirm = (dir: string) =>
   toggle.default({
     message: `Do you want to move the contents of "${dir}" to the trash?
 If you choose "No", you should choose another directory.`,
     default: false,
   });
 
-const deletePermanentlyAction = (dir: string) =>
+const deletePermanentlyConfirm = (dir: string) =>
   toggle.default({
     message: `Do you really want to delete all contents of "${dir}" PERMANENTLY?
 If you choose "No", you should choose another directory.`,
     default: false,
   });
 
-const moveToTrash = (dir: string) => () =>
+const runAction = (command: string[], error: Message) => () =>
   pipe(
-    getOsType(),
-    getTrashCommand,
-    (fn) => fn(dir),
+    command,
     (cmd) => $`${cmd}`.spawn(),
     () => true,
   ).catch((e) => {
     logger.error(e);
-    printError(message`Failed to move ${dir} to trash.
-Please move it manually.`);
+    printError(error);
     return false;
   });
 
-const getTrashCommand = (os: NodeJS.Platform) =>
-  trashCommands[os as keyof typeof trashCommands] ?? trashCommands.linux;
-
-const trashCommands: Record<
+const trashOrDeleteCommands: Record<
   Extract<NodeJS.Platform, "darwin" | "win32" | "linux">,
-  (dir: string) => string[]
+  { mode: DirActionMode; command: (dir: string) => string[] }
 > = {
   // mac
-  darwin: (dir: string) => ["trash", dir],
+  darwin: {
+    mode: "trash",
+    command: (dir: string) => ["trash", dir],
+  },
   // windows
-  win32: (dir: string) => [
-    "powershell",
-    "-Command",
-    getPowershellTrashCommand(dir),
-  ],
+  win32: {
+    mode: "trash",
+    command: (dir: string) => [
+      "powershell",
+      "-Command",
+      getPowershellTrashCommand(dir),
+    ],
+  },
   // other unix
-  linux: (dir: string) => ["rm", "-rf", dir],
+  linux: {
+    mode: "permanent",
+    command: (dir: string) => ["rm", "-rf", dir],
+  },
 };
 
 const getPowershellTrashCommand = (dir: string) =>
@@ -128,3 +144,12 @@ const getPowershellTrashCommand = (dir: string) =>
     "'OnlyErrorDialogs',",
     "'SendToRecycleBin')",
   ].join(" ");
+
+const errorMessages: Record<DirActionMode, (dir: string) => Message> = {
+  "trash": (dir: string) =>
+    message`Failed to move ${dir} to trash.
+Please move it manually.`,
+  "permanent": (dir: string) =>
+    message`Failed to delete ${dir} permanently.
+Please remove it manually.`,
+};
