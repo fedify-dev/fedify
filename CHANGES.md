@@ -175,6 +175,9 @@ To be released.
 
 ### @fedify/init
 
+ -  Added permanent delete warning for Linux or other UNIX-like system users
+    before delete the existing content in the project directory.
+    [[#989] by Jungmin Yoon\]
  -  Fixed `fedify init`'s hydration test validation to run `format` before
     `format:check`, which previously caused the entire test suite to fail when
     the package manager is `npm` or `pnpm`:
@@ -185,6 +188,7 @@ To be released.
 
 [#950]: https://github.com/fedify-dev/fedify/issues/950
 [#952]: https://github.com/fedify-dev/fedify/pull/952
+[#989]: https://github.com/fedify-dev/fedify/issues/989
 
 ### @fedify/interaction-controls
 
