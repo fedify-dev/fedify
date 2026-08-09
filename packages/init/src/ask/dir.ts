@@ -46,8 +46,38 @@ const moveDirToTrash = (dir: string) =>
   pipe(dir, askMoveToTrash, when(identity, moveToTrash(dir)));
 
 const askMoveToTrash = (dir: string) =>
+  pipe(
+    getOsType(),
+    getDeleteAction,
+    (fn) => fn(dir),
+  );
+
+const getDeleteAction = (os: NodeJS.Platform) => {
+  if (
+    trashSupported[os as keyof typeof trashSupported] ?? trashSupported.linux
+  ) return moveToTrashAction;
+  return deletePermanentlyAction;
+};
+
+const trashSupported: Record<
+  Extract<NodeJS.Platform, "darwin" | "win32" | "linux">,
+  boolean
+> = {
+  "darwin": true,
+  "win32": true,
+  "linux": false,
+};
+
+const moveToTrashAction = (dir: string) =>
   toggle.default({
     message: `Do you want to move the contents of "${dir}" to the trash?
+If you choose "No", you should choose another directory.`,
+    default: false,
+  });
+
+const deletePermanentlyAction = (dir: string) =>
+  toggle.default({
+    message: `Do you really want to delete all contents of "${dir}" PERMANENTLY?
 If you choose "No", you should choose another directory.`,
     default: false,
   });
