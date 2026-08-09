@@ -175,7 +175,7 @@ To be released.
 
 ### @fedify/init
 
- -  Added permanent delete warning for Linux or other UNIX-like system users
+ -  Added permanent removal warning for Linux or other UNIX-like system users
     before delete the existing content in the project directory.
     [[#989] by Jungmin Yoon\]
  -  Fixed `fedify init`'s hydration test validation to run `format` before
