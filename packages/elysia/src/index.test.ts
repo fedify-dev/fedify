@@ -1,3 +1,4 @@
+import { createFederation, MemoryKvStore } from "@fedify/fedify";
 import { Elysia } from "elysia";
 import { strict as assert } from "node:assert";
 import { describe, test } from "node:test";
@@ -44,6 +45,36 @@ describe("[elysia] fedify() plugin", () => {
       actual,
       "Hello World",
       "federation.fetch() must receive the context data returned by the factory",
+    );
+  });
+
+  test("fedify() falls through to Elysia routes when federation reports not-found via onNotFound", async () => {
+    const elysia = new Elysia().get(
+      "/hello-world",
+      ({ set, status }) => {
+        set.headers["X-Custom-Header"] = "custom-value";
+        return status(201, "Hello World");
+      },
+    );
+    const federationWithoutDispatcher = createFederation<void>({
+      kv: new MemoryKvStore(),
+    });
+
+    elysia.use(fedify(federationWithoutDispatcher, () => undefined));
+    const response = await elysia.handle(
+      new Request("http://localhost/hello-world"),
+    );
+
+    assert.strictEqual(response.status, 201, "status must come from Elysia");
+    assert.strictEqual(
+      response.headers.get("X-Custom-Header"),
+      "custom-value",
+      "header must come from Elysia",
+    );
+    assert.strictEqual(
+      await response.text(),
+      "Hello World",
+      "body must come from Elysia",
     );
   });
 });
