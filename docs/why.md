@@ -141,7 +141,8 @@ Benefits include:
 
  -  Faster API response times for improved UX
  -  Reduced memory consumption through payload deduplication
- -  Configurable fan-out strategies with `"auto"`, `"skip"`, or `"force"` options
+ -  Configurable fan-out strategies with `"auto"`, `"skip"`, or `"force"`
+    options
 
 
 Security and interoperability

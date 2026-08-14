@@ -166,8 +166,9 @@ Common tasks
 
 ### Creating database adapters
 
-1.  For core KV/MQ interfaces: implement in *packages/fedify/src/federation/kv.ts*
-    and *packages/fedify/src/federation/mq.ts*
+1.  For core KV/MQ interfaces: implement in
+    *packages/fedify/src/federation/kv.ts* and
+    *packages/fedify/src/federation/mq.ts*
 2.  For specific database adapters: create dedicated packages
     (*packages/sqlite/*, *packages/postgres/*, *packages/redis/*,
     *packages/amqp/*)
@@ -325,10 +326,11 @@ The monorepo uses different build processes for different packages:
     Uses `deno compile` to create standalone executables.  Distributed via
     JSR and npm
 
-3.  **Database adapters and integrations**: Use tsdown for TypeScript compilation:
-     -  *packages/amqp/*, *packages/elysia*, *packages/express/*, *packages/h3/*,
-        *packages/sqlite/*, *packages/postgres/*, *packages/redis/*,
-        *packages/nestjs/*
+3.  **Database adapters and integrations**: Use tsdown for TypeScript
+    compilation:
+     -  *packages/amqp/*, *packages/elysia*, *packages/express/*,
+        *packages/h3/*, *packages/sqlite/*, *packages/postgres/*,
+        *packages/redis/*, *packages/nestjs/*
      -  Built to support Node.js and Bun environments
 
 Ensure changes work across all distribution formats and target environments.
