@@ -331,13 +331,11 @@ const relay = createRelay("mastodon", {
 });
 ~~~~
 
-If the handler receives the following,
+The handler receives the `Context<RelayOptions>` object as `ctx` and the `Actor`
+requesting the subscription as `actor`.
 
- -  `ctx`: The `Context<RelayOptions>` object
- -  `actor`: The `Actor` requesting subscription
-
-Return `true` to approve or `false` to reject.  Rejected requests receive a
-`Reject` activity.
+Return `true` to approve the request or `false` to reject it.  The relay
+responds to rejected requests with a `Reject` activity.
 
 
 Managing followers
@@ -412,7 +410,7 @@ Stored with keys `["follower", actorId]`.  Actor objects typically range from
 
 ### Cryptographic keys
 
-Two key pairs are generated and stored the following.
+The relay generates and stores two key pairs.
 
 | Key                               | Purpose                                         |
 | --------------------------------- | ----------------------------------------------- |
@@ -452,7 +450,7 @@ Monitoring
 
 ### Logging
 
-The following example enables relay-specific logging.
+The following example enables Fedify logging, including relay operations.
 
 ~~~~ typescript twoslash
 import { configure, getConsoleSink } from "@logtape/logtape";
