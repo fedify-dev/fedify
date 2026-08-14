@@ -306,7 +306,30 @@ describe("LitePubRelay", () => {
       rsaPublicKey.id,
     );
 
-    await relay.fetch(request);
+    const originalFetch = globalThis.fetch;
+    const deliveredActivities: any[] = [];
+    globalThis.fetch = (async (
+      input: URL | RequestInfo,
+      init?: RequestInit,
+    ) => {
+      const outboundRequest = input instanceof Request
+        ? input
+        : new Request(input, init);
+      if (
+        outboundRequest.url ===
+          "https://remote.example.com/users/alice/inbox"
+      ) {
+        deliveredActivities.push(await outboundRequest.json());
+        return new Response(null, { status: 202 });
+      }
+      return originalFetch(input, init);
+    }) as typeof fetch;
+
+    try {
+      await relay.fetch(request);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
 
     // Verify handler was called
     strictEqual(handlerCalled, true);
@@ -319,6 +342,23 @@ describe("LitePubRelay", () => {
     ]);
     ok(isRelayFollowerData(followerData));
     strictEqual(followerData.state, "pending");
+
+    const reciprocalFollow = deliveredActivities.find((activity) =>
+      activity.type === "Follow"
+    );
+    ok(reciprocalFollow, "Expected a reciprocal Follow activity");
+    strictEqual(
+      reciprocalFollow.actor,
+      "https://relay.example.com/users/relay",
+    );
+    strictEqual(
+      reciprocalFollow.object,
+      "https://remote.example.com/users/alice",
+    );
+    strictEqual(
+      reciprocalFollow.to,
+      "https://remote.example.com/users/alice",
+    );
   });
 
   test("handles Follow activity with subscription rejection", async () => {
