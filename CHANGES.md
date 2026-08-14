@@ -16,7 +16,7 @@ To be released.
     in both places.  [[#970], [#972] by dktsudgg\]
 
 [#970]: https://github.com/fedify-dev/fedify/issues/970
-[#972]: https://github.com/fedify-dev/fedify/issues/972
+[#972]: https://github.com/fedify-dev/fedify/pull/972
 
 
 Version 2.0.24
