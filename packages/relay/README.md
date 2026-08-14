@@ -40,33 +40,38 @@ subscribed instances, creating a shared pool of federated content.
 Relay protocols
 ---------------
 
-This package supports two popular relay protocols used in the fediverse:
+This package implements the relay-server side of the two relay protocols
+described by [FEP-ae0c].  It does not subscribe an existing ActivityPub
+application to remote relays.
+
+[FEP-ae0c]: https://w3id.org/fep/ae0c
 
 ### Mastodon-style relay
 
-The Mastodon-style relay protocol uses LD signatures for activity
-verification and follows the Public collection. This protocol is widely
-supported by Mastodon and many other ActivityPub implementations.
+Mastodon-style clients subscribe by sending a `Follow` whose object is the
+ActivityStreams Public collection to the relay's shared inbox.  The relay
+accepts or rejects the subscription and forwards signed activities directly to
+accepted subscribers.
 
-Key features:
+#### Key features
 
- -  Direct activity relaying with proper content types (`Create`, `Update`,
-    `Delete`, `Move`)
- -  LD signature verification and generation
- -  Follows the ActivityPub Public collection
- -  Simple subscription mechanism via `Follow` activities
+ -  Direct forwarding of `Create`, `Update`, `Delete`, `Move`, and `Announce`
+    activities
+ -  Immediate subscription state after approval
+ -  Subscription through the shared inbox URI
 
 ### LitePub-style relay
 
-The LitePub-style relay protocol uses bidirectional following relationships
-and wraps activities in `Announce` activities for distribution.
+LitePub-style clients subscribe by following the relay actor.  After approving
+the request, the relay follows the client actor back and waits for an `Accept`.
+It wraps forwarded objects in `Announce` activities.
 
-Key features:
+#### Key features
 
  -  Reciprocal following between relay and subscribers
- -  Activities wrapped in `Announce` for distribution
+ -  Activities distributed through `Announce`
  -  Two-phase subscription (pending → accepted)
- -  Enhanced federation capabilities
+ -  Subscription through the relay actor URI
 
 
 Installation
@@ -102,7 +107,7 @@ Usage
 
 ### Creating a relay
 
-Here's a simple example of creating a relay server using the factory function:
+Here's a simple example of creating a relay server using the factory function.
 
 ~~~~ typescript
 import { createRelay } from "@fedify/relay";
@@ -128,7 +133,7 @@ const relay = createRelay("mastodon", {
 Deno.serve((request) => relay.fetch(request));
 ~~~~
 
-You can also create a LitePub-style relay by changing the type:
+You can also create a LitePub-style relay by changing the type.
 
 ~~~~ typescript
 const relay = createRelay("litepub", {
@@ -138,10 +143,25 @@ const relay = createRelay("litepub", {
 });
 ~~~~
 
+The relay actor and shared inbox use fixed internal routes.  Retrieve their
+public URIs from the relay instead of constructing paths yourself.
+
+~~~~ typescript
+const actorUri = await relay.getActorUri();
+// https://relay.example.com/users/relay
+
+const inboxUri = await relay.getSharedInboxUri();
+// https://relay.example.com/inbox
+~~~~
+
+Give Mastodon-style clients the shared inbox URI and LitePub-style clients the
+actor URI.
+
 ### Subscription handling
 
 The `subscriptionHandler` is required and determines whether to approve or
-reject subscription requests.  For an open relay that accepts all subscriptions:
+reject subscription requests.  The following example creates an open relay that
+accepts all subscriptions.
 
 ~~~~ typescript
 const relay = createRelay("mastodon", {
@@ -151,7 +171,7 @@ const relay = createRelay("mastodon", {
 });
 ~~~~
 
-You can also implement custom approval logic:
+You can also implement custom approval logic.
 
 ~~~~ typescript
 const relay = createRelay("mastodon", {
@@ -199,7 +219,7 @@ if (follower) {
 
 The relay's `fetch()` method returns a standard `Response` object, making it
 compatible with any web framework that supports the Fetch API.  Here's an
-example with Hono:
+example with Hono.
 
 ~~~~ typescript
 import { Hono } from "hono";
@@ -224,31 +244,44 @@ export default app;
 How it works
 ------------
 
-The relay operates by:
+1.  Actor registration—the relay presents itself as an `Application` actor at
+    `/users/relay`.
+2.  Subscription—Mastodon-style clients follow the Public collection;
+    LitePub-style clients follow the relay actor.
+3.  Approval—the relay's subscription handler determines whether to approve
+    the subscription and responds with `Accept` or `Reject`.
+4.  Forwarding—the relay handles `Create`, `Update`, `Delete`, `Move`, and
+    `Announce` activities delivered to its inbox.  Mastodon-style relays forward
+    them directly; LitePub-style relays wrap their objects in `Announce`.
+5.  Unsubscription—instances can unsubscribe by sending an `Undo` activity
+    wrapping their original `Follow` activity.
 
-1.  **Actor registration**: The relay presents itself as a Service actor at
-    `/users/relay`
-2.  **Subscription**: Instances subscribe to the relay by sending a `Follow`
-    activity
-3.  **Approval**: The relay's subscription handler determines whether to
-    approve the subscription (responds with `Accept` or `Reject`)
-4.  **Forwarding**: When a subscribed instance sends activities (`Create`,
-    `Update`, `Delete`, `Move`) to the relay's inbox, the relay forwards them
-    to all other subscribed instances
-5.  **Unsubscription**: Instances can unsubscribe by sending an `Undo` activity
-    wrapping their original `Follow` activity
+
+Application responsibilities
+----------------------------
+
+`createRelay()` provides the relay-specific ActivityPub routes and behavior.
+The surrounding application remains responsible for HTTPS, persistent storage,
+a durable production queue, subscription policy, rate limiting, monitoring,
+and moderation.  WebFinger and NodeInfo discovery endpoints are not configured
+by this package.
+
+The `subscriptionHandler` controls which actors become delivery recipients; it
+does not authorize publishing to the relay.  The relay does not require an
+activity sender to be a stored follower or inspect its audience for the Public
+collection, so deployments need to account for that behavior in their access
+and moderation policies.
 
 
 Storage requirements
 --------------------
 
-The relay requires a key–value store to persist:
+The relay requires a key–value store to persist the following data.
 
- -  Subscriber list and their Follow activity IDs
- -  Subscriber actor information
- -  Relay's cryptographic key pairs (RSA and Ed25519)
+ -  Subscriber actor information and subscription state
+ -  The relay's cryptographic key pairs (RSA and Ed25519)
 
-Any `KvStore` implementation from Fedify can be used, including:
+Any `KvStore` implementation from Fedify can be used, including the following.
 
  -  `MemoryKvStore` (for development/testing)
  -  `DenoKvStore` (Deno KV)
@@ -301,7 +334,7 @@ Public interface for ActivityPub relay implementations.
 
 #### Relay types
 
-The relay type is specified when calling `createRelay()`:
+The relay type is specified when calling `createRelay()`.
 
  -  `"mastodon"`: Mastodon-compatible relay using direct activity forwarding,
     immediate subscription approval, and LD signatures
@@ -310,7 +343,7 @@ The relay type is specified when calling `createRelay()`:
 
 ### `RelayOptions`
 
-Configuration options for the relay:
+Configuration options for the relay.
 
  -  `kv: KvStore` (required): Key–value store for persisting relay data
  -  `origin: string` (required): Relay's origin URL (e.g.,
@@ -326,7 +359,7 @@ Configuration options for the relay:
 
 ### `SubscriptionRequestHandler`
 
-A function that determines whether to approve a subscription request:
+A function that determines whether to approve a subscription request.
 
 ~~~~ typescript
 type SubscriptionRequestHandler = (
@@ -347,7 +380,7 @@ type SubscriptionRequestHandler = (
 
 ### `RelayFollower`
 
-A follower of the relay with validated Actor instance:
+A follower of the relay with validated Actor instance.
 
 ~~~~ typescript
 interface RelayFollower {
