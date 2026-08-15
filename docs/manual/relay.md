@@ -440,10 +440,6 @@ Deployments should apply appropriate access controls, rate limiting, and
 moderation to the relay inbox.  Avoid logging activity content unless it is
 needed for operation or debugging.
 
-This preserves what operators genuinely need to know without turning the
-section into a generic security checklist. It also avoids suggesting that a
-blocklist or subscriber vetting alone protects the publishing side.
-
 
 Monitoring
 ----------
