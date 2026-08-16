@@ -1,4 +1,5 @@
 packages:
+- packages/adonisjs
 - packages/amqp
 - packages/astro
 - packages/backfill
@@ -59,6 +60,8 @@ allowBuilds:
   workerd: true
 
 catalog:
+  "@adonisjs/assembler": ^8.0.0
+  "@adonisjs/core": ^7.0.0
   "@astrojs/netlify": ^6.6.5
   "@cloudflare/workers-types": ^4.20260511.1
   "@netlify/database": ^1.1.0

@@ -1,0 +1,126 @@
+{
+  "name": "@fedify/adonisjs",
+  "version": "2.4.0",
+  "description": "Integration package for Fedify with AdonisJS",
+  "keywords": [
+    "Fedify",
+    "Federation",
+    "ActivityPub",
+    "AdonisJS",
+    "fediverse"
+  ],
+  "author": {
+    "name": "scammo",
+    "email": "pfannkuchensack.ae@gmail.com"
+  },
+  "homepage": "https://fedify.dev/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fedify-dev/fedify.git",
+    "directory": "packages/adonisjs"
+  },
+  "bugs": {
+    "url": "https://github.com/fedify-dev/fedify/issues"
+  },
+  "funding": [
+    "https://opencollective.com/fedify",
+    "https://github.com/sponsors/dahlia"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/index.d.ts",
+        "require": "./dist/index.d.cts",
+        "default": "./dist/index.d.ts"
+      },
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.js"
+    },
+    "./types": {
+      "types": {
+        "import": "./dist/src/types.d.ts",
+        "require": "./dist/src/types.d.cts",
+        "default": "./dist/src/types.d.ts"
+      },
+      "import": "./dist/src/types.js",
+      "require": "./dist/src/types.cjs",
+      "default": "./dist/src/types.js"
+    },
+    "./provider": {
+      "types": {
+        "import": "./dist/src/provider.d.ts",
+        "require": "./dist/src/provider.d.cts",
+        "default": "./dist/src/provider.d.ts"
+      },
+      "import": "./dist/src/provider.js",
+      "require": "./dist/src/provider.cjs",
+      "default": "./dist/src/provider.js"
+    },
+    "./middleware": {
+      "types": {
+        "import": "./dist/src/fedify_middleware.d.ts",
+        "require": "./dist/src/fedify_middleware.d.cts",
+        "default": "./dist/src/fedify_middleware.d.ts"
+      },
+      "import": "./dist/src/fedify_middleware.js",
+      "require": "./dist/src/fedify_middleware.cjs",
+      "default": "./dist/src/fedify_middleware.js"
+    },
+    "./services/builder": {
+      "types": {
+        "import": "./dist/src/services/builder.d.ts",
+        "require": "./dist/src/services/builder.d.cts",
+        "default": "./dist/src/services/builder.d.ts"
+      },
+      "import": "./dist/src/services/builder.js",
+      "require": "./dist/src/services/builder.cjs",
+      "default": "./dist/src/services/builder.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "package.json"
+  ],
+  "scripts": {
+    "clean": "node --eval \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "build:self": "tsdown",
+    "build": "pnpm --filter @fedify/adonisjs... run build:self",
+    "prepack": "pnpm build",
+    "prepublish": "pnpm build",
+    "pretest": "pnpm run build:self",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test \"src/**/*.test.ts\""
+  },
+  "peerDependencies": {
+    "@adonisjs/assembler": "catalog:",
+    "@adonisjs/core": "catalog:",
+    "@fedify/fedify": "workspace:^"
+  },
+  "peerDependenciesMeta": {
+    "@adonisjs/assembler": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@logtape/logtape": "catalog:"
+  },
+  "devDependencies": {
+    "@adonisjs/assembler": "catalog:",
+    "@adonisjs/core": "catalog:",
+    "@fedify/fedify": "workspace:^",
+    "@fedify/vocab": "workspace:^",
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  }
+}
