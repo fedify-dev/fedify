@@ -48,6 +48,7 @@ import {
 } from "@opentelemetry/semantic-conventions";
 import metadata from "../../deno.json" with { type: "json" };
 import { getDefaultActivityTransformers } from "../compat/transformers.ts";
+import { normalizePublicFollowObject } from "../compat/public-audience.ts";
 import type { ActivityTransformer } from "../compat/types.ts";
 import { getNodeInfo, type GetNodeInfoOptions } from "../nodeinfo/client.ts";
 import { handleNodeInfo, handleNodeInfoJrd } from "../nodeinfo/handler.ts";
@@ -1361,6 +1362,7 @@ export class FederationImpl<TContextData>
       );
     } else {
       try {
+        jsonLd = normalizePublicFollowObject(jsonLd);
         jsonLd = await signJsonLd(jsonLd, rsaKey.privateKey, rsaKey.keyId, {
           contextLoader,
           tracerProvider: this.tracerProvider,
