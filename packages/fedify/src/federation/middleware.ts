@@ -1346,6 +1346,7 @@ export class FederationImpl<TContextData>
       format: "compact",
       contextLoader,
     });
+    jsonLd = normalizePublicFollowObject(jsonLd);
     if (rsaKey == null) {
       logger.warn(
         "No supported key found to create a Linked Data signature for " +
@@ -1362,7 +1363,6 @@ export class FederationImpl<TContextData>
       );
     } else {
       try {
-        jsonLd = normalizePublicFollowObject(jsonLd);
         jsonLd = await signJsonLd(jsonLd, rsaKey.privateKey, rsaKey.keyId, {
           contextLoader,
           tracerProvider: this.tracerProvider,

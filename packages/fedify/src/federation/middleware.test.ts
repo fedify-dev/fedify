@@ -1691,6 +1691,7 @@ test("FederationImpl.sendActivity()", async (t) => {
 
   let verified: ("http" | "ld" | "proof")[] | null = null;
   let request: Request | null = null;
+  let receivedJson: unknown = null;
   fetchMock.post("https://example.com/inbox", async (cl) => {
     verified = [];
     request = cl.request!.clone() as Request;
@@ -1699,6 +1700,7 @@ test("FederationImpl.sendActivity()", async (t) => {
       contextLoader: mockDocumentLoader,
     };
     let json = await cl.request!.json();
+    receivedJson = json;
     if (await verifyJsonLd(json, options)) verified.push("ld");
     json = detachSignature(json);
     let activity = await verifyObject(vocab.Activity, json, options);
@@ -1806,6 +1808,35 @@ test("FederationImpl.sendActivity()", async (t) => {
       request?.headers.get("Content-Type"),
       "application/activity+json",
     );
+  });
+
+  await t.step("normalizes a relay Follow object before sending", async () => {
+    const follow = new vocab.Follow({
+      id: new URL("https://example.com/activities/follow-relay"),
+      actor: new URL("https://example.com/person2"),
+      object: vocab.PUBLIC_COLLECTION,
+    });
+    const inboxes = {
+      "https://example.com/inbox": {
+        actorIds: ["https://example.com/recipient"],
+        sharedInbox: false,
+      },
+    };
+
+    verified = null;
+    receivedJson = null;
+    await federation.sendActivity(
+      [{ privateKey: ed25519PrivateKey, keyId: ed25519Multikey.id! }],
+      inboxes,
+      follow,
+      { context },
+    );
+
+    assertEquals(
+      (receivedJson as Record<string, unknown>).object,
+      vocab.PUBLIC_COLLECTION.href,
+    );
+    assertEquals(verified, ["proof"]);
   });
 
   fetchMock.hardReset();
