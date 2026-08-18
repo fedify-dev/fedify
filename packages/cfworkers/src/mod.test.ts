@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { type WorkersKvNamespaceLike, WorkersKvStore } from "./mod.ts";
+import {
+  type WorkersKvNamespaceLike,
+  WorkersKvStore,
+  WorkersMessageQueue,
+} from "./mod.ts";
 
 // Mock Temporal.Duration for testing in Cloudflare Workers environment
 const mockDuration = (seconds: number) => ({
@@ -307,5 +311,18 @@ describe("WorkersKvStore", () => {
     expect(entries).toContainEqual({ key: ["page", "e"], value: "value-e" });
 
     expect(namespace.listCalls).toBe(3);
+  });
+});
+
+describe("WorkersMessageQueue", () => {
+  // listen() throws before touching the queue, so no methods are needed.
+  const mockQueue = {} as unknown as Queue;
+
+  it("listen() throws TypeError", () => {
+    const queue = new WorkersMessageQueue(mockQueue);
+    expect(() => queue.listen(() => {})).toThrow(TypeError);
+    expect(() => queue.listen(() => {})).toThrow(
+      "WorkersMessageQueue does not support listen().",
+    );
   });
 });
