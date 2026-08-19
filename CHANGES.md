@@ -283,9 +283,10 @@ To be released.
  -  Fixed the relay documentation to use the canonical actor and shared inbox
     URIs, distinguish Mastodon-style and LitePub-style subscription behavior,
     and explain which deployment responsibilities remain with applications.
-    [[#899]]
+    [[#899], [#996] by Jiwon Kwon\]
 
 [#899]: https://github.com/fedify-dev/fedify/issues/899
+[#996]: https://github.com/fedify-dev/fedify/issues/996
 
 ### @fedify/sqlite
 
