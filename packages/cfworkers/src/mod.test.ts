@@ -322,7 +322,8 @@ describe("WorkersMessageQueue", () => {
     const queue = new WorkersMessageQueue(mockQueue);
     expect(() => queue.listen(() => {})).toThrow(TypeError);
     expect(() => queue.listen(() => {})).toThrow(
-      "WorkersMessageQueue does not support listen().",
+      "WorkersMessageQueue does not support listen().  " +
+        "Use Federation.processQueuedTask() method instead.",
     );
   });
 });
