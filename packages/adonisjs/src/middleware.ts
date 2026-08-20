@@ -96,19 +96,17 @@ function lazyRequestBody(
 }
 
 /**
- * Builds the URL that Fedify sees, from the **raw** request target.
+ * Builds the URL Fedify sees from the raw request target.
  *
- * The raw target is used rather than `request.completeUrl()` because AdonisJS
- * runs the parsed path through `decodeURI()`.
- * Resolving the target against an origin also normalises the absolute-form
- * request target (`GET http://example.com/inbox HTTP/1.1`) that RFC 9112 allows
- * any client to send: `pathname` is then `/inbox` either way.
- *
- * `protocol()` and `host()` honour the `trustProxy` setting in
- * `config/app.ts`.  Fedify rewrites the origin to the canonical one from
- * `FederationOptions.origin` anyway, so the origin only has to be well-formed.
+ * `completeUrl()` would `decodeURI()` the path, but Fedify's URI templates
+ * percent-encode sub-delims, so `/actors/alice%21` has to reach it encoded.
+ * The raw target also keeps the bytes a peer signed, and resolving it against
+ * an origin normalises the absolute-form target RFC 9112 permits
+ * (`GET http://host/inbox HTTP/1.1`).
  */
 function toRequestUrl(request: HttpContext["request"]): URL {
+  // Fedify rewrites the origin to `FederationOptions.origin`, so this only has
+  // to be well-formed.
   const authority = request.host() ?? request.hostname() ?? "localhost";
   return new URL(
     request.request.url ?? "/",
@@ -289,12 +287,8 @@ export function fedifyMiddleware<TContextData>(
 
   const handler: FedifyMiddlewareHandler = {
     async handle(ctx: HttpContext, next: NextFn): Promise<void> {
-      // The path Fedify's router would match, not `ctx.request.url()`.
-      // AdonisJS decodes the parsed path, so a target of `/%61ssets/app.css`
-      // would read as `/assets/app.css` here and bypass Fedify, while
-      // `toFetchRequest` would have handed Fedify the encoded form its router
-      // actually matches.  Both decisions must read the same value, so both
-      // derive it from the raw target through `toRequestUrl()`.
+      // This check and Fedify have to read the same path, so both derive it
+      // through `toRequestUrl()` rather than from `ctx.request.url()`.
       const path = toRequestUrl(ctx.request).pathname;
 
       if (ignoreRoutePrefixes.some((prefix) => path.startsWith(prefix))) {
