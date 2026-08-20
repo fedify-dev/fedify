@@ -52,6 +52,12 @@ export interface FedifyMiddlewareHandler {
 export type FedifyMiddlewareClass = new () => FedifyMiddlewareHandler;
 
 /**
+ * Methods `new Request()` refuses to construct.  Node rejects `TRACK` itself
+ * and never emits `request` for `CONNECT`, so only `TRACE` arrives here.
+ */
+const FORBIDDEN_METHODS = new Set(["CONNECT", "TRACE", "TRACK"]);
+
+/**
  * Wraps the raw `IncomingMessage` in a `ReadableStream` that stays completely
  * inert until somebody actually reads from it.
  *
@@ -291,10 +297,13 @@ export function fedifyMiddleware<TContextData>(
       // through `toRequestUrl()` rather than from `ctx.request.url()`.
       const path = toRequestUrl(ctx.request).pathname;
 
-      if (ignoreRoutePrefixes.some((prefix) => path.startsWith(prefix))) {
-        // The request was opted out of federation handling.  `ctx.federation`
-        // still has to exist as a property — it is declared non-optional — but
-        // touching it is a programming error, so make it say so.
+      if (
+        ignoreRoutePrefixes.some((prefix) => path.startsWith(prefix)) ||
+        FORBIDDEN_METHODS.has(ctx.request.intended().toUpperCase())
+      ) {
+        // Opted out, or impossible to represent as a `Request`.  Touching
+        // `ctx.federation` is then a programming error, but it is declared
+        // non-optional, so it still has to exist and say so.
         defineFederationContext(ctx, () => {
           throw new E_FEDIFY_CONTEXT_UNAVAILABLE(path);
         });
@@ -403,9 +412,19 @@ export function fedifyMiddleware<TContextData>(
         !outcome.routeMatched &&
         outcome.status === 404
       ) {
+        // Downstream middleware may have replaced `Vary`, and a 406 cached
+        // without `Accept` could be served to an ActivityPub client.
+        const vary = String(ctx.response.getHeader("Vary") ?? "")
+          .split(",")
+          .map((value) => value.trim())
+          .filter((value) => value !== "");
+        if (!vary.some((v) => v === "*" || v.toLowerCase() === "accept")) {
+          vary.push("Accept");
+        }
+
         ctx.response
           .status(406)
-          .safeHeader("Vary", "Accept")
+          .header("Vary", vary.join(", "))
           .type("text/plain")
           .send("Not acceptable");
         return;

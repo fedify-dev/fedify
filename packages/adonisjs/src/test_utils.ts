@@ -219,21 +219,16 @@ export async function startTestServer<TContextData>(
 }
 
 /**
- * Sends a request whose request target is written verbatim, which `fetch()`
- * gives no way to do.
- *
- * RFC 9112 lets a client address a server in absolute form
- * (`GET http://example.com/inbox HTTP/1.1`), and Node reports that whole target
- * in `req.url`.  The middleware has to cope with the shape, so the test that
- * proves it has to be able to produce it.
+ * Sends a verbatim request line, which `fetch()` cannot: it rejects forbidden
+ * methods such as `TRACE`, and never sends an absolute-form target.
  *
  * The response is returned unparsed apart from its status code, which keeps the
  * helper out of body-framing concerns.
  */
-export function fetchWithRawTarget(
+export function fetchRaw(
   server: TestServer,
   target: string,
-  headers: Record<string, string> = {},
+  init: { method?: string; headers?: Record<string, string> } = {},
 ): Promise<{ status: number; raw: string }> {
   const { hostname, port } = new URL(server.url);
 
@@ -253,10 +248,12 @@ export function fetchWithRawTarget(
     socket.on("connect", () => {
       socket.end(
         [
-          `GET ${target} HTTP/1.1`,
+          `${init.method ?? "GET"} ${target} HTTP/1.1`,
           `Host: ${hostname}:${port}`,
           "Connection: close",
-          ...Object.entries(headers).map(([key, value]) => `${key}: ${value}`),
+          ...Object.entries(init.headers ?? {}).map(
+            ([key, value]) => `${key}: ${value}`,
+          ),
           "",
           "",
         ].join("\r\n"),

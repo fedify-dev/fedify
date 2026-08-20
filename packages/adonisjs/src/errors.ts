@@ -51,7 +51,7 @@ export class E_FEDIFY_CONTEXT_UNAVAILABLE extends Exception {
 
   constructor(path: string) {
     super(
-      `Cannot access "ctx.federation" for "${path}". Either the request path matches "ignoreRoutePrefixes" in config/fedify.ts, or the Fedify middleware is not registered in the server middleware stack of start/kernel.ts`,
+      `Cannot access "ctx.federation" for "${path}". Either the request path matches "ignoreRoutePrefixes" in config/fedify.ts, the request method is one the Fetch API cannot represent (CONNECT, TRACE, TRACK), or the Fedify middleware is not registered in the server middleware stack of start/kernel.ts`,
     );
   }
 }

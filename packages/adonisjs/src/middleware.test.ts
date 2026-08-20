@@ -18,6 +18,7 @@ import {
 import { after, describe, it } from "node:test";
 
 import type { HttpContext } from "@adonisjs/core/http";
+import type { NextFn } from "@adonisjs/core/types/http";
 import type { Federation } from "@fedify/fedify";
 
 import { fedifyMiddleware } from "./middleware.ts";
@@ -25,7 +26,7 @@ import {
   ACTIVITY_PUB_ACCEPT,
   BROWSER_ACCEPT,
   createTestFederation,
-  fetchWithRawTarget,
+  fetchRaw,
   startTestServer,
   type TestServer,
 } from "./test_utils.ts";
@@ -179,6 +180,26 @@ describe("Fedify middleware", () => {
     strictEqual(response.status, 406);
   });
 
+  it("keeps Accept in the 406's Vary when downstream middleware replaces it", async () => {
+    // A later middleware can replace `Vary` rather than append to it; a 406
+    // cached without `Accept` could then reach an ActivityPub client.
+    const server = await withServer({
+      afterFedify: {
+        async handle(ctx: HttpContext, next: NextFn) {
+          ctx.response.header("Vary", "Origin");
+          await next();
+        },
+      },
+    });
+
+    const response = await server.fetch("/users/alice", {
+      headers: { Accept: BROWSER_ACCEPT },
+    });
+
+    strictEqual(response.status, 406);
+    strictEqual(response.headers.get("vary"), "Origin, Accept");
+  });
+
   describe("ctx.federation", () => {
     it("is available inside AdonisJS route handlers", async () => {
       const server = await withServer({
@@ -285,10 +306,10 @@ describe("Fedify middleware", () => {
       // answer for a path the application excluded.
       const server = await withServer({ ignoreRoutePrefixes: ["/users/"] });
 
-      const { status } = await fetchWithRawTarget(
+      const { status } = await fetchRaw(
         server,
         `${server.url}/users/alice`,
-        { Accept: ACTIVITY_PUB_ACCEPT },
+        { headers: { Accept: ACTIVITY_PUB_ACCEPT } },
       );
 
       // AdonisJS does not normalise the absolute form for its own router
@@ -496,6 +517,27 @@ describe("Fedify middleware", () => {
 
       strictEqual(response.status, 200);
       strictEqual(await response.text(), "");
+    });
+
+    it("delegates TRACE, which no Request can be built from", async () => {
+      // Building a `Request` from a forbidden method throws before `next()`
+      // runs, turning a request AdonisJS can answer into a 500.
+      const server = await withServer({
+        defineRoutes(router) {
+          router.route(
+            "/ping",
+            ["TRACE"],
+            (ctx: HttpContext) => ctx.response.send("route ran"),
+          );
+        },
+      });
+
+      const { status, raw } = await fetchRaw(server, "/ping", {
+        method: "TRACE",
+      });
+
+      strictEqual(status, 200);
+      ok(raw.endsWith("route ran"));
     });
 
     it("preserves multiple Set-Cookie headers from a Fedify response", async () => {
