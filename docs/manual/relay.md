@@ -142,21 +142,21 @@ Configuration options
 :   A [`MessageQueue`](./mq.md) for background activity processing.  Recommended
     for production.
 
-~~~~ typescript twoslash
-import { createRelay } from "@fedify/relay";
-import { MemoryKvStore, InProcessMessageQueue } from "@fedify/fedify";
-// ---cut-before---
-const relay = createRelay("mastodon", {
-  kv: new MemoryKvStore(),
-  origin: "https://relay.example.com",
-  queue: new InProcessMessageQueue(),
-  subscriptionHandler: async (ctx, actor) => true,
-});
-~~~~
+    ~~~~ typescript twoslash
+    import { createRelay } from "@fedify/relay";
+    import { MemoryKvStore, InProcessMessageQueue } from "@fedify/fedify";
+    // ---cut-before---
+    const relay = createRelay("mastodon", {
+      kv: new MemoryKvStore(),
+      origin: "https://relay.example.com",
+      queue: new InProcessMessageQueue(),
+      subscriptionHandler: async (ctx, actor) => true,
+    });
+    ~~~~
 
-> [!NOTE]
-> For production, use [`RedisMessageQueue`], [`PostgresMessageQueue`],
-> or [`MysqlMessageQueue`].
+    > [!NOTE]
+    > For production, use [`RedisMessageQueue`], [`PostgresMessageQueue`],
+    > or [`MysqlMessageQueue`].
 
 `subscriptionHandler` (required)
 :   Callback to approve or reject subscription requests. See
