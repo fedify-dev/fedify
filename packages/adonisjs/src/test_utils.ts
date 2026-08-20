@@ -187,9 +187,15 @@ export async function startTestServer<TContextData>(
   await server.boot();
 
   const httpServer: NodeHttpServer = createServer(server.handle.bind(server));
-  await new Promise<void>((resolve) =>
-    httpServer.listen(0, "127.0.0.1", resolve)
-  );
+  // Without the `error` listener a failed bind never settles the promise, and
+  // the run stalls until the test timeout with nothing said about the cause.
+  await new Promise<void>((resolve, reject) => {
+    httpServer.once("error", reject);
+    httpServer.listen(0, "127.0.0.1", () => {
+      httpServer.removeListener("error", reject);
+      resolve();
+    });
+  });
 
   const { port } = httpServer.address() as AddressInfo;
   const url = `http://127.0.0.1:${port}`;
@@ -202,6 +208,10 @@ export async function startTestServer<TContextData>(
     async close() {
       await new Promise<void>((resolve, reject) => {
         httpServer.close((error) => (error ? reject(error) : resolve()));
+        // `close()` stops new connections but waits for the open ones to end,
+        // and `fetch()` keeps its sockets alive, so the callback would only
+        // fire once undici's idle timeout expired.
+        httpServer.closeIdleConnections();
       });
       await app.terminate();
     },

@@ -24,6 +24,16 @@ export default class FedifyProvider {
   #queueController = new AbortController();
 
   /**
+   * The `startQueue()` promise, which settles once every queue listener has
+   * stopped.
+   *
+   * `shutdown()` returns it so that AdonisJS waits for the workers instead of
+   * tearing the process down around them.  Undefined whenever this process does
+   * not drain the queue.
+   */
+  #queue?: Promise<void>;
+
+  /**
    * Whether the builder may be sealed into a `Federation` object.
    *
    * Registration of dispatchers happens in preload files, which AdonisJS
@@ -152,8 +162,10 @@ export default class FedifyProvider {
       const contextData = await config.queueContextData();
 
       // `startQueue` only settles when the queue stops, so it must not be
-      // awaited here or the application would never finish starting.
-      federation
+      // awaited here or the application would never finish starting.  The
+      // promise is kept for `shutdown()`, and the `catch` is part of what is
+      // kept so that awaiting it there can never reject.
+      this.#queue = federation
         .startQueue(contextData, { signal: this.#queueController.signal })
         .catch((error: unknown) => {
           if (this.#queueController.signal.aborted) return;
@@ -166,12 +178,21 @@ export default class FedifyProvider {
   }
 
   /**
-   * Aborting the controller is synchronous, but the return type stays a promise:
-   * AdonisJS invokes provider hooks through a diagnostics-channel tracer that
-   * warns when a hook returns a non-thenable.
+   * Stops the queue worker and waits for it.
+   *
+   * Aborting the controller only *asks* the listeners to stop; `startQueue()`
+   * settles once they actually have, which may be one in-flight delivery later.
+   * Returning that promise keeps the rest of the AdonisJS shutdown sequence —
+   * closing the database connection, most importantly — behind it instead of
+   * pulling the ground out from under a job that is still running.
+   *
+   * A process that does not drain the queue has nothing to wait for, and the
+   * return type stays a promise there too: AdonisJS invokes provider hooks
+   * through a diagnostics-channel tracer that warns when a hook returns a
+   * non-thenable.
    */
   shutdown(): Promise<void> {
     this.#queueController.abort();
-    return Promise.resolve();
+    return this.#queue ?? Promise.resolve();
   }
 }

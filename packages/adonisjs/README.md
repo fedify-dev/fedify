@@ -156,13 +156,20 @@ The middleware attaches a Fedify `RequestContext` to every request:
 import type { HttpContext } from '@adonisjs/core/http'
 
 export default class ActorsController {
+  // GET /actors/:identifier — the same URL template the actor dispatcher
+  // serves, so the route parameter is the local identifier.
   async show({ params, view, federation }: HttpContext) {
-    const object = await federation.lookupObject(params.handle)
-
     return view.render('pages/actors/show', {
       actorUri: federation.getActorUri(params.identifier).href,
-      object,
     })
+  }
+
+  // GET /lookup/:handle — dereference a remote object by its fediverse handle
+  // or URI, for example `@fedify@hackers.pub`.
+  async lookup({ params, view, federation }: HttpContext) {
+    const object = await federation.lookupObject(params.handle)
+
+    return view.render('pages/actors/lookup', { object })
   }
 }
 ~~~~
@@ -221,14 +228,14 @@ export default defineConfig({
 })
 ~~~~
 
-| Option                | Purpose                                                                                                            |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `origin`              | Required.  The canonical public origin.  Actor URIs and activity IDs are minted from it.                           |
-| `kv`                  | Fedify's key–value store.  Defaults to an in-memory store, with a warning in production.                           |
-| `contextDataFactory`  | Builds the per-request context data.  Defaults to the `HttpContext` itself.                                        |
-| `ignoreRoutePrefixes` | URL path prefixes that skip Fedify entirely.  Defaults to none.                                                    |
-| `logging`             | Whether to pipe Fedify's LogTape output into the AdonisJS logger.  Defaults to `true`.                             |
-| `queueContextData`    | Who drains the queue: a callback (this process) or `false` (a separate worker).  Required whenever `queue` is set. |
+| Option                | Purpose                                                                                                                      |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `origin`              | Required.  The canonical public origin.  Actor URIs and activity IDs are minted from it.                                     |
+| `kv`                  | Fedify's key–value store.  Defaults to an in-memory store, with a warning in production.                                     |
+| `contextDataFactory`  | Builds the per-request context data.  Defaults to the `HttpContext` itself, and is required once `FedifyTypes` is augmented. |
+| `ignoreRoutePrefixes` | URL path prefixes that skip Fedify entirely.  Defaults to none.                                                              |
+| `logging`             | Whether to pipe Fedify's LogTape output into the AdonisJS logger.  Defaults to `true`.                                       |
+| `queueContextData`    | Who drains the queue: a callback (this process) or `false` (a separate worker).  Required whenever `queue` is set.           |
 
 [`FederationOptions`]: https://jsr.io/@fedify/fedify/doc/~/FederationOptions
 
@@ -253,7 +260,10 @@ available yet.
 Fedify threads an application-defined value through every dispatcher and inbox
 listener.  By default that value is `HttpContext | null` — `null` when Fedify is
 working outside a request, such as inside a queue worker.  To carry something
-else, augment the register interface and supply a factory:
+else, augment the register interface and supply a factory.  The augmentation
+makes `contextDataFactory` a required option, so forgetting it is a type error
+in *config/fedify.ts* rather than an `HttpContext` turning up where a dispatcher
+expected the augmented value:
 
 ~~~~ typescript
 declare module '@fedify/adonisjs/types' {

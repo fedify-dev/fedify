@@ -102,6 +102,13 @@ export function defineConfig(
         ? true
         : config.manuallyStartQueue,
 
+      /**
+       * The cast is sound because `ContextDataFactoryOption` makes
+       * `contextDataFactory` a *required* key the moment an application
+       * augments `FedifyTypes`.  This branch is therefore only reachable while
+       * `ContextData` still includes `HttpContext`, which is exactly what it
+       * returns.
+       */
       contextDataFactory: contextDataFactory ?? ((ctx) => ctx as ContextData),
       ignoreRoutePrefixes: ignoreRoutePrefixes ?? [],
       logging: logging ?? true,

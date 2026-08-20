@@ -18,6 +18,7 @@ import {
 import { after, describe, it } from "node:test";
 
 import type { HttpContext } from "@adonisjs/core/http";
+import type { Federation } from "@fedify/fedify";
 
 import { fedifyMiddleware } from "./middleware.ts";
 import {
@@ -38,14 +39,17 @@ async function withServer(
       "federation" | "contextDataFactory"
     >
     & {
+      /** Defaults to {@link createTestFederation}. */
+      federation?: Federation<null>;
       contextDataFactory?: () => null;
     },
 ): Promise<TestServer> {
   const server = await startTestServer<null>({
-    federation: createTestFederation(),
+    federation: options.federation ?? createTestFederation(),
     contextDataFactory: options.contextDataFactory ?? (() => null),
     ignoreRoutePrefixes: options.ignoreRoutePrefixes,
     defineRoutes: options.defineRoutes,
+    afterFedify: options.afterFedify,
   });
   after(() => server.close());
   return server;
@@ -243,6 +247,34 @@ describe("Fedify middleware", () => {
       strictEqual(await response.text(), "E_FEDIFY_CONTEXT_UNAVAILABLE");
     });
 
+    it("matches ignoreRoutePrefixes against the raw request target", async () => {
+      // `ctx.request.url()` decodes the parsed path, so `/%61ssets/app.css`
+      // would read as `/assets/app.css` and bypass Fedify -- while
+      // `toFetchRequest` hands Fedify the encoded form, which is what its
+      // router matches.  Both decisions have to read the same value, so the
+      // prefix is compared against the raw target and this request is *not*
+      // excluded.
+      const server = await withServer({
+        ignoreRoutePrefixes: ["/assets/"],
+        defineRoutes(router) {
+          router.get("/assets/app.css", (ctx: HttpContext) => {
+            try {
+              void ctx.federation;
+              return ctx.response.send("context available");
+            } catch (error) {
+              return ctx.response.send(
+                (error as { code?: string }).code ?? "unknown",
+              );
+            }
+          });
+        },
+      });
+
+      const response = await server.fetch("/%61ssets/app.css");
+
+      strictEqual(await response.text(), "context available");
+    });
+
     it("does not intercept federation routes below an ignored prefix", async () => {
       // A prefix that shadows a Fedify route must genuinely bypass Fedify;
       // this documents the footgun rather than papering over it.
@@ -331,9 +363,7 @@ describe("Fedify middleware", () => {
       // middleware registered after this one -- @adonisjs/cors answering a
       // preflight is the canonical case -- answers without the router running,
       // so ctx.route stays undefined even though the response is deliberate.
-      const server = await startTestServer<null>({
-        federation: createTestFederation(),
-        contextDataFactory: () => null,
+      const server = await withServer({
         afterFedify: {
           handle(ctx: HttpContext) {
             ctx.response.status(204).header("x-answered-by", "downstream").send(
@@ -342,7 +372,6 @@ describe("Fedify middleware", () => {
           },
         },
       });
-      after(() => server.close());
 
       const response = await server.fetch("/users/alice", {
         headers: { Accept: BROWSER_ACCEPT },
@@ -447,9 +476,33 @@ describe("Fedify middleware", () => {
       strictEqual(await response.text(), "");
     });
 
-    it("preserves multiple Set-Cookie headers from AdonisJS", async () => {
+    it("preserves multiple Set-Cookie headers from a Fedify response", async () => {
       // Guards the response writer's use of getSetCookie(): iterating Headers
-      // would fold these into one comma-joined value.
+      // would fold these into one comma-joined value.  Fedify has to be the one
+      // answering, because a delegated response never reaches the writer -- so
+      // this stands in for a federation whose handler sets cookies.
+      const headers = new Headers({ "content-type": "text/plain" });
+      headers.append("set-cookie", "a=1; Path=/");
+      headers.append("set-cookie", "b=2; Path=/");
+
+      const server = await withServer({
+        federation: {
+          fetch: () => Promise.resolve(new Response("ok", { headers })),
+        } as unknown as Federation<null>,
+      });
+
+      const response = await server.fetch("/anywhere");
+
+      deepStrictEqual(response.headers.getSetCookie(), [
+        "a=1; Path=/",
+        "b=2; Path=/",
+      ]);
+      strictEqual(await response.text(), "ok");
+    });
+
+    it("leaves Set-Cookie headers from a delegated AdonisJS route alone", async () => {
+      // The counterpart of the test above: Fedify declines, AdonisJS answers,
+      // and the middleware must not touch the response it produced.
       const server = await withServer({
         defineRoutes(router) {
           router.get("/cookies", (ctx: HttpContext) => {

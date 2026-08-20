@@ -105,7 +105,8 @@ export interface FedifyLoggingConfig {
 }
 
 /**
- * The shape of the object passed to {@link defineConfig} in `config/fedify.ts`.
+ * Everything {@link FedifyConfig} accepts except `contextDataFactory`, whose
+ * optionality is decided separately by {@link ContextDataFactoryOption}.
  *
  * It is Fedify's own {@link FederationOptions} — so every Fedify option is
  * available and documented in Fedify's own reference — plus a handful of
@@ -116,7 +117,7 @@ export interface FedifyLoggingConfig {
  *   moment the app sits behind a proxy or a tunnel), and
  * - `kv` is **optional** (it falls back to an in-memory store in development).
  */
-export interface FedifyConfig
+export interface FedifyConfigBase
   extends Omit<FederationOptions<ContextData>, "kv" | "origin"> {
   /**
    * The canonical public origin of this server, for example
@@ -144,15 +145,6 @@ export interface FedifyConfig
    * `@fedify/redis`, or `@fedify/mysql` in production.
    */
   kv?: KvStore;
-
-  /**
-   * Produces the {@link ContextData} for each incoming HTTP request.
-   *
-   * Defaults to `(ctx) => ctx`, i.e. the `HttpContext` itself, which matches the
-   * default of {@link ContextData}.  Override it whenever the application has
-   * augmented {@link FedifyTypes}.
-   */
-  contextDataFactory?: ContextDataFactory<ContextData>;
 
   /**
    * URL path prefixes that Fedify should never see.
@@ -202,6 +194,50 @@ export interface FedifyConfig
    */
   queueContextData?: (() => ContextData | Promise<ContextData>) | false;
 }
+
+/**
+ * The `contextDataFactory` half of {@link FedifyConfig}, whose optionality
+ * depends on {@link ContextData}.
+ *
+ * The runtime default is `(ctx) => ctx`, which is only a correct
+ * {@link ContextData} while the application has not augmented
+ * {@link FedifyTypes} — after an augmentation an `HttpContext` is precisely
+ * what a dispatcher must *not* receive.  Making the key required in that case
+ * turns "every dispatcher silently gets the wrong value" into a compile error
+ * on `config/fedify.ts`, which is the only place that can fix it.
+ *
+ * The tuple wrappers keep the conditional from distributing over a union
+ * {@link ContextData}, so an augmentation such as `User | null` is compared as
+ * a whole.
+ */
+export type ContextDataFactoryOption = [HttpContext] extends [ContextData] ? {
+    /**
+     * Produces the {@link ContextData} for each incoming HTTP request.
+     *
+     * Defaults to `(ctx) => ctx`, i.e. the `HttpContext` itself, which matches
+     * the default of {@link ContextData}.
+     */
+    contextDataFactory?: ContextDataFactory<ContextData>;
+  }
+  : {
+    /**
+     * Produces the {@link ContextData} for each incoming HTTP request.
+     *
+     * Required here because the application augmented {@link FedifyTypes}:
+     * the built-in default hands dispatchers the `HttpContext`, which is no
+     * longer the declared context data type.
+     */
+    contextDataFactory: ContextDataFactory<ContextData>;
+  };
+
+/**
+ * The shape of the object passed to {@link defineConfig} in `config/fedify.ts`.
+ *
+ * {@link FedifyConfigBase} plus {@link ContextDataFactoryOption}, which makes
+ * `contextDataFactory` required exactly when {@link FedifyTypes} has been
+ * augmented.
+ */
+export type FedifyConfig = FedifyConfigBase & ContextDataFactoryOption;
 
 /**
  * The fully-resolved configuration held by the `fedify.config` container

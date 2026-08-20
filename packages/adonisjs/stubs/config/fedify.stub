@@ -74,7 +74,8 @@ export default defineConfig({
  *
  * It defaults to "HttpContext | null" -- null when Fedify is working outside a
  * request, such as in a queue worker. Augment it here to carry something more
- * specific, and set "contextDataFactory" above to build it:
+ * specific, and set "contextDataFactory" above to build it -- the option becomes
+ * required once you do:
  *
  *     declare module '@fedify/adonisjs/types' {
  *       interface FedifyTypes {

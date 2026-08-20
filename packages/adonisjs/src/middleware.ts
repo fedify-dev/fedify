@@ -279,7 +279,13 @@ export function fedifyMiddleware<TContextData>(
 
   const handler: FedifyMiddlewareHandler = {
     async handle(ctx: HttpContext, next: NextFn): Promise<void> {
-      const path = ctx.request.url();
+      // The raw target, minus the query string, rather than
+      // `ctx.request.url()`.  AdonisJS decodes the parsed path, so a target of
+      // `/%61ssets/app.css` would read as `/assets/app.css` here and bypass
+      // Fedify, while `toFetchRequest` would have handed Fedify the encoded
+      // form its router actually matches.  Both decisions must read the same
+      // value.
+      const path = (ctx.request.request.url ?? "/").split("?")[0]!;
 
       if (ignoreRoutePrefixes.some((prefix) => path.startsWith(prefix))) {
         // The request was opted out of federation handling.  `ctx.federation`

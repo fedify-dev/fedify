@@ -44,7 +44,9 @@ export type { FedifyLoggingOptions } from "./src/logging.ts";
 export type {
   ContextData,
   ContextDataFactory,
+  ContextDataFactoryOption,
   FedifyConfig,
+  FedifyConfigBase,
   FedifyLoggingConfig,
   FedifyTypes,
   ResolvedFedifyConfig,

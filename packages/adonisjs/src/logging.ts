@@ -18,6 +18,7 @@
 import type { Logger } from "@adonisjs/core/logger";
 import {
   configure,
+  getConfig,
   getTextFormatter,
   type LogLevel,
   type LogRecord,
@@ -74,10 +75,18 @@ function logWith(
 /**
  * Configures LogTape so that Fedify's logs flow into the AdonisJS logger.
  *
- * LogTape is a process-global singleton, so this must be called at most once
- * per process.  The service provider calls it during `boot()` unless the
- * application sets `logging: false` in `config/fedify.ts`, which is the escape
- * hatch for applications that configure LogTape themselves.
+ * LogTape is a process-global singleton, and `configure()` refuses to run twice:
+ * it throws `ConfigError("Already configured; ...")` unless the `reset` flag is
+ * set.  Two ordinary situations reach a second call — an application that
+ * configures LogTape itself but forgets `logging: false` in `config/fedify.ts`,
+ * and a test process that boots more than one application instance — and in
+ * both of them the existing configuration is the one to keep.  So the existing
+ * configuration wins and this function returns after saying so through the
+ * logger, rather than taking the application down over a logging bridge.
+ *
+ * The service provider calls it during `boot()` unless the application sets
+ * `logging: false` in `config/fedify.ts`, which is the escape hatch for
+ * applications that configure LogTape themselves.
  *
  * Timestamps and levels are stripped from the rendered message because the
  * AdonisJS logger adds both; leaving them in produces doubled-up output.
@@ -87,6 +96,15 @@ export async function configureFedifyLogging(
 ): Promise<void> {
   const { logger } = options;
   const categories = options.categories ?? [["logtape", "meta"], ["fedify"]];
+
+  if (getConfig() != null) {
+    logger.debug(
+      "LogTape is already configured, so the Fedify logging bridge was left " +
+        'alone. Set "logging" to false in config/fedify.ts to make that ' +
+        "explicit.",
+    );
+    return;
+  }
 
   const formatter: TextFormatter = getTextFormatter({
     timestamp: "disabled",
