@@ -306,7 +306,30 @@ describe("LitePubRelay", () => {
       rsaPublicKey.id,
     );
 
-    await relay.fetch(request);
+    const originalFetch = globalThis.fetch;
+    const deliveredActivities: any[] = [];
+    globalThis.fetch = (async (
+      input: URL | RequestInfo,
+      init?: RequestInit,
+    ) => {
+      const outboundRequest = input instanceof Request
+        ? input
+        : new Request(input, init);
+      if (
+        outboundRequest.url ===
+          "https://remote.example.com/users/alice/inbox"
+      ) {
+        deliveredActivities.push(await outboundRequest.json());
+        return new Response(null, { status: 202 });
+      }
+      return originalFetch(input, init);
+    }) as typeof fetch;
+
+    try {
+      await relay.fetch(request);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
 
     // Verify handler was called
     strictEqual(handlerCalled, true);
@@ -319,6 +342,23 @@ describe("LitePubRelay", () => {
     ]);
     ok(isRelayFollowerData(followerData));
     strictEqual(followerData.state, "pending");
+
+    const reciprocalFollow = deliveredActivities.find((activity) =>
+      activity.type === "Follow"
+    );
+    ok(reciprocalFollow, "Expected a reciprocal Follow activity");
+    strictEqual(
+      reciprocalFollow.actor,
+      "https://relay.example.com/users/relay",
+    );
+    strictEqual(
+      reciprocalFollow.object,
+      "https://remote.example.com/users/alice",
+    );
+    strictEqual(
+      reciprocalFollow.to,
+      "https://remote.example.com/users/alice",
+    );
   });
 
   test("handles Follow activity with subscription rejection", async () => {
@@ -814,6 +854,84 @@ describe("LitePubRelay", () => {
 
     // Verify the request was accepted (forwarding happens in background)
     ok(response.status === 200 || response.status === 202);
+  });
+
+  test("forwards activities only to accepted followers", async () => {
+    const kv = new MemoryKvStore();
+    const pendingFollower = new Person({
+      id: new URL("https://pending.example.com/users/bob"),
+      preferredUsername: "bob",
+      inbox: new URL("https://pending.example.com/users/bob/inbox"),
+    });
+    const acceptedFollower = new Person({
+      id: new URL("https://accepted.example.com/users/carol"),
+      preferredUsername: "carol",
+      inbox: new URL("https://accepted.example.com/users/carol/inbox"),
+    });
+    await kv.set(
+      ["follower", pendingFollower.id!.href],
+      { actor: await pendingFollower.toJsonLd(), state: "pending" },
+    );
+    await kv.set(
+      ["follower", acceptedFollower.id!.href],
+      { actor: await acceptedFollower.toJsonLd(), state: "accepted" },
+    );
+
+    const relay = createRelay("litepub", {
+      kv,
+      origin: "https://relay.example.com",
+      documentLoaderFactory: () => mockDocumentLoader,
+      authenticatedDocumentLoaderFactory: () => mockDocumentLoader,
+      subscriptionHandler: () => Promise.resolve(true),
+    });
+
+    const createActivity = new Create({
+      id: new URL("https://remote.example.com/activities/create/1"),
+      actor: new URL("https://remote.example.com/users/alice"),
+      object: new Note({
+        id: new URL("https://remote.example.com/notes/1"),
+        content: "Hello world",
+      }),
+    });
+    let request = new Request("https://relay.example.com/inbox", {
+      method: "POST",
+      headers: { "Content-Type": "application/activity+json" },
+      body: JSON.stringify(
+        await createActivity.toJsonLd({ contextLoader: mockDocumentLoader }),
+      ),
+    });
+    request = await signRequest(
+      request,
+      rsaKeyPair.privateKey,
+      rsaPublicKey.id,
+    );
+
+    const originalFetch = globalThis.fetch;
+    const deliveredInboxUrls: string[] = [];
+    globalThis.fetch = (async (
+      input: URL | RequestInfo,
+      init?: RequestInit,
+    ) => {
+      const outboundRequest = input instanceof Request
+        ? input
+        : new Request(input, init);
+      if (outboundRequest.url.endsWith("/inbox")) {
+        deliveredInboxUrls.push(outboundRequest.url);
+        return new Response(null, { status: 202 });
+      }
+      return await originalFetch(input, init);
+    }) as typeof fetch;
+
+    try {
+      const response = await relay.fetch(request);
+      ok(response.status === 200 || response.status === 202);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+
+    deepStrictEqual(deliveredInboxUrls, [
+      "https://accepted.example.com/users/carol/inbox",
+    ]);
   });
 
   test("handles Update activity with Announce forwarding", async () => {

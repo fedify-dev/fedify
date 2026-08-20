@@ -140,7 +140,7 @@ Configuration options
 
 `queue`
 :   A [`MessageQueue`](./mq.md) for background activity processing.  Recommended
-    for production:
+    for production.
 
     ~~~~ typescript twoslash
     import { createRelay } from "@fedify/relay";
@@ -161,7 +161,8 @@ Configuration options
 `subscriptionHandler` (required)
 :   Callback to approve or reject subscription requests. See
     [*Handling subscriptions*](#handling-subscriptions). To create an open relay
-    that accepts all subscriptions:
+    that accepts all subscriptions, set `subscriptionHandler` to always return
+    `true`.
 
     ~~~~ typescript
     subscriptionHandler: async (ctx, actor) => true
@@ -185,19 +186,17 @@ Configuration options
 Relay types
 -----------
 
-The first parameter to `createRelay()` specifies the relay protocol.
-For detailed protocol specifications, see [FEP-ae0c].
+The first parameter to `createRelay()` selects how this relay server handles
+subscriptions and forwards activities.  The package implements the server side
+of the Mastodon-style and LitePub-style protocols described by [FEP-ae0c]; it
+does not configure an existing ActivityPub application as a relay client.
 
-| Feature                | `"mastodon"`                 | `"litepub"`                |
-| ---------------------- | ---------------------------- | -------------------------- |
-| Activity forwarding    | Direct                       | Wrapped in `Announce`      |
-| Following relationship | One-way                      | Bidirectional              |
-| Subscription state     | Immediate `"accepted"`       | `"pending"` → `"accepted"` |
-| Compatibility          | Broad (most implementations) | LitePub-aware servers      |
-
-> [!TIP]
-> Use `"mastodon"` for broader compatibility. Switch to `"litepub"` only if
-> you need its specific features.
+| Feature                   | `"mastodon"`           | `"litepub"`                |
+| ------------------------- | ---------------------- | -------------------------- |
+| Activity forwarding       | Direct                 | Wrapped in `Announce`      |
+| Following relationship    | One-way                | Bidirectional              |
+| Subscription state        | Immediate `"accepted"` | `"pending"` → `"accepted"` |
+| Canonical `Follow` object | Public collection      | Relay actor                |
 
 [FEP-ae0c]: https://w3id.org/fep/ae0c
 
@@ -244,55 +243,61 @@ in their server settings.  The URL format differs depending on the relay type.
 
 ### Subscription URL
 
-The subscription URL differs between Mastodon-style and LitePub-style relays:
+Retrieve subscription URLs from the relay instance rather than constructing
+them from assumed paths.
 
-| Relay type   | Subscription URL            | Example                           |
-| ------------ | --------------------------- | --------------------------------- |
-| `"mastodon"` | Inbox URL: `{origin}/inbox` | `https://relay.example.com/inbox` |
-| `"litepub"`  | Actor URL: `{origin}/actor` | `https://relay.example.com/actor` |
+~~~~ typescript twoslash
+import { createRelay } from "@fedify/relay";
+import { MemoryKvStore } from "@fedify/fedify";
+const relay = createRelay("mastodon", {
+  kv: new MemoryKvStore(),
+  origin: "https://relay.example.com",
+  subscriptionHandler: async (ctx, actor) => true,
+});
+// ---cut-before---
+const actorUri = await relay.getActorUri();
+const sharedInboxUri = await relay.getSharedInboxUri();
+~~~~
+
+| Relay type   | Give clients     | Default URI                             |
+| ------------ | ---------------- | --------------------------------------- |
+| `"mastodon"` | `sharedInboxUri` | `https://relay.example.com/inbox`       |
+| `"litepub"`  | `actorUri`       | `https://relay.example.com/users/relay` |
 
 For more details on the protocol differences, see [FEP-ae0c].
 
-### Subscribing from Mastodon
 
-To subscribe from a Mastodon instance:
+Application responsibilities
+----------------------------
 
-1.  Go to **Preferences** → **Administration** → **Relays**
-2.  Click **Add new relay**
-3.  Enter the relay inbox URL (e.g., `https://relay.example.com/inbox`)
-4.  Click **Save and enable**
+`createRelay()` provides the relay actor, inboxes, subscription handshake,
+activity forwarding, cryptographic keys, and follower storage.  The surrounding
+application still needs to implement the following.
 
-The relay will receive a `Follow` activity from the instance.  If the
-`subscriptionHandler` approves the request, the relay sends back an `Accept`
-activity, and the instance becomes a subscriber.
+ -  Route requests for the configured `origin` to `relay.fetch()` without
+    rewriting the relay's paths.
+ -  Terminate HTTPS and use a persistent `KvStore` in production.
+ -  Configure a durable `MessageQueue` when delivery should survive process
+    restarts.
+ -  Implement subscription policy and infrastructure-level rate limiting,
+    monitoring, and moderation.
+ -  Provide WebFinger or NodeInfo separately when deployed clients require
+    those discovery endpoints.
 
-> [!NOTE]
-> Mastodon only supports Mastodon-style relays.  Use the inbox URL
-> (`https://{domain}/inbox`) when subscribing from Mastodon.
-
-### Subscribing from Pleroma/Akkoma
-
-Pleroma and Akkoma use LitePub-style relays by default.  To subscribe:
-
-1.  Use the admin CLI or MIX task to add the relay
-2.  Enter the relay actor URL (e.g., `https://relay.example.com/actor`)
-
-### Subscribing from other software
-
-Consult your server software's documentation for specific instructions.
-The general process is:
-
-1.  Find the relay settings in your server's administration panel
-2.  Add the appropriate relay URL (inbox URL for Mastodon-style, actor URL
-    for LitePub-style)
-3.  Wait for the subscription to be approved
+The `subscriptionHandler` decides who is stored as a delivery recipient.  It is
+not authorization for publishing to the relay.  The relay verifies incoming
+activities using Fedify's federation pipeline, but it does not require the
+sender to be a stored follower or check that an activity addresses the Public
+collection.  Deployments should account for that behavior in their access and
+moderation policies.
 
 
 Handling subscriptions
 ----------------------
 
 The `subscriptionHandler` is required and determines whether to approve or
-reject subscription requests. For an open relay that accepts all subscriptions:
+reject subscription requests.  The following example creates an open relay that
+accepts all subscriptions.
 
 ~~~~ typescript twoslash
 import { createRelay } from "@fedify/relay";
@@ -305,7 +310,7 @@ const relay = createRelay("mastodon", {
 });
 ~~~~
 
-To implement approval logic with blocklists:
+Approval logic can also be implemented with a domain block list.
 
 ~~~~ typescript twoslash
 import { createRelay } from "@fedify/relay";
@@ -326,13 +331,11 @@ const relay = createRelay("mastodon", {
 });
 ~~~~
 
-The handler receives:
+The handler receives the `Context<RelayOptions>` object as `ctx` and the `Actor`
+requesting the subscription as `actor`.
 
- -  `ctx`: The `Context<RelayOptions>` object
- -  `actor`: The `Actor` requesting subscription
-
-Return `true` to approve or `false` to reject.  Rejected requests receive a
-`Reject` activity.
+Return `true` to approve the request or `false` to reject it.  The relay
+responds to rejected requests with a `Reject` activity.
 
 
 Managing followers
@@ -343,7 +346,7 @@ interface.
 
 ### Listing all followers
 
-Use `listFollowers()` to iterate over all followers:
+Use `listFollowers()` to iterate over all followers.
 
 ~~~~ typescript twoslash
 import { createRelay } from "@fedify/relay";
@@ -363,7 +366,7 @@ for await (const follower of relay.listFollowers()) {
 
 ### Getting a specific follower
 
-Use `getFollower()` to retrieve a specific follower by actor ID:
+Use `getFollower()` to retrieve a specific follower by actor ID.
 
 ~~~~ typescript twoslash
 import { createRelay } from "@fedify/relay";
@@ -385,7 +388,7 @@ if (follower != null) {
 
 ### `RelayFollower` type
 
-Each follower entry contains:
+Each follower entry contains the following.
 
  -  `actorId`: The actor's ID (URL) as a string
  -  `actor`: The validated `Actor` object
@@ -407,7 +410,7 @@ Stored with keys `["follower", actorId]`.  Actor objects typically range from
 
 ### Cryptographic keys
 
-Two key pairs are generated and stored:
+The relay generates and stores two key pairs.
 
 | Key                               | Purpose                                         |
 | --------------------------------- | ----------------------------------------------- |
@@ -424,42 +427,18 @@ Security considerations
 
 ### Signature verification
 
-The relay automatically verifies incoming activities using:
+Incoming activities pass through Fedify's normal signature verification
+pipeline.  A valid signature authenticates the sender but does not make the
+activity trusted.
 
- -  [HTTP Signatures]
- -  [Linked Data Signatures]
- -  [Object Integrity Proofs]
+The `subscriptionHandler` controls which actors receive forwarded activities.
+It does not restrict which actors can submit activities to the relay, and
+`createRelay()` does not check whether an activity addresses the Public
+collection before forwarding it.
 
-Invalid signatures are silently ignored.  Enable [logging](./log.md) for the
-`["fedify", "sig"]` category to debug verification failures.
-
-[HTTP Signatures]: https://datatracker.ietf.org/doc/html/draft-cavage-http-signatures-12
-[Linked Data Signatures]: https://web.archive.org/web/20170923124140/https://w3c-dvcg.github.io/ld-signatures/
-[Object Integrity Proofs]: https://w3id.org/fep/8b32
-
-### Subscription abuse
-
-Protect against abuse by:
-
-1.  Implementing a `subscriptionHandler` to validate requests
-2.  Maintaining a blocklist
-3.  Rate limiting at the infrastructure level
-4.  Monitoring activity volumes
-
-### Content moderation
-
-> [!WARNING]
-> Running a relay makes you responsible for forwarded content. Establish clear
-> policies and vet subscribing instances.
-
-### Privacy
-
-The relay has access to all activities that pass through it. Do not store or
-log activity content beyond operational needs.
-
-> [!CAUTION]
-> Never forward non-public activities. The relay is designed only for public
-> content distribution.
+Deployments should apply appropriate access controls, rate limiting, and
+moderation to the relay inbox.  Avoid logging activity content unless it is
+needed for operation or debugging.
 
 
 Monitoring
@@ -467,7 +446,7 @@ Monitoring
 
 ### Logging
 
-Enable relay-specific logging:
+The following example enables Fedify logging, including relay operations.
 
 ~~~~ typescript twoslash
 import { configure, getConsoleSink } from "@logtape/logtape";
@@ -480,22 +459,23 @@ await configure({
 });
 ~~~~
 
-Key log categories:
+You can enable logging relevant to relay operation as follows.
 
 | Category                             | Description            |
 | ------------------------------------ | ---------------------- |
+| `["fedify", "relay"]`                | Relay-specific events  |
 | `["fedify", "federation", "inbox"]`  | Incoming activities    |
 | `["fedify", "federation", "outbox"]` | Outgoing activities    |
 | `["fedify", "sig"]`                  | Signature verification |
 
 ### OpenTelemetry
 
-The relay supports [OpenTelemetry](./opentelemetry.md) tracing. Key spans:
+Relay operations are included in [OpenTelemetry](./opentelemetry.md).
 
-| Span                                  | Description             |
-| ------------------------------------- | ----------------------- |
-| `activitypub.inbox`                   | Receiving activities    |
-| `activitypub.send_activity`           | Forwarding activities   |
-| `activitypub.dispatch_inbox_listener` | Processing inbox events |
+| Span                                  | Description                  |
+| ------------------------------------- | ---------------------------- |
+| `activitypub.inbox`                   | Receiving an activity        |
+| `activitypub.send_activity`           | Sending a relayed activity   |
+| `activitypub.dispatch_inbox_listener` | Processing an inbox activity |
 
 <!-- cSpell: ignore LitePub -->
