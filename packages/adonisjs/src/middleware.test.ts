@@ -25,6 +25,7 @@ import {
   ACTIVITY_PUB_ACCEPT,
   BROWSER_ACCEPT,
   createTestFederation,
+  fetchWithRawTarget,
   startTestServer,
   type TestServer,
 } from "./test_utils.ts";
@@ -273,6 +274,27 @@ describe("Fedify middleware", () => {
       const response = await server.fetch("/%61ssets/app.css");
 
       strictEqual(await response.text(), "context available");
+    });
+
+    it("matches ignoreRoutePrefixes against an absolute-form target", async () => {
+      // RFC 9112 lets a client write the whole URL as the request target
+      // (`GET http://example.com/users/alice HTTP/1.1`), and Node reports it in
+      // `req.url` exactly as it arrived.  Fedify is handed a parsed URL either
+      // way, so comparing the prefix against the unparsed target would leave the
+      // opt-out silently inapplicable to such a request -- and Fedify would
+      // answer for a path the application excluded.
+      const server = await withServer({ ignoreRoutePrefixes: ["/users/"] });
+
+      const { status } = await fetchWithRawTarget(
+        server,
+        `${server.url}/users/alice`,
+        { Accept: ACTIVITY_PUB_ACCEPT },
+      );
+
+      // AdonisJS does not normalise the absolute form for its own router
+      // either, so nothing matches and the request ends as a 404 -- which is
+      // the point: Fedify did not serve the excluded path.
+      strictEqual(status, 404);
     });
 
     it("does not intercept federation routes below an ignored prefix", async () => {

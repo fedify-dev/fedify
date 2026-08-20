@@ -15,7 +15,7 @@
  * @module
  */
 import { createServer, type Server as NodeHttpServer } from "node:http";
-import type { AddressInfo } from "node:net";
+import { type AddressInfo, connect } from "node:net";
 
 import { AppFactory } from "@adonisjs/core/factories/app";
 import { ServerFactory } from "@adonisjs/core/factories/http";
@@ -216,6 +216,53 @@ export async function startTestServer<TContextData>(
       await app.terminate();
     },
   };
+}
+
+/**
+ * Sends a request whose request target is written verbatim, which `fetch()`
+ * gives no way to do.
+ *
+ * RFC 9112 lets a client address a server in absolute form
+ * (`GET http://example.com/inbox HTTP/1.1`), and Node reports that whole target
+ * in `req.url`.  The middleware has to cope with the shape, so the test that
+ * proves it has to be able to produce it.
+ *
+ * The response is returned unparsed apart from its status code, which keeps the
+ * helper out of body-framing concerns.
+ */
+export function fetchWithRawTarget(
+  server: TestServer,
+  target: string,
+  headers: Record<string, string> = {},
+): Promise<{ status: number; raw: string }> {
+  const { hostname, port } = new URL(server.url);
+
+  return new Promise((resolve, reject) => {
+    const socket = connect({ host: hostname, port: Number(port) });
+    socket.setEncoding("utf8");
+
+    const chunks: string[] = [];
+    socket.on("error", reject);
+    socket.on("data", (chunk: string) => chunks.push(chunk));
+    // `Connection: close` makes the server end the socket after replying, so
+    // this fires once the whole response has arrived.
+    socket.on("close", () => {
+      const raw = chunks.join("");
+      resolve({ status: Number(raw.split(" ")[1]), raw });
+    });
+    socket.on("connect", () => {
+      socket.end(
+        [
+          `GET ${target} HTTP/1.1`,
+          `Host: ${hostname}:${port}`,
+          "Connection: close",
+          ...Object.entries(headers).map(([key, value]) => `${key}: ${value}`),
+          "",
+          "",
+        ].join("\r\n"),
+      );
+    });
+  });
 }
 
 /**

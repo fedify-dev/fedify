@@ -96,16 +96,33 @@ function lazyRequestBody(
 }
 
 /**
+ * Builds the URL that Fedify sees, from the **raw** request target.
+ *
+ * The raw target is used rather than `request.completeUrl()` because AdonisJS
+ * runs the parsed path through `decodeURI()`.
+ * Resolving the target against an origin also normalises the absolute-form
+ * request target (`GET http://example.com/inbox HTTP/1.1`) that RFC 9112 allows
+ * any client to send: `pathname` is then `/inbox` either way.
+ *
+ * `protocol()` and `host()` honour the `trustProxy` setting in
+ * `config/app.ts`.  Fedify rewrites the origin to the canonical one from
+ * `FederationOptions.origin` anyway, so the origin only has to be well-formed.
+ */
+function toRequestUrl(request: HttpContext["request"]): URL {
+  const authority = request.host() ?? request.hostname() ?? "localhost";
+  return new URL(
+    request.request.url ?? "/",
+    `${request.protocol()}://${authority}`,
+  );
+}
+
+/**
  * Converts an AdonisJS request into a WHATWG `Request` that Fedify can consume.
  *
  * A few details matter here:
  *
- * - The URL is built from the **raw** request target rather than
- *   `request.completeUrl()`.  AdonisJS runs the parsed path through
- *   `decodeURI()`, which would hand Fedify `/actors/alice!` for a target of
- *   `/actors/alice%21` — and Fedify's URI templates percent-encode sub-delims,
- *   so its router would then fail to match a path it published itself.  The raw
- *   target also preserves the exact bytes a peer signed.
+ * - The URL comes from {@link toRequestUrl}, which builds it from the raw
+ *   request target.
  * - `intended()`, not `method()`.  `method()` honours AdonisJS's `_method` form
  *   spoofing, which is a convenience for HTML forms and must never reach a
  *   protocol bridge: `POST /inbox?_method=GET` would otherwise arrive at Fedify
@@ -128,14 +145,7 @@ function toFetchRequest(ctx: HttpContext): Request {
     }
   }
 
-  // `protocol()` and `host()` honour the `trustProxy` setting in
-  // `config/app.ts`.  Fedify rewrites the origin to the canonical one from
-  // `FederationOptions.origin` anyway, so this only has to be well-formed.
-  const authority = request.host() ?? request.hostname() ?? "localhost";
-  const url = new URL(
-    request.request.url ?? "/",
-    `${request.protocol()}://${authority}`,
-  );
+  const url = toRequestUrl(request);
 
   const hasBody = method !== "GET" && method !== "HEAD";
 
@@ -279,13 +289,13 @@ export function fedifyMiddleware<TContextData>(
 
   const handler: FedifyMiddlewareHandler = {
     async handle(ctx: HttpContext, next: NextFn): Promise<void> {
-      // The raw target, minus the query string, rather than
-      // `ctx.request.url()`.  AdonisJS decodes the parsed path, so a target of
-      // `/%61ssets/app.css` would read as `/assets/app.css` here and bypass
-      // Fedify, while `toFetchRequest` would have handed Fedify the encoded
-      // form its router actually matches.  Both decisions must read the same
-      // value.
-      const path = (ctx.request.request.url ?? "/").split("?")[0]!;
+      // The path Fedify's router would match, not `ctx.request.url()`.
+      // AdonisJS decodes the parsed path, so a target of `/%61ssets/app.css`
+      // would read as `/assets/app.css` here and bypass Fedify, while
+      // `toFetchRequest` would have handed Fedify the encoded form its router
+      // actually matches.  Both decisions must read the same value, so both
+      // derive it from the raw target through `toRequestUrl()`.
+      const path = toRequestUrl(ctx.request).pathname;
 
       if (ignoreRoutePrefixes.some((prefix) => path.startsWith(prefix))) {
         // The request was opted out of federation handling.  `ctx.federation`
