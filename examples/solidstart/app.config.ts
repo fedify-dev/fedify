@@ -5,4 +5,7 @@ export default defineConfig({
   server: {
     preset: "node-server",
   },
+  vite: {
+    server: { allowedHosts: true },
+  },
 });
