@@ -7,6 +7,7 @@ exclude = [
   ".github/copilot-instructions.md",
   "AGENT.md",
   "CLAUDE.md",
+  "changes.d/**",
   "GEMINI.md",
   "WARP.md",
   "packages/fedify/src/cfworkers/**",
