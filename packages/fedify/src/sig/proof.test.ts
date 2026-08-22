@@ -3,13 +3,16 @@ import {
   Create,
   type CryptographicKey,
   DataIntegrityProof,
+  Follow,
   Multikey,
   Note,
   Place,
+  PUBLIC_COLLECTION,
 } from "@fedify/vocab";
 import { decodeMultibase, importMultibaseKey } from "@fedify/vocab-runtime";
 import { assertEquals, assertInstanceOf, assertRejects } from "@std/assert";
 import { decodeHex, encodeHex } from "byte-encodings/hex";
+import { normalizePublicFollowObject } from "../compat/public-audience.ts";
 import {
   ed25519Multikey,
   ed25519PrivateKey,
@@ -263,6 +266,37 @@ test("signObject()", async () => {
       }),
     TypeError,
     "Unsupported algorithm",
+  );
+});
+
+test("signObject() signs a normalized relay Follow object", async () => {
+  const follow = new Follow({
+    id: new URL("https://example.com/activities/follow-relay"),
+    actor: new URL("https://example.com/person2"),
+    object: PUBLIC_COLLECTION,
+  });
+  const signed = await signObject(
+    follow,
+    ed25519PrivateKey,
+    ed25519Multikey.id!,
+    { contextLoader: mockDocumentLoader },
+  );
+  const compact = await signed.toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+  });
+  const normalized = normalizePublicFollowObject(compact) as Record<
+    string,
+    unknown
+  >;
+
+  assertEquals(normalized.object, PUBLIC_COLLECTION.href);
+  assertInstanceOf(
+    await verifyObject(Follow, normalized, {
+      documentLoader: mockDocumentLoader,
+      contextLoader: mockDocumentLoader,
+    }),
+    Follow,
   );
 });
 
