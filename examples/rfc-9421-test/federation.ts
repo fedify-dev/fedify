@@ -130,7 +130,7 @@ export default function createFedify(
             ctx.getActorUri(ACTOR_ID),
           ),
           actor: follow.objectId,
-          object: follow,
+          object: follow.id,
         }),
       );
       followersStore.set(follower.id.href, {

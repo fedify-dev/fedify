@@ -91,7 +91,7 @@ import { Accept, Follow } from "@fedify/vocab";
 federation
   .setInboxListeners("/users/{identifier}/inbox", "/inbox")
   .on(Follow, async (ctx, follow) => {
-    if (follow.objectId == null) return;
+    if (follow.id == null || follow.objectId == null) return;
     const parsed = ctx.parseUri(follow.objectId); // [!code highlight]
     if (parsed?.type !== "actor") return; // [!code highlight]
     const recipient = await follow.getActor(ctx);
@@ -99,7 +99,7 @@ federation
     await ctx.sendActivity(
       { identifier: parsed.identifier },
       recipient,
-      new Accept({ actor: follow.objectId, object: follow }),
+      new Accept({ actor: follow.objectId, object: follow.id }),
     );
   });
 ~~~~

@@ -303,7 +303,7 @@ const federation = null as unknown as Federation<void>;
 federation
   .setInboxListeners("/u/{identifier}/inbox", "/inbox")
   .on(Follow, async (ctx, follow) => {
-    if (follow.objectId == null) return;
+    if (follow.id == null || follow.objectId == null) return;
     const parsed = ctx.parseUri(follow.objectId);
     if (parsed?.type !== "actor") return;
     const follower = await follow.getActor(ctx);
@@ -311,7 +311,7 @@ federation
     await ctx.sendActivity(
       { identifier: parsed.identifier },
       follower,
-      new Accept({ actor: follow.objectId, object: follow }),
+      new Accept({ actor: follow.objectId, object: follow.id }),
     );
   });
 ~~~~
@@ -600,6 +600,7 @@ federation
 federation
   .setInboxListeners("/u/{identifier}/inbox", "/inbox")
   .on(Follow, async (ctx, follow) => {
+    if (follow.id == null) return;
     const parsed = follow.objectId == null
       ? null
       : ctx.parseUri(follow.objectId);
@@ -609,7 +610,7 @@ federation
     await ctx.sendActivity(
       { identifier: parsed.identifier },
       follower,
-      new Accept({ actor: follow.objectId!, object: follow }),
+      new Accept({ actor: follow.objectId!, object: follow.id }),
     );
   });
 
@@ -859,7 +860,7 @@ const federation = null as unknown as Federation<void>;
 federation
   .setInboxListeners("/u/{identifier}/inbox", "/inbox")
   .on(Follow, async (ctx, follow) => {
-    if (follow.objectId == null) return;
+    if (follow.id == null || follow.objectId == null) return;
     const parsed = ctx.parseUri(follow.objectId);
     if (parsed?.type !== "actor") return;
     const follower = await follow.getActor(ctx);
@@ -867,7 +868,7 @@ federation
     await ctx.sendActivity(
       { identifier: parsed.identifier },
       follower,
-      new Accept({ actor: follow.objectId, object: follow }),
+      new Accept({ actor: follow.objectId, object: follow.id }),
     );
   });
 ~~~~
@@ -1113,6 +1114,7 @@ federation
 federation
   .setInboxListeners("/u/{identifier}/inbox", "/inbox")
   .on(Follow, async (ctx, follow) => {
+    if (follow.id == null) return;
     const parsed = follow.objectId == null
       ? null
       : ctx.parseUri(follow.objectId);
@@ -1122,7 +1124,7 @@ federation
     await ctx.sendActivity(
       { identifier: parsed.identifier },
       follower,
-      new Accept({ actor: follow.objectId!, object: follow }),
+      new Accept({ actor: follow.objectId!, object: follow.id }),
     );
   });
 
@@ -1325,7 +1327,7 @@ async function removeFollower(_: {
 federation
   .setInboxListeners("/u/{identifier}/inbox", "/inbox")
   .on(Follow, async (ctx, follow) => {
-    if (follow.objectId == null) return;
+    if (follow.id == null || follow.objectId == null) return;
     const parsed = ctx.parseUri(follow.objectId);
     if (parsed?.type !== "actor") return;
     const follower = await follow.getActor(ctx);
@@ -1333,7 +1335,7 @@ federation
     await ctx.sendActivity(
       { identifier: parsed.identifier },
       follower,
-      new Accept({ actor: follow.objectId, object: follow }),
+      new Accept({ actor: follow.objectId, object: follow.id }),
     );
   })
   .on(Undo, async (ctx, undo) => {
@@ -1409,7 +1411,7 @@ await ctx.sendActivity(
   follower,
   new Accept({
     actor: ctx.getActorUri(identifier),
-    object: follow,
+    object: follow.id,
   }),
 );
 ~~~~
@@ -1660,6 +1662,7 @@ federation
 federation
   .setInboxListeners("/u/{identifier}/inbox", "/inbox")
   .on(Follow, async (ctx, follow) => {
+    if (follow.id == null) return;
     const parsed = follow.objectId == null
       ? null
       : ctx.parseUri(follow.objectId);
@@ -1672,7 +1675,7 @@ federation
     await ctx.sendActivity(
       { identifier: parsed.identifier },
       follower,
-      new Accept({ actor: follow.objectId!, object: follow }),
+      new Accept({ actor: follow.objectId!, object: follow.id }),
     );
   })
   .on(Undo, async (ctx, undo) => {

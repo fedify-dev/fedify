@@ -1295,7 +1295,7 @@ federation
           ctx.getActorUri(BLOG_IDENTIFIER),
         ),
         actor: ctx.getActorUri(BLOG_IDENTIFIER),
-        object: follow,
+        object: follow.id,
       }),
     );
   })
@@ -1740,7 +1740,7 @@ federation
           ctx.getActorUri(BLOG_IDENTIFIER),
         ),
         actor: ctx.getActorUri(BLOG_IDENTIFIER),
-        object: follow,
+        object: follow.id,
       }),
     );
   })
@@ -2047,7 +2047,7 @@ federation
           ctx.getActorUri(BLOG_IDENTIFIER),
         ),
         actor: ctx.getActorUri(BLOG_IDENTIFIER),
-        object: follow,
+        object: follow.id,
       }),
     );
   })
@@ -2603,7 +2603,7 @@ federation
           ctx.getActorUri(BLOG_IDENTIFIER),
         ),
         actor: ctx.getActorUri(BLOG_IDENTIFIER),
-        object: follow,
+        object: follow.id,
       }),
     );
   })

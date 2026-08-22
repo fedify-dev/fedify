@@ -1919,7 +1919,7 @@ interface Actor { id: number; }
 federation
   .setInboxListeners("/users/{identifier}/inbox", "/inbox")
   .on(Follow, async (ctx, follow) => {
-    if (follow.objectId == null) {
+    if (follow.id == null || follow.objectId == null) {
       logger.debug("The Follow object does not have an object: {follow}", {
         follow,
       });
@@ -1932,7 +1932,7 @@ federation
       });
       return;
     }
-    const follower = await follow.getActor();
+    const follower = await follow.getActor(ctx);
     if (follower?.id == null || follower.inboxId == null) {
       logger.debug("The Follow object does not have an actor: {follow}", {
         follow,
@@ -1985,7 +1985,7 @@ federation
     const accept = new Accept({
       actor: follow.objectId,
       to: follow.actorId,
-      object: follow,
+      object: follow.id,
     });
     await ctx.sendActivity(object, follower, accept);
   });
@@ -3347,8 +3347,10 @@ as the `Note` object. We set an arbitrary unique URI for the `id` of
 the activity.
 
 > [!TIP]
-> The `id` property of the activity object doesn't necessarily need to be
-> an accessible URI. It just needs to be unique.
+> An activity ID does not always need its own dispatcher.  If an activity from
+> another origin will refer to it later, however, make the ID dereferenceable
+> or keep enough local state to verify that reference without trusting an
+> embedded copy.  The outgoing `Follow` later in this tutorial does both.
 
 The second parameter of the `sendActivity()` method is where the recipients go,
 and here we've specified the special option `"followers"`. When this option is
@@ -3485,6 +3487,91 @@ but it can't send follow requests to actors on other servers. Since we can't
 follow, we also can't see posts created by other actors. So, let's add
 the functionality to send follow requests to actors on other servers.
 
+### Pending follow requests
+
+An `Accept(Follow)` comes from the remote actor's origin, while the original
+`Follow` belongs to our origin.  Fedify's
+[origin-based security model](../manual/vocab.md#origin-based-security-model)
+therefore does not trust a copy of our `Follow` embedded in the `Accept`.  We
+need to remember each outgoing request locally so that we can match the reply
+without trusting that copy.
+
+Add a `follow_requests` table to *src/schema.sql*:
+
+~~~~ sql [src/schema.sql]
+CREATE TABLE IF NOT EXISTS follow_requests (
+  id            TEXT    NOT NULL PRIMARY KEY CHECK (id <> ''),
+  uri           TEXT    NOT NULL UNIQUE      CHECK (uri <> ''),
+  follower_id   INTEGER NOT NULL REFERENCES actors (id),
+  following_uri TEXT    NOT NULL             CHECK (following_uri <> ''),
+  accepted      INTEGER NOT NULL DEFAULT 0   CHECK (accepted IN (0, 1)),
+  created       TEXT    NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+                                      CHECK (created <> ''),
+  UNIQUE (follower_id, following_uri)
+);
+~~~~
+
+Run the schema again:
+
+~~~~ sh
+sqlite3 microblog.sqlite3 < src/schema.sql
+~~~~
+
+Then add the corresponding type to *src/schema.ts*:
+
+~~~~ typescript twoslash [src/schema.ts]
+export interface FollowRequest {
+  id: string;
+  uri: string;
+  follower_id: number;
+  following_uri: string;
+  accepted: number;
+  created: string;
+}
+~~~~
+
+The `uri` column contains the ID of the outgoing `Follow`.  Make that ID
+dereferenceable by adding an object dispatcher to *src/federation.ts*:
+
+~~~~ typescript twoslash [src/federation.ts]
+import { type Federation } from "@fedify/fedify";
+import { Follow } from "@fedify/vocab";
+const federation = null as unknown as Federation<void>;
+import Database from "better-sqlite3";
+const db = new Database("");
+interface FollowRequest { following_uri: string; }
+// ---cut-before---
+federation.setObjectDispatcher(
+  Follow,
+  "/users/{identifier}/follows/{id}",
+  (ctx, values) => {
+    const request = db
+      .prepare<unknown[], FollowRequest>(
+        `
+        SELECT follow_requests.*
+        FROM follow_requests
+        JOIN actors ON actors.id = follow_requests.follower_id
+        JOIN users ON users.id = actors.user_id
+        WHERE users.username = ? AND follow_requests.id = ?
+        `,
+      )
+      .get(values.identifier, values.id);
+    if (request == null) return null;
+    const following = new URL(request.following_uri);
+    return new Follow({
+      id: ctx.getObjectUri(Follow, values),
+      actor: ctx.getActorUri(values.identifier),
+      object: following,
+      to: following,
+    });
+  },
+);
+~~~~
+
+The dispatcher lets another server fetch the original activity from its ID.
+Our own inbox listener will use the database row directly instead of making an
+HTTP request back to this endpoint.
+
 Let's start with the UI. Open the *src/views.tsx* file and modify the existing
 `<Home>` component as follows:
 
@@ -3547,6 +3634,10 @@ import { Follow, isActor } from "@fedify/vocab";
 const fedi = null as unknown as Federation<void>;
 import { Hono } from "hono";
 const app = new Hono();
+import Database from "better-sqlite3";
+const db = new Database("");
+interface LocalActor { id: number; }
+interface FollowRequest { id: string; }
 // ---cut-before---
 app.post("/users/:username/following", async (c) => {
   const username = c.req.param("username");
@@ -3557,17 +3648,55 @@ app.post("/users/:username/following", async (c) => {
   }
   const ctx = fedi.createContext(c.req.raw, undefined);
   const actor = await ctx.lookupObject(handle.trim());
-  if (!isActor(actor)) {
+  if (!isActor(actor) || actor.id == null) {
     return c.text("Invalid actor handle or URL", 400);
+  }
+  const localActor = db
+    .prepare<unknown[], LocalActor>(
+      `
+      SELECT actors.id
+      FROM actors
+      JOIN users ON users.id = actors.user_id
+      WHERE users.username = ?
+      `,
+    )
+    .get(username);
+  if (localActor == null) return c.text("User not found", 404);
+  const requestedId = crypto.randomUUID();
+  const requestedArgs = { identifier: username, id: requestedId };
+  const requestedUri = ctx.getObjectUri(Follow, requestedArgs);
+  db
+    .prepare(
+      `
+      INSERT INTO follow_requests (id, uri, follower_id, following_uri)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT (follower_id, following_uri) DO NOTHING
+      `,
+    )
+    .run(requestedId, requestedUri.href, localActor.id, actor.id.href);
+  const request = db
+    .prepare<unknown[], FollowRequest>(
+      `
+      SELECT id
+      FROM follow_requests
+      WHERE follower_id = ? AND following_uri = ?
+      `,
+    )
+    .get(localActor.id, actor.id.href);
+  if (request == null) return c.text("Failed to store follow request", 500);
+  const followArgs = { identifier: username, id: request.id };
+  const followUri = ctx.getObjectUri(Follow, followArgs);
+  db.prepare(
+    "UPDATE follow_requests SET uri = ? WHERE id = ?",
+  ).run(followUri.href, request.id);
+  const follow = await ctx.getObject(Follow, followArgs);
+  if (follow == null) {
+    return c.text("Failed to create a follow request", 500);
   }
   await ctx.sendActivity(
     { identifier: username },
     actor,
-    new Follow({
-      actor: ctx.getActorUri(username),
-      object: actor.id,
-      to: actor.id,
-    }),
+    follow,
   );
   return c.text("Successfully sent a follow request");
 });
@@ -3579,10 +3708,12 @@ and returns the looked-up ActivityPub object.
 
 The `isActor()` function checks if the given ActivityPub object is an actor.
 
-In this code, we're using the `sendActivity()` method to send a `Follow`
-activity to the looked-up actor. However, we're not adding any records to
-the `follows` table yet. This is because we should add the record after
-receiving an `Accept(Follow)` activity from the other party.
+Before sending the activity, we give it an explicit ID and insert a pending row
+in `follow_requests`.  If a request for the same pair already exists, we reuse
+its opaque ID, update the stored URI for the current origin, and send it again.
+The object dispatcher builds the `Follow` from that row.  We do not add
+anything to `follows` yet; that table only contains established relationships
+after the other party sends an `Accept(Follow)`.
 
 ### Testing
 
@@ -3748,13 +3879,13 @@ import { type Federation } from "@fedify/fedify";
 import {
   Accept,
   type Actor as APActor,
-  Follow,
   isActor,
 } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 import Database from "better-sqlite3";
 const db = new Database("");
 interface Actor { id: number; }
+interface FollowRequest { id: string; follower_id: number; }
 async function persistActor(actor: APActor): Promise<Actor | null> {
   return null;
 }
@@ -3762,37 +3893,60 @@ federation
   .setInboxListeners("/users/{identifier}/inbox", "/inbox")
 // ---cut-before---
   .on(Accept, async (ctx, accept) => {
-    const follow = await accept.getObject();
-    if (!(follow instanceof Follow)) return;
-    const following = await accept.getActor();
-    if (!isActor(following)) return;
-    const follower = follow.actorId;
-    if (follower == null) return;
-    const parsed = ctx.parseUri(follower);
-    if (parsed == null || parsed.type !== "actor") return;
+    if (accept.actorId == null || accept.objectId == null) return;
+    const exactRequest = db
+      .prepare<unknown[], FollowRequest>(
+        `
+        SELECT follow_requests.*
+        FROM follow_requests
+        WHERE follow_requests.uri = ?
+          AND follow_requests.following_uri = ?
+          AND follow_requests.accepted = 0
+        `,
+      )
+      .get(accept.objectId.href, accept.actorId.href);
+    const referencesLocalOrigin =
+      accept.objectId.origin === ctx.canonicalOrigin;
+    const request = exactRequest ?? (referencesLocalOrigin ? null : db
+      .prepare<unknown[], FollowRequest>(
+        `
+        SELECT follow_requests.*
+        FROM follow_requests
+        WHERE follow_requests.following_uri = ?
+          AND follow_requests.accepted = 0
+        `,
+      )
+      .get(accept.actorId.href));
+    if (request == null) return;
+    const following = await accept.getActor(ctx);
+    if (!isActor(following) || following.id?.href !== accept.actorId.href) {
+      return;
+    }
     const followingId = (await persistActor(following))?.id;
     if (followingId == null) return;
-    db.prepare(
-      `
-      INSERT INTO follows (following_id, follower_id)
-      VALUES (
-        ?,
-        (
-          SELECT actors.id
-          FROM actors
-          JOIN users ON actors.user_id = users.id
-          WHERE users.username = ?
-        )
-      )
-      `,
-    ).run(followingId, parsed.identifier);
+    db.transaction(() => {
+      db.prepare(
+        "INSERT INTO follows (following_id, follower_id) VALUES (?, ?)",
+      ).run(followingId, request.follower_id);
+      db.prepare(
+        "UPDATE follow_requests SET accepted = 1 WHERE id = ?",
+      ).run(request.id);
+    })();
   });
 ~~~~
 
-Although there's a lot of validity checking code, in summary, it gets the actor
-who sent the follow request (`follower`) and the actor who received the follow
-request (`following`) from the contents of the `Accept(Follow)` activity and
-adds a record to the `follows` table.
+The handler first tries to match `accept.objectId` against the exact activity ID
+we stored.  Some implementations mint a different ID on their own origin for
+the nested `Follow`, so it falls back to the pending request for the
+authenticated remote actor.  It never falls back for a mismatched ID on our own
+origin, and it never reads fields from the cross-origin inline `Follow`.
+Because this tutorial permits only one local account, the fallback can match at
+most one pending request, even when the `Accept` arrives through the shared
+inbox.  A multi-user application would need to narrow the match by the local
+recipient and reject ambiguous shared-inbox deliveries.  After the match
+succeeds, it inserts the relationship into `follows` and marks the stored
+activity as accepted in one transaction.  The stored activity remains available
+through its object dispatcher.
 
 ### Testing
 

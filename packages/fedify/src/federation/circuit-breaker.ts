@@ -91,8 +91,9 @@ export type CircuitBreakerOptions = CircuitBreakerFailurePolicy & {
    *
    * When omitted, Fedify derives this from `failureWindow`, `recoveryDelay`, and
    * `heldActivityTtl` for the default numeric failure policy.  Custom `failure`
-   * callbacks do not have an inspectable time window, so custom policies do not
-   * expire their stored state unless this option is provided.
+   * callbacks do not have an inspectable time window, so their state expires
+   * after `recoveryDelay` plus `heldActivityTtl` unless this option overrides
+   * it.
    */
   readonly stateTtl?: Temporal.Duration | Temporal.DurationLike;
 
@@ -134,20 +135,29 @@ export interface NormalizedCircuitBreakerOptions {
 
 const MAX_CUSTOM_FAILURE_HISTORY = 100;
 // Fedify 2.3.0 and 2.3.1 wrote circuit breaker state without a TTL, so those
-// soft-state entries could live forever for hosts that never recovered.  Keep a
-// marker under the circuit prefix to clear old state on CAS-backed stores after
-// upgrade, then retry once after a grace window in case old workers wrote more
-// no-TTL state during a rolling deployment.  See:
-// https://github.com/fedify-dev/fedify/issues/916
+// soft-state entries could live forever for hosts that never recovered; custom
+// failure policies without an explicit stateTtl kept doing so through 2.3.4
+// (CVE-2026-69132).  Keep a marker under the circuit prefix to clear old state
+// on CAS-backed stores after upgrade, then retry once after a grace window in
+// case old workers wrote more no-TTL state during a rolling deployment.  The
+// marker is versioned v2 because the v1 sweep skipped versioned records, so a
+// completed v1 marker must not suppress the expanded sweep that stamps TTLs on
+// them; a leftover v1 marker is a single bounded record and is left in place.
+// See: https://github.com/fedify-dev/fedify/issues/916
 const LEGACY_SWEEP_MARKER = [
   "__fedify_meta",
-  "circuit_breaker_state_ttl_sweep_v1",
+  "circuit_breaker_state_ttl_sweep_v2",
 ] as const;
 const LEGACY_SWEEP_DELETING_MARKER = {
   __fedifyDeletingCircuitBreakerLegacyState: true,
 };
 const CIRCUIT_BREAKER_STATE_VERSION = 1;
 const LEGACY_SWEEP_LOCK_TTL = Temporal.Duration.from({ minutes: 5 });
+// The sweep CASes every circuit record, so on large stores it can outlive the
+// five-minute marker lease; renew the lease once this much time has elapsed
+// since it was taken or last renewed—well before expiry—so a healthy sweep
+// never loses it mid-run.
+const LEGACY_SWEEP_RENEW_INTERVAL = Temporal.Duration.from({ minutes: 1 });
 const LEGACY_SWEEP_RETRY_WINDOW = Temporal.Duration.from({ hours: 24 * 7 });
 const LEGACY_SWEEP_WAIT_INTERVAL = 10;
 const LEGACY_SWEEP_CAS_ATTEMPTS = 3;
@@ -482,12 +492,27 @@ export class CircuitBreaker {
 
   async #sweepLegacyStatesImpl(): Promise<void> {
     const markerKey = this.#legacySweepMarkerKey();
-    const marker = await this.#acquireLegacySweep(markerKey);
-    if (marker === "done") return;
+    const acquired = await this.#acquireLegacySweep(markerKey);
+    if (acquired === "done") return;
+    let marker = acquired;
+    let leaseRenewedAt = this.#now();
     try {
       for await (const { key, value } of this.#kv.list(this.#prefix)) {
         if (key.length !== this.#prefix.length + 1) continue;
         await this.#migrateLegacyState(key, value);
+        if (
+          Temporal.Instant.compare(
+            this.#now(),
+            leaseRenewedAt.add(LEGACY_SWEEP_RENEW_INTERVAL),
+          ) >= 0
+        ) {
+          const renewed = await this.#renewLegacySweep(markerKey, marker);
+          // A failed renewal means the lease expired and another worker took
+          // over; let that sweep finish instead of racing it.
+          if (renewed == null) return;
+          marker = renewed;
+          leaseRenewedAt = this.#now();
+        }
       }
     } catch (error) {
       await this.#deleteIfUnchanged(markerKey, marker);
@@ -497,6 +522,26 @@ export class CircuitBreaker {
     if (await this.#kv.cas!(markerKey, marker, finishedMarker)) {
       this.#rememberLegacySweepMarker(finishedMarker);
     }
+  }
+
+  async #renewLegacySweep(
+    markerKey: KvKey,
+    marker: LegacySweepMarker,
+  ): Promise<LegacySweepMarker | undefined> {
+    const renewed = {
+      state: "sweeping",
+      started: this.#now().toString(),
+      retryUntil: getLegacySweepRetryUntil(marker) ??
+        this.#now().add(LEGACY_SWEEP_RETRY_WINDOW).toString(),
+    } satisfies LegacySweepMarker;
+    if (
+      await this.#kv.cas!(markerKey, marker, renewed, {
+        ttl: LEGACY_SWEEP_LOCK_TTL,
+      })
+    ) {
+      return renewed;
+    }
+    return undefined;
   }
 
   #finishLegacySweepMarker(marker: LegacySweepMarker): LegacySweepMarker {
@@ -515,7 +560,15 @@ export class CircuitBreaker {
   }
 
   async #migrateLegacyState(key: KvKey, value: unknown): Promise<void> {
-    if (isCurrentCircuitBreakerState(value)) return;
+    if (isCurrentCircuitBreakerState(value)) {
+      // Versioned records written without a TTL (custom failure policies on
+      // Fedify 2.3.2–2.3.4) would otherwise persist until the host is touched
+      // again; the KV interface cannot report whether a record already has a
+      // TTL, so rewrite it in place to stamp one.  Losing the CAS race means
+      // the record was just rewritten with a TTL anyway.
+      await this.#kv.cas!(key, value, value, this.#setOptions());
+      return;
+    }
     const state = parseCircuitBreakerKvState(value);
     if (state != null) {
       await this.#kv.cas!(
@@ -735,7 +788,7 @@ export function normalizeCircuitBreakerOptions(
     failure = options.failure;
     pruneFailures = (timestamps) =>
       timestamps.slice(-MAX_CUSTOM_FAILURE_HISTORY);
-    stateTtl = configuredStateTtl;
+    stateTtl = configuredStateTtl ?? recoveryDelay.add(heldActivityTtl);
   }
   return {
     failure,
