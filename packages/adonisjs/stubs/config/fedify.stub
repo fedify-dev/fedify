@@ -1,0 +1,85 @@
+{{{
+  exports({ to: app.configPath('fedify.ts') })
+}}}
+import { defineConfig } from '@fedify/adonisjs'
+import env from '#start/env'
+
+/**
+ * The domain that fediverse handles live on, if it differs from the web origin.
+ * Leave FEDERATION_HANDLE_HOST unset when handles and pages share a domain.
+ */
+const handleHost = env.get('FEDERATION_HANDLE_HOST')
+
+export default defineConfig({
+  /**
+   * The canonical public origin of this server.
+   *
+   * Fedify builds actor URIs, activity IDs and collection URLs from this value,
+   * so it must be the address remote servers can reach. When developing behind
+   * "fedify tunnel" or ngrok, set PUBLIC_URL to the tunnel URL.
+   */
+  origin: handleHost
+    ? { handleHost, webOrigin: env.get('PUBLIC_URL') }
+    : env.get('PUBLIC_URL'),
+
+  /**
+   * Where Fedify caches remote documents, tracks inbox idempotency and keeps
+   * outbox state.
+   *
+   * Defaults to an in-memory store, which is fine for development but is lost
+   * on restart and cannot be shared between processes. Install one of
+   * "@fedify/sqlite", "@fedify/postgres", "@fedify/redis" or "@fedify/mysql"
+   * before going to production, then uncomment the lines below:
+   *
+   *     import { DatabaseSync } from 'node:sqlite'
+   *     import { SqliteKvStore, SqliteMessageQueue } from '@fedify/sqlite'
+   *     import app from '@adonisjs/core/services/app'
+   *
+   *     const database = new DatabaseSync(app.tmpPath('fedify.sqlite3'))
+   */
+  // kv: new SqliteKvStore(database),
+
+  /**
+   * The queue used to deliver outgoing activities and to process incoming ones.
+   *
+   * Without a queue, delivery happens inline: the request that triggered it
+   * blocks until every recipient server has answered, and a failed delivery is
+   * never retried. Production deployments should always configure one.
+   *
+   * Setting "queue" makes "queueContextData" below mandatory.
+   */
+  // queue: new SqliteMessageQueue(database),
+
+  /**
+   * Who drains the queue.
+   *
+   * A callback means this process does, and the context data it returns is what
+   * background jobs see -- there is no HTTP request behind them. Use "false"
+   * when a separate worker process owns the queue.
+   */
+  // queueContextData: () => null,
+
+  /**
+   * URL path prefixes that skip Fedify entirely.
+   *
+   * A pure performance escape hatch for paths that can never be federation
+   * endpoints. Accessing "ctx.federation" on such a request throws.
+   */
+  ignoreRoutePrefixes: ['/@vite/', '/resources/', '/node_modules/'],
+})
+
+/**
+ * The value Fedify threads through every dispatcher and inbox listener as
+ * "ctx.data".
+ *
+ * It defaults to "HttpContext | null" -- null when Fedify is working outside a
+ * request, such as in a queue worker. Augment it here to carry something more
+ * specific, and set "contextDataFactory" above to build it -- the option becomes
+ * required once you do:
+ *
+ *     declare module '@fedify/adonisjs/types' {
+ *       interface FedifyTypes {
+ *         contextData: { user: User | null }
+ *       }
+ *     }
+ */

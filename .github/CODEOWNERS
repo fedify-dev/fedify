@@ -87,6 +87,7 @@
 # Framework and platform integrations.  Hong Minhee maintains all of
 # them; ChanHaeng Lee co-maintains the ones he contributed to, and
 # leads the Nuxt integration.
+/packages/adonisjs/                                       @scammo @dahlia
 /packages/astro/                                          @2chanhaeng @dahlia
 /packages/cfworkers/                                      @dahlia @2chanhaeng
 /packages/elysia/                                         @dahlia

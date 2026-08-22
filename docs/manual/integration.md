@@ -79,6 +79,95 @@ sequenceDiagram
 [content negotiation]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Content_negotiation
 
 
+AdonisJS
+--------
+
+*This API is available since Fedify 2.4.0.*
+
+[AdonisJS] is a batteries-included TypeScript framework for Node.js, with its
+own IoC container, service providers and CLI.  The *@fedify/adonisjs* package
+integrates Fedify with AdonisJS.  It requires Node.js 24 or later, matching
+the `engines` requirement `@adonisjs/core` itself declares, and targets
+Node.js only: AdonisJS documents Node.js as its sole runtime, so the package
+is published to npm and not to JSR, and is not tested on Deno or Bun.
+
+::: code-group
+
+~~~~ sh [npm]
+node ace add @fedify/adonisjs
+~~~~
+
+~~~~ sh [pnpm]
+node ace add --package-manager=pnpm @fedify/adonisjs
+~~~~
+
+~~~~ sh [Yarn]
+node ace add --package-manager=yarn @fedify/adonisjs
+~~~~
+
+:::
+
+Unlike the other integrations, there is nothing to wire up by hand.  The
+`configure` hook that `node ace add` runs registers the service provider and the
+server middleware, and writes *config/fedify.ts*, *start/federation.ts* and
+*app/federation/main.ts*.
+
+Set the canonical origin in *config/fedify.ts*—Fedify mints actor URIs from it,
+so it has to be the address remote servers can reach:
+
+~~~~ typescript twoslash
+// config/fedify.ts
+import { defineConfig } from "@fedify/adonisjs";
+
+export default defineConfig({
+  origin: "https://example.com",  // [!code highlight]
+});
+~~~~
+
+Then register dispatchers on the builder that
+*@fedify/adonisjs/services/builder* exports.  The generated
+*start/federation.ts* preload file imports this module, which AdonisJS loads
+after every service provider has booted—so dispatchers may use Lucid models and
+anything else the container provides:
+
+~~~~ typescript twoslash
+// app/federation/main.ts
+import federation from "@fedify/adonisjs/services/builder";
+import { Person } from "@fedify/vocab";
+
+federation.setActorDispatcher(
+  "/actors/{identifier}",
+  (ctx, identifier) => {  // [!code highlight]
+    return new Person({  // [!code highlight]
+      id: ctx.getActorUri(identifier),  // [!code highlight]
+      preferredUsername: identifier,  // [!code highlight]
+    });  // [!code highlight]
+  },
+);
+~~~~
+
+Every request then carries a Fedify `RequestContext` as `ctx.federation`, so an
+ordinary controller can mint URIs, look remote objects up, or send activities:
+
+~~~~ typescript twoslash
+import "@fedify/adonisjs/types";
+import type { HttpContext } from "@adonisjs/core/http";
+// ---cut-before---
+export default class ActorsController {
+  async show({ params, federation }: HttpContext) {
+    return { actor: federation.getActorUri(params.identifier).href };
+  }
+}
+~~~~
+
+The middleware is registered in the *server* middleware stack rather than the
+router stack, because Fedify serves paths the AdonisJS router knows nothing
+about—*/.well-known/webfinger* among them—and because HTTP Signature
+verification needs the request body before the body parser consumes it.
+
+[AdonisJS]: https://adonisjs.com/
+
+
 Express
 -------
 
