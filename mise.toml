@@ -1,17 +1,18 @@
+# Require a mise new enough for the [deps] providers and the [hooks.postinstall]
+# table form used below; older versions fail to parse this file.  Environments
+# that intentionally ship an older mise and don't need this tooling (e.g. the
+# Netlify build for the static schema site) opt out by setting
+# MISE_IGNORED_CONFIG_PATHS to this file's path; see schema/netlify.toml.
+min_version = "2026.6.12"
+
 [tools]
 bun = "1.2.22"
 deno = "2.8.3"
 node = "22"
 pnpm = "10.28.0"
+"aqua:dahlia/hongdown" = "0.5.3"
 "aqua:nushell/nushell" = "0.114.0"
 "github:dahlia/sacho" = "0.3.2"
-
-[tools."github:dahlia/hongdown"]
-version = "0.4.3"
-
-[tools."github:dahlia/hongdown".platforms]
-linux-x64 = "hongdown-*-x86_64-unknown-linux-musl.tar.bz2"
-linux-arm64 = "hongdown-*-aarch64-unknown-linux-musl.tar.bz2"
 
 [hooks.postinstall]
 shell = "nu -c"

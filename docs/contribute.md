@@ -1,3 +1,1 @@
-
-
 <!--@include: ../CONTRIBUTING.md-->

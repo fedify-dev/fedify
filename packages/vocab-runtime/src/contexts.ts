@@ -7,6 +7,7 @@ import activitystreams from "./contexts/activitystreams.json" with {
 };
 import didV1 from "./contexts/did-v1.json" with { type: "json" };
 import fep5711 from "./contexts/fep-5711.json" with { type: "json" };
+import fepEf61 from "./contexts/fep-ef61.json" with { type: "json" };
 import gotosocial from "./contexts/gotosocial.json" with { type: "json" };
 import identityV1 from "./contexts/identity-v1.json" with { type: "json" };
 import joinLemmyContext from "./contexts/join-lemmy.json" with { type: "json" };
@@ -36,6 +37,15 @@ const preloadedContexts: Record<string, unknown> = {
   "http://schema.org/": schemaorg,
   "https://gotosocial.org/ns": gotosocial,
   "https://w3id.org/fep/5711": fep5711,
+
+  // The FEP-ef61 context.  The w3id.org URL redirects to Codeberg Pages, which
+  // suffers recurring outages; while it is unreachable, every document
+  // referencing this URL fails JSON-LD expansion before application handlers
+  // run.  We ship a built-in copy so that portable objects can be processed
+  // without depending on the availability of the remote context server.
+  // See: https://w3id.org/fep/ef61
+  //      https://github.com/fedify-dev/fedify/issues/982
+  "https://w3id.org/fep/ef61": fepEf61,
 
   // Lemmy's context document is served as application/json without the JSON-LD
   // context Link header.  The default document loader treats that as a regular
