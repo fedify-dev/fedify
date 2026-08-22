@@ -18,6 +18,16 @@ To be released.
 [#970]: https://github.com/fedify-dev/fedify/issues/970
 [#972]: https://github.com/fedify-dev/fedify/pull/972
 
+### @fedify/vocab-runtime
+
+ -  Changed `miscellany` context to match public version 1.0.1,
+    which fixes a bug with re-compacting Mastodon and similar content using
+    `boolean` flags (`manuallyApprovesFollowers`, `sensitive`).
+    [[#1002], [#1003] by Evan Prodromou\]
+
+[#1002]: https://github.com/fedify-dev/fedify/issues/1002
+[#1003]: https://github.com/fedify-dev/fedify/pull/1003
+
 
 Version 2.0.24
 --------------
