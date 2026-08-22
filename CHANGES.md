@@ -6,7 +6,7 @@ Fedify changelog
 Version 2.1.21
 --------------
 
-To be released.
+Released on August 22, 2026.
 
 ### @fedify/fedify
 
