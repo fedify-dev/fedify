@@ -1305,6 +1305,14 @@ export interface DoubleKnockOptions {
    * @since 1.8.0
    */
   signal?: AbortSignal;
+
+  /**
+   * A function to validate a redirect URL before following it.  The function
+   * can reject the redirect by throwing an error.
+   * @param url The absolute redirect URL to validate.
+   * @since 2.0.25
+   */
+  validateRedirect?: (url: string) => void | Promise<void>;
 }
 
 /**
@@ -1312,14 +1320,17 @@ export interface DoubleKnockOptions {
  * @param request The original request.
  * @param location The redirect location.
  * @param body The request body as ArrayBuffer or null.
+ * @param validateRedirect The function to validate the redirect URL.
  * @returns A new Request object for the redirect.
  */
-function createRedirectRequest(
+async function createRedirectRequest(
   request: Request,
   location: string,
   body: ArrayBuffer | null,
-): Request {
+  validateRedirect?: (url: string) => void | Promise<void>,
+): Promise<Request> {
   const url = new URL(location, request.url);
+  await validateRedirect?.(url.href);
   return new Request(url, {
     method: request.method,
     headers: request.headers,
@@ -1487,7 +1498,12 @@ async function doubleKnockInternal(
       );
     }
     const location = response.headers.get("Location")!;
-    const redirectRequest = createRedirectRequest(request, location, body);
+    const redirectRequest = await createRedirectRequest(
+      request,
+      location,
+      body,
+      options.validateRedirect,
+    );
     if (visited.has(redirectRequest.url)) {
       throw new FetchError(
         request.url,
@@ -1544,7 +1560,12 @@ async function doubleKnockInternal(
         );
       }
       const location = response.headers.get("Location")!;
-      const redirectRequest = createRedirectRequest(request, location, body);
+      const redirectRequest = await createRedirectRequest(
+        request,
+        location,
+        body,
+        options.validateRedirect,
+      );
       if (visited.has(redirectRequest.url)) {
         throw new FetchError(
           request.url,

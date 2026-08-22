@@ -65,6 +65,23 @@ export function getAuthenticatedDocumentLoader(
     url: string,
     options?: DocumentLoaderOptions,
   ): Promise<RemoteDocument> {
+    await validateUrl(url);
+    const originalRequest = createActivityPubRequest(url, { userAgent });
+    const response = await doubleKnock(
+      originalRequest,
+      identity,
+      {
+        specDeterminer,
+        log: curry(logRequest)(logger),
+        tracerProvider,
+        signal: options?.signal,
+        validateRedirect: validateUrl,
+      },
+    );
+    return getRemoteDocument(url, response, load);
+  }
+
+  async function validateUrl(url: string): Promise<void> {
     if (!allowPrivateAddress) {
       try {
         await validatePublicUrl(url);
@@ -75,18 +92,6 @@ export function getAuthenticatedDocumentLoader(
         throw error;
       }
     }
-    const originalRequest = createActivityPubRequest(url, { userAgent });
-    const response = await doubleKnock(
-      originalRequest,
-      identity,
-      {
-        specDeterminer,
-        log: curry(logRequest)(logger),
-        tracerProvider,
-        signal: options?.signal,
-      },
-    );
-    return getRemoteDocument(url, response, load);
   }
   return load;
 }

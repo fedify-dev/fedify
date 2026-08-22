@@ -1363,6 +1363,7 @@ test("doubleKnock() function with redirect handling", async () => {
   // Track request attempts and redirects
   const requestedUrls: string[] = [];
   const responseCodes: number[] = [];
+  const validatedRedirects: string[] = [];
 
   // Mock an endpoint that redirects
   fetchMock.post("https://example.com/redirect-endpoint", (cl) => {
@@ -1394,6 +1395,11 @@ test("doubleKnock() function with redirect handling", async () => {
       keyId: rsaPublicKey2.id!,
       privateKey: rsaPrivateKey2,
     },
+    {
+      validateRedirect(url) {
+        validatedRedirects.push(url);
+      },
+    },
   );
 
   // Verify response handling and redirect following
@@ -1418,6 +1424,55 @@ test("doubleKnock() function with redirect handling", async () => {
     [302, 202],
     "Response status codes should match expected sequence",
   );
+  assertEquals(validatedRedirects, ["https://example.com/final-endpoint"]);
+
+  fetchMock.hardReset();
+});
+
+test("doubleKnock() validates redirects after signature fallback", async () => {
+  fetchMock.spyGlobal();
+
+  let requestCount = 0;
+  let privateRequestCount = 0;
+  fetchMock.post("https://example.com/redirect-after-fallback", (cl) => {
+    requestCount++;
+    if (cl.request!.headers.has("Signature-Input")) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+    return Response.redirect("http://localhost/private", 302);
+  });
+  fetchMock.post("http://localhost/private", () => {
+    privateRequestCount++;
+    return new Response("", { status: 202 });
+  });
+
+  const request = new Request(
+    "https://example.com/redirect-after-fallback",
+    {
+      method: "POST",
+      body: "Test message",
+    },
+  );
+
+  await assertRejects(
+    () =>
+      doubleKnock(
+        request,
+        {
+          keyId: rsaPublicKey2.id!,
+          privateKey: rsaPrivateKey2,
+        },
+        {
+          validateRedirect(url) {
+            throw new Error(`Disallowed redirect: ${url}`);
+          },
+        },
+      ),
+    Error,
+    "Disallowed redirect: http://localhost/private",
+  );
+  assertEquals(requestCount, 2);
+  assertEquals(privateRequestCount, 0);
 
   fetchMock.hardReset();
 });
