@@ -10,6 +10,7 @@ exclude = [
   "changes.d/**",
   "GEMINI.md",
   "WARP.md",
+  "changes.d/**",
   "packages/fedify/src/cfworkers/**",
   "plan.md",
   "**/plans/**",

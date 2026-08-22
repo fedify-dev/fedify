@@ -8,6 +8,15 @@ Version 2.0.25
 
 To be released.
 
+### @fedify/fedify
+
+ -  Standalone key documents whose `id` differs from the requested key URL are
+    now rejected instead of being cached under the wrong URL.
+    [[#963], [#980] by Junseok Oh\]
+
+[#963]: https://github.com/fedify-dev/fedify/issues/963
+[#980]: https://github.com/fedify-dev/fedify/pull/980
+
 ### @fedify/elysia
 
  -  Fixed duplicate response headers on Elysia 1.4.18 and earlier, which
