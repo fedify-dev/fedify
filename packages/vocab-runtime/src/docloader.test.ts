@@ -293,6 +293,31 @@ test("getDocumentLoader()", async (t) => {
     }
   });
 
+  // The <https://w3id.org/fep/ef61> URL redirects to a Codeberg Pages host
+  // which suffers recurring outages; while it is unreachable, expanding any
+  // document referencing it fails before application handlers run.  It has to
+  // be resolved from the built-in copy rather than over the network.
+  // See: https://github.com/fedify-dev/fedify/issues/982
+  await t.test("preloaded FEP-ef61 context", async () => {
+    const url = "https://w3id.org/fep/ef61";
+    ok(url in preloadedContexts);
+    deepStrictEqual(await fetchDocumentLoader(url), {
+      contextUrl: null,
+      documentUrl: url,
+      document: {
+        "@context": {
+          gateways: {
+            "@id": "https://w3id.org/fep/ef61/gateways",
+            "@type": "@id",
+            "@container": "@list",
+          },
+          digestMultibase:
+            "https://www.w3.org/ns/credentials/v2#digestMultibase",
+        },
+      },
+    });
+  });
+
   await t.test("deny non-HTTP/HTTPS", async () => {
     await rejects(
       () => fetchDocumentLoader("ftp://localhost"),

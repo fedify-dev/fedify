@@ -8,6 +8,51 @@ Version 2.1.21
 
 To be released.
 
+### @fedify/fedify
+
+ -  Fixed a server-side request forgery (SSRF) vulnerability in authenticated
+    document loaders, where an otherwise public document URL could redirect a
+    signed request to a loopback, link-local, or private address.  Redirect
+    targets are now validated before they are fetched, while the explicit
+    `allowPrivateAddress` option continues to permit private addresses.
+    [[CVE-2026-77632] by Jace\]
+ -  Standalone key documents whose `id` differs from the requested key URL are
+    now rejected instead of being cached under the wrong URL.
+    [[#963], [#980] by Junseok Oh\]
+
+[CVE-2026-77632]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-cxc3-7q96-6cpx
+[#963]: https://github.com/fedify-dev/fedify/issues/963
+[#980]: https://github.com/fedify-dev/fedify/pull/980
+
+### @fedify/elysia
+
+ -  Fixed duplicate response headers on Elysia 1.4.18 and earlier, which
+    append both `set.headers` and the returned `Response`'s own headers
+    without deduplication.  The `fedify()` plugin no longer sets the headers
+    in both places.
+    [[#970], [#972] by Kyujin Lim\]
+
+[#970]: https://github.com/fedify-dev/fedify/issues/970
+[#972]: https://github.com/fedify-dev/fedify/pull/972
+
+### @fedify/vocab-runtime
+
+ -  Added the [FEP-ef61] context to preloaded JSON-LD contexts.  The
+    <https://w3id.org/fep/ef61> URL redirects to a Codeberg Pages host which
+    suffers recurring outages; during one, JSON-LD expansion of any document
+    referencing this URL fails before application handlers can run.
+    [[#982], [#928]]
+ -  Changed `miscellany` context to match public version 1.0.1,
+    which fixes a bug with re-compacting Mastodon and similar content using
+    `boolean` flags (`manuallyApprovesFollowers`, `sensitive`).
+    [[#1002], [#1003] by Evan Prodromou\]
+
+[FEP-ef61]: https://w3id.org/fep/ef61
+[#928]: https://github.com/fedify-dev/fedify/pull/928
+[#982]: https://github.com/fedify-dev/fedify/issues/982
+[#1002]: https://github.com/fedify-dev/fedify/issues/1002
+[#1003]: https://github.com/fedify-dev/fedify/pull/1003
+
 
 Version 2.1.20
 --------------
@@ -725,6 +770,43 @@ Released on March 24, 2026.
 [#599]: https://github.com/fedify-dev/fedify/pull/599
 
 
+Version 2.0.25
+--------------
+
+Released on August 22, 2026.
+
+### @fedify/fedify
+
+ -  Fixed a server-side request forgery (SSRF) vulnerability in authenticated
+    document loaders, where an otherwise public document URL could redirect a
+    signed request to a loopback, link-local, or private address.  Redirect
+    targets are now validated before they are fetched, while the explicit
+    `allowPrivateAddress` option continues to permit private addresses.
+    [[CVE-2026-77632] by Jace\]
+ -  Standalone key documents whose `id` differs from the requested key URL are
+    now rejected instead of being cached under the wrong URL.
+    [[#963], [#980] by Junseok Oh\]
+
+### @fedify/elysia
+
+ -  Fixed duplicate response headers on Elysia 1.4.18 and earlier, which
+    append both `set.headers` and the returned `Response`'s own headers
+    without deduplication.  The `fedify()` plugin no longer sets the headers
+    in both places.  [[#970], [#972] by Kyujin Lim\]
+
+### @fedify/vocab-runtime
+
+ -  Added the [FEP-ef61] context to preloaded JSON-LD contexts.  The
+    <https://w3id.org/fep/ef61> URL redirects to a Codeberg Pages host which
+    suffers recurring outages; during one, JSON-LD expansion of any document
+    referencing this URL fails before application handlers can run.
+    [[#982], [#928]]
+ -  Changed `miscellany` context to match public version 1.0.1,
+    which fixes a bug with re-compacting Mastodon and similar content using
+    `boolean` flags (`manuallyApprovesFollowers`, `sensitive`).
+    [[#1002], [#1003] by Evan Prodromou\]
+
+
 Version 2.0.24
 --------------
 
@@ -1298,8 +1380,8 @@ Released on February 22, 2026.
     to the standardized `Intl.Locale` class for representing language tags.
     [[#280], [#392] by Jang Hanarae]
 
-     -  The `LanguageString.language` property is now `LanguageString.locale` and
-        is of type `Intl.Locale` instead of `LanguageTag`.
+     -  The `LanguageString.language` property is now `LanguageString.locale`
+        and is of type `Intl.Locale` instead of `LanguageTag`.
      -  The `LanguageString` constructor now accepts either an `Intl.Locale`
         object or a string for the language parameter.
      -  The `Link.language` property is now of type `Intl.Locale` instead
@@ -2080,8 +2162,8 @@ Released on December 24, 2025.
 
 ### @fedify/nestjs
 
- -  Allowed Express 5 in the `express` peer dependency range to support NestJS 11.
-    [[#492], [#493] by Cho Hasang]
+ -  Allowed Express 5 in the `express` peer dependency range to support NestJS
+    11. [[#492], [#493] by Cho Hasang]
 
 [#492]: https://github.com/fedify-dev/fedify/issues/492
 [#493]: https://github.com/fedify-dev/fedify/pull/493
@@ -4442,8 +4524,9 @@ Released on November 30, 2024.
 
  -  The `Router` now provide the matched route's URI template besides the name.
 
-     -  The return type of `Router.route()` method became `RouterRouteResult | null`
-        (was `{ name: string; values: Record<string, string> } | null`).
+     -  The return type of `Router.route()` method became
+        `RouterRouteResult | null` (was
+        `{ name: string; values: Record<string, string> } | null`).
      -  Added `RouterRouteResult` interface.
 
  -  Added `getTypeId()` function.
@@ -6092,8 +6175,8 @@ Released on September 26, 2024.
 
  -  Added options for PostgreSQL drivers to `fedify init` command.
 
-     -  Added `postgres` value to the `-k`/`--kv-store` option of the `fedify init`
-        command.
+     -  Added `postgres` value to the `-k`/`--kv-store` option of the
+        `fedify init` command.
      -  Added `postgres` value to the `-q`/`--message-queue` option of
         the `fedify init` command.
 

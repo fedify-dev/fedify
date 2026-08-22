@@ -454,7 +454,10 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
     }
   }
   let key: T | null = null;
-  if (object instanceof cls) key = object;
+  if (
+    object instanceof cls &&
+    (object.id == null || object.id.href === keyId)
+  ) key = object;
   else if (isActor(object)) {
     // Treat malformed remote actor keys as missing keys.
     // @ts-ignore: cls is either CryptographicKey or Multikey

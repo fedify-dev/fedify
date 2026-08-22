@@ -42,14 +42,14 @@ export const fedify = <TContextData = unknown>(
         if (!notFound && !notAcceptable) {
           set.status = response.status;
 
-          response.headers.forEach((value, key) => {
-            set.headers[key] = value;
-          });
-
           // Return response body if it exists
           if (response.body) {
             return response;
           }
+
+          response.headers.forEach((value, key) => {
+            set.headers[key] = value;
+          });
 
           // Return empty response for successful requests without body
           return new Response(null, { status: response.status });

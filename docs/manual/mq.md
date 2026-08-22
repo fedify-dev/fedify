@@ -538,8 +538,8 @@ Best for
 :   Production use in Cloudflare Workers environments.
 
 Pros
-:   Persistent, reliable, scalable, easy to set up, native retry with exponential
-    backoff and dead-letter queues.
+:   Persistent, reliable, scalable, easy to set up, native retry with
+    exponential backoff and dead-letter queues.
 
 Cons
 :   Only available in Cloudflare Workers runtime.
