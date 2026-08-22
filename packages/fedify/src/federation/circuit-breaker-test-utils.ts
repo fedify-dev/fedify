@@ -7,6 +7,6 @@ export function markCircuitBreakerLegacySweepDone(
     "_fedify",
     "circuit",
     "__fedify_meta",
-    "circuit_breaker_state_ttl_sweep_v1",
+    "circuit_breaker_state_ttl_sweep_v2",
   ], { state: "final" });
 }

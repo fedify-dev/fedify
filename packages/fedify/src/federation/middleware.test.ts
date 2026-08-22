@@ -7430,6 +7430,10 @@ test("FederationImpl.processQueuedTask() circuit breaker", async (t) => {
       undefined,
       createOutboxMessage("https://failure-bookkeeping.example/inbox"),
     );
+    // The always-failing cas() also makes the background legacy sweep retry
+    // acquiring its marker with timed waits; await it so its timers do not
+    // outlive the test.
+    await federation.circuitBreaker?.pendingSweep;
 
     assertEquals(queued.length, 1);
     const retry = queued[0].message as OutboxMessage;

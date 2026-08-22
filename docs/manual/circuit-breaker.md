@@ -159,9 +159,12 @@ default numeric failure policy, the default `stateTtl` is derived from
 `failureWindow`, `recoveryDelay`, and `heldActivityTtl` so failure history,
 recovery probes, and held activities all have enough time to complete.  If you
 provide a custom `failure` callback, Fedify cannot infer how long your policy
-needs its timestamp history, so stored state does not expire by default.  Set
-`stateTtl` explicitly when using a custom policy and you want circuit state to
-be cleaned up automatically:
+needs its timestamp history, so it falls back to `recoveryDelay` plus
+`heldActivityTtl` (7 days 30 minutes with the default values).  Without an
+expiry, a remote attacker could accumulate unbounded permanent per-host
+records in the key–value store simply by advertising inbox URLs that fail
+delivery.  Set `stateTtl` explicitly if your custom policy needs its
+timestamp history for a different length of time:
 
 ~~~~ typescript
 const federation = createFederation<void>({
@@ -176,9 +179,10 @@ const federation = createFederation<void>({
 });
 ~~~~
 
-When upgrading from Fedify 2.3.0 or 2.3.1, Fedify automatically rewrites
-legacy circuit state with a TTL only on `KvStore` implementations that support
-`cas()`.  Stores without CAS, including `@fedify/postgres` and
+When upgrading from Fedify 2.3.0 or 2.3.1—or from 2.3.2–2.3.4 with a custom
+`failure` policy that did not set `stateTtl`—Fedify automatically rewrites
+circuit state written without a TTL only on `KvStore` implementations that
+support `cas()`.  Stores without CAS, including `@fedify/postgres` and
 `@fedify/redis`, apply TTLs to new circuit state but cannot automatically
 clean up circuit state that was already written without a TTL.  If that old
 state matters for your deployment, remove it with a one-off cleanup script or
