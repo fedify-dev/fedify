@@ -64,12 +64,9 @@ class MockKvNamespace implements WorkersKvNamespaceLike {
     type: "json",
   ): Promise<ExpectedValue | null>;
   get(key: string, type?: "json") {
-    if (type !== "json") {
-      throw new Error("MockKvNamespace only uses the JSON mode of get().");
-    }
-
     const entry = this.entries.get(key);
     if (entry == null) return Promise.resolve(null);
+    if (type !== "json") return Promise.resolve(entry.value);
     return Promise.resolve(JSON.parse(entry.value));
   }
 
@@ -325,5 +322,33 @@ describe("WorkersMessageQueue", () => {
       "WorkersMessageQueue does not support listen().  " +
         "Use Federation.processQueuedTask() method instead.",
     );
+  });
+
+  it("processMessage() - release() frees the ordering lock", async () => {
+    const orderingKv = new MockKvNamespace();
+    const queue = new WorkersMessageQueue(mockQueue, { orderingKv });
+
+    const first = await queue.processMessage({
+      __fedify_ordering_key__: "actor-1",
+      __fedify_payload__: { id: "first" },
+    });
+
+    expect(first.shouldProcess).toBe(true);
+    expect(first.message).toEqual({ id: "first" });
+    expect(orderingKv.entries.has("__fedify_ordering_actor-1")).toBe(true);
+
+    await first.release?.();
+
+    expect(orderingKv.entries.has("__fedify_ordering_actor-1")).toBe(false);
+
+    // Releasing is only meaningful if it lets the next message through, so
+    // check the queue actually moves rather than just that the key is gone.
+    const second = await queue.processMessage({
+      __fedify_ordering_key__: "actor-1",
+      __fedify_payload__: { id: "second" },
+    });
+
+    expect(second.shouldProcess).toBe(true);
+    expect(second.message).toEqual({ id: "second" });
   });
 });
