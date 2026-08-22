@@ -43,8 +43,8 @@ mapping*, *Code migration*, *Data migration*, *Common pitfalls*, and a small
 worked example.  Read the one that matches and skip the rest.
 
 
-From `activitypub-express` (apex) {#apex}
------------------------------------------
+From `activitypub-express` (apex)                                        {#apex}
+--------------------------------------------------------------------------------
 
 [`activitypub-express`] (apex) is Express middleware backed by MongoDB and is
 the most common non-Fedify stack in the Node.js fediverse today, powering
@@ -626,8 +626,8 @@ what the migration buys you.
 [apex README]: https://github.com/immers-space/activitypub-express#usage
 
 
-From `@activity-kit/*` (ActivityKit) {#activity-kit}
-----------------------------------------------------
+From `@activity-kit/*` (ActivityKit)                             {#activity-kit}
+--------------------------------------------------------------------------------
 
 [ActivityKit] is a suite of npm packages under the `@activity-kit/*` scope
 by Michael Puckett.  It is spec-oriented and TypeScript-first, and the
@@ -1153,8 +1153,8 @@ page renderers.  Fedify lets your existing web framework own everything
 that is not federation.
 
 
-From hand-rolled Express code {#hand-rolled}
---------------------------------------------
+From hand-rolled Express code                                     {#hand-rolled}
+--------------------------------------------------------------------------------
 
 The de-facto starting point for hand-rolled Node.js ActivityPub bots is
 Darius Kazemi's [`express-activitypub`] reference implementation, and most
@@ -1709,8 +1709,8 @@ deliveries are queued and retried, and you are no longer maintaining an
 in-tree copy of the HTTP Signatures spec.
 
 
-From `activitystrea.ms` {#activity-streams}
--------------------------------------------
+From `activitystrea.ms`                                      {#activity-streams}
+--------------------------------------------------------------------------------
 
 [`activitystrea.ms`] by James Snell and Evan Prodromou is the long-standing
 JavaScript builder for ActivityStreams 2 JSON-LD documents.  Unlike the

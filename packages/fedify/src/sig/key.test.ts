@@ -458,6 +458,65 @@ test("fetchKeyDetailed() returns detailed fetch errors", async () => {
   assertEquals(detailedError.error, failure);
 });
 
+test("fetchKey() rejects standalone keys with a mismatched id", async () => {
+  for (
+    const { keyId, standaloneKey, fetch } of [
+      {
+        keyId: "https://example.com/key",
+        standaloneKey: rsaPublicKey1,
+        fetch: (keyId: string, options: FetchKeyOptions) =>
+          fetchKey(keyId, CryptographicKey, options),
+      },
+      {
+        keyId: "https://example.com/multikey",
+        standaloneKey: ed25519Multikey,
+        fetch: (keyId: string, options: FetchKeyOptions) =>
+          fetchKey(keyId, Multikey, options),
+      },
+    ]
+  ) {
+    const cache: Record<string, CryptographicKey | Multikey | null> = {};
+    const options: FetchKeyOptions = {
+      async documentLoader(resource) {
+        if (resource === keyId) {
+          const document = await standaloneKey.toJsonLd({
+            contextLoader: mockDocumentLoader,
+          });
+          return {
+            contextUrl: null,
+            documentUrl: resource,
+            document: {
+              ...document as Record<string, unknown>,
+              id: "https://example.com/different-key",
+            },
+          };
+        }
+        return await mockDocumentLoader(resource);
+      },
+      contextLoader: mockDocumentLoader,
+      keyCache: {
+        get(keyId) {
+          return Promise.resolve(cache[keyId.href]);
+        },
+        set(keyId, key) {
+          cache[keyId.href] = key;
+          return Promise.resolve();
+        },
+      } satisfies KeyCache,
+    };
+
+    assertEquals(await fetch(keyId, options), {
+      key: null,
+      cached: false,
+    });
+    assertEquals(cache, { [keyId]: null });
+    assertEquals(await fetch(keyId, options), {
+      key: null,
+      cached: true,
+    });
+  }
+});
+
 test("fetchKey() returns null for a malformed actor publicKey", async () => {
   const actorId = "https://example.com/malformed-public-key";
   const keyId = "https://example.com/malformed-public-key#main-key";
