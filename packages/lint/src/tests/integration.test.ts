@@ -271,6 +271,66 @@ federation
     ),
 );
 
+test("Integration: ✅ Actor dispatcher may return null", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      "const keyPairs = await ctx.getActorKeyPairs(identifier);",
+      `if (identifier === "missing") return null;
+    const keyPairs = await ctx.getActorKeyPairs(identifier);`,
+    ),
+    assertNoErrors,
+  ));
+
+test("Integration: ✅ Actor dispatcher may return wrapped null", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      "const keyPairs = await ctx.getActorKeyPairs(identifier);",
+      `if (identifier === "as") return null as Person | null;
+    if (identifier === "satisfies") {
+      return null satisfies Person | null;
+    }
+    if (identifier === "non-null") return null!;
+    if (identifier === "assertion") return <Person | null> null;
+    if (identifier === "nested") {
+      return ((null as Person | null) satisfies Person | null)!;
+    }
+    const keyPairs = await ctx.getActorKeyPairs(identifier);`,
+    ),
+    assertNoErrors,
+  ));
+
+test("Integration: ✅ Actor dispatcher may return wrapped conditional", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      "return new Person({",
+      `return ((identifier === "missing"
+      ? null
+      : new Person({`,
+    ),
+    replace(
+      `      assertionMethod: keyPairs[0]?.multikey,
+    });
+  })`,
+      `      assertionMethod: keyPairs[0]?.multikey,
+    })) as Person | null) satisfies Person | null;
+  })`,
+    ),
+    assertNoErrors,
+  ));
+
+test("Integration: ✅ Concise actor dispatcher may return null", () =>
+  assertNoErrors(`
+const federation = createFederation({});
+
+federation.setActorDispatcher(
+  "/users/{identifier}",
+  async (_ctx, _identifier) => null,
+);
+`));
+
 test("Integration: ❌ actor-id-required - missing id property", () =>
   pipe(
     COMPLETE_VALID_CODE,
