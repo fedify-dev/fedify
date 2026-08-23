@@ -17,6 +17,15 @@ To be released.
 [#989]: https://github.com/fedify-dev/fedify/issues/989
 [#997]: https://github.com/fedify-dev/fedify/pull/997
 
+### @fedify/lint
+
+ -  Fixed `@fedify/lint` actor property requirement rules reporting false
+    positives when an actor dispatcher returns `null` for an actor that was not
+    found.  Non-null actor returns are still checked for the configured
+    properties.  [[#974]]
+
+[#974]: https://github.com/fedify-dev/fedify/issues/974
+
 
 Version 2.0.25
 --------------
