@@ -632,6 +632,50 @@ function requiredEdgeCaseTestsFactory(
     const propCode = createPropertyAssignment(prop);
 
     return {
+      // ✅ Early null return with property in actor branch
+      "early null return with property in actor branch": [
+        lintTest({
+          code: createDispatcherCode(
+            `if (condition) return null;
+return new Person({ ${ID_PROP} ${propCode} name: "A" });`,
+            setter,
+          ),
+          rule,
+          ruleName,
+        }),
+        true,
+      ],
+
+      // ❌ Early null return with property missing in actor branch
+      "early null return with property missing in actor branch": [
+        lintTest({
+          code: createDispatcherCode(
+            `if (condition) return null;
+return new Person({ ${ID_PROP} name: "A" });`,
+            setter,
+          ),
+          rule,
+          ruleName,
+          expectedError,
+        }),
+        false,
+      ],
+
+      // ✅ Ternary with null and property in actor branch
+      "ternary with null and property in actor branch": [
+        lintTest({
+          code: createDispatcherCode(
+            `return condition
+    ? null
+    : new Person({ ${ID_PROP} ${propCode} name: "A" });`,
+            setter,
+          ),
+          rule,
+          ruleName,
+        }),
+        true,
+      ],
+
       // ✅ Ternary with property in both branches
       "ternary with property in both branches": [
         lintTest({
@@ -916,6 +960,33 @@ export function createMismatchEdgeCaseTests(
   const propCode = createLocalPropertyCode(prop.getter);
   const wrongPropCode = createLocalPropertyCode(wrongGetter);
   return {
+    // ✅ Early null return with correct getter in actor branch
+    "early null return with correct getter in actor branch": [
+      lintTest({
+        code: createActorDispatcherCode(
+          `if (condition) return null;
+return new Person({ ${ID_PROP} ${propCode} name: "A" });`,
+        ),
+        rule,
+        ruleName,
+      }),
+      true,
+    ],
+
+    // ❌ Early null return with wrong getter in actor branch
+    "early null return with wrong getter in actor branch": [
+      lintTest({
+        code: createActorDispatcherCode(
+          `if (condition) return null;
+return new Person({ ${ID_PROP} ${wrongPropCode} name: "A" });`,
+        ),
+        rule,
+        ruleName,
+        expectedError,
+      }),
+      false,
+    ],
+
     // ✅ Ternary with correct getter in both branches
     "ternary with correct getter in both branches": [
       lintTest({
@@ -1165,6 +1236,47 @@ export function createIdRequiredEdgeCaseTests(config: TestConfig): TestSuite {
   const expectedError = actorPropertyRequired(properties.id);
 
   return {
+    // ✅ Early null return with id in actor branch
+    "early null return with id in actor branch": [
+      lintTest({
+        code: createActorDispatcherCode(
+          `if (condition) return null;
+return new Person({ ${ID_PROP} name: "A" });`,
+        ),
+        rule,
+        ruleName,
+      }),
+      true,
+    ],
+
+    // ❌ Early null return with id missing in actor branch
+    "early null return with id missing in actor branch": [
+      lintTest({
+        code: createActorDispatcherCode(
+          `if (condition) return null;
+return new Person({ name: "A" });`,
+        ),
+        rule,
+        ruleName,
+        expectedError,
+      }),
+      false,
+    ],
+
+    // ✅ Ternary with null and id in actor branch
+    "ternary with null and id in actor branch": [
+      lintTest({
+        code: createActorDispatcherCode(
+          `return condition
+            ? null
+            : new Person({ ${ID_PROP} name: "A" });`,
+        ),
+        rule,
+        ruleName,
+      }),
+      true,
+    ],
+
     // ✅ Ternary with id in both branches
     "ternary with id in both branches": [
       lintTest({
@@ -1420,6 +1532,36 @@ export function createIdMismatchEdgeCaseTests(config: TestConfig): TestSuite {
   );
 
   return {
+    // ✅ Early null return with correct getter in actor branch
+    "early null return with correct getter in actor branch": [
+      lintTest({
+        code: createActorDispatcherCode(
+          `if (condition) return null;
+return new Person({ ${ID_PROP} name: "A" });`,
+        ),
+        rule,
+        ruleName,
+      }),
+      true,
+    ],
+
+    // ❌ Early null return with wrong getter in actor branch
+    "early null return with wrong getter in actor branch": [
+      lintTest({
+        code: createActorDispatcherCode(
+          `if (condition) return null;
+return new Person({
+  id: ctx.getFollowingUri(identifier),
+  name: "A",
+});`,
+        ),
+        rule,
+        ruleName,
+        expectedError,
+      }),
+      false,
+    ],
+
     // ✅ Ternary with correct getter in both branches
     "ternary with correct getter in both branches": [
       lintTest({

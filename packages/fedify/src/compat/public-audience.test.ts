@@ -1,5 +1,5 @@
 import { test } from "@fedify/fixture";
-import { Create, Note, PUBLIC_COLLECTION } from "@fedify/vocab";
+import { Create, Follow, Note, PUBLIC_COLLECTION } from "@fedify/vocab";
 import { getDocumentLoader, preloadedContexts } from "@fedify/vocab-runtime";
 import { assertEquals } from "@std/assert/assert-equals";
 import { assertNotEquals } from "@std/assert/assert-not-equals";
@@ -57,6 +57,25 @@ test("normalizePublicAudience() normalises activities serialized by @fedify/voca
   assertEquals(normalized.to, PUBLIC_URI);
   const nestedObject = normalized.object as Record<string, unknown>;
   assertEquals(nestedObject.to, PUBLIC_URI);
+});
+
+test("normalizePublicAudience() normalises a public relay Follow object", async () => {
+  const activity = new Follow({
+    id: new URL("https://example.com/activities/follow-relay"),
+    actor: new URL("https://example.com/alice"),
+    object: PUBLIC_COLLECTION,
+  });
+  const compact = await activity.toJsonLd({ format: "compact" }) as Record<
+    string,
+    unknown
+  >;
+  assertEquals(compact.object, "as:Public");
+
+  const normalized = await normalizePublicAudience(
+    compact,
+    getDocumentLoader(),
+  ) as Record<string, unknown>;
+  assertEquals(normalized.object, PUBLIC_URI);
 });
 
 test("normalizePublicAudience() is a no-op without the CURIE", async () => {

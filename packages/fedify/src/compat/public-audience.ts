@@ -55,6 +55,16 @@ function hasPublicCurieInAddressing(
   if (typeof value !== "object" || value == null) return false;
   const record = value as Record<string, unknown>;
   for (const key of Object.keys(record)) {
+    // Some relay implementations compare a subscription's Follow.object as a
+    // plain URL without expanding its Public CURIE.  Keep this type-specific
+    // instead of treating every `object` property as a public-addressing field.
+    if (
+      record.type === "Follow" &&
+      key === "object" &&
+      (record[key] === "as:Public" || record[key] === "Public")
+    ) {
+      return true;
+    }
     // `@context` holds term definitions, not addressing values; skip it so
     // we do not traverse potentially large inline context objects.
     if (key === "@context") continue;
@@ -101,9 +111,14 @@ function rewritePublicAudience(
   const normalized: Record<string, unknown> = Object.create(null);
   for (const key of Object.keys(record)) {
     // `@context` is never an addressing field, so skip the recursion and
-    // keep the reference intact.
+    // keep the reference intact.  Follow.object is handled separately because
+    // `object` is not a public-addressing field for other activity types.
     const rewritten = key === "@context"
       ? record[key]
+      : record.type === "Follow" &&
+          key === "object" &&
+          (record[key] === "as:Public" || record[key] === "Public")
+      ? PUBLIC_COLLECTION.href
       : rewritePublicAudience(record[key], key, depth + 1);
     if (rewritten !== record[key]) changed = true;
     normalized[key] = rewritten;
