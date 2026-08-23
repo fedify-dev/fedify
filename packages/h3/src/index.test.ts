@@ -65,4 +65,25 @@ describe("integrateFederation()", () => {
     assert.equal(respondWithCalls.length, 0);
     assert.equal("__fedify_response__" in event.context, false);
   });
+
+  test("stores the response in the event context on 406 Not Acceptable", async () => {
+    const notAcceptableResponse = new Response(null, { status: 406 });
+    const mockFederation: MockFederation = {
+      fetch() {
+        return Promise.resolve(notAcceptableResponse);
+      },
+    };
+    const handler = integrateFederation(
+      mockFederation as unknown as Federation<void>,
+      () => undefined,
+    );
+    const { event, respondWithCalls } = createMockEvent(
+      new Request("https://example.com/"),
+    );
+
+    await handler(event);
+
+    assert.equal(respondWithCalls.length, 0);
+    assert.equal(event.context["__fedify_response__"], notAcceptableResponse);
+  });
 });
