@@ -2,6 +2,7 @@
 // https://github.com/fedify-dev/fedify/issues/74
 // cSpell: disable
 
+import cidV1Context from "./contexts/cid-v1.json" with { type: "json" };
 import fepEf61 from "./contexts/fep-ef61.json" with { type: "json" };
 import joinLemmyContext from "./contexts/join-lemmy.json" with { type: "json" };
 import miscellany from "./contexts/miscellany.json" with { type: "json" };
@@ -4318,6 +4319,14 @@ const preloadedContexts: Record<string, unknown> = {
       },
     },
   },
+
+  // Controlled Identifiers v1.0 requires JSON-LD processors to treat this
+  // context URL as already resolved.  We ship the official W3C context so that
+  // controlled identifier documents can be processed without depending on the
+  // availability of the remote context server.
+  // See: https://www.w3.org/TR/cid-1.0/#json-ld-context
+  //      https://github.com/fedify-dev/fedify/issues/932
+  "https://www.w3.org/ns/cid/v1": cidV1Context,
 
   // The FEP-ef61 context.  The w3id.org URL redirects to Codeberg Pages, which
   // suffers recurring outages; while it is unreachable, every document

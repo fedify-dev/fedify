@@ -276,6 +276,7 @@ export interface GetDocumentLoaderOptions extends DocumentLoaderFactoryOptions {
  * - <https://w3id.org/security/v1>
  * - <https://w3id.org/security/data-integrity/v1>
  * - <https://www.w3.org/ns/did/v1>
+ * - <https://www.w3.org/ns/cid/v1>
  * - <https://w3id.org/security/multikey/v1>
  * - <https://w3id.org/fep/ef61>
  * - <https://purl.archive.org/socialweb/webfinger>

@@ -2,6 +2,7 @@ import fetchMock from "fetch-mock";
 import { deepStrictEqual, ok, rejects } from "node:assert";
 import { test } from "node:test";
 import preloadedContexts from "./contexts.ts";
+import cidV1Context from "./contexts/cid-v1.json" with { type: "json" };
 import { getDocumentLoader } from "./docloader.ts";
 import { FetchError } from "./request.ts";
 import { UrlError } from "./url.ts";
@@ -283,6 +284,21 @@ test("getDocumentLoader()", async (t) => {
         document,
       });
     }
+  });
+
+  // Controlled Identifiers v1.0 requires JSON-LD processors to treat this
+  // context URL as already resolved.  A temporary W3C outage must not prevent
+  // an otherwise valid document from being processed.
+  // See: https://www.w3.org/TR/cid-1.0/#json-ld-context
+  //      https://github.com/fedify-dev/fedify/issues/932
+  fetchMock.get("https://www.w3.org/ns/cid/v1", { status: 503 });
+  await t.test("preloaded CID v1 context", async () => {
+    const url = "https://www.w3.org/ns/cid/v1";
+    deepStrictEqual(await fetchDocumentLoader(url), {
+      contextUrl: null,
+      documentUrl: url,
+      document: cidV1Context,
+    });
   });
 
   // The <https://w3id.org/fep/ef61> URL redirects to a Codeberg Pages host
