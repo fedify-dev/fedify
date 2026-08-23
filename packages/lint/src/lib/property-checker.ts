@@ -111,11 +111,32 @@ const checkConditionalExpression =
   (node: ConditionalExpression): boolean =>
     [node.consequent, node.alternate].every(checkBranchWith(propertyChecker));
 
+const unwrapTypeScriptExpression = (node: Expression): Expression => {
+  switch (node.type) {
+    case "TSAsExpression":
+    case "TSSatisfiesExpression":
+    case "TSNonNullExpression":
+    case "TSTypeAssertion":
+      return unwrapTypeScriptExpression(node.expression);
+    default:
+      return node;
+  }
+};
+
+const isNullLiteral = (node: Expression): boolean =>
+  node.type === "Literal" && node.value === null;
+
 // Check if both branches have the property
 const checkBranchWith =
-  (propertyChecker: PropertyChecker) => (branch: Expression): boolean =>
-    pipe(
-      branch,
+  (propertyChecker: PropertyChecker) => (branch: Expression): boolean => {
+    const expression = unwrapTypeScriptExpression(branch);
+
+    // A null return means that no actor was found, so there is no actor object
+    // whose properties need to be checked.
+    if (isNullLiteral(expression)) return true;
+
+    return pipe(
+      expression,
       cases(
         isNodeType("ConditionalExpression"),
         checkConditionalExpression(propertyChecker),
@@ -129,6 +150,7 @@ const checkBranchWith =
         ),
       ) as (node: Expression) => boolean,
     );
+  };
 
 /**
  * Extracts the first argument if it's an ObjectExpression.
@@ -180,7 +202,7 @@ const checkReturnStatement =
  */
 export const createPropertySearcher = (propertyChecker: PropertyChecker) => {
   return (
-    node: Expression | BlockStatement | Statement,
+    node: Expression | BlockStatement | ReturnStatement,
   ): node is
     | ReturnStatement
     | BlockStatement
@@ -201,7 +223,7 @@ export const createPropertySearcher = (propertyChecker: PropertyChecker) => {
         );
 
       default:
-        return false;
+        return checkBranchWith(propertyChecker)(node);
     }
   };
 };
