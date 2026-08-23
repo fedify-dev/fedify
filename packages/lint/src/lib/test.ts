@@ -79,7 +79,7 @@ function testEslint(
       },
     },
     rules: {
-      [`fedify-test/${ruleName}`]: expectedError ? "error" : "off",
+      [`fedify-test/${ruleName}`]: "error",
     },
     languageOptions: {
       parser: tsParser,

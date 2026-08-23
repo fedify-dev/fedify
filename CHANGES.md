@@ -8,6 +8,42 @@ Version 2.1.22
 
 To be released.
 
+### @fedify/cli
+
+ -  Added a permanent removal warning to the `fedify init` command for Linux
+    and other Unix-like system users before deleting existing content in the
+    project directory.
+    [[#989], [#997] by Jungmin Yoon\]
+
+[#989]: https://github.com/fedify-dev/fedify/issues/989
+[#997]: https://github.com/fedify-dev/fedify/pull/997
+
+### @fedify/init
+
+ -  Added permanent removal warning for Linux or other UNIX-like system users
+    before delete the existing content in the project directory.
+    [[#989], [#997] by Jungmin Yoon\]
+
+### @fedify/lint
+
+ -  Fixed `@fedify/lint` actor property requirement rules reporting false
+    positives when an actor dispatcher returns `null` for an actor that was not
+    found.  Non-null actor returns are still checked for the configured
+    properties.  [[#974]]
+
+[#974]: https://github.com/fedify-dev/fedify/issues/974
+
+### @fedify/vocab-runtime
+
+ -  Added the [Controlled Identifiers v1.0] context to the preloaded JSON-LD
+    contexts.  The default document loader now resolves
+    <https://www.w3.org/ns/cid/v1> locally, so transient W3C outages no longer
+    prevent otherwise valid inbound documents from being parsed or verified.
+    [[#932]]
+
+[Controlled Identifiers v1.0]: https://www.w3.org/TR/cid-1.0/
+[#932]: https://github.com/fedify-dev/fedify/issues/932
+
 
 Version 2.1.21
 --------------
@@ -774,6 +810,39 @@ Released on March 24, 2026.
 [#586]: https://github.com/fedify-dev/fedify/issues/586
 [#597]: https://github.com/fedify-dev/fedify/pull/597
 [#599]: https://github.com/fedify-dev/fedify/pull/599
+
+
+Version 2.0.26
+--------------
+
+Released on August 23, 2026.
+
+### @fedify/cli
+
+ -  Added a permanent removal warning to the `fedify init` command for Linux
+    and other Unix-like system users before deleting existing content in the
+    project directory. [[#989], [#997] by Jungmin Yoon\]
+
+### @fedify/init
+
+ -  Added permanent removal warning for Linux or other UNIX-like system users
+    before delete the existing content in the project directory.
+    [[#989], [#997] by Jungmin Yoon\]
+
+### @fedify/lint
+
+ -  Fixed `@fedify/lint` actor property requirement rules reporting false
+    positives when an actor dispatcher returns `null` for an actor that was not
+    found.  Non-null actor returns are still checked for the configured
+    properties.  [[#974]]
+
+### @fedify/vocab-runtime
+
+ -  Added the [Controlled Identifiers v1.0] context to the preloaded JSON-LD
+    contexts.  The default document loader now resolves
+    <https://www.w3.org/ns/cid/v1> locally, so transient W3C outages no longer
+    prevent otherwise valid inbound documents from being parsed or verified.
+    [[#932]]
 
 
 Version 2.0.25
