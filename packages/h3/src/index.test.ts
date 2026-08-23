@@ -45,4 +45,24 @@ describe("integrateFederation()", () => {
     assert.equal(respondWithCalls.length, 1);
     assert.equal(respondWithCalls[0], okResponse);
   });
+
+  test("does not respond and delegates to the next handler on 404 Not Found", async () => {
+    const mockFederation: MockFederation = {
+      fetch() {
+        return Promise.resolve(new Response(null, { status: 404 }));
+      },
+    };
+    const handler = integrateFederation(
+      mockFederation as unknown as Federation<void>,
+      () => undefined,
+    );
+    const { event, respondWithCalls } = createMockEvent(
+      new Request("https://example.com/"),
+    );
+
+    await handler(event);
+
+    assert.equal(respondWithCalls.length, 0);
+    assert.equal("__fedify_response__" in event.context, false);
+  });
 });
