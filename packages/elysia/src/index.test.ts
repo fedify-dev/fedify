@@ -48,6 +48,42 @@ describe("[elysia] fedify() plugin", () => {
     );
   });
 
+  test("fedify() forwards the status, headers, and body from federation.fetch()", async () => {
+    const elysia = new Elysia();
+    const mockFederation: MockFederation = {
+      fetch: () =>
+        Promise.resolve(
+          new Response("federation body", {
+            status: 202,
+            headers: {
+              "Content-Type": "application/activity+json",
+              "X-Custom-Header": "custom-value",
+            },
+          }),
+        ),
+    };
+
+    elysia.use(fedify(mockFederation as never, () => undefined));
+    const response = await elysia.handle(new Request("http://localhost/"));
+
+    assert.strictEqual(response.status, 202, "status code must be forwarded");
+    assert.strictEqual(
+      response.headers.get("Content-Type"),
+      "application/activity+json",
+      "Content-Type header must be forwarded",
+    );
+    assert.strictEqual(
+      response.headers.get("X-Custom-Header"),
+      "custom-value",
+      "custom header must be forwarded",
+    );
+    assert.strictEqual(
+      await response.text(),
+      "federation body",
+      "body must be forwarded",
+    );
+  });
+
   test("fedify() falls through to Elysia routes when federation reports not-found via onNotFound", async () => {
     const elysia = new Elysia().get(
       "/hello-world",
