@@ -51,6 +51,7 @@
     "next": "catalog:"
   },
   "devDependencies": {
+    "@fedify/fixture": "workspace:^",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },

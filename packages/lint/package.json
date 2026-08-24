@@ -65,6 +65,7 @@
   },
   "devDependencies": {
     "@fedify/fixture": "workspace:*",
+    "@fedify/vocab": "workspace:*",
     "@types/eslint": "^9.0.0",
     "@types/estree": "^1.0.9",
     "eslint": "^9.0.0",

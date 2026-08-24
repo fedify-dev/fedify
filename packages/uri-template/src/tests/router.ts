@@ -3,6 +3,12 @@ import * as ERROR_CLASSES from "../router/errors.ts";
 import type { VariableConstraint } from "../router/mod.ts";
 import type { Path } from "../types.ts";
 
+type TestFunction = (t: TestContext) => void | Promise<void>;
+
+interface TestContext {
+  step(name: string, fn: TestFunction): Promise<boolean>;
+}
+
 type ErrorName = keyof typeof ERROR_CLASSES;
 
 interface RouterTestOptions {
@@ -241,11 +247,11 @@ export function createRouterAddTest<TPattern>(
   Router: RouterExtendedConstructor<TPattern>,
 ): (
   definitions: readonly RouterRouteDefinition[],
-) => (t: Deno.TestContext) => Promise<void> {
+) => (t: TestContext) => Promise<void> {
   return (
     definitions: readonly RouterRouteDefinition[],
-  ): (t: Deno.TestContext) => Promise<void> =>
-  async (t: Deno.TestContext): Promise<void> => {
+  ): (t: TestContext) => Promise<void> =>
+  async (t: TestContext): Promise<void> => {
     const router = new Router();
 
     for (const [path, name, routeOptions] of definitions) {
@@ -261,11 +267,11 @@ export function createRouterCompileErrorTest<TPattern>(
   Router: RouterExtendedConstructor<TPattern>,
 ): (
   cases: readonly RouterCompileErrorCase[],
-) => (t: Deno.TestContext) => Promise<void> {
+) => (t: TestContext) => Promise<void> {
   return (
     cases: readonly RouterCompileErrorCase[],
-  ): (t: Deno.TestContext) => Promise<void> =>
-  async (t: Deno.TestContext): Promise<void> => {
+  ): (t: TestContext) => Promise<void> =>
+  async (t: TestContext): Promise<void> => {
     for (const { name, path, expected } of cases) {
       await t.step(name, () => {
         for (const errorName of expected) {
@@ -283,11 +289,11 @@ export function createRouterVariablesTest<TPattern>(
   Router: RouterExtendedConstructor<TPattern>,
 ): (
   cases: readonly RouterVariablesCase[],
-) => (t: Deno.TestContext) => Promise<void> {
+) => (t: TestContext) => Promise<void> {
   return (
     cases: readonly RouterVariablesCase[],
-  ): (t: Deno.TestContext) => Promise<void> =>
-  async (t: Deno.TestContext): Promise<void> => {
+  ): (t: TestContext) => Promise<void> =>
+  async (t: TestContext): Promise<void> => {
     for (const { name, path, expected } of cases) {
       await t.step(
         name,
@@ -304,13 +310,13 @@ export function createRouterRouteTest<TPattern>(
   options?: RouterTestOptions,
 ) => (
   cases: readonly RouterRouteCase[],
-) => (t: Deno.TestContext) => Promise<void> {
+) => (t: TestContext) => Promise<void> {
   return (
     routeDefinitions: readonly RouterRouteDefinition[],
     options: RouterTestOptions = {},
   ): (
     cases: readonly RouterRouteCase[],
-  ) => (t: Deno.TestContext) => Promise<void> => {
+  ) => (t: TestContext) => Promise<void> => {
     const router = createRouterFromDefinitions(
       Router,
       routeDefinitions,
@@ -319,8 +325,8 @@ export function createRouterRouteTest<TPattern>(
 
     return (
       cases: readonly RouterRouteCase[],
-    ): (t: Deno.TestContext) => Promise<void> =>
-    async (t: Deno.TestContext): Promise<void> => {
+    ): (t: TestContext) => Promise<void> =>
+    async (t: TestContext): Promise<void> => {
       for (const { name, path, expected } of cases) {
         await t.step(
           name,
@@ -338,13 +344,13 @@ export function createRouterBuildTest<TPattern>(
   options?: RouterTestOptions,
 ) => (
   cases: readonly RouterBuildTestCase[],
-) => (t: Deno.TestContext) => Promise<void> {
+) => (t: TestContext) => Promise<void> {
   return (
     routeDefinitions: readonly RouterRouteDefinition[],
     options: RouterTestOptions = {},
   ): (
     cases: readonly RouterBuildTestCase[],
-  ) => (t: Deno.TestContext) => Promise<void> => {
+  ) => (t: TestContext) => Promise<void> => {
     const router = createRouterFromDefinitions(
       Router,
       routeDefinitions,
@@ -353,8 +359,8 @@ export function createRouterBuildTest<TPattern>(
 
     return (
       cases: readonly RouterBuildTestCase[],
-    ): (t: Deno.TestContext) => Promise<void> =>
-    async (t: Deno.TestContext): Promise<void> => {
+    ): (t: TestContext) => Promise<void> =>
+    async (t: TestContext): Promise<void> => {
       for (const { name, routeName, values, expected } of cases) {
         await t.step(
           name,
@@ -369,11 +375,11 @@ export function createRouterCloneTest<TPattern>(
   Router: RouterConstructor<TPattern>,
 ): (
   suites: readonly RouterCloneTestSuite[],
-) => (t: Deno.TestContext) => Promise<void> {
+) => (t: TestContext) => Promise<void> {
   return (
     suites: readonly RouterCloneTestSuite[],
-  ): (t: Deno.TestContext) => Promise<void> =>
-  async (t: Deno.TestContext): Promise<void> => {
+  ): (t: TestContext) => Promise<void> =>
+  async (t: TestContext): Promise<void> => {
     for (const suite of suites) {
       await t.step(suite.name, () => {
         const original = new Router(suite.options);

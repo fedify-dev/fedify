@@ -89,7 +89,8 @@
     "postgres": "npm:postgres@^3.4.7",
     "preact": "npm:preact@10.19.6",
     "temporal-polyfill": "npm:temporal-polyfill@^1.0.1",
-    "tsdown": "npm:tsdown@^0.22.0"
+    "tsdown": "npm:tsdown@^0.22.0",
+    "typescript": "npm:typescript@^6.0.0"
   },
   "unstable": [
     "fs",
@@ -120,7 +121,7 @@
       ".playwright-mcp/**"
     ]
   },
-  "nodeModulesDir": "auto",
+  "nodeModulesDir": "none",
   "tasks": {
     "cli": "deno task -f @fedify/cli run"
   },

@@ -5,37 +5,66 @@ import {
   reset,
   type Sink,
 } from "@logtape/logtape";
-import type { TestContext } from "node:test";
+import { createRequire } from "node:module";
+import type { TestContext as NodeTestContext } from "node:test";
 
-export const testDefinitions: Deno.TestDefinition[] = [];
+/** A test callback that uses only APIs supported by every test runtime. */
+export type TestFunction = (t: TestContext) => void | Promise<void>;
 
-export function test(options: Deno.TestDefinition): void;
+/** A nested test step supported by Deno, Node.js, Bun, and Workers. */
+export interface TestStepDefinition {
+  name: string;
+  ignore?: boolean;
+  fn: TestFunction;
+}
+
+/** The common test context supported by every test runtime. */
+export interface TestContext {
+  readonly name: string;
+  readonly origin: string;
+  step(definition: TestStepDefinition): Promise<boolean>;
+  step(name: string, fn: TestFunction): Promise<boolean>;
+  step(fn: TestFunction): Promise<boolean>;
+}
+
+/** A test definition supported by every test runtime. */
+export interface TestDefinition {
+  name: string;
+  ignore?: boolean;
+  permissions?: Deno.TestDefinition["permissions"];
+  sanitizeExit?: Deno.TestDefinition["sanitizeExit"];
+  sanitizeOps?: Deno.TestDefinition["sanitizeOps"];
+  sanitizeResources?: Deno.TestDefinition["sanitizeResources"];
+  fn: TestFunction;
+}
+
+type TestOptions = Omit<TestDefinition, "fn" | "name">;
+
+export const testDefinitions: TestDefinition[] = [];
+
+export function test(options: TestDefinition): void;
 export function test(
   name: string,
-  fn: (t: Deno.TestContext) => void | Promise<void>,
+  fn: TestFunction,
 ): void;
 export function test(
   name: string,
-  options: Omit<Deno.TestDefinition, "fn" | "name">,
-  fn: (t: Deno.TestContext) => void | Promise<void>,
+  options: TestOptions,
+  fn: TestFunction,
 ): void;
 export function test(
-  name: string | Deno.TestDefinition,
-  options?:
-    | ((
-      t: Deno.TestContext,
-    ) => void | Promise<void>)
-    | Omit<Deno.TestDefinition, "fn" | "name">,
-  fn?: (t: Deno.TestContext) => void | Promise<void>,
+  name: string | TestDefinition,
+  options?: TestFunction | TestOptions,
+  fn?: TestFunction,
 ): void {
-  const def: Deno.TestDefinition = typeof name === "string"
+  const def: TestDefinition = typeof name === "string"
     ? typeof options === "function"
       ? { name, fn: options }
       : { name, ...options, fn: fn! }
-    : (name satisfies Deno.TestDefinition);
+    : name;
   testDefinitions.push(def);
   if ("Deno" in globalThis) {
-    const func: (t: Deno.TestContext) => void | Promise<void> = def.fn;
+    const func = def.fn;
     Deno.test({
       ...def,
       async fn(t: Deno.TestContext) {
@@ -61,7 +90,7 @@ export function test(
           ],
         });
         try {
-          await func(t);
+          await func(t as TestContext);
         } catch (e) {
           const consoleSink: Sink = getConsoleSink();
           for (const record of records) consoleSink(record);
@@ -74,25 +103,23 @@ export function test(
   } else if ("Bun" in globalThis) {
     let failed: unknown = undefined;
     // deno-lint-ignore no-inner-declarations
-    function step(def: Deno.TestStepDefinition): Promise<boolean>;
+    function step(def: TestStepDefinition): Promise<boolean>;
     // deno-lint-ignore no-inner-declarations
     function step(
       name: string,
-      fn: (ctx: Deno.TestContext) => void | Promise<void>,
+      fn: TestFunction,
     ): Promise<boolean>;
     // deno-lint-ignore no-inner-declarations
-    function step(
-      fn: (ctx: Deno.TestContext) => void | Promise<void>,
-    ): Promise<boolean>;
+    function step(fn: TestFunction): Promise<boolean>;
     // deno-lint-ignore no-inner-declarations
     async function step(
       defOrNameOrFn:
-        | Deno.TestStepDefinition
+        | TestStepDefinition
         | string
-        | ((ctx: Deno.TestContext) => void | Promise<void>),
-      fn?: (ctx: Deno.TestContext) => void | Promise<void>,
+        | TestFunction,
+      fn?: TestFunction,
     ): Promise<boolean> {
-      let def: Deno.TestStepDefinition;
+      let def: TestStepDefinition;
       if (typeof defOrNameOrFn === "string") {
         def = { name: defOrNameOrFn, fn: fn! };
       } else if (typeof defOrNameOrFn === "function") {
@@ -100,7 +127,7 @@ export function test(
       } else {
         def = defOrNameOrFn;
       }
-      if (def.ignore) return true;
+      if (def.ignore) return false;
       try {
         await def.fn({
           name: def.name,
@@ -113,7 +140,7 @@ export function test(
       }
       return true;
     }
-    const ctx: Deno.TestContext = {
+    const ctx: TestContext = {
       name: def.name,
       origin: "",
       step,
@@ -126,44 +153,42 @@ export function test(
     // @ts-ignore: Bun exists in the global scope in Bun
     const bunTest = Bun.jest(caller()).test;
     if (def.ignore) bunTest.skip(def.name, fn);
-    else if (def.only) bunTest.only(def.name, fn);
     else bunTest(def.name, fn);
-  } else {
-    try {
-      const { test: nodeTest } = require("node:test");
-      nodeTest(
-        def.name,
-        { only: def.only, skip: def.ignore },
-        async (t: TestContext) => {
-          await def.fn(intoDenoTestContext(def.name, t));
-        },
-      );
-    } catch {
-      // Fallback for environments without `node:test`
-    }
+  } else if (
+    typeof process !== "undefined" &&
+    process.release?.name === "node" &&
+    !("navigator" in globalThis &&
+      navigator.userAgent === "Cloudflare-Workers")
+  ) {
+    const { test: nodeTest } = createRequire(process.cwd() + "/")("node:test");
+    nodeTest(
+      def.name,
+      { skip: def.ignore },
+      async (t: NodeTestContext) => {
+        await def.fn(intoTestContext(def.name, t));
+      },
+    );
   }
 }
 
-function intoDenoTestContext(
+function intoTestContext(
   name: string,
-  ctx: TestContext,
-): Deno.TestContext {
-  function step(def: Deno.TestStepDefinition): Promise<boolean>;
+  ctx: NodeTestContext,
+): TestContext {
+  function step(def: TestStepDefinition): Promise<boolean>;
   function step(
     name: string,
-    fn: (ctx: Deno.TestContext) => void | Promise<void>,
+    fn: TestFunction,
   ): Promise<boolean>;
-  function step(
-    fn: (ctx: Deno.TestContext) => void | Promise<void>,
-  ): Promise<boolean>;
+  function step(fn: TestFunction): Promise<boolean>;
   async function step(
     defOrNameOrFn:
-      | Deno.TestStepDefinition
+      | TestStepDefinition
       | string
-      | ((ctx: Deno.TestContext) => void | Promise<void>),
-    fn?: (ctx: Deno.TestContext) => void | Promise<void>,
+      | TestFunction,
+    fn?: TestFunction,
   ): Promise<boolean> {
-    let def: Deno.TestStepDefinition;
+    let def: TestStepDefinition;
     if (typeof defOrNameOrFn === "string") {
       def = { name: defOrNameOrFn, fn: fn! };
     } else if (typeof defOrNameOrFn === "function") {
@@ -172,22 +197,26 @@ function intoDenoTestContext(
       def = defOrNameOrFn;
     }
     let failed = false;
-    await ctx.test(def.name, async (ctx2) => {
-      try {
-        await def.fn(intoDenoTestContext(def.name, ctx2));
-      } catch (e) {
-        failed = true;
-        throw e;
-      }
-    });
-    return failed;
+    await ctx.test(
+      def.name,
+      { skip: def.ignore },
+      async (ctx2) => {
+        try {
+          await def.fn(intoTestContext(def.name, ctx2));
+        } catch (e) {
+          failed = true;
+          throw e;
+        }
+      },
+    );
+    return !def.ignore && !failed;
   }
-  const denoCtx: Deno.TestContext = {
+  const testCtx: TestContext = {
     name,
     origin: ctx.filePath ?? "",
     step,
   };
-  return denoCtx;
+  return testCtx;
 }
 
 // Below code is borrowed from https://github.com/oven-sh/bun/issues/11660#issuecomment-2506832106

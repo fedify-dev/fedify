@@ -3,6 +3,12 @@ import * as ERROR_CLASSES from "../template/errors.ts";
 import type { ExpandContext } from "../types.ts";
 import testVars from "./json/references/vars.json" with { type: "json" };
 
+type TestFunction = (t: TestContext) => void | Promise<void>;
+
+interface TestContext {
+  step(name: string, fn: TestFunction): Promise<boolean>;
+}
+
 interface TemplateConstructor {
   new (template: string): {
     expand(context: ExpandContext): string;
@@ -22,12 +28,12 @@ export function createTemplatePairTest(
 ): (
   suites: readonly PairTestSuite[],
   context?: ExpandContext,
-) => (t: Deno.TestContext) => Promise<void> {
+) => (t: TestContext) => Promise<void> {
   return (
     suites: readonly PairTestSuite[],
     context: ExpandContext = testVars,
-  ): (t: Deno.TestContext) => Promise<void> =>
-  async (t: Deno.TestContext): Promise<void> => {
+  ): (t: TestContext) => Promise<void> =>
+  async (t: TestContext): Promise<void> => {
     for (const { name, cases } of suites) {
       await t.step(name, async (t) => {
         for (const [template, expected] of cases) {
@@ -45,11 +51,11 @@ export function createTemplateMatchTest(
   Template: TemplateConstructor,
 ): (
   suites: readonly PairTestSuite[],
-) => (t: Deno.TestContext) => Promise<void> {
+) => (t: TestContext) => Promise<void> {
   return (
     suites: readonly PairTestSuite[],
-  ): (t: Deno.TestContext) => Promise<void> =>
-  async (t: Deno.TestContext): Promise<void> => {
+  ): (t: TestContext) => Promise<void> =>
+  async (t: TestContext): Promise<void> => {
     for (const { name, cases } of suites) {
       await t.step(name, async (t) => {
         for (const [template, expanded] of cases) {
@@ -85,11 +91,11 @@ export function createMatchOnlyTest(
   Template: TemplateConstructor,
 ): (
   suites: readonly MatchTestSuite[],
-) => (t: Deno.TestContext) => Promise<void> {
+) => (t: TestContext) => Promise<void> {
   return (
     suites: readonly MatchTestSuite[],
-  ): (t: Deno.TestContext) => Promise<void> =>
-  async (t: Deno.TestContext): Promise<void> => {
+  ): (t: TestContext) => Promise<void> =>
+  async (t: TestContext): Promise<void> => {
     for (const { name, cases } of suites) {
       await t.step(name, async (t) => {
         for (const c of cases) {
@@ -119,13 +125,13 @@ export const createFixedTemplateTest: (
   Template: TemplateConstructor,
 ) => (
   suites: readonly FixedTemplateTestSuite[],
-) => (t: Deno.TestContext) => Promise<void> = (
+) => (t: TestContext) => Promise<void> = (
   Template: TemplateConstructor,
 ) => {
   return (
     suites: readonly FixedTemplateTestSuite[],
-  ): (t: Deno.TestContext) => Promise<void> =>
-  async (t: Deno.TestContext): Promise<void> => {
+  ): (t: TestContext) => Promise<void> =>
+  async (t: TestContext): Promise<void> => {
     for (const { template, name, cases } of suites) {
       await t.step(name, async (t) => {
         const instance = new Template(template);
@@ -141,13 +147,13 @@ export const createFixedTemplateMatchTest: (
   Template: TemplateConstructor,
 ) => (
   suites: readonly FixedTemplateTestSuite[],
-) => (t: Deno.TestContext) => Promise<void> = (
+) => (t: TestContext) => Promise<void> = (
   Template: TemplateConstructor,
 ) => {
   return (
     suites: readonly FixedTemplateTestSuite[],
-  ): (t: Deno.TestContext) => Promise<void> =>
-  async (t: Deno.TestContext): Promise<void> => {
+  ): (t: TestContext) => Promise<void> =>
+  async (t: TestContext): Promise<void> => {
     for (const { template, name, cases } of suites) {
       await t.step(name, async (t) => {
         const instance = new Template(template);
@@ -206,11 +212,11 @@ export function createWrongTemplateTest(
   Template: TemplateConstructor,
 ): (
   suites: readonly WrongTestSuite[],
-) => (t: Deno.TestContext) => Promise<void> {
+) => (t: TestContext) => Promise<void> {
   return (
     suites: readonly WrongTestSuite[],
-  ): (t: Deno.TestContext) => Promise<void> =>
-  async (t: Deno.TestContext): Promise<void> => {
+  ): (t: TestContext) => Promise<void> =>
+  async (t: TestContext): Promise<void> => {
     for (const { name, cases } of suites) {
       await t.step(name, async (t) => {
         for (const { name, template, expected } of cases) {
@@ -291,12 +297,12 @@ export function createTemplateHardTest(
 ): (
   suites: readonly HardTestSuite[],
   context?: ExpandContext,
-) => (t: Deno.TestContext) => Promise<void> {
+) => (t: TestContext) => Promise<void> {
   return (
     suites: readonly HardTestSuite[],
     context: ExpandContext = testVars,
-  ): (t: Deno.TestContext) => Promise<void> =>
-  async (t: Deno.TestContext): Promise<void> => {
+  ): (t: TestContext) => Promise<void> =>
+  async (t: TestContext): Promise<void> => {
     for (const { name, cases } of suites) {
       await t.step(name, async (t) => {
         for (const c of cases) {
@@ -320,11 +326,11 @@ export function createTemplateMatchHardTest(
   Template: TemplateConstructor,
 ): (
   cases: readonly HardTestCase[],
-) => (t: Deno.TestContext) => Promise<void> {
+) => (t: TestContext) => Promise<void> {
   return (
     cases: readonly HardTestCase[],
-  ): (t: Deno.TestContext) => Promise<void> =>
-  async (t: Deno.TestContext): Promise<void> => {
+  ): (t: TestContext) => Promise<void> =>
+  async (t: TestContext): Promise<void> => {
     for (const c of cases) {
       if (!c.success) continue;
       await t.step(c.name, () => {

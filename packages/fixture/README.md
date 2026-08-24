@@ -49,12 +49,16 @@ Usage
 
 ### `test()` — cross-runtime test registration
 
-`test()` accepts the same call signatures as [`Deno.test()`] and dispatches to
-the appropriate runtime test API:
+`test()` accepts the three [`Deno.test()`] registration forms and the `ignore`
+option supported by every target runtime, then dispatches to the appropriate
+runtime test API.  Deno's `permissions`, `sanitizeExit`,
+`sanitizeOps`, and `sanitizeResources` isolation options are also accepted;
+they apply only on Deno because the other runtimes do not expose equivalent
+isolation controls.
 
  -  On Deno, it forwards to `Deno.test()` directly.
- -  On Bun, it forwards to `Bun.jest(...).test` and translates
-    `Deno.TestContext` so that nested `t.step()` calls keep working.
+ -  On Bun, it forwards to `Bun.jest(...).test` and translates the portable
+    test context so that nested `t.step()` calls keep working.
  -  On Node.js (and on `node --test` in `dist-tests/`), it forwards to
     [`node:test`] and adapts the context the same way.
  -  In any environment the test definition is also pushed to the exported
@@ -96,6 +100,12 @@ test("nested steps", async (t) => {
 });
 ~~~~
 
+The callback context deliberately exposes only `name`, `origin`, and `step()`,
+which are implemented consistently by Deno, Node.js, Bun, and the Cloudflare
+Workers harness.  Runtime-specific context APIs such as Deno's
+`assertSnapshot()` are not part of this wrapper.  Use the runtime's native test
+API when a test intentionally depends on one of those APIs.
+
 #### Logging behavior
 
 On Deno, `test()` configures [LogTape] before every test and resets it
@@ -126,8 +136,9 @@ for (const def of testDefinitions) {
 }
 ~~~~
 
-The array contains plain `Deno.TestDefinition` objects.  In the Fedify package
-it is re-exported from *src/testing/mod.ts* so that the Workers entry point in
+The array contains plain `TestDefinition` objects with the portable callback
+context described above.  In the Fedify package it is re-exported from
+*src/testing/mod.ts* so that the Workers entry point in
 *src/cfworkers/server.ts* can drive the suite.
 
 ### `mockDocumentLoader()` — fixture-backed JSON-LD loader

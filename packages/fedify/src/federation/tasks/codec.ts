@@ -23,10 +23,16 @@ export default class TaskCodec {
 
   /** Serializes `data`, encoding any vocabulary object as its JSON-LD. */
   serialize = (data: unknown): Promise<string> =>
-    stringifyAsync(data, { Vocab: this.#stringifyVocab });
+    stringifyAsync(data, {
+      Vocab: this.#stringifyVocab,
+      FedifyTemporal: stringifyTemporal,
+    });
 
   deserialize = async (raw: string): Promise<unknown> =>
-    await this.#revive(new Map())(parse(raw, { Vocab: VocabHolder.from }));
+    await this.#revive(new Map())(parse(raw, {
+      Vocab: VocabHolder.from,
+      FedifyTemporal: parseTemporal,
+    }));
 
   /** Validates `data` against `schema`, then serializes it. */
   encode = async <S extends StandardSchemaV1>(
@@ -123,6 +129,32 @@ export default class TaskCodec {
 
 const isVocab = (value: unknown): value is APObject | Link =>
   value instanceof APObject || value instanceof Link;
+
+const temporalTypeNames = [
+  "Duration",
+  "Instant",
+  "PlainDate",
+  "PlainTime",
+  "PlainDateTime",
+  "PlainMonthDay",
+  "PlainYearMonth",
+  "ZonedDateTime",
+] as const;
+
+type TemporalTypeName = (typeof temporalTypeNames)[number];
+type TemporalWire = readonly [TemporalTypeName, string];
+
+function stringifyTemporal(value: unknown): TemporalWire | false {
+  for (const name of temporalTypeNames) {
+    if (value instanceof Temporal[name]) return [name, value.toString()];
+  }
+  return false;
+}
+
+function parseTemporal([name, value]: TemporalWire): unknown {
+  const temporalType = Temporal[name] as { from(value: string): unknown };
+  return temporalType.from(value);
+}
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   value === null || typeof value !== "object"

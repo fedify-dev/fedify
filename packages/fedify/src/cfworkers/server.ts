@@ -83,7 +83,7 @@ export default {
         } else {
           def = arg;
         }
-        if (def.ignore) return;
+        if (def.ignore) return false;
         try {
           await def.fn({
             name: def.name,

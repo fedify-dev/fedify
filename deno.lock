@@ -106,7 +106,7 @@
     "npm:@remix-run/node-fetch-server@0.12": "0.12.0",
     "npm:@solidjs/start@^1.3.0": "1.3.2_acorn@8.17.0_ioredis@5.10.1_vite@7.3.2__@types+node@24.12.2__tsx@4.21.0__yaml@2.9.0",
     "npm:@standard-schema/spec@^1.1.0": "1.1.0",
-    "npm:@sveltejs/kit@2": "2.57.1_@opentelemetry+api@1.9.1_vite@7.3.2__@types+node@24.12.2__tsx@4.21.0__yaml@2.9.0",
+    "npm:@sveltejs/kit@2": "2.57.1_@opentelemetry+api@1.9.1_typescript@6.0.3_vite@7.3.2__@types+node@24.12.2__tsx@4.21.0__yaml@2.9.0",
     "npm:@types/amqplib@*": "0.10.8",
     "npm:@types/amqplib@~0.10.7": "0.10.8",
     "npm:@types/babel__core@^7.20.5": "7.20.5",
@@ -127,7 +127,7 @@
     "npm:cli-table3@~0.6.5": "0.6.5",
     "npm:dax@~0.46.1": "0.46.1",
     "npm:devalue@^5.8.1": "5.8.1",
-    "npm:elysia@^1.3.8": "1.4.29_@sinclair+typebox@0.34.52_exact-mirror@0.2.7__@sinclair+typebox@0.34.52_file-type@22.0.1_openapi-types@12.1.3",
+    "npm:elysia@^1.3.8": "1.4.29_typescript@6.0.3",
     "npm:enquirer@^2.4.1": "2.4.1",
     "npm:es-toolkit@^1.46.1": "1.46.1",
     "npm:esbuild-wasm@~0.25.11": "0.25.12",
@@ -153,6 +153,7 @@
     "npm:jsonld@9": "9.0.0",
     "npm:koa@2": "2.16.4",
     "npm:miniflare@^4.20250523.0": "4.20250906.0",
+    "npm:mysql2@3.22.3": "3.22.3_@types+node@24.12.2",
     "npm:mysql2@^3.22.3": "3.22.3_@types+node@24.12.2",
     "npm:ora@^8.2.0": "8.2.0",
     "npm:oxlint@*": "1.66.0",
@@ -168,13 +169,15 @@
     "npm:preact@^10.28.2": "10.29.2",
     "npm:preact@^10.29.1": "10.29.2",
     "npm:rollup@^4.55.1": "4.60.1",
+    "npm:sharp@0.33.5": "0.33.5",
     "npm:shiki@^1.6.4": "1.29.2",
     "npm:smol-toml@^1.6.1": "1.6.1",
     "npm:srvx@~0.8.7": "0.8.16",
     "npm:structured-field-values@^2.0.4": "2.0.4",
     "npm:temporal-polyfill@^1.0.1": "1.0.1",
-    "npm:tsdown@0.22": "0.22.0_tsx@4.21.0_typescript@7.0.2",
+    "npm:tsdown@0.22": "0.22.0_tsx@4.21.0_typescript@6.0.3",
     "npm:tsx@^4.21.0": "4.21.0",
+    "npm:typescript@6": "6.0.3",
     "npm:uri-template-router@1": "1.0.0",
     "npm:url-template@^3.1.1": "3.1.1",
     "npm:valibot@^1.4.0": "1.4.0_typescript@7.0.2",
@@ -5620,7 +5623,7 @@
         "acorn@8.17.0"
       ]
     },
-    "@sveltejs/kit@2.57.1_@opentelemetry+api@1.9.1_vite@7.3.2__@types+node@24.12.2__tsx@4.21.0__yaml@2.9.0": {
+    "@sveltejs/kit@2.57.1_@opentelemetry+api@1.9.1_typescript@6.0.3_vite@7.3.2__@types+node@24.12.2__tsx@4.21.0__yaml@2.9.0": {
       "integrity": "sha512-VRdSbB96cI1EnRh09CqmnQqP/YJvET5buj8S6k7CxaJqBJD4bw4fRKDjcarAj/eX9k2eHifQfDH8NtOh+ZxxPw==",
       "dependencies": [
         "@opentelemetry/api",
@@ -6840,7 +6843,7 @@
         "tinyglobby",
         "ultrahtml",
         "unifont",
-        "unstorage@1.17.5_ioredis@5.10.1_@types+node@24.12.2_mysql2@3.22.3__@types+node@24.12.2",
+        "unstorage",
         "vite@8.1.4_@types+node@24.12.2_esbuild@0.28.1_tsx@4.21.0_yaml@2.9.0",
         "vitefu",
         "xxhash-wasm",
@@ -7912,7 +7915,8 @@
       "integrity": "sha512-p0SaNjrHOnQeR8/VnfGbmg9te2kfyYSQ7Sc/j/6DtPL3JQvKxmjO9TSjNFpujqV3vEYYBvNNvXSxzyksBWAx1Q==",
       "dependencies": [
         "luxon"
-      ]
+      ],
+      "deprecated": true
     },
     "croner@10.0.1": {
       "integrity": "sha512-ixNtAJndqh173VQ4KodSdJEI6nuioBWI0V1ITNKhZZsO0pEMoDxz539T4FTTbSZ/xIOSuDnzxLVRqBVSvPNE2g=="
@@ -7938,7 +7942,8 @@
       ]
     },
     "crypto-js@4.2.0": {
-      "integrity": "sha512-KALDyEYgpY+Rlob/iriUtjV6d5Eq+Y191A5g4UqLAi8CyGP9N1+FdVbkc1SxKc2r4YAYqG8JzO2KGL+AizD70Q=="
+      "integrity": "sha512-KALDyEYgpY+Rlob/iriUtjV6d5Eq+Y191A5g4UqLAi8CyGP9N1+FdVbkc1SxKc2r4YAYqG8JzO2KGL+AizD70Q==",
+      "deprecated": true
     },
     "crypto-random-string@2.0.0": {
       "integrity": "sha512-v1plID3y9r/lPhviJ1wrXpLeyUIGAZ2SHNYTEapm7/8A9nLPoyvVp3RK/EPFqn5kEznyWgYZNsRtYYIWbuG8KA=="
@@ -8523,7 +8528,7 @@
     "electron-to-chromium@1.5.389": {
       "integrity": "sha512-cEto7aeOqBfU1D+c5py5pE+ooscKE75JifxLBdFUZsqAxRS6y7kebtxAZvICszSl05gPjYHDTjY+lXpyGvpJbg=="
     },
-    "elysia@1.4.29_@sinclair+typebox@0.34.52_exact-mirror@0.2.7__@sinclair+typebox@0.34.52_file-type@22.0.1_openapi-types@12.1.3": {
+    "elysia@1.4.29_typescript@6.0.3": {
       "integrity": "sha512-GwMRGGwSdjfPt+w3LA0fqTuYJtS8uVRJicvoar98/HrO5qdFKDc9CwjIb6Kja+v39lkY+58hr2JvdR9jQzlUuA==",
       "dependencies": [
         "@sinclair/typebox",
@@ -8532,7 +8537,11 @@
         "fast-decode-uri-component",
         "file-type@22.0.1",
         "memoirist",
-        "openapi-types"
+        "openapi-types",
+        "typescript@6.0.3"
+      ],
+      "optionalPeers": [
+        "typescript@6.0.3"
       ]
     },
     "emoji-regex-xs@1.0.0": {
@@ -9185,6 +9194,7 @@
         "natural-compare",
         "optionator"
       ],
+      "deprecated": true,
       "bin": true
     },
     "esm-env@1.2.2": {
@@ -12487,7 +12497,7 @@
         "unenv@2.0.0-rc.24",
         "unimport",
         "unplugin-utils",
-        "unstorage@1.17.5_db0@0.3.4__mysql2@3.22.3___@types+node@24.12.2__@types+node@24.12.2_ioredis@5.10.1",
+        "unstorage",
         "untyped",
         "unwasm",
         "youch@4.1.1",
@@ -13954,7 +13964,7 @@
       "deprecated": true,
       "bin": true
     },
-    "rolldown-plugin-dts@0.25.0_rolldown@1.1.5_typescript@7.0.2": {
+    "rolldown-plugin-dts@0.25.0_rolldown@1.1.5_typescript@6.0.3": {
       "integrity": "sha512-GE3uDZgUuA9l6g+1u928TRmadd5IVhaWiwpWast2kCyLv9tYJJCC6E5HHkV0HGmwC5ZL73xh12/PRZI+KZ2vdQ==",
       "dependencies": [
         "@babel/generator@8.0.0-rc.4",
@@ -13965,7 +13975,11 @@
         "dts-resolver",
         "get-tsconfig@5.0.0-beta.5",
         "obug",
-        "rolldown"
+        "rolldown",
+        "typescript@6.0.3"
+      ],
+      "optionalPeers": [
+        "typescript@6.0.3"
       ]
     },
     "rolldown@1.1.5": {
@@ -15258,7 +15272,7 @@
         "code-block-writer"
       ]
     },
-    "tsdown@0.22.0_tsx@4.21.0_typescript@7.0.2": {
+    "tsdown@0.22.0_tsx@4.21.0_typescript@6.0.3": {
       "integrity": "sha512-FgW0hHb27nGQA/+F3d5+U9wKXkfilk9DVkc5+7x/ZqF03g+Hoz/eeApT32jqxATt9eRoR+1jxk7MUMON+O4CXw==",
       "dependencies": [
         "ansis",
@@ -15276,10 +15290,12 @@
         "tinyglobby",
         "tree-kill",
         "tsx",
+        "typescript@6.0.3",
         "unconfig-core"
       ],
       "optionalPeers": [
-        "tsx"
+        "tsx",
+        "typescript@6.0.3"
       ],
       "bin": true
     },
@@ -15650,25 +15666,6 @@
         "webpack-virtual-modules"
       ]
     },
-    "unstorage@1.17.5_db0@0.3.4__mysql2@3.22.3___@types+node@24.12.2__@types+node@24.12.2_ioredis@5.10.1": {
-      "integrity": "sha512-0i3iqvRfx29hkNntHyQvJTpf5W9dQ9ZadSoRU8+xVlhVtT7jAX57fazYO9EHvcRCfBCyi5YRya7XCDOsbTgkPg==",
-      "dependencies": [
-        "anymatch",
-        "chokidar@5.0.0",
-        "db0",
-        "destr",
-        "h3@1.15.11",
-        "ioredis",
-        "lru-cache@11.3.5",
-        "node-fetch-native",
-        "ofetch",
-        "ufo"
-      ],
-      "optionalPeers": [
-        "db0",
-        "ioredis"
-      ]
-    },
     "unstorage@1.17.5_ioredis@5.10.1_@types+node@24.12.2_mysql2@3.22.3__@types+node@24.12.2": {
       "integrity": "sha512-0i3iqvRfx29hkNntHyQvJTpf5W9dQ9ZadSoRU8+xVlhVtT7jAX57fazYO9EHvcRCfBCyi5YRya7XCDOsbTgkPg==",
       "dependencies": [
@@ -15872,7 +15869,7 @@
         "ufo",
         "unctx",
         "unenv@1.10.0",
-        "unstorage@1.17.5_ioredis@5.10.1_@types+node@24.12.2_mysql2@3.22.3__@types+node@24.12.2",
+        "unstorage",
         "vite@6.4.2_@types+node@24.12.2_tsx@4.21.0_yaml@2.9.0",
         "zod@4.3.6"
       ],
@@ -16536,7 +16533,8 @@
       "npm:postgres@^3.4.7",
       "npm:preact@10.19.6",
       "npm:temporal-polyfill@^1.0.1",
-      "npm:tsdown@0.22"
+      "npm:tsdown@0.22",
+      "npm:typescript@6"
     ],
     "members": {
       "examples/astro": {
