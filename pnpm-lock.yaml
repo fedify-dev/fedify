@@ -1459,6 +1459,9 @@ importers:
         specifier: ^3.3.1
         version: 3.3.1
     devDependencies:
+      '@std/assert':
+        specifier: 'catalog:'
+        version: '@jsr/std__assert@1.0.19'
       '@types/node':
         specifier: 'catalog:'
         version: 22.19.1
@@ -4792,8 +4795,14 @@ packages:
   '@jsr/std__assert@1.0.13':
     resolution: {integrity: sha512-rZ44REoi2/p+gqu8OfkcNeaTOSiG1kD6v8gyA0YjkXsOkDsiGw9g8h7JuGC/OD7GgOVgTEY+9Cih49Y18rkrCQ==, tarball: https://npm.jsr.io/~/11/@jsr/std__assert/1.0.13.tgz}
 
+  '@jsr/std__assert@1.0.19':
+    resolution: {integrity: sha512-pEj6RPkGbqlgRmyKwATp4cUs6+ijxtdrv3bq8v1d2I2CEcMEyPaO8cVKro61wGRDH4cNg8Zx6haztvK/9m7gkA==, tarball: https://npm.jsr.io/~/11/@jsr/std__assert/1.0.19.tgz}
+
   '@jsr/std__async@1.0.13':
     resolution: {integrity: sha512-GEApyNtzauJ0kEZ/GxebSkdEN0t29qJtkw+WEvzYTwkL6fHX8cq3YWzRjCqHu+4jMl+rpHiwyr/lfitNInntzA==, tarball: https://npm.jsr.io/~/11/@jsr/std__async/1.0.13.tgz}
+
+  '@jsr/std__internal@1.0.14':
+    resolution: {integrity: sha512-JT8b/t40WcR9q0GDwRZUooY7aXeXnFal8iidE/5TckdAFtvpVAsaJ71/Xgf1SfoChs41s6CZkuCYM8toaNgdvA==, tarball: https://npm.jsr.io/~/11/@jsr/std__internal/1.0.14.tgz}
 
   '@jsr/std__internal@1.0.8':
     resolution: {integrity: sha512-C0HSkIOA4gZPhLT2YXBXYF51YTpWXWHYUgzs3PhRCVbeVpbJ3Iomghu/ylIG+SsIDGDwxUkSCvfOOveRNS/mKg==, tarball: https://npm.jsr.io/~/11/@jsr/std__internal/1.0.8.tgz}
@@ -20574,7 +20583,13 @@ snapshots:
     dependencies:
       '@jsr/std__internal': 1.0.8
 
+  '@jsr/std__assert@1.0.19':
+    dependencies:
+      '@jsr/std__internal': 1.0.14
+
   '@jsr/std__async@1.0.13': {}
+
+  '@jsr/std__internal@1.0.14': {}
 
   '@jsr/std__internal@1.0.8': {}
 
