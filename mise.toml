@@ -272,8 +272,11 @@ description = "Run the test suite using Node.js"
 depends = ["build"]
 # See the note on `build`: Nushell keeps the single-quoted pnpm filter working
 # on Windows, where `cmd` would otherwise pass it through literally.
+# Keep package-level concurrency bounded because each `node --test` command
+# also starts test workers.  Running every package at once can exhaust CI
+# runner resources and make timing-sensitive tests fail under contention.
 shell = "nu -c"
-run = "pnpm run --recursive --parallel --filter '!{docs}' --config.enable-pre-post-scripts=false test"
+run = "pnpm run --recursive --parallel --workspace-concurrency=4 --filter '!{docs}' --config.enable-pre-post-scripts=false test"
 
 [tasks."test:bun"]
 description = "Run the test suite using Bun"
