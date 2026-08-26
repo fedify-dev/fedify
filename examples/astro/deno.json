@@ -6,9 +6,9 @@
     "@deno/astro-adapter": "npm:@deno/astro-adapter@^0.6.0"
   },
   "tasks": {
-    "dev": "deno run -A npm:astro dev --config astro.config.deno.ts",
-    "build": "deno run -A npm:astro build --config astro.config.deno.ts",
-    "preview": "deno run -A npm:astro preview --config astro.config.deno.ts"
+    "dev": "deno run -A --node-modules-dir=manual npm:astro@7 dev --config astro.config.deno.ts",
+    "build": "deno run -A --node-modules-dir=manual npm:astro@7 build --config astro.config.deno.ts",
+    "preview": "deno run -A --node-modules-dir=manual npm:astro@7 preview --config astro.config.deno.ts"
   },
   "exclude": [
     ".astro",
