@@ -292,6 +292,9 @@ importers:
       '@fedify/vocab-runtime':
         specifier: workspace:^
         version: link:../packages/vocab-runtime
+      '@fedify/webfinger':
+        specifier: workspace:^
+        version: link:../packages/webfinger
       '@fontsource-variable/bricolage-grotesque':
         specifier: ^5.2.10
         version: 5.2.10
@@ -319,6 +322,12 @@ importers:
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.1
+      '@opentelemetry/context-async-hooks':
+        specifier: 'catalog:'
+        version: 2.7.1(@opentelemetry/api@1.9.1)
+      '@opentelemetry/core':
+        specifier: 'catalog:'
+        version: 2.7.1(@opentelemetry/api@1.9.1)
       '@opentelemetry/exporter-trace-otlp-proto':
         specifier: 'catalog:'
         version: 0.211.0(@opentelemetry/api@1.9.1)
@@ -403,6 +412,9 @@ importers:
       mermaid:
         specifier: ^11.4.1
         version: 11.7.0
+      mysql2:
+        specifier: 'catalog:'
+        version: 3.22.3(@types/node@22.19.1)
       postgres:
         specifier: 'catalog:'
         version: 3.4.7
@@ -24786,7 +24798,7 @@ snapshots:
       - react-native-b4a
       - supports-color
 
-  '@stackbit/cms-contentful@0.4.56(debug@4.4.1)':
+  '@stackbit/cms-contentful@0.4.56(debug@4.4.1)(graphql@16.14.2)':
     dependencies:
       '@contentful/rich-text-types': 15.15.1
       '@stackbit/cms-core': 2.0.1(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)
@@ -24800,6 +24812,7 @@ snapshots:
       - bare-buffer
       - debug
       - encoding
+      - graphql
       - react-native-b4a
       - supports-color
 
@@ -24875,28 +24888,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@stackbit/cms-git@0.4.18':
-    dependencies:
-      '@stackbit/artisanal-names': 1.0.1
-      '@stackbit/cms-core': 2.0.1(@types/react@19.1.8)(graphql@16.14.2)
-      '@stackbit/sdk': 2.0.1
-      '@stackbit/types': 1.0.1
-      '@stackbit/utils': 0.4.19
-      axios: 0.24.0
-      fs-extra: 11.3.6
-      git-url-parse: 13.1.1
-      lodash: 4.18.1
-      micromatch: 4.0.8
-      slugify: 1.6.9
-    transitivePeerDependencies:
-      - bare-abort-controller
-      - bare-buffer
-      - debug
-      - encoding
-      - react-native-b4a
-      - supports-color
-
-  '@stackbit/cms-git@0.4.18(debug@4.4.1)':
+  '@stackbit/cms-git@0.4.18(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)':
     dependencies:
       '@stackbit/artisanal-names': 1.0.1
       '@stackbit/cms-core': 2.0.1(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)
@@ -24910,12 +24902,43 @@ snapshots:
       micromatch: 4.0.8
       slugify: 1.6.9
     transitivePeerDependencies:
+      - '@types/react'
       - bare-abort-controller
       - bare-buffer
+      - bufferutil
+      - canvas
       - debug
       - encoding
+      - graphql
       - react-native-b4a
       - supports-color
+      - utf-8-validate
+
+  '@stackbit/cms-git@0.4.18(@types/react@19.1.8)(graphql@16.14.2)':
+    dependencies:
+      '@stackbit/artisanal-names': 1.0.1
+      '@stackbit/cms-core': 2.0.1(@types/react@19.1.8)(graphql@16.14.2)
+      '@stackbit/sdk': 2.0.1
+      '@stackbit/types': 1.0.1
+      '@stackbit/utils': 0.4.19
+      axios: 0.24.0
+      fs-extra: 11.3.6
+      git-url-parse: 13.1.1
+      lodash: 4.18.1
+      micromatch: 4.0.8
+      slugify: 1.6.9
+    transitivePeerDependencies:
+      - '@types/react'
+      - bare-abort-controller
+      - bare-buffer
+      - bufferutil
+      - canvas
+      - debug
+      - encoding
+      - graphql
+      - react-native-b4a
+      - supports-color
+      - utf-8-validate
 
   '@stackbit/cms-sanity@0.2.56(@types/react@19.1.8)':
     dependencies:
@@ -24944,7 +24967,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@stackbit/cms-sanity@0.2.56(@types/react@19.1.8)(debug@4.4.1)':
+  '@stackbit/cms-sanity@0.2.56(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)':
     dependencies:
       '@sanity/block-tools': 2.36.6
       '@sanity/client': 3.4.1
@@ -24967,6 +24990,7 @@ snapshots:
       - canvas
       - debug
       - encoding
+      - graphql
       - react-native-b4a
       - supports-color
       - utf-8-validate
@@ -24977,7 +25001,7 @@ snapshots:
       '@stackbit/artisanal-names': 1.0.1
       '@stackbit/cms-contentful': 0.4.56
       '@stackbit/cms-core': 2.0.1(@types/react@19.1.8)(graphql@16.14.2)
-      '@stackbit/cms-git': 0.4.18
+      '@stackbit/cms-git': 0.4.18(@types/react@19.1.8)(graphql@16.14.2)
       '@stackbit/cms-sanity': 0.2.56(@types/react@19.1.8)
       '@stackbit/sdk': 2.0.1
       '@stackbit/types': 1.0.1
@@ -25011,14 +25035,14 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@stackbit/dev-common@0.5.51(@types/react@19.1.8)(debug@4.4.1)':
+  '@stackbit/dev-common@0.5.51(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)':
     dependencies:
       '@iarna/toml': 2.2.5
       '@stackbit/artisanal-names': 1.0.1
-      '@stackbit/cms-contentful': 0.4.56(debug@4.4.1)
+      '@stackbit/cms-contentful': 0.4.56(debug@4.4.1)(graphql@16.14.2)
       '@stackbit/cms-core': 2.0.1(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)
-      '@stackbit/cms-git': 0.4.18(debug@4.4.1)
-      '@stackbit/cms-sanity': 0.2.56(@types/react@19.1.8)(debug@4.4.1)
+      '@stackbit/cms-git': 0.4.18(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)
+      '@stackbit/cms-sanity': 0.2.56(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)
       '@stackbit/sdk': 2.0.1
       '@stackbit/types': 1.0.1
       '@stackbit/utils': 0.4.19
@@ -25047,6 +25071,7 @@ snapshots:
       - canvas
       - debug
       - encoding
+      - graphql
       - react-native-b4a
       - supports-color
       - utf-8-validate
@@ -25054,8 +25079,8 @@ snapshots:
   '@stackbit/dev@1.0.35(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)':
     dependencies:
       '@stackbit/cms-core': 2.0.1(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)
-      '@stackbit/cms-git': 0.4.18(debug@4.4.1)
-      '@stackbit/dev-common': 0.5.51(@types/react@19.1.8)(debug@4.4.1)
+      '@stackbit/cms-git': 0.4.18(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)
+      '@stackbit/dev-common': 0.5.51(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)
       '@stackbit/sdk': 2.0.1
       axios: 0.25.0(debug@4.4.1)
       chalk: 4.1.2
@@ -25089,7 +25114,7 @@ snapshots:
   '@stackbit/dev@1.0.35(@types/react@19.1.8)(graphql@16.14.2)':
     dependencies:
       '@stackbit/cms-core': 2.0.1(@types/react@19.1.8)(graphql@16.14.2)
-      '@stackbit/cms-git': 0.4.18
+      '@stackbit/cms-git': 0.4.18(@types/react@19.1.8)(graphql@16.14.2)
       '@stackbit/dev-common': 0.5.51(@types/react@19.1.8)
       '@stackbit/sdk': 2.0.1
       axios: 0.25.0
@@ -33366,7 +33391,6 @@ snapshots:
       lru.min: 1.1.4
       named-placeholders: 1.1.6
       sql-escaper: 1.3.3
-    optional: true
 
   mysql2@3.22.3(@types/node@24.3.0):
     dependencies:
