@@ -351,4 +351,26 @@ describe("WorkersMessageQueue", () => {
     expect(second.shouldProcess).toBe(true);
     expect(second.message).toEqual({ id: "second" });
   });
+
+  it("enqueue() sends __fedify_ordering_key__ and __fedify_payload__ to the queue binding", async () => {
+    let sentMessage: unknown;
+
+    const queueBinding = {
+      send: (message: unknown) => {
+        sentMessage = message;
+      },
+    } as unknown as Queue;
+
+    const queue = new WorkersMessageQueue(queueBinding);
+
+    await queue.enqueue(
+      { id: "test-message" },
+      { orderingKey: "actor-1" },
+    );
+
+    expect(sentMessage).toEqual({
+      __fedify_ordering_key__: "actor-1",
+      __fedify_payload__: { id: "test-message" },
+    });
+  });
 });
