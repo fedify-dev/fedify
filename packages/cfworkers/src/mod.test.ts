@@ -373,4 +373,26 @@ describe("WorkersMessageQueue", () => {
       __fedify_payload__: { id: "test-message" },
     });
   });
+
+  it("processMessage() - returns shouldProcess=false when lock exists", async () => {
+    const orderingKv = new MockKvNamespace();
+    const queue = new WorkersMessageQueue(mockQueue, { orderingKv });
+
+    const first = await queue.processMessage({
+      __fedify_ordering_key__: "key1",
+      __fedify_payload__: { id: "first" },
+    });
+
+    expect(first.shouldProcess).toBe(true);
+    expect(first.message).toEqual({ id: "first" });
+
+    const second = await queue.processMessage({
+      __fedify_ordering_key__: "key1",
+      __fedify_payload__: { id: "second" },
+    });
+
+    expect(second.shouldProcess).toBe(false);
+    expect(second.message).toBeUndefined();
+    expect(second.release).toBeUndefined();
+  });
 });
