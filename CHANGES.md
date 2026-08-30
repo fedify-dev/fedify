@@ -257,9 +257,10 @@ To be released.
     by an embedded PGlite database.  It accepts a caller-created PGlite instance
     and is intended for a single PGlite instance in a single runtime isolate; a
     message queue is not provided because PGlite does not share data between
-    processes.  [[#1018]]
+    processes.  [[#1018], [#1020] by ChanHaeng Lee\]
 
 [#1018]: https://github.com/fedify-dev/fedify/issues/1018
+[#1020]: https://github.com/fedify-dev/fedify/issues/1020
 
 ### @fedify/postgres
 
@@ -315,7 +316,8 @@ To be released.
 ### @fedify/testing
 
  -  Added `testKvStore()`, a conformance test suite for `KvStore`
-    implementations, complementing `testMessageQueue()`.  [[#1018]]
+    implementations, complementing `testMessageQueue()`.
+    [[#1018], [#1020] by ChanHaeng Lee\]
  -  Fixed the CommonJS testing utilities build so it no longer requires
     `@js-temporal/polyfill` at runtime.  The build now bundles
     `temporal-polyfill`, while type declarations rely on the standard
