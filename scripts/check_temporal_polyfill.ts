@@ -16,6 +16,7 @@ const packages = [
   "debugger",
   "fedify",
   "mysql",
+  "pglite",
   "postgres",
   "redis",
   "relay",
@@ -195,6 +196,7 @@ async function prepareTypeConsumerProject(
       import type * as debuggerModule from "@fedify/debugger";
       import type * as fedify from "@fedify/fedify";
       import type * as mysql from "@fedify/mysql";
+      import type * as pglite from "@fedify/pglite";
       import type * as postgres from "@fedify/postgres";
       import type * as redis from "@fedify/redis";
       import type * as relay from "@fedify/relay";
@@ -211,6 +213,7 @@ async function prepareTypeConsumerProject(
         typeof debuggerModule | undefined,
         typeof fedify | undefined,
         typeof mysql | undefined,
+        typeof pglite | undefined,
         typeof postgres | undefined,
         typeof redis | undefined,
         typeof relay | undefined,
@@ -218,6 +221,7 @@ async function prepareTypeConsumerProject(
         typeof testing | undefined,
         typeof vocab | undefined,
       ] = [
+        undefined,
         undefined,
         undefined,
         undefined,

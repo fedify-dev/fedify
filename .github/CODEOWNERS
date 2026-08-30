@@ -80,6 +80,7 @@
 /packages/amqp/                                           @dahlia
 /packages/denokv/                                         @dahlia @2chanhaeng
 /packages/mysql/                                          @dahlia
+/packages/pglite/                                         @dahlia @2chanhaeng
 /packages/postgres/                                       @dahlia @2chanhaeng
 /packages/redis/                                          @dahlia @2chanhaeng
 /packages/sqlite/                                         @dahlia @2chanhaeng
