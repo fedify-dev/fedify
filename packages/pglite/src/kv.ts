@@ -12,7 +12,15 @@ import { getLogger } from "@logtape/logtape";
 const logger = getLogger(["fedify", "pglite", "kv"]);
 
 function quoteIdentifier(identifier: string): string {
-  return `"${identifier.replaceAll('"', '""').replaceAll(".", '"."')}"`;
+  const parts = identifier.split(".");
+  if (parts.includes("")) {
+    throw new TypeError(
+      `Invalid table name for the key–value store: ${
+        JSON.stringify(identifier)
+      }`,
+    );
+  }
+  return parts.map((part) => `"${part.replaceAll('"', '""')}"`).join(".");
 }
 
 function serializeJson(value: unknown): string {
@@ -29,6 +37,8 @@ function serializeJson(value: unknown): string {
 export interface PgliteKvStoreOptions {
   /**
    * The table name to use for the key–value store.
+   * A `.` separates the schema from the table name, so neither the whole
+   * name nor any segment between dots can be empty.
    * `"fedify_kv_v2"` by default.
    * @default `"fedify_kv_v2"`
    */
@@ -68,6 +78,7 @@ export interface PgliteKvStoreOptions {
 export class PgliteKvStore implements KvStore {
   readonly #pg: PGliteInterface;
   readonly #tableName: string;
+  readonly #quotedTableName: string;
   #initialized: boolean;
   #initializing?: Promise<void>;
 
@@ -82,12 +93,13 @@ export class PgliteKvStore implements KvStore {
   ) {
     this.#pg = pg;
     this.#tableName = options.tableName ?? "fedify_kv_v2";
+    this.#quotedTableName = quoteIdentifier(this.#tableName);
     this.#initialized = options.initialized ?? false;
   }
 
   async #expire(): Promise<void> {
     await this.#pg.query(`
-      DELETE FROM ${quoteIdentifier(this.#tableName)}
+      DELETE FROM ${this.#quotedTableName}
       WHERE ttl IS NOT NULL AND created + ttl < CURRENT_TIMESTAMP;
     `);
   }
@@ -97,7 +109,7 @@ export class PgliteKvStore implements KvStore {
     const result = await this.#pg.query<{ value: T }>(
       `
       SELECT value
-      FROM ${quoteIdentifier(this.#tableName)}
+      FROM ${this.#quotedTableName}
       WHERE key = $1::text[]
         AND (ttl IS NULL OR created + ttl > CURRENT_TIMESTAMP);
     `,
@@ -117,7 +129,7 @@ export class PgliteKvStore implements KvStore {
       : Temporal.Duration.from(options.ttl).toString();
     await this.#pg.query(
       `
-      INSERT INTO ${quoteIdentifier(this.#tableName)} (key, value, ttl)
+      INSERT INTO ${this.#quotedTableName} (key, value, ttl)
       VALUES ($1::text[], $2::text::jsonb, $3::text::interval)
       ON CONFLICT (key)
         DO UPDATE SET
@@ -134,7 +146,7 @@ export class PgliteKvStore implements KvStore {
     await this.initialize();
     await this.#pg.query(
       `
-      DELETE FROM ${quoteIdentifier(this.#tableName)}
+      DELETE FROM ${this.#quotedTableName}
       WHERE key = $1::text[];
     `,
       [key],
@@ -164,7 +176,7 @@ export class PgliteKvStore implements KvStore {
     if (expectedValue === undefined) {
       const result = await this.#pg.query(
         `
-        INSERT INTO ${quoteIdentifier(this.#tableName)} AS existing
+        INSERT INTO ${this.#quotedTableName} AS existing
           (key, value, created, ttl)
         VALUES (
           $1::text[],
@@ -187,7 +199,7 @@ export class PgliteKvStore implements KvStore {
     } else if (newValue === undefined) {
       const result = await this.#pg.query(
         `
-        DELETE FROM ${quoteIdentifier(this.#tableName)}
+        DELETE FROM ${this.#quotedTableName}
         WHERE key = $1::text[]
           AND (ttl IS NULL OR created + ttl > CURRENT_TIMESTAMP)
           AND value = $2::text::jsonb
@@ -199,7 +211,7 @@ export class PgliteKvStore implements KvStore {
     } else {
       const result = await this.#pg.query(
         `
-        UPDATE ${quoteIdentifier(this.#tableName)}
+        UPDATE ${this.#quotedTableName}
         SET
           value = $3::text::jsonb,
           created = CURRENT_TIMESTAMP,
@@ -230,14 +242,14 @@ export class PgliteKvStore implements KvStore {
     const result = prefix == null || prefix.length === 0
       ? await this.#pg.query<{ key: KvKey; value: unknown }>(`
         SELECT key, value
-        FROM ${quoteIdentifier(this.#tableName)}
+        FROM ${this.#quotedTableName}
         WHERE ttl IS NULL OR created + ttl > CURRENT_TIMESTAMP
         ORDER BY key;
       `)
       : await this.#pg.query<{ key: KvKey; value: unknown }>(
         `
         SELECT key, value
-        FROM ${quoteIdentifier(this.#tableName)}
+        FROM ${this.#quotedTableName}
         WHERE array_length(key, 1) >= $1
           AND key[1:$1] = $2::text[]
           AND (ttl IS NULL OR created + ttl > CURRENT_TIMESTAMP)
@@ -260,7 +272,7 @@ export class PgliteKvStore implements KvStore {
         tableName: this.#tableName,
       });
       await this.#pg.query(`
-        CREATE TABLE IF NOT EXISTS ${quoteIdentifier(this.#tableName)} (
+        CREATE TABLE IF NOT EXISTS ${this.#quotedTableName} (
           key text[] PRIMARY KEY,
           value jsonb NOT NULL,
           created timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
@@ -286,7 +298,7 @@ export class PgliteKvStore implements KvStore {
   async drop(): Promise<void> {
     await this.#pg.waitReady;
     await this.#pg.query(
-      `DROP TABLE IF EXISTS ${quoteIdentifier(this.#tableName)};`,
+      `DROP TABLE IF EXISTS ${this.#quotedTableName};`,
     );
     this.#initialized = false;
     this.#initializing = undefined;

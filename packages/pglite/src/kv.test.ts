@@ -64,6 +64,17 @@ test("PgliteKvStore.drop() is idempotent", async () => {
   }
 });
 
+test("PgliteKvStore rejects table names with empty segments", () => {
+  const pg = {} as unknown as PGlite;
+  for (const tableName of ["", ".", "schema..table", ".table", "table."]) {
+    assert.throws(
+      () => new PgliteKvStore(pg, { tableName }),
+      TypeError,
+      `tableName: ${JSON.stringify(tableName)}`,
+    );
+  }
+});
+
 test("PgliteKvStore supports qualified mixed-case table names", async () => {
   const pg = new PGlite();
   const suffix = crypto.randomUUID().replaceAll("-", "");
