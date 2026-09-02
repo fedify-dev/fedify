@@ -130,6 +130,7 @@
       "./packages"
     ],
     "exclude": [
+      "./packages/adonisjs/**",
       "./packages/init/src/templates/**",
       "./packages/next/**"
     ]
