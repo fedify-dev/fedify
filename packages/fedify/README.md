@@ -224,14 +224,14 @@ financial contributors:[^2]
 
 ### Supporters
 
-- [tkgka](https://opencollective.com/tkgka)
 - [Blaine](https://opencollective.com/blaine)
+- [tkgka](https://opencollective.com/tkgka)
 - [Erick González Aguilar](https://opencollective.com/erick-gonzalez-aguilar)
 - [Daniel Supernault](https://pixelfed.org/)
 
 ### Backers
 
-Robin Riley, Encyclia, taye, box464, Evan Prodromou, okin, yamanoku, malte, Rafael Goulart, Andy Piper
+Robin Riley, Encyclia, box464, Evan Prodromou, taye, okin, yamanoku, malte, Rafael Goulart, Andy Piper
 
 ### One-time donations
 
