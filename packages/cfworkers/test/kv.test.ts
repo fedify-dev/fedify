@@ -36,7 +36,7 @@ describe("WorkersKvStore", () => {
     await env.KV1.put(
       JSON.stringify(["expired", "test"]),
       JSON.stringify("stale-value"),
-      {expirationTtl: 60, metadata: {expires : Date.now() - 1000}},
+      { expirationTtl: 60, metadata: { expires: Date.now() - 1000 } },
     );
 
     expect(await store.get(["expired", "test"])).toBeUndefined();
@@ -48,11 +48,11 @@ describe("WorkersKvStore", () => {
     await env.KV1.put(
       JSON.stringify(["fresh", "test"]),
       JSON.stringify("live-value"),
-      { expirationTtl: 60, metadata: { expires: Date.now() + 60_000 }},
+      { expirationTtl: 60, metadata: { expires: Date.now() + 60_000 } },
     );
 
     expect(await store.get(["fresh", "test"])).toBe("live-value");
-  })
+  });
 
   it("delete()", async () => {
     const store = new WorkersKvStore(env.KV1);
@@ -85,7 +85,32 @@ describe("WorkersKvStore", () => {
     expect(entries.some((e) => e.key[1] === "nested")).toBe(true);
   });
 
+  it("list() - excludes expired entries", async () => {
+    const store = new WorkersKvStore(env.KV1);
 
+    await env.KV1.put(
+      JSON.stringify(["expired-list"]),
+      JSON.stringify("stale-root"),
+      { expirationTtl: 60, metadata: { expires: Date.now() - 1000 } },
+    );
+
+    await env.KV1.put(
+      JSON.stringify(["expired-list", "stale"]),
+      JSON.stringify("stale-child"),
+      { expirationTtl: 60, metadata: { expires: Date.now() - 1000 } },
+    );
+
+    await store.set(["expired-list", "fresh"], "fresh-child");
+
+    const entries: { key: readonly unknown[]; value: unknown }[] = [];
+    for await (const entry of store.list(["expired-list"])) {
+      entries.push({ key: entry.key, value: entry.value });
+    }
+
+    expect(entries).toEqual([
+      { key: ["expired-list", "fresh"], value: "fresh-child" },
+    ]);
+  });
 
   it("list() - single element key", async () => {
     const store = new WorkersKvStore(env.KV1);
