@@ -557,6 +557,43 @@ federation
 
 [Object Integrity Proofs]: ./send.md#object-integrity-proofs
 
+### `actor-preferred-username-required`
+
+Ensures actors have a `preferredUsername` property.
+
+**When this rule applies:**
+The actor dispatcher is configured with `setActorDispatcher()`, but the actor
+object doesn't include a `preferredUsername` property.
+
+**Why it matters:**
+Most fediverse software expects actors to expose a stable
+`preferredUsername`.  Omitting it tends to make remote display, search, and
+profile rendering worse, even though Fedify itself doesn't require it.
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import { createFederation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
+const federation = createFederation<void>({ kv: null as any });
+// ---cut-before---
+// ❌ Bad: Missing preferredUsername property
+federation.setActorDispatcher("/users/{identifier}", (ctx, identifier) => {
+  return new Person({
+    id: ctx.getActorUri(identifier),
+    name: "John Doe",  // No preferredUsername!
+  });
+});
+
+// ✅ Good: Include preferredUsername property
+federation.setActorDispatcher("/users/{identifier}", (ctx, identifier) => {
+  return new Person({
+    id: ctx.getActorUri(identifier),
+    preferredUsername: identifier,
+    name: "John Doe",
+  });
+});
+~~~~
+
 ### `actor-inbox-property-required`
 
 Ensures `inbox` is defined when `setInboxListeners()` is configured.
