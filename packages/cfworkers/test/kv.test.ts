@@ -30,6 +30,18 @@ describe("WorkersKvStore", () => {
     expect(await store.get(["ttl", "test"])).toBe("ttl-value");
   });
 
+  it("get() - excludes expired entry", async () => {
+    const store = new WorkersKvStore(env.KV1);
+
+    await env.KV1.put(
+      JSON.stringify(["expired", "test"]),
+      JSON.stringify("stale-value"),
+      { expirationTtl: 60, metadata: { expires: Date.now() - 1000 } },
+    );
+
+    expect(await store.get(["expired", "test"])).toBeUndefined();
+  });
+
   it("delete()", async () => {
     const store = new WorkersKvStore(env.KV1);
 
