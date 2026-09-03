@@ -78,7 +78,7 @@ const getNameIfIdentifier = (node: Parameter): string | null =>
   node?.type === "Identifier" ? node.name : null;
 
 function createMismatchRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
-  config: PropertyConfig,
+  config: PropertyConfig & { getter: string },
   describe: (
     methodCallContext: MethodCallContext,
   ) => Context extends Deno.lint.RuleContext ? {
@@ -152,7 +152,7 @@ function createMismatchRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
  * @returns A Deno lint rule
  */
 export const createMismatchRuleDeno = (
-  config: PropertyConfig,
+  config: PropertyConfig & { getter: string },
 ): Deno.lint.Rule => ({
   create: createMismatchRule(
     config,
@@ -163,7 +163,7 @@ export const createMismatchRuleDeno = (
 });
 
 export const createMismatchRuleEslint = (
-  config: PropertyConfig,
+  config: PropertyConfig & { getter: string },
 ): Rule.RuleModule => ({
   meta: {
     type: "problem",

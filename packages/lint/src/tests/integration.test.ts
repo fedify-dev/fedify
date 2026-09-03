@@ -146,6 +146,7 @@ federation
     return new Person({
       id: ctx.getActorUri(identifier),
       name: "John Doe",
+      preferredUsername: identifier,
       summary: "A test actor for comprehensive lint rule validation",
       inbox: ctx.getInboxUri(identifier),
       endpoints: new Endpoints({
@@ -372,6 +373,16 @@ test("Integration: ❌ actor-id-required - missing id property", () =>
       "// id: ctx.getActorUri(identifier), // REMOVED",
     ),
     assertHasError("actor-id-required"),
+  ));
+
+test("Integration: ❌ actor-preferred-username-required - missing preferred-username property", () =>
+  pipe(
+    COMPLETE_VALID_CODE,
+    replace(
+      "preferredUsername: identifier,",
+      "// preferredUsername: identifier, // REMOVED",
+    ),
+    assertHasError("actor-preferred-username-required"),
   ));
 
 test(

@@ -114,6 +114,12 @@ export const properties = {
     requiresIdentifier: true,
     isKeyProperty: true,
   },
+  preferredUsername: {
+    name: "preferredUsername",
+    path: ["preferredUsername"],
+    setter: "setActorDispatcher",
+    requiresIdentifier: false,
+  },
 } as const satisfies Record<string, PropertyConfig>;
 
 /**
@@ -133,6 +139,7 @@ export const RULE_IDS = {
   actorUploadMediaPropertyRequired: "actor-upload-media-property-required",
   actorPublicKeyRequired: "actor-public-key-required",
   actorAssertionMethodRequired: "actor-assertion-method-required",
+  actorPreferredUsernameRequired: "actor-preferred-username-required",
 
   // Mismatch rules
   actorIdMismatch: "actor-id-mismatch",

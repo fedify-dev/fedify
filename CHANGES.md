@@ -233,6 +233,12 @@ To be released.
         `endpoints.uploadMedia` is not built with
         `ctx.getMediaUploaderUri(identifier)`.
 
+ -  Added the `actor-preferred-username-required` lint rule, which warns
+    when an actor dispatcher's return value does not include a
+    `preferredUsername` property. [[#895]]
+
+[#895]: https://github.com/fedify-dev/fedify/issues/895
+
 ### @fedify/mysql
 
  -  Fixed the CommonJS MySQL adapter build so it no longer requires
