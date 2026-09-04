@@ -119,6 +119,7 @@ export const properties = {
     path: ["preferredUsername"],
     setter: "setActorDispatcher",
     requiresIdentifier: false,
+    pluralName: "preferredUsernames",
   },
 } as const satisfies Record<string, PropertyConfig>;
 

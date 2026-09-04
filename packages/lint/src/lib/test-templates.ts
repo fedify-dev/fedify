@@ -464,6 +464,19 @@ export function createPreferredUsernameRequiredRuleTests(
       true,
     ],
 
+    // ✅ Good - with plural preferredUsernames property
+    "with preferredUsernames (plural) property": [
+      lintTest({
+        code: createActorDispatcherCode(`return new Person({
+          preferredUsernames: [identifier],
+          name: "John Doe",
+        });`),
+        rule,
+        ruleName,
+      }),
+      true,
+    ],
+
     // ✅ Good - BlockStatement with preferredUsername
     "block statement with preferredUsername": [
       lintTest({

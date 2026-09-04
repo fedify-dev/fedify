@@ -95,6 +95,13 @@ export interface PropertyConfig {
   setter: string;
   /** Whether the getter requires an identifier parameter (default: true) */
   requiresIdentifier: boolean;
+  /**
+   * Plural form of the property name that also satisfies this check
+   * (e.g., "preferredUsernames" for "preferredUsername"), for vocabulary
+   * properties whose constructors accept a plural initializer as sugar for
+   * the singular one.
+   */
+  pluralName?: string;
   /** Nested property configuration, if this property is nested inside another */
   nested?: NestedPropertyConfig;
   /** Whether this is a key-related property (uses getActorKeyPairs) */
