@@ -561,6 +561,8 @@ federation
 
 Ensures actors have a `preferredUsername` property.
 
+*This rule is introduced in Fedify 2.4.0.*
+
 **When this rule applies:**
 The actor dispatcher is configured with `setActorDispatcher()`, but the actor
 object doesn't include a `preferredUsername` property.
