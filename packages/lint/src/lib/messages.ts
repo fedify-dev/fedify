@@ -11,18 +11,24 @@ export const actorPropertyRequired = ({
   path,
   getter,
   requiresIdentifier = true,
-}: PropertyConfig): string =>
-  `When \`${setter}\` is configured, the \`${
-    path.join(".")
-  }\` property is recommended. Use \`${
-    getExpectedCall({
-      ctxName: "Context",
-      methodName: getter,
-      idName: "identifier",
-      path: path.join("."),
-      requiresIdentifier,
-    })
-  }\` for the \`${path.join(".")}\` property URI.`;
+}: PropertyConfig): string => {
+  const propertyPath = path.join(".");
+
+  const recommendation = getter == null
+    ? `Set the \`${propertyPath}\` property directly on the actor object.`
+    : `Use \`${
+      getExpectedCall({
+        ctxName: "Context",
+        methodName: getter,
+        idName: "identifier",
+        path: path.join("."),
+        requiresIdentifier,
+      })
+    }\` for the \`${propertyPath}\` property URI.`;
+
+  return `When \`${setter}\` is configured, the \`${propertyPath}\` ` +
+    `property is recommended. ${recommendation}`;
+};
 
 /**
  * Generates error message for *-mismatch rules.
