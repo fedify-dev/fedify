@@ -816,6 +816,34 @@ return new Person({ ${ID_PROP} name: "A" });`,
         true,
       ],
 
+      // ✅ Dispatcher returns only a Tombstone (e.g. a deleted actor)
+      "returns only a Tombstone": [
+        lintTest({
+          code: createDispatcherCode(
+            `return new Tombstone({ id: ctx.getActorUri(identifier) });`,
+            setter,
+          ),
+          rule,
+          ruleName,
+        }),
+        true,
+      ],
+
+      // ✅ Ternary with Tombstone and property in actor branch
+      "ternary with Tombstone and property in actor branch": [
+        lintTest({
+          code: createDispatcherCode(
+            `return condition
+    ? new Tombstone({ id: ctx.getActorUri(identifier) })
+    : new Person({ ${ID_PROP} ${propCode} name: "A" });`,
+            setter,
+          ),
+          rule,
+          ruleName,
+        }),
+        true,
+      ],
+
       // ✅ Ternary with property in both branches
       "ternary with property in both branches": [
         lintTest({

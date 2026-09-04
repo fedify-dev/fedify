@@ -126,14 +126,23 @@ const unwrapTypeScriptExpression = (node: Expression): Expression => {
 const isNullLiteral = (node: Expression): boolean =>
   node.type === "Literal" && node.value === null;
 
+const isTombstoneExpression = (node: Expression): boolean =>
+  node.type === "NewExpression" &&
+  node.callee.type === "Identifier" &&
+  node.callee.name === "Tombstone";
+
 // Check if both branches have the property
 const checkBranchWith =
   (propertyChecker: PropertyChecker) => (branch: Expression): boolean => {
     const expression = unwrapTypeScriptExpression(branch);
 
     // A null return means that no actor was found, so there is no actor object
-    // whose properties need to be checked.
-    if (isNullLiteral(expression)) return true;
+    // whose properties need to be checked. A Tombstone return means the actor
+    // was deleted, which ActorDispatcher explicitly permits, so it likewise
+    // has no actor properties to check.
+    if (isNullLiteral(expression) || isTombstoneExpression(expression)) {
+      return true;
+    }
 
     return pipe(
       expression,
