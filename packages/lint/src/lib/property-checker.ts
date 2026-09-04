@@ -224,6 +224,7 @@ export const createPropertySearcher = (propertyChecker: PropertyChecker) => {
         return checkAllReturnPaths(propertyChecker)(node);
 
       case "NewExpression":
+        if (isTombstoneExpression(node)) return true;
         return pipe(
           node,
           extractFirstObjectExpression,

@@ -543,6 +543,21 @@ export function createPreferredUsernameRequiredRuleTests(
       }),
       false,
     ],
+
+    // ✅ Good - concise-body dispatcher returning only a Tombstone
+    "concise-body dispatcher returning only a Tombstone": [
+      lintTest({
+        code: `
+federation.setActorDispatcher(
+  "/users/{identifier}",
+  (ctx, identifier) => new Tombstone({ id: ctx.getActorUri(identifier) }),
+);
+`,
+        rule,
+        ruleName,
+      }),
+      true,
+    ],
   };
 }
 
