@@ -1,5 +1,6 @@
 {
   "devDependencies": {
+    "@electric-sql/pglite": "catalog:",
     "@braintree/sanitize-url": "^7.1.2",
     "@cloudflare/workers-types": "catalog:",
     "@deno/kv": "^0.8.4",
@@ -17,9 +18,10 @@
     "@fedify/koa": "workspace:^",
     "@fedify/lint": "workspace:^",
     "@fedify/mysql": "workspace:^",
-    "@fedify/netlify": "workspace:^",
     "@fedify/nestjs": "workspace:^",
+    "@fedify/netlify": "workspace:^",
     "@fedify/next": "workspace:^",
+    "@fedify/pglite": "workspace:^",
     "@fedify/postgres": "workspace:^",
     "@fedify/redis": "workspace:^",
     "@fedify/relay": "workspace:^",
@@ -27,8 +29,8 @@
     "@fedify/sveltekit": "workspace:^",
     "@fedify/testing": "workspace:^",
     "@fedify/uri-template": "workspace:^",
-    "@fedify/vocab": "workspace:^",
     "@fedify/vocab-runtime": "workspace:^",
+    "@fedify/vocab": "workspace:^",
     "@fedify/webfinger": "workspace:^",
     "@fontsource-variable/bricolage-grotesque": "^5.2.10",
     "@hackmd/markdown-it-task-lists": "^2.1.4",
@@ -84,7 +86,7 @@
   },
   "scripts": {
     "dev": "cd ../ && pnpm run --filter '@fedify/*' -r build:self && cd docs/ && vitepress dev --host",
-    "build": "cd ../ && pnpm run --filter '@fedify/*' -r build:self && cd docs/ && NODE_OPTIONS='--max-old-space-size=12288' vitepress build",
+    "build": "cd ../ && pnpm run --filter '@fedify/*' -r build:self && cd docs/ && NODE_OPTIONS='--max-old-space-size=3072' vitepress build",
     "preview": "cd ../ && pnpm run --filter '@fedify/*' -r build:self && cd docs/ && vitepress preview"
   }
 }

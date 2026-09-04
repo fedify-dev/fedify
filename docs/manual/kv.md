@@ -306,6 +306,74 @@ const federation = createFederation<void>({
 
 [`PostgresKvStore`]: https://jsr.io/@fedify/postgres/doc/kv/~/PostgresKvStore
 
+### [`PgliteKvStore`]
+
+*This API is available since Fedify 2.4.0.*
+
+To use the [`PgliteKvStore`], install the *@fedify/pglite* package and PGlite:
+
+::: code-group
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/pglite npm:@electric-sql/pglite
+~~~~
+
+~~~~ bash [npm]
+npm add @fedify/pglite @electric-sql/pglite
+~~~~
+
+~~~~ bash [pnpm]
+pnpm add @fedify/pglite @electric-sql/pglite
+~~~~
+
+~~~~ bash [Yarn]
+yarn add @fedify/pglite @electric-sql/pglite
+~~~~
+
+~~~~ bash [Bun]
+bun add @fedify/pglite @electric-sql/pglite
+~~~~
+
+:::
+
+[`PgliteKvStore`] uses an embedded PGlite database without requiring a
+PostgreSQL server.  It uses the same schema and default table name as
+[`PostgresKvStore`], so data can be migrated to PostgreSQL without converting
+the key–value records.
+
+Best for
+:   Development and testing, single-process deployments, and embedded or
+    desktop applications that need PostgreSQL-compatible storage without a
+    PostgreSQL server.
+
+Pros
+:   No server installation, PostgreSQL-compatible SQL, and the same schema as
+    [`PostgresKvStore`].
+
+Cons
+:   Only one process and PGlite instance can open a data directory, data are
+    not shared between processes, and horizontal scaling is not supported.
+
+~~~~ typescript twoslash
+import { PGlite } from "@electric-sql/pglite";
+import { createFederation } from "@fedify/fedify";
+import { PgliteKvStore } from "@fedify/pglite";
+
+const pg = new PGlite("./data/fedify");
+const federation = createFederation<void>({
+  kv: new PgliteKvStore(pg),
+  // ... other options
+});
+~~~~
+
+> [!WARNING]
+> The caller owns the PGlite instance and must close it during application
+> shutdown after pending store operations finish.  Do not open the same data
+> directory from multiple worker processes.  Use one PGlite instance per data
+> directory and runtime isolate.
+
+[`PgliteKvStore`]: https://jsr.io/@fedify/pglite/doc/kv/~/PgliteKvStore
+
 ### [`MysqlKvStore`]
 
 *This API is available since Fedify 2.1.0.*

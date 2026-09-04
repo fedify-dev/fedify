@@ -22,6 +22,7 @@ packages:
 - packages/nestjs
 - packages/next
 - packages/nuxt
+- packages/pglite
 - packages/postgres
 - packages/redis
 - packages/relay
@@ -61,20 +62,23 @@ allowBuilds:
 catalog:
   "@astrojs/netlify": ^6.6.5
   "@cloudflare/workers-types": ^4.20260511.1
-  "@netlify/database": ^1.1.0
-  netlify-cli: ^26.2.0
-  "@netlify/async-workloads": ^0.0.106
+  "@electric-sql/pglite": ^0.5.8
   "@fxts/core": ^1.21.1
   "@js-temporal/polyfill": ^0.5.1
   "@logtape/file": ^2.2.0
   "@logtape/logtape": ^2.2.0
   "@multiformats/base-x": ^4.0.1
+  "@nestjs/common": ^11.0.1
+  "@netlify/async-workloads": ^0.0.106
+  "@netlify/database": ^1.1.0
+  "@nuxt/kit": ^4.4.2
+  "@nuxt/schema": ^4.4.2
   "@opentelemetry/api": ^1.9.1
-  "@opentelemetry/exporter-trace-otlp-proto": ^0.211.0
   "@opentelemetry/context-async-hooks": ^2.7.1
   "@opentelemetry/core": ^2.7.1
-  "@opentelemetry/sdk-node": ^0.211.0
+  "@opentelemetry/exporter-trace-otlp-proto": ^0.211.0
   "@opentelemetry/sdk-metrics": 2.7.1
+  "@opentelemetry/sdk-node": ^0.211.0
   "@opentelemetry/sdk-trace-base": ^2.7.1
   "@opentelemetry/semantic-conventions": ^1.40.0
   "@optique/config": ^1.1.0
@@ -89,12 +93,11 @@ catalog:
   "@types/amqplib": ^0.10.8
   "@types/better-sqlite3": ^7.6.13
   "@types/bun": ^1.2.23
+  "@types/emscripten": ^1.41.1
   "@types/express": ^4.0.0
   "@types/koa": ^2.15.0
   "@types/node": ^22.17.0
-  "@nestjs/common": ^11.0.1
-  "@nuxt/kit": ^4.4.2
-  "@nuxt/schema": ^4.4.2
+  netlify-cli: ^26.2.0
   astro: ^7.0.0
   amqplib: ^0.10.9
   asn1js: ^3.0.10
