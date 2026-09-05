@@ -1,61 +1,71 @@
 packages:
-- packages/amqp
-- packages/astro
-- packages/backfill
-- packages/cfworkers
-- packages/cli
-- packages/debugger
-- packages/create
-- packages/elysia
-- packages/express
-- packages/fastify
-- packages/fedify
-- packages/fixture
-- packages/h3
-- packages/hono
-- packages/init
-- packages/interaction-controls
-- packages/koa
-- packages/lint
-- packages/mysql
-- packages/netlify
-- packages/nestjs
-- packages/next
-- packages/nuxt
-- packages/pglite
-- packages/postgres
-- packages/redis
-- packages/relay
-- packages/solidstart
-- packages/sqlite
-- packages/sveltekit
-- packages/testing
-- packages/uri-template
-- packages/vocab
-- packages/vocab-runtime
-- packages/vocab-tools
-- packages/webfinger
-- docs
-- examples/astro
-- examples/cloudflare-workers
-- examples/elysia
-- examples/express
-- examples/koa
-- examples/lint/oxlint
-- examples/next-integration
-- examples/fastify
-- examples/next14-app-router
-- examples/next15-app-router
-- examples/netlify-astro
-- examples/nuxt
-- examples/solidstart
-- examples/sveltekit-sample
+  - packages/amqp
+  - packages/astro
+  - packages/backfill
+  - packages/cfworkers
+  - packages/cli
+  - packages/debugger
+  - packages/create
+  - packages/elysia
+  - packages/express
+  - packages/fastify
+  - packages/fedify
+  - packages/fixture
+  - packages/h3
+  - packages/hono
+  - packages/init
+  - packages/interaction-controls
+  - packages/koa
+  - packages/lint
+  - packages/mysql
+  - packages/netlify
+  - packages/nestjs
+  - packages/next
+  - packages/nuxt
+  - packages/pglite
+  - packages/postgres
+  - packages/redis
+  - packages/relay
+  - packages/solidstart
+  - packages/sqlite
+  - packages/sveltekit
+  - packages/testing
+  - packages/uri-template
+  - packages/vocab
+  - packages/vocab-runtime
+  - packages/vocab-tools
+  - packages/webfinger
+  - docs
+  - examples/astro
+  - examples/cloudflare-workers
+  - examples/elysia
+  - examples/express
+  - examples/koa
+  - examples/lint/oxlint
+  - examples/next-integration
+  - examples/fastify
+  - examples/next14-app-router
+  - examples/next15-app-router
+  - examples/netlify-astro
+  - examples/nuxt
+  - examples/solidstart
+  - examples/sveltekit-sample
 
 allowBuilds:
+  '@netlify/content-engine': true
+  '@parcel/watcher': true
   '@tailwindcss/oxide': true
+  better-sqlite3: true
+  content-engine: true
+  contentful: true
+  es5-ext: false
   esbuild: true
+  lmdb: true
+  msgpackr-extract: true
+  netlify-cli: true
   protobufjs: true
   sharp: true
+  unix-dgram: false
   unrs-resolver: true
   workerd: true
 
