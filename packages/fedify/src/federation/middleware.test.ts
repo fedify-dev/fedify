@@ -11277,6 +11277,45 @@ test("KvSpecDeterminer", async (t) => {
     spec = await determiner.determineSpec("example.com");
     assertEquals(spec, "rfc9421");
   });
+
+  await t.step("should default specTtl to 90 days", () => {
+    const kv = new MemoryKvStore();
+    const prefix = ["test", "spec"] as const;
+    const determiner = new KvSpecDeterminer(kv, prefix);
+    assertEquals(determiner.specTtl.total("day"), 90);
+  });
+
+  await t.step(
+    "should accept a configurable specTtl as a 4th positional argument",
+    () => {
+      const kv = new MemoryKvStore();
+      const prefix = ["test", "spec"] as const;
+      // The existing 3-argument constructor shape must keep working; the
+      // options object is purely additive.
+      const determiner = new KvSpecDeterminer(kv, prefix, "rfc9421", {
+        specTtl: Temporal.Duration.from({ days: 7 }),
+      });
+      assertEquals(determiner.specTtl.total("day"), 7);
+    },
+  );
+
+  await t.step("should expire remembered spec after specTtl", async () => {
+    const kv = new MemoryKvStore();
+    const prefix = ["test", "spec"] as const;
+    const determiner = new KvSpecDeterminer(kv, prefix, "rfc9421", {
+      specTtl: Temporal.Duration.from({ milliseconds: 1 }),
+    });
+
+    await determiner.rememberSpec(
+      "example.com",
+      "draft-cavage-http-signatures-12",
+    );
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // Falls back to the default spec once the remembered entry expires.
+    const spec = await determiner.determineSpec("example.com");
+    assertEquals(spec, "rfc9421");
+  });
 });
 
 test("createFederation() instruments documentLoader with activitypub.document.fetch", async () => {

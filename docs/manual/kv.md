@@ -512,6 +512,92 @@ export default {
 [Cloudflare Workers KV]: https://developers.cloudflare.com/kv/
 
 
+Clearing legacy cache entries
+-----------------------------
+
+*This section is relevant since Fedify 2.4.0.*
+
+Fedify keeps two caches in your `KvStore`: cached actor public keys (used by
+`KvKeyCache`) and remembered per-origin HTTP Message Signatures specs (used
+by `KvSpecDeterminer`).  As of Fedify 2.4.0, Fedify writes both with a
+TTL it configures internally—30 days for cached keys and 90 days for
+remembered specs.
+
+Entries written by Fedify 2.3 or earlier have no TTL.  They are *not*
+migrated or expired automatically: they simply stay in your `KvStore` until
+something overwrites them, which is the same behavior Fedify has always had.
+Leaving them alone is a perfectly valid choice—Fedify keeps serving and
+refreshing them as before, and they get a TTL the next time they're written.
+
+If you'd rather not wait for that, you can clear the old entries yourself.
+Both caches live under fixed key prefixes:
+
+ -  `["_fedify", "publicKey"]` — cached actor public keys
+ -  `["_fedify", "httpMessageSignaturesSpec"]` — remembered HTTP
+    Message Signatures specs
+
+Deleting everything under these prefixes is always safe.  Both caches are
+soft state: Fedify relearns them on demand (by refetching the actor's key, or
+by renegotiating the signature spec on the next delivery), at the cost of a
+few extra fetches right after you clear them.
+
+### Clearing entries in `RedisKvStore`
+
+[`RedisKvStore`] stores every key under a shared prefix (`"fedify::"` by
+default, configurable via `RedisKvStoreOptions.keyPrefix`), followed by the
+`KvKey` parts joined with `"::"`.  So with the default prefix, scan for and
+delete the two Fedify caches like this:
+
+~~~~ bash
+redis-cli --scan --pattern 'fedify::_fedify::publicKey::*' | xargs -r redis-cli del
+redis-cli --scan --pattern 'fedify::_fedify::httpMessageSignaturesSpec::*' | xargs -r redis-cli del
+~~~~
+
+Replace the leading `fedify::` with your own `keyPrefix` if you configured a
+custom one.
+
+### Clearing entries in `PostgresKvStore`
+
+[`PostgresKvStore`] stores every entry as a row keyed by a `text[]` column
+(the table is named `fedify_kv_v2` by default, configurable via
+`PostgresKvStoreOptions.tableName`).  Delete the two Fedify caches with:
+
+~~~~ sql
+DELETE FROM fedify_kv_v2
+WHERE array_length(key, 1) >= 2 AND key[1:2] = ARRAY['_fedify', 'publicKey'];
+
+DELETE FROM fedify_kv_v2
+WHERE array_length(key, 1) >= 2
+  AND key[1:2] = ARRAY['_fedify', 'httpMessageSignaturesSpec'];
+~~~~
+
+Replace `fedify_kv_v2` with your own `tableName` if you configured a custom
+one.
+
+### Clearing entries in other `KvStore` implementations
+
+For any other `KvStore`, iterate the two prefixes with [`~KvStore.list()`]
+and delete each key you get back:
+
+~~~~ typescript twoslash
+import type { KvStore } from "@fedify/fedify";
+const kv = null as unknown as KvStore;
+// ---cut-before---
+for (
+  const prefix of [
+    ["_fedify", "publicKey"],
+    ["_fedify", "httpMessageSignaturesSpec"],
+  ] as const
+) {
+  for await (const entry of kv.list(prefix)) {
+    await kv.delete(entry.key);
+  }
+}
+~~~~
+
+[`~KvStore.list()`]: https://jsr.io/@fedify/fedify/doc/federation/~/KvStore#list
+
+
 Implementing a custom `KvStore`
 -------------------------------
 

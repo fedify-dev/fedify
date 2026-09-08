@@ -4898,19 +4898,39 @@ interface SendActivityInternalOptions<TContextData> {
   readonly context: Context<TContextData>;
 }
 
+/**
+ * Options for {@link KvSpecDeterminer}.
+ * @since 2.4.0
+ */
+export interface KvSpecDeterminerOptions {
+  /**
+   * The TTL for remembered specs.  `90` days by default.
+   *
+   * Entries written by Fedify versions older than 2.4.0 have no TTL and
+   * are left untouched by this option; see the *Clearing legacy cache
+   * entries* section of the key–value store guide if you want to expire
+   * them proactively.
+   * @default `Temporal.Duration.from({ days: 90 })`
+   */
+  specTtl?: Temporal.Duration;
+}
+
 export class KvSpecDeterminer implements HttpMessageSignaturesSpecDeterminer {
   kv: KvStore;
   prefix: KvKey;
   defaultSpec: HttpMessageSignaturesSpec;
+  specTtl: Temporal.Duration;
 
   constructor(
     kv: KvStore,
     prefix: KvKey,
     defaultSpec: HttpMessageSignaturesSpec = "rfc9421",
+    options: KvSpecDeterminerOptions = {},
   ) {
     this.kv = kv;
     this.prefix = prefix;
     this.defaultSpec = defaultSpec;
+    this.specTtl = options.specTtl ?? Temporal.Duration.from({ days: 90 });
   }
 
   async determineSpec(
@@ -4926,7 +4946,7 @@ export class KvSpecDeterminer implements HttpMessageSignaturesSpecDeterminer {
     origin: string,
     spec: HttpMessageSignaturesSpec,
   ): Promise<void> {
-    await this.kv.set([...this.prefix, origin], spec);
+    await this.kv.set([...this.prefix, origin], spec, { ttl: this.specTtl });
   }
 }
 

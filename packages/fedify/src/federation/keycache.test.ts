@@ -128,3 +128,36 @@ test("KvKeyCache unavailable entries expire", async () => {
   assertEquals(await cache.get(keyId), undefined);
   assertEquals(await cache.getFetchError(keyId), undefined);
 });
+
+test("KvKeyCache.keyTtl defaults to 30 days", () => {
+  const kv = new MemoryKvStore();
+  const cache = new KvKeyCache(kv, ["pk"]);
+  assertEquals(cache.keyTtl.total("day"), 30);
+});
+
+test("KvKeyCache.keyTtl is configurable", () => {
+  const kv = new MemoryKvStore();
+  const cache = new KvKeyCache(kv, ["pk"], {
+    keyTtl: Temporal.Duration.from({ days: 7 }),
+  });
+  assertEquals(cache.keyTtl.total("day"), 7);
+});
+
+test("KvKeyCache cached keys expire after keyTtl", async () => {
+  const kv = new MemoryKvStore();
+  const cache = new KvKeyCache(kv, ["pk"], {
+    keyTtl: Temporal.Duration.from({ milliseconds: 1 }),
+  });
+  const keyId = new URL("https://example.com/key");
+
+  await cache.set(
+    keyId,
+    new CryptographicKey({ id: keyId }),
+  );
+  // The value is written immediately...
+  assert(await kv.get(["pk", keyId.href]) != null);
+
+  // ...but disappears from the underlying KvStore once keyTtl elapses.
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  assertEquals(await kv.get(["pk", keyId.href]), undefined);
+});
