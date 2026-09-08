@@ -111,7 +111,7 @@ To be released.
  -  `KvKeyCache` and `KvSpecDeterminer` now write their cache entries with a
     TTL, so a `KvStore` that never sees an explicit clear no longer
     accumulates entries for actors and origins that have stopped
-    federating.  [[#1017]]
+    federating.  [[#1017], [#1027]]
 
      -  `KvKeyCache` gained a `KvKeyCacheOptions.keyTtl` option for cached
         keys, `30` days by default.
@@ -151,6 +151,7 @@ To be released.
 [#934]: https://github.com/fedify-dev/fedify/pull/934
 [#968]: https://github.com/fedify-dev/fedify/pull/968
 [#1017]: https://github.com/fedify-dev/fedify/issues/1017
+[#1027]: https://github.com/fedify-dev/fedify/pull/1027
 
 ### @fedify/astro
 
