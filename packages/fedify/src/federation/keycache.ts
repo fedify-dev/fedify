@@ -1,11 +1,13 @@
 import { CryptographicKey, Multikey } from "@fedify/vocab";
 import type { DocumentLoader } from "@fedify/vocab-runtime";
+import type { TracerProvider } from "@opentelemetry/api";
 import type { FetchKeyErrorResult, KeyCache } from "../sig/key.ts";
 import type { KvKey, KvStore } from "./kv.ts";
 
 export interface KvKeyCacheOptions {
   documentLoader?: DocumentLoader;
   contextLoader?: DocumentLoader;
+  tracerProvider?: TracerProvider;
   unavailableKeyTtl?: Temporal.Duration;
 
   /**
