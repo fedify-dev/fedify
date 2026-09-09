@@ -96,6 +96,49 @@ that the `Federation` object uses:
 
 [double-knocking]: https://swicg.github.io/activitypub-http-signature/#how-to-upgrade-supported-versions
 
+### `publicKeyTtl`
+
+*This API is available since Fedify 2.4.0.*
+
+The `~FederationOptions.publicKeyTtl` property is the time-to-live for
+a remote actor's public key cached under
+`~FederationKvPrefixes.publicKey`.  It is 30 days by default.  Once
+an entry expires, the next signature verification that needs the key
+refetches it from the remote server and caches it again:
+
+~~~~ typescript twoslash
+import { createFederation, MemoryKvStore } from "@fedify/fedify";
+
+const federation = createFederation<void>({
+  kv: new MemoryKvStore(),
+  publicKeyTtl: { days: 7 },  // [!code highlight]
+});
+~~~~
+
+### `httpMessageSignaturesSpecTtl`
+
+*This API is available since Fedify 2.4.0.*
+
+The `~FederationOptions.httpMessageSignaturesSpecTtl` property is
+the time-to-live for a remote origin's remembered HTTP Message Signatures
+spec cached under `~FederationKvPrefixes.httpMessageSignaturesSpec`.
+It is 90 days by default.  Once an entry expires, the next delivery to that
+origin relearns the spec by [double-knocking] and remembers it again:
+
+~~~~ typescript twoslash
+import { createFederation, MemoryKvStore } from "@fedify/fedify";
+
+const federation = createFederation<void>({
+  kv: new MemoryKvStore(),
+  httpMessageSignaturesSpecTtl: { days: 30 },  // [!code highlight]
+});
+~~~~
+
+> [!TIP]
+> Both TTLs trade storage against remote requests.  See
+> [*Bounding how long cache entries live*](./kv.md#bounding-how-long-cache-entries-live)
+> for what shortening or lengthening them costs.
+
 ### `queue`
 
 *This API is available since Fedify 0.5.0.*
