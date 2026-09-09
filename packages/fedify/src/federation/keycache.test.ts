@@ -156,8 +156,21 @@ test("KvKeyCache cached keys expire after keyTtl", async () => {
   );
   // The value is written immediately...
   assert(await kv.get(["pk", keyId.href]) != null);
+  assertInstanceOf(await cache.get(keyId), CryptographicKey);
 
   // ...but disappears from the underlying KvStore once keyTtl elapses.
   await new Promise((resolve) => setTimeout(resolve, 10));
   assertEquals(await kv.get(["pk", keyId.href]), undefined);
+
+  // A miss is reported as `undefined` (key unknown), not `null` (key known
+  // to be unavailable), so the caller refetches the key instead of treating
+  // the actor as keyless.
+  assertEquals(await cache.get(keyId), undefined);
+  assertEquals(cache.nullKeys.has(keyId.href), false);
+
+  // Refetching and caching the key again repopulates the cache.
+  await cache.set(keyId, new CryptographicKey({ id: keyId }));
+  const refetched = await cache.get(keyId);
+  assertInstanceOf(refetched, CryptographicKey);
+  assertEquals(refetched.id?.href, keyId.href);
 });
