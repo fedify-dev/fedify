@@ -11395,163 +11395,166 @@ test("createFederation() defaults the cache TTLs and lets them be overridden", (
 
 test("createFederation() applies httpMessageSignaturesSpecTtl to remembered specs", async () => {
   fetchMock.spyGlobal();
-
-  const attempts: HttpMessageSignaturesSpec[] = [];
-  fetchMock.post("https://example.com/inbox", async (cl) => {
-    const request = cl.request!.clone() as Request;
-    const spec: HttpMessageSignaturesSpec =
-      request.headers.has("Signature-Input")
-        ? "rfc9421"
-        : "draft-cavage-http-signatures-12";
-    attempts.push(spec);
-    // This peer only understands the legacy spec, so the first knock with
-    // RFC 9421 is rejected and Fedify has to fall back and remember.
-    if (spec === "rfc9421") return new Response(null, { status: 401 });
-    const key = await verifyRequest(request, {
-      documentLoader: mockDocumentLoader,
-      contextLoader: mockDocumentLoader,
+  try {
+    const attempts: HttpMessageSignaturesSpec[] = [];
+    fetchMock.post("https://example.com/inbox", async (cl) => {
+      const request = cl.request!.clone() as Request;
+      const spec: HttpMessageSignaturesSpec =
+        request.headers.has("Signature-Input")
+          ? "rfc9421"
+          : "draft-cavage-http-signatures-12";
+      attempts.push(spec);
+      // This peer only understands the legacy spec, so the first knock with
+      // RFC 9421 is rejected and Fedify has to fall back and remember.
+      if (spec === "rfc9421") return new Response(null, { status: 401 });
+      const key = await verifyRequest(request, {
+        documentLoader: mockDocumentLoader,
+        contextLoader: mockDocumentLoader,
+      });
+      return new Response(null, { status: key == null ? 401 : 202 });
     });
-    return new Response(null, { status: key == null ? 401 : 202 });
-  });
 
-  const kv = new TtlRecordingKvStore();
-  const federation = createFederation<void>({
-    kv,
-    documentLoaderFactory: () => mockDocumentLoader,
-    contextLoaderFactory: () => mockDocumentLoader,
-    httpMessageSignaturesSpecTtl: { milliseconds: 250 },
-  });
-  const ctx = federation.createContext(
-    new URL("https://example.com/"),
-    undefined,
-  );
-  const specKey: KvKey = [
-    "_fedify",
-    "httpMessageSignaturesSpec",
-    "https://example.com",
-  ];
-  const send = () =>
-    ctx.sendActivity(
-      [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
-      {
-        id: new URL("https://example.com/recipient"),
-        inboxId: new URL("https://example.com/inbox"),
-      },
-      new vocab.Create({
-        id: new URL(`https://example.com/activities/${crypto.randomUUID()}`),
-        actor: new URL("https://example.com/person"),
-      }),
+    const kv = new TtlRecordingKvStore();
+    const federation = createFederation<void>({
+      kv,
+      documentLoaderFactory: () => mockDocumentLoader,
+      contextLoaderFactory: () => mockDocumentLoader,
+      httpMessageSignaturesSpecTtl: { milliseconds: 250 },
+    });
+    const ctx = federation.createContext(
+      new URL("https://example.com/"),
+      undefined,
     );
+    const specKey: KvKey = [
+      "_fedify",
+      "httpMessageSignaturesSpec",
+      "https://example.com",
+    ];
+    const send = () =>
+      ctx.sendActivity(
+        [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
+        {
+          id: new URL("https://example.com/recipient"),
+          inboxId: new URL("https://example.com/inbox"),
+        },
+        new vocab.Create({
+          id: new URL(`https://example.com/activities/${crypto.randomUUID()}`),
+          actor: new URL("https://example.com/person"),
+        }),
+      );
 
-  // The first delivery double-knocks and then remembers the legacy spec,
-  // using the TTL the application configured rather than the 90-day default.
-  await send();
-  assertEquals(attempts, ["rfc9421", "draft-cavage-http-signatures-12"]);
-  assertEquals(await kv.get(specKey), "draft-cavage-http-signatures-12");
-  assertEquals(kv.lastTtl(specKey)?.total("millisecond"), 250);
+    // The first delivery double-knocks and then remembers the legacy spec,
+    // using the TTL the application configured rather than the 90-day default.
+    await send();
+    assertEquals(attempts, ["rfc9421", "draft-cavage-http-signatures-12"]);
+    assertEquals(await kv.get(specKey), "draft-cavage-http-signatures-12");
+    assertEquals(kv.lastTtl(specKey)?.total("millisecond"), 250);
 
-  // While the memory is fresh the second delivery skips the double knock.
-  attempts.length = 0;
-  await send();
-  assertEquals(attempts, ["draft-cavage-http-signatures-12"]);
+    // While the memory is fresh the second delivery skips the double knock.
+    attempts.length = 0;
+    await send();
+    assertEquals(attempts, ["draft-cavage-http-signatures-12"]);
 
-  // Once it expires the spec is relearned, remembered again, and delivery
-  // keeps working through that path.
-  await new Promise((resolve) => setTimeout(resolve, 400));
-  assertEquals(await kv.get(specKey), undefined);
-  attempts.length = 0;
-  await send();
-  assertEquals(attempts, ["rfc9421", "draft-cavage-http-signatures-12"]);
-  assertEquals(await kv.get(specKey), "draft-cavage-http-signatures-12");
-  assertEquals(kv.lastTtl(specKey)?.total("millisecond"), 250);
-
-  fetchMock.hardReset();
+    // Once it expires the spec is relearned, remembered again, and delivery
+    // keeps working through that path.
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    assertEquals(await kv.get(specKey), undefined);
+    attempts.length = 0;
+    await send();
+    assertEquals(attempts, ["rfc9421", "draft-cavage-http-signatures-12"]);
+    assertEquals(await kv.get(specKey), "draft-cavage-http-signatures-12");
+    assertEquals(kv.lastTtl(specKey)?.total("millisecond"), 250);
+  } finally {
+    fetchMock.hardReset();
+  }
 });
 
 test("createFederation() applies publicKeyTtl to cached public keys", async () => {
   fetchMock.spyGlobal();
-  // The inbox handler resolves the signing key through the authenticated
-  // document loader, which goes out over the network, so count the fetches
-  // there rather than through `documentLoaderFactory`.
-  let keyFetches = 0;
-  fetchMock.get("begin:https://example.com/person2", () => {
-    keyFetches++;
-    return {
-      headers: { "Content-Type": "application/activity+json" },
-      body: person2Fixture,
+  try {
+    // The inbox handler resolves the signing key through the authenticated
+    // document loader, which goes out over the network, so count the fetches
+    // there rather than through `documentLoaderFactory`.
+    let keyFetches = 0;
+    fetchMock.get("begin:https://example.com/person2", () => {
+      keyFetches++;
+      return {
+        headers: { "Content-Type": "application/activity+json" },
+        body: person2Fixture,
+      };
+    });
+
+    const keyId = "https://example.com/person2#key3";
+    const kv = new TtlRecordingKvStore();
+    const federation = createFederation<void>({
+      kv,
+      documentLoaderFactory: () => mockDocumentLoader,
+      contextLoaderFactory: () => mockDocumentLoader,
+      publicKeyTtl: { milliseconds: 250 },
+    });
+    const inbox: vocab.Create[] = [];
+    federation
+      .setActorDispatcher(
+        "/users/{identifier}",
+        (_, identifier) => identifier === "john" ? new vocab.Person({}) : null,
+      )
+      .setKeyPairsDispatcher(() => [{
+        privateKey: rsaPrivateKey2,
+        publicKey: rsaPublicKey2.publicKey!,
+      }]);
+    federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      .on(vocab.Create, (_ctx, create) => {
+        inbox.push(create);
+      });
+
+    const deliver = async (): Promise<Response> => {
+      const activity = new vocab.Create({
+        id: new URL(`https://example.com/activities/${crypto.randomUUID()}`),
+        actor: new URL("https://example.com/person2"),
+      });
+      let request = new Request("https://example.com/users/john/inbox", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/activity+json",
+          accept: "application/ld+json",
+        },
+        body: JSON.stringify(
+          await activity.toJsonLd({ contextLoader: mockDocumentLoader }),
+        ),
+      });
+      request = await signRequest(request, rsaPrivateKey3, new URL(keyId));
+      return await federation.fetch(request, { contextData: undefined });
     };
-  });
 
-  const keyId = "https://example.com/person2#key3";
-  const kv = new TtlRecordingKvStore();
-  const federation = createFederation<void>({
-    kv,
-    documentLoaderFactory: () => mockDocumentLoader,
-    contextLoaderFactory: () => mockDocumentLoader,
-    publicKeyTtl: { milliseconds: 250 },
-  });
-  const inbox: vocab.Create[] = [];
-  federation
-    .setActorDispatcher(
-      "/users/{identifier}",
-      (_, identifier) => identifier === "john" ? new vocab.Person({}) : null,
-    )
-    .setKeyPairsDispatcher(() => [{
-      privateKey: rsaPrivateKey2,
-      publicKey: rsaPublicKey2.publicKey!,
-    }]);
-  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
-    .on(vocab.Create, (_ctx, create) => {
-      inbox.push(create);
-    });
+    const publicKeyKey: KvKey = ["_fedify", "publicKey", keyId];
 
-  const deliver = async (): Promise<Response> => {
-    const activity = new vocab.Create({
-      id: new URL(`https://example.com/activities/${crypto.randomUUID()}`),
-      actor: new URL("https://example.com/person2"),
-    });
-    let request = new Request("https://example.com/users/john/inbox", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/activity+json",
-        accept: "application/ld+json",
-      },
-      body: JSON.stringify(
-        await activity.toJsonLd({ contextLoader: mockDocumentLoader }),
-      ),
-    });
-    request = await signRequest(request, rsaPrivateKey3, new URL(keyId));
-    return await federation.fetch(request, { contextData: undefined });
-  };
+    // Verifying the first signed delivery fetches the key and caches it with
+    // the TTL the application configured rather than the 30-day default.
+    assertEquals((await deliver()).status, 202);
+    assertEquals(inbox.length, 1);
+    assert(keyFetches > 0);
+    assert(await kv.get(publicKeyKey) != null);
+    assertEquals(kv.lastTtl(publicKeyKey)?.total("millisecond"), 250);
 
-  const publicKeyKey: KvKey = ["_fedify", "publicKey", keyId];
+    // While the cache is warm the key is not refetched.
+    keyFetches = 0;
+    assertEquals((await deliver()).status, 202);
+    assertEquals(inbox.length, 2);
+    assertEquals(keyFetches, 0);
 
-  // Verifying the first signed delivery fetches the key and caches it with
-  // the TTL the application configured rather than the 30-day default.
-  assertEquals((await deliver()).status, 202);
-  assertEquals(inbox.length, 1);
-  assert(keyFetches > 0);
-  assert(await kv.get(publicKeyKey) != null);
-  assertEquals(kv.lastTtl(publicKeyKey)?.total("millisecond"), 250);
-
-  // While the cache is warm the key is not refetched.
-  keyFetches = 0;
-  assertEquals((await deliver()).status, 202);
-  assertEquals(inbox.length, 2);
-  assertEquals(keyFetches, 0);
-
-  // After the TTL elapses the cache misses, the key is refetched and cached
-  // again, and signature verification keeps working through that path.
-  await new Promise((resolve) => setTimeout(resolve, 400));
-  assertEquals(await kv.get(publicKeyKey), undefined);
-  keyFetches = 0;
-  assertEquals((await deliver()).status, 202);
-  assertEquals(inbox.length, 3);
-  assert(keyFetches > 0);
-  assert(await kv.get(publicKeyKey) != null);
-  assertEquals(kv.lastTtl(publicKeyKey)?.total("millisecond"), 250);
-
-  fetchMock.hardReset();
+    // After the TTL elapses the cache misses, the key is refetched and cached
+    // again, and signature verification keeps working through that path.
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    assertEquals(await kv.get(publicKeyKey), undefined);
+    keyFetches = 0;
+    assertEquals((await deliver()).status, 202);
+    assertEquals(inbox.length, 3);
+    assert(keyFetches > 0);
+    assert(await kv.get(publicKeyKey) != null);
+    assertEquals(kv.lastTtl(publicKeyKey)?.total("millisecond"), 250);
+  } finally {
+    fetchMock.hardReset();
+  }
 });
 
 test("createFederation() instruments documentLoader with activitypub.document.fetch", async () => {
