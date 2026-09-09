@@ -10,6 +10,25 @@ To be released.
 
 ### @fedify/fedify
 
+ -  Changed cached actor public keys and remembered per-origin HTTP Message
+    Signatures specs to expire, so a `KvStore` that never sees an explicit
+    clear no longer accumulates entries for actors and origins that have
+    stopped federating.  Keys expire after 30 days and specs after 90 days
+    by default, and both windows are configurable through the new
+    `FederationOptions.publicKeyTtl` and
+    `FederationOptions.httpMessageSignaturesSpecTtl` options.
+    [[#1017], [#1027] by Heewon Chae\]
+
+     -  Shortening a window trades storage for remote requests: an expired
+        key has to be refetched before the next signature verification, and
+        an expired spec has to be relearned by double-knocking on the next
+        delivery.  Refetching fails while the peer is unavailable, so a very
+        short window makes verification depend on the peer being reachable.
+     -  Entries written by earlier versions of Fedify have no expiry and are
+        left as they are; they gain one the next time they are written.  See
+        the new *Clearing legacy cache entries* section of the
+        [key–value store guide] to clear them proactively instead of waiting.
+
  -  Fixed `verifyProof()` so Ed25519 JCS proofs authenticate every received
     proof option except `proofValue`, including `expires`, `domain`,
     `challenge`, `nonce`, and extension options.  It now rejects expired or
@@ -108,28 +127,12 @@ To be released.
     `esnext.temporal` lib reference.
     [[#823], [#925]]
 
- -  `KvKeyCache` and `KvSpecDeterminer` now write their cache entries with a
-    TTL, so a `KvStore` that never sees an explicit clear no longer
-    accumulates entries for actors and origins that have stopped
-    federating.  [[#1017], [#1027]]
-
-     -  `KvKeyCache` gained a `KvKeyCacheOptions.keyTtl` option for cached
-        keys, `30` days by default.
-     -  `KvSpecDeterminer`'s constructor gained an optional 4th
-        `KvSpecDeterminerOptions` argument with a `specTtl` option for
-        remembered specs, `90` days by default.  Its existing 3-argument
-        constructor shape is unchanged.
-     -  Entries written by earlier Fedify versions have no TTL and are left
-        as is; see the new *Clearing legacy cache entries* section of the
-        [key–value store guide] if you want to expire them proactively
-        instead of waiting for them to be overwritten.
-
+[key–value store guide]: https://fedify.dev/manual/kv
 [FEP-ef61]: https://w3id.org/fep/ef61
 [FEP-8b32]: https://w3id.org/fep/8b32
 [FEP-fe34]: https://w3id.org/fep/fe34
 [ActivityPub Media Upload extension]: https://www.w3.org/wiki/SocialCG/ActivityPub/MediaUpload
 [Standard Schema]: https://standardschema.dev/
-[key–value store guide]: https://fedify.dev/manual/kv
 [#206]: https://github.com/fedify-dev/fedify/issues/206
 [#754]: https://github.com/fedify-dev/fedify/issues/754
 [#797]: https://github.com/fedify-dev/fedify/issues/797
