@@ -3,6 +3,7 @@ export {
   createOutboxContext,
   createRequestContext,
 } from "./context.ts";
+export { ManualClockKvStore } from "./kv.ts";
 export {
   baseOptions,
   type Envelope,

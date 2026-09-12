@@ -103,6 +103,7 @@ import TaskCodec from "./tasks/codec.ts";
 import {
   type Envelope,
   envelopeSchema,
+  ManualClockKvStore,
   MockQueue,
   numberSchema,
 } from "../testing/mod.ts";
@@ -11312,10 +11313,10 @@ test("KvSpecDeterminer", async (t) => {
   await t.step(
     "should expire, relearn, and remember the spec again",
     async () => {
-      const kv = new MemoryKvStore();
+      const kv = new ManualClockKvStore();
       const prefix = ["test", "spec"] as const;
       const determiner = new KvSpecDeterminer(kv, prefix, "rfc9421", {
-        specTtl: Temporal.Duration.from({ milliseconds: 250 }),
+        specTtl: Temporal.Duration.from({ days: 90 }),
       });
 
       await determiner.rememberSpec(
@@ -11329,7 +11330,7 @@ test("KvSpecDeterminer", async (t) => {
 
       // Falls back to the default spec once the remembered entry expires,
       // which is what makes the next delivery double-knock again.
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      kv.advance({ days: 91 });
       assertEquals(await determiner.determineSpec("example.com"), "rfc9421");
 
       // The relearned spec is remembered again, with the TTL reapplied.
@@ -11350,8 +11351,13 @@ test("KvSpecDeterminer", async (t) => {
  * assert on TTLs even after the entries themselves have expired.
  */
 class TtlRecordingKvStore implements KvStore {
-  readonly inner: MemoryKvStore = new MemoryKvStore();
+  readonly inner: ManualClockKvStore = new ManualClockKvStore();
   readonly writes: { key: KvKey; ttl?: Temporal.Duration }[] = [];
+
+  /** Moves the wrapped store's virtual clock forward. */
+  advance(duration: Temporal.DurationLike): void {
+    this.inner.advance(duration);
+  }
 
   get<T = unknown>(key: KvKey): Promise<T | undefined> {
     return this.inner.get<T>(key);
@@ -11419,7 +11425,7 @@ test("createFederation() applies httpMessageSignaturesSpecTtl to remembered spec
       kv,
       documentLoaderFactory: () => mockDocumentLoader,
       contextLoaderFactory: () => mockDocumentLoader,
-      httpMessageSignaturesSpecTtl: { milliseconds: 250 },
+      httpMessageSignaturesSpecTtl: { days: 90 },
     });
     const ctx = federation.createContext(
       new URL("https://example.com/"),
@@ -11448,7 +11454,7 @@ test("createFederation() applies httpMessageSignaturesSpecTtl to remembered spec
     await send();
     assertEquals(attempts, ["rfc9421", "draft-cavage-http-signatures-12"]);
     assertEquals(await kv.get(specKey), "draft-cavage-http-signatures-12");
-    assertEquals(kv.lastTtl(specKey)?.total("millisecond"), 250);
+    assertEquals(kv.lastTtl(specKey)?.total("day"), 90);
 
     // While the memory is fresh the second delivery skips the double knock.
     attempts.length = 0;
@@ -11457,13 +11463,13 @@ test("createFederation() applies httpMessageSignaturesSpecTtl to remembered spec
 
     // Once it expires the spec is relearned, remembered again, and delivery
     // keeps working through that path.
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    kv.advance({ days: 91 });
     assertEquals(await kv.get(specKey), undefined);
     attempts.length = 0;
     await send();
     assertEquals(attempts, ["rfc9421", "draft-cavage-http-signatures-12"]);
     assertEquals(await kv.get(specKey), "draft-cavage-http-signatures-12");
-    assertEquals(kv.lastTtl(specKey)?.total("millisecond"), 250);
+    assertEquals(kv.lastTtl(specKey)?.total("day"), 90);
   } finally {
     fetchMock.hardReset();
   }
@@ -11490,7 +11496,7 @@ test("createFederation() applies publicKeyTtl to cached public keys", async () =
       kv,
       documentLoaderFactory: () => mockDocumentLoader,
       contextLoaderFactory: () => mockDocumentLoader,
-      publicKeyTtl: { milliseconds: 250 },
+      publicKeyTtl: { days: 30 },
     });
     const inbox: vocab.Create[] = [];
     federation
@@ -11534,7 +11540,7 @@ test("createFederation() applies publicKeyTtl to cached public keys", async () =
     assertEquals(inbox.length, 1);
     assert(keyFetches > 0);
     assert(await kv.get(publicKeyKey) != null);
-    assertEquals(kv.lastTtl(publicKeyKey)?.total("millisecond"), 250);
+    assertEquals(kv.lastTtl(publicKeyKey)?.total("day"), 30);
 
     // While the cache is warm the key is not refetched.
     keyFetches = 0;
@@ -11544,14 +11550,14 @@ test("createFederation() applies publicKeyTtl to cached public keys", async () =
 
     // After the TTL elapses the cache misses, the key is refetched and cached
     // again, and signature verification keeps working through that path.
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    kv.advance({ days: 31 });
     assertEquals(await kv.get(publicKeyKey), undefined);
     keyFetches = 0;
     assertEquals((await deliver()).status, 202);
     assertEquals(inbox.length, 3);
     assert(keyFetches > 0);
     assert(await kv.get(publicKeyKey) != null);
-    assertEquals(kv.lastTtl(publicKeyKey)?.total("millisecond"), 250);
+    assertEquals(kv.lastTtl(publicKeyKey)?.total("day"), 30);
   } finally {
     fetchMock.hardReset();
   }
