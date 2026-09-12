@@ -47,6 +47,8 @@
     "package.json"
   ],
   "dependencies": {
+    "byte-encodings": "catalog:",
+    "es-toolkit": "catalog:",
     "temporal-polyfill": "catalog:"
   },
   "peerDependencies": {
@@ -54,13 +56,11 @@
     "@netlify/async-workloads": "catalog:"
   },
   "devDependencies": {
-    "@fedify/postgres": "workspace:^",
     "@js-temporal/polyfill": "catalog:",
-    "@netlify/database": "catalog:",
     "@standard-schema/spec": "catalog:",
+    "@netlify/blobs": "catalog:",
     "@types/node": "catalog:",
     "netlify-cli": "catalog:",
-    "postgres": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },

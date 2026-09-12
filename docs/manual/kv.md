@@ -511,6 +511,79 @@ export default {
 [Cloudflare Workers]: https://workers.cloudflare.com/
 [Cloudflare Workers KV]: https://developers.cloudflare.com/kv/
 
+### `NetlifyBlobsKvStore`
+
+*This API is available since Fedify 2.4.0.*
+
+To use the [`NetlifyBlobsKvStore`], you need to install *@fedify/netlify* and
+*@netlify/blobs*.
+
+::: code-group
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/netlify npm:@netlify/blobs
+~~~~
+
+~~~~ bash [npm]
+npm add @fedify/netlify @netlify/blobs
+~~~~
+
+~~~~ bash [pnpm]
+pnpm add @fedify/netlify @netlify/blobs
+~~~~
+
+~~~~ bash [Yarn]
+yarn add @fedify/netlify @netlify/blobs
+~~~~
+
+~~~~ bash [Bun]
+bun add @fedify/netlify @netlify/blobs
+~~~~
+
+:::
+
+`NetlifyBlobsKvStore` from `@fedify/netlify` stores federation state in
+[Netlify Blobs]
+without requiring a separate database.  It supports expiration, prefix
+listing, and atomic compare-and-set (CAS) operations.
+
+Best for
+:   Small Fedify applications on [Netlify Functions].
+
+Pros
+:   Persistent storage and atomic CAS without a separate database.
+
+Cons
+:   600-byte encoded key limit; expired blobs and tombstones are not
+    automatically removed.
+
+~~~~ typescript
+import { createFederation } from "@fedify/fedify";
+import { NetlifyBlobsKvStore } from "@fedify/netlify";
+import { getStore } from "@netlify/blobs";
+
+const federation = createFederation<void>({
+  kv: new NetlifyBlobsKvStore(getStore({
+    name: "fedify",
+    consistency: "strong",
+  })),
+});
+~~~~
+
+CAS operations always use strong reads and conditional writes.  Configuring
+the Blobs store with `consistency: "strong"` also enables strong consistency
+for ordinary reads and listings.
+
+> [!NOTE]
+> If your Netlify application already uses PostgreSQL, you can use
+> [`PostgresKvStore`](#postgreskvstore) from `@fedify/postgres` instead.
+> Netlify Blobs is optional; choose the store that matches your application's
+> storage setup.
+
+[`NetlifyBlobsKvStore`]: https://jsr.io/@fedify/netlify/doc/~/NetlifyBlobsKvStore
+[Netlify Blobs]: https://docs.netlify.com/build/data-and-storage/netlify-blobs/
+[Netlify Functions]: https://docs.netlify.com/build/functions/overview/
+
 
 Implementing a custom `KvStore`
 -------------------------------

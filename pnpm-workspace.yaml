@@ -80,6 +80,7 @@ catalog:
   "@multiformats/base-x": ^4.0.1
   "@nestjs/common": ^11.0.1
   "@netlify/async-workloads": ^0.0.106
+  "@netlify/blobs": 11.0.3
   "@netlify/database": ^1.1.0
   "@nuxt/kit": ^4.4.2
   "@nuxt/schema": ^4.4.2
@@ -107,7 +108,7 @@ catalog:
   "@types/express": ^4.0.0
   "@types/koa": ^2.15.0
   "@types/node": ^22.17.0
-  netlify-cli: ^26.2.0
+  netlify-cli: ^27.4.2
   astro: ^7.0.0
   amqplib: ^0.10.9
   asn1js: ^3.0.10

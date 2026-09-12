@@ -250,6 +250,10 @@ To be released.
 
 ### @fedify/netlify
 
+ -  Added `NetlifyBlobsKvStore`, a Netlify Blobs-backed key–value store with
+    expiration, prefix listing, and atomic compare-and-set operations.  Netlify
+    deployments can now persist Fedify state and preserve ordered queue
+    delivery without a separate database.  [[#1010], [#1029] by Jiwon Kwon\]
  -  Added the new *@fedify/netlify* package for processing Fedify message queue
     jobs with Netlify Async Workloads.  It provides `NetlifyMessageQueue` for
     durable event submission and `createNetlifyQueueHandler()` for Netlify
@@ -257,6 +261,9 @@ To be released.
     non-retryable malformed-event handling, durable per-key FIFO ordering, and
     explicit recovery for unobservable dead-letter failures.
     [[#930], [#934]]
+
+[#1010]: https://github.com/fedify-dev/fedify/issues/1010
+[#1029]: https://github.com/fedify-dev/fedify/pull/1029
 
 ### @fedify/pglite
 

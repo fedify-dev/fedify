@@ -1,7 +1,7 @@
 <!-- deno-fmt-ignore-file -->
 
-@fedify/netlify: Run Fedify queues with Netlify Async Workloads
-===============================================================
+@fedify/netlify: Run Fedify with Netlify blobs and async workloads
+==================================================================
 
 [![JSR][JSR badge]][JSR]
 [![npm][npm badge]][npm]
@@ -9,10 +9,11 @@
 
 *This package is available since Fedify 2.4.0.*
 
-This package connects [Fedify]'s [`MessageQueue`] API to
-[Netlify Async Workloads].  `NetlifyMessageQueue` publishes durable events,
-while `createNetlifyQueueHandler()` turns a Netlify Function into their
-consumer.
+This package connects [Fedify]'s [`KvStore`] and [`MessageQueue`] APIs to
+Netlify.  `NetlifyBlobsKvStore` stores federation state in [Netlify Blobs],
+`NetlifyMessageQueue` publishes durable events through
+[Netlify Async Workloads], and `createNetlifyQueueHandler()` turns a Netlify
+Function into their consumer.
 
 The initial release targets Netlify Functions, not Netlify Edge Functions.
 
@@ -23,12 +24,16 @@ The initial release targets Netlify Functions, not Netlify Edge Functions.
 [@fedify@hackers.pub badge]: https://fedi-badge.minhee.org/@fedify@hackers.pub/followers.svg
 [@fedify@hackers.pub]: https://hackers.pub/@fedify
 [Fedify]: https://fedify.dev/
+[`KvStore`]: https://jsr.io/@fedify/fedify/doc/federation/~/KvStore
 [`MessageQueue`]: https://jsr.io/@fedify/fedify/doc/federation/~/MessageQueue
+[Netlify Blobs]: https://docs.netlify.com/build/data-and-storage/netlify-blobs/
 [Netlify Async Workloads]: https://docs.netlify.com/build/async-workloads/get-started/
 
 
 Installation
 ------------
+
+For queue-only usage, install the package with Netlify Async Workloads:
 
 ~~~~ sh
 deno add jsr:@fedify/netlify npm:@netlify/async-workloads  # Deno
@@ -38,8 +43,62 @@ yarn add     @fedify/netlify @netlify/async-workloads     # Yarn
 bun  add     @fedify/netlify @netlify/async-workloads     # Bun
 ~~~~
 
-The PostgreSQL-backed `orderingKv` example below also needs
-`@fedify/postgres`, `@netlify/database`, and `postgres`:
+
+Usage
+-----
+
+To use `NetlifyBlobsKvStore`, also install Netlify Blobs:
+
+~~~~ sh
+deno add npm:@netlify/blobs  # Deno
+npm  add     @netlify/blobs  # npm
+pnpm add     @netlify/blobs  # pnpm
+yarn add     @netlify/blobs  # Yarn
+bun  add     @netlify/blobs  # Bun
+~~~~
+
+Create one store and queue for both the web application and the workload
+function.  `NetlifyBlobsKvStore` provides the compare-and-set (CAS) support
+required when Fedify emits messages with an `orderingKey`, without requiring a
+separate database:
+
+~~~~ typescript
+import { AsyncWorkloadsClient } from "@netlify/async-workloads";
+import { getStore } from "@netlify/blobs";
+import {
+  NetlifyBlobsKvStore,
+  NetlifyMessageQueue,
+} from "@fedify/netlify";
+
+export const kv = new NetlifyBlobsKvStore(getStore({
+  name: "fedify",
+  consistency: "strong",
+}));
+export const queue = new NetlifyMessageQueue({
+  client: new AsyncWorkloadsClient(),
+  orderingKv: kv,
+});
+~~~~
+
+CAS operations always use strong reads and conditional writes.  The
+`consistency: "strong"` setting above also gives ordinary `get()` calls and
+listings strong consistency.  You can omit it when lower-latency, eventually
+consistent ordinary reads are acceptable.
+
+TTL expiration is logical: expired blobs remain in Netlify Blobs but are
+hidden by `get()` and `list()`.  CAS deletion similarly writes a tombstone so
+that a concurrent writer cannot recreate the key undetected.  Tombstones are
+also hidden and can be replaced by a later CAS operation, but they are not
+removed automatically.  Use a dedicated Netlify Blobs store and account for
+these retained blobs.  Only remove them during maintenance when concurrent CAS
+operations for those keys have stopped; physical deletion during a race would
+remove the version token that protects the key.
+
+### PostgreSQL alternative
+
+If the application already uses PostgreSQL, `PostgresKvStore` can provide the
+same CAS-capable ordering storage.  Install `@fedify/postgres`,
+`@netlify/database`, and `postgres` in addition to the base dependencies:
 
 ~~~~ sh
 deno add jsr:@fedify/postgres npm:@netlify/database npm:postgres  # Deno
@@ -49,28 +108,19 @@ yarn add     @fedify/postgres @netlify/database postgres          # Yarn
 bun  add     @fedify/postgres @netlify/database postgres          # Bun
 ~~~~
 
-
-Usage
------
-
-Create one queue for both the web application and the workload function.  A
-CAS-capable `KvStore`, such as `PostgresKvStore`, is required if Fedify emits
-messages with an `orderingKey`:
+Then replace the `kv` declaration from the main example:
 
 ~~~~ typescript
-import { AsyncWorkloadsClient } from "@netlify/async-workloads";
 import { getConnectionString } from "@netlify/database";
-import { NetlifyMessageQueue } from "@fedify/netlify";
 import { PostgresKvStore } from "@fedify/postgres";
 import postgres from "postgres";
 
 const sql = postgres(getConnectionString());
 export const kv = new PostgresKvStore(sql);
-export const queue = new NetlifyMessageQueue({
-  client: new AsyncWorkloadsClient(),
-  orderingKv: kv,
-});
 ~~~~
+
+Ordering state must use crash-safe storage.  `PostgresKvStore` creates a logged
+table by default; do not pass `unlogged: true` for `orderingKv`.
 
 Pass the queue to Fedify with `manuallyStartQueue: true`.  Async Workloads
 invokes the consumer, so `NetlifyMessageQueue.listen()` is intentionally not
@@ -142,9 +192,6 @@ because a lost response does not prove that the router rejected the event.
 Use the error's `orderingKey` and `orderingSequence` for manual recovery only
 after ruling out delivery.
 
-Ordering state must use crash-safe storage.  `PostgresKvStore` creates a logged
-table by default; do not pass `unlogged: true` for `orderingKv`.
-
 Netlify limits an event payload to 500 KB.  Fedify messages, including any
 embedded activity, must remain below that limit.
 
@@ -156,7 +203,7 @@ Fedify rejects a multi-message `enqueueTaskMany()` call with one
 batch enqueue so a failed partial send cannot produce duplicates on retry.
 
 See the [deployment manual] and the [Netlify Astro example] for a complete
-setup with Netlify Database.
+setup using the PostgreSQL alternative with Netlify Database.
 
 [deployment manual]: https://fedify.dev/manual/deploy#netlify-functions
 [Netlify Astro example]: https://github.com/fedify-dev/fedify/tree/main/examples/netlify-astro
