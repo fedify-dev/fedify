@@ -3,4 +3,5 @@
     option skipped the driver's JSON serialization probe along with the table's
     schema DDL, so every value was serialized twice and every later read of the
     row returned a string, including reads from a store that never passed the
-    option.  The option now skips only the DDL.  [[#1031] by Heewon Chae]
+    option.  The option now skips only the DDL.
+    [[#1031], [#1033] by Heewon Chae]
