@@ -4,4 +4,4 @@
     `ERR value is not an integer or out of range` instead of being stored with
     a rounded expiry.  The TTL is now rounded up to the next whole second, and
     never below one second, which is the smallest expiry Redis can express.
-    [[#1028] by Heewon Chae]
+    [[#1028], [#1034] by Heewon Chae]
