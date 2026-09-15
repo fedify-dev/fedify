@@ -8,6 +8,28 @@ Version 2.2.12
 
 To be released.
 
+### @fedify/postgres
+
+ -  Fixed `PostgresKvStore` storing values as JSONB strings rather than JSONB
+    objects when it was constructed with the `initialized: true` option.  The
+    option skipped the driver's JSON serialization probe along with the table's
+    schema DDL, so every value was serialized twice and every later read of the
+    row returned a string, including reads from a store that never passed the
+    option.  The option now skips only the DDL.
+    [[#1031], [#1033] by Heewon Chae\]
+ -  Fixed `PostgresMessageQueue` storing messages as JSONB strings rather than
+    JSONB objects when it was constructed with the `initialized: true` option.
+    The option skipped the driver's JSON serialization probe along with the
+    table's schema DDL, so every message was serialized twice and a listener
+    received a string with no recognizable task type, silently dropping the
+    queued work.  The option now skips only the DDL.
+    [[#1014], [#1032] by Heewon Chae\]
+
+[#1014]: https://github.com/fedify-dev/fedify/issues/1014
+[#1031]: https://github.com/fedify-dev/fedify/issues/1031
+[#1032]: https://github.com/fedify-dev/fedify/issues/1032
+[#1033]: https://github.com/fedify-dev/fedify/issues/1033
+
 
 Version 2.2.11
 --------------
@@ -651,6 +673,29 @@ Released on April 28, 2026.
 [#706]: https://github.com/fedify-dev/fedify/issues/706
 [#715]: https://github.com/fedify-dev/fedify/pull/715
 [#722]: https://github.com/fedify-dev/fedify/pull/722
+
+
+Version 2.1.23
+--------------
+
+Released on September 15, 2026.
+
+### @fedify/postgres
+
+ -  Fixed `PostgresKvStore` storing values as JSONB strings rather than JSONB
+    objects when it was constructed with the `initialized: true` option.  The
+    option skipped the driver's JSON serialization probe along with the table's
+    schema DDL, so every value was serialized twice and every later read of the
+    row returned a string, including reads from a store that never passed the
+    option.  The option now skips only the DDL.
+    [[#1031], [#1033] by Heewon Chae\]
+ -  Fixed `PostgresMessageQueue` storing messages as JSONB strings rather than
+    JSONB objects when it was constructed with the `initialized: true` option.
+    The option skipped the driver's JSON serialization probe along with the
+    table's schema DDL, so every message was serialized twice and a listener
+    received a string with no recognizable task type, silently dropping the
+    queued work.  The option now skips only the DDL.
+    [[#1014], [#1032] by Heewon Chae\]
 
 
 Version 2.1.22
@@ -1400,6 +1445,29 @@ Released on March 24, 2026.
 [#586]: https://github.com/fedify-dev/fedify/issues/586
 [#597]: https://github.com/fedify-dev/fedify/pull/597
 [#599]: https://github.com/fedify-dev/fedify/pull/599
+
+
+Version 2.0.27
+--------------
+
+Released on September 15, 2026.
+
+### @fedify/postgres
+
+ -  Fixed `PostgresKvStore` storing values as JSONB strings rather than JSONB
+    objects when it was constructed with the `initialized: true` option.  The
+    option skipped the driver's JSON serialization probe along with the table's
+    schema DDL, so every value was serialized twice and every later read of the
+    row returned a string, including reads from a store that never passed the
+    option.  The option now skips only the DDL.
+    [[#1031], [#1033] by Heewon Chae\]
+ -  Fixed `PostgresMessageQueue` storing messages as JSONB strings rather than
+    JSONB objects when it was constructed with the `initialized: true` option.
+    The option skipped the driver's JSON serialization probe along with the
+    table's schema DDL, so every message was serialized twice and a listener
+    received a string with no recognizable task type, silently dropping the
+    queued work.  The option now skips only the DDL.
+    [[#1014], [#1032] by Heewon Chae\]
 
 
 Version 2.0.26
