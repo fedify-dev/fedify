@@ -9,6 +9,23 @@ import { Buffer } from "node:buffer";
 import { type Codec, JsonCodec } from "./codec.ts";
 
 /**
+ * Turns a TTL into the whole number of seconds Redis `SETEX` requires.
+ *
+ * Redis expiries have one-second granularity, so a duration that is not a
+ * whole number of seconds has to be approximated.  It is rounded up rather
+ * than to the nearest second: every other {@link KvStore} implementation keeps
+ * a value for at least as long as it was asked to, and expiring early is the
+ * direction that can change behaviour rather than just cost a refetch — a TTL
+ * used to suppress duplicate work would start letting duplicates through.
+ *
+ * The result is clamped to 1, the smallest expiry `SETEX` accepts, so a
+ * sub-second duration stores the value instead of being rejected.
+ */
+function expirySeconds(ttl: Temporal.Duration): number {
+  return Math.max(1, Math.ceil(ttl.total("second")));
+}
+
+/**
  * Options for {@link RedisKvStore} class.
  */
 export interface RedisKvStoreOptions {
@@ -101,7 +118,7 @@ export class RedisKvStore implements KvStore {
     if (options?.ttl != null) {
       await this.#redis.setex(
         serializedKey,
-        options.ttl.total("second"),
+        expirySeconds(options.ttl),
         encodedValue,
       );
     } else {
