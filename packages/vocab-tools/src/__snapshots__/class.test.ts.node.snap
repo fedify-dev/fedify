@@ -2261,7 +2261,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -2303,7 +2303,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -2510,7 +2510,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -2552,7 +2552,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -2884,7 +2884,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -2926,7 +2926,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -3249,7 +3249,7 @@ get contents(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -3291,7 +3291,7 @@ get contents(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -3535,7 +3535,7 @@ get names(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -3577,7 +3577,7 @@ get names(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -3773,7 +3773,7 @@ get names(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -3815,7 +3815,7 @@ get names(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -4132,7 +4132,7 @@ get names(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -4174,7 +4174,7 @@ get names(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -4491,7 +4491,7 @@ get names(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -4533,7 +4533,7 @@ get names(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -4836,7 +4836,7 @@ get names(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -4878,7 +4878,7 @@ get names(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -5181,7 +5181,7 @@ get names(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -5223,7 +5223,7 @@ get names(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -5537,7 +5537,7 @@ get names(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -5579,7 +5579,7 @@ get names(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -5765,7 +5765,7 @@ get names(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -5807,7 +5807,7 @@ get names(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -5999,7 +5999,7 @@ get names(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -6041,7 +6041,7 @@ get names(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -6233,7 +6233,7 @@ get names(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -6275,7 +6275,7 @@ get names(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -6501,7 +6501,7 @@ get summaries(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -6543,7 +6543,7 @@ get summaries(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -6776,7 +6776,7 @@ get urls(): ((URL | Link))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -6818,7 +6818,7 @@ get urls(): ((URL | Link))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -7112,7 +7112,7 @@ get urls(): ((URL | Link))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -7154,7 +7154,7 @@ get urls(): ((URL | Link))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -7448,7 +7448,7 @@ get urls(): ((URL | Link))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -7490,7 +7490,7 @@ get urls(): ((URL | Link))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -7784,7 +7784,7 @@ get urls(): ((URL | Link))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -7826,7 +7826,7 @@ get urls(): ((URL | Link))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -8184,7 +8184,7 @@ get urls(): ((URL | Link))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -8226,7 +8226,7 @@ get urls(): ((URL | Link))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -8557,7 +8557,7 @@ get urls(): ((URL | Link))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -8599,7 +8599,7 @@ get urls(): ((URL | Link))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -8785,7 +8785,7 @@ get urls(): ((URL | Link))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -8827,7 +8827,7 @@ get urls(): ((URL | Link))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -9013,7 +9013,7 @@ get urls(): ((URL | Link))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -9055,7 +9055,7 @@ get urls(): ((URL | Link))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -14398,7 +14398,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -14440,7 +14440,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -14650,7 +14650,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -14692,7 +14692,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -16105,7 +16105,7 @@ instruments?: (Object | URL)[];}
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -16147,7 +16147,7 @@ instruments?: (Object | URL)[];}
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -16479,7 +16479,7 @@ instruments?: (Object | URL)[];}
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -16521,7 +16521,7 @@ instruments?: (Object | URL)[];}
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -16817,7 +16817,7 @@ instruments?: (Object | URL)[];}
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -16859,7 +16859,7 @@ instruments?: (Object | URL)[];}
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -17161,7 +17161,7 @@ instruments?: (Object | URL)[];}
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -17203,7 +17203,7 @@ instruments?: (Object | URL)[];}
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -17499,7 +17499,7 @@ instruments?: (Object | URL)[];}
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -17541,7 +17541,7 @@ instruments?: (Object | URL)[];}
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -17839,7 +17839,7 @@ instruments?: (Object | URL)[];}
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -17881,7 +17881,7 @@ instruments?: (Object | URL)[];}
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -21095,7 +21095,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -21137,7 +21137,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -21323,7 +21323,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -21365,7 +21365,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -24438,7 +24438,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -24480,7 +24480,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -24666,7 +24666,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -24708,7 +24708,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -25960,7 +25960,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -26002,7 +26002,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -26188,7 +26188,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -26230,7 +26230,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -27482,7 +27482,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -27524,7 +27524,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -27709,7 +27709,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -27751,7 +27751,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -30764,7 +30764,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -30806,7 +30806,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -30990,7 +30990,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -31032,7 +31032,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -32623,7 +32623,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -32665,7 +32665,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -32851,7 +32851,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -32893,7 +32893,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -33079,7 +33079,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -33121,7 +33121,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -33307,7 +33307,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -33349,7 +33349,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -33546,7 +33546,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -33588,7 +33588,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -33773,7 +33773,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -33815,7 +33815,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -34000,7 +34000,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -34042,7 +34042,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -34227,7 +34227,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -34269,7 +34269,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -34454,7 +34454,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -34496,7 +34496,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -34681,7 +34681,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -34723,7 +34723,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -34908,7 +34908,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -34950,7 +34950,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -35135,7 +35135,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -35177,7 +35177,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -37132,7 +37132,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -37174,7 +37174,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -38606,7 +38606,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -38648,7 +38648,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -38832,7 +38832,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -38874,7 +38874,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -40809,7 +40809,7 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -40851,7 +40851,7 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -41912,7 +41912,7 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -41954,7 +41954,7 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -42904,7 +42904,7 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -42946,7 +42946,7 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -49408,7 +49408,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -49450,7 +49450,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -49740,7 +49740,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -49782,7 +49782,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -50126,7 +50126,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -50168,7 +50168,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -50374,7 +50374,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -50416,7 +50416,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -50619,7 +50619,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -50661,7 +50661,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -50850,7 +50850,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -50892,7 +50892,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -51084,7 +51084,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -51126,7 +51126,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -51316,7 +51316,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -51358,7 +51358,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -51546,7 +51546,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -51588,7 +51588,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -51776,7 +51776,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -51818,7 +51818,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -52003,7 +52003,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -52045,7 +52045,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -52307,7 +52307,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -52349,7 +52349,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -52569,7 +52569,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -52611,7 +52611,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -52945,7 +52945,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -52987,7 +52987,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -57012,7 +57012,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -57054,7 +57054,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -57264,7 +57264,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -57306,7 +57306,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -60281,7 +60281,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -60323,7 +60323,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -60509,7 +60509,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -60551,7 +60551,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -60735,7 +60735,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -60777,7 +60777,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -66410,7 +66410,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -66452,7 +66452,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -66742,7 +66742,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -66784,7 +66784,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -67128,7 +67128,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -67170,7 +67170,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -67376,7 +67376,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -67418,7 +67418,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -67621,7 +67621,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -67663,7 +67663,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -67852,7 +67852,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -67894,7 +67894,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -68086,7 +68086,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -68128,7 +68128,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -68318,7 +68318,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -68360,7 +68360,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -68548,7 +68548,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -68590,7 +68590,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -68778,7 +68778,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -68820,7 +68820,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -69005,7 +69005,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -69047,7 +69047,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -69309,7 +69309,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -69351,7 +69351,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -69571,7 +69571,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -69613,7 +69613,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -69947,7 +69947,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -69989,7 +69989,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -73685,7 +73685,7 @@ get names(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -73727,7 +73727,7 @@ get names(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -79103,7 +79103,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -79145,7 +79145,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -79355,7 +79355,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -79397,7 +79397,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -80361,7 +80361,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -80403,7 +80403,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -82247,7 +82247,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -82289,7 +82289,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -82579,7 +82579,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -82621,7 +82621,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -82965,7 +82965,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -83007,7 +83007,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -83213,7 +83213,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -83255,7 +83255,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -83458,7 +83458,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -83500,7 +83500,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -83689,7 +83689,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -83731,7 +83731,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -83923,7 +83923,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -83965,7 +83965,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -84155,7 +84155,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -84197,7 +84197,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -84385,7 +84385,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -84427,7 +84427,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -84615,7 +84615,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -84657,7 +84657,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -84842,7 +84842,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -84884,7 +84884,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -85146,7 +85146,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -85188,7 +85188,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -85408,7 +85408,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -85450,7 +85450,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -85784,7 +85784,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -85826,7 +85826,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -90397,7 +90397,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -90439,7 +90439,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -90729,7 +90729,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -90771,7 +90771,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -91115,7 +91115,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -91157,7 +91157,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -91363,7 +91363,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -91405,7 +91405,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -91608,7 +91608,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -91650,7 +91650,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -91839,7 +91839,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -91881,7 +91881,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -92073,7 +92073,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -92115,7 +92115,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -92305,7 +92305,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -92347,7 +92347,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -92535,7 +92535,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -92577,7 +92577,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -92765,7 +92765,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -92807,7 +92807,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -92992,7 +92992,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -93034,7 +93034,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -93296,7 +93296,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -93338,7 +93338,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -93558,7 +93558,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -93600,7 +93600,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -93934,7 +93934,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -93976,7 +93976,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -98328,7 +98328,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -98370,7 +98370,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -99297,7 +99297,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -99339,7 +99339,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -99528,7 +99528,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -99570,7 +99570,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -99789,7 +99789,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -99831,7 +99831,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -100041,7 +100041,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -100083,7 +100083,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -102211,7 +102211,7 @@ relationships?: (Object | URL)[];}
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -102253,7 +102253,7 @@ relationships?: (Object | URL)[];}
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -102441,7 +102441,7 @@ relationships?: (Object | URL)[];}
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -102483,7 +102483,7 @@ relationships?: (Object | URL)[];}
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -102775,7 +102775,7 @@ relationships?: (Object | URL)[];}
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -102817,7 +102817,7 @@ relationships?: (Object | URL)[];}
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -105255,7 +105255,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -105297,7 +105297,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -105587,7 +105587,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -105629,7 +105629,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -105973,7 +105973,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -106015,7 +106015,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -106221,7 +106221,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -106263,7 +106263,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -106466,7 +106466,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -106508,7 +106508,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -106697,7 +106697,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -106739,7 +106739,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -106931,7 +106931,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -106973,7 +106973,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -107163,7 +107163,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -107205,7 +107205,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -107393,7 +107393,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -107435,7 +107435,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -107623,7 +107623,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -107665,7 +107665,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -107850,7 +107850,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -107892,7 +107892,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -108154,7 +108154,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -108196,7 +108196,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -108416,7 +108416,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -108458,7 +108458,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );
@@ -108792,7 +108792,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to fetch {url}: {error}\\",
               { error, url: lookupUrl }
             );
@@ -108834,7 +108834,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger([\\"fedify\\", \\"vocab\\"]).error(
+            getLogger([\\"fedify\\", \\"vocab\\"]).debug(
               \\"Failed to parse {url}: {error}\\",
               { error: e, url: lookupUrl }
             );

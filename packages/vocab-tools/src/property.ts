@@ -98,7 +98,7 @@ async function* generateProperty(
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).debug(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -140,7 +140,7 @@ async function* generateProperty(
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).debug(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
