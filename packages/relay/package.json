@@ -1,6 +1,6 @@
 {
   "name": "@fedify/relay",
-  "version": "2.3.7",
+  "version": "2.3.8",
   "description": "ActivityPub relay support for Fedify",
   "keywords": [
     "Fedify",
