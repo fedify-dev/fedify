@@ -1,6 +1,6 @@
 {
   "name": "@fedify/create",
-  "version": "2.1.23",
+  "version": "2.1.24",
   "description": "Create a new Fedify application",
   "keywords": [
     "fedify",
