@@ -27,6 +27,10 @@ export interface PostgresKvStoreOptions {
 
   /**
    * Whether the table has been initialized.  `false` by default.
+   *
+   * This skips only the table's schema DDL.  Driver-specific runtime setup,
+   * such as detecting whether the driver serializes JSON parameters on its
+   * own, still runs before the first key is read or written.
    * @default `false`
    */
   readonly initialized?: boolean;
@@ -60,7 +64,8 @@ export class PostgresKvStore implements KvStore {
   readonly #sql: Sql<{}>;
   readonly #tableName: string;
   readonly #unlogged: boolean;
-  #initialized: boolean;
+  readonly #skipDdl: boolean;
+  #initialized = false;
   #initializing?: Promise<void>;
   #driverSerializesJson = false;
 
@@ -77,7 +82,7 @@ export class PostgresKvStore implements KvStore {
     this.#sql = sql;
     this.#tableName = options.tableName ?? "fedify_kv_v2";
     this.#unlogged = options.unlogged ?? false;
-    this.#initialized = options.initialized ?? false;
+    this.#skipDdl = options.initialized ?? false;
   }
 
   async #expire(): Promise<void> {
@@ -240,35 +245,7 @@ export class PostgresKvStore implements KvStore {
       logger.debug("Initializing the key–value store table {tableName}...", {
         tableName: this.#tableName,
       });
-      if (this.#unlogged) {
-        await this.#sql`
-          CREATE UNLOGGED TABLE IF NOT EXISTS ${this.#sql(this.#tableName)} (
-            key text[] PRIMARY KEY,
-            value jsonb NOT NULL,
-            created timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-            ttl interval
-          );
-        `;
-      } else {
-        await this.#sql`
-          CREATE TABLE IF NOT EXISTS ${this.#sql(this.#tableName)} (
-            key text[] PRIMARY KEY,
-            value jsonb NOT NULL,
-            created timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-            ttl interval
-          );
-        `;
-        const persistence = await this.#sql`
-          SELECT relpersistence
-          FROM pg_class
-          WHERE oid = to_regclass(${quoteIdentifier(this.#tableName)});
-        `;
-        if (persistence[0]?.relpersistence === "u") {
-          await this.#sql`
-            ALTER TABLE ${this.#sql(this.#tableName)} SET LOGGED;
-          `;
-        }
-      }
+      if (!this.#skipDdl) await this.#initializeTable();
       this.#driverSerializesJson = await driverSerializesJson(this.#sql);
       this.#initialized = true;
       logger.debug("Initialized the key–value store table {tableName}.", {
@@ -280,6 +257,38 @@ export class PostgresKvStore implements KvStore {
     } catch (error) {
       this.#initializing = undefined;
       throw error;
+    }
+  }
+
+  async #initializeTable(): Promise<void> {
+    if (this.#unlogged) {
+      await this.#sql`
+        CREATE UNLOGGED TABLE IF NOT EXISTS ${this.#sql(this.#tableName)} (
+          key text[] PRIMARY KEY,
+          value jsonb NOT NULL,
+          created timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+          ttl interval
+        );
+      `;
+    } else {
+      await this.#sql`
+        CREATE TABLE IF NOT EXISTS ${this.#sql(this.#tableName)} (
+          key text[] PRIMARY KEY,
+          value jsonb NOT NULL,
+          created timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+          ttl interval
+        );
+      `;
+      const persistence = await this.#sql`
+        SELECT relpersistence
+        FROM pg_class
+        WHERE oid = to_regclass(${quoteIdentifier(this.#tableName)});
+      `;
+      if (persistence[0]?.relpersistence === "u") {
+        await this.#sql`
+          ALTER TABLE ${this.#sql(this.#tableName)} SET LOGGED;
+        `;
+      }
     }
   }
 
