@@ -423,6 +423,14 @@ To be released.
 [#924]: https://github.com/fedify-dev/fedify/pull/924
 [#935]: https://github.com/fedify-dev/fedify/pull/935
 
+### @fedify/vocab-tools
+
+ -  Changed suppressed vocabulary fetch and parsing failures to log at the
+    debug level so that intentionally handled failures are not reported as
+    application errors.  [[#933] by Lumia1108\]
+
+[#933]: https://github.com/fedify-dev/fedify/issues/933
+
 
 Version 2.3.7
 -------------
