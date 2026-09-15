@@ -2,7 +2,7 @@ import { test } from "@fedify/fixture";
 import { PostgresMessageQueue } from "@fedify/postgres/mq";
 import { getRandomKey, testMessageQueue } from "@fedify/testing";
 import * as temporal from "@js-temporal/polyfill";
-import { deepStrictEqual } from "node:assert/strict";
+import { deepStrictEqual, rejects } from "node:assert/strict";
 import process from "node:process";
 import { test as nodeTest } from "node:test";
 import postgres from "postgres";
@@ -880,6 +880,116 @@ nodeTest(
         true,
         "initialize() should create an index on the created column",
       );
+    } finally {
+      await mq.drop();
+      await sql.end();
+    }
+  },
+);
+
+// Regression test for the driver JSON serialization probe being skipped
+// together with the schema DDL when `initialized: true` is passed.
+//
+// `#doInitialize()` does two unrelated things: it runs the DDL, and it sets
+// `#driverSerializesJson` from the `driverSerializesJson()` probe.  Because
+// `initialized: true` made `initialize()` return before any of it ran, the
+// probe was skipped as well and the flag stayed `false`, so `#json()` called
+// `JSON.stringify()` before handing the value to postgres.js, which serialized
+// it a second time.  The message was stored as a JSONB string instead of a
+// JSONB object, and a listener then received a string with no recognizable
+// task type and dropped the work silently.
+//
+// See: https://github.com/fedify-dev/fedify/issues/1014
+nodeTest(
+  "PostgresMessageQueue stores JSONB objects when initialized is true",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+
+    const tableName = getRandomKey("message");
+    const channelName = getRandomKey("channel");
+
+    const sql = postgres(dbUrl!);
+    const mq = new PostgresMessageQueue(sql, {
+      tableName,
+      channelName,
+      initialized: true,
+    });
+
+    try {
+      // Create the table up front, which is the situation `initialized: true`
+      // describes.  The DDL is the same one `initialize()` would have run.
+      await sql`
+        CREATE TABLE IF NOT EXISTS ${sql(tableName)} (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          message jsonb NOT NULL,
+          delay interval DEFAULT '0 seconds',
+          created timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+          ordering_key text
+        );
+      `;
+
+      const message = { type: "inbox", payload: { id: "example" } };
+      await mq.enqueue(message);
+
+      const [row] = await sql`
+        SELECT message, jsonb_typeof(message) AS json_type
+        FROM ${sql(tableName)}
+      `;
+      deepStrictEqual(
+        row.json_type,
+        "object",
+        "initialized: true should still store the message as a JSONB object",
+      );
+      deepStrictEqual(
+        row.message,
+        message,
+        "the stored message should round-trip as the original object",
+      );
+    } finally {
+      await mq.drop();
+      await sql.end();
+    }
+  },
+);
+
+// The other half of the same contract: running the probe unconditionally must
+// not drag the DDL along with it.  If `initialized: true` ever starts creating
+// the table again, callers that pass it precisely because they manage their own
+// schema would silently get a table they did not ask for, so the missing table
+// has to surface as an error instead.
+nodeTest(
+  "PostgresMessageQueue initialized true still skips the schema DDL",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+
+    const tableName = getRandomKey("message");
+    const channelName = getRandomKey("channel");
+
+    const sql = postgres(dbUrl!);
+    const mq = new PostgresMessageQueue(sql, {
+      tableName,
+      channelName,
+      initialized: true,
+    });
+
+    try {
+      // The table is deliberately never created.
+      await rejects(
+        () => mq.enqueue({ type: "inbox" }),
+        (error: unknown) =>
+          error instanceof postgres.PostgresError && error.code === "42P01",
+        "initialized: true should not create the table on its own",
+      );
+
+      const rows = await sql`
+        SELECT 1
+        FROM pg_tables
+        WHERE schemaname = current_schema()
+          AND tablename = ${tableName}
+      `;
+      deepStrictEqual(rows.length, 0, "no table should have been created");
     } finally {
       await mq.drop();
       await sql.end();
