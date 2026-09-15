@@ -249,4 +249,107 @@ test(
   },
 );
 
+// Regression test for the driver JSON serialization probe being skipped
+// together with the schema DDL when `initialized: true` is passed.
+//
+// `initialize()` does two unrelated things: it runs the `CREATE UNLOGGED
+// TABLE` statement, and it sets `#driverSerializesJson` from the
+// `driverSerializesJson()` probe.  Because the constructor assigned
+// `options.initialized` straight into `#initialized`, `initialize()` returned
+// at its first line and reached neither, so the flag stayed `false`, `#json()`
+// called `JSON.stringify()` before handing the value to postgres.js, and the
+// driver serialized it a second time.  The value was stored as a JSONB string
+// instead of a JSONB object, and unlike the queue's version of this bug the
+// bad row stays in the table: every later `get()` returns a string, including
+// one from a store that never passed the option.
+//
+// See: https://github.com/fedify-dev/fedify/issues/1031
+test(
+  "PostgresKvStore stores JSONB objects when initialized is true",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+
+    const sql = postgres(dbUrl!);
+    const tableName = `fedify_kv_test_${Math.random().toString(36).slice(5)}`;
+    const store = new PostgresKvStore(sql, { tableName, initialized: true });
+    try {
+      // Create the table up front, which is the situation `initialized: true`
+      // describes.  The DDL is the same one `initialize()` would have run.
+      await sql`
+        CREATE UNLOGGED TABLE IF NOT EXISTS ${sql(tableName)} (
+          key text[] PRIMARY KEY,
+          value jsonb NOT NULL,
+          created timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+          ttl interval
+        );
+      `;
+
+      const value = { keyPair: { id: "https://example.com/actor#main-key" } };
+      await store.set(["cache", "a"], value);
+
+      const [row] = await sql`
+        SELECT value, jsonb_typeof(value) AS json_type
+        FROM ${sql(tableName)}
+        WHERE key = ${["cache", "a"]};
+      `;
+      assert.strictEqual(
+        row.json_type,
+        "object",
+        "initialized: true should still store the value as a JSONB object",
+      );
+      assert.deepStrictEqual(
+        row.value,
+        value,
+        "the stored value should round-trip as the original object",
+      );
+      assert.deepStrictEqual(
+        await store.get(["cache", "a"]),
+        value,
+        "get() should return the object that set() was given",
+      );
+    } finally {
+      await store.drop();
+      await sql.end();
+    }
+  },
+);
+
+// The other half of the same contract: running the probe unconditionally must
+// not drag the DDL along with it.  If `initialized: true` ever starts creating
+// the table again, callers that pass it precisely because they manage their own
+// schema would silently get a table they did not ask for, so the missing table
+// has to surface as an error instead.
+test(
+  "PostgresKvStore initialized true still skips the schema DDL",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+
+    const sql = postgres(dbUrl!);
+    const tableName = `fedify_kv_test_${Math.random().toString(36).slice(5)}`;
+    const store = new PostgresKvStore(sql, { tableName, initialized: true });
+    try {
+      // The table is deliberately never created.
+      await assert.rejects(
+        () => store.set(["cache", "a"], { n: 1 }),
+        (error: unknown) =>
+          error instanceof postgres.PostgresError && error.code === "42P01",
+        "initialized: true should not create the table on its own",
+      );
+
+      const rows = await sql`
+        SELECT 1
+        FROM pg_tables
+        WHERE schemaname = current_schema()
+          AND tablename = ${tableName};
+      `;
+      assert.strictEqual(rows.length, 0, "no table should have been created");
+    } finally {
+      await store.drop();
+      await sql.end();
+    }
+  },
+);
+
 // cSpell: ignore regclass
