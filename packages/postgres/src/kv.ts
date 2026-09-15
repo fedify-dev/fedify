@@ -23,6 +23,10 @@ export interface PostgresKvStoreOptions {
 
   /**
    * Whether the table has been initialized.  `false` by default.
+   *
+   * This skips only the table's schema DDL.  Driver-specific runtime setup,
+   * such as detecting whether the driver serializes JSON parameters on its
+   * own, still runs before the first key is read or written.
    * @default `false`
    */
   readonly initialized?: boolean;
@@ -47,7 +51,8 @@ export class PostgresKvStore implements KvStore {
   // deno-lint-ignore ban-types
   readonly #sql: Sql<{}>;
   readonly #tableName: string;
-  #initialized: boolean;
+  readonly #skipDdl: boolean;
+  #initialized = false;
   #driverSerializesJson = false;
 
   /**
@@ -62,7 +67,7 @@ export class PostgresKvStore implements KvStore {
   ) {
     this.#sql = sql;
     this.#tableName = options.tableName ?? "fedify_kv_v2";
-    this.#initialized = options.initialized ?? false;
+    this.#skipDdl = options.initialized ?? false;
   }
 
   async #expire(): Promise<void> {
@@ -156,6 +161,15 @@ export class PostgresKvStore implements KvStore {
     logger.debug("Initializing the key–value store table {tableName}...", {
       tableName: this.#tableName,
     });
+    if (!this.#skipDdl) await this.#initializeTable();
+    this.#driverSerializesJson = await driverSerializesJson(this.#sql);
+    this.#initialized = true;
+    logger.debug("Initialized the key–value store table {tableName}.", {
+      tableName: this.#tableName,
+    });
+  }
+
+  async #initializeTable(): Promise<void> {
     await this.#sql`
       CREATE UNLOGGED TABLE IF NOT EXISTS ${this.#sql(this.#tableName)} (
         key text[] PRIMARY KEY,
@@ -164,11 +178,6 @@ export class PostgresKvStore implements KvStore {
         ttl interval
       );
     `;
-    this.#driverSerializesJson = await driverSerializesJson(this.#sql);
-    this.#initialized = true;
-    logger.debug("Initialized the key–value store table {tableName}.", {
-      tableName: this.#tableName,
-    });
   }
 
   /**
