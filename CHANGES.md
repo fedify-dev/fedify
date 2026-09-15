@@ -6,7 +6,7 @@ Fedify changelog
 Version 2.1.23
 --------------
 
-To be released.
+Released on September 15, 2026.
 
 ### @fedify/postgres
 
