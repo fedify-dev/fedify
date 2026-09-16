@@ -11,15 +11,26 @@ import { type Codec, JsonCodec } from "./codec.ts";
 /**
  * Turns a TTL into the whole number of seconds Redis `SETEX` requires.
  *
- * Redis expiries have one-second granularity, so a duration that is not a
- * whole number of seconds has to be approximated.  It is rounded up rather
- * than to the nearest second: every other {@link KvStore} implementation keeps
- * a value for at least as long as it was asked to, and expiring early is the
- * direction that can change behaviour rather than just cost a refetch — a TTL
- * used to suppress duplicate work would start letting duplicates through.
+ * The one-second granularity is `SETEX`'s, not Redis's: Redis can express a
+ * millisecond expiry through `SET` with `PX`, and `SETEX` is simply the
+ * command this adapter uses.  Within that command a duration which is not a
+ * whole number of seconds has to be approximated.
  *
- * The result is clamped to 1, the smallest expiry `SETEX` accepts, so a
- * sub-second duration stores the value instead of being rejected.
+ * It is rounded up rather than to the nearest second, because every other
+ * {@link KvStore} implementation keeps a value for at least as long as it was
+ * asked to, and expiring early is the direction that can change behaviour
+ * rather than just cost a refetch — a TTL used to suppress duplicate work
+ * would start letting duplicates through.
+ *
+ * The result is clamped to 1, the smallest expiry `SETEX` accepts.  A
+ * sub-second duration therefore stores the value for one second instead of
+ * being rejected, and so do **zero and negative durations**, which `SETEX`
+ * rejects outright.  That last part is a policy choice rather than a
+ * consequence of the rounding: the other {@link KvStore} implementations read
+ * a non-positive TTL as already expired, whereas this one keeps the value for
+ * the shortest lifetime the command can express.  Storing it briefly is closer
+ * to the caller's request than failing the write, which is what happened
+ * before.
  */
 function expirySeconds(ttl: Temporal.Duration): number {
   return Math.max(1, Math.ceil(ttl.total("second")));
@@ -108,6 +119,15 @@ export class RedisKvStore implements KvStore {
     return this.#codec.decode(encodedValue) as T;
   }
 
+  /**
+   * {@inheritDoc KvStore.set}
+   *
+   * The `ttl` option is stored through Redis `SETEX`, which takes a whole
+   * number of seconds, so a duration with a finer resolution is rounded up to
+   * the next second.  A zero or negative duration stores the value for one
+   * second, the shortest expiry the command can express, rather than failing
+   * the write or deleting the key.
+   */
   async set(
     key: KvKey,
     value: unknown,

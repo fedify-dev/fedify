@@ -207,6 +207,21 @@ nodeTest("RedisKvStore.set() rounds a TTL up to whole seconds", async () => {
       "a near-zero TTL stays at least 1",
     ],
     [Temporal.Duration.from({ seconds: 0 }), 1, "a zero TTL stays at least 1"],
+    [
+      Temporal.Duration.from({ milliseconds: -1 }),
+      1,
+      "a negative sub-second TTL stays at least 1",
+    ],
+    [
+      Temporal.Duration.from({ seconds: -30 }),
+      1,
+      "a negative TTL stays at least 1",
+    ],
+    [
+      Temporal.Duration.from({ hours: -1 }),
+      1,
+      "a large negative TTL stays at least 1",
+    ],
   ];
   for (const [ttl, expected, why] of cases) {
     const { setexCalls, redis } = recordingRedis();
@@ -217,6 +232,10 @@ nodeTest("RedisKvStore.set() rounds a TTL up to whole seconds", async () => {
     assert(
       Number.isInteger(setexCalls[0].seconds),
       "SETEX only accepts whole seconds",
+    );
+    assert(
+      (setexCalls[0].seconds as number) > 0,
+      "SETEX rejects a non-positive expiry",
     );
   }
 });
@@ -238,6 +257,19 @@ nodeTest(
         await redis.ttl(`${keyPrefix}foo::sub`),
         1,
         "a sub-second TTL should be stored as the smallest expiry Redis accepts",
+      );
+
+      // A negative duration is stored for one second rather than rejected.
+      // `SETEX` refuses a non-positive expiry outright, so without the floor
+      // this throws `ERR invalid expire time in 'setex' command`.
+      await store.set(["foo", "negative"], "bar", {
+        ttl: Temporal.Duration.from({ seconds: -30 }),
+      });
+      assert.strictEqual(await store.get(["foo", "negative"]), "bar");
+      assert.strictEqual(
+        await redis.ttl(`${keyPrefix}foo::negative`),
+        1,
+        "a negative TTL should be stored as the smallest expiry Redis accepts",
       );
 
       // A whole number of seconds keeps its value, so the rounding does not
