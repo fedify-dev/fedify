@@ -32,6 +32,10 @@ export {
   createRequestContext,
 } from "./mock.ts";
 export {
+  default as testKvStore,
+  type TestKvStoreOptions,
+} from "./kv-tester.ts";
+export {
   default as testMessageQueue,
   getRandomKey,
   type TestMessageQueueOptions,

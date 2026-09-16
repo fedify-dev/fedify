@@ -1,0 +1,70 @@
+diff --git a/dist/server.cjs b/dist/server.cjs
+index bb2212317ddd2eb8a258a22c32924dd416d42582..89b2e1aa8a7ab7518d6855f1149d45994ed981d8 100644
+--- a/dist/server.cjs
++++ b/dist/server.cjs
+@@ -211,7 +211,8 @@ var BlobsServer = class _BlobsServer {
+       return this.listBlobs({ dataPath, metadataPath, rootPath, req, url });
+     }
+     this.dispatchOnRequestEvent("get" /* GET */, url);
+-    const headers = {};
++    const etag = await _BlobsServer.generateETag(dataPath);
++    const headers = { etag };
+     try {
+       const rawData = await import_node_fs.promises.readFile(metadataPath, "utf8");
+       const metadata = JSON.parse(rawData);
+@@ -224,6 +225,9 @@ var BlobsServer = class _BlobsServer {
+         this.logDebug("Could not read metadata file:", error);
+       }
+     }
++    if (req.headers.get("if-none-match") === etag) {
++      return new Response(null, { headers, status: 304 });
++    }
+     try {
+       const fileStream = (0, import_node_fs.createReadStream)(dataPath);
+       const chunks = [];
+@@ -250,8 +254,10 @@ var BlobsServer = class _BlobsServer {
+       const rawData = await import_node_fs.promises.readFile(metadataPath, "utf8");
+       const metadata = JSON.parse(rawData);
+       const encodedMetadata = encodeMetadata(metadata);
++      const etag = await _BlobsServer.generateETag(dataPath);
+       return new Response(null, {
+         headers: {
++          etag,
+           [METADATA_HEADER_INTERNAL]: encodedMetadata ?? ""
+         }
+       });
+diff --git a/dist/server.js b/dist/server.js
+index 5c8a2b809f1d9b7ad32b8e00ba77b153bfa285de..c4e2f16648ff8d557b17bab236d76dfa63285c0b 100644
+--- a/dist/server.js
++++ b/dist/server.js
+@@ -121,7 +121,8 @@ var BlobsServer = class _BlobsServer {
+       return this.listBlobs({ dataPath, metadataPath, rootPath, req, url });
+     }
+     this.dispatchOnRequestEvent("get" /* GET */, url);
+-    const headers = {};
++    const etag = await _BlobsServer.generateETag(dataPath);
++    const headers = { etag };
+     try {
+       const rawData = await fs.readFile(metadataPath, "utf8");
+       const metadata = JSON.parse(rawData);
+@@ -134,6 +135,9 @@ var BlobsServer = class _BlobsServer {
+         this.logDebug("Could not read metadata file:", error);
+       }
+     }
++    if (req.headers.get("if-none-match") === etag) {
++      return new Response(null, { headers, status: 304 });
++    }
+     try {
+       const fileStream = createReadStream(dataPath);
+       const chunks = [];
+@@ -160,8 +164,10 @@ var BlobsServer = class _BlobsServer {
+       const rawData = await fs.readFile(metadataPath, "utf8");
+       const metadata = JSON.parse(rawData);
+       const encodedMetadata = encodeMetadata(metadata);
++      const etag = await _BlobsServer.generateETag(dataPath);
+       return new Response(null, {
+         headers: {
++          etag,
+           [METADATA_HEADER_INTERNAL]: encodedMetadata ?? ""
+         }
+       });

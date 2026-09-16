@@ -1,26 +1,25 @@
 {
-  "name": "@fedify/netlify",
+  "name": "@fedify/pglite",
   "version": "2.4.0",
-  "description": "Integrate Fedify with Netlify Async Workloads",
+  "description": "PGlite driver for Fedify",
   "keywords": [
-    "Fedify",
-    "ActivityPub",
-    "Fediverse",
-    "Netlify",
-    "Async Workloads"
+    "fedify",
+    "pglite",
+    "postgresql",
+    "embedded"
   ],
+  "license": "MIT",
   "author": {
-    "name": "Hong Minhee",
-    "email": "hong@minhee.org",
-    "url": "https://hongminhee.org/"
+    "name": "ChanHaeng Lee",
+    "email": "2chanhaeng@gmail.com",
+    "url": "https://github.com/2chanhaeng"
   },
   "homepage": "https://fedify.dev/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/fedify-dev/fedify.git",
-    "directory": "packages/netlify"
+    "directory": "packages/pglite"
   },
-  "license": "MIT",
   "bugs": {
     "url": "https://github.com/fedify-dev/fedify/issues"
   },
@@ -40,38 +39,48 @@
       "require": "./dist/mod.cjs",
       "default": "./dist/mod.js"
     },
+    "./kv": {
+      "types": {
+        "import": "./dist/kv.d.ts",
+        "require": "./dist/kv.d.cts",
+        "default": "./dist/kv.d.ts"
+      },
+      "import": "./dist/kv.js",
+      "require": "./dist/kv.cjs",
+      "default": "./dist/kv.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
-    "dist/",
-    "package.json"
+    "dist",
+    "package.json",
+    "README.md"
   ],
   "dependencies": {
-    "byte-encodings": "catalog:",
-    "es-toolkit": "catalog:",
+    "@logtape/logtape": "catalog:",
+    "@types/emscripten": "catalog:",
     "temporal-polyfill": "catalog:"
   },
   "peerDependencies": {
-    "@fedify/fedify": "workspace:^",
-    "@netlify/async-workloads": "catalog:"
+    "@electric-sql/pglite": "catalog:",
+    "@fedify/fedify": "workspace:^"
   },
   "devDependencies": {
+    "@fedify/fixture": "workspace:^",
+    "@fedify/testing": "workspace:^",
     "@js-temporal/polyfill": "catalog:",
-    "@standard-schema/spec": "catalog:",
-    "@netlify/blobs": "catalog:",
-    "@types/node": "catalog:",
-    "netlify-cli": "catalog:",
+    "@std/async": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },
   "scripts": {
     "build:self": "tsdown",
-    "build": "pnpm --filter @fedify/netlify... run build:self",
+    "build": "pnpm --filter @fedify/pglite... run build:self",
     "prepack": "pnpm build",
     "prepublish": "pnpm build",
     "pretest": "pnpm build",
     "test": "node --experimental-transform-types --test",
     "pretest:bun": "pnpm build",
-    "test:bun": "bun test"
+    "test:bun": "bun test --timeout=60000"
   }
 }

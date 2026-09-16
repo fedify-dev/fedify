@@ -306,6 +306,74 @@ const federation = createFederation<void>({
 
 [`PostgresKvStore`]: https://jsr.io/@fedify/postgres/doc/kv/~/PostgresKvStore
 
+### [`PgliteKvStore`]
+
+*This API is available since Fedify 2.4.0.*
+
+To use the [`PgliteKvStore`], install the *@fedify/pglite* package and PGlite:
+
+::: code-group
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/pglite npm:@electric-sql/pglite
+~~~~
+
+~~~~ bash [npm]
+npm add @fedify/pglite @electric-sql/pglite
+~~~~
+
+~~~~ bash [pnpm]
+pnpm add @fedify/pglite @electric-sql/pglite
+~~~~
+
+~~~~ bash [Yarn]
+yarn add @fedify/pglite @electric-sql/pglite
+~~~~
+
+~~~~ bash [Bun]
+bun add @fedify/pglite @electric-sql/pglite
+~~~~
+
+:::
+
+[`PgliteKvStore`] uses an embedded PGlite database without requiring a
+PostgreSQL server.  It uses the same schema and default table name as
+[`PostgresKvStore`], so data can be migrated to PostgreSQL without converting
+the key–value records.
+
+Best for
+:   Development and testing, single-process deployments, and embedded or
+    desktop applications that need PostgreSQL-compatible storage without a
+    PostgreSQL server.
+
+Pros
+:   No server installation, PostgreSQL-compatible SQL, and the same schema as
+    [`PostgresKvStore`].
+
+Cons
+:   Only one process and PGlite instance can open a data directory, data are
+    not shared between processes, and horizontal scaling is not supported.
+
+~~~~ typescript twoslash
+import { PGlite } from "@electric-sql/pglite";
+import { createFederation } from "@fedify/fedify";
+import { PgliteKvStore } from "@fedify/pglite";
+
+const pg = new PGlite("./data/fedify");
+const federation = createFederation<void>({
+  kv: new PgliteKvStore(pg),
+  // ... other options
+});
+~~~~
+
+> [!WARNING]
+> The caller owns the PGlite instance and must close it during application
+> shutdown after pending store operations finish.  Do not open the same data
+> directory from multiple worker processes.  Use one PGlite instance per data
+> directory and runtime isolate.
+
+[`PgliteKvStore`]: https://jsr.io/@fedify/pglite/doc/kv/~/PgliteKvStore
+
 ### [`MysqlKvStore`]
 
 *This API is available since Fedify 2.1.0.*
@@ -442,6 +510,79 @@ export default {
 [`WorkersKvStore`]: https://jsr.io/@fedify/cfworkers/doc/kv/~/WorkersKvStore
 [Cloudflare Workers]: https://workers.cloudflare.com/
 [Cloudflare Workers KV]: https://developers.cloudflare.com/kv/
+
+### `NetlifyBlobsKvStore`
+
+*This API is available since Fedify 2.4.0.*
+
+To use the [`NetlifyBlobsKvStore`], you need to install *@fedify/netlify* and
+*@netlify/blobs*.
+
+::: code-group
+
+~~~~ bash [Deno]
+deno add jsr:@fedify/netlify npm:@netlify/blobs
+~~~~
+
+~~~~ bash [npm]
+npm add @fedify/netlify @netlify/blobs
+~~~~
+
+~~~~ bash [pnpm]
+pnpm add @fedify/netlify @netlify/blobs
+~~~~
+
+~~~~ bash [Yarn]
+yarn add @fedify/netlify @netlify/blobs
+~~~~
+
+~~~~ bash [Bun]
+bun add @fedify/netlify @netlify/blobs
+~~~~
+
+:::
+
+`NetlifyBlobsKvStore` from `@fedify/netlify` stores federation state in
+[Netlify Blobs]
+without requiring a separate database.  It supports expiration, prefix
+listing, and atomic compare-and-set (CAS) operations.
+
+Best for
+:   Small Fedify applications on [Netlify Functions].
+
+Pros
+:   Persistent storage and atomic CAS without a separate database.
+
+Cons
+:   600-byte encoded key limit; expired blobs and tombstones are not
+    automatically removed.
+
+~~~~ typescript
+import { createFederation } from "@fedify/fedify";
+import { NetlifyBlobsKvStore } from "@fedify/netlify";
+import { getStore } from "@netlify/blobs";
+
+const federation = createFederation<void>({
+  kv: new NetlifyBlobsKvStore(getStore({
+    name: "fedify",
+    consistency: "strong",
+  })),
+});
+~~~~
+
+CAS operations always use strong reads and conditional writes.  Configuring
+the Blobs store with `consistency: "strong"` also enables strong consistency
+for ordinary reads and listings.
+
+> [!NOTE]
+> If your Netlify application already uses PostgreSQL, you can use
+> [`PostgresKvStore`](#postgreskvstore) from `@fedify/postgres` instead.
+> Netlify Blobs is optional; choose the store that matches your application's
+> storage setup.
+
+[`NetlifyBlobsKvStore`]: https://jsr.io/@fedify/netlify/doc/~/NetlifyBlobsKvStore
+[Netlify Blobs]: https://docs.netlify.com/build/data-and-storage/netlify-blobs/
+[Netlify Functions]: https://docs.netlify.com/build/functions/overview/
 
 
 Implementing a custom `KvStore`

@@ -8,6 +8,20 @@ import type { MethodCallContext, PropertyConfig } from "./types.ts";
 
 type PropertyKey = keyof typeof properties;
 
+/**
+ * Property keys whose config has a `getter` — the subset mismatch rules
+ * apply to (a property with no Context getter, like `preferredUsername`,
+ * cannot be "mismatched" against one).
+ */
+type PropertyKeyWithGetter = {
+  [K in PropertyKey]: (typeof properties)[K] extends { getter: string } ? K
+    : never;
+}[PropertyKey];
+
+/** Safely reads a property config's `getter`, if it has one. */
+const getterOf = (p: PropertyConfig): string | undefined =>
+  "getter" in p ? p.getter : undefined;
+
 interface TestConfig {
   rule: {
     deno: Deno.lint.Rule;
@@ -109,7 +123,7 @@ const createPropertyAssignment = (
   const idName = options.idName ?? "identifier";
   const requiresIdentifier = prop.requiresIdentifier ?? true;
 
-  const methodCall = createMethodCall(
+  const methodCall = getter == null ? `"example-value"` : createMethodCall(
     getter,
     requiresIdentifier,
     ctxName,
@@ -134,7 +148,7 @@ const createMethodCallContext = (
   path: prop.path.join("."),
   ctxName,
   idName,
-  methodName: prop.getter,
+  methodName: prop.getter!,
   requiresIdentifier: prop.requiresIdentifier ?? true,
 });
 
@@ -408,6 +422,145 @@ export function createIdRequiredRuleTests(config: TestConfig): TestSuite {
   };
 }
 
+/**
+ * Creates required rule tests for `preferredUsername`, which — like `id` —
+ * uses `setActorDispatcher` as its own setter, so the generic
+ * `createRequiredDispatcherRuleTests` (built for properties with a separate
+ * setter such as `setInboxListeners`) does not apply. Unlike `id`, it has no
+ * getter, so its "good" cases use a plain literal instead of a context call.
+ */
+export function createPreferredUsernameRequiredRuleTests(
+  config: TestConfig,
+): TestSuite {
+  const { rule, ruleName } = config;
+  const expectedError = actorPropertyRequired(properties.preferredUsername);
+
+  return {
+    // ✅ Good - non-Federation object
+    "non-federation object": [
+      lintTest({
+        code: createActorDispatcherCode(
+          `return new Person({ name: "John Doe" });`,
+        ),
+        rule,
+        ruleName,
+        federationSetup: `
+          const federation = { setActorDispatcher: () => {} };
+        `,
+      }),
+      true,
+    ],
+
+    // ✅ Good - with preferredUsername property
+    "with preferredUsername property": [
+      lintTest({
+        code: createActorDispatcherCode(`return new Person({
+          preferredUsername: identifier,
+          name: "John Doe",
+        });`),
+        rule,
+        ruleName,
+      }),
+      true,
+    ],
+
+    // ✅ Good - with plural preferredUsernames property
+    "with preferredUsernames (plural) property": [
+      lintTest({
+        code: createActorDispatcherCode(`return new Person({
+          preferredUsernames: [identifier],
+          name: "John Doe",
+        });`),
+        rule,
+        ruleName,
+      }),
+      true,
+    ],
+
+    // ✅ Good - BlockStatement with preferredUsername
+    "block statement with preferredUsername": [
+      lintTest({
+        code: createActorDispatcherCode(`const name = "John Doe";
+        return new Person({
+          preferredUsername: identifier,
+          name,
+        });`),
+        rule,
+        ruleName,
+      }),
+      true,
+    ],
+
+    // ❌ Bad - without preferredUsername property
+    "without preferredUsername property": [
+      lintTest({
+        code: createActorDispatcherCode(
+          `return new Person({ name: "John Doe" });`,
+        ),
+        rule,
+        ruleName,
+        expectedError,
+      }),
+      false,
+    ],
+
+    // ❌ Bad - returning empty object
+    "returning empty object": [
+      lintTest({
+        code: createActorDispatcherCode(`return new Person({});`),
+        rule,
+        ruleName,
+        expectedError,
+      }),
+      false,
+    ],
+
+    // ✅ Good - multiple properties including preferredUsername
+    "multiple properties including preferredUsername": [
+      lintTest({
+        code: createActorDispatcherCode(`return new Person({
+          preferredUsername: identifier,
+          name: "John Doe",
+          inbox: ctx.getInboxUri(identifier),
+          outbox: ctx.getOutboxUri(identifier),
+        });`),
+        rule,
+        ruleName,
+      }),
+      true,
+    ],
+
+    // ❌ Bad - variable assignment without preferredUsername
+    "variable assignment without preferredUsername": [
+      lintTest({
+        code: createActorDispatcherCode(
+          `const actor = new Person({ name: "John Doe" });
+        return actor;`,
+        ),
+        rule,
+        ruleName,
+        expectedError,
+      }),
+      false,
+    ],
+
+    // ✅ Good - concise-body dispatcher returning only a Tombstone
+    "concise-body dispatcher returning only a Tombstone": [
+      lintTest({
+        code: `
+federation.setActorDispatcher(
+  "/users/{identifier}",
+  (ctx, identifier) => new Tombstone({ id: ctx.getActorUri(identifier) }),
+);
+`,
+        rule,
+        ruleName,
+      }),
+      true,
+    ],
+  };
+}
+
 // =============================================================================
 // Mismatch Rule Tests
 // =============================================================================
@@ -416,7 +569,7 @@ export function createIdRequiredRuleTests(config: TestConfig): TestSuite {
  * Creates mismatch rule tests for standard properties
  */
 export function createMismatchRuleTests(
-  propertyKey: PropertyKey,
+  propertyKey: PropertyKeyWithGetter,
   config: TestConfig,
 ): TestSuite {
   const { rule, ruleName } = config;
@@ -427,8 +580,10 @@ export function createMismatchRuleTests(
 
   // Find a wrong getter for testing
   const wrongGetters = Object.values(properties)
-    .filter((p) => p.getter !== prop.getter)
-    .map((p) => p.getter);
+    .map(getterOf)
+    .filter((getter): getter is string =>
+      getter != null && getter !== prop.getter
+    );
   const wrongGetter = wrongGetters[0] || "getWrongUri";
   const wrongSetter = Object.values(properties)
     .filter((p) => p.setter !== prop.setter)
@@ -667,6 +822,34 @@ return new Person({ ${ID_PROP} name: "A" });`,
           code: createDispatcherCode(
             `return condition
     ? null
+    : new Person({ ${ID_PROP} ${propCode} name: "A" });`,
+            setter,
+          ),
+          rule,
+          ruleName,
+        }),
+        true,
+      ],
+
+      // ✅ Dispatcher returns only a Tombstone (e.g. a deleted actor)
+      "returns only a Tombstone": [
+        lintTest({
+          code: createDispatcherCode(
+            `return new Tombstone({ id: ctx.getActorUri(identifier) });`,
+            setter,
+          ),
+          rule,
+          ruleName,
+        }),
+        true,
+      ],
+
+      // ✅ Ternary with Tombstone and property in actor branch
+      "ternary with Tombstone and property in actor branch": [
+        lintTest({
+          code: createDispatcherCode(
+            `return condition
+    ? new Tombstone({ id: ctx.getActorUri(identifier) })
     : new Person({ ${ID_PROP} ${propCode} name: "A" });`,
             setter,
           ),
@@ -940,7 +1123,7 @@ return new Person({ ${ID_PROP} name: "C" });`,
  * Creates common edge case tests for mismatch rules
  */
 export function createMismatchEdgeCaseTests(
-  propertyKey: PropertyKey,
+  propertyKey: PropertyKeyWithGetter,
   config: TestConfig,
 ): TestSuite {
   const { rule, ruleName } = config;
@@ -951,8 +1134,10 @@ export function createMismatchEdgeCaseTests(
 
   // Find a wrong getter for testing
   const wrongGetters = Object.values(properties)
-    .filter((p) => p.getter !== prop.getter)
-    .map((p) => p.getter);
+    .map(getterOf)
+    .filter((getter): getter is string =>
+      getter != null && getter !== prop.getter
+    );
   const wrongGetter = wrongGetters[0] || "getWrongUri";
 
   const createLocalPropertyCode = (getter: string) =>

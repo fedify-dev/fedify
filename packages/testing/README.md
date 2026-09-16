@@ -95,6 +95,33 @@ The package also exports helper functions for creating various context types:
  -  `createRequestContext()`: Creates a request context
  -  `createInboxContext()`: Creates an inbox context
 
+### Store conformance tests
+
+The package provides reusable conformance suites for Fedify storage adapters.
+Use `testKvStore()` to check a `KvStore` implementation and
+`testMessageQueue()` to check a `MessageQueue` implementation:
+
+~~~~ typescript
+import { test } from "@fedify/fixture";
+import { testKvStore, testMessageQueue } from "@fedify/testing";
+
+test("MyKvStore", () =>
+  testKvStore(
+    () => new MyKvStore(),
+    async ({ store }) => await store.close(),
+  ));
+
+test("MyMessageQueue", () =>
+  testMessageQueue(
+    () => new MyMessageQueue(),
+    async ({ mq1, mq2, controller }) => {
+      controller.abort();
+      await mq1.close();
+      await mq2.close();
+    },
+  ));
+~~~~
+
 
 Features
 --------

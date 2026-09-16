@@ -4,12 +4,13 @@ import {
   type KvKey,
   type KvStore,
 } from "@fedify/fedify/federation";
-import { NetlifyMessageQueue } from "../../../../src/mod.ts";
-import { PostgresKvStore } from "@fedify/postgres";
+import {
+  NetlifyBlobsKvStore,
+  NetlifyMessageQueue,
+} from "../../../../src/mod.ts";
 import { AsyncWorkloadsClient } from "@netlify/async-workloads";
-import { getConnectionString } from "@netlify/database";
+import { getStore } from "@netlify/blobs";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
-import postgres from "postgres";
 
 export interface TaskPayload {
   readonly id: string;
@@ -46,10 +47,10 @@ const taskSchema: StandardSchemaV1<unknown, TaskPayload> = {
 };
 
 export function createServices() {
-  const sql = postgres(getConnectionString());
-  const kv = new PostgresKvStore(sql, {
-    tableName: "fedify_netlify_integration_kv",
-  });
+  const kv = new NetlifyBlobsKvStore(getStore({
+    name: "fedify-integration",
+    consistency: "strong",
+  }));
   const baseUrl = process.env.URL ?? process.env.DEPLOY_URL;
   const queue = new NetlifyMessageQueue({
     client: new AsyncWorkloadsClient(baseUrl == null ? undefined : { baseUrl }),

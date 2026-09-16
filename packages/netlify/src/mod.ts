@@ -7,14 +7,18 @@
  */
 
 export {
+  createNetlifyQueueHandler,
+  type NetlifyQueueEvent,
+  type NetlifyQueueHandlerOptions,
+} from "./handler.ts";
+export { NetlifyBlobsKvStore } from "./kv.ts";
+export {
   NetlifyMessageQueue,
   type NetlifyMessageQueueOptions,
   NetlifyMessageQueueSendError,
   type NetlifyQueueEventData,
 } from "./mq.ts";
-export {
-  createNetlifyQueueHandler,
-  type NetlifyQueueEvent,
-  type NetlifyQueueHandlerOptions,
-} from "./handler.ts";
-export type { NetlifyAsyncWorkloadsClient } from "./types.ts";
+export type {
+  NetlifyAsyncWorkloadsClient,
+  NetlifyBlobsStore,
+} from "./types.ts";

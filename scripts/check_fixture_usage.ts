@@ -42,6 +42,9 @@ const ALLOWLIST: readonly string[] = [
   // JSDoc `@example` block mentions `import { test } from "@fedify/fixture"`
   // as documentation; not a real runtime import.
   "packages/testing/src/mq-tester.ts",
+  // JSDoc `@example` block mentions `import { test } from "@fedify/fixture"`
+  // as documentation; not a real runtime import.
+  "packages/testing/src/kv-tester.ts",
 ].map((path) => join(...path.split("/") as [string, ...string[]]))
   .flatMap((path) => path.includes("*") ? expandGlobPattern(path) : path);
 

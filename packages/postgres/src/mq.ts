@@ -87,6 +87,10 @@ export interface PostgresMessageQueueOptions {
 
   /**
    * Whether the table has been initialized.  `false` by default.
+   *
+   * This skips only the table's schema DDL.  Driver-specific runtime setup,
+   * such as detecting whether the driver serializes JSON parameters on its
+   * own, still runs before the first message is enqueued.
    * @default `false`
    */
   readonly initialized?: boolean;
@@ -138,7 +142,8 @@ export class PostgresMessageQueue implements MessageQueue {
   readonly #channelName: string;
   readonly #pollIntervalMs: number;
   readonly #handlerTimeoutMs: number;
-  #initialized: boolean;
+  readonly #skipDdl: boolean;
+  #initialized = false;
   #initPromise?: Promise<void>;
   #driverSerializesJson = false;
 
@@ -156,7 +161,7 @@ export class PostgresMessageQueue implements MessageQueue {
     this.#handlerTimeoutMs = Temporal.Duration.from(
       options?.handlerTimeout ?? { seconds: 60 },
     ).total("millisecond");
-    this.#initialized = options?.initialized ?? false;
+    this.#skipDdl = options?.initialized ?? false;
   }
 
   async enqueue(
@@ -473,6 +478,15 @@ export class PostgresMessageQueue implements MessageQueue {
     logger.debug("Initializing the message queue table {tableName}...", {
       tableName: this.#tableName,
     });
+    if (!this.#skipDdl) await this.#initializeTable();
+    this.#driverSerializesJson = await driverSerializesJson(this.#sql);
+    this.#initialized = true;
+    logger.debug("Initialized the message queue table {tableName}.", {
+      tableName: this.#tableName,
+    });
+  }
+
+  async #initializeTable(): Promise<void> {
     for (let attempt = 1; attempt <= INITIALIZE_MAX_ATTEMPTS; attempt++) {
       try {
         await this.#sql`
@@ -521,11 +535,6 @@ export class PostgresMessageQueue implements MessageQueue {
         await sleep(backoffMs);
       }
     }
-    this.#driverSerializesJson = await driverSerializesJson(this.#sql);
-    this.#initialized = true;
-    logger.debug("Initialized the message queue table {tableName}.", {
-      tableName: this.#tableName,
-    });
   }
 
   /**

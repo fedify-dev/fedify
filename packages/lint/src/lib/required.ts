@@ -77,7 +77,17 @@ function createRequiredRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
     const propertyChecker = createPropertyChecker(Boolean)(
       config.path,
     );
-    const propertySearcher = createPropertySearcher(propertyChecker);
+    const pluralPropertyChecker = config.pluralName == null ? null : (
+      createPropertyChecker(Boolean)([
+        ...config.path.slice(0, -1),
+        config.pluralName,
+      ])
+    );
+    const propertySearcher = createPropertySearcher(
+      pluralPropertyChecker == null
+        ? propertyChecker
+        : (node) => propertyChecker(node) || pluralPropertyChecker(node),
+    );
 
     return {
       VariableDeclarator: federationTracker.VariableDeclarator,

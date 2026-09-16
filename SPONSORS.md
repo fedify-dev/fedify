@@ -37,7 +37,7 @@ Robin Riley, Encyclia, box464, Evan Prodromou, taye, okin, yamanoku, malte, Rafa
 One-time donations
 ------------------
 
-Robin Riley, malte, Nils Bergmann, Markus P, Rameez
+Robin Riley, malte, Nils Bergmann, Markus P, Rameez, Guest, Guest, Guest, Guest, Guest, Guest, Guest, Guest
 
 <!-- /DO NOT EDIT -->
 

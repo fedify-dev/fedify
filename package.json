@@ -5,6 +5,9 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild"
-    ]
+    ],
+    "patchedDependencies": {
+      "@netlify/blobs@11.0.3": "patches/@netlify__blobs@11.0.3.patch"
+    }
   }
 }

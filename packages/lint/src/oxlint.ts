@@ -66,6 +66,9 @@ import {
   eslint as actorOutboxPropertyRequired,
 } from "./rules/actor-outbox-property-required.ts";
 import {
+  eslint as actorPreferredUsernameRequired,
+} from "./rules/actor-preferred-username-required.ts";
+import {
   eslint as actorPublicKeyRequired,
 } from "./rules/actor-public-key-required.ts";
 import {
@@ -121,6 +124,7 @@ const rules: Record<
   [RULE_IDS.actorUploadMediaPropertyMismatch]: actorUploadMediaPropertyMismatch,
   [RULE_IDS.actorPublicKeyRequired]: actorPublicKeyRequired,
   [RULE_IDS.actorAssertionMethodRequired]: actorAssertionMethodRequired,
+  [RULE_IDS.actorPreferredUsernameRequired]: actorPreferredUsernameRequired,
   [RULE_IDS.collectionFilteringNotImplemented]: collectionFiltering,
   [RULE_IDS.outboxListenerDeliveryRequired]: outboxListenerDeliveryRequired,
   [RULE_IDS.mediaUploaderObjectUriRequired]: mediaUploaderObjectUriRequired,
