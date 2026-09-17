@@ -26,8 +26,35 @@ export class ManualClockKvStore implements KvStore {
   readonly #expirations: Map<string, Temporal.Instant> = new Map();
   #now: Temporal.Instant = Temporal.Instant.fromEpochMilliseconds(0);
 
+  /**
+   * Present only when the wrapped store has its own `cas()`.  Callers such as
+   * the task deduplication planner test `kv.cas != null` to decide whether a
+   * conditional write is available, so the decorator must not advertise a
+   * capability the wrapped store lacks.
+   */
+  readonly cas?: (
+    key: KvKey,
+    expectedValue: unknown,
+    newValue: unknown,
+    options?: KvStoreSetOptions,
+  ) => Promise<boolean>;
+
   constructor(inner: KvStore = new MemoryKvStore()) {
     this.#inner = inner;
+    const innerCas = inner.cas;
+    if (innerCas != null) {
+      this.cas = async (key, expectedValue, newValue, options) => {
+        await this.#evictIfExpired(key);
+        const swapped = await innerCas.call(
+          inner,
+          key,
+          expectedValue,
+          newValue,
+        );
+        if (swapped) this.#recordTtl(key, options);
+        return swapped;
+      };
+    }
   }
 
   /**
@@ -104,21 +131,6 @@ export class ManualClockKvStore implements KvStore {
   async delete(key: KvKey): Promise<void> {
     this.#expirations.delete(this.#encodeKey(key));
     await this.#inner.delete(key);
-  }
-
-  async cas(
-    key: KvKey,
-    expectedValue: unknown,
-    newValue: unknown,
-    options?: KvStoreSetOptions,
-  ): Promise<boolean> {
-    if (this.#inner.cas == null) {
-      throw new TypeError("The wrapped KvStore does not support cas().");
-    }
-    await this.#evictIfExpired(key);
-    const swapped = await this.#inner.cas(key, expectedValue, newValue);
-    if (swapped) this.#recordTtl(key, options);
-    return swapped;
   }
 
   async *list(prefix?: KvKey): AsyncIterable<KvStoreListEntry> {

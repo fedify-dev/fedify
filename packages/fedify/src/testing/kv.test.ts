@@ -1,7 +1,15 @@
 import { test } from "@fedify/fixture";
 import { assertEquals } from "@std/assert/assert-equals";
-import { MemoryKvStore } from "../federation/kv.ts";
+import {
+  type KvKey,
+  type KvStore,
+  type KvStoreListEntry,
+  type KvStoreSetOptions,
+  MemoryKvStore,
+} from "../federation/kv.ts";
+import { createFederation } from "../federation/middleware.ts";
 import { ManualClockKvStore } from "./kv.ts";
+import { baseOptions, MockQueue, stringSchema } from "./tasks.ts";
 
 // `MemoryKvStore` drops an entry only when `until(expiration).sign < 0`, in
 // `get()`, `cas()`, and `list()` alike, so an entry is still live at the
@@ -43,7 +51,7 @@ test("ManualClockKvStore.cas() applies the same boundary", async () => {
   await atBoundary.set(["k"], "v", { ttl });
   atBoundary.advance(ttl);
   // Still live, so the swap sees "v" as the current value.
-  assertEquals(await atBoundary.cas(["k"], "v", "w"), true);
+  assertEquals(await atBoundary.cas?.(["k"], "v", "w"), true);
 
   const pastBoundary = new ManualClockKvStore();
   await pastBoundary.set(["k"], "v", { ttl });
@@ -51,7 +59,7 @@ test("ManualClockKvStore.cas() applies the same boundary", async () => {
   pastBoundary.advance({ nanoseconds: 1 });
   // Gone, so the current value reads as `undefined` and a swap expecting the
   // old value fails.
-  assertEquals(await pastBoundary.cas(["k"], "v", "w"), false);
+  assertEquals(await pastBoundary.cas?.(["k"], "v", "w"), false);
   assertEquals(await pastBoundary.get(["k"]), undefined);
 });
 
@@ -63,7 +71,7 @@ test("ManualClockKvStore.cas() without a TTL clears the expiration", async () =>
   const ttl = Temporal.Duration.from({ minutes: 10 });
   await kv.set(["k"], "v", { ttl });
 
-  assertEquals(await kv.cas(["k"], "v", "w"), true);
+  assertEquals(await kv.cas?.(["k"], "v", "w"), true);
   kv.advance({ hours: 1 });
   assertEquals(await kv.get(["k"]), "w");
 });
@@ -77,4 +85,56 @@ test("ManualClockKvStore withholds the TTL from the wrapped store", async () => 
   // on the virtual one, and the wrapped store was never told about it.
   assertEquals(await inner.get(["k"]), "v");
   assertEquals(await kv.get(["k"]), "v");
+});
+
+/**
+ * A {@link KvStore} without `cas()`, standing in for backends that offer no
+ * conditional write.
+ */
+class CaslessKvStore implements KvStore {
+  readonly #inner = new MemoryKvStore();
+  get<T = unknown>(key: KvKey): Promise<T | undefined> {
+    return this.#inner.get<T>(key);
+  }
+  set(key: KvKey, value: unknown, options?: KvStoreSetOptions): Promise<void> {
+    return this.#inner.set(key, value, options);
+  }
+  delete(key: KvKey): Promise<void> {
+    return this.#inner.delete(key);
+  }
+  list(prefix?: KvKey): AsyncIterable<KvStoreListEntry> {
+    return this.#inner.list(prefix);
+  }
+}
+
+test("ManualClockKvStore exposes cas() only when the wrapped store does", () => {
+  assertEquals(new ManualClockKvStore(new CaslessKvStore()).cas, undefined);
+  assertEquals(
+    typeof new ManualClockKvStore(new MemoryKvStore()).cas,
+    "function",
+  );
+});
+
+test("ManualClockKvStore over a store without cas() keeps the open deduplication fallback", async () => {
+  // `planDeduplication()` takes the CAS path whenever `kv.cas != null`, so a
+  // decorator that always exposed `cas()` would make this enqueue throw
+  // instead of proceeding without deduplication as configured.
+  const queue = new MockQueue();
+  const federation = createFederation<void>({
+    ...baseOptions,
+    kv: new ManualClockKvStore(new CaslessKvStore()),
+    queue: { task: queue },
+    taskDeduplicationFallback: "open",
+  });
+  const task = federation.defineTask("casless-open-fallback", {
+    schema: stringSchema,
+    handler: () => {},
+  });
+  const ctx = federation.createContext(
+    new URL("https://example.com/"),
+    undefined,
+  );
+  await ctx.enqueueTask(task, "payload", { deduplicationKey: "k" });
+  assertEquals(queue.enqueued.length, 1);
+  assertEquals(queue.enqueued[0].options?.deduplicationKey, undefined);
 });
