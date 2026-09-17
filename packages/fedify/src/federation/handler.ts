@@ -1257,6 +1257,11 @@ export interface InboxHandlerParameters<TContextData> {
     publicKey: KvKey;
     acceptSignatureNonce: KvKey;
   };
+  /**
+   * The TTL for public keys cached under `kvPrefixes.publicKey`.
+   * @since 2.4.0
+   */
+  publicKeyTtl?: Temporal.Duration;
   queue?: MessageQueue;
   actorDispatcher?: ActorDispatcher<TContextData>;
   inboxListeners?: ActivityListenerSet<InboxContext<TContextData>>;
@@ -1331,6 +1336,7 @@ async function handleInboxInternal<TContextData>(
     inboxContextFactory,
     kv,
     kvPrefixes,
+    publicKeyTtl,
     queue,
     actorDispatcher,
     inboxListeners,
@@ -1405,7 +1411,12 @@ async function handleInboxInternal<TContextData>(
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   }
-  const keyCache = new KvKeyCache(kv, kvPrefixes.publicKey, ctx);
+  const keyCache = new KvKeyCache(kv, kvPrefixes.publicKey, {
+    documentLoader: ctx.documentLoader,
+    contextLoader: ctx.contextLoader,
+    tracerProvider,
+    keyTtl: publicKeyTtl,
+  });
   const jsonWithoutSig = detachSignature(json);
   const hasLdSignature = hasSignature(json);
   const canAttemptAlternateAuthAfterLdSignatureFailure =

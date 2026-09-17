@@ -3,6 +3,7 @@ import { CryptographicKey, Multikey } from "@fedify/vocab";
 import { assert } from "@std/assert/assert";
 import { assertEquals } from "@std/assert/assert-equals";
 import { assertInstanceOf } from "@std/assert/assert-instance-of";
+import { ManualClockKvStore } from "../testing/kv.ts";
 import { KvKeyCache } from "./keycache.ts";
 import { MemoryKvStore } from "./kv.ts";
 
@@ -112,10 +113,9 @@ test("KvKeyCache fetch error metadata", async () => {
 });
 
 test("KvKeyCache unavailable entries expire", async () => {
-  const kv = new MemoryKvStore();
-  const cache = new KvKeyCache(kv, ["pk"], {
-    unavailableKeyTtl: Temporal.Duration.from({ milliseconds: 1 }),
-  });
+  const kv = new ManualClockKvStore();
+  const unavailableKeyTtl = Temporal.Duration.from({ minutes: 10 });
+  const cache = new KvKeyCache(kv, ["pk"], { unavailableKeyTtl });
   const keyId = new URL("https://example.com/expired");
 
   await cache.set(keyId, null);
@@ -123,8 +123,61 @@ test("KvKeyCache unavailable entries expire", async () => {
     status: 410,
     response: new Response(null, { status: 410 }),
   });
-  await new Promise((resolve) => setTimeout(resolve, 10));
 
+  kv.advance({ minutes: 20 });
+
+  // `KvKeyCache` also keeps negative results in an in-process map keyed on
+  // the real clock.  A fresh cache over the same store stands in for a later
+  // process, whose map starts empty, so these reads go to the store, which is
+  // what this test is about.
+  const later = new KvKeyCache(kv, ["pk"], { unavailableKeyTtl });
+  assertEquals(await later.get(keyId), undefined);
+  assertEquals(await later.getFetchError(keyId), undefined);
+});
+
+test("KvKeyCache.keyTtl defaults to 30 days", () => {
+  const kv = new MemoryKvStore();
+  const cache = new KvKeyCache(kv, ["pk"]);
+  assertEquals(cache.keyTtl.total("day"), 30);
+});
+
+test("KvKeyCache.keyTtl is configurable", () => {
+  const kv = new MemoryKvStore();
+  const cache = new KvKeyCache(kv, ["pk"], {
+    keyTtl: Temporal.Duration.from({ days: 7 }),
+  });
+  assertEquals(cache.keyTtl.total("day"), 7);
+});
+
+test("KvKeyCache cached keys expire after keyTtl", async () => {
+  const kv = new ManualClockKvStore();
+  const cache = new KvKeyCache(kv, ["pk"], {
+    keyTtl: Temporal.Duration.from({ days: 30 }),
+  });
+  const keyId = new URL("https://example.com/key");
+
+  await cache.set(
+    keyId,
+    new CryptographicKey({ id: keyId }),
+  );
+  // The value is written immediately, and stays readable for as long as the
+  // TTL has not elapsed, however long the test itself takes to run.
+  assert(await kv.get(["pk", keyId.href]) != null);
+  assertInstanceOf(await cache.get(keyId), CryptographicKey);
+
+  // ...but disappears from the underlying KvStore once keyTtl elapses.
+  kv.advance({ days: 31 });
+  assertEquals(await kv.get(["pk", keyId.href]), undefined);
+
+  // A miss is reported as `undefined` (key unknown), not `null` (key known
+  // to be unavailable), so the caller refetches the key instead of treating
+  // the actor as keyless.
   assertEquals(await cache.get(keyId), undefined);
-  assertEquals(await cache.getFetchError(keyId), undefined);
+  assertEquals(cache.nullKeys.has(keyId.href), false);
+
+  // Refetching and caching the key again repopulates the cache.
+  await cache.set(keyId, new CryptographicKey({ id: keyId }));
+  const refetched = await cache.get(keyId);
+  assertInstanceOf(refetched, CryptographicKey);
+  assertEquals(refetched.id?.href, keyId.href);
 });

@@ -936,6 +936,35 @@ export interface FederationOptions<TContextData> {
   kvPrefixes?: Partial<FederationKvPrefixes>;
 
   /**
+   * The time-to-live for a remote actor's public key cached under
+   * {@link FederationKvPrefixes.publicKey}.  Once it expires, the next
+   * signature verification that needs the key refetches it from the remote
+   * server and caches it again.
+   *
+   * Shortening it bounds how long a revoked or rotated key stays in the cache,
+   * at the cost of more requests to remote servers; refetching an expired key
+   * fails while the peer is unavailable, so a very short value makes
+   * verification depend on the peer being reachable.
+   * @default `{ days: 30 }`
+   * @since 2.4.0
+   */
+  publicKeyTtl?: Temporal.DurationLike;
+
+  /**
+   * The time-to-live for a remote origin's remembered HTTP Message Signatures
+   * spec cached under {@link FederationKvPrefixes.httpMessageSignaturesSpec}.
+   * Once it expires, the next delivery to that origin relearns the spec by
+   * double-knocking and remembers it again.
+   *
+   * Shortening it makes Fedify notice a peer's spec upgrade sooner, at the
+   * cost of an extra signed request per delivery whenever the first spec tried
+   * is rejected.
+   * @default `{ days: 90 }`
+   * @since 2.4.0
+   */
+  httpMessageSignaturesSpecTtl?: Temporal.DurationLike;
+
+  /**
    * The message queue for sending and receiving activities.  If not provided,
    * activities will not be queued and will be processed immediately.
    *

@@ -1,12 +1,26 @@
 import { CryptographicKey, Multikey } from "@fedify/vocab";
 import type { DocumentLoader } from "@fedify/vocab-runtime";
+import type { TracerProvider } from "@opentelemetry/api";
 import type { FetchKeyErrorResult, KeyCache } from "../sig/key.ts";
 import type { KvKey, KvStore } from "./kv.ts";
 
 export interface KvKeyCacheOptions {
   documentLoader?: DocumentLoader;
   contextLoader?: DocumentLoader;
+  tracerProvider?: TracerProvider;
   unavailableKeyTtl?: Temporal.Duration;
+
+  /**
+   * The TTL for successfully cached keys.  `30` days by default.
+   *
+   * Entries written by Fedify versions older than 2.4.0 have no TTL and
+   * are left untouched by this option; see the *Clearing legacy cache
+   * entries* section of the key–value store guide if you want to expire
+   * them proactively.
+   * @default `Temporal.Duration.from({ days: 30 })`
+   * @since 2.4.0
+   */
+  keyTtl?: Temporal.Duration;
 }
 
 export class KvKeyCache implements KeyCache {
@@ -14,6 +28,7 @@ export class KvKeyCache implements KeyCache {
   readonly prefix: KvKey;
   readonly options: KvKeyCacheOptions;
   readonly unavailableKeyTtl: Temporal.Duration;
+  readonly keyTtl: Temporal.Duration;
   readonly nullKeys: Map<string, Temporal.Instant>;
 
   constructor(kv: KvStore, prefix: KvKey, options: KvKeyCacheOptions = {}) {
@@ -22,6 +37,7 @@ export class KvKeyCache implements KeyCache {
     this.options = options;
     this.unavailableKeyTtl = options.unavailableKeyTtl ??
       Temporal.Duration.from({ minutes: 10 });
+    this.keyTtl = options.keyTtl ?? Temporal.Duration.from({ days: 30 });
     this.nullKeys = new Map();
   }
 
@@ -76,7 +92,9 @@ export class KvKeyCache implements KeyCache {
     }
     this.nullKeys.delete(keyId.href);
     const serialized = await key.toJsonLd(this.options);
-    await this.kv.set([...this.prefix, keyId.href], serialized);
+    await this.kv.set([...this.prefix, keyId.href], serialized, {
+      ttl: this.keyTtl,
+    });
   }
 
   async getFetchError(keyId: URL): Promise<FetchKeyErrorResult | undefined> {

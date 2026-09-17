@@ -585,6 +585,146 @@ for ordinary reads and listings.
 [Netlify Functions]: https://docs.netlify.com/build/functions/overview/
 
 
+Bounding how long cache entries live
+------------------------------------
+
+*This section is relevant since Fedify 2.4.0.*
+
+Fedify keeps two caches in your `KvStore`: cached actor public keys and
+remembered per-origin HTTP Message Signatures specs.  Since Fedify 2.4.0
+both are written with a time-to-live, so a `KvStore` that never sees an
+explicit clear no longer accumulates entries for actors and origins that have
+stopped federating.  The defaults are 30 days for cached keys and 90 days for
+remembered specs, and applications can override them through
+`~FederationOptions.publicKeyTtl` and
+`~FederationOptions.httpMessageSignaturesSpecTtl`:
+
+~~~~ typescript twoslash
+import { createFederation, MemoryKvStore } from "@fedify/fedify";
+
+const federation = createFederation<void>({
+  kv: new MemoryKvStore(),
+  publicKeyTtl: { days: 7 },  // [!code highlight]
+  httpMessageSignaturesSpecTtl: { days: 30 },  // [!code highlight]
+});
+~~~~
+
+Both TTLs are a retention tradeoff, not a free cleanup knob.  A shorter TTL
+keeps less in the store and bounds how long a revoked or rotated key or an
+outdated spec stays cached, but every expiry costs a request to the remote
+server: verification has to refetch the key, and delivery has to relearn the
+spec by [double-knocking] again.  That refetch is not guaranteed to succeed—if
+the peer is down, unreachable, or has removed the actor when the entry expires,
+verification fails where it would have succeeded from cache.  Lengthening
+a TTL inverts the tradeoff: fewer remote requests and more tolerance of
+unavailable peers, at the cost of holding stale entries longer.
+
+Pick the shorter end when your store is under space pressure or you need
+revoked keys to fall out quickly, and the longer end when you federate with
+peers that are frequently unavailable.
+
+[double-knocking]: https://swicg.github.io/activitypub-http-signature/#how-to-upgrade-supported-versions
+
+
+Clearing legacy cache entries
+-----------------------------
+
+*This section is relevant since Fedify 2.4.0.*
+
+Entries written by Fedify 2.3 or earlier have no TTL.  They are *not*
+migrated or expired automatically: they simply stay in your `KvStore` until
+something overwrites them, which is the same behavior Fedify has always had.
+Leaving them alone is a perfectly valid choice—Fedify keeps serving and
+refreshing them as before, and they get a TTL the next time they are written.
+
+If you would rather not wait for that, you can clear the old entries yourself.
+Both caches live under their `~FederationOptions.kvPrefixes` entries, which
+are `["_fedify", "publicKey"]` and
+`["_fedify", "httpMessageSignaturesSpec"]` *by default*:
+
+ -  `~FederationKvPrefixes.publicKey` — cached actor public keys
+ -  `~FederationKvPrefixes.httpMessageSignaturesSpec` — remembered HTTP
+    Message Signatures specs
+
+These are defaults, not fixed values.  If you passed your own `kvPrefixes` to
+`createFederation()`, substitute your prefixes for `_fedify`, `publicKey`, and
+`httpMessageSignaturesSpec` in every example below.  The same goes for the
+adapter-level namespacing described in each subsection: [`RedisKvStore`]
+prepends its own `keyPrefix`, and [`PostgresKvStore`] stores rows in its own
+`tableName`.
+
+Clearing these entries costs the remote requests described in the previous
+section: the caches are soft state that Fedify relearns on demand, but every
+cleared key has to be refetched before it can be used again, and that refetch
+fails while the peer is unavailable.  Prefer clearing them while your peers
+are reachable, and clear only the prefixes you actually need to reclaim.
+
+### Clearing entries in `RedisKvStore`
+
+[`RedisKvStore`] stores every key under a shared prefix (`"fedify::"` by
+default, configurable via `RedisKvStoreOptions.keyPrefix`), followed by the
+`KvKey` parts joined with `"::"`.  Collect the whole scan result before
+deleting anything—deleting keys while `--scan` is still iterating can make
+the cursor skip entries:
+
+~~~~ bash
+for pattern in 'fedify::_fedify::publicKey::*' \
+               'fedify::_fedify::httpMessageSignaturesSpec::*'; do
+  redis-cli --scan --pattern "$pattern" > /tmp/fedify-keys.txt
+  test -s /tmp/fedify-keys.txt && xargs -a /tmp/fedify-keys.txt redis-cli del
+  rm -f /tmp/fedify-keys.txt
+done
+~~~~
+
+Replace the leading `fedify::` with your own `keyPrefix` if you configured
+a custom one, and the `_fedify::publicKey` and
+`_fedify::httpMessageSignaturesSpec` parts with your own `kvPrefixes`.
+
+### Clearing entries in `PostgresKvStore`
+
+[`PostgresKvStore`] stores every entry as a row keyed by a `text[]` column
+(the table is named `fedify_kv_v2` by default, configurable via
+`PostgresKvStoreOptions.tableName`).  Delete the two Fedify caches with:
+
+~~~~ sql
+DELETE FROM fedify_kv_v2
+WHERE array_length(key, 1) >= 2 AND key[1:2] = ARRAY['_fedify', 'publicKey'];
+
+DELETE FROM fedify_kv_v2
+WHERE array_length(key, 1) >= 2
+  AND key[1:2] = ARRAY['_fedify', 'httpMessageSignaturesSpec'];
+~~~~
+
+Replace `fedify_kv_v2` with your own `tableName` if you configured a custom
+one, and the array literals with your own `kvPrefixes`.
+
+### Clearing entries in other `KvStore` implementations
+
+For any other `KvStore`, iterate the two prefixes with [`~KvStore.list()`],
+collect the keys, and delete them afterwards.  Deleting while the iterator is
+still open can make an implementation skip entries, the same way it does with
+`redis-cli --scan`:
+
+~~~~ typescript twoslash
+import type { KvKey, KvStore } from "@fedify/fedify";
+const kv = null as unknown as KvStore;
+// ---cut-before---
+const prefixes: KvKey[] = [
+  ["_fedify", "publicKey"],
+  ["_fedify", "httpMessageSignaturesSpec"],
+];
+for (const prefix of prefixes) {
+  const keys: KvKey[] = [];
+  for await (const entry of kv.list(prefix)) keys.push(entry.key);
+  for (const key of keys) await kv.delete(key);
+}
+~~~~
+
+Substitute your own `kvPrefixes` for the two prefixes if you configured them.
+
+[`~KvStore.list()`]: https://jsr.io/@fedify/fedify/doc/federation/~/KvStore#list
+
+
 Implementing a custom `KvStore`
 -------------------------------
 

@@ -603,6 +603,8 @@ export class FederationImpl<TContextData>
   implements Federation<TContextData> {
   kv: KvStore;
   kvPrefixes: FederationKvPrefixes;
+  publicKeyTtl: Temporal.Duration;
+  httpMessageSignaturesSpecTtl: Temporal.Duration;
   inboxQueue?: MessageQueue;
   outboxQueue?: MessageQueue;
   fanoutQueue?: MessageQueue;
@@ -691,6 +693,12 @@ export class FederationImpl<TContextData>
       } satisfies FederationKvPrefixes),
       ...(options.kvPrefixes ?? {}),
     };
+    this.publicKeyTtl = Temporal.Duration.from(
+      options.publicKeyTtl ?? { days: 30 },
+    );
+    this.httpMessageSignaturesSpecTtl = Temporal.Duration.from(
+      options.httpMessageSignaturesSpecTtl ?? { days: 90 },
+    );
     if (options.queue == null) {
       this.inboxQueue = undefined;
       this.outboxQueue = undefined;
@@ -893,6 +901,7 @@ export class FederationImpl<TContextData>
               this.kv,
               this.kvPrefixes.httpMessageSignaturesSpec,
               options.firstKnock,
+              { specTtl: this.httpMessageSignaturesSpecTtl },
             ),
             tracerProvider: this.tracerProvider,
           }),
@@ -1428,6 +1437,7 @@ export class FederationImpl<TContextData>
           this.kv,
           this.kvPrefixes.httpMessageSignaturesSpec,
           this.firstKnock,
+          { specTtl: this.httpMessageSignaturesSpecTtl },
         ),
         meterProvider: this.meterProvider,
         tracerProvider: this.tracerProvider,
@@ -2443,6 +2453,7 @@ export class FederationImpl<TContextData>
               this.kv,
               this.kvPrefixes.httpMessageSignaturesSpec,
               this.firstKnock,
+              { specTtl: this.httpMessageSignaturesSpecTtl },
             ),
             meterProvider: this.meterProvider,
             tracerProvider: this.tracerProvider,
@@ -2878,6 +2889,7 @@ export class FederationImpl<TContextData>
           inboxContextFactory,
           kv: this.kv,
           kvPrefixes: this.kvPrefixes,
+          publicKeyTtl: this.publicKeyTtl,
           queue: this.inboxQueue,
           actorDispatcher: this.actorCallbacks?.dispatcher,
           inboxListeners: this.inboxListeners,
@@ -4122,7 +4134,12 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     const keyCache = new KvKeyCache(
       this.federation.kv,
       this.federation.kvPrefixes.publicKey,
-      this,
+      {
+        documentLoader: this.documentLoader,
+        contextLoader: this.contextLoader,
+        tracerProvider: this.tracerProvider,
+        keyTtl: this.federation.publicKeyTtl,
+      },
     );
     const verified = await verifyObject(
       Activity,
@@ -4582,6 +4599,7 @@ async function forwardActivityInternal<TContextData>(
             ctx.federation.kv,
             ctx.federation.kvPrefixes.httpMessageSignaturesSpec,
             ctx.federation.firstKnock,
+            { specTtl: ctx.federation.httpMessageSignaturesSpecTtl },
           ),
         }),
       );
@@ -4898,19 +4916,39 @@ interface SendActivityInternalOptions<TContextData> {
   readonly context: Context<TContextData>;
 }
 
+/**
+ * Options for {@link KvSpecDeterminer}.
+ * @since 2.4.0
+ */
+export interface KvSpecDeterminerOptions {
+  /**
+   * The TTL for remembered specs.  `90` days by default.
+   *
+   * Entries written by Fedify versions older than 2.4.0 have no TTL and
+   * are left untouched by this option; see the *Clearing legacy cache
+   * entries* section of the key–value store guide if you want to expire
+   * them proactively.
+   * @default `Temporal.Duration.from({ days: 90 })`
+   */
+  specTtl?: Temporal.Duration;
+}
+
 export class KvSpecDeterminer implements HttpMessageSignaturesSpecDeterminer {
   kv: KvStore;
   prefix: KvKey;
   defaultSpec: HttpMessageSignaturesSpec;
+  specTtl: Temporal.Duration;
 
   constructor(
     kv: KvStore,
     prefix: KvKey,
     defaultSpec: HttpMessageSignaturesSpec = "rfc9421",
+    options: KvSpecDeterminerOptions = {},
   ) {
     this.kv = kv;
     this.prefix = prefix;
     this.defaultSpec = defaultSpec;
+    this.specTtl = options.specTtl ?? Temporal.Duration.from({ days: 90 });
   }
 
   async determineSpec(
@@ -4926,7 +4964,7 @@ export class KvSpecDeterminer implements HttpMessageSignaturesSpecDeterminer {
     origin: string,
     spec: HttpMessageSignaturesSpec,
   ): Promise<void> {
-    await this.kv.set([...this.prefix, origin], spec);
+    await this.kv.set([...this.prefix, origin], spec, { ttl: this.specTtl });
   }
 }
 
