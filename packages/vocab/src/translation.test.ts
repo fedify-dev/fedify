@@ -23,6 +23,9 @@ import {
   Update,
 } from "./mod.ts";
 
+// Keep this binding separate from Temporal injected into bundled tests.
+const { Temporal: TemporalPolyfill } = await import("temporal-polyfill");
+
 // FEP-22cd draft and examples, pinned to:
 // https://codeberg.org/fediverse/fep/src/commit/6d0d6559054baeb7b71a5f2bdc14fc4c09b66f39/fep/22cd/fep-22cd.md
 const AS = "https://www.w3.org/ns/activitystreams";
@@ -31,7 +34,7 @@ const SCHEMA = "https://schema.org/";
 const articleId = new URL("https://example.com/articles/1");
 const alice = new URL("https://example.com/users/alice");
 const context = [AS, FEP];
-const sourceUpdated = Temporal.Instant.from("2026-09-01T00:00:00Z");
+const sourceUpdated = TemporalPolyfill.Instant.from("2026-09-01T00:00:00Z");
 const entry = {
   type: "Translation",
   inLanguage: "ko",
@@ -208,10 +211,10 @@ test("FEP-22cd organization languages, multiple translators and review-only Upda
       }),
     ],
   });
-  const editedAt = Temporal.Instant.from("2026-09-15T00:00:00Z");
+  const editedAt = TemporalPolyfill.Instant.from("2026-09-15T00:00:00Z");
   const edited = initial.clone({ updated: editedAt });
   ok(
-    Temporal.Instant.compare(
+    TemporalPolyfill.Instant.compare(
       edited.translations[0].sourceUpdated!,
       edited.updated!,
     ) < 0,
