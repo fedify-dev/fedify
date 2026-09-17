@@ -29,6 +29,7 @@ async function* generateProperty(
   moduleVarNames: ReadonlyMap<string, string>,
 ): AsyncIterable<string> {
   const override = emitOverride(type.uri, types, property);
+  const trustOwner = type.trustEmbeddedObjects === false ? "null" : "this.id";
   const doc = `\n/** ${property.description.replaceAll("\n", "\n * ")}\n */\n`;
   const cachedPropertyBaseUrl = `(options as { baseUrl?: URL }).baseUrl ??
                 this._baseUrl ??
@@ -277,7 +278,7 @@ async function* generateProperty(
         let v = this.${await getFieldName(property.uri)}[0];
         if (!(v instanceof URL) &&
             v.id != null &&
-            !isTrustedIriOrigin(options, v.id, this.id) &&
+            !isTrustedIriOrigin(options, v.id, ${trustOwner}) &&
             !this.${await getFieldName(property.uri, "#_trust")}.has(0)) {
           v = v.id;
         }
@@ -317,12 +318,18 @@ async function* generateProperty(
       }
       yield `
         if (v?.id != null &&
-            this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
+            ${
+        type.trustEmbeddedObjects === false ? "" : "this.id != null && "
+      }!isTrustedIriOrigin(options, v.id, ${trustOwner}) &&
             !this.${await getFieldName(property.uri, "#_trust")}.has(0)) {
           if (options.crossOrigin === "throw") {
             throw new Error(
               "The property object's @id (" + v.id.href + ") has a different " +
-              "origin than the property owner's @id (" + this.id.href + "); " +
+              "origin than the property owner's @id (" + ${
+        type.trustEmbeddedObjects === false
+          ? '"untrusted metadata"'
+          : "this.id.href"
+      } + "); " +
               "refusing to return the object.  If you want to bypass this " +
               "check and are aware of the security implications, set the " +
               'crossOrigin option to "trust".'
@@ -334,7 +341,11 @@ async function* generateProperty(
             "return the object.  If you want to bypass this check and are " +
             "aware of the security implications, set the crossOrigin option " +
             'to "trust".',
-            { objectId: v.id.href, parentObjectId: this.id.href },
+            { objectId: v.id.href, parentObjectId: ${
+        type.trustEmbeddedObjects === false
+          ? '"untrusted metadata"'
+          : "this.id.href"
+      } },
           );
           return null;
         }
@@ -383,7 +394,7 @@ async function* generateProperty(
           let v = vs[i];
           if (!(v instanceof URL) &&
               v.id != null &&
-              !isTrustedIriOrigin(options, v.id, this.id) &&
+              !isTrustedIriOrigin(options, v.id, ${trustOwner}) &&
               !this.${await getFieldName(property.uri, "#_trust")}.has(i)) {
             v = v.id;
           }
@@ -424,12 +435,18 @@ async function* generateProperty(
       }
       yield `
           if (v?.id != null &&
-              this.id != null && !isTrustedIriOrigin(options, v.id, this.id) &&
+              ${
+        type.trustEmbeddedObjects === false ? "" : "this.id != null && "
+      }!isTrustedIriOrigin(options, v.id, ${trustOwner}) &&
               !this.${await getFieldName(property.uri, "#_trust")}.has(i)) {
             if (options.crossOrigin === "throw") {
               throw new Error(
                 "The property object's @id (" + v.id.href + ") has a different " +
-                "origin than the property owner's @id (" + this.id.href + "); " +
+                "origin than the property owner's @id (" + ${
+        type.trustEmbeddedObjects === false
+          ? '"untrusted metadata"'
+          : "this.id.href"
+      } + "); " +
                 "refusing to return the object.  If you want to bypass this " +
                 "check and are aware of the security implications, set the " +
                 'crossOrigin option to "trust".'
@@ -441,7 +458,11 @@ async function* generateProperty(
               "return the object.  If you want to bypass this check and are " +
               "aware of the security implications, set the crossOrigin " +
               'option to "trust".',
-              { objectId: v.id.href, parentObjectId: this.id.href },
+              { objectId: v.id.href, parentObjectId: ${
+        type.trustEmbeddedObjects === false
+          ? '"untrusted metadata"'
+          : "this.id.href"
+      } },
             );
             continue;
           }

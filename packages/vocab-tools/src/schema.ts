@@ -48,6 +48,14 @@ export interface TypeSchema {
   entity: boolean;
 
   /**
+   * Whether this type's id can establish same-origin trust for its own
+   * embedded entity-valued properties.  Defaults to true.  Set to false for
+   * metadata whose id does not identify an independently fetched resource.
+   * Locally constructed and explicitly trusted values remain trusted.
+   */
+  trustEmbeddedObjects?: boolean;
+
+  /**
    * Whether the type omits `@type` in JSON-LD serialization.  When `true`,
    * the generated `toJsonLd()` method will not emit `@type` (or `type` in
    * compact form) in the serialized JSON-LD.  The generated `fromJsonLd()`
@@ -77,6 +85,14 @@ export interface TypeSchema {
 }
 
 export interface PropertySchemaBase {
+  /**
+   * A context URL added to the default serialization context when this
+   * property's expanded IRI appears in the compacted document.  Explicit
+   * caller contexts are unchanged.  Populated properties with this option
+   * use the JSON-LD processor instead of compact serialization heuristics.
+   */
+  extraContext?: string;
+
   /**
    * The singular form of the property name.  It is used as the name of the
    * generated property accessors.

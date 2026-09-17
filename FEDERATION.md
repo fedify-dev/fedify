@@ -38,6 +38,7 @@ Supported FEPs
  -  [FEP-5711][]: Inverse Properties for Collections
  -  [FEP-044f][]: Consent-respecting quote posts
  -  [FEP-7aa9][]: Featuring recommendations using a dedicated collection
+ -  [FEP-22cd][]: Attributing translations
  -  [FEP-0837][]: Federated Marketplace
  -  [FEP-ae0c][]: Fediverse Relay Protocols: Mastodon and LitePub
 
@@ -55,6 +56,7 @@ Supported FEPs
 [FEP-5711]: https://w3id.org/fep/5711
 [FEP-044f]: https://w3id.org/fep/044f
 [FEP-7aa9]: https://w3id.org/fep/7aa9
+[FEP-22cd]: https://w3id.org/fep/22cd
 [FEP-0837]: https://w3id.org/fep/0837
 [FEP-ae0c]: https://w3id.org/fep/ae0c
 
@@ -228,6 +230,7 @@ fediverse.
  -  [`PropertyValue`] (Schema.org)
  -  [`Relationship`]
  -  [`Source`]
+ -  [`Translation`] ([FEP-22cd]; embedded metadata)
 
 [`Emoji`]: https://jsr.io/@fedify/vocab/doc/~/Emoji
 [`Hashtag`]: https://jsr.io/@fedify/vocab/doc/~/Hashtag
@@ -238,6 +241,7 @@ fediverse.
 [`PropertyValue`]: https://jsr.io/@fedify/vocab/doc/~/PropertyValue
 [`Relationship`]: https://jsr.io/@fedify/vocab/doc/~/Relationship
 [`Source`]: https://jsr.io/@fedify/vocab/doc/~/Source
+[`Translation`]: https://jsr.io/@fedify/vocab/doc/~/Translation
 
 ### Cryptographic types
 

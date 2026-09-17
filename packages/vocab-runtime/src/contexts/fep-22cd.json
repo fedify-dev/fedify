@@ -1,0 +1,21 @@
+{
+  "@context": {
+    "fep-22cd": "https://w3id.org/fep/22cd#",
+    "schema": "https://schema.org/",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "translations": { "@id": "fep-22cd:translations", "@container": "@set" },
+    "Translation": "fep-22cd:Translation",
+    "sourceUpdated": {
+      "@id": "fep-22cd:sourceUpdated",
+      "@type": "xsd:dateTime"
+    },
+    "translator": {
+      "@id": "schema:translator",
+      "@type": "@id",
+      "@container": "@set"
+    },
+    "inLanguage": "schema:inLanguage",
+    "translationOfWork": { "@id": "schema:translationOfWork", "@type": "@id" },
+    "isBasedOn": { "@id": "schema:isBasedOn", "@type": "@id" }
+  }
+}

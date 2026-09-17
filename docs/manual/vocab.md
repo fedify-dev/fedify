@@ -159,7 +159,9 @@ property.
 > | [`hasNumericalValue`]        | `Measure.numericalValue`                                                                                                                |
 > | [`hasUnit`]                  | `Measure.unit`                                                                                                                          |
 > | [`hreflang`]                 | `Link.language`                                                                                                                         |
+> | [`inLanguage`]               | `Translation.language`                                                                                                                  |
 > | [`inReplyTo`]                | `Object.getReplyTargets()`                                                                                                              |
+> | [`isBasedOn`]                | `Translation.basis`                                                                                                                     |
 > | [`isCat`]                    | `Application.cat`/`Group.cat`/`Organization.cat`/`Person.cat`/`Service.cat`                                                             |
 > | [`movedTo`]                  | `Application.getSuccessor()`/`Group.getSuccessor()`/`Organization.getSuccessor()`/`Person.getSuccessor()`/`Service.getSuccessor()`      |
 > | [`oneOf`]                    | `Question.getExclusiveOptions()`                                                                                                        |
@@ -167,6 +169,7 @@ property.
 > | [`publicKeyMultibase`]       | `Multikey.publicKey`                                                                                                                    |
 > | [`publicKeyPem`]             | `CryptographicKey.publicKey`                                                                                                            |
 > | [`quoteUri`]                 | `Article.quoteUrl`/`ChatMessage.quoteUrl`/`Note.quoteUrl`/`Question.quoteUrl`                                                           |
+> | [`translationOfWork`]        | `Translation.original`                                                                                                                  |
 > | [`votersCount`]              | `Question.voters`                                                                                                                       |
 > | [`_misskey_followedMessage`] | `Application.followedMessage`/`Group.followedMessage`/`Organization.followedMessage`/`Person.followedMessage`/`Service.followedMessage` |
 > | [`_misskey_quote`]           | `Article.quoteUrl`/`ChatMessage.quoteUrl`/`Note.quoteUrl`/`Question.quoteUrl`                                                           |
@@ -190,7 +193,9 @@ property.
 [`hasNumericalValue`]: http://www.ontology-of-units-of-measure.org/resource/om-2/hasNumericalValue
 [`hasUnit`]: http://www.ontology-of-units-of-measure.org/resource/om-2/hasUnit
 [`hreflang`]: https://www.w3.org/TR/activitystreams-vocabulary/#dfn-hreflang
+[`inLanguage`]: https://schema.org/inLanguage
 [`inReplyTo`]: https://www.w3.org/TR/activitystreams-vocabulary/#dfn-inreplyto
+[`isBasedOn`]: https://schema.org/isBasedOn
 [`isCat`]: https://misskey-hub.net/ns#iscat
 [`movedTo`]: https://swicg.github.io/miscellany/#movedTo
 [`oneOf`]: https://www.w3.org/TR/activitystreams-vocabulary/#dfn-oneof
@@ -198,6 +203,7 @@ property.
 [`publicKeyMultibase`]: https://www.w3.org/TR/controller-document/#dfn-publickeymultibase
 [`publicKeyPem`]: https://web.archive.org/web/20221218063101/https://web-payments.org/vocabs/security#publicKey
 [`quoteUri`]: https://github.com/fedibird/mastodon?tab=readme-ov-file#quotes
+[`translationOfWork`]: https://schema.org/translationOfWork
 [`votersCount`]: https://docs.joinmastodon.org/spec/activitypub/#poll-specific-properties
 [`_misskey_followedMessage`]: https://misskey-hub.net/ns#_misskey_followedmessage
 [`_misskey_quote`]: https://misskey-hub.net/ns#_misskey_quote
@@ -708,6 +714,29 @@ The same rule applies to cryptographic origins.  For example,
 `ap+ef61://did:key:zAlice/actor` and `did:key:zAlice#zAlice` share the
 `did:key:zAlice` origin, but `ap+ef61://did:key:zBob/actor` is a different
 origin.
+
+### Metadata identifiers
+
+*This exception is applicable since Fedify 2.4.0.*
+
+An embedded metadata value's ID does not always establish trust in its
+properties.  Types whose vocabulary schema sets `trustEmbeddedObjects: false`,
+such as `Translation`, can carry an ID without identifying an independently
+fetched resource.  Using that ID for same-origin trust would let a publisher
+choose an ID that makes a forged embedded actor appear trustworthy.
+
+For these types, accessors for their own entity-valued properties fetch
+untrusted embedded objects with IDs even when those IDs share the metadata
+value's origin.  This does not
+cause the metadata value itself to be fetched.  Values supplied locally or
+already trusted through fetching remain trusted, and `crossOrigin: "trust"`
+explicitly bypasses the check.  Objects without IDs cannot be fetched, so their
+embedded data is not independently verified by these checks.
+
+`trustEmbeddedObjects` is a vocabulary schema setting, not a runtime accessor
+option.  See the
+[translation credit example](./pragmatics.md#reading-credit-safely) for how to
+handle unresolved or unverified actors.
 
 ### Controlling origin checks
 

@@ -1,0 +1,91 @@
+$schema: ../../vocab-tools/schema.yaml
+name: Translation
+compactName: Translation
+uri: "https://w3id.org/fep/22cd#Translation"
+entity: false
+trustEmbeddedObjects: false
+description: |
+  Translator credit and source freshness for one language version of an
+  {@link Object}, as defined by the draft
+  [FEP-22cd](https://w3id.org/fep/22cd).  This is embedded metadata, not an
+  independent post or activity target.  Its optional identifier need not be
+  dereferenceable and does not establish trust in embedded translator actors.
+
+  Targets [draft revision 6d0d6559](https://codeberg.org/fediverse/fep/src/commit/6d0d6559054baeb7b71a5f2bdc14fc4c09b66f39/fep/22cd/fep-22cd.md).
+defaultContext:
+- "https://www.w3.org/ns/activitystreams"
+- "https://w3id.org/fep/22cd"
+properties:
+- singularName: language
+  functional: true
+  compactName: inLanguage
+  uri: "https://schema.org/inLanguage"
+  description: |
+    The translated language.  Publishers must match a language in the
+    containing object's content, name, or summary map.
+  range:
+  - "fedify:langTag"
+
+- pluralName: translators
+  singularName: translator
+  singularAccessor: true
+  compactName: translator
+  uri: "https://schema.org/translator"
+  extraContext: "https://w3id.org/fep/22cd"
+  description: |
+    The actors credited for this language version.  Their order has no
+    meaning.  Human actors credit translation or review; Application and
+    Service actors credit machine output.  If any actor cannot be resolved,
+    the entry's human-or-machine status is unknown.  Credit is asserted by
+    the publisher and grants no publishing authority.  Embedded actors with
+    identifiers are fetched before being returned unless explicitly trusted.
+  range:
+  - "https://www.w3.org/ns/activitystreams#Application"
+  - "https://www.w3.org/ns/activitystreams#Group"
+  - "https://www.w3.org/ns/activitystreams#Organization"
+  - "https://www.w3.org/ns/activitystreams#Person"
+  - "https://www.w3.org/ns/activitystreams#Service"
+
+- singularName: original
+  functional: true
+  compactName: translationOfWork
+  uri: "https://schema.org/translationOfWork"
+  description: |
+    The identifier of the containing object.  FEP-22cd translations share
+    that object's identity rather than introducing separate posts.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#anyURI"
+
+- singularName: sourceUpdated
+  functional: true
+  compactName: sourceUpdated
+  uri: "https://w3id.org/fep/22cd#sourceUpdated"
+  description: |
+    The source object's updated timestamp (or published timestamp if it has
+    no updated timestamp) at the last human review of this translation.
+    An absent value makes no freshness claim.  A value earlier than the
+    current source timestamp indicates a potentially stale translation;
+    an equal or later value reflects the current source.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#dateTime"
+
+- singularName: basis
+  functional: true
+  compactName: isBasedOn
+  uri: "https://schema.org/isBasedOn"
+  description: |
+    An optional public revision resource identifying the source reviewed.
+    Supplements sourceUpdated without requiring private revision history
+    to be exposed.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#anyURI"
+
+- pluralName: urls
+  singularName: url
+  singularAccessor: true
+  compactName: url
+  uri: "https://www.w3.org/ns/activitystreams#url"
+  description: Links to renderings of this specific language version.
+  range:
+  - "http://www.w3.org/2001/XMLSchema#anyURI"
+  - "https://www.w3.org/ns/activitystreams#Link"

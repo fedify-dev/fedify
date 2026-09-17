@@ -265,13 +265,35 @@ export async function* generateEncoder(
         },
       );
     }
-    const docContext = options.context ??
+    let docContext: Parameters<typeof jsonld.compact>[1] = options.context ??
       ${JSON.stringify(type.defaultContext)};
-    const compacted = await jsonld.compact(
+    let compacted = await jsonld.compact(
       values,
       docContext,
       { documentLoader: options.contextLoader },
     );
+  `;
+  if (
+    Object.values(types).some((t) =>
+      t.properties.some((p) => p.extraContext != null)
+    )
+  ) {
+    yield `
+    if (options.context == null) {
+      const currentContexts = Array.isArray(docContext) ? docContext : [docContext];
+      const additionalContexts = getExtraContexts(compacted).filter(
+        context => !currentContexts.includes(context)
+      );
+      if (additionalContexts.length > 0) {
+        docContext = [...currentContexts, ...additionalContexts];
+        compacted = await jsonld.compact(values, docContext, {
+          documentLoader: options.contextLoader,
+        });
+      }
+    }
+    `;
+  }
+  yield `
     if (docContext != null) {
       // Embed context
   `;
@@ -309,7 +331,10 @@ export async function* generateEncoder(
   protected ${emitOverride(typeUri, types)} isCompactable(): boolean {
 `;
   for (const property of type.properties) {
-    if (!property.range.every((r) => isCompactableType(r, types))) {
+    if (
+      property.extraContext != null ||
+      !property.range.every((r) => isCompactableType(r, types))
+    ) {
       yield `
       if (
         this.${await getFieldName(property.uri)} != null &&

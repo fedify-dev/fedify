@@ -283,6 +283,44 @@ function isValidLanguageTag(language: string): boolean {
   }
 }
 `;
+  // Contexts are activated by expanded property IRIs left after compaction.
+  const extraContexts = Object.fromEntries(
+    Object.values(types).flatMap((type) =>
+      type.properties.flatMap((property) =>
+        property.extraContext == null
+          ? []
+          : [[property.uri, property.extraContext]]
+      )
+    ),
+  );
+  if (Object.keys(extraContexts).length > 0) {
+    yield `
+const extraPropertyContexts: Readonly<Record<string, string>> =
+  ${JSON.stringify(extraContexts)};
+
+function getExtraContexts(document: unknown): string[] {
+  const contexts = new Set<string>();
+  const pending: unknown[] = [document];
+  while (pending.length > 0) {
+    const value = pending.pop();
+    if (value == null || typeof value !== "object") continue;
+    if (Array.isArray(value)) {
+      for (const item of value) pending.push(item);
+      continue;
+    }
+    if ("@value" in value) continue;
+    for (const [key, child] of globalThis.Object.entries(value)) {
+      if (key === "@context") continue;
+      if (globalThis.Object.hasOwn(extraPropertyContexts, key)) {
+        contexts.add(extraPropertyContexts[key]);
+      }
+      pending.push(child);
+    }
+  }
+  return [...contexts];
+}
+`;
+  }
   yield "\n\n";
   const portableIriKeys = new Set(["@id", "id"]);
   for (const type of Object.values(types)) {

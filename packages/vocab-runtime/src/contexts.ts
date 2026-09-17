@@ -7,6 +7,7 @@ import activitystreams from "./contexts/activitystreams.json" with {
 };
 import cidV1Context from "./contexts/cid-v1.json" with { type: "json" };
 import didV1 from "./contexts/did-v1.json" with { type: "json" };
+import fep22cd from "./contexts/fep-22cd.json" with { type: "json" };
 import fep5711 from "./contexts/fep-5711.json" with { type: "json" };
 import fep7aa9 from "./contexts/fep-7aa9.json" with { type: "json" };
 import fepEf61 from "./contexts/fep-ef61.json" with { type: "json" };
@@ -38,6 +39,7 @@ const preloadedContexts: Record<string, unknown> = {
   "https://purl.archive.org/socialweb/webfinger": webfinger,
   "http://schema.org/": schemaorg,
   "https://gotosocial.org/ns": gotosocial,
+  "https://w3id.org/fep/22cd": fep22cd,
   "https://w3id.org/fep/5711": fep5711,
   "https://w3id.org/fep/7aa9": fep7aa9,
 
