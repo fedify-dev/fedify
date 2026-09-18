@@ -13,6 +13,7 @@ import {
   Note,
   Place,
   PUBLIC_COLLECTION,
+  Translation,
 } from "@fedify/vocab";
 import {
   decodeMultibase,
@@ -2589,4 +2590,39 @@ test("verifyObject() rejects did:key proofs from another portable attribution or
     }),
     null,
   );
+});
+
+test("signObject() preserves FEP-22cd contexts through proof verification", async () => {
+  const did = await exportDidKey(ed25519PublicKey.publicKey);
+  const keyId = new URL(`${did}#${did.substring("did:key:".length)}`);
+  const id = parseIri(`ap://${did}/objects/translation`);
+  const note = new Note({
+    id,
+    attribution: parseIri(`ap://${did}/actor`),
+    content: "A translated note",
+    translations: [
+      new Translation({
+        language: new Intl.Locale("ko"),
+        translator: new URL("https://example.com/translator"),
+        original: id,
+      }),
+    ],
+  });
+  const signed = await signObject(note, ed25519PrivateKey, keyId);
+  const json = await signed.toJsonLd({ format: "compact" });
+  assert(
+    typeof json === "object" && json != null && "@context" in json &&
+      "proof" in json,
+  );
+  assertEquals(
+    (json.proof as Record<string, unknown>)["@context"],
+    json["@context"],
+  );
+  const verified = await verifyObject(Note, json, {
+    documentLoader() {
+      throw new Error("No document fetch expected");
+    },
+  });
+  assertInstanceOf(verified, Note);
+  assertEquals(verified.translations[0].language?.baseName, "ko");
 });

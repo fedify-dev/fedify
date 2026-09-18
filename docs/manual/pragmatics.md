@@ -569,6 +569,215 @@ Mastodon:
 ![Screenshot: An article object with a title, canonical link, and hashtag in
 Mastodon](pragmatics/mastodon-article.png)
 
+### Translation metadata
+
+`Translation` records credit and source freshness for one translated language
+in an object's `contentMap`, `nameMap`, or `summaryMap`.  `Object.translations`
+is an array of these entries, inherited by `Article`, `Note`, and other object
+types.  The text stays in the language maps.  Every language shares the same
+object ID, replies, and reactions.
+
+> [!WARNING]
+> This implements [FEP-22cd].
+> The proposal may change.  These APIs describe the draft's wire format;
+> they do not make other servers display translation credits.  Downstream
+> applications should pin a Fedify revision containing this support when
+> testing the draft.
+
+#### Publishing a translation
+
+An author translating their own article keeps their author attribution and
+adds a separate credit for the translated language:
+
+~~~~ typescript twoslash
+import { Article, LanguageString, Translation } from "@fedify/vocab";
+
+const articleId = new URL("https://example.com/articles/1");
+const authorId = new URL("https://example.com/users/alice");
+const sourceUpdated = Temporal.Instant.from("2026-09-01T00:00:00Z");
+const article = new Article({
+  id: articleId,
+  attribution: authorId,
+  updated: sourceUpdated,
+  contents: [
+    "Original text", // Untagged fallback for readers without language selection.
+    new LanguageString("Original text", "en"),
+    new LanguageString("번역문", "ko"),
+  ],
+  translations: [
+    new Translation({
+      language: new Intl.Locale("ko"),
+      translator: authorId,
+      original: articleId,
+      sourceUpdated,
+      url: new URL("https://example.com/articles/1/ko"),
+    }),
+  ],
+});
+
+const json = await article.toJsonLd();
+~~~~
+
+Fedify adds the preloaded `https://w3id.org/fep/22cd` context when translation
+metadata needs it.  Objects without this metadata keep their existing output.
+If you supply an explicit context to
+`toJsonLd({ format: "compact", context: ... })`, include the FEP context to get
+its compact term names.
+
+| Property        | Value                   | Meaning                                                |
+| --------------- | ----------------------- | ------------------------------------------------------ |
+| `language`      | `Intl.Locale`           | Language of this translation.                          |
+| `translators`   | Actor objects or `URL`s | One or more translators or reviewers, in no set order. |
+| `original`      | `URL`                   | ID of the containing object.                           |
+| `sourceUpdated` | `Temporal.Instant`      | Source timestamp at the last human review.             |
+| `basis`         | `URL`                   | Optional public revision resource used for the review. |
+| `urls`          | `URL`s or `Link`s       | Optional links to this language's rendering.           |
+
+The constructor also accepts singular `translator` and `url` values.  The FEP
+requires `inLanguage` (`language` in Fedify), at least one translator, and
+`translationOfWork` (`original` in Fedify).
+Applications must check that the language matches their language maps and that
+`original` matches the containing object.  As with other vocabulary
+classes, Fedify does not enforce these relationships or required fields.
+Invalid language tags or timestamps can make `fromJsonLd()` reject the whole
+containing object; applications should handle parsing errors at their normal
+input boundary.
+
+A directly authored language has no `Translation` entry.  A metadata entry may
+have an `id`, but Fedify does not dereference it.  It is not a separate target
+for `Create`, `Update`, or `Delete`.
+
+#### Different translators in an organization
+
+Credit each language separately while keeping the organization as the
+article's author:
+
+~~~~ typescript twoslash
+import { Article, LanguageString, Translation } from "@fedify/vocab";
+
+const id = new URL("https://example.com/articles/2");
+const updated = Temporal.Instant.from("2026-09-10T00:00:00Z");
+const article = new Article({
+  id,
+  attribution: new URL("https://example.com/orgs/acme"),
+  updated,
+  contents: [
+    new LanguageString("Original", "en"),
+    new LanguageString("日本語版", "ja"),
+    new LanguageString("한국어판", "ko"),
+  ],
+  translations: [
+    new Translation({
+      language: new Intl.Locale("ja"),
+      translator: new URL("https://example.com/users/bob"),
+      original: id,
+      sourceUpdated: updated,
+    }),
+    new Translation({
+      language: new Intl.Locale("ko"),
+      translators: [
+        new URL("https://example.com/actors/translation-service"),
+        new URL("https://example.com/users/carol"),
+      ],
+      original: id,
+      sourceUpdated: updated,
+    }),
+  ],
+});
+~~~~
+
+Here the Korean entry credits both an `Application` that produced machine
+output and a `Person` who reviewed it.  Carol's presence credits review, not
+unaided translation.  Unreviewed machine output should credit only the
+software actor and omit the human-review timestamp.
+
+#### Source edits and review acknowledgements
+
+Compare a translation's `sourceUpdated` with the source's `updated`, or
+`published` when `updated` is absent.  An earlier value means potentially
+stale; an equal or later value reflects the current source.  If either the
+translation's baseline or the source's reference timestamp is absent, freshness
+is unknown.
+
+A source edit leaves the translations' existing baselines intact.  A subsequent
+human review can advance one baseline without changing its text:
+
+~~~~ typescript twoslash
+import { Article, Update } from "@fedify/vocab";
+declare const article: Article;
+declare const authorizedPublisher: URL;
+// ---cut-before---
+const edited = article.clone({
+  updated: Temporal.Instant.from("2026-09-15T00:00:00Z"),
+});
+// After a human reviews the Korean translation against this source:
+const reviewed = edited.clone({
+  translations: edited.translations.map((translation) =>
+    translation.language?.baseName === "ko"
+      ? translation.clone({ sourceUpdated: edited.updated })
+      : translation
+  ),
+});
+const update = new Update({
+  id: new URL("https://example.com/activities/review-123"),
+  actor: authorizedPublisher,
+  object: reviewed,
+});
+~~~~
+
+The server-to-server `Update` carries the full current object, including
+unchanged language maps and the other translations.  To withdraw a language,
+remove both its text and its metadata entry in that update.  This full-state
+replacement rule does not apply to client-to-server partial updates.
+
+#### Reading credit safely
+
+`translation.translatorIds` preserves actor references even when the accounts
+are unavailable.  `getTranslator()` and `getTranslators()` use the usual
+[origin checks](./vocab.md#same-origin-policy-for-properties).  A translation's
+metadata ID does not establish trust in embedded actors: actors with IDs are
+fetched unless the application explicitly trusts them or supplied them locally.
+
+To classify a translation as human, machine, or reviewed, resolve *all*
+credited actors.  The plural accessor
+can skip deleted, unavailable, or refused actors, so do not classify only the
+successful results or use the singular accessor for this purpose:
+
+~~~~ typescript twoslash
+import { Application, Service, Translation } from "@fedify/vocab";
+declare const translation: Translation;
+// ---cut-before---
+const ids = translation.translatorIds;
+const actors = await Array.fromAsync(
+  translation.getTranslators({ suppressError: true }),
+);
+let credit: "unknown" | "human" | "machine" | "reviewed" = "unknown";
+if (
+  actors.length > 0 && actors.length >= ids.length &&
+  actors.every((actor) => actor.id != null)
+) {
+  const machineCount = actors.filter((actor) =>
+    actor instanceof Application || actor instanceof Service
+  ).length;
+  credit = machineCount === 0
+    ? "human"
+    : machineCount === actors.length
+    ? "machine"
+    : "reviewed";
+}
+~~~~
+
+Without `suppressError`, a failed lookup may throw; treat that result as
+unknown as well.  An actor without an ID cannot be dereferenced, so its asserted
+type cannot establish the classification.
+
+Translator credit is a claim made by the publishing server.  Neither this
+credit nor `attributedTo` grants an actor permission to update or delete the
+article.  Keep your existing publishing authorization and signature checks;
+parsing these fields does not verify the credit or authorize an activity.
+
+[FEP-22cd]: https://w3id.org/fep/22cd
+
 ### `Question`: Polls
 
 The `Question` type is used for polls.  In Mastodon, the question body comes

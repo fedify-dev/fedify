@@ -380,38 +380,60 @@ To be released.
     document/media classes expose `digestMultibase` for external resource
     integrity metadata.
     [[#830], [#928]]
+
  -  Updated [FEP-fe34] cross-origin checks to understand cryptographic origins
     for [FEP-ef61] portable ActivityPub IDs and DID URLs.  Generated property
     accessors and `lookupObject()` now treat `ap:`/`ap+ef61:` IDs and matching
     `did:key` verification method IDs as same-origin when their DID components
     match.
     [[#829], [#926]]
+
  -  Added support for [FEP-ef61] portable ActivityPub IRIs in generated
     vocabulary codecs.  `ap:` and `ap+ef61:` values with decoded or
     percent-encoded DID authorities now parse as `URL` objects, and JSON-LD
     serialization emits canonical `ap+ef61:` values with decoded DID
     authorities.
     [[#826], [#850]]
+
  -  Added vocabulary support for [FEP-7aa9], including
     `FeaturedCollection`, `FeaturedItem`, `FeatureRequest`, and
     `FeatureAuthorization`, plus actor `featuredCollections` and
     `InteractionPolicy.canFeature` properties.
     [[#810], [#914]]
+
  -  Added the `Endpoints.uploadMedia` property, the standard ActivityStreams
     endpoint for the [ActivityPub Media Upload extension].
     [[#754], [#927]]
+
  -  Fixed the CommonJS vocabulary build so it no longer requires
     `@js-temporal/polyfill` at runtime.  The build now bundles
     `temporal-polyfill`, while type declarations rely on the standard
     `esnext.temporal` lib reference.
     [[#823], [#925]]
 
+ -  Added vocabulary support for the [FEP-22cd] draft, associating each
+    translated version with its translators, source object, and optional source
+    review timestamp.  [[#1037], [#1038]]
+
+     -  Added `Translation` class with `id`, `language`, `original`,
+        `sourceUpdated`, `basis`, `url`, and `urls` properties.
+     -  Added `Translation.getTranslator()`/`Translation.translatorId` and
+        `Translation.getTranslators()`/`Translation.translatorIds` for
+        accessing credited actors.  The constructor accepts `translator`
+        and `translators` values.
+     -  Added `Object.translations` property, inherited by `Article`,
+        `Note`, and other object types, for per-language translation
+        metadata without creating separate posts.
+
+[FEP-22cd]: https://w3id.org/fep/22cd
 [#810]: https://github.com/fedify-dev/fedify/issues/810
 [#826]: https://github.com/fedify-dev/fedify/issues/826
 [#830]: https://github.com/fedify-dev/fedify/issues/830
 [#850]: https://github.com/fedify-dev/fedify/pull/850
 [#914]: https://github.com/fedify-dev/fedify/pull/914
 [#928]: https://github.com/fedify-dev/fedify/pull/928
+[#1037]: https://github.com/fedify-dev/fedify/issues/1037
+[#1038]: https://github.com/fedify-dev/fedify/pull/1038
 
 ### @fedify/vocab-runtime
 
@@ -450,6 +472,8 @@ To be released.
     error pages surface as document loading failures with the response URL and
     content type, rather than generic JSON parser crashes.
     [[#912], [#913]]
+ -  Added <https://w3id.org/fep/22cd> to preloaded JSON-LD contexts.
+    [[#1037], [#1038]]
 
 [#828]: https://github.com/fedify-dev/fedify/issues/828
 [#831]: https://github.com/fedify-dev/fedify/issues/831
@@ -457,6 +481,14 @@ To be released.
 [#913]: https://github.com/fedify-dev/fedify/pull/913
 [#924]: https://github.com/fedify-dev/fedify/pull/924
 [#935]: https://github.com/fedify-dev/fedify/pull/935
+
+### @fedify/vocab-tools
+
+ -  Added the `extraContext` property schema option to include a JSON-LD
+    context only when its terms are used, preserving existing output for
+    objects without the extension.  [[#1037], [#1038]]
+ -  Added the `trustEmbeddedObjects` type schema option so embedded metadata
+    identifiers need not establish trust in linked actors.  [[#1037], [#1038]]
 
 
 Version 2.3.7

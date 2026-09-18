@@ -5415,7 +5415,25 @@ for (const typeUri in types) {
     const jsonLd = await instance.toJsonLd({
       contextLoader: mockDocumentLoader,
     });
-    deepStrictEqual(jsonLd["@context"], type.defaultContext);
+    const defaultContexts = Array.isArray(type.defaultContext)
+      ? type.defaultContext
+      : [type.defaultContext];
+    const extraContexts = [
+      ...new Set(
+        allProperties.flatMap((property) =>
+          property.extraContext == null ||
+            defaultContexts.some((context) => context === property.extraContext)
+            ? []
+            : [property.extraContext]
+        ),
+      ),
+    ];
+    deepStrictEqual(
+      jsonLd["@context"],
+      extraContexts.length === 0
+        ? type.defaultContext
+        : [...defaultContexts, ...extraContexts],
+    );
     if (type.entity) deepStrictEqual(jsonLd.id, "https://example.com/");
     const restored = await cls.fromJsonLd(jsonLd, {
       documentLoader: mockDocumentLoader,

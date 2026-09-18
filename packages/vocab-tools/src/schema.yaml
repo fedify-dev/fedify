@@ -72,6 +72,14 @@ $defs:
   property-base:
     type: object
     properties:
+      extraContext:
+        description: >-
+          A context URL added to default serialization when this property's
+          expanded IRI appears in the compacted document. Explicit caller
+          contexts are unchanged. Populated properties use the JSON-LD
+          processor instead of compact serialization heuristics.
+        type: string
+        format: uri
       singularName:
         description: >-
           The singular form of the property name.  It is used as the name of the
@@ -249,6 +257,13 @@ properties:
       can load the values of the properties from the remote server.
 
       The extended subtypes must have the consistent value of this flag.
+    type: boolean
+  trustEmbeddedObjects:
+    description: >-
+      Whether this type's id establishes same-origin trust for its own
+      embedded entity-valued properties. Defaults to true. Set to false
+      for metadata ids that do not identify independently fetched resources.
+      Locally constructed and explicitly trusted values remain trusted.
     type: boolean
   typeless:
     description: >-

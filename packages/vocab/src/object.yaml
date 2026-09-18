@@ -469,3 +469,18 @@ properties:
     (boost) was approved by the target post's author.
   range:
   - "https://gotosocial.org/ns#AnnounceAuthorization"
+
+- pluralName: translations
+  singularName: translation
+  compactName: translations
+  uri: "https://w3id.org/fep/22cd#translations"
+  extraContext: "https://w3id.org/fep/22cd"
+  description: |
+    Translation metadata for the language versions in this object's content,
+    name, or summary maps, as defined by the draft
+    [FEP-22cd](https://w3id.org/fep/22cd).  Each entry describes one translated
+    language; directly authored languages have no entry.  The entries share
+    this object's identity, replies, and reactions.  Translator credit grants
+    no authority to update the object.
+  range:
+  - "https://w3id.org/fep/22cd#Translation"
