@@ -1,9 +1,11 @@
 {
   "devDependencies": {
+    "@adonisjs/core": "catalog:",
     "@electric-sql/pglite": "catalog:",
     "@braintree/sanitize-url": "^7.1.2",
     "@cloudflare/workers-types": "catalog:",
     "@deno/kv": "^0.8.4",
+    "@fedify/adonisjs": "workspace:^",
     "@fedify/amqp": "workspace:^",
     "@fedify/astro": "workspace:^",
     "@fedify/backfill": "workspace:^",

@@ -1,0 +1,45 @@
+{
+  "name": "fedify-adonisjs-example",
+  "version": "1.0.0",
+  "description": "Fedify AdonisJS Example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node ace serve",
+    "dev": "node ace serve --watch",
+    "test": "true"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fedify-dev/fedify.git",
+    "directory": "examples/adonisjs"
+  },
+  "keywords": [
+    "Fedify",
+    "AdonisJS"
+  ],
+  "author": "scammo",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/fedify-dev/fedify/issues"
+  },
+  "homepage": "https://github.com/fedify-dev/fedify/tree/main/examples/adonisjs#readme",
+  "devDependencies": {
+    "@adonisjs/assembler": "catalog:",
+    "@adonisjs/tsconfig": "^2.0.0",
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  },
+  "dependencies": {
+    "@adonisjs/core": "catalog:",
+    "@fedify/adonisjs": "workspace:^",
+    "@fedify/fedify": "workspace:^",
+    "@fedify/vocab": "workspace:^",
+    "@poppinss/ts-exec": "^1.4.4",
+    "reflect-metadata": "^0.2.2"
+  },
+  "imports": {
+    "#start/*": "./start/*.js",
+    "#config/*": "./config/*.js"
+  }
+}

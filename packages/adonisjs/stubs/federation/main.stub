@@ -1,0 +1,64 @@
+{{{
+  exports({ to: app.makePath('app/federation/main.ts') })
+}}}
+/*
+|--------------------------------------------------------------------------
+| Federation dispatchers
+|--------------------------------------------------------------------------
+|
+| Registered on the Fedify builder while the application boots, from the
+| "start/federation.ts" preload file.
+|
+| Registration happens exactly once per process. Do not add this directory
+| to "hotHook.boundaries" in package.json: re-importing the module on a hot
+| reload would register the same dispatcher twice and Fedify would throw.
+| Restart the dev server after changing a dispatcher.
+|
+| See https://fedify.dev/manual/actor and https://fedify.dev/manual/inbox
+|
+*/
+
+import federation from '@fedify/adonisjs/services/builder'
+import { Endpoints, Person } from '@fedify/vocab'
+
+/**
+ * Serves the actor document at "/actors/<identifier>", and -- through the key
+ * pairs dispatcher -- the keys that sign this actor's outgoing activities.
+ */
+federation
+  .setActorDispatcher('/actors/{identifier}', async (ctx, identifier) => {
+    // Look the actor up in your database and return null when it is unknown.
+    if (identifier !== 'me') return null
+
+    const keys = await ctx.getActorKeyPairs(identifier)
+
+    return new Person({
+      id: ctx.getActorUri(identifier),
+      preferredUsername: identifier,
+      name: 'Me',
+      inbox: ctx.getInboxUri(identifier),
+      endpoints: new Endpoints({ sharedInbox: ctx.getInboxUri() }),
+      url: new URL('/', ctx.url),
+
+      // Two keys, two purposes: the RSA key signs HTTP Signatures (what
+      // Mastodon verifies), the Ed25519 key signs Object Integrity Proofs.
+      publicKeys: keys.map((keyPair) => keyPair.cryptographicKey),
+      assertionMethods: keys.map((keyPair) => keyPair.multikey),
+    })
+  })
+  .setKeyPairsDispatcher(async (_ctx, _identifier) => {
+    // Load the actor's key pairs from your database, generating and persisting
+    // them the first time. Private keys are secrets: never log them, never
+    // expose them through an endpoint.
+    //
+    // See https://fedify.dev/manual/actor#public-keys-of-an-actor
+    return []
+  })
+
+/**
+ * Receives activities from other servers.
+ *
+ * The second path is the shared inbox, which servers use to deliver one
+ * activity destined for many local actors.
+ */
+federation.setInboxListeners('/actors/{identifier}/inbox', '/inbox')

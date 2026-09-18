@@ -1,0 +1,47 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": ["ESNext"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "moduleDetection": "force",
+    "rootDir": ".",
+    "outDir": "./dist",
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "verbatimModuleSyntax": true,
+
+    // The Fedify integration-package template builds declarations with
+    // `isolatedDeclarations`, which requires every exported symbol to carry an
+    // explicit type annotation.  Enabling it here means `npm run typecheck`
+    // catches violations before the declaration build does.
+    "isolatedDeclarations": true,
+    "isolatedModules": true,
+    "declaration": true,
+
+    // AdonisJS v7 and its own packages write relative imports with a `.ts`
+    // extension and let the compiler rewrite them to `.js` on emit.  Doing the
+    // same here means `node --test src/**/*.test.ts` runs the sources directly
+    // through Node's built-in type stripping, with no loader and no flags.
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "types": ["node"]
+  },
+  "include": [
+    "index.ts",
+    "configure.ts",
+    "providers/**/*.ts",
+    "services/**/*.ts",
+    "src/**/*.ts",
+    "stubs/main.ts"
+  ],
+  "exclude": ["dist", "node_modules"]
+}

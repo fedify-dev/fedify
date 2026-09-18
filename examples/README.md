@@ -18,6 +18,7 @@ added in the future.[^1]
     federation through an H3 application
  -  [Hono integration sample](./hono-sample/)
  -  [Fastify integration example](./fastify/)
+ -  [Fedify–AdonisJS integration example](./adonisjs/)
  -  [Fedify–Express integration example](./express/)
  -  [Fedify monitoring example](./monitoring/)
  -  [Fedify–Next.js 16 integration example using `@fedify/next`](./next-integration/)

@@ -89,6 +89,13 @@ interface ServerExample {
   readyTimeout?: number;
   /** Extra environment variables injected into the server process */
   env?: Record<string, string>;
+  /**
+   * Name of an environment variable that receives the tunnel's public origin
+   * (e.g. "https://abc.pinggy.link").  When set, the tunnel is opened
+   * *before* the server starts, because the server bakes its public origin
+   * into its configuration at boot and cannot pick it up afterwards.
+   */
+  tunnelUrlEnvVar?: string;
 }
 
 /** An example that is a standalone script (not a server). */
@@ -306,6 +313,30 @@ const SERVER_EXAMPLES: ServerExample[] = [
     actor: "demo",
     readyUrl: "http://localhost:3000/",
     readyTimeout: 30_000,
+  },
+  {
+    // AdonisJS server using @fedify/adonisjs; actor path is
+    // /users/{identifier}.  The example's .env is git-ignored, so the full
+    // environment its start/env.ts schema validates is injected here.  The
+    // integration mints all federation URIs from PUBLIC_URL at boot, so the
+    // tunnel origin is injected via tunnelUrlEnvVar before `node ace serve`
+    // starts.  The APP_KEY is a throwaway value for the test run only.
+    name: "adonisjs",
+    dir: "adonisjs",
+    startCmd: ["pnpm", "start"],
+    port: 3333,
+    actor: "demo",
+    readyUrl: "http://localhost:3333/",
+    readyTimeout: 30_000,
+    env: {
+      TZ: "UTC",
+      NODE_ENV: "development",
+      PORT: "3333",
+      HOST: "localhost",
+      LOG_LEVEL: "info",
+      APP_KEY: "fedify-adonisjs-example-test-key",
+    },
+    tunnelUrlEnvVar: "PUBLIC_URL",
   },
 ];
 
@@ -533,6 +564,7 @@ async function testServerExample(
     actor,
     readyUrl,
     env,
+    tunnelUrlEnvVar,
   } = example;
   const exampleDir = join(EXAMPLES_DIR, dir);
   const cwd = startCwd ?? exampleDir;
@@ -578,10 +610,31 @@ async function testServerExample(
   serverLogger.debug("Clearing port {port} before start", { port });
   await killPortUsers(port);
 
+  let activeTunnel: Tunnel | null = null;
+  let serverEnv = env;
+
+  // Origin-pinned servers (tunnelUrlEnvVar) read their public origin from
+  // the environment once at boot, so the tunnel must exist before the server
+  // starts.  Other examples keep the default order (server first, then
+  // tunnel) so tunnels are not held open during slow startups.
+  if (tunnelUrlEnvVar != null) {
+    console.log(
+      c.cyan(`\n[${name}]`) + ` Opening tunnel on port ${port} before start…`,
+    );
+    const tunnel = await startTunnel(port);
+    if (tunnel == null) {
+      const error = "Failed to open tunnel";
+      serverLogger.error("{error}", { error });
+      return { name, status: "fail", error, output: "" };
+    }
+    activeTunnel = tunnel;
+    serverEnv = { ...env, [tunnelUrlEnvVar]: tunnel.url.origin };
+  }
+
   console.log(c.cyan(`\n[${name}]`) + " Starting server…");
   console.log(c.dim(`  cmd : ${startCmd.join(" ")}`));
   console.log(c.dim(`  cwd : ${cwd}`));
-  if (env) console.log(c.dim(`  env : ${JSON.stringify(env)}`));
+  if (serverEnv) console.log(c.dim(`  env : ${JSON.stringify(serverEnv)}`));
 
   serverLogger.info("Starting {name}", { name, cmd: startCmd.join(" "), cwd });
 
@@ -589,11 +642,12 @@ async function testServerExample(
   try {
     let cmd = $`${startCmd}`.cwd(cwd).stdout("piped").stderr("piped")
       .noThrow();
-    if (env) cmd = cmd.env(env);
+    if (serverEnv) cmd = cmd.env(serverEnv);
     serverChild = cmd.spawn();
   } catch (e) {
     const error = `Command not found: ${startCmd[0]}`;
     serverLogger.error("{error}", { error });
+    if (activeTunnel != null) await activeTunnel.close();
     return { name, status: "fail", error, output: String(e) };
   }
 
@@ -604,8 +658,6 @@ async function testServerExample(
 
   const collectServerOutput = () =>
     stdoutChunks.join("") + stderrChunks.join("");
-
-  let activeTunnel: Tunnel | null = null;
 
   try {
     console.log(
@@ -622,24 +674,27 @@ async function testServerExample(
       return { name, status: "fail", error, output: collectServerOutput() };
     }
 
-    serverLogger.info("{name} is ready; opening tunnel on port {port}", {
-      name,
-      port,
-    });
-    console.log(c.dim(`  server ready—opening tunnel on port ${port}…`));
+    if (activeTunnel == null) {
+      serverLogger.info("{name} is ready; opening tunnel on port {port}", {
+        name,
+        port,
+      });
+      console.log(c.dim(`  server ready—opening tunnel on port ${port}…`));
 
-    const tunnel = await startTunnel(port);
-    if (tunnel == null) {
-      const error = "Failed to open tunnel";
-      serverLogger.error("{error}", { error });
-      return { name, status: "fail", error, output: collectServerOutput() };
+      const tunnel = await startTunnel(port);
+      if (tunnel == null) {
+        const error = "Failed to open tunnel";
+        serverLogger.error("{error}", { error });
+        return { name, status: "fail", error, output: collectServerOutput() };
+      }
+
+      activeTunnel = tunnel;
     }
-
-    activeTunnel = tunnel;
-    const tunnelHostname = tunnel.url.hostname;
+    const tunnelHostname = activeTunnel.url.hostname;
+    const tunnelUrl = activeTunnel.url;
     const handle = `@${actor}@${tunnelHostname}`;
 
-    console.log(c.dim(`  tunnel URL : ${tunnel.url.href}`));
+    console.log(c.dim(`  tunnel URL : ${tunnelUrl.href}`));
     console.log(c.dim(`  running    : fedify lookup ${handle} -d`));
     serverLogger.info("Running fedify lookup {handle}", { handle });
 

@@ -1,0 +1,20 @@
+{{{
+  exports({ to: app.makePath('start/federation.ts') })
+}}}
+/*
+|--------------------------------------------------------------------------
+| Federation preload file
+|--------------------------------------------------------------------------
+|
+| Imported while the application boots, after every service provider has
+| booted and before the HTTP server starts accepting connections. This is
+| where Fedify's actor dispatchers, collection dispatchers and inbox
+| listeners get registered.
+|
+| Import each of your federation modules here. They register themselves on
+| the builder exported by "@fedify/adonisjs/services/builder", and the
+| builder is sealed into a Federation object once this file has run.
+|
+*/
+
+import '../app/federation/main.js'

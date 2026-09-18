@@ -22,6 +22,7 @@ exclude = [
 [heading]
 sentence_case = true
 proper_nouns = [
+  "@fedify/adonisjs",
   "@fedify/cli",
   "@fedify/elysia",
   "@fedify/express",
@@ -46,6 +47,7 @@ proper_nouns = [
   "ActivityKit",
   "ActivityPub",
   "ActivityStreams",
+  "AdonisJS",
   "Akkoma",
   "Biome",
   "BotKit",
