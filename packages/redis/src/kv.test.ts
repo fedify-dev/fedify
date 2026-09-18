@@ -240,6 +240,45 @@ nodeTest("RedisKvStore.set() rounds a TTL up to whole seconds", async () => {
   }
 });
 
+/**
+ * Asserts that a key written with a `seconds`-long expiry still has a
+ * plausible amount of that lifetime left.
+ *
+ * `PTTL` is read rather than `TTL` because `TTL` rounds the remaining
+ * lifetime to whole seconds: just over half a second after a `SETEX 1` write
+ * it reports `0` for a key that is still there, and `29` for one written with
+ * `SETEX 30`.  Asserting an exact `TTL` therefore fails on a slow run even
+ * though the conversion is correct.
+ *
+ * `elapsedMs` must span everything from before the write to after the read,
+ * so it is an upper bound on how long the key has been alive, and the
+ * remaining lifetime cannot have fallen below `seconds * 1000 - elapsedMs`.
+ * The upper bound is what rules out a longer expiry than intended.
+ */
+function assertExpiresIn(
+  remainingMs: number,
+  seconds: number,
+  elapsedMs: number,
+  why: string,
+): void {
+  assert(
+    remainingMs > 0,
+    `${why}: expected a live key with an expiry, but PTTL returned ` +
+      `${remainingMs}`,
+  );
+  assert(
+    remainingMs <= seconds * 1000,
+    `${why}: expected at most ${seconds}s left, but PTTL returned ` +
+      `${remainingMs}ms`,
+  );
+  assert(
+    remainingMs >= seconds * 1000 - elapsedMs,
+    `${why}: expected at least ${seconds * 1000 - elapsedMs}ms left ` +
+      `(${seconds}s minus the ${elapsedMs}ms the write and read took), but ` +
+      `PTTL returned ${remainingMs}ms`,
+  );
+}
+
 nodeTest(
   "RedisKvStore.set() stores a sub-second TTL",
   { skip: ignore },
@@ -248,36 +287,50 @@ nodeTest(
     const { redis, keyPrefix, store, cleanup } = getRedis();
     try {
       // Before the fix this threw `ERR value is not an integer or out of
-      // range`.
+      // range`.  The expiry is read straight after the write, so only the two
+      // Redis commands sit inside the window the bounds have to tolerate.
+      let startedAt = Date.now();
       await store.set(["foo", "sub"], "bar", {
         ttl: Temporal.Duration.from({ milliseconds: 500 }),
       });
-      assert.strictEqual(await store.get(["foo", "sub"]), "bar");
-      assert.strictEqual(
-        await redis.ttl(`${keyPrefix}foo::sub`),
+      let remaining = await redis.pttl(`${keyPrefix}foo::sub`);
+      assertExpiresIn(
+        remaining,
         1,
-        "a sub-second TTL should be stored as the smallest expiry Redis accepts",
+        Date.now() - startedAt,
+        "a sub-second TTL should be stored as the smallest expiry SETEX accepts",
       );
+      assert.strictEqual(await store.get(["foo", "sub"]), "bar");
 
       // A negative duration is stored for one second rather than rejected.
       // `SETEX` refuses a non-positive expiry outright, so without the floor
       // this throws `ERR invalid expire time in 'setex' command`.
+      startedAt = Date.now();
       await store.set(["foo", "negative"], "bar", {
         ttl: Temporal.Duration.from({ seconds: -30 }),
       });
-      assert.strictEqual(await store.get(["foo", "negative"]), "bar");
-      assert.strictEqual(
-        await redis.ttl(`${keyPrefix}foo::negative`),
+      remaining = await redis.pttl(`${keyPrefix}foo::negative`);
+      assertExpiresIn(
+        remaining,
         1,
-        "a negative TTL should be stored as the smallest expiry Redis accepts",
+        Date.now() - startedAt,
+        "a negative TTL should be stored as the smallest expiry SETEX accepts",
       );
+      assert.strictEqual(await store.get(["foo", "negative"]), "bar");
 
       // A whole number of seconds keeps its value, so the rounding does not
       // change what already worked.
+      startedAt = Date.now();
       await store.set(["foo", "whole"], "bar", {
         ttl: Temporal.Duration.from({ seconds: 30 }),
       });
-      assert.strictEqual(await redis.ttl(`${keyPrefix}foo::whole`), 30);
+      remaining = await redis.pttl(`${keyPrefix}foo::whole`);
+      assertExpiresIn(
+        remaining,
+        30,
+        Date.now() - startedAt,
+        "a whole number of seconds should be stored unchanged",
+      );
     } finally {
       await cleanup();
       redis.disconnect();
