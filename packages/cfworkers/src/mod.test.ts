@@ -4,6 +4,7 @@ import {
   WorkersKvStore,
   WorkersMessageQueue,
 } from "./mod.ts";
+import type { Queue } from "@cloudflare/workers-types";
 
 // Mock Temporal.Duration for testing in Cloudflare Workers environment
 const mockDuration = (seconds: number) => ({
@@ -394,5 +395,99 @@ describe("WorkersMessageQueue", () => {
     expect(second.shouldProcess).toBe(false);
     expect(second.message).toBeUndefined();
     expect(second.release).toBeUndefined();
+  });
+});
+
+interface MockWrappedMessage {
+  readonly __fedify_ordering_key__?: string;
+  readonly __fedify_payload__: unknown;
+}
+
+interface MockSendBatchOptions {
+  readonly delaySeconds?: number;
+}
+
+interface MockSendOptions {
+  readonly contentType?: string;
+  readonly delaySeconds?: number;
+}
+
+interface MockMessageSendRequest {
+  readonly body: MockWrappedMessage;
+  readonly contentType?: string;
+}
+
+class MockQueue {
+  sentSingles: {
+    wrapped: MockWrappedMessage;
+    options?: MockSendOptions;
+  }[] = [];
+  sentBatches: {
+    batch: MockMessageSendRequest[];
+    options?: MockSendBatchOptions;
+  }[] = [];
+
+  send(wrapped: MockWrappedMessage, options?: MockSendOptions) {
+    this.sentSingles.push({ wrapped, options });
+  }
+
+  sendBatch(batch: MockMessageSendRequest[], options?: MockSendBatchOptions) {
+    this.sentBatches.push({ batch, options });
+  }
+}
+
+describe("WorkersMessageQueue.enqueueMany() - wrapped message shape", () => {
+  it("enqueueMany() - wraps each message with body{} and contentType", async () => {
+    const sendingMockQueue = new MockQueue();
+    const queue = new WorkersMessageQueue(sendingMockQueue as unknown as Queue);
+
+    await queue.enqueueMany(["msg-1", "msg-2"], { orderingKey: "ferer" });
+
+    expect(sendingMockQueue.sentBatches).toHaveLength(1);
+    expect(sendingMockQueue.sentBatches[0].batch).toEqual([
+      {
+        body: {
+          __fedify_ordering_key__: "ferer",
+          __fedify_payload__: "msg-1",
+        },
+        contentType: "json",
+      },
+      {
+        body: {
+          __fedify_ordering_key__: "ferer",
+          __fedify_payload__: "msg-2",
+        },
+        contentType: "json",
+      },
+    ]);
+  });
+
+  it("enqueue() and enqueueMany() - produce the same wrapped shape", async () => {
+    const sendingMockQueue = new MockQueue();
+    const queue = new WorkersMessageQueue(sendingMockQueue as unknown as Queue);
+
+    await queue.enqueue("msg-1", { orderingKey: "ferer" });
+    await queue.enqueueMany(["msg-1"], { orderingKey: "ferer" });
+
+    // enqueueMany() wraps each body in a request ({ body, contentType }), so
+    // unwrap it before comparing against enqueue()'s bare wrapped message.
+    const singleWrapped = sendingMockQueue.sentSingles[0].wrapped;
+    const batchWrapped = sendingMockQueue.sentBatches[0].batch[0].body;
+
+    expect(batchWrapped).toEqual(singleWrapped);
+  });
+
+  it("enqueueMany() - omits ordering key when not provided", async () => {
+    const sendingMockQueue = new MockQueue();
+    const queue = new WorkersMessageQueue(sendingMockQueue as unknown as Queue);
+
+    await queue.enqueueMany(["msg-1"]);
+
+    expect(sendingMockQueue.sentBatches[0].batch[0].body).toEqual(
+      {
+        __fedify_ordering_key__: undefined,
+        __fedify_payload__: "msg-1",
+      },
+    );
   });
 });
