@@ -809,6 +809,40 @@ test("Note.quoteUrl", async () => {
   deepStrictEqual(loaded3.quoteUrl, new URL("https://example.com/object3"));
 });
 
+test("Note.quoteUrl (IRI-typed alias terms)", async () => {
+  const jsonLd: Record<string, unknown> = {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      {
+        fedibird: "http://fedibird.com/ns#",
+        misskey: "https://misskey-hub.net/ns#",
+        _misskey_quote: {
+          "@id": "misskey:_misskey_quote",
+          "@type": "@id",
+        },
+        quoteUri: {
+          "@id": "fedibird:quoteUri",
+          "@type": "@id",
+        },
+      },
+    ],
+    id: "https://example.com/notes/1",
+    type: "Note",
+    _misskey_quote: "https://example.com/notes/quoted",
+    quoteUri: "https://example.com/notes/quoted2",
+  };
+
+  const loaded = await Note.fromJsonLd(jsonLd);
+  deepStrictEqual(loaded.quoteUrl, new URL("https://example.com/notes/quoted"));
+
+  delete jsonLd._misskey_quote;
+  const loaded2 = await Note.fromJsonLd(jsonLd);
+  deepStrictEqual(
+    loaded2.quoteUrl,
+    new URL("https://example.com/notes/quoted2"),
+  );
+});
+
 test("Key.publicKey", async () => {
   const jwk = {
     kty: "RSA",
