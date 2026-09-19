@@ -224,6 +224,30 @@ fakeFederation
 );
 
 test(
+  `${ruleName}: ✅ Good - delivery via a called nested helper`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    async function deliver() {
+      await ctx.sendActivity(
+        { identifier: ctx.identifier },
+        new URL("https://example.com/inbox"),
+        activity,
+      );
+    }
+    await deliver();
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
   `${ruleName}: ❌ Bad - missing delivery call`,
   lintTest({
     code: `
@@ -419,6 +443,106 @@ federation
   .setOutboxListeners("/users/{identifier}/outbox")
   .on(Activity, async () => {
     return \`ctx.sendActivity(\`;
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - unused nested delivery helper`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    async function deliver() {
+      await ctx.sendActivity(
+        { identifier: ctx.identifier },
+        new URL("https://example.com/inbox"),
+        activity,
+      );
+    }
+    console.log(ctx.identifier, activity.id?.href);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - delivery call behind if (false)`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    if (false) {
+      await ctx.sendActivity(
+        { identifier: ctx.identifier },
+        new URL("https://example.com/inbox"),
+        activity,
+      );
+    }
+    console.log(ctx.identifier, activity.id?.href);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - delivery call after unconditional return`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    console.log(ctx.identifier, activity.id?.href);
+    return;
+    await ctx.sendActivity(
+      { identifier: ctx.identifier },
+      new URL("https://example.com/inbox"),
+      activity,
+    );
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - delivery call only inside unrelated callback`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const recipients = [new URL("https://example.com/inbox")];
+    recipients.map((inbox) =>
+      ctx.sendActivity({ identifier: ctx.identifier }, inbox, activity)
+    );
+    console.log(ctx.identifier, activity.id?.href);
   });
 `,
     rule,

@@ -212,6 +212,189 @@ function getDeliveryAliasName(node: Node): string | null {
   return null;
 }
 
+const FUNCTION_NODE_TYPES = new Set([
+  "FunctionDeclaration",
+  "FunctionExpression",
+  "ArrowFunctionExpression",
+]);
+
+function isStaticallyFalsy(test: Expression): boolean {
+  return test.type === "Literal" && !test.value;
+}
+
+function isStaticallyTruthy(test: Expression): boolean {
+  return test.type === "Literal" && Boolean(test.value);
+}
+
+function isUnconditionalExit(node: Node): boolean {
+  return node.type === "ReturnStatement" || node.type === "ThrowStatement";
+}
+
+/**
+ * Collects the statements that are reachable within the listener's own
+ * function scope: it follows control flow (if/else, try/catch, switch,
+ * loops) but never descends into a nested function's body, and skips dead
+ * code (a statically-falsy `if` branch, or anything after an unconditional
+ * `return`/`throw`).
+ */
+function collectReachableStatements(node: Node, out: Node[]): void {
+  switch (node.type) {
+    case "BlockStatement":
+      for (const statement of node.body) {
+        collectReachableStatements(statement as Node, out);
+        if (isUnconditionalExit(statement as Node)) return;
+      }
+      return;
+
+    case "IfStatement": {
+      const test = node.test as Expression;
+      if (!isStaticallyFalsy(test)) {
+        collectReachableStatements(node.consequent as Node, out);
+      }
+      if (node.alternate != null && !isStaticallyTruthy(test)) {
+        collectReachableStatements(node.alternate as Node, out);
+      }
+      return;
+    }
+
+    case "TryStatement":
+      collectReachableStatements(node.block as Node, out);
+      if (node.handler != null) {
+        collectReachableStatements(node.handler.body as Node, out);
+      }
+      if (node.finalizer != null) {
+        collectReachableStatements(node.finalizer as Node, out);
+      }
+      return;
+
+    case "SwitchStatement":
+      for (const switchCase of node.cases) {
+        for (const statement of switchCase.consequent) {
+          collectReachableStatements(statement as Node, out);
+        }
+      }
+      return;
+
+    case "WhileStatement":
+    case "DoWhileStatement":
+    case "ForStatement":
+    case "ForInStatement":
+    case "ForOfStatement":
+      collectReachableStatements(node.body as Node, out);
+      return;
+
+    case "LabeledStatement":
+    case "WithStatement":
+      collectReachableStatements(node.body as Node, out);
+      return;
+
+    default:
+      out.push(node);
+      return;
+  }
+}
+
+/**
+ * Finds function nodes nested inside `node` (a reachable statement or
+ * expression), without descending past them. Each entry carries the local
+ * name it would be called by, if any (a `function name() {}` declaration,
+ * or a `const name = () => {}` binding) — `null` for an anonymous callback
+ * such as an inline argument to `array.map(...)`.
+ */
+function collectNestedFunctions(
+  node: unknown,
+  out: Array<{ name: string | null; fn: FunctionLikeNode }>,
+  nameHint: string | null = null,
+): void {
+  if (node == null || typeof node !== "object") return;
+  if (Array.isArray(node)) {
+    for (const item of node) collectNestedFunctions(item, out);
+    return;
+  }
+  if (!isNode(node)) return;
+
+  if (FUNCTION_NODE_TYPES.has(node.type)) {
+    const fn = node as FunctionLikeNode;
+    const name = fn.type === "FunctionDeclaration"
+      ? (fn.id?.name ?? null)
+      : nameHint;
+    out.push({ name, fn });
+    return;
+  }
+
+  if (node.type === "VariableDeclarator") {
+    const decl = node as VariableDeclarator;
+    const hint = decl.id.type === "Identifier" ? decl.id.name : null;
+    if (decl.init != null) collectNestedFunctions(decl.init, out, hint);
+    return;
+  }
+
+  // Deno.lint's AST nodes expose their children through prototype
+  // getters, not own enumerable properties, so `Object.entries()` sees
+  // none of them. `for...in` walks the prototype chain and works for
+  // both Deno.lint's and ESTree's node shapes.
+  const record = node as unknown as Record<string, unknown>;
+  for (const key in record) {
+    if (key === "parent") continue;
+    collectNestedFunctions(record[key], out);
+  }
+}
+
+/**
+ * Returns the source text of a reachable statement with any nested
+ * function bodies blanked out, and records their names (if any) in
+ * `helpersOut` so a direct call to one of them can pull its body back in.
+ */
+function maskNestedFunctions(
+  sourceCode: { getText(node: unknown): string },
+  node: Node,
+  helpersOut: Map<string, FunctionLikeNode>,
+): string {
+  let text = sourceCode.getText(node);
+  const nested: Array<{ name: string | null; fn: FunctionLikeNode }> = [];
+  collectNestedFunctions(node, nested);
+  for (const { name, fn } of nested) {
+    const fnText = sourceCode.getText(fn);
+    text = text.split(fnText).join("()=>{}");
+    if (name != null && !helpersOut.has(name)) helpersOut.set(name, fn);
+  }
+  return text;
+}
+
+/**
+ * Builds the source text to scan for a delivery call: the listener's own
+ * reachable code (dead branches and unreachable statements removed, nested
+ * function bodies blanked out), plus the body of any local helper function
+ * that is actually called from that reachable code.
+ */
+function collectDeliveryScanCode(
+  sourceCode: { getText(node: unknown): string },
+  root: Node,
+  visited: Set<Node> = new Set(),
+): string {
+  if (visited.has(root)) return "";
+  visited.add(root);
+
+  const statements: Node[] = [];
+  collectReachableStatements(root, statements);
+
+  const helpers = new Map<string, FunctionLikeNode>();
+  const code = statements
+    .map((statement) => maskNestedFunctions(sourceCode, statement, helpers))
+    .join("\n");
+
+  const helperCode = Array.from(helpers)
+    .filter(([name]) =>
+      new RegExp(String.raw`\b${escapeRegExp(name)}\s*\(`).test(code)
+    )
+    .map(([, fn]) =>
+      collectDeliveryScanCode(sourceCode, fn.body as Node, visited)
+    )
+    .join("\n");
+
+  return helperCode.length > 0 ? `${code}\n${helperCode}` : code;
+}
+
 function buildContextExpressionPattern(contextName: string): string {
   const name = escapeRegExp(contextName);
   const boundedName = String.raw`(?<![\w$])${name}(?![\w$])`;
@@ -277,7 +460,9 @@ const listenerCallsDeliveryMethod = (
   sourceCode: { getText(node: unknown): string },
   listener: FunctionLikeNode,
 ): boolean => {
-  const code = stripCommentsAndStrings(sourceCode.getText(listener));
+  const code = stripCommentsAndStrings(
+    collectDeliveryScanCode(sourceCode, listener.body as Node),
+  );
   const aliases = new Set<string>();
   const contextParam = unwrapContextParam(
     listener.params[0] as Node | undefined,
