@@ -248,6 +248,106 @@ federation
 );
 
 test(
+  `${ruleName}: ✅ Good - delivery inside a non-literal if branch`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    if (activity.id != null) {
+      await ctx.sendActivity(
+        { identifier: ctx.identifier },
+        new URL("https://example.com/inbox"),
+        activity,
+      );
+    }
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - delivery inside try/catch/finally`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    try {
+      await ctx.sendActivity(
+        { identifier: ctx.identifier },
+        new URL("https://example.com/inbox"),
+        activity,
+      );
+    } catch (error) {
+      console.error(error);
+    } finally {
+      console.log("done");
+    }
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - delivery inside a switch case`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    switch (activity.constructor.name) {
+      case "Create":
+        await ctx.sendActivity(
+          { identifier: ctx.identifier },
+          new URL("https://example.com/inbox"),
+          activity,
+        );
+        break;
+      default:
+        console.log(ctx.identifier);
+    }
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - delivery inside a for-of loop`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    for (const inbox of [new URL("https://example.com/inbox")]) {
+      await ctx.sendActivity(
+        { identifier: ctx.identifier },
+        inbox,
+        activity,
+      );
+    }
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
   `${ruleName}: ❌ Bad - missing delivery call`,
   lintTest({
     code: `
@@ -495,6 +595,33 @@ federation
       );
     }
     console.log(ctx.identifier, activity.id?.href);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - delivery call in the dead branch of if (true)`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    if (true) {
+      console.log(ctx.identifier, activity.id?.href);
+    } else {
+      await ctx.sendActivity(
+        { identifier: ctx.identifier },
+        new URL("https://example.com/inbox"),
+        activity,
+      );
+    }
   });
 `,
     rule,
