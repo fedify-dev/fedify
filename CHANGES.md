@@ -87,6 +87,15 @@ To be released.
 [#1081]: https://github.com/fedify-dev/fedify/issues/1081
 [#1089]: https://github.com/fedify-dev/fedify/pull/1089
 
+### @fedify/vocab
+
+ -  Updated the `fedify:url` decoder to read `@id` when `@value` is absent,
+    allowing it to accept IRI-valued quote URL aliases (`_misskey_quote` or
+    `quoteUri`). Also widened its `dataCheck()` to accept both forms.
+    [[#1015] by Jang Hanarae\]
+
+[#1015]: https://github.com/fedify-dev/fedify/issues/1015
+
 ### @fedify/vocab-runtime
 
  -  Added `UrlError.reason` to distinguish DNS resolution failures (`"dns"`)
