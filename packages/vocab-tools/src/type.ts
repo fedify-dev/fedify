@@ -308,12 +308,14 @@ const scalarTypes: Record<string, ScalarType> = {
       return `${v}.href`;
     },
     dataCheck(v) {
-      return `typeof ${v} === "object" && "@value" in ${v}
-        && typeof ${v}["@value"] === "string"
-        && ${v}["@value"] !== "" && ${v}["@value"] !== "/"`;
+      return `typeof ${v} === "object" &&
+      (("@value" in ${v} && typeof ${v}["@value"] === "string" &&
+        ${v}["@value"] !== "" && ${v}["@value"] !== "/") ||
+      ("@id" in ${v} && typeof ${v}["@id"] === "string" &&
+        ${v}["@id"] !== "" && ${v}["@id"] !== "/"))`;
     },
     decoder(v) {
-      return `new URL(${v}["@value"])`;
+      return `new URL(typeof ${v}["@value"] === "string" ? ${v}["@value"] : ${v}["@id"])`;
     },
   },
   "fedify:publicKey": {
