@@ -2,6 +2,7 @@ import { mockDocumentLoader, test } from "@fedify/fixture";
 import {
   decodeMultibase,
   type DocumentLoader,
+  FetchError,
   LanguageString,
   parseDecimal,
   type RemoteDocument,
@@ -14,6 +15,7 @@ import {
 } from "@fedify/vocab-tools";
 import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { pascalCase } from "es-toolkit";
+import fetchMock from "fetch-mock";
 import {
   deepStrictEqual,
   notDeepStrictEqual,
@@ -1802,6 +1804,130 @@ test({
       type: "Note",
       content: "Hello world",
     });
+  },
+});
+test({
+  name: "Announce.getObject() logs suppressed failures as warnings",
+  permissions: { env: true, read: true },
+  async fn() {
+    const records: LogRecord[] = [];
+    const notFoundUrl = "https://example.com/suppressed-not-found";
+    const invalidObjectUrl = "https://example.com/invalid-object";
+
+    await reset();
+    fetchMock.spyGlobal();
+
+    try {
+      await configure({
+        sinks: {
+          buffer(record: LogRecord): void {
+            records.push(record);
+          },
+        },
+        filters: {},
+        loggers: [{ category: [], sinks: ["buffer"] }],
+      });
+
+      fetchMock.get(notFoundUrl, { status: 404 });
+
+      const suppressedFetch = new Announce({
+        object: new URL(notFoundUrl),
+      });
+      deepStrictEqual(
+        await suppressedFetch.getObject({ suppressError: true }),
+        null,
+      );
+      ok(
+        records.some((record) =>
+          record.level === "warning" &&
+          record.rawMessage ===
+            "Failed to fetch document: {status} {url} {headers}"
+        ),
+      );
+      ok(
+        records.some((record) =>
+          record.level === "warning" &&
+          record.rawMessage === "Failed to fetch {url}: {error}"
+        ),
+      );
+      deepStrictEqual(
+        records.some((record) =>
+          record.level === "error" &&
+          (
+            record.rawMessage ===
+              "Failed to fetch document: {status} {url} {headers}" ||
+            record.rawMessage === "Failed to fetch {url}: {error}"
+          )
+        ),
+        false,
+      );
+
+      records.length = 0;
+
+      const unsuppressedFetch = new Announce({
+        object: new URL(notFoundUrl),
+      });
+      await rejects(
+        () => unsuppressedFetch.getObject(),
+        FetchError,
+      );
+      ok(
+        records.some((record) =>
+          record.level === "error" &&
+          record.rawMessage ===
+            "Failed to fetch document: {status} {url} {headers}"
+        ),
+      );
+
+      records.length = 0;
+
+      // deno-lint-ignore require-await
+      const invalidDocumentLoader: DocumentLoader = async (url) => ({
+        contextUrl: null,
+        documentUrl: url,
+        document: null,
+      });
+
+      const suppressedParsing = new Announce({
+        object: new URL(invalidObjectUrl),
+      });
+      deepStrictEqual(
+        await suppressedParsing.getObject({
+          documentLoader: invalidDocumentLoader,
+          suppressError: true,
+        }),
+        null,
+      );
+      ok(
+        records.some((record) =>
+          record.level === "warning" &&
+          record.rawMessage === "Failed to parse {url}: {error}"
+        ),
+      );
+      deepStrictEqual(
+        records.some((record) =>
+          record.level === "error" &&
+          record.rawMessage === "Failed to parse {url}: {error}"
+        ),
+        false,
+      );
+
+      records.length = 0;
+
+      const unsuppressedParsing = new Announce({
+        object: new URL(invalidObjectUrl),
+      });
+      await rejects(
+        () =>
+          unsuppressedParsing.getObject({
+            documentLoader: invalidDocumentLoader,
+          }),
+        TypeError,
+      );
+    } finally {
+      fetchMock.hardReset();
+      await reset();
+    }
   },
 });
 
