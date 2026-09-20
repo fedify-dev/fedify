@@ -2255,7 +2255,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -2263,7 +2265,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -2305,7 +2307,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -2504,7 +2506,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -2512,7 +2516,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -2554,7 +2558,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -2878,7 +2882,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -2886,7 +2892,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -2928,7 +2934,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -3243,7 +3249,9 @@ get contents(): ((string | LanguageString))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -3251,7 +3259,7 @@ get contents(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -3293,7 +3301,7 @@ get contents(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -3529,7 +3537,9 @@ get names(): ((string | LanguageString))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -3537,7 +3547,7 @@ get names(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -3579,7 +3589,7 @@ get names(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -3767,7 +3777,9 @@ get names(): ((string | LanguageString))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -3775,7 +3787,7 @@ get names(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -3817,7 +3829,7 @@ get names(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -4126,7 +4138,9 @@ get names(): ((string | LanguageString))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -4134,7 +4148,7 @@ get names(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -4176,7 +4190,7 @@ get names(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -4485,7 +4499,9 @@ get names(): ((string | LanguageString))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -4493,7 +4509,7 @@ get names(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -4535,7 +4551,7 @@ get names(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -4830,7 +4846,9 @@ get names(): ((string | LanguageString))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -4838,7 +4856,7 @@ get names(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -4880,7 +4898,7 @@ get names(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -5175,7 +5193,9 @@ get names(): ((string | LanguageString))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -5183,7 +5203,7 @@ get names(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -5225,7 +5245,7 @@ get names(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -5531,7 +5551,9 @@ get names(): ((string | LanguageString))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -5539,7 +5561,7 @@ get names(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -5581,7 +5603,7 @@ get names(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -5759,7 +5781,9 @@ get names(): ((string | LanguageString))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -5767,7 +5791,7 @@ get names(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -5809,7 +5833,7 @@ get names(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -5993,7 +6017,9 @@ get names(): ((string | LanguageString))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -6001,7 +6027,7 @@ get names(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -6043,7 +6069,7 @@ get names(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -6227,7 +6253,9 @@ get names(): ((string | LanguageString))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -6235,7 +6263,7 @@ get names(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -6277,7 +6305,7 @@ get names(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -6495,7 +6523,9 @@ get summaries(): ((string | LanguageString))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -6503,7 +6533,7 @@ get summaries(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -6545,7 +6575,7 @@ get summaries(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -6770,7 +6800,9 @@ get urls(): ((URL | Link))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -6778,7 +6810,7 @@ get urls(): ((URL | Link))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -6820,7 +6852,7 @@ get urls(): ((URL | Link))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -7106,7 +7138,9 @@ get urls(): ((URL | Link))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -7114,7 +7148,7 @@ get urls(): ((URL | Link))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -7156,7 +7190,7 @@ get urls(): ((URL | Link))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -7442,7 +7476,9 @@ get urls(): ((URL | Link))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -7450,7 +7486,7 @@ get urls(): ((URL | Link))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -7492,7 +7528,7 @@ get urls(): ((URL | Link))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -7778,7 +7814,9 @@ get urls(): ((URL | Link))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -7786,7 +7824,7 @@ get urls(): ((URL | Link))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -7828,7 +7866,7 @@ get urls(): ((URL | Link))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -8178,7 +8216,9 @@ get urls(): ((URL | Link))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -8186,7 +8226,7 @@ get urls(): ((URL | Link))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -8228,7 +8268,7 @@ get urls(): ((URL | Link))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -8551,7 +8591,9 @@ get urls(): ((URL | Link))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -8559,7 +8601,7 @@ get urls(): ((URL | Link))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -8601,7 +8643,7 @@ get urls(): ((URL | Link))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -8779,7 +8821,9 @@ get urls(): ((URL | Link))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -8787,7 +8831,7 @@ get urls(): ((URL | Link))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -8829,7 +8873,7 @@ get urls(): ((URL | Link))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -9007,7 +9051,9 @@ get urls(): ((URL | Link))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -9015,7 +9061,7 @@ get urls(): ((URL | Link))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -9057,7 +9103,7 @@ get urls(): ((URL | Link))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -14392,7 +14438,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -14400,7 +14448,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -14442,7 +14490,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -14644,7 +14692,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -14652,7 +14702,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -14694,7 +14744,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -16099,7 +16149,9 @@ instruments?: (Object | URL)[];}
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -16107,7 +16159,7 @@ instruments?: (Object | URL)[];}
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -16149,7 +16201,7 @@ instruments?: (Object | URL)[];}
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -16473,7 +16525,9 @@ instruments?: (Object | URL)[];}
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -16481,7 +16535,7 @@ instruments?: (Object | URL)[];}
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -16523,7 +16577,7 @@ instruments?: (Object | URL)[];}
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -16811,7 +16865,9 @@ instruments?: (Object | URL)[];}
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -16819,7 +16875,7 @@ instruments?: (Object | URL)[];}
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -16861,7 +16917,7 @@ instruments?: (Object | URL)[];}
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -17155,7 +17211,9 @@ instruments?: (Object | URL)[];}
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -17163,7 +17221,7 @@ instruments?: (Object | URL)[];}
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -17205,7 +17263,7 @@ instruments?: (Object | URL)[];}
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -17493,7 +17551,9 @@ instruments?: (Object | URL)[];}
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -17501,7 +17561,7 @@ instruments?: (Object | URL)[];}
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -17543,7 +17603,7 @@ instruments?: (Object | URL)[];}
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -17833,7 +17893,9 @@ instruments?: (Object | URL)[];}
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -17841,7 +17903,7 @@ instruments?: (Object | URL)[];}
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -17883,7 +17945,7 @@ instruments?: (Object | URL)[];}
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -21089,7 +21151,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -21097,7 +21161,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -21139,7 +21203,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -21317,7 +21381,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -21325,7 +21391,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -21367,7 +21433,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -24432,7 +24498,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -24440,7 +24508,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -24482,7 +24550,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -24660,7 +24728,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -24668,7 +24738,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -24710,7 +24780,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -25954,7 +26024,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -25962,7 +26034,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -26004,7 +26076,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -26182,7 +26254,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -26190,7 +26264,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -26232,7 +26306,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -27476,7 +27550,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -27484,7 +27560,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -27526,7 +27602,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -27703,7 +27779,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -27711,7 +27789,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -27753,7 +27831,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -29273,7 +29351,9 @@ urls?: ((URL | Link))[];}
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -29281,7 +29361,7 @@ urls?: ((URL | Link))[];}
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -29323,7 +29403,7 @@ urls?: ((URL | Link))[];}
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -30758,7 +30838,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -30766,7 +30848,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -30808,7 +30890,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -30984,7 +31066,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -30992,7 +31076,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -31034,7 +31118,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -32617,7 +32701,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -32625,7 +32711,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -32667,7 +32753,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -32845,7 +32931,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -32853,7 +32941,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -32895,7 +32983,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -33073,7 +33161,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -33081,7 +33171,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -33123,7 +33213,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -33301,7 +33391,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -33309,7 +33401,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -33351,7 +33443,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -33540,7 +33632,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -33548,7 +33642,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -33590,7 +33684,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -33767,7 +33861,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -33775,7 +33871,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -33817,7 +33913,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -33994,7 +34090,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -34002,7 +34100,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -34044,7 +34142,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -34221,7 +34319,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -34229,7 +34329,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -34271,7 +34371,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -34448,7 +34548,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -34456,7 +34558,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -34498,7 +34600,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -34675,7 +34777,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -34683,7 +34787,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -34725,7 +34829,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -34902,7 +35006,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -34910,7 +35016,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -34952,7 +35058,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -35129,7 +35235,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -35137,7 +35245,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -35179,7 +35287,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -37126,7 +37234,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -37134,7 +37244,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -37176,7 +37286,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -38600,7 +38710,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -38608,7 +38720,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -38650,7 +38762,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -38826,7 +38938,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -38834,7 +38948,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -38876,7 +38990,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -40803,7 +40917,9 @@ cryptosuite?: "eddsa-jcs-2022" | null;verificationMethod?: Multikey | URL | null
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -40811,7 +40927,7 @@ cryptosuite?: "eddsa-jcs-2022" | null;verificationMethod?: Multikey | URL | null
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -40853,7 +40969,7 @@ cryptosuite?: "eddsa-jcs-2022" | null;verificationMethod?: Multikey | URL | null
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -41906,7 +42022,9 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -41914,7 +42032,7 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -41956,7 +42074,7 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -42898,7 +43016,9 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -42906,7 +43026,7 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -42948,7 +43068,7 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -49402,7 +49522,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -49410,7 +49532,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -49452,7 +49574,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -49734,7 +49856,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -49742,7 +49866,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -49784,7 +49908,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -50120,7 +50244,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -50128,7 +50254,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -50170,7 +50296,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -50368,7 +50494,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -50376,7 +50504,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -50418,7 +50546,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -50613,7 +50741,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -50621,7 +50751,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -50663,7 +50793,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -50844,7 +50974,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -50852,7 +50984,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -50894,7 +51026,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -51078,7 +51210,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -51086,7 +51220,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -51128,7 +51262,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -51310,7 +51444,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -51318,7 +51454,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -51360,7 +51496,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -51540,7 +51676,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -51548,7 +51686,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -51590,7 +51728,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -51770,7 +51908,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -51778,7 +51918,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -51820,7 +51960,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -51997,7 +52137,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -52005,7 +52147,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -52047,7 +52189,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -52301,7 +52443,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -52309,7 +52453,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -52351,7 +52495,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -52563,7 +52707,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -52571,7 +52717,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -52613,7 +52759,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -52939,7 +53085,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -52947,7 +53095,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -52989,7 +53137,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -57006,7 +57154,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -57014,7 +57164,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -57056,7 +57206,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -57258,7 +57408,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -57266,7 +57418,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -57308,7 +57460,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -60275,7 +60427,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -60283,7 +60437,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -60325,7 +60479,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -60503,7 +60657,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -60511,7 +60667,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -60553,7 +60709,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -60729,7 +60885,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -60737,7 +60895,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -60779,7 +60937,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -66404,7 +66562,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -66412,7 +66572,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -66454,7 +66614,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -66736,7 +66896,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -66744,7 +66906,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -66786,7 +66948,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -67122,7 +67284,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -67130,7 +67294,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -67172,7 +67336,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -67370,7 +67534,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -67378,7 +67544,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -67420,7 +67586,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -67615,7 +67781,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -67623,7 +67791,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -67665,7 +67833,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -67846,7 +68014,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -67854,7 +68024,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -67896,7 +68066,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -68080,7 +68250,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -68088,7 +68260,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -68130,7 +68302,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -68312,7 +68484,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -68320,7 +68494,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -68362,7 +68536,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -68542,7 +68716,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -68550,7 +68726,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -68592,7 +68768,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -68772,7 +68948,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -68780,7 +68958,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -68822,7 +69000,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -68999,7 +69177,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -69007,7 +69187,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -69049,7 +69229,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -69303,7 +69483,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -69311,7 +69493,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -69353,7 +69535,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -69565,7 +69747,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -69573,7 +69757,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -69615,7 +69799,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -69941,7 +70125,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -69949,7 +70135,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -69991,7 +70177,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -73679,7 +73865,9 @@ get names(): ((string | LanguageString))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -73687,7 +73875,7 @@ get names(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -73729,7 +73917,7 @@ get names(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -79097,7 +79285,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -79105,7 +79295,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -79147,7 +79337,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -79349,7 +79539,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -79357,7 +79549,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -79399,7 +79591,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -80355,7 +80547,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -80363,7 +80557,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -80405,7 +80599,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -82241,7 +82435,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -82249,7 +82445,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -82291,7 +82487,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -82573,7 +82769,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -82581,7 +82779,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -82623,7 +82821,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -82959,7 +83157,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -82967,7 +83167,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -83009,7 +83209,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -83207,7 +83407,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -83215,7 +83417,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -83257,7 +83459,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -83452,7 +83654,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -83460,7 +83664,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -83502,7 +83706,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -83683,7 +83887,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -83691,7 +83897,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -83733,7 +83939,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -83917,7 +84123,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -83925,7 +84133,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -83967,7 +84175,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -84149,7 +84357,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -84157,7 +84367,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -84199,7 +84409,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -84379,7 +84589,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -84387,7 +84599,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -84429,7 +84641,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -84609,7 +84821,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -84617,7 +84831,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -84659,7 +84873,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -84836,7 +85050,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -84844,7 +85060,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -84886,7 +85102,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -85140,7 +85356,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -85148,7 +85366,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -85190,7 +85408,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -85402,7 +85620,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -85410,7 +85630,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -85452,7 +85672,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -85778,7 +85998,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -85786,7 +86008,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -85828,7 +86050,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -90391,7 +90613,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -90399,7 +90623,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -90441,7 +90665,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -90723,7 +90947,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -90731,7 +90957,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -90773,7 +90999,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -91109,7 +91335,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -91117,7 +91345,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -91159,7 +91387,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -91357,7 +91585,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -91365,7 +91595,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -91407,7 +91637,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -91602,7 +91832,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -91610,7 +91842,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -91652,7 +91884,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -91833,7 +92065,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -91841,7 +92075,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -91883,7 +92117,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -92067,7 +92301,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -92075,7 +92311,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -92117,7 +92353,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -92299,7 +92535,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -92307,7 +92545,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -92349,7 +92587,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -92529,7 +92767,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -92537,7 +92777,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -92579,7 +92819,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -92759,7 +92999,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -92767,7 +93009,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -92809,7 +93051,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -92986,7 +93228,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -92994,7 +93238,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -93036,7 +93280,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -93290,7 +93534,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -93298,7 +93544,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -93340,7 +93586,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -93552,7 +93798,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -93560,7 +93808,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -93602,7 +93850,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -93928,7 +94176,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -93936,7 +94186,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -93978,7 +94228,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -98322,7 +98572,9 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -98330,7 +98582,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -98372,7 +98624,7 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -99291,7 +99543,9 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -99299,7 +99553,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -99341,7 +99595,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -99522,7 +99776,9 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -99530,7 +99786,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -99572,7 +99828,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -99783,7 +100039,9 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -99791,7 +100049,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -99833,7 +100091,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -100035,7 +100293,9 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -100043,7 +100303,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -100085,7 +100345,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -102205,7 +102465,9 @@ relationships?: (Object | URL)[];}
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -102213,7 +102475,7 @@ relationships?: (Object | URL)[];}
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -102255,7 +102517,7 @@ relationships?: (Object | URL)[];}
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -102435,7 +102697,9 @@ relationships?: (Object | URL)[];}
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -102443,7 +102707,7 @@ relationships?: (Object | URL)[];}
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -102485,7 +102749,7 @@ relationships?: (Object | URL)[];}
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -102769,7 +103033,9 @@ relationships?: (Object | URL)[];}
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -102777,7 +103043,7 @@ relationships?: (Object | URL)[];}
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -102819,7 +103085,7 @@ relationships?: (Object | URL)[];}
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -105249,7 +105515,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -105257,7 +105525,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -105299,7 +105567,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -105581,7 +105849,9 @@ get preferredUsernames(): ((string | LanguageString))[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -105589,7 +105859,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -105631,7 +105901,7 @@ get preferredUsernames(): ((string | LanguageString))[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -105967,7 +106237,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -105975,7 +106247,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -106017,7 +106289,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -106215,7 +106487,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -106223,7 +106497,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -106265,7 +106539,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -106460,7 +106734,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -106468,7 +106744,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -106510,7 +106786,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -106691,7 +106967,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -106699,7 +106977,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -106741,7 +107019,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -106925,7 +107203,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -106933,7 +107213,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -106975,7 +107255,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -107157,7 +107437,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -107165,7 +107447,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -107207,7 +107489,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -107387,7 +107669,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -107395,7 +107679,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -107437,7 +107721,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -107617,7 +107901,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -107625,7 +107911,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -107667,7 +107953,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -107844,7 +108130,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -107852,7 +108140,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -107894,7 +108182,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -108148,7 +108436,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -108156,7 +108446,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -108198,7 +108488,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -108410,7 +108700,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -108418,7 +108710,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -108460,7 +108752,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
@@ -108786,7 +109078,9 @@ get gateways(): (URL)[] {
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -108794,7 +109088,7 @@ get gateways(): (URL)[] {
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -108836,7 +109130,7 @@ get gateways(): (URL)[] {
           return obj;
         } catch (e) {
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to parse {url}: {error}",
               { error: e, url: lookupUrl }
             );
