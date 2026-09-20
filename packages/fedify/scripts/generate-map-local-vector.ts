@@ -248,3 +248,112 @@ const output = new URL(
 );
 await Deno.mkdir(new URL("./", output), { recursive: true });
 await Deno.writeTextFile(output, JSON.stringify(vector, null, 2) + "\n");
+
+const contextConflictOuterContext = [
+  ...context,
+  { "@language": "en" },
+];
+const contextConflictInnerUnsecuredDocument = {
+  "@context": context,
+  id: `ap+ef61://${innerDid}/objects/context-conflict`,
+  type: "Note",
+  attributedTo: `ap+ef61://${innerDid}/actor`,
+  content: "A portable note with inherited language",
+};
+const contextConflictInner = await secure(
+  contextConflictInnerUnsecuredDocument,
+  innerKeys.privateKey,
+  innerVerificationMethod,
+  created,
+);
+const contextConflictOuterUnsecuredDocument = {
+  "@context": contextConflictOuterContext,
+  id: `ap+ef61://${outerDid}/activities/context-conflict`,
+  type: "Create",
+  actor: `ap+ef61://${outerDid}/actor`,
+  object: contextConflictInner.securedDocument,
+};
+const contextConflictOuter = await secure(
+  contextConflictOuterUnsecuredDocument,
+  outerKeys.privateKey,
+  outerVerificationMethod,
+  created,
+);
+const contextConflictVector = {
+  id: "fedify-fep-8b32-map-local-context-conflict-v1",
+  profile: "Fedify map-local compound proof profile",
+  cryptosuite: "eddsa-jcs-2022",
+  notes: [
+    "The parent sets a default language that the child's local context does not reset.",
+    "The inner proof authenticates the extracted standalone child JSON map.",
+    "The outer proof authenticates the complete compound JSON snapshot.",
+    "Both proofs can be valid even though standalone and in-parent JSON-LD expansions differ.",
+  ],
+  keys: {
+    outer: {
+      controller: outerDid,
+      verificationMethod: outerVerificationMethod,
+      publicKeyMultibase: outerMethod,
+      publicKeyJwk: publicJwk(outerPrivateJwk),
+      testPrivateKeyJwk: outerPrivateJwk,
+    },
+    inner: {
+      controller: innerDid,
+      verificationMethod: innerVerificationMethod,
+      publicKeyMultibase: innerMethod,
+      publicKeyJwk: publicJwk(innerPrivateJwk),
+      testPrivateKeyJwk: innerPrivateJwk,
+    },
+  },
+  documents: {
+    finalSecuredCompound: contextConflictOuter.securedDocument,
+    securedInner: contextConflictInner.securedDocument,
+    outerUnsecuredDocument: contextConflictOuterUnsecuredDocument,
+    innerUnsecuredDocument: contextConflictInnerUnsecuredDocument,
+    outerProofConfiguration: contextConflictOuter.proofConfiguration,
+    innerProofConfiguration: contextConflictInner.proofConfiguration,
+  },
+  canonicalization: {
+    outer: {
+      documentJcs: contextConflictOuter.canonicalDocument,
+      proofConfigurationJcs: contextConflictOuter.canonicalProofConfiguration,
+    },
+    inner: {
+      documentJcs: contextConflictInner.canonicalDocument,
+      proofConfigurationJcs: contextConflictInner.canonicalProofConfiguration,
+    },
+  },
+  hashes: {
+    outer: {
+      documentSha256: contextConflictOuter.documentHash,
+      proofConfigurationSha256: contextConflictOuter.proofConfigurationHash,
+      combinedSigningInput: contextConflictOuter.combinedHash,
+    },
+    inner: {
+      documentSha256: contextConflictInner.documentHash,
+      proofConfigurationSha256: contextConflictInner.proofConfigurationHash,
+      combinedSigningInput: contextConflictInner.combinedHash,
+    },
+  },
+  proofValues: {
+    outer: contextConflictOuter.proof.proofValue,
+    inner: contextConflictInner.proof.proofValue,
+  },
+  expectedVerification: {
+    original: { inner: true, outer: true },
+  },
+  expectedInterpretation: {
+    standaloneAndInParentExpansionsEqual: false,
+    standaloneContentLanguage: null,
+    inParentContentLanguage: "en",
+  },
+};
+
+const contextConflictOutput = new URL(
+  "../test-vectors/fep-8b32/map-local-context-conflict.json",
+  import.meta.url,
+);
+await Deno.writeTextFile(
+  contextConflictOutput,
+  JSON.stringify(contextConflictVector, null, 2) + "\n",
+);

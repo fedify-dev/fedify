@@ -1,10 +1,14 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
 import { Create, DataIntegrityProof, Note } from "@fedify/vocab";
 import { encodeMultibase, exportDidKey, parseIri } from "@fedify/vocab-runtime";
+import jsonld from "@fedify/vocab-runtime/jsonld";
 import { assert, assertEquals } from "@std/assert";
 import { encodeHex } from "byte-encodings/hex";
 import serialize from "json-canon";
 import vector from "../../test-vectors/fep-8b32/map-local-create-note.json" with {
+  type: "json",
+};
+import conflictVector from "../../test-vectors/fep-8b32/map-local-context-conflict.json" with {
   type: "json",
 };
 import { normalizeOutgoingActivityJsonLd } from "../compat/outgoing-jsonld.ts";
@@ -101,6 +105,110 @@ async function sha256(value: string): Promise<Uint8Array> {
   );
 }
 
+interface RecordedProofEntry {
+  readonly document: Record<string, unknown>;
+  readonly proofConfiguration: Record<string, unknown>;
+  readonly proof: Record<string, unknown>;
+  readonly key: {
+    readonly controller: string;
+    readonly verificationMethod: string;
+    readonly publicKeyMultibase: string;
+    readonly publicKeyJwk: JsonWebKey;
+    readonly testPrivateKeyJwk: JsonWebKey;
+  };
+  readonly canonicalization: {
+    readonly documentJcs: string;
+    readonly proofConfigurationJcs: string;
+  };
+  readonly hashes: {
+    readonly documentSha256: string;
+    readonly proofConfigurationSha256: string;
+    readonly combinedSigningInput: string;
+  };
+  readonly proofValue: string;
+}
+
+async function assertRecordedProof(entry: RecordedProofEntry): Promise<void> {
+  assertEquals(withoutProofValue(entry.proof), entry.proofConfiguration);
+  assertEquals(entry.proof.proofValue, entry.proofValue);
+
+  const documentJcs = serialize(entry.document);
+  const proofConfigurationJcs = serialize(entry.proofConfiguration);
+  assertEquals(documentJcs, entry.canonicalization.documentJcs);
+  assertEquals(
+    proofConfigurationJcs,
+    entry.canonicalization.proofConfigurationJcs,
+  );
+
+  const documentDigest = await sha256(documentJcs);
+  const proofConfigurationDigest = await sha256(proofConfigurationJcs);
+  assertEquals(encodeHex(documentDigest), entry.hashes.documentSha256);
+  assertEquals(
+    encodeHex(proofConfigurationDigest),
+    entry.hashes.proofConfigurationSha256,
+  );
+
+  const combinedSigningInput = new Uint8Array(
+    proofConfigurationDigest.length + documentDigest.length,
+  );
+  combinedSigningInput.set(proofConfigurationDigest);
+  combinedSigningInput.set(documentDigest, proofConfigurationDigest.length);
+  assertEquals(
+    encodeHex(combinedSigningInput),
+    entry.hashes.combinedSigningInput,
+  );
+  assertEquals(
+    entry.hashes.combinedSigningInput,
+    entry.hashes.proofConfigurationSha256 + entry.hashes.documentSha256,
+  );
+
+  const privateJwk = structuredClone(entry.key.testPrivateKeyJwk);
+  const publicJwk = structuredClone(entry.key.publicKeyJwk);
+  assertEquals(privateJwk.x, publicJwk.x);
+  const privateKey = await crypto.subtle.importKey(
+    "jwk",
+    privateJwk,
+    "Ed25519",
+    true,
+    ["sign"],
+  );
+  const publicKey = await crypto.subtle.importKey(
+    "jwk",
+    publicJwk,
+    "Ed25519",
+    true,
+    ["verify"],
+  );
+  const controller = await exportDidKey(publicKey);
+  assertEquals(controller, entry.key.controller);
+  const publicKeyMultibase = controller.replace(/^did:key:/, "");
+  assertEquals(publicKeyMultibase, entry.key.publicKeyMultibase);
+  assertEquals(
+    entry.key.verificationMethod,
+    `${controller}#${publicKeyMultibase}`,
+  );
+  assertEquals(
+    entry.proofConfiguration.verificationMethod,
+    entry.key.verificationMethod,
+  );
+
+  const signature = new Uint8Array(
+    await crypto.subtle.sign("Ed25519", privateKey, combinedSigningInput),
+  );
+  assert(
+    await crypto.subtle.verify(
+      "Ed25519",
+      publicKey,
+      signature,
+      combinedSigningInput,
+    ),
+  );
+  const derivedProofValue = new TextDecoder().decode(
+    encodeMultibase("base58btc", signature),
+  );
+  assertEquals(derivedProofValue, entry.proofValue);
+}
+
 test("map-local compound vector records independently reproducible proofs", async () => {
   const securedOuter = asRecord(vector.documents.finalSecuredCompound);
   const securedInner = asRecord(vector.documents.securedInner);
@@ -160,88 +268,103 @@ test("map-local compound vector records independently reproducible proofs", asyn
     },
   ] as const;
 
-  for (const entry of entries) {
-    assertEquals(withoutProofValue(entry.proof), entry.proofConfiguration);
-    assertEquals(entry.proof.proofValue, entry.proofValue);
+  for (const entry of entries) await assertRecordedProof(entry);
+});
 
-    const documentJcs = serialize(entry.document);
-    const proofConfigurationJcs = serialize(entry.proofConfiguration);
-    assertEquals(documentJcs, entry.canonicalization.documentJcs);
-    assertEquals(
-      proofConfigurationJcs,
-      entry.canonicalization.proofConfigurationJcs,
-    );
+test("the context-conflict vector records valid proofs and divergent semantics", async () => {
+  const compound = asRecord(conflictVector.documents.finalSecuredCompound);
+  const embedded = asRecord(compound.object);
+  const securedInner = asRecord(conflictVector.documents.securedInner);
+  const outerProof = asRecord(compound.proof);
+  const innerProof = asRecord(embedded.proof);
 
-    const documentDigest = await sha256(documentJcs);
-    const proofConfigurationDigest = await sha256(proofConfigurationJcs);
-    assertEquals(encodeHex(documentDigest), entry.hashes.documentSha256);
-    assertEquals(
-      encodeHex(proofConfigurationDigest),
-      entry.hashes.proofConfigurationSha256,
-    );
+  assertEquals(embedded, securedInner);
+  assertEquals(
+    withoutDirectProof(compound),
+    conflictVector.documents.outerUnsecuredDocument,
+  );
+  assertEquals(
+    withoutDirectProof(embedded),
+    conflictVector.documents.innerUnsecuredDocument,
+  );
 
-    const combinedSigningInput = new Uint8Array(
-      proofConfigurationDigest.length + documentDigest.length,
-    );
-    combinedSigningInput.set(proofConfigurationDigest);
-    combinedSigningInput.set(documentDigest, proofConfigurationDigest.length);
-    assertEquals(
-      encodeHex(combinedSigningInput),
-      entry.hashes.combinedSigningInput,
-    );
-    assertEquals(
-      entry.hashes.combinedSigningInput,
-      entry.hashes.proofConfigurationSha256 + entry.hashes.documentSha256,
-    );
+  await assertRecordedProof({
+    document: conflictVector.documents.outerUnsecuredDocument,
+    proofConfiguration: conflictVector.documents.outerProofConfiguration,
+    proof: outerProof,
+    key: conflictVector.keys.outer,
+    canonicalization: conflictVector.canonicalization.outer,
+    hashes: conflictVector.hashes.outer,
+    proofValue: conflictVector.proofValues.outer,
+  });
+  await assertRecordedProof({
+    document: conflictVector.documents.innerUnsecuredDocument,
+    proofConfiguration: conflictVector.documents.innerProofConfiguration,
+    proof: innerProof,
+    key: conflictVector.keys.inner,
+    canonicalization: conflictVector.canonicalization.inner,
+    hashes: conflictVector.hashes.inner,
+    proofValue: conflictVector.proofValues.inner,
+  });
 
-    const privateJwk = structuredClone(
-      entry.key.testPrivateKeyJwk,
-    ) as JsonWebKey;
-    const publicJwk = structuredClone(entry.key.publicKeyJwk) as JsonWebKey;
-    assertEquals(privateJwk.x, publicJwk.x);
-    const privateKey = await crypto.subtle.importKey(
-      "jwk",
-      privateJwk,
-      "Ed25519",
-      true,
-      ["sign"],
-    );
-    const publicKey = await crypto.subtle.importKey(
-      "jwk",
-      publicJwk,
-      "Ed25519",
-      true,
-      ["verify"],
-    );
-    const controller = await exportDidKey(publicKey);
-    assertEquals(controller, entry.key.controller);
-    const publicKeyMultibase = controller.replace(/^did:key:/, "");
-    assertEquals(publicKeyMultibase, entry.key.publicKeyMultibase);
-    assertEquals(
-      entry.key.verificationMethod,
-      `${controller}#${publicKeyMultibase}`,
-    );
-    assertEquals(
-      entry.proofConfiguration.verificationMethod,
-      entry.key.verificationMethod,
-    );
+  const inboundOptions = {
+    contextLoader: preloadedOnlyDocumentLoader,
+    documentLoader: preloadedOnlyDocumentLoader,
+  };
+  const verifiedInner = await verifyProof(
+    embedded,
+    await parseProof(embedded),
+    inboundOptions,
+  );
+  assertEquals(
+    verifiedInner != null,
+    conflictVector.expectedVerification.original.inner,
+  );
+  assertEquals(verifiedInner?.id, innerKeyId);
+  const verifiedOuter = await verifyProof(
+    compound,
+    await parseProof(compound),
+    inboundOptions,
+  );
+  assertEquals(
+    verifiedOuter != null,
+    conflictVector.expectedVerification.original.outer,
+  );
+  assertEquals(verifiedOuter?.id, outerKeyId);
 
-    const signature = new Uint8Array(
-      await crypto.subtle.sign("Ed25519", privateKey, combinedSigningInput),
-    );
-    assert(
-      await crypto.subtle.verify(
-        "Ed25519",
-        publicKey,
-        signature,
-        combinedSigningInput,
-      ),
-    );
-    const derivedProofValue = new TextDecoder().decode(
-      encodeMultibase("base58btc", signature),
-    );
-    assertEquals(derivedProofValue, entry.proofValue);
-  }
+  const standaloneExpansion = await jsonld.expand(embedded, {
+    documentLoader: preloadedOnlyDocumentLoader,
+  });
+  const compoundExpansion = await jsonld.expand(compound, {
+    documentLoader: preloadedOnlyDocumentLoader,
+  });
+  const content = "https://www.w3.org/ns/activitystreams#content";
+  const object = "https://www.w3.org/ns/activitystreams#object";
+  const standaloneContent = asRecord(standaloneExpansion[0])[content];
+  const inParentObject = asRecord(
+    (asRecord(compoundExpansion[0])[object] as unknown[])[0],
+  );
+  const inParentContent = inParentObject[content];
+  assertEquals(
+    serialize(standaloneExpansion[0]) === serialize(inParentObject),
+    conflictVector.expectedInterpretation.standaloneAndInParentExpansionsEqual,
+  );
+  assertEquals(standaloneContent, [{
+    "@value": "A portable note with inherited language",
+  }]);
+  assertEquals(inParentContent, [{
+    "@value": "A portable note with inherited language",
+    "@language": conflictVector.expectedInterpretation.inParentContentLanguage,
+  }]);
+  assertEquals(
+    (standaloneContent as Array<Record<string, unknown>>)[0]["@language"] ??
+      null,
+    conflictVector.expectedInterpretation.standaloneContentLanguage,
+  );
+  assertEquals(
+    serialize(standaloneContent) !== serialize(inParentContent),
+    !conflictVector.expectedInterpretation.standaloneAndInParentExpansionsEqual,
+  );
 });
 
 test("the raw same-context baseline verifies map-locally", async () => {

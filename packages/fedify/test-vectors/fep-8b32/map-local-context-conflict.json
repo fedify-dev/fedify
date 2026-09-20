@@ -1,0 +1,240 @@
+{
+  "id": "fedify-fep-8b32-map-local-context-conflict-v1",
+  "profile": "Fedify map-local compound proof profile",
+  "cryptosuite": "eddsa-jcs-2022",
+  "notes": [
+    "The parent sets a default language that the child's local context does not reset.",
+    "The inner proof authenticates the extracted standalone child JSON map.",
+    "The outer proof authenticates the complete compound JSON snapshot.",
+    "Both proofs can be valid even though standalone and in-parent JSON-LD expansions differ."
+  ],
+  "keys": {
+    "outer": {
+      "controller": "did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2",
+      "verificationMethod": "did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2#z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2",
+      "publicKeyMultibase": "z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2",
+      "publicKeyJwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "sA2Nk45_dz1RVlqtNqYj9TRPf10ZYPnPPo4SYg6igQ8",
+        "key_ops": [
+          "verify"
+        ],
+        "ext": true
+      },
+      "testPrivateKeyJwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "d": "yW756hDF5BTEcXI6_53nLDX6W3D66X6IMuysfS4rjtY",
+        "x": "sA2Nk45_dz1RVlqtNqYj9TRPf10ZYPnPPo4SYg6igQ8",
+        "key_ops": [
+          "sign"
+        ],
+        "ext": true
+      }
+    },
+    "inner": {
+      "controller": "did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3",
+      "verificationMethod": "did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3#z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3",
+      "publicKeyMultibase": "z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3",
+      "publicKeyJwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "LR8epAGDe-cVq5p2Tx49CCfphpk1rNhkNoY9i-XEUfg",
+        "key_ops": [
+          "verify"
+        ],
+        "ext": true
+      },
+      "testPrivateKeyJwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "d": "LledL195fP9TQGQrkE2l2Y2k48UvqCzYI9M1zXyh7zQ",
+        "x": "LR8epAGDe-cVq5p2Tx49CCfphpk1rNhkNoY9i-XEUfg",
+        "key_ops": [
+          "sign"
+        ],
+        "ext": true
+      }
+    }
+  },
+  "documents": {
+    "finalSecuredCompound": {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/data-integrity/v1",
+        {
+          "@language": "en"
+        }
+      ],
+      "id": "ap+ef61://did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2/activities/context-conflict",
+      "type": "Create",
+      "actor": "ap+ef61://did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2/actor",
+      "object": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/security/data-integrity/v1"
+        ],
+        "id": "ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/objects/context-conflict",
+        "type": "Note",
+        "attributedTo": "ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/actor",
+        "content": "A portable note with inherited language",
+        "proof": {
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            "https://w3id.org/security/data-integrity/v1"
+          ],
+          "type": "DataIntegrityProof",
+          "cryptosuite": "eddsa-jcs-2022",
+          "verificationMethod": "did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3#z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3",
+          "proofPurpose": "assertionMethod",
+          "created": "2023-02-24T23:36:38Z",
+          "proofValue": "z3arp9jZdt6kcLacoXxx5kb6QVM8GZFXD13nEisfna52uwMprZz2yJCXsbyMBvvBKZopCCNRq3o22UqYgudLum5eM"
+        }
+      },
+      "proof": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/security/data-integrity/v1",
+          {
+            "@language": "en"
+          }
+        ],
+        "type": "DataIntegrityProof",
+        "cryptosuite": "eddsa-jcs-2022",
+        "verificationMethod": "did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2#z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2",
+        "proofPurpose": "assertionMethod",
+        "created": "2023-02-24T23:36:38Z",
+        "proofValue": "z33BeAxXEtbCKnt9mKodwoJFSDKqK2Q2zMrWN36TtpFhDn9K9FFX7rvyfY2jkFh8gcUo3iQvUutzqBKXZdsyKZAEz"
+      }
+    },
+    "securedInner": {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/data-integrity/v1"
+      ],
+      "id": "ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/objects/context-conflict",
+      "type": "Note",
+      "attributedTo": "ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/actor",
+      "content": "A portable note with inherited language",
+      "proof": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/security/data-integrity/v1"
+        ],
+        "type": "DataIntegrityProof",
+        "cryptosuite": "eddsa-jcs-2022",
+        "verificationMethod": "did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3#z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3",
+        "proofPurpose": "assertionMethod",
+        "created": "2023-02-24T23:36:38Z",
+        "proofValue": "z3arp9jZdt6kcLacoXxx5kb6QVM8GZFXD13nEisfna52uwMprZz2yJCXsbyMBvvBKZopCCNRq3o22UqYgudLum5eM"
+      }
+    },
+    "outerUnsecuredDocument": {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/data-integrity/v1",
+        {
+          "@language": "en"
+        }
+      ],
+      "id": "ap+ef61://did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2/activities/context-conflict",
+      "type": "Create",
+      "actor": "ap+ef61://did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2/actor",
+      "object": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/security/data-integrity/v1"
+        ],
+        "id": "ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/objects/context-conflict",
+        "type": "Note",
+        "attributedTo": "ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/actor",
+        "content": "A portable note with inherited language",
+        "proof": {
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            "https://w3id.org/security/data-integrity/v1"
+          ],
+          "type": "DataIntegrityProof",
+          "cryptosuite": "eddsa-jcs-2022",
+          "verificationMethod": "did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3#z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3",
+          "proofPurpose": "assertionMethod",
+          "created": "2023-02-24T23:36:38Z",
+          "proofValue": "z3arp9jZdt6kcLacoXxx5kb6QVM8GZFXD13nEisfna52uwMprZz2yJCXsbyMBvvBKZopCCNRq3o22UqYgudLum5eM"
+        }
+      }
+    },
+    "innerUnsecuredDocument": {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/data-integrity/v1"
+      ],
+      "id": "ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/objects/context-conflict",
+      "type": "Note",
+      "attributedTo": "ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/actor",
+      "content": "A portable note with inherited language"
+    },
+    "outerProofConfiguration": {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/data-integrity/v1",
+        {
+          "@language": "en"
+        }
+      ],
+      "type": "DataIntegrityProof",
+      "cryptosuite": "eddsa-jcs-2022",
+      "verificationMethod": "did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2#z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2",
+      "proofPurpose": "assertionMethod",
+      "created": "2023-02-24T23:36:38Z"
+    },
+    "innerProofConfiguration": {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/data-integrity/v1"
+      ],
+      "type": "DataIntegrityProof",
+      "cryptosuite": "eddsa-jcs-2022",
+      "verificationMethod": "did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3#z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3",
+      "proofPurpose": "assertionMethod",
+      "created": "2023-02-24T23:36:38Z"
+    }
+  },
+  "canonicalization": {
+    "outer": {
+      "documentJcs": "{\"@context\":[\"https://www.w3.org/ns/activitystreams\",\"https://w3id.org/security/data-integrity/v1\",{\"@language\":\"en\"}],\"actor\":\"ap+ef61://did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2/actor\",\"id\":\"ap+ef61://did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2/activities/context-conflict\",\"object\":{\"@context\":[\"https://www.w3.org/ns/activitystreams\",\"https://w3id.org/security/data-integrity/v1\"],\"attributedTo\":\"ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/actor\",\"content\":\"A portable note with inherited language\",\"id\":\"ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/objects/context-conflict\",\"proof\":{\"@context\":[\"https://www.w3.org/ns/activitystreams\",\"https://w3id.org/security/data-integrity/v1\"],\"created\":\"2023-02-24T23:36:38Z\",\"cryptosuite\":\"eddsa-jcs-2022\",\"proofPurpose\":\"assertionMethod\",\"proofValue\":\"z3arp9jZdt6kcLacoXxx5kb6QVM8GZFXD13nEisfna52uwMprZz2yJCXsbyMBvvBKZopCCNRq3o22UqYgudLum5eM\",\"type\":\"DataIntegrityProof\",\"verificationMethod\":\"did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3#z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3\"},\"type\":\"Note\"},\"type\":\"Create\"}",
+      "proofConfigurationJcs": "{\"@context\":[\"https://www.w3.org/ns/activitystreams\",\"https://w3id.org/security/data-integrity/v1\",{\"@language\":\"en\"}],\"created\":\"2023-02-24T23:36:38Z\",\"cryptosuite\":\"eddsa-jcs-2022\",\"proofPurpose\":\"assertionMethod\",\"type\":\"DataIntegrityProof\",\"verificationMethod\":\"did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2#z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2\"}"
+    },
+    "inner": {
+      "documentJcs": "{\"@context\":[\"https://www.w3.org/ns/activitystreams\",\"https://w3id.org/security/data-integrity/v1\"],\"attributedTo\":\"ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/actor\",\"content\":\"A portable note with inherited language\",\"id\":\"ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/objects/context-conflict\",\"type\":\"Note\"}",
+      "proofConfigurationJcs": "{\"@context\":[\"https://www.w3.org/ns/activitystreams\",\"https://w3id.org/security/data-integrity/v1\"],\"created\":\"2023-02-24T23:36:38Z\",\"cryptosuite\":\"eddsa-jcs-2022\",\"proofPurpose\":\"assertionMethod\",\"type\":\"DataIntegrityProof\",\"verificationMethod\":\"did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3#z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3\"}"
+    }
+  },
+  "hashes": {
+    "outer": {
+      "documentSha256": "7b0a0d3668e43492c8c54cb98d0227a1bf0aefd11da7adb48af6e31f6d5322df",
+      "proofConfigurationSha256": "94b98e0a2519065217496bad2936e6e892bfe12ccb176282ec274ce8eb98a6a3",
+      "combinedSigningInput": "94b98e0a2519065217496bad2936e6e892bfe12ccb176282ec274ce8eb98a6a37b0a0d3668e43492c8c54cb98d0227a1bf0aefd11da7adb48af6e31f6d5322df"
+    },
+    "inner": {
+      "documentSha256": "3772e3a906c7b49d195345b05d73c3156bb3d61a5d1c641d64f4f03d661f7eeb",
+      "proofConfigurationSha256": "1ebdc71cb480bd324b030f85c02dc6f8db879716faf0f7ee0f05df4c395d71b4",
+      "combinedSigningInput": "1ebdc71cb480bd324b030f85c02dc6f8db879716faf0f7ee0f05df4c395d71b43772e3a906c7b49d195345b05d73c3156bb3d61a5d1c641d64f4f03d661f7eeb"
+    }
+  },
+  "proofValues": {
+    "outer": "z33BeAxXEtbCKnt9mKodwoJFSDKqK2Q2zMrWN36TtpFhDn9K9FFX7rvyfY2jkFh8gcUo3iQvUutzqBKXZdsyKZAEz",
+    "inner": "z3arp9jZdt6kcLacoXxx5kb6QVM8GZFXD13nEisfna52uwMprZz2yJCXsbyMBvvBKZopCCNRq3o22UqYgudLum5eM"
+  },
+  "expectedVerification": {
+    "original": {
+      "inner": true,
+      "outer": true
+    }
+  },
+  "expectedInterpretation": {
+    "standaloneAndInParentExpansionsEqual": false,
+    "standaloneContentLanguage": null,
+    "inParentContentLanguage": "en"
+  }
+}
