@@ -159,7 +159,9 @@ async function* generateProperty(
         }
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -167,7 +169,7 @@ async function* generateProperty(
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).debug(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -233,7 +235,7 @@ async function* generateProperty(
             }
           } catch (e) {
             if (options.suppressError) {
-              getLogger(["fedify", "vocab"]).debug(
+              getLogger(["fedify", "vocab"]).warn(
                 "Failed to parse {url}: {error}",
                 { error: e, url: lookupUrl }
               );

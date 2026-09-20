@@ -1067,6 +1067,11 @@ To be released.
     objects without the extension.  [[#1037], [#1038]]
  -  Added the `trustEmbeddedObjects` type schema option so embedded metadata
     identifiers need not establish trust in linked actors.  [[#1037], [#1038]]
+ -  Changed suppressed vocabulary fetch and parsing failures to log at the
+    debug level so that intentionally handled failures are not reported as
+    application errors.  [[#933] by Lumia1108\]
+
+[#933]: https://github.com/fedify-dev/fedify/issues/933
 
 
 Version 2.3.8

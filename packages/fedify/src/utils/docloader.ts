@@ -84,7 +84,7 @@ export function getAuthenticatedDocumentLoader(
         validateRedirect: validateUrl,
       },
     );
-    return getRemoteDocument(url, response, load);
+    return getRemoteDocument(url, response, load, options);
   }
 
   async function validateUrl(url: string): Promise<void> {
