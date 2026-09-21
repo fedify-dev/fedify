@@ -6,7 +6,7 @@ Fedify changelog
 Version 2.0.28
 --------------
 
-To be released.
+Released on September 21, 2026.
 
 ### @fedify/fedify
 
@@ -41,7 +41,8 @@ To be released.
     local testing.  \[[GHSA-f59r-8gcj-68f2]]
  -  Fixed unbounded reads of authenticated documents, NodeInfo responses, and
     inbox bodies that could exhaust memory.  JSON bodies are now limited to 16
-    MiB.  Oversized inbox requests receive HTTP 413.  \[[GHSA-mc44-6cfg-2v6w]]
+    MiB.  Oversized inbox requests receive `413 Content Too Large`.
+    [[GHSA-mc44-6cfg-2v6w]]
 
 [GHSA-q9f8-5hc7-898f]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-q9f8-5hc7-898f
 [GHSA-f59r-8gcj-68f2]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-f59r-8gcj-68f2
