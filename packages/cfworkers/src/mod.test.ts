@@ -4,7 +4,15 @@ import {
   WorkersKvStore,
   WorkersMessageQueue,
 } from "./mod.ts";
-import type { Queue } from "@cloudflare/workers-types";
+import type {
+  MessageSendRequest,
+  Queue,
+  QueueMetrics,
+  QueueSendBatchOptions,
+  QueueSendBatchResponse,
+  QueueSendOptions,
+  QueueSendResponse,
+} from "@cloudflare/workers-types";
 
 // Mock Temporal.Duration for testing in Cloudflare Workers environment
 const mockDuration = (seconds: number) => ({
@@ -359,43 +367,44 @@ interface MockWrappedMessage {
   readonly __fedify_payload__: unknown;
 }
 
-interface MockSendBatchOptions {
-  readonly delaySeconds?: number;
-}
-
-interface MockSendOptions {
-  readonly contentType?: string;
-  readonly delaySeconds?: number;
-}
-
-interface MockMessageSendRequest {
-  readonly body: MockWrappedMessage;
-  readonly contentType?: string;
-}
-
-class MockQueue {
+class MockQueue implements Queue<MockWrappedMessage> {
+  metrics(): Promise<QueueMetrics> {
+    return Promise.resolve({ backlogCount: 0, backlogBytes: 0 });
+  }
   sentSingles: {
     wrapped: MockWrappedMessage;
-    options?: MockSendOptions;
+    options?: QueueSendOptions;
   }[] = [];
   sentBatches: {
-    batch: MockMessageSendRequest[];
-    options?: MockSendBatchOptions;
+    batch: MessageSendRequest<MockWrappedMessage>[];
+    options?: QueueSendBatchOptions;
   }[] = [];
 
-  send(wrapped: MockWrappedMessage, options?: MockSendOptions) {
+  send(
+    wrapped: MockWrappedMessage,
+    options?: QueueSendOptions,
+  ): Promise<QueueSendResponse> {
     this.sentSingles.push({ wrapped, options });
+    return Promise.resolve({
+      metadata: { metrics: { backlogCount: 0, backlogBytes: 0 } },
+    });
   }
 
-  sendBatch(batch: MockMessageSendRequest[], options?: MockSendBatchOptions) {
-    this.sentBatches.push({ batch, options });
+  sendBatch(
+    batch: Iterable<MessageSendRequest<MockWrappedMessage>>,
+    options?: QueueSendBatchOptions,
+  ): Promise<QueueSendBatchResponse> {
+    this.sentBatches.push({ batch: [...batch], options });
+    return Promise.resolve({
+      metadata: { metrics: { backlogCount: 0, backlogBytes: 0 } },
+    });
   }
 }
 
 describe("WorkersMessageQueue.enqueueMany() - wrapped message shape", () => {
   it("enqueueMany() - wraps each message with body{} and contentType", async () => {
     const sendingMockQueue = new MockQueue();
-    const queue = new WorkersMessageQueue(sendingMockQueue as unknown as Queue);
+    const queue = new WorkersMessageQueue(sendingMockQueue);
 
     await queue.enqueueMany(["msg-1", "msg-2"], { orderingKey: "ferer" });
 
@@ -420,7 +429,7 @@ describe("WorkersMessageQueue.enqueueMany() - wrapped message shape", () => {
 
   it("enqueue() and enqueueMany() - produce the same wrapped shape", async () => {
     const sendingMockQueue = new MockQueue();
-    const queue = new WorkersMessageQueue(sendingMockQueue as unknown as Queue);
+    const queue = new WorkersMessageQueue(sendingMockQueue);
 
     await queue.enqueue("msg-1", { orderingKey: "ferer" });
     await queue.enqueueMany(["msg-1"], { orderingKey: "ferer" });
@@ -435,7 +444,7 @@ describe("WorkersMessageQueue.enqueueMany() - wrapped message shape", () => {
 
   it("enqueueMany() - omits ordering key when not provided", async () => {
     const sendingMockQueue = new MockQueue();
-    const queue = new WorkersMessageQueue(sendingMockQueue as unknown as Queue);
+    const queue = new WorkersMessageQueue(sendingMockQueue);
 
     await queue.enqueueMany(["msg-1"]);
 
