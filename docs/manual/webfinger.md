@@ -347,6 +347,10 @@ const result = await lookupWebFinger("acct:alice@example.com", {
 });
 ~~~~
 
+Since Fedify 2.0.28, responses are limited to 16 MiB of decoded bytes,
+including after decompression.  Oversized descriptors return `null`.
+This also applies to `~Context.lookupWebFinger()`.
+
 The available options are:
 
 `userAgent`

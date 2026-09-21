@@ -1003,3 +1003,57 @@ test("parseUsage()", () => {
     },
   );
 });
+
+test("getNodeInfo() bounds both discovery and document responses", async () => {
+  fetchMock.mockGlobal();
+  const base = "https://8.8.8.8";
+  const descriptor = {
+    links: [{
+      rel: "http://nodeinfo.diaspora.software/ns/schema/2.1",
+      href: `${base}/nodeinfo`,
+    }],
+  };
+  let oversizedDescriptor = true;
+  let oversizedDocument = true;
+  const data = { padding: "a".repeat(256) };
+  try {
+    fetchMock.get(
+      `${base}/.well-known/nodeinfo`,
+      () =>
+        new Response(JSON.stringify(descriptor), {
+          headers: oversizedDescriptor
+            ? { "Content-Length": String(16 * 1024 * 1024 + 1) }
+            : {},
+        }),
+    );
+    fetchMock.get(
+      `${base}/nodeinfo`,
+      () =>
+        new Response(JSON.stringify(data), {
+          headers: oversizedDocument
+            ? { "Content-Length": String(16 * 1024 * 1024 + 1) }
+            : {},
+        }),
+    );
+    assertEquals(await getNodeInfo(base), undefined);
+    assertEquals(fetchMock.callHistory.calls(`${base}/nodeinfo`).length, 0);
+    oversizedDescriptor = false;
+    assertEquals(await getNodeInfo(base), undefined);
+    assertEquals(
+      await getNodeInfo(`${base}/nodeinfo`, {
+        direct: true,
+        parse: "none",
+      }),
+      undefined,
+    );
+    oversizedDocument = false;
+    assertEquals(
+      await getNodeInfo(base, {
+        parse: "none",
+      }),
+      data,
+    );
+  } finally {
+    fetchMock.hardReset();
+  }
+});

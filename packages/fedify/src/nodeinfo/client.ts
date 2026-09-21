@@ -6,6 +6,7 @@ import {
 } from "@fedify/vocab-runtime";
 import type { ResourceDescriptor } from "@fedify/webfinger";
 import { getLogger } from "@logtape/logtape";
+import { MAX_BODY_SIZE, readBoundedText } from "../utils/body.ts";
 import type {
   InboundService,
   JsonValue,
@@ -177,7 +178,9 @@ export async function getNodeInfo(
         });
         return undefined;
       }
-      const wellKnownRd = await wellKnownResponse.json() as ResourceDescriptor;
+      const wellKnownRd = JSON.parse(
+        await readBoundedText(wellKnownResponse, MAX_BODY_SIZE, wellKnownUrl),
+      ) as ResourceDescriptor;
       const link = wellKnownRd?.links?.find((link) =>
         link != null &&
         "rel" in link &&
@@ -213,7 +216,9 @@ export async function getNodeInfo(
       );
       return undefined;
     }
-    const data = await response.json();
+    const data = JSON.parse(
+      await readBoundedText(response, MAX_BODY_SIZE, nodeInfoUrl),
+    );
     if (options.parse === "none") return data as JsonValue;
     return parseNodeInfo(data, {
       tryBestEffort: options.parse === "best-effort",
