@@ -175,6 +175,8 @@ catalogs:
       specifier: ^10.1.0
       version: 10.1.0
 
+packageExtensionsChecksum: sha256-+GXXKYHbw1lzSnRWbon1vZFRiwVSM6KiTqdSTSnqmmU=
+
 importers:
 
   .: {}
@@ -21301,6 +21303,7 @@ snapshots:
   inquirer-toggle@1.0.1:
     dependencies:
       '@inquirer/core': 8.2.4
+      ansi-escapes: 4.3.2
 
   inquirer@12.11.1(@types/node@22.19.1):
     dependencies:

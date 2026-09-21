@@ -179,3 +179,8 @@ provides a NodeInfo endpoint and the response is valid.  Otherwise, it returns
 >
 > However, it does not guarantee that parsing will always succeed.  It just
 > tries to parse the object as much as possible.
+
+Since Fedify 2.0.28, `Context.lookupNodeInfo()` and `getNodeInfo()` limit both
+the discovery descriptor and the NodeInfo document to 16 MiB of decoded bytes
+each, including after decompression.  An oversized response returns
+`undefined`, even with `parse: "none"`.

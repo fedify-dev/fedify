@@ -1,4 +1,5 @@
 import {
+  type Actor,
   CryptographicKey,
   isActor,
   type Multikey,
@@ -176,6 +177,155 @@ export interface FetchKeyOptions {
    * @since 1.3.0
    */
   tracerProvider?: TracerProvider;
+}
+
+/**
+ * Options for {@link verifyKeyOwnership}.
+ * @internal
+ */
+export interface VerifyKeyOwnershipOptions {
+  /**
+   * The document loader for fetching the owner the key claims.
+   */
+  documentLoader?: DocumentLoader;
+
+  /**
+   * The context loader for loading remote JSON-LD contexts.
+   */
+  contextLoader?: DocumentLoader;
+
+  /**
+   * The OpenTelemetry tracer provider to use for tracing.  If omitted,
+   * the global tracer provider is used.
+   */
+  tracerProvider?: TracerProvider;
+}
+
+/**
+ * Fetches the document that the given actor URI dereferences to, and returns
+ * the actor only if the host that served the document is authoritative for
+ * the id the document claims.
+ *
+ * Only the origin that serves an actor id can speak for it.  Without that
+ * rule any host could serve a document describing somebody else's actor—and
+ * listing its own keys as that actor's.
+ *
+ * @param actorId The URI of the actor to fetch.
+ * @param options Options for fetching the document.
+ * @returns The actor, or `null` if the document cannot be fetched, is not an
+ *          actor, or belongs to another origin.
+ * @internal
+ */
+export async function fetchActorDocument(
+  actorId: URL,
+  options: VerifyKeyOwnershipOptions = {},
+): Promise<Actor | null> {
+  const logger = getLogger(["fedify", "sig", "key"]);
+  const documentLoader = options.documentLoader ?? getDocumentLoader();
+  const contextLoader = options.contextLoader ?? getDocumentLoader();
+  const { tracerProvider } = options;
+  let document: unknown;
+  let documentUrl: URL = actorId;
+  try {
+    const remoteDocument = await documentLoader(actorId.href);
+    document = remoteDocument.document;
+    // A loader is free to report where the document ended up, which is what
+    // a redirect makes authoritative; resolve it against the requested URL so
+    // that a loader reporting nothing useful falls back to that URL.
+    documentUrl = new URL(remoteDocument.documentUrl ?? "", actorId);
+  } catch (error) {
+    logger.debug(
+      "Failed to fetch the actor {actorId}: {error}",
+      { actorId: actorId.href, error },
+    );
+    return null;
+  }
+  let object: Object;
+  try {
+    object = await Object.fromJsonLd(document, {
+      documentLoader,
+      contextLoader,
+      tracerProvider,
+      baseUrl: documentUrl,
+    });
+  } catch (error) {
+    if (!(error instanceof TypeError)) throw error;
+    logger.debug(
+      "The document served at {documentUrl} is not a valid object: {error}",
+      { documentUrl: documentUrl.href, error },
+    );
+    return null;
+  }
+  if (!isActor(object)) return null;
+  if (object.id == null || object.id.origin !== documentUrl.origin) {
+    logger.debug(
+      "The document served at {documentUrl} claims to be the actor " +
+        "{actorId}, which belongs to another origin; refusing to treat it " +
+        "as that actor's document.",
+      { documentUrl: documentUrl.href, actorId: object.id?.href },
+    );
+    return null;
+  }
+  return object;
+}
+
+/**
+ * Resolves the owner that the given key claims, and returns it only if the
+ * claim holds.
+ *
+ * The `owner` of a {@link CryptographicKey}, like the `controller` of
+ * a {@link Multikey}, proves nothing on its own: the key document and the
+ * claim inside it are served by the same host, so anyone able to serve a key
+ * document can name any actor in the world as its owner.  The claim becomes
+ * meaningful only once the named actor's own document is fetched and turns
+ * out to link back to the key.  This function performs that mutual-link
+ * check, which is the only sound way to learn a fetched key's owner.
+ *
+ * The claimed owner is always dereferenced, never read out of the key
+ * document: an owner embedded there is written by whoever wrote the key.
+ *
+ * @param key The key whose ownership claim is to be verified.  It must carry
+ *            an `id`, as that is what the owner has to link back to.
+ * @param options Options for fetching the claimed owner.
+ * @returns The verified owner, or `null` if the key claims no owner, the
+ *          owner cannot be fetched, or the owner does not link back to
+ *          the key.
+ * @internal
+ */
+export async function verifyKeyOwnership(
+  key: CryptographicKey | Multikey,
+  options: VerifyKeyOwnershipOptions = {},
+): Promise<Actor | null> {
+  const logger = getLogger(["fedify", "sig", "key"]);
+  const keyId = key.id;
+  if (keyId == null) return null;
+  const claimedOwnerId = key instanceof CryptographicKey
+    ? key.ownerId
+    : key.controllerId;
+  if (claimedOwnerId == null) return null;
+  const owner = await fetchActorDocument(claimedOwnerId, options);
+  if (owner == null) {
+    logger.debug(
+      "The owner ({claimedOwnerId}) that key {keyId} claims could not be " +
+        "resolved.",
+      { keyId: keyId.href, claimedOwnerId: claimedOwnerId.href },
+    );
+    return null;
+  }
+  // Both directions have to agree: the key points at the owner, and the
+  // owner's own document lists the key.
+  const linkedKeyIds = key instanceof CryptographicKey
+    ? owner.publicKeyIds
+    : owner.assertionMethodIds;
+  for (const linkedKeyId of linkedKeyIds) {
+    if (linkedKeyId.href === keyId.href) return owner;
+  }
+  logger.debug(
+    "The owner ({claimedOwnerId}) that key {keyId} claims does not list " +
+      "the key as its own.",
+    { keyId: keyId.href, claimedOwnerId: claimedOwnerId.href },
+  );
+  return null;
 }
 
 /**
@@ -420,6 +570,10 @@ async function clearFetchErrorMetadata(
 async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
   document: unknown,
   cacheKey: URL,
+  // The URL the document actually came from, which may differ from the
+  // requested one after redirects.  It is the host that served those bytes,
+  // not the host that was asked, that the document can speak for.
+  documentUrl: URL,
   keyId: string,
   cls: FetchableKeyClass<T>,
   { documentLoader, contextLoader, keyCache, tracerProvider }: FetchKeyOptions,
@@ -454,11 +608,34 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
     }
   }
   let key: T | null = null;
+  // Set when the fetched document turned out to be the owner's own actor
+  // document.  Such a document establishes the key's ownership by itself:
+  // it is the owner speaking about its own keys.
+  let ownerDocument: Actor | null = null;
   if (
     object instanceof cls &&
     (object.id == null || object.id.href === keyId)
-  ) key = object;
-  else if (isActor(object)) {
+  ) {
+    // A standalone key document may leave its id implicit.  The URL it was
+    // fetched from is then the only id it has, and the ownership check below
+    // needs an id to look for in the owner's document.
+    key = object.id == null
+      ? (object as CryptographicKey).clone({ id: cacheKey }) as T
+      : object;
+  } else if (isActor(object)) {
+    // A host may only speak for actor ids on its own origin.  Without this
+    // check, anyone serving a key document could dress it up as somebody
+    // else's actor document and have the key attributed to that actor.
+    if (object.id == null || object.id.origin !== documentUrl.origin) {
+      logger.debug(
+        "Failed to verify; the document served at {documentUrl} claims to be " +
+          "the actor {actorId}, which belongs to another origin.",
+        { keyId, documentUrl: documentUrl.href, actorId: object.id?.href },
+      );
+      await keyCache?.set(cacheKey, null);
+      return { key: null, cached: false };
+    }
+    ownerDocument = object;
     // Treat malformed remote actor keys as missing keys.
     // @ts-ignore: cls is either CryptographicKey or Multikey
     const keys = cls === CryptographicKey
@@ -525,6 +702,45 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
     await clearFetchErrorMetadata(cacheKey, keyCache);
     return { key: null, cached: false };
   }
+  // Whom the key belongs to has to be settled here, before any caller can act
+  // on it.  The `owner`/`controller` field of a key document is written by
+  // the very host that served the key, so by itself it says nothing about the
+  // actor it names; leaving it unchecked let anyone impersonate any actor.
+  // See GHSA-q9f8-5hc7-898f.
+  const claimedOwnerId = key instanceof CryptographicKey
+    ? key.ownerId
+    : (key as Multikey).controllerId;
+  if (ownerDocument != null && claimedOwnerId == null) {
+    // The key came out of an actor's own document and names no owner of its
+    // own, so that one fetch settled the question.  Record the answer on the
+    // key, so that callers—and the key cache—never have to take it up again.
+    key = key instanceof CryptographicKey
+      ? key.clone({ owner: ownerDocument.id! }) as T
+      : (key as Multikey).clone({ controller: ownerDocument.id! }) as T;
+  } else if (
+    claimedOwnerId != null &&
+    claimedOwnerId.href !== ownerDocument?.id?.href
+  ) {
+    // Either the key stood on its own, or the actor document that carried it
+    // is not the actor the key names—and sharing an origin with that actor
+    // proves nothing, since one origin may serve documents for parties that
+    // do not speak for each other.  Either way the named actor has to be
+    // resolved and has to link back to the key.
+    const owner = await verifyKeyOwnership(key, {
+      documentLoader,
+      contextLoader,
+      tracerProvider,
+    });
+    if (owner == null) {
+      logger.debug(
+        "Failed to verify; the owner {claimedOwnerId} that key {keyId} " +
+          "claims does not list the key as its own.",
+        { keyId, claimedOwnerId: claimedOwnerId.href },
+      );
+      await keyCache?.set(cacheKey, null);
+      return { key: null, cached: false };
+    }
+  }
   if (keyCache != null) {
     await keyCache.set(cacheKey, key);
     logger.debug("Key {keyId} cached.", { keyId });
@@ -573,12 +789,14 @@ async function fetchKeyWithResult<
   if (cached != null) return cached as TResult;
   logger.debug("Fetching key {keyId} to verify signature...", { keyId });
   let document: unknown;
+  let documentUrl: URL = cacheKey;
   try {
     const remoteDocument =
       await (options.documentLoader ?? getDocumentLoader())(
         keyId,
       );
     document = remoteDocument.document;
+    documentUrl = new URL(remoteDocument.documentUrl ?? "", cacheKey);
   } catch (error) {
     return await onFetchError(
       error,
@@ -591,6 +809,7 @@ async function fetchKeyWithResult<
   return await resolveFetchedKey(
     document,
     cacheKey,
+    documentUrl,
     keyId,
     cls,
     options,

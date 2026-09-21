@@ -3,6 +3,14 @@ import type { DocumentLoader } from "@fedify/vocab-runtime";
 import type { FetchKeyErrorResult, KeyCache } from "../sig/key.ts";
 import type { KvKey, KvStore } from "./kv.ts";
 
+// Cached keys carry the owner that was verified when they were fetched, so
+// entries written by a version that did not verify ownership cannot be
+// trusted—an attacker who probed a vulnerable instance left a forged key
+// behind under their own key id.  Entries live under this segment so that
+// upgrading retires the whole previous generation, whatever prefix the
+// application configured.  See GHSA-q9f8-5hc7-898f.
+const KEY_CACHE_GENERATION = "2";
+
 export interface KvKeyCacheOptions {
   documentLoader?: DocumentLoader;
   contextLoader?: DocumentLoader;
@@ -29,6 +37,10 @@ export class KvKeyCache implements KeyCache {
     return [...this.prefix, "__fetchError", keyId.href];
   }
 
+  #entryKey(keyId: URL): KvKey {
+    return [...this.prefix, KEY_CACHE_GENERATION, keyId.href];
+  }
+
   async get(
     keyId: URL,
   ): Promise<CryptographicKey | Multikey | null | undefined> {
@@ -39,7 +51,7 @@ export class KvKeyCache implements KeyCache {
       }
       this.nullKeys.delete(keyId.href);
     }
-    const serialized = await this.kv.get([...this.prefix, keyId.href]);
+    const serialized = await this.kv.get(this.#entryKey(keyId));
     if (serialized === undefined) return undefined;
     if (serialized === null) {
       this.nullKeys.set(
@@ -54,7 +66,7 @@ export class KvKeyCache implements KeyCache {
       try {
         return await Multikey.fromJsonLd(serialized, this.options);
       } catch {
-        await this.kv.delete([...this.prefix, keyId.href]);
+        await this.kv.delete(this.#entryKey(keyId));
         return undefined;
       }
     }
@@ -69,14 +81,14 @@ export class KvKeyCache implements KeyCache {
         keyId.href,
         Temporal.Now.instant().add(this.unavailableKeyTtl),
       );
-      await this.kv.set([...this.prefix, keyId.href], null, {
+      await this.kv.set(this.#entryKey(keyId), null, {
         ttl: this.unavailableKeyTtl,
       });
       return;
     }
     this.nullKeys.delete(keyId.href);
     const serialized = await key.toJsonLd(this.options);
-    await this.kv.set([...this.prefix, keyId.href], serialized);
+    await this.kv.set(this.#entryKey(keyId), serialized);
   }
 
   async getFetchError(keyId: URL): Promise<FetchKeyErrorResult | undefined> {

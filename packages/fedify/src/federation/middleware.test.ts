@@ -46,7 +46,7 @@ import {
   rsaPublicKey2,
   rsaPublicKey3,
 } from "../testing/keys.ts";
-import { FetchError, getDocumentLoader } from "@fedify/vocab-runtime";
+import { FetchError, getDocumentLoader, UrlError } from "@fedify/vocab-runtime";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 
 const documentLoader = getDocumentLoader();
@@ -2354,7 +2354,7 @@ test("Federation.setOutboxListeners()", async (t) => {
       const records: LogRecord[] = [];
       await reset();
       fetchMock.spyGlobal();
-      fetchMock.post("https://remote.example/inbox", {
+      fetchMock.post("https://example.com/inbox", {
         status: 202,
         body: "Accepted",
       });
@@ -2392,7 +2392,7 @@ test("Federation.setOutboxListeners()", async (t) => {
               { identifier: ctx.identifier },
               new vocab.Person({
                 id: new URL("https://remote.example/users/alice"),
-                inbox: new URL("https://remote.example/inbox"),
+                inbox: new URL("https://example.com/inbox"),
               }),
               activity,
             );
@@ -2524,7 +2524,7 @@ test("Federation.setOutboxListeners()", async (t) => {
         let ldsVerified = false;
         await reset();
         fetchMock.spyGlobal();
-        fetchMock.post("https://remote.example/inbox", async (cl) => {
+        fetchMock.post("https://example.com/inbox", async (cl) => {
           const verifyOptions = {
             documentLoader: mockDocumentLoader,
             contextLoader: mockDocumentLoader,
@@ -2569,7 +2569,7 @@ test("Federation.setOutboxListeners()", async (t) => {
                 [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }],
                 {
                   id: new URL("https://remote.example/users/alice"),
-                  inboxId: new URL("https://remote.example/inbox"),
+                  inboxId: new URL("https://example.com/inbox"),
                 },
                 { skipIfUnsigned: true },
               );
@@ -5310,6 +5310,8 @@ test("FederationImpl.processQueuedTask() permanent failure", async (t) => {
     const federation = new FederationImpl<void>({
       kv,
       queue,
+      // These delivery-error tests use mocked, unresolvable .example inboxes.
+      allowPrivateAddress: true,
       ...(options.permanentFailureStatusCodes
         ? { permanentFailureStatusCodes: options.permanentFailureStatusCodes }
         : {}),
@@ -6934,4 +6936,111 @@ test("KvSpecDeterminer", async (t) => {
     spec = await determiner.determineSpec("example.com");
     assertEquals(spec, "rfc9421");
   });
+});
+
+test("ContextImpl.sendActivity() honors the private-address policy", async (t) => {
+  for (const allowPrivateAddress of [false, true]) {
+    await t.step(`allowPrivateAddress: ${allowPrivateAddress}`, async () => {
+      const inbox = "http://127.0.0.1/inbox";
+      fetchMock.mockGlobal().post(inbox, 202);
+      try {
+        const federation = createFederation<void>({
+          kv: new MemoryKvStore(),
+          allowPrivateAddress,
+        });
+        const ctx = federation.createContext(new URL("https://example.com/"));
+        const send = () =>
+          ctx.sendActivity(
+            { privateKey: ed25519PrivateKey, keyId: ed25519Multikey.id! },
+            new Person({
+              id: new URL("https://example.com/recipient"),
+              inbox: new URL(inbox),
+            }),
+            new Create({
+              id: new URL("https://example.com/activity"),
+              actor: new URL("https://example.com/person"),
+            }),
+            { immediate: true },
+          );
+        if (allowPrivateAddress) {
+          await send();
+          assertEquals(fetchMock.callHistory.calls(inbox).length, 1);
+        } else {
+          await assertRejects(send, UrlError);
+          assertEquals(fetchMock.callHistory.calls(inbox).length, 0);
+        }
+      } finally {
+        fetchMock.hardReset();
+      }
+    });
+  }
+});
+
+test("Federation.fetch() bounds inbox bodies before dispatch", async () => {
+  let dispatched = false;
+  const json = JSON.stringify({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id: "https://example.com/activities/bounded",
+    type: "Create",
+    actor: "https://example.com/actor",
+  });
+  const size = 16 * 1024 * 1024;
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    skipSignatureVerification: true,
+    contextLoaderFactory: () => mockDocumentLoader,
+  });
+  federation.setActorDispatcher("/actors/{identifier}", () =>
+    new Person({
+      id: new URL("https://example.com/actor"),
+    }));
+  federation.setInboxListeners("/actors/{identifier}/inbox", "/inbox")
+    .on(Create, () => {
+      dispatched = true;
+    });
+  for (const contentLength of [undefined, "1", String(size + 1)]) {
+    const response = await federation.fetch(
+      new Request("https://example.com/inbox", {
+        method: "POST",
+        headers: contentLength == null
+          ? {}
+          : { "Content-Length": contentLength },
+        body: json.padEnd(size + 1),
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 413);
+    assertFalse(dispatched);
+  }
+  let canceled = false;
+  let pulls = 0;
+  const body = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      pulls++;
+      controller.enqueue(new Uint8Array(64 * 1024));
+    },
+    cancel() {
+      canceled = true;
+    },
+  }, { highWaterMark: 0 });
+  const request = new Request("https://example.com/inbox", {
+    method: "POST",
+    body,
+    duplex: "half",
+  } as RequestInit);
+  const rejected = await federation.fetch(request, { contextData: undefined });
+  assertEquals(rejected.status, 413);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert(canceled);
+  assert(pulls <= 260);
+  assertFalse(dispatched);
+  const accepted = await federation.fetch(
+    new Request("https://example.com/inbox", {
+      method: "POST",
+      body: json,
+    }),
+    { contextData: undefined },
+  );
+  assertEquals(accepted.status, 202);
+  assert(dispatched);
 });

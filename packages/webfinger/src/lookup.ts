@@ -12,6 +12,7 @@ import {
   type TracerProvider,
 } from "@opentelemetry/api";
 import metadata from "../deno.json" with { type: "json" };
+import { BodyTooLargeError, MAX_BODY_SIZE, readBoundedText } from "./body.ts";
 import type { ResourceDescriptor } from "./jrd.ts";
 
 const logger = getLogger(["fedify", "webfinger", "lookup"]);
@@ -210,8 +211,15 @@ async function lookupWebFingerInternal(
       return null;
     }
     try {
-      return await response.json() as ResourceDescriptor;
+      return JSON.parse(
+        await readBoundedText(
+          response,
+          MAX_BODY_SIZE,
+          url,
+        ),
+      ) as ResourceDescriptor;
     } catch (e) {
+      if (e instanceof BodyTooLargeError) return null;
       if (e instanceof SyntaxError) {
         logger.debug(
           "Failed to parse WebFinger resource descriptor as JSON: {error}",
