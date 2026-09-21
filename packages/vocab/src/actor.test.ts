@@ -198,7 +198,7 @@ test("getActorHandle() records activitypub.actor.discovery counter", {
 }, async (t) => {
   fetchMock.spyGlobal();
   try {
-    const actorId = new URL("https://foo.example.com/@john");
+    const actorId = new URL("https://1.1.1.1/@john");
     const actor = new Person({
       id: actorId,
       preferredUsername: "john",
@@ -207,15 +207,15 @@ test("getActorHandle() records activitypub.actor.discovery counter", {
     await t.step("records result=resolved on a successful lookup", async () => {
       fetchMock.removeRoutes();
       fetchMock.get(
-        "begin:https://foo.example.com/.well-known/webfinger?",
+        "begin:https://1.1.1.1/.well-known/webfinger?",
         {
-          body: { subject: "acct:johndoe@foo.example.com" },
+          body: { subject: "acct:johndoe@1.1.1.1" },
           headers: { "Content-Type": "application/jrd+json" },
         },
       );
       const [meterProvider, recorder] = createTestMeterProvider();
       const handle = await getActorHandle(actor, { meterProvider });
-      deepStrictEqual(handle, "@johndoe@foo.example.com");
+      deepStrictEqual(handle, "@johndoe@1.1.1.1");
 
       const counters = recorder.getMeasurements(
         "activitypub.actor.discovery",
@@ -229,7 +229,7 @@ test("getActorHandle() records activitypub.actor.discovery counter", {
       );
       deepStrictEqual(
         counters[0].attributes["activitypub.remote.host"],
-        "foo.example.com",
+        "1.1.1.1",
       );
 
       const durations = recorder.getMeasurements(
@@ -249,12 +249,12 @@ test("getActorHandle() records activitypub.actor.discovery counter", {
       async () => {
         fetchMock.removeRoutes();
         fetchMock.get(
-          "begin:https://foo.example.com/.well-known/webfinger?",
+          "begin:https://1.1.1.1/.well-known/webfinger?",
           { status: 404 },
         );
         const [meterProvider, recorder] = createTestMeterProvider();
         const handle = await getActorHandle(actor, { meterProvider });
-        deepStrictEqual(handle, "@john@foo.example.com");
+        deepStrictEqual(handle, "@john@1.1.1.1");
         const counter = recorder.getMeasurement("activitypub.actor.discovery");
         ok(counter != null);
         deepStrictEqual(
@@ -269,7 +269,7 @@ test("getActorHandle() records activitypub.actor.discovery counter", {
       async () => {
         fetchMock.removeRoutes();
         fetchMock.get(
-          "begin:https://foo.example.com/.well-known/webfinger?",
+          "begin:https://1.1.1.1/.well-known/webfinger?",
           { status: 404 },
         );
         const [meterProvider, recorder] = createTestMeterProvider();
@@ -285,7 +285,7 @@ test("getActorHandle() records activitypub.actor.discovery counter", {
         );
         deepStrictEqual(
           counter.attributes["activitypub.remote.host"],
-          "foo.example.com",
+          "1.1.1.1",
         );
         const duration = recorder.getMeasurement(
           "activitypub.actor.discovery.duration",
@@ -303,13 +303,13 @@ test("getActorHandle() records activitypub.actor.discovery counter", {
       async () => {
         fetchMock.removeRoutes();
         fetchMock.get(
-          "begin:https://foo.example.com:8443/.well-known/webfinger?",
+          "begin:https://1.1.1.1:8443/.well-known/webfinger?",
           { status: 404 },
         );
         const [meterProvider, recorder] = createTestMeterProvider();
         await rejects(
           () =>
-            getActorHandle(new URL("https://foo.example.com:8443/@john"), {
+            getActorHandle(new URL("https://1.1.1.1:8443/@john"), {
               meterProvider,
             }),
           TypeError,
@@ -318,7 +318,7 @@ test("getActorHandle() records activitypub.actor.discovery counter", {
         ok(counter != null);
         deepStrictEqual(
           counter.attributes["activitypub.remote.host"],
-          "foo.example.com:8443",
+          "1.1.1.1:8443",
         );
       },
     );
@@ -333,10 +333,10 @@ test("getActorHandle() records activitypub.actor.discovery counter", {
         // `error` rather than `not_found`.
         fetchMock.removeRoutes();
         fetchMock.get(
-          "begin:https://foo.example.com/.well-known/webfinger?",
+          "begin:https://1.1.1.1/.well-known/webfinger?",
           {
             body: {
-              subject: "https://foo.example.com/@john",
+              subject: "https://1.1.1.1/@john",
               aliases: ["acct:john@["],
             },
             headers: { "Content-Type": "application/jrd+json" },
@@ -363,9 +363,9 @@ test("getActorHandle() records activitypub.actor.discovery counter", {
       async () => {
         fetchMock.removeRoutes();
         fetchMock.get(
-          "begin:https://foo.example.com/.well-known/webfinger?",
+          "begin:https://1.1.1.1/.well-known/webfinger?",
           {
-            body: { subject: "acct:johndoe@foo.example.com" },
+            body: { subject: "acct:johndoe@1.1.1.1" },
             headers: { "Content-Type": "application/jrd+json" },
           },
         );
@@ -385,9 +385,9 @@ test("getActorHandle() records activitypub.actor.discovery counter", {
       async () => {
         fetchMock.removeRoutes();
         fetchMock.get(
-          "begin:https://foo.example.com/.well-known/webfinger?",
+          "begin:https://1.1.1.1/.well-known/webfinger?",
           {
-            body: { subject: "acct:johndoe@foo.example.com" },
+            body: { subject: "acct:johndoe@1.1.1.1" },
             headers: { "Content-Type": "application/jrd+json" },
           },
         );
