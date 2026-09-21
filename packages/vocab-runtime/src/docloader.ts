@@ -1,6 +1,7 @@
 import { getLogger } from "@logtape/logtape";
 import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
 import metadata from "../deno.json" with { type: "json" };
+import { BodyTooLargeError, MAX_BODY_SIZE, readBoundedText } from "./body.ts";
 import preloadedContexts from "./contexts.ts";
 import { HttpHeaderLink } from "./link.ts";
 import {
@@ -121,51 +122,6 @@ function createResponseMetadata(response: Response): Response {
   });
 }
 
-async function cancelResponseBody(response: Response): Promise<void> {
-  if (response.body != null) {
-    await response.body.cancel();
-  }
-}
-
-async function readBoundedText(
-  response: Response,
-  maxBytes: number,
-): Promise<{ text: string; size: number; tooLarge: boolean }> {
-  const contentLength = response.headers.get("Content-Length");
-  if (contentLength != null) {
-    const size = Number(contentLength);
-    if (size > maxBytes) {
-      await cancelResponseBody(response);
-      return { text: "", size, tooLarge: true };
-    }
-  }
-
-  if (response.body == null) return { text: "", size: 0, tooLarge: false };
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let text = "";
-  let size = 0;
-  try {
-    while (true) {
-      const result = await reader.read();
-      if (result.done) break;
-      const chunkSize = result.value.byteLength;
-      if (size + chunkSize > maxBytes) {
-        size += chunkSize;
-        await reader.cancel();
-        return { text: "", size, tooLarge: true };
-      }
-      size += chunkSize;
-      text += decoder.decode(result.value, { stream: true });
-    }
-    text += decoder.decode();
-    return { text, size, tooLarge: false };
-  } finally {
-    reader.releaseLock();
-  }
-}
-
 /**
  * Gets a {@link RemoteDocument} from the given response.
  * @param url The URL of the document to load.
@@ -255,11 +211,14 @@ export async function getRemoteDocument(
       contentType?.startsWith("application/xhtml+xml;"))
   ) {
     const errorResponse = createResponseMetadata(response);
-    const html = await readBoundedText(response, MAX_HTML_SIZE);
-    if (html.tooLarge) {
+    let html: string;
+    try {
+      html = await readBoundedText(response, MAX_HTML_SIZE, documentUrl);
+    } catch (error) {
+      if (!(error instanceof BodyTooLargeError)) throw error;
       logger.warn(
         "HTML response too large, skipping alternate link discovery: {url}",
-        { url: documentUrl, size: html.size },
+        { url: documentUrl, maxBytes: MAX_HTML_SIZE },
       );
       throw new FetchError(
         documentUrl,
@@ -267,58 +226,58 @@ export async function getRemoteDocument(
           `(Content-Type: ${contentType})`,
         errorResponse,
       );
-    } else {
-      // Safe regex patterns without nested quantifiers to prevent ReDoS
-      // (CVE-2025-68475)
-      // Step 1: Extract <a ...> or <link ...> tags
-      const tagPattern = /<(a|link)\s+([^>]*?)\s*\/?>/gi;
-      // Step 2: Parse attributes
-      const attrPattern =
-        /([a-z][a-z:_-]*)=(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi;
+    }
+    // Safe regex patterns without nested quantifiers to prevent ReDoS
+    // (CVE-2025-68475)
+    // Step 1: Extract <a ...> or <link ...> tags
+    const tagPattern = /<(a|link)\s+([^>]*?)\s*\/?>/gi;
+    // Step 2: Parse attributes
+    const attrPattern = /([a-z][a-z:_-]*)=(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi;
 
-      let tagMatch: RegExpExecArray | null;
-      while ((tagMatch = tagPattern.exec(html.text)) !== null) {
-        const tagContent = tagMatch[2];
-        let attrMatch: RegExpExecArray | null;
-        const attribs: Record<string, string> = {};
+    let tagMatch: RegExpExecArray | null;
+    while ((tagMatch = tagPattern.exec(html)) !== null) {
+      const tagContent = tagMatch[2];
+      let attrMatch: RegExpExecArray | null;
+      const attribs: Record<string, string> = {};
 
-        // Reset regex state for attribute parsing
-        attrPattern.lastIndex = 0;
-        while ((attrMatch = attrPattern.exec(tagContent)) !== null) {
-          const key = attrMatch[1].toLowerCase();
-          const value = attrMatch[2] ?? attrMatch[3] ?? attrMatch[4] ?? "";
-          attribs[key] = value;
-        }
-
-        if (
-          attribs.rel === "alternate" && "type" in attribs && (
-            attribs.type === "application/activity+json" ||
-            attribs.type === "application/ld+json" ||
-            attribs.type.startsWith("application/ld+json;")
-          ) && "href" in attribs &&
-          new URL(attribs.href, docUrl).href !== docUrl.href
-        ) {
-          logger.debug(
-            "Found alternate document: {alternateUrl} from {url}",
-            { alternateUrl: attribs.href, url: documentUrl },
-          );
-          return await fetch(new URL(attribs.href, docUrl).href);
-        }
+      // Reset regex state for attribute parsing
+      attrPattern.lastIndex = 0;
+      while ((attrMatch = attrPattern.exec(tagContent)) !== null) {
+        const key = attrMatch[1].toLowerCase();
+        const value = attrMatch[2] ?? attrMatch[3] ?? attrMatch[4] ?? "";
+        attribs[key] = value;
       }
-      try {
-        document = JSON.parse(html.text);
-      } catch (error) {
-        if (!(error instanceof SyntaxError)) throw error;
-        throw new FetchError(
-          documentUrl,
-          `HTML document has no ActivityPub alternate link ` +
-            `(Content-Type: ${contentType})`,
-          errorResponse,
+
+      if (
+        attribs.rel === "alternate" && "type" in attribs && (
+          attribs.type === "application/activity+json" ||
+          attribs.type === "application/ld+json" ||
+          attribs.type.startsWith("application/ld+json;")
+        ) && "href" in attribs &&
+        new URL(attribs.href, docUrl).href !== docUrl.href
+      ) {
+        logger.debug(
+          "Found alternate document: {alternateUrl} from {url}",
+          { alternateUrl: attribs.href, url: documentUrl },
         );
+        return await fetch(new URL(attribs.href, docUrl).href);
       }
     }
+    try {
+      document = JSON.parse(html);
+    } catch (error) {
+      if (!(error instanceof SyntaxError)) throw error;
+      throw new FetchError(
+        documentUrl,
+        `HTML document has no ActivityPub alternate link ` +
+          `(Content-Type: ${contentType})`,
+        errorResponse,
+      );
+    }
   } else {
-    document = await response.json();
+    document = JSON.parse(
+      await readBoundedText(response, MAX_BODY_SIZE, documentUrl),
+    );
   }
   logger.debug(
     "Fetched document: {status} {url} {headers}",

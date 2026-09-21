@@ -1643,6 +1643,80 @@ test("verifyPortableObjectProof()", async (t) => {
     },
   );
 
+  await t.step("caches keys owned by their own DID", async () => {
+    // The key names the DID its own id is a fragment of, so ownership holds
+    // without dereferencing anything and the key is as cacheable as any
+    // other.  See `FetchKeyOptions.keyIdBoundByCaller`.
+    const verificationMethod = new URL("did:web:example.com#key");
+    const document = {
+      ...unsignedObject,
+      id: "ap://did:web:example.com/objects/1",
+    };
+    const cached: string[] = [];
+    const result = await verifyPortableObjectProof(
+      await signPortableJsonLd(document, { verificationMethod }),
+      {
+        contextLoader: mockDocumentLoader,
+        keyCache: {
+          get: () => Promise.resolve(undefined),
+          set: (keyId) => {
+            cached.push(keyId.href);
+            return Promise.resolve();
+          },
+        },
+        documentLoader: async (url) => ({
+          contextUrl: null,
+          documentUrl: url,
+          document: {
+            "@context": "https://w3id.org/security/multikey/v1",
+            id: verificationMethod.href,
+            type: "Multikey",
+            controller: "did:web:example.com",
+            publicKeyMultibase: await exportMultibaseKey(
+              ed25519PublicKey.publicKey,
+            ),
+          },
+        }),
+      },
+    );
+    assert(result.verified);
+    assertEquals(cached, [verificationMethod.href]);
+  });
+
+  await t.step(
+    "rejects a portable key that names another controller",
+    async () => {
+      // The exemption corroborates the `controller` claim against the key id
+      // rather than believing it, so a key handing itself to some other DID
+      // falls back to the ordinary check and fails it.
+      const verificationMethod = new URL("did:web:example.com#key");
+      const document = {
+        ...unsignedObject,
+        id: "ap://did:web:example.com/objects/1",
+      };
+      const result = await verifyPortableObjectProof(
+        await signPortableJsonLd(document, { verificationMethod }),
+        {
+          contextLoader: mockDocumentLoader,
+          documentLoader: async (url) => ({
+            contextUrl: null,
+            documentUrl: url,
+            document: {
+              "@context": "https://w3id.org/security/multikey/v1",
+              id: verificationMethod.href,
+              type: "Multikey",
+              controller: "did:web:attacker.example",
+              publicKeyMultibase: await exportMultibaseKey(
+                ed25519PublicKey.publicKey,
+              ),
+            },
+          }),
+        },
+      );
+      assertEquals(result.verified, false);
+    },
+  );
+
   await t.step("reports a missing proof on portable objects", async () => {
     assertEquals(
       await verifyPortableObjectProof(unsignedObject, options),
@@ -2625,4 +2699,101 @@ test("signObject() preserves FEP-22cd contexts through proof verification", asyn
   });
   assertInstanceOf(verified, Note);
   assertEquals(verified.translations[0].language?.baseName, "ko");
+});
+
+test("verifyObject() rejects a key that claims a forged controller", async () => {
+  // Object Integrity Proofs clear an object's attributions with the
+  // `controller` the signing key declares about itself, and this path needs
+  // no HTTP signature at all.  See GHSA-q9f8-5hc7-898f.
+  const keyId = new URL("https://attacker.example/multikey");
+  const impersonated = "https://example.com/person2";
+  const attackerActor = "https://attacker.example/actor";
+  const multikeyDocument = await ed25519Multikey.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  const options = {
+    format: "compact" as const,
+    contextLoader: mockDocumentLoader,
+    documentLoader: mockDocumentLoader,
+    context: [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+  };
+  const signed = await signObject(
+    new Create({
+      id: new URL("https://attacker.example/activities/1"),
+      actor: new URL(impersonated),
+      object: new Note({
+        id: new URL("https://attacker.example/notes/1"),
+        attribution: new URL(impersonated),
+        content: "Hello world",
+      }),
+    }),
+    ed25519PrivateKey,
+    keyId,
+    options,
+  );
+  const jsonLd = await signed.toJsonLd(options);
+  const serveKeyControlledBy = (controller: string) => (resource: string) => {
+    if (resource === keyId.href) {
+      return Promise.resolve({
+        contextUrl: null,
+        documentUrl: resource,
+        document: { ...multikeyDocument, id: keyId.href, controller },
+      });
+    }
+    if (resource === attackerActor) {
+      return Promise.resolve({
+        contextUrl: null,
+        documentUrl: resource,
+        document: {
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            "https://w3id.org/security/v1",
+            "https://w3id.org/security/multikey/v1",
+            "https://w3id.org/security/data-integrity/v1",
+            "https://www.w3.org/ns/did/v1",
+          ],
+          id: resource,
+          type: "Person",
+          assertionMethod: [keyId.href],
+        },
+      });
+    }
+    return mockDocumentLoader(resource);
+  };
+
+  assertEquals(
+    await verifyObject(Create, jsonLd, {
+      documentLoader: serveKeyControlledBy(impersonated),
+      contextLoader: mockDocumentLoader,
+    }),
+    null,
+  );
+
+  // The proof itself is sound: served under a controller that really does
+  // list the key, the same proof verifies.  What it authenticates is that
+  // controller, though, and not the actor the activity claims.
+  const honestLoader = serveKeyControlledBy(attackerActor);
+  let proof: DataIntegrityProof | null = null;
+  for await (const p of signed.getProofs(options)) {
+    proof = p;
+    break;
+  }
+  assertInstanceOf(proof, DataIntegrityProof);
+  assertInstanceOf(
+    await verifyProof(jsonLd, proof, {
+      documentLoader: honestLoader,
+      contextLoader: mockDocumentLoader,
+    }),
+    Multikey,
+  );
+  assertEquals(
+    await verifyObject(Create, jsonLd, {
+      documentLoader: honestLoader,
+      contextLoader: mockDocumentLoader,
+    }),
+    null,
+  );
 });

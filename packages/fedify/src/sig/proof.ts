@@ -447,6 +447,8 @@ async function verifyProofWithMessageDigestCache(
   options: VerifyProofOptions,
   messageDigestCache: ProofMessageDigestCache = {},
   rawProofCandidate?: RawProofCandidate,
+  // See the call in verifyPortableObjectProof() for why this exists.
+  keyIdBoundByCaller = false,
 ): Promise<Multikey | null> {
   const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
   const tracer = tracerProvider.getTracer(metadata.name, metadata.version);
@@ -488,6 +490,7 @@ async function verifyProofWithMessageDigestCache(
           options,
           messageDigestCache,
           rawProofCandidate,
+          keyIdBoundByCaller,
         );
         if (key == null) span.setStatus({ code: SpanStatusCode.ERROR });
         else verified = true;
@@ -1157,6 +1160,8 @@ async function verifyProofInternal(
   options: VerifyProofOptions,
   messageDigestCache: ProofMessageDigestCache,
   rawProofCandidate?: RawProofCandidate,
+  // See the call in verifyPortableObjectProof() for why this exists.
+  keyIdBoundByCaller = false,
 ): Promise<Multikey | null> {
   if (
     !isJsonLdNode(jsonLd) ||
@@ -1193,7 +1198,11 @@ async function verifyProofInternal(
   const publicKeyPromise = measureSignatureKeyFetch(
     options.meterProvider,
     "object_integrity",
-    () => fetchKey(proof.verificationMethodId!, Multikey, options),
+    () =>
+      fetchKey(proof.verificationMethodId!, Multikey, {
+        ...options,
+        keyIdBoundByCaller,
+      }),
   );
   const encoder = new TextEncoder();
   const proofBytes = encoder.encode(serialize(proofConfiguration.value));
@@ -1251,6 +1260,7 @@ async function verifyProofInternal(
         },
         messageDigestCache,
         rawProofCandidate,
+        keyIdBoundByCaller,
       );
     }
     logger.debug(
@@ -1317,6 +1327,7 @@ async function verifyProofInternal(
       },
       messageDigestCache,
       rawProofCandidate,
+      keyIdBoundByCaller,
     );
   }
   logger.debug(
@@ -1630,6 +1641,25 @@ export async function verifyPortableObjectProof(
       options,
       messageDigestCache,
       rawProofCandidate,
+      // Key resolution normally dereferences the `controller` a key claims
+      // and requires that actor's own document to list the key back, since
+      // the claim and the key come from one host (GHSA-q9f8-5hc7-898f).
+      // Portable objects are bound the other way round, and more tightly:
+      // the loop above already rejected every proof whose verification
+      // method does not share the object id's FEP-ef34 origin, so the signer
+      // is pinned by the identifier being verified, before any key is
+      // fetched.
+      //
+      // Running the ActivityPub check on top would also be impossible, not
+      // merely redundant: a portable verification method is a DID, and a DID
+      // dereferences to a DID document, which is not an actor with a
+      // `publicKey`/`assertionMethod` list.  Requiring it would leave every
+      // non-`did:key:` portable proof unverifiable.
+      //
+      // This does not take the key's word for its `controller`.  Key
+      // resolution still refuses a key naming anyone other than the DID its
+      // own id is a fragment of; see `FetchKeyOptions.keyIdBoundByCaller`.
+      true,
     );
     if (key == null) {
       return {

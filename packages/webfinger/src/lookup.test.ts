@@ -886,3 +886,39 @@ test("lookupWebFinger() records webfinger.lookup counter and duration", {
 });
 
 // cSpell: ignore johndoe
+
+test("lookupWebFinger() bounds resource descriptors", async () => {
+  fetchMock.mockGlobal();
+  let oversized = true;
+  try {
+    fetchMock.get(
+      "begin:https://example.com/.well-known/webfinger?",
+      () =>
+        new Response(
+          '{"subject":"acct:alice@example.com"}' +
+            (oversized ? " ".repeat(16 * 1024 * 1024) : ""),
+          {
+            headers: {
+              "Content-Type": "application/jrd+json",
+              "Content-Length": "1",
+            },
+          },
+        ),
+    );
+    deepStrictEqual(
+      await lookupWebFinger("acct:alice@example.com", {
+        allowPrivateAddress: true,
+      }),
+      null,
+    );
+    oversized = false;
+    deepStrictEqual(
+      await lookupWebFinger("acct:alice@example.com", {
+        allowPrivateAddress: true,
+      }),
+      { subject: "acct:alice@example.com" },
+    );
+  } finally {
+    fetchMock.hardReset();
+  }
+});

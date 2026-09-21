@@ -4,6 +4,7 @@ import {
   mockDocumentLoader,
   test,
 } from "@fedify/fixture";
+import { UrlError } from "@fedify/vocab-runtime";
 import type { Actor } from "@fedify/vocab";
 import {
   Activity,
@@ -584,6 +585,8 @@ test("sendActivity() records OpenTelemetry delivery metrics", async (t) => {
       activityId: "https://example.com/activity",
       activityType: "https://www.w3.org/ns/activitystreams#Create",
       keys: [],
+      // This test delivers to a mocked, unresolvable .example inbox.
+      allowPrivateAddress: true,
       inbox: new URL("https://metrics.example:8443/inbox/path?x=1"),
       meterProvider,
     });
@@ -646,6 +649,8 @@ test("sendActivity() records OpenTelemetry delivery metrics", async (t) => {
           activityId: "https://example.com/follow",
           activityType: "https://www.w3.org/ns/activitystreams#Follow",
           keys: [],
+          // This test delivers to a mocked, unresolvable .example inbox.
+          allowPrivateAddress: true,
           inbox: new URL("https://metrics.example/inbox"),
           meterProvider,
         }),
@@ -710,6 +715,8 @@ test("sendActivity() exports delivery metrics through OpenTelemetry SDK", async 
       activityId: "https://example.com/activity",
       activityType: "https://www.w3.org/ns/activitystreams#Create",
       keys: [],
+      // This test delivers to a mocked, unresolvable .example inbox.
+      allowPrivateAddress: true,
       inbox: new URL("https://sdk-metrics.example/inbox"),
       meterProvider,
     });
@@ -735,3 +742,142 @@ test("sendActivity() exports delivery metrics through OpenTelemetry SDK", async 
     }
   }
 });
+
+for (const signed of [false, true]) {
+  const keys = [{
+    privateKey: signed ? rsaPrivateKey2 : ed25519PrivateKey,
+    keyId: signed ? rsaPublicKey2.id! : ed25519Multikey.id!,
+  }];
+  test(`sendActivity() validates destinations (signed: ${signed})`, async (t) => {
+    const activity = { type: "Create", id: "https://example.com/activity" };
+    const publicInbox = "https://8.8.8.8/inbox";
+    const privateInbox = "http://127.0.0.1/inbox";
+    for (
+      const target of [privateInbox, "http://169.254.169.254/", "http://[::1]/"]
+    ) {
+      await t.step(`rejects ${target} before fetching`, async () => {
+        fetchMock.mockGlobal().catch(202);
+        try {
+          await assertRejects(
+            () => sendActivity({ activity, keys, inbox: new URL(target) }),
+            UrlError,
+          );
+          assertEquals(fetchMock.callHistory.calls().length, 0);
+        } finally {
+          fetchMock.hardReset();
+        }
+      });
+    }
+    for (const status of [301, 302, 303, 307, 308]) {
+      for (const allowPrivateAddress of [false, true]) {
+        await t.step(
+          `${status} private redirect, opt-in: ${allowPrivateAddress}`,
+          async () => {
+            fetchMock.mockGlobal();
+            fetchMock.route(publicInbox, {
+              status,
+              headers: { Location: privateInbox },
+            });
+            fetchMock.route(privateInbox, 202);
+            try {
+              const send = () =>
+                sendActivity({
+                  activity,
+                  keys,
+                  inbox: new URL(publicInbox),
+                  allowPrivateAddress,
+                });
+              if (allowPrivateAddress) {
+                await send();
+                const calls = fetchMock.callHistory.calls(privateInbox);
+                assertEquals(calls.length, 1);
+                const request = calls[0].request!;
+                const preservesBody = signed || status === 307 ||
+                  status === 308;
+                assertEquals(request.method, preservesBody ? "POST" : "GET");
+                assertEquals(
+                  await request.clone().text(),
+                  preservesBody ? JSON.stringify(activity) : "",
+                );
+              } else {
+                await assertRejects(send, UrlError);
+                assertEquals(
+                  fetchMock.callHistory.calls(privateInbox).length,
+                  0,
+                );
+              }
+            } finally {
+              fetchMock.hardReset();
+            }
+          },
+        );
+      }
+    }
+    await t.step(
+      "rejects a private destination after a public redirect",
+      async () => {
+        fetchMock.mockGlobal()
+          .route(publicInbox, { status: 307, headers: { Location: "/next" } })
+          .route("https://8.8.8.8/next", {
+            status: 308,
+            headers: { Location: privateInbox },
+          })
+          .route(privateInbox, 202);
+        try {
+          await assertRejects(
+            () => sendActivity({ activity, keys, inbox: new URL(publicInbox) }),
+            UrlError,
+          );
+          assertEquals(fetchMock.callHistory.calls(privateInbox).length, 0);
+        } finally {
+          fetchMock.hardReset();
+        }
+      },
+    );
+    await t.step("limits redirect loops", async () => {
+      fetchMock.mockGlobal().route(publicInbox, {
+        status: 307,
+        headers: { Location: publicInbox },
+      });
+      try {
+        await assertRejects(
+          () => sendActivity({ activity, keys, inbox: new URL(publicInbox) }),
+        );
+        assert(fetchMock.callHistory.calls().length <= 21);
+      } finally {
+        fetchMock.hardReset();
+      }
+    });
+    await t.step("allows a direct private inbox with opt-in", async () => {
+      fetchMock.mockGlobal().route(privateInbox, 202);
+      try {
+        await sendActivity({
+          activity,
+          keys,
+          inbox: new URL(privateInbox),
+          allowPrivateAddress: true,
+        });
+        assertEquals(fetchMock.callHistory.calls(privateInbox).length, 1);
+      } finally {
+        fetchMock.hardReset();
+      }
+    });
+    await t.step(
+      "allows relative public redirects",
+      async () => {
+        fetchMock.mockGlobal()
+          .route(publicInbox, { status: 307, headers: { Location: "/next" } })
+          .route("https://8.8.8.8/next", 202);
+        try {
+          await sendActivity({ activity, keys, inbox: new URL(publicInbox) });
+          assertEquals(
+            fetchMock.callHistory.calls("https://8.8.8.8/next").length,
+            1,
+          );
+        } finally {
+          fetchMock.hardReset();
+        }
+      },
+    );
+  });
+}

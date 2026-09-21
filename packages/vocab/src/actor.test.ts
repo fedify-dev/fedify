@@ -99,6 +99,7 @@ test({
   async fn(t) {
     fetchMock.spyGlobal();
 
+    // Node validates addresses before fetch; public IP literals avoid DNS.
     fetchMock.get(
       "begin:https://1.1.1.1/.well-known/webfinger?",
       {

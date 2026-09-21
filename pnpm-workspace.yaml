@@ -71,6 +71,11 @@ allowBuilds:
   unrs-resolver: true
   workerd: true
 
+packageExtensions:
+  inquirer-toggle:
+    dependencies:
+      ansi-escapes: ^4.3.2
+
 catalog:
   "@adonisjs/assembler": ^8.0.0
   "@adonisjs/core": ^7.4.0

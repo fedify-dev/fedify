@@ -1,6 +1,8 @@
 import fetchMock from "fetch-mock";
 import { deepStrictEqual, ok, rejects } from "node:assert";
 import { test } from "node:test";
+import { createServer } from "node:http";
+import { gzipSync } from "node:zlib";
 import preloadedContexts from "./contexts.ts";
 import cidV1Context from "./contexts/cid-v1.json" with { type: "json" };
 import { getDocumentLoader, getRemoteDocument } from "./docloader.ts";
@@ -349,12 +351,14 @@ test("getDocumentLoader()", async (t) => {
         "Content-Type": "text/html; charset=utf-8",
       },
     });
+    // The shared reader in body.ts cancels through a reader rather than the
+    // body directly, so stub a real stream instead of a bare `cancel`.
     Object.defineProperty(response, "body", {
-      value: {
-        cancel: () => {
+      value: new ReadableStream<Uint8Array>({
+        cancel() {
           canceled = true;
         },
-      },
+      }),
     });
     await rejects(
       () =>
@@ -613,4 +617,125 @@ test("getDocumentLoader()", async (t) => {
   });
 
   fetchMock.hardReset();
+});
+
+test("getDocumentLoader() bounds JSON, HTML, and alternate documents", async () => {
+  const url = "https://example.com/bounded";
+  fetchMock.mockGlobal();
+  let oversized = true;
+  try {
+    fetchMock.get(url, () =>
+      new Response('{"name":"hello"}', {
+        headers: {
+          "Content-Type": "application/activity+json",
+          ...(oversized
+            ? { "Content-Length": String(16 * 1024 * 1024 + 1) }
+            : {}),
+        },
+      }));
+    const loader = getDocumentLoader({
+      allowPrivateAddress: true,
+    });
+    await rejects(loader(url), FetchError);
+    oversized = false;
+    deepStrictEqual((await loader(url)).document, { name: "hello" });
+    oversized = true;
+    fetchMock.get(
+      `${url}/html`,
+      () =>
+        new Response(" ".repeat(1024 * 1024 + 1), {
+          headers: { "Content-Type": "text/html" },
+        }),
+    );
+    await rejects(
+      getDocumentLoader({ allowPrivateAddress: true })(`${url}/html`),
+      FetchError,
+    );
+    fetchMock.get(`${url}/alternate`, () =>
+      new Response("", {
+        headers: {
+          "Content-Type": "text/html",
+          Link: `<${url}>; rel="alternate"; type="application/activity+json"`,
+        },
+      }));
+    await rejects(loader(`${url}/alternate`), FetchError);
+    fetchMock.get(`${url}/redirect`, {
+      status: 302,
+      headers: { Location: url },
+    });
+    await rejects(loader(`${url}/redirect`), FetchError);
+  } finally {
+    fetchMock.hardReset();
+  }
+});
+
+test("getDocumentLoader() rejects oversized gzip responses from fetch", async () => {
+  const document = { name: "a".repeat(16 * 1024 * 1024) };
+  const compressed = gzipSync(JSON.stringify(document));
+  ok(compressed.byteLength < 64 * 1024);
+  const server = createServer((request, response) => {
+    const body = request.url === "/small"
+      ? gzipSync('{"name":"hello"}')
+      : compressed;
+    response.writeHead(200, {
+      "Content-Type": "application/activity+json",
+      "Content-Encoding": "gzip",
+      "Content-Length": body.byteLength,
+    });
+    response.end(body);
+  });
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  try {
+    const address = server.address();
+    ok(address != null && typeof address !== "string");
+    const url = `http://127.0.0.1:${address.port}/document`;
+    await rejects(
+      getDocumentLoader({
+        allowPrivateAddress: true,
+      })(url),
+      FetchError,
+    );
+    deepStrictEqual(
+      (await getDocumentLoader({
+        allowPrivateAddress: true,
+      })(new URL("/small", url).href)).document,
+      { name: "hello" },
+    );
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => error == null ? resolve() : reject(error));
+      server.closeAllConnections();
+    });
+  }
+});
+
+test("getRemoteDocument() bounds JSON by default", async () => {
+  let canceled = false;
+  let pulls = 0;
+  const response = new Response(
+    new ReadableStream({
+      pull(controller) {
+        pulls++;
+        controller.enqueue(new Uint8Array(64 * 1024).fill(32));
+      },
+      cancel() {
+        canceled = true;
+      },
+    }, { highWaterMark: 0 }),
+  );
+  await rejects(
+    getRemoteDocument(
+      "https://example.com/document",
+      response,
+      () => {
+        throw new Error("Unexpected alternate document");
+      },
+    ),
+    FetchError,
+  );
+  deepStrictEqual(canceled, true);
+  deepStrictEqual(pulls, 257);
 });

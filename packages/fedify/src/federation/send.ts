@@ -1,5 +1,5 @@
 import type { Recipient } from "@fedify/vocab";
-import { FetchError } from "@fedify/vocab-runtime";
+import { FetchError, UrlError, validatePublicUrl } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
 import {
   type Attributes,
@@ -126,6 +126,12 @@ export interface SendActivityParameters {
    * The inbox URL to send the activity to.
    */
   readonly inbox: URL;
+
+  /**
+   * Whether to allow delivery to private network addresses, including redirects.
+   * Defaults to `false`.  Only enable this for local testing.
+   */
+  readonly allowPrivateAddress?: boolean;
 
   /**
    * Whether the inbox is a shared inbox.
@@ -269,6 +275,7 @@ async function sendActivityInternal(
     activityType,
     keys,
     inbox,
+    allowPrivateAddress,
     headers,
     specDeterminer,
     meterProvider,
@@ -280,12 +287,27 @@ async function sendActivityInternal(
   const federationMetrics = getFederationMetrics(meterProvider);
   const started = performance.now();
   let deliverySuccess = false;
+  async function validateUrl(url: string): Promise<void> {
+    if (!allowPrivateAddress) {
+      try {
+        await validatePublicUrl(url);
+      } catch (error) {
+        if (error instanceof UrlError) {
+          logger.error("Disallowed private URL: {url}", { url, error });
+        }
+        throw error;
+      }
+    }
+  }
+
+  await validateUrl(inbox.href);
   headers = new Headers(headers);
   headers.set("Content-Type", "application/activity+json");
   const request = new Request(inbox, {
     method: "POST",
     headers,
     body: JSON.stringify(activity),
+    redirect: "manual",
   });
   let rsaKey: SenderKeyPair | null = null;
   for (const key of keys) {
@@ -312,10 +334,18 @@ async function sendActivityInternal(
   let response: Response;
   try {
     response = rsaKey == null
-      ? await fetch(request)
-      : await doubleKnock(request, rsaKey, { tracerProvider, specDeterminer });
+      ? await fetchWithValidatedRedirects(request, validateUrl)
+      : await doubleKnock(request, rsaKey, {
+        tracerProvider,
+        specDeterminer,
+        validateRedirect: validateUrl,
+      });
   } catch (error) {
-    const transportError = error instanceof FetchError
+    // A destination refused by the private-address policy is a policy
+    // decision rather than a transport failure, so it surfaces as the
+    // `UrlError` it is, just as a refused inbox URL does before the request
+    // is ever made.  See GHSA-f59r-8gcj-68f2.
+    const failure = error instanceof FetchError || error instanceof UrlError
       ? error
       : createFetchError(inbox.href, error);
     logger.error(
@@ -323,7 +353,7 @@ async function sendActivityInternal(
       {
         activityId,
         inbox: inbox.href,
-        error: transportError,
+        error: failure,
       },
     );
     federationMetrics.recordDelivery(
@@ -332,7 +362,7 @@ async function sendActivityInternal(
       false,
       activityType,
     );
-    throw transportError;
+    throw failure;
   }
   try {
     if (!response.ok) {
@@ -396,6 +426,52 @@ function createFetchError(url: string, cause: unknown): FetchError {
   const error = new FetchError(url, message);
   error.cause = cause;
   return error;
+}
+
+// Preserve Fetch's redirect semantics while validating every destination.
+async function fetchWithValidatedRedirects(
+  request: Request,
+  validateUrl: (url: string) => Promise<void>,
+): Promise<Response> {
+  let body: string | undefined = await request.clone().text();
+  for (let redirects = 0;; redirects++) {
+    // Bun also needs the redirect option on fetch() itself.
+    const response = await fetch(request, { redirect: "manual" });
+    const location = response.headers.get("Location");
+    if (
+      ![301, 302, 303, 307, 308].includes(response.status) || location == null
+    ) return response;
+    await response.body?.cancel();
+    if (redirects >= 20) throw new TypeError("Too many redirects");
+    const url = new URL(location, request.url);
+    await validateUrl(url.href);
+    const headers = new Headers(request.headers);
+    if (url.origin !== new URL(request.url).origin) {
+      headers.delete("Authorization");
+      headers.delete("Proxy-Authorization");
+      headers.delete("Cookie");
+      headers.delete("Host");
+    }
+    let method = request.method;
+    if (
+      (response.status === 301 || response.status === 302) &&
+        method === "POST" ||
+      response.status === 303 && method !== "GET" && method !== "HEAD"
+    ) {
+      method = "GET";
+      body = undefined;
+      for (
+        const name of [
+          "Content-Encoding",
+          "Content-Language",
+          "Content-Length",
+          "Content-Location",
+          "Content-Type",
+        ]
+      ) headers.delete(name);
+    }
+    request = new Request(url, { method, headers, body, redirect: "manual" });
+  }
 }
 
 /**

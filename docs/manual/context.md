@@ -344,6 +344,21 @@ Sometimes a document loader needs to be authenticated to load a remote document
 which requires authorization, but a context loader mostly needs to be highly
 cached and doesn't require authorization.
 
+### Response size limits
+
+Since Fedify 2.0.28, the built-in document loaders limit each remote JSON body
+to 16 MiB of decoded bytes.  This includes actor and object documents,
+HTTP-signature keys, and JSON-LD contexts, whether fetched with or without
+HTTP authentication.  HTML alternate-link discovery is limited to 1 MiB.
+The limits apply while reading the stream, including after decompression,
+before JSON parsing or caching.  An oversized document raises `FetchError`.
+
+Inbox request bodies are also limited to 16 MiB and receive HTTP 413 when
+too large, before JSON parsing or signature verification.
+
+Custom document loaders are responsible for enforcing their own response
+size limits.
+
 
 Looking up remote objects
 -------------------------

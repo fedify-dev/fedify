@@ -1021,7 +1021,8 @@ export interface FederationOptions<TContextData> {
   authenticatedDocumentLoaderFactory?: AuthenticatedDocumentLoaderFactory;
 
   /**
-   * Whether to allow fetching private network addresses in the document loader.
+   * Whether to allow private network addresses in the document loader and
+   * outbound activity delivery, including redirects.
    *
    * If turned on, {@link FederationOptions.documentLoader},
    * {@link FederationOptions.contextLoader}, and

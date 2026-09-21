@@ -80,6 +80,48 @@ const rsaPublicKey = {
   ...rsaKeyPair.publicKey,
 };
 
+// Recipients of the deliveries these tests assert on.  They live in the RFC
+// 3849 documentation prefix 2001:db8::/32, which validatePublicUrl() accepts
+// as public without a DNS lookup while never routing anywhere; an
+// *.example.com subdomain does not resolve, so a delivery to it is refused
+// before the request is made.  litepub.test.ts uses a disjoint /48 so that
+// neither file's interceptor can swallow the other's deliveries.
+const INBOX_PREFIX = "https://[2001:db8:2::";
+const followerInbox = `${INBOX_PREFIX}1]/users/bob/inbox`;
+
+interface DeliveredRequest {
+  readonly method: string;
+  readonly body: any;
+}
+
+const recorders = new Map<string, DeliveredRequest[]>();
+
+// Delivery goes through the global fetch(), and node:test runs the tests of a
+// describe() block concurrently, so a per-test interceptor would be clobbered
+// by whichever test installs or restores the next one.  Install a single
+// interceptor for the whole file instead, and let each test register the
+// inboxes whose deliveries it wants to see.
+function recordInbox(inbox: string): DeliveredRequest[] {
+  const recorded: DeliveredRequest[] = [];
+  recorders.set(inbox, recorded);
+  return recorded;
+}
+
+const nextFetch = globalThis.fetch;
+globalThis.fetch = (async (input: URL | RequestInfo, init?: RequestInit) => {
+  const request = input instanceof Request ? input : new Request(input, init);
+  if (!request.url.startsWith(INBOX_PREFIX)) {
+    return await nextFetch(input, init);
+  }
+  // Answer every request within this file's prefix, registered or not, so that
+  // a stray delivery can never reach the network.
+  const recorded = recorders.get(request.url);
+  if (recorded != null) {
+    recorded.push({ method: request.method, body: await request.json() });
+  }
+  return new Response(null, { status: 202 });
+}) as typeof fetch;
+
 describe("MastodonRelay", () => {
   test("constructor with required options", () => {
     const options: RelayOptions = {
@@ -695,7 +737,7 @@ describe("MastodonRelay", () => {
     const follower = new Person({
       id: new URL("https://follower.example.com/users/bob"),
       preferredUsername: "bob",
-      inbox: new URL("https://follower.example.com/users/bob/inbox"),
+      inbox: new URL(followerInbox),
     });
     await kv.set(
       ["follower", follower.id!.href],
@@ -736,40 +778,17 @@ describe("MastodonRelay", () => {
       rsaPublicKey.id,
     );
 
-    const originalFetch = globalThis.fetch;
-    let deliveryMethod: string | undefined;
-    let deliveredActivity: unknown;
-    globalThis.fetch = (async (
-      input: URL | RequestInfo,
-      init?: RequestInit,
-    ) => {
-      const outboundRequest = input instanceof Request
-        ? input
-        : new Request(input, init);
-      if (
-        outboundRequest.url ===
-          "https://follower.example.com/users/bob/inbox"
-      ) {
-        deliveryMethod = outboundRequest.method;
-        deliveredActivity = await outboundRequest.json();
-        return new Response(null, { status: 202 });
-      }
-      return originalFetch(input, init);
-    }) as typeof fetch;
+    const delivered = recordInbox(followerInbox);
 
-    try {
-      const response = await relay.fetch(request);
-      ok(
-        response.status === 200 || response.status === 202,
-        `Unexpected inbox response status: ${response.status}`,
-      );
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    const response = await relay.fetch(request);
+    ok(
+      response.status === 200 || response.status === 202,
+      `Unexpected inbox response status: ${response.status}`,
+    );
 
-    ok(deliveredActivity, "Expected Announce delivery to the follower inbox");
-    strictEqual(deliveryMethod, "POST");
-    deepStrictEqual(deliveredActivity, signedAnnounce);
+    strictEqual(delivered.length, 1, "Expected exactly one delivery");
+    strictEqual(delivered[0].method, "POST");
+    deepStrictEqual(delivered[0].body, signedAnnounce);
   });
 
   test("ignores Follow activity without required fields", async () => {
