@@ -760,6 +760,7 @@ export async function verifyCompoundPortableObjectProofs(
         return policy.verified
           ? Object.freeze({
             ...metadata,
+            id: policy.objectId,
             verified: true as const,
             keys: policy.keys,
           })

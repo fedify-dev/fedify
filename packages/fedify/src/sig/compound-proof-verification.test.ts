@@ -31,6 +31,36 @@ const options = {
   },
 };
 
+function createInlineProofContext(): Record<string, unknown> {
+  return {
+    id: "@id",
+    type: "@type",
+    Note: "https://www.w3.org/ns/activitystreams#Note",
+    attributedTo: {
+      "@id": "https://www.w3.org/ns/activitystreams#attributedTo",
+      "@type": "@id",
+    },
+    content: "https://www.w3.org/ns/activitystreams#content",
+    DataIntegrityProof: "https://w3id.org/security#DataIntegrityProof",
+    cryptosuite: "https://w3id.org/security#cryptosuite",
+    verificationMethod: {
+      "@id": "https://w3id.org/security#verificationMethod",
+      "@type": "@id",
+    },
+    proofPurpose: {
+      "@id": "https://w3id.org/security#proofPurpose",
+      "@type": "@vocab",
+    },
+    assertionMethod: "https://w3id.org/security#assertionMethod",
+    created: {
+      "@id": "http://purl.org/dc/terms/created",
+      "@type": "http://www.w3.org/2001/XMLSchema#dateTime",
+    },
+    proofValue: "https://w3id.org/security#proofValue",
+    proof: "https://w3id.org/security#proof",
+  };
+}
+
 function asRecord(value: unknown): Record<string, unknown> {
   assert(value != null && typeof value === "object" && !Array.isArray(value));
   return value as Record<string, unknown>;
@@ -566,36 +596,11 @@ test("verifyPortableObjectProofPolicy() binds policy to the verified key", async
 });
 
 test("verifyPortableObjectProofPolicy() binds policy to the verified proof", async () => {
-  const context = {
-    id: "@id",
-    type: "@type",
-    Note: "https://www.w3.org/ns/activitystreams#Note",
-    attributedTo: {
-      "@id": "https://www.w3.org/ns/activitystreams#attributedTo",
-      "@type": "@id",
-    },
-    content: "https://www.w3.org/ns/activitystreams#content",
-    DataIntegrityProof: "https://w3id.org/security#DataIntegrityProof",
-    cryptosuite: "https://w3id.org/security#cryptosuite",
-    verificationMethod: {
-      "@id": "https://w3id.org/security#verificationMethod",
-      "@type": "@id",
-    },
-    proofPurpose: {
-      "@id": "https://w3id.org/security#proofPurpose",
-      "@type": "@vocab",
-    },
-    assertionMethod: "https://w3id.org/security#assertionMethod",
-    created: {
-      "@id": "http://purl.org/dc/terms/created",
-      "@type": "http://www.w3.org/2001/XMLSchema#dateTime",
-    },
-    proofValue: "https://w3id.org/security#proofValue",
-    proof: {
-      "@id": "https://w3id.org/security#proof",
-      "@context": {
-        assertionMethod: "https://w3id.org/security#authentication",
-      },
+  const context = createInlineProofContext();
+  context.proof = {
+    "@id": "https://w3id.org/security#proof",
+    "@context": {
+      assertionMethod: "https://w3id.org/security#authentication",
     },
   };
   const secured = await secureRawDocument(
@@ -616,5 +621,35 @@ test("verifyPortableObjectProofPolicy() binds policy to the verified proof", asy
   assertEquals(
     await verifyPortableObjectProofPolicy(secured, key, options),
     { verified: false, reason: { type: "invalidProof", proofIndex: 0 } },
+  );
+});
+
+test("verifyCompoundPortableObjectProofs() reports the policy-validated ID", async () => {
+  const context = createInlineProofContext();
+  context.id = "https://example.com/id";
+  const secured = await secureRawDocument(
+    {
+      "@context": context,
+      id: vector.documents.outerUnsecuredDocument.id,
+      "@id": vector.documents.innerUnsecuredDocument.id,
+      type: "Note",
+      content: "Conflicting raw ID",
+    },
+    vector.keys.inner.testPrivateKeyJwk,
+    vector.keys.inner.verificationMethod,
+  );
+
+  const result = await verifyCompoundPortableObjectProofs(
+    secured,
+    limits,
+    options,
+  );
+  assertEquals(result.status, "ok");
+  if (result.status !== "ok") return;
+  assert(result.verified);
+  assertEquals(result.portableObjects.length, 1);
+  assertEquals(
+    result.portableObjects[0].id,
+    vector.documents.innerUnsecuredDocument.id,
   );
 });

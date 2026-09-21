@@ -1499,6 +1499,7 @@ async function expandPortableObjectRoot(
 
 interface PreparedPortableObjectProof {
   readonly prepared: true;
+  readonly objectId: URL;
   readonly proofs: readonly DataIntegrityProof[];
   readonly rawProofValues: readonly unknown[];
   readonly proofContextLoader: DocumentLoader;
@@ -1508,7 +1509,9 @@ type PreparePortableObjectProofResult =
   | PreparedPortableObjectProof
   | {
     readonly prepared: false;
-    readonly result: VerifyPortableObjectProofResult;
+    readonly result: Extract<VerifyPortableObjectProofResult, {
+      verified: false;
+    }>;
   };
 
 async function preparePortableObjectProof(
@@ -1685,6 +1688,7 @@ async function preparePortableObjectProof(
 
   return {
     prepared: true,
+    objectId,
     proofs,
     rawProofValues,
     proofContextLoader,
@@ -1700,7 +1704,14 @@ export async function verifyPortableObjectProofPolicy(
   jsonLd: unknown,
   key: Multikey | null,
   options: VerifyPortableObjectProofOptions = {},
-): Promise<VerifyPortableObjectProofResult> {
+): Promise<
+  | Extract<VerifyPortableObjectProofResult, { verified: false }>
+  | {
+    readonly verified: true;
+    readonly keys: readonly Multikey[];
+    readonly objectId: string;
+  }
+> {
   const policyOptions = {
     ...options,
     contextLoader: preloadedOnlyDocumentLoader,
@@ -1731,7 +1742,11 @@ export async function verifyPortableObjectProofPolicy(
       },
     };
   }
-  return { verified: true, keys: [key] };
+  return {
+    verified: true,
+    keys: [key],
+    objectId: formatIri(prepared.objectId),
+  };
 }
 
 /**
