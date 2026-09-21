@@ -5416,3 +5416,72 @@ test("ContextImpl.sendActivity() honors the private-address policy", async (t) =
     });
   }
 });
+
+test("Federation.fetch() bounds inbox bodies before dispatch", async () => {
+  let dispatched = false;
+  const json = JSON.stringify({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id: "https://example.com/activities/bounded",
+    type: "Create",
+    actor: "https://example.com/actor",
+  });
+  const size = 16 * 1024 * 1024;
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    skipSignatureVerification: true,
+    contextLoaderFactory: () => mockDocumentLoader,
+  });
+  federation.setActorDispatcher("/actors/{identifier}", () =>
+    new Person({
+      id: new URL("https://example.com/actor"),
+    }));
+  federation.setInboxListeners("/actors/{identifier}/inbox", "/inbox")
+    .on(Create, () => {
+      dispatched = true;
+    });
+  for (const contentLength of [undefined, "1", String(size + 1)]) {
+    const response = await federation.fetch(
+      new Request("https://example.com/inbox", {
+        method: "POST",
+        headers: contentLength == null
+          ? {}
+          : { "Content-Length": contentLength },
+        body: json.padEnd(size + 1),
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 413);
+    assertFalse(dispatched);
+  }
+  let canceled = false;
+  let pulls = 0;
+  const body = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      pulls++;
+      controller.enqueue(new Uint8Array(64 * 1024));
+    },
+    cancel() {
+      canceled = true;
+    },
+  }, { highWaterMark: 0 });
+  const request = new Request("https://example.com/inbox", {
+    method: "POST",
+    body,
+    duplex: "half",
+  } as RequestInit);
+  const rejected = await federation.fetch(request, { contextData: undefined });
+  assertEquals(rejected.status, 413);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert(canceled);
+  assert(pulls <= 260);
+  assertFalse(dispatched);
+  const accepted = await federation.fetch(
+    new Request("https://example.com/inbox", {
+      method: "POST",
+      body: json,
+    }),
+    { contextData: undefined },
+  );
+  assertEquals(accepted.status, 202);
+  assert(dispatched);
+});

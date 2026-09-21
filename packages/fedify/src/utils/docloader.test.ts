@@ -1,5 +1,5 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
-import { UrlError } from "@fedify/vocab-runtime";
+import { FetchError, UrlError } from "@fedify/vocab-runtime";
 import { assertEquals, assertRejects } from "@std/assert";
 import fetchMock from "fetch-mock";
 import { verifyRequest } from "../sig/http.ts";
@@ -184,4 +184,37 @@ test("getAuthenticatedDocumentLoader() cancellation", {
   });
 
   fetchMock.hardReset();
+});
+
+test("getAuthenticatedDocumentLoader() bounds JSON after redirects", async () => {
+  fetchMock.mockGlobal();
+  let oversized = true;
+  try {
+    const url = "https://example.com/bounded";
+    fetchMock.get(url, {
+      status: 302,
+      headers: { Location: `${url}/document` },
+    });
+    fetchMock.get(`${url}/document`, () =>
+      new Response('{"name":"hello"}', {
+        headers: {
+          "Content-Type": "application/activity+json",
+          ...(oversized
+            ? { "Content-Length": String(16 * 1024 * 1024 + 1) }
+            : {}),
+        },
+      }));
+    const identity = {
+      privateKey: rsaPrivateKey2,
+      keyId: new URL("https://example.com/key2"),
+    };
+    const loader = getAuthenticatedDocumentLoader(identity, {
+      allowPrivateAddress: true,
+    });
+    await assertRejects(() => loader(url), FetchError);
+    oversized = false;
+    assertEquals((await loader(url)).document, { name: "hello" });
+  } finally {
+    fetchMock.hardReset();
+  }
 });

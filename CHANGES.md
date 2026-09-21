@@ -14,8 +14,12 @@ To be released.
     URLs and redirects to target private network addresses.  Delivery now checks
     each destination unless `allowPrivateAddress` is explicitly enabled for
     local testing.  \[[GHSA-f59r-8gcj-68f2]]
+ -  Fixed unbounded reads of authenticated documents, NodeInfo responses, and
+    inbox bodies that could exhaust memory.  JSON bodies are now limited to 16
+    MiB.  Oversized inbox requests receive HTTP 413.  \[[GHSA-mc44-6cfg-2v6w]]
 
 [GHSA-f59r-8gcj-68f2]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-f59r-8gcj-68f2
+[GHSA-mc44-6cfg-2v6w]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-mc44-6cfg-2v6w
 
 ### @fedify/redis
 
@@ -31,6 +35,18 @@ To be released.
 
 [#1028]: https://github.com/fedify-dev/fedify/issues/1028
 [#1034]: https://github.com/fedify-dev/fedify/issues/1034
+
+### @fedify/vocab-runtime
+
+ -  Fixed unbounded reads of remote JSON-LD and HTML documents that could
+    exhaust memory.  JSON responses are now limited to 16 MiB after
+    decompression; HTML discovery is limited to 1 MiB.  \[[GHSA-mc44-6cfg-2v6w]]
+
+### @fedify/webfinger
+
+ -  Fixed unbounded reads of WebFinger descriptors that could exhaust memory.
+    Responses are now limited to 16 MiB after decompression; oversized
+    responses return `null`.  \[[GHSA-mc44-6cfg-2v6w]]
 
 
 Version 2.0.27
