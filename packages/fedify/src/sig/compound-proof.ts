@@ -1,3 +1,6 @@
+import type { Multikey } from "@fedify/vocab";
+import { verifyMapLocalProof, type VerifyProofOptions } from "./proof.ts";
+
 /** A JSON value retained in a compound-proof snapshot. */
 export type CompoundProofJsonValue =
   | null
@@ -60,6 +63,57 @@ export type CompoundProofDiscoveryResult =
     readonly snapshot: CompoundProofJsonObject;
     /** Secured maps ordered deepest-first, then by JSON Pointer. */
     readonly documents: readonly CompoundProofDocument[];
+    readonly statistics: {
+      readonly byteLength: number;
+      readonly mapCount: number;
+      readonly proofCount: number;
+      readonly maxDepth: number;
+    };
+  }
+  | {
+    readonly status: "unsupported";
+    readonly reason: CompoundProofDiscoveryFailureReason;
+  };
+
+/** Why a discovered map-local proof did not verify. */
+export type CompoundProofVerificationFailureReason =
+  | {
+    /** A nested secured map does not carry its own JSON-LD context. */
+    readonly type: "missingContext";
+  }
+  | {
+    /** The direct proof is malformed, unsupported, or invalid. */
+    readonly type: "invalidProof";
+  };
+
+/** The verification result for one discovered secured map. */
+export type CompoundProofDocumentVerification =
+  & {
+    readonly path: string;
+    readonly id?: string;
+    readonly depth: number;
+  }
+  & (
+    | {
+      readonly verified: true;
+      readonly key: Multikey;
+    }
+    | {
+      readonly verified: false;
+      readonly reason: CompoundProofVerificationFailureReason;
+    }
+  );
+
+/** The atomic result of bounded map-local proof verification. */
+export type CompoundProofVerificationResult =
+  | {
+    readonly status: "ok";
+    /** Whether at least one direct proof was discovered and all verified. */
+    readonly verified: boolean;
+    /** The frozen copy used for every verification input. */
+    readonly snapshot: CompoundProofJsonObject;
+    /** Per-map results in deepest-first discovery order. */
+    readonly documents: readonly CompoundProofDocumentVerification[];
     readonly statistics: {
       readonly byteLength: number;
       readonly mapCount: number;
@@ -474,5 +528,63 @@ export function discoverCompoundProofDocuments(
     snapshot,
     documents: Object.freeze(collectDocuments(snapshot)),
     statistics: Object.freeze({ ...inspected }),
+  };
+}
+
+/**
+ * Verifies every direct literal proof found in one immutable JSON snapshot.
+ *
+ * Each current map is verified independently.  Only its literal `proof`
+ * member is removed from its JCS input, so descendant proofs and proof aliases
+ * remain unchanged.  This is the lower-level compound-document mechanism; it
+ * does not apply portable-object policy or authenticate an inbox activity.
+ *
+ * @internal
+ */
+export async function verifyCompoundProofDocuments(
+  json: unknown,
+  limits: CompoundProofDiscoveryLimits,
+  options: VerifyProofOptions = {},
+): Promise<CompoundProofVerificationResult> {
+  const discovered = discoverCompoundProofDocuments(json, limits);
+  if (discovered.status !== "ok") return discovered;
+
+  const documents = await Promise.all(
+    discovered.documents.map(async (document) => {
+      const metadata = {
+        path: document.path,
+        ...(document.id == null ? {} : { id: document.id }),
+        depth: document.depth,
+      };
+      if (
+        document.depth > 0 &&
+        !Object.hasOwn(document.securedDocument, "@context")
+      ) {
+        return Object.freeze({
+          ...metadata,
+          verified: false as const,
+          reason: { type: "missingContext" as const },
+        });
+      }
+      const key = await verifyMapLocalProof(
+        document.securedDocument,
+        options,
+      );
+      return key == null
+        ? Object.freeze({
+          ...metadata,
+          verified: false as const,
+          reason: { type: "invalidProof" as const },
+        })
+        : Object.freeze({ ...metadata, verified: true as const, key });
+    }),
+  );
+  return {
+    status: "ok",
+    verified: documents.length > 0 &&
+      documents.every((document) => document.verified),
+    snapshot: discovered.snapshot,
+    documents: Object.freeze(documents),
+    statistics: discovered.statistics,
   };
 }

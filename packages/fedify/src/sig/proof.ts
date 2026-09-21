@@ -441,6 +441,49 @@ export async function verifyProof(
   return await verifyProofWithMessageDigestCache(jsonLd, proof, options);
 }
 
+/**
+ * Verifies the one direct literal proof on a map-local secured document.
+ *
+ * Unlike {@link verifyProof}, this removes only the literal `proof` member
+ * from the message digest.  JSON-LD aliases remain part of the signed input,
+ * and the document's received `@context` is not replaced by the proof
+ * configuration context.
+ *
+ * @internal
+ */
+export async function verifyMapLocalProof(
+  jsonLd: unknown,
+  options: VerifyProofOptions = {},
+): Promise<Multikey | null> {
+  if (
+    !isJsonLdNode(jsonLd) || !globalThis.Object.hasOwn(jsonLd, "proof") ||
+    !isJsonLdNode(jsonLd.proof)
+  ) {
+    return null;
+  }
+  const proofContextLoader = getNormalizationContextLoader(
+    preloadedOnlyDocumentLoader,
+  );
+  try {
+    const [candidate] = await parseRawProofCandidates(
+      jsonLd,
+      [jsonLd.proof],
+      options,
+      proofContextLoader,
+    );
+    if (candidate.proof == null) return null;
+    return await verifyProofWithMessageDigestCache(
+      jsonLd,
+      candidate.proof,
+      options,
+      { proofContextLoader, proofPropertyMode: "literal" },
+      candidate,
+    );
+  } catch {
+    return null;
+  }
+}
+
 async function verifyProofWithMessageDigestCache(
   jsonLd: unknown,
   proof: DataIntegrityProof,
@@ -526,6 +569,7 @@ interface ProofMessageDigests {
 interface ProofMessageDigestCache {
   values?: Map<string, Promise<ProofMessageDigests>>;
   proofContextLoader?: DocumentLoader;
+  proofPropertyMode?: "jsonLd" | "literal";
 }
 
 function expandContextPropertyIri(
@@ -624,18 +668,25 @@ async function createProofMessageDigests(
   jsonLd: Record<string, unknown>,
   proofContextLoader?: DocumentLoader,
   context?: unknown,
+  proofPropertyMode: "jsonLd" | "literal" = "jsonLd",
 ): Promise<ProofMessageDigests> {
   const msg = { ...jsonLd };
-  // `verifyProof()` promises to ignore existing proofs on the input;
-  // strip every top-level property that the active JSON-LD context maps to
-  // the security proof predicate so its bytes are not folded into the JCS
-  // message digest.
-  for (
-    const property of await getProofPropertyNames(msg, proofContextLoader)
-  ) {
-    delete msg[property];
+  if (proofPropertyMode === "literal") {
+    delete msg.proof;
+  } else {
+    // `verifyProof()` promises to ignore existing proofs on the input;
+    // strip every top-level property that the active JSON-LD context maps to
+    // the security proof predicate so its bytes are not folded into the JCS
+    // message digest.
+    for (
+      const property of await getProofPropertyNames(msg, proofContextLoader)
+    ) {
+      delete msg[property];
+    }
   }
-  if (context != null) msg["@context"] = structuredClone(context);
+  if (proofPropertyMode === "jsonLd" && context != null) {
+    msg["@context"] = structuredClone(context);
+  }
   const encoder = new TextEncoder();
   const digest = async (value: unknown): Promise<ArrayBuffer> => {
     const bytes = encoder.encode(serialize(value));
@@ -1287,14 +1338,17 @@ async function verifyProofInternal(
       jsonLd,
       messageDigestCache.proofContextLoader,
       proofConfiguration.context,
+      messageDigestCache.proofPropertyMode,
     );
     messageDigestValues.set(messageDigestKey, messageDigestsPromise);
   }
   const messageDigests = await messageDigestsPromise;
   if (await verifyCandidate(messageDigests.onWire)) return publicKey;
-  const normalizedDigest = await messageDigests.normalized();
-  if (normalizedDigest != null && await verifyCandidate(normalizedDigest)) {
-    return publicKey;
+  if (messageDigestCache.proofPropertyMode !== "literal") {
+    const normalizedDigest = await messageDigests.normalized();
+    if (normalizedDigest != null && await verifyCandidate(normalizedDigest)) {
+      return publicKey;
+    }
   }
   if (fetchedKey.cached) {
     logger.debug(
