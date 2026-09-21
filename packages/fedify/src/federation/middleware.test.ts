@@ -40,7 +40,7 @@ import {
   rsaPublicKey2,
   rsaPublicKey3,
 } from "../testing/keys.ts";
-import { getDocumentLoader } from "@fedify/vocab-runtime";
+import { getDocumentLoader, UrlError } from "@fedify/vocab-runtime";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 
 const documentLoader = getDocumentLoader();
@@ -3979,6 +3979,8 @@ test("FederationImpl.processQueuedTask() permanent failure", async (t) => {
     const federation = new FederationImpl<void>({
       kv,
       queue,
+      // These delivery-error tests use mocked, unresolvable .example inboxes.
+      allowPrivateAddress: true,
       ...(options.permanentFailureStatusCodes
         ? { permanentFailureStatusCodes: options.permanentFailureStatusCodes }
         : {}),
@@ -5375,4 +5377,42 @@ test("KvSpecDeterminer", async (t) => {
     spec = await determiner.determineSpec("example.com");
     assertEquals(spec, "rfc9421");
   });
+});
+
+test("ContextImpl.sendActivity() honors the private-address policy", async (t) => {
+  for (const allowPrivateAddress of [false, true]) {
+    await t.step(`allowPrivateAddress: ${allowPrivateAddress}`, async () => {
+      const inbox = "http://127.0.0.1/inbox";
+      fetchMock.mockGlobal().post(inbox, 202);
+      try {
+        const federation = createFederation<void>({
+          kv: new MemoryKvStore(),
+          allowPrivateAddress,
+        });
+        const ctx = federation.createContext(new URL("https://example.com/"));
+        const send = () =>
+          ctx.sendActivity(
+            { privateKey: ed25519PrivateKey, keyId: ed25519Multikey.id! },
+            new Person({
+              id: new URL("https://example.com/recipient"),
+              inbox: new URL(inbox),
+            }),
+            new Create({
+              id: new URL("https://example.com/activity"),
+              actor: new URL("https://example.com/person"),
+            }),
+            { immediate: true },
+          );
+        if (allowPrivateAddress) {
+          await send();
+          assertEquals(fetchMock.callHistory.calls(inbox).length, 1);
+        } else {
+          await assertRejects(send, UrlError);
+          assertEquals(fetchMock.callHistory.calls(inbox).length, 0);
+        }
+      } finally {
+        fetchMock.hardReset();
+      }
+    });
+  }
 });
