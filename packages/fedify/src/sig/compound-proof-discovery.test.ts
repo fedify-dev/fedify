@@ -111,6 +111,25 @@ test("discoverCompoundProofDocuments() is independent of member order", () => {
   );
 });
 
+test("discoverCompoundProofDocuments() does not inspect context definitions", () => {
+  const result = discoverCompoundProofDocuments({
+    "@context": {
+      proof: "https://w3id.org/security#proof",
+      portable: {
+        "@id": "ap://did:key:z6MkContext/objects/1",
+        "@context": { proof: "https://example.com/nested-proof" },
+      },
+    },
+    id: "https://social.example/objects/1",
+    type: "Note",
+  }, limits);
+
+  assertEquals(result.status, "ok");
+  if (result.status !== "ok") return;
+  assertEquals(result.documents, []);
+  assertEquals(result.statistics.proofCount, 0);
+});
+
 test("discoverCompoundProofDocuments() preserves the recorded compound vector", () => {
   const result = discoverCompoundProofDocuments(
     vector.documents.finalSecuredCompound,

@@ -1,5 +1,10 @@
 import type { Multikey } from "@fedify/vocab";
-import { verifyMapLocalProof, type VerifyProofOptions } from "./proof.ts";
+import {
+  verifyMapLocalProof,
+  type VerifyPortableObjectProofFailureReason,
+  verifyPortableObjectProofPolicy,
+  type VerifyProofOptions,
+} from "./proof.ts";
 
 /** A JSON value retained in a compound-proof snapshot. */
 export type CompoundProofJsonValue =
@@ -126,11 +131,67 @@ export type CompoundProofVerificationResult =
     readonly reason: CompoundProofDiscoveryFailureReason;
   };
 
+/** A portable JSON map found in the immutable compound snapshot. */
+export interface CompoundPortableObject {
+  readonly path: string;
+  readonly id: string;
+  readonly depth: number;
+  readonly document: CompoundProofJsonObject;
+}
+
+/** Why one portable map did not pass compound proof policy. */
+export type CompoundPortableObjectFailureReason =
+  | CompoundProofVerificationFailureReason
+  | VerifyPortableObjectProofFailureReason
+  | {
+    /** The portable map could not be interpreted by the policy layer. */
+    readonly type: "invalidPortableObject";
+  };
+
+/** The portable proof-policy result for one map. */
+export type CompoundPortableObjectVerification =
+  & {
+    readonly path: string;
+    readonly id: string;
+    readonly depth: number;
+  }
+  & (
+    | {
+      readonly verified: true;
+      readonly keys: readonly Multikey[];
+    }
+    | {
+      readonly verified: false;
+      readonly reason: CompoundPortableObjectFailureReason;
+    }
+  );
+
+/** The atomic compound result after portable-object policy is applied. */
+export type CompoundPortableObjectProofResult =
+  | {
+    readonly status: "ok";
+    readonly verified: boolean;
+    readonly snapshot: CompoundProofJsonObject;
+    readonly proofs: readonly CompoundProofDocumentVerification[];
+    readonly portableObjects: readonly CompoundPortableObjectVerification[];
+    readonly statistics: {
+      readonly byteLength: number;
+      readonly mapCount: number;
+      readonly proofCount: number;
+      readonly maxDepth: number;
+    };
+  }
+  | {
+    readonly status: "unsupported";
+    readonly reason: CompoundProofDiscoveryFailureReason;
+  };
+
 interface PendingValue {
   readonly value: unknown;
   readonly path: string;
   readonly depth: number;
   readonly insideProof: boolean;
+  readonly insideContext: boolean;
 }
 
 interface DiscoveryStatistics {
@@ -141,6 +202,7 @@ interface DiscoveryStatistics {
 }
 
 const textEncoder = new TextEncoder();
+const PORTABLE_OBJECT_ID_PATTERN = /^ap(?:\+ef61)?:\/\//i;
 
 function isJsonMap(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value != null && !Array.isArray(value);
@@ -265,6 +327,7 @@ function inspectJsonTree(
     path: "",
     depth: 0,
     insideProof: false,
+    insideContext: false,
   }];
 
   while (pending.length > 0) {
@@ -333,6 +396,7 @@ function inspectJsonTree(
           path: childPath(current.path, String(index)),
           depth: current.depth + 1,
           insideProof: current.insideProof,
+          insideContext: current.insideContext,
         });
       }
     } else if (isJsonMap(value)) {
@@ -372,7 +436,7 @@ function inspectJsonTree(
       );
       if (failure != null) return failure;
 
-      const hasDirectProof = !current.insideProof &&
+      const hasDirectProof = !current.insideProof && !current.insideContext &&
         Object.hasOwn(value, "proof");
       if (hasDirectProof) {
         statistics.proofCount++;
@@ -403,6 +467,7 @@ function inspectJsonTree(
           depth: current.depth + 1,
           insideProof: current.insideProof ||
             (hasDirectProof && key === "proof"),
+          insideContext: current.insideContext || key === "@context",
         });
       }
     } else {
@@ -474,7 +539,7 @@ function collectDocuments(
     );
     for (let index = entries.length - 1; index >= 0; index--) {
       const [key, value] = entries[index];
-      if (key === "proof") continue;
+      if (key === "proof" || key === "@context") continue;
       pending.push({
         value,
         path: childPath(current.path, key),
@@ -487,6 +552,61 @@ function collectDocuments(
     right.depth - left.depth || comparePaths(left.path, right.path)
   );
   return documents;
+}
+
+function collectPortableObjects(
+  snapshot: CompoundProofJsonObject,
+): CompoundPortableObject[] {
+  const objects: CompoundPortableObject[] = [];
+  const pending: Array<{
+    value: CompoundProofJsonValue;
+    path: string;
+    depth: number;
+  }> = [{ value: snapshot, path: "", depth: 0 }];
+
+  while (pending.length > 0) {
+    const current = pending.pop()!;
+    if (Array.isArray(current.value)) {
+      for (let index = current.value.length - 1; index >= 0; index--) {
+        pending.push({
+          value: current.value[index],
+          path: childPath(current.path, String(index)),
+          depth: current.depth + 1,
+        });
+      }
+      continue;
+    }
+    if (!isCompoundProofJsonObject(current.value)) continue;
+    const document = current.value;
+    const id = [document.id, document["@id"]].find((value) =>
+      typeof value === "string" && PORTABLE_OBJECT_ID_PATTERN.test(value)
+    );
+    if (typeof id === "string") {
+      objects.push(Object.freeze({
+        path: current.path,
+        id,
+        depth: current.depth,
+        document,
+      }));
+    }
+    const entries = Object.entries(document).sort(([left], [right]) =>
+      comparePaths(left, right)
+    );
+    for (let index = entries.length - 1; index >= 0; index--) {
+      const [key, value] = entries[index];
+      if (key === "proof" || key === "@context") continue;
+      pending.push({
+        value,
+        path: childPath(current.path, key),
+        depth: current.depth + 1,
+      });
+    }
+  }
+
+  objects.sort((left, right) =>
+    right.depth - left.depth || comparePaths(left.path, right.path)
+  );
+  return objects;
 }
 
 /**
@@ -549,6 +669,21 @@ export async function verifyCompoundProofDocuments(
   const discovered = discoverCompoundProofDocuments(json, limits);
   if (discovered.status !== "ok") return discovered;
 
+  const documents = await verifyDiscoveredProofDocuments(discovered, options);
+  return {
+    status: "ok",
+    verified: documents.length > 0 &&
+      documents.every((document) => document.verified),
+    snapshot: discovered.snapshot,
+    documents,
+    statistics: discovered.statistics,
+  };
+}
+
+async function verifyDiscoveredProofDocuments(
+  discovered: Extract<CompoundProofDiscoveryResult, { status: "ok" }>,
+  options: VerifyProofOptions,
+): Promise<readonly CompoundProofDocumentVerification[]> {
   const documents = await Promise.all(
     discovered.documents.map(async (document) => {
       const metadata = {
@@ -579,12 +714,77 @@ export async function verifyCompoundProofDocuments(
         : Object.freeze({ ...metadata, verified: true as const, key });
     }),
   );
+  return Object.freeze(documents);
+}
+
+/**
+ * Applies FEP-ef61 portable-object policy to every portable map in a compound
+ * snapshot without changing the map-local cryptographic inputs.
+ *
+ * @internal
+ */
+export async function verifyCompoundPortableObjectProofs(
+  json: unknown,
+  limits: CompoundProofDiscoveryLimits,
+  options: VerifyProofOptions = {},
+): Promise<CompoundPortableObjectProofResult> {
+  const discovered = discoverCompoundProofDocuments(json, limits);
+  if (discovered.status !== "ok") return discovered;
+
+  const proofs = await verifyDiscoveredProofDocuments(discovered, options);
+  const proofByPath = new Map(proofs.map((proof) => [proof.path, proof]));
+  const portableObjects = await Promise.all(
+    collectPortableObjects(discovered.snapshot).map(async (object) => {
+      const metadata = {
+        path: object.path,
+        id: object.id,
+        depth: object.depth,
+      };
+      if (
+        object.depth > 0 && !Object.hasOwn(object.document, "@context")
+      ) {
+        return Object.freeze({
+          ...metadata,
+          verified: false as const,
+          reason: { type: "missingContext" as const },
+        });
+      }
+      const proof = proofByPath.get(object.path);
+      const key = proof?.verified === true ? proof.key : null;
+      try {
+        const policy = await verifyPortableObjectProofPolicy(
+          object.document,
+          key,
+          options,
+        );
+        return policy.verified
+          ? Object.freeze({
+            ...metadata,
+            verified: true as const,
+            keys: policy.keys,
+          })
+          : Object.freeze({
+            ...metadata,
+            verified: false as const,
+            reason: policy.reason,
+          });
+      } catch {
+        return Object.freeze({
+          ...metadata,
+          verified: false as const,
+          reason: { type: "invalidPortableObject" as const },
+        });
+      }
+    }),
+  );
   return {
     status: "ok",
-    verified: documents.length > 0 &&
-      documents.every((document) => document.verified),
+    verified: portableObjects.length > 0 &&
+      proofs.every((proof) => proof.verified) &&
+      portableObjects.every((object) => object.verified),
     snapshot: discovered.snapshot,
-    documents: Object.freeze(documents),
+    proofs,
+    portableObjects: Object.freeze(portableObjects),
     statistics: discovered.statistics,
   };
 }

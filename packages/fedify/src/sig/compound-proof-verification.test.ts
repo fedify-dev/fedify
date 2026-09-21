@@ -10,8 +10,13 @@ import conflictVector from "../../test-vectors/fep-8b32/map-local-context-confli
 };
 import {
   type CompoundProofDiscoveryLimits,
+  verifyCompoundPortableObjectProofs,
   verifyCompoundProofDocuments,
 } from "./compound-proof.ts";
+import {
+  verifyMapLocalProof,
+  verifyPortableObjectProofPolicy,
+} from "./proof.ts";
 
 const limits: CompoundProofDiscoveryLimits = {
   maxDepth: 16,
@@ -366,4 +371,196 @@ test("verifyCompoundProofDocuments() does not fetch proof contexts", async () =>
   assertEquals(result.status, "ok");
   if (result.status === "ok") assertEquals(result.verified, false);
   assertEquals(contextLoads, 0);
+});
+
+test("verifyCompoundPortableObjectProofs() applies policy to every portable map", async () => {
+  let contextLoads = 0;
+  const result = await verifyCompoundPortableObjectProofs(
+    vector.documents.finalSecuredCompound,
+    limits,
+    {
+      ...options,
+      contextLoader() {
+        contextLoads++;
+        throw new TypeError("unexpected context fetch");
+      },
+    },
+  );
+
+  assertEquals(result.status, "ok");
+  if (result.status !== "ok") return;
+  assert(result.verified);
+  assertEquals(contextLoads, 0);
+  assertEquals(
+    result.portableObjects.map((document) => ({
+      path: document.path,
+      verified: document.verified,
+      keys: document.verified ? document.keys.map((key) => key.id?.href) : [],
+    })),
+    [
+      {
+        path: "/object",
+        verified: true,
+        keys: [vector.keys.inner.verificationMethod],
+      },
+      {
+        path: "",
+        verified: true,
+        keys: [vector.keys.outer.verificationMethod],
+      },
+    ],
+  );
+});
+
+test("verifyCompoundPortableObjectProofs() reports unsigned portable maps", async () => {
+  const context = [
+    "https://www.w3.org/ns/activitystreams",
+    "https://w3id.org/security/data-integrity/v1",
+  ];
+  const result = await verifyCompoundPortableObjectProofs(
+    {
+      "@context": context,
+      id: vector.documents.outerUnsecuredDocument.id,
+      type: "Create",
+      actor: vector.documents.outerUnsecuredDocument.actor,
+      object: {
+        "@context": structuredClone(context),
+        id: vector.documents.innerUnsecuredDocument.id,
+        type: "Note",
+        attributedTo: vector.documents.innerUnsecuredDocument.attributedTo,
+        content: "Unsigned portable child",
+      },
+    },
+    limits,
+    options,
+  );
+
+  assertEquals(result.status, "ok");
+  if (result.status !== "ok") return;
+  assertEquals(result.verified, false);
+  assertEquals(result.proofs, []);
+  assertEquals(
+    result.portableObjects.map((document) => ({
+      path: document.path,
+      verified: document.verified,
+      reason: document.verified ? undefined : document.reason.type,
+    })),
+    [
+      { path: "/object", verified: false, reason: "missingProof" },
+      { path: "", verified: false, reason: "missingProof" },
+    ],
+  );
+});
+
+test("verifyCompoundPortableObjectProofs() reports policy before crypto failure", async () => {
+  const mismatched = structuredClone(vector.documents.finalSecuredCompound);
+  asRecord(mismatched.object).id = vector.documents.outerUnsecuredDocument.id;
+  const result = await verifyCompoundPortableObjectProofs(
+    mismatched,
+    limits,
+    options,
+  );
+
+  assertEquals(result.status, "ok");
+  if (result.status !== "ok") return;
+  assertEquals(result.verified, false);
+  const inner = result.portableObjects.find(({ path }) => path === "/object");
+  assert(inner != null && !inner.verified);
+  assertEquals(inner.reason.type, "verificationMethodMismatch");
+});
+
+test("verifyCompoundPortableObjectProofs() finds unsigned portable maps in arrays", async () => {
+  const result = await verifyCompoundPortableObjectProofs(
+    {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: "https://social.example/activities/1",
+      type: "Create",
+      attachment: [{
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/security/data-integrity/v1",
+        ],
+        id: vector.documents.innerUnsecuredDocument.id,
+        type: "Note",
+        content: "Unsigned portable attachment",
+      }],
+    },
+    limits,
+    options,
+  );
+
+  assertEquals(result.status, "ok");
+  if (result.status !== "ok") return;
+  assertEquals(result.verified, false);
+  assertEquals(
+    result.portableObjects.map((document) => ({
+      path: document.path,
+      reason: document.verified ? undefined : document.reason.type,
+    })),
+    [{ path: "/attachment/0", reason: "missingProof" }],
+  );
+});
+
+test("verifyCompoundPortableObjectProofs() ignores context definitions", async () => {
+  const result = await verifyCompoundPortableObjectProofs(
+    {
+      "@context": {
+        portable: {
+          "@id": vector.documents.innerUnsecuredDocument.id,
+          "@context": {
+            proof: "https://w3id.org/security#proof",
+          },
+        },
+      },
+      id: "https://social.example/objects/1",
+      type: "Note",
+    },
+    limits,
+    options,
+  );
+
+  assertEquals(result.status, "ok");
+  if (result.status !== "ok") return;
+  assertEquals(result.verified, false);
+  assertEquals(result.proofs, []);
+  assertEquals(result.portableObjects, []);
+});
+
+test("verifyCompoundPortableObjectProofs() contains malformed portable IDs", async () => {
+  const result = await verifyCompoundPortableObjectProofs(
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/data-integrity/v1",
+      ],
+      id: "ap://did%ZZkey/objects/1",
+      type: "Note",
+    },
+    limits,
+    options,
+  );
+
+  assertEquals(result.status, "ok");
+  if (result.status !== "ok") return;
+  assertEquals(result.verified, false);
+  assertEquals(result.portableObjects.length, 1);
+  const [object] = result.portableObjects;
+  assert(!object.verified);
+  assertEquals(object.reason, { type: "invalidPortableObject" });
+});
+
+test("verifyPortableObjectProofPolicy() binds policy to the verified key", async () => {
+  const outerKey = await verifyMapLocalProof(
+    vector.documents.finalSecuredCompound,
+    options,
+  );
+  assert(outerKey != null);
+  assertEquals(
+    await verifyPortableObjectProofPolicy(
+      vector.documents.securedInner,
+      outerKey,
+      options,
+    ),
+    { verified: false, reason: { type: "invalidProof", proofIndex: 0 } },
+  );
 });
