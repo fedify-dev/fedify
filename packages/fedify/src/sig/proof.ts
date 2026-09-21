@@ -1701,15 +1701,27 @@ export async function verifyPortableObjectProofPolicy(
   key: Multikey | null,
   options: VerifyPortableObjectProofOptions = {},
 ): Promise<VerifyPortableObjectProofResult> {
-  const prepared = await preparePortableObjectProof(jsonLd, {
+  const policyOptions = {
     ...options,
     contextLoader: preloadedOnlyDocumentLoader,
-  });
+  };
+  const prepared = await preparePortableObjectProof(jsonLd, policyOptions);
   if (!prepared.prepared) return prepared.result;
-  const verificationMethod = prepared.proofs[0]?.verificationMethodId;
+  const policyProof = prepared.proofs[0];
+  const literalProof = isJsonLdNode(jsonLd) && isJsonLdNode(jsonLd.proof)
+    ? (await parseRawProofCandidates(
+      jsonLd,
+      [jsonLd.proof],
+      policyOptions,
+      prepared.proofContextLoader,
+    ))[0]?.proof
+    : null;
+  const verificationMethod = policyProof?.verificationMethodId;
   if (
     prepared.proofs.length !== 1 || key == null ||
-    verificationMethod == null || key.id?.href !== verificationMethod.href
+    policyProof == null || literalProof == null ||
+    !sameProof(policyProof, literalProof) || verificationMethod == null ||
+    key.id?.href !== verificationMethod.href
   ) {
     return {
       verified: false,

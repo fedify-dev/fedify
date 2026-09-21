@@ -564,3 +564,57 @@ test("verifyPortableObjectProofPolicy() binds policy to the verified key", async
     { verified: false, reason: { type: "invalidProof", proofIndex: 0 } },
   );
 });
+
+test("verifyPortableObjectProofPolicy() binds policy to the verified proof", async () => {
+  const context = {
+    id: "@id",
+    type: "@type",
+    Note: "https://www.w3.org/ns/activitystreams#Note",
+    attributedTo: {
+      "@id": "https://www.w3.org/ns/activitystreams#attributedTo",
+      "@type": "@id",
+    },
+    content: "https://www.w3.org/ns/activitystreams#content",
+    DataIntegrityProof: "https://w3id.org/security#DataIntegrityProof",
+    cryptosuite: "https://w3id.org/security#cryptosuite",
+    verificationMethod: {
+      "@id": "https://w3id.org/security#verificationMethod",
+      "@type": "@id",
+    },
+    proofPurpose: {
+      "@id": "https://w3id.org/security#proofPurpose",
+      "@type": "@vocab",
+    },
+    assertionMethod: "https://w3id.org/security#assertionMethod",
+    created: {
+      "@id": "http://purl.org/dc/terms/created",
+      "@type": "http://www.w3.org/2001/XMLSchema#dateTime",
+    },
+    proofValue: "https://w3id.org/security#proofValue",
+    proof: {
+      "@id": "https://w3id.org/security#proof",
+      "@context": {
+        assertionMethod: "https://w3id.org/security#authentication",
+      },
+    },
+  };
+  const secured = await secureRawDocument(
+    {
+      "@context": context,
+      id: vector.documents.innerUnsecuredDocument.id,
+      type: "Note",
+      attributedTo: vector.documents.innerUnsecuredDocument.attributedTo,
+      content: "Property-scoped proof purpose",
+    },
+    vector.keys.inner.testPrivateKeyJwk,
+    vector.keys.inner.verificationMethod,
+  );
+  delete asRecord(secured.proof)["@context"];
+
+  const key = await verifyMapLocalProof(secured, options);
+  assert(key != null);
+  assertEquals(
+    await verifyPortableObjectProofPolicy(secured, key, options),
+    { verified: false, reason: { type: "invalidProof", proofIndex: 0 } },
+  );
+});
