@@ -53,6 +53,10 @@ const outerMethod = outerDid.substring("did:key:".length);
 const innerMethod = innerDid.substring("did:key:".length);
 const outerKeyId = new URL(`${outerDid}#${outerMethod}`);
 const innerKeyId = new URL(`${innerDid}#${innerMethod}`);
+const vectorInnerKeyId = new URL(vector.keys.inner.verificationMethod);
+const conflictVectorInnerKeyId = new URL(
+  conflictVector.keys.inner.verificationMethod,
+);
 const context = [
   "https://www.w3.org/ns/activitystreams",
   "https://w3id.org/security/data-integrity/v1",
@@ -320,7 +324,7 @@ test("the context-conflict vector records valid proofs and divergent semantics",
     verifiedInner != null,
     conflictVector.expectedVerification.original.inner,
   );
-  assertEquals(verifiedInner?.id, innerKeyId);
+  assertEquals(verifiedInner?.id, conflictVectorInnerKeyId);
   const verifiedOuter = await verifyProof(
     compound,
     await parseProof(compound),
@@ -389,7 +393,7 @@ test("the raw same-context baseline verifies map-locally", async () => {
     verifiedInnerKey != null,
     vector.expectedVerification.standaloneInner,
   );
-  assertEquals(verifiedInnerKey?.id, innerKeyId);
+  assertEquals(verifiedInnerKey?.id, vectorInnerKeyId);
   const verifiedOuterKey = await verifyProof(
     compound,
     await parseProof(compound),
@@ -441,7 +445,7 @@ test("the raw same-context baseline verifies map-locally", async () => {
     replacementInnerKey != null,
     vector.expectedVerification.replacedInnerProof.inner,
   );
-  assertEquals(replacementInnerKey?.id, innerKeyId);
+  assertEquals(replacementInnerKey?.id, vectorInnerKeyId);
   const replacementOuterKey = await verifyProof(
     replaced,
     await parseProof(replaced),
