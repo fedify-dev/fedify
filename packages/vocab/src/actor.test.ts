@@ -99,45 +99,46 @@ test({
   async fn(t) {
     fetchMock.spyGlobal();
 
+    // Node validates addresses before fetch; public IP literals avoid DNS.
     fetchMock.get(
-      "begin:https://foo.example.com/.well-known/webfinger?",
+      "begin:https://1.1.1.1/.well-known/webfinger?",
       {
-        body: { subject: "acct:johndoe@foo.example.com" },
+        body: { subject: "acct:johndoe@1.1.1.1" },
         headers: { "Content-Type": "application/jrd+json" },
       },
     );
 
-    const actorId = new URL("https://foo.example.com/@john");
+    const actorId = new URL("https://1.1.1.1/@john");
     const actor = new Person({
       id: actorId,
       preferredUsername: "john",
     });
 
     await t.step("WebFinger subject", async () => {
-      deepStrictEqual(await getActorHandle(actor), "@johndoe@foo.example.com");
+      deepStrictEqual(await getActorHandle(actor), "@johndoe@1.1.1.1");
       deepStrictEqual(
         await getActorHandle(actor, { trimLeadingAt: true }),
-        "johndoe@foo.example.com",
+        "johndoe@1.1.1.1",
       );
       deepStrictEqual(
         await getActorHandle(actorId),
-        "@johndoe@foo.example.com",
+        "@johndoe@1.1.1.1",
       );
       deepStrictEqual(
         await getActorHandle(actorId, { trimLeadingAt: true }),
-        "johndoe@foo.example.com",
+        "johndoe@1.1.1.1",
       );
     });
 
     fetchMock.removeRoutes();
     fetchMock.get(
-      "begin:https://foo.example.com/.well-known/webfinger?",
+      "begin:https://1.1.1.1/.well-known/webfinger?",
       {
         body: {
-          subject: "https://foo.example.com/@john",
+          subject: "https://1.1.1.1/@john",
           aliases: [
-            "acct:john@bar.example.com",
-            "acct:johndoe@foo.example.com",
+            "acct:john@8.8.8.8",
+            "acct:johndoe@1.1.1.1",
           ],
         },
         headers: { "Content-Type": "application/jrd+json" },
@@ -145,28 +146,28 @@ test({
     );
 
     await t.step("WebFinger aliases", async () => {
-      deepStrictEqual(await getActorHandle(actor), "@johndoe@foo.example.com");
+      deepStrictEqual(await getActorHandle(actor), "@johndoe@1.1.1.1");
       deepStrictEqual(
         await getActorHandle(actor, { trimLeadingAt: true }),
-        "johndoe@foo.example.com",
+        "johndoe@1.1.1.1",
       );
       deepStrictEqual(
         await getActorHandle(actorId),
-        "@johndoe@foo.example.com",
+        "@johndoe@1.1.1.1",
       );
       deepStrictEqual(
         await getActorHandle(actorId, { trimLeadingAt: true }),
-        "johndoe@foo.example.com",
+        "johndoe@1.1.1.1",
       );
     });
 
     fetchMock.get(
-      "begin:https://bar.example.com/.well-known/webfinger?",
+      "begin:https://8.8.8.8/.well-known/webfinger?",
       {
         body: {
-          subject: "acct:john@bar.example.com",
+          subject: "acct:john@8.8.8.8",
           aliases: [
-            "https://foo.example.com/@john",
+            "https://1.1.1.1/@john",
           ],
         },
         headers: { "Content-Type": "application/jrd+json" },
@@ -174,18 +175,18 @@ test({
     );
 
     await t.step("cross-origin WebFinger resources", async () => {
-      deepStrictEqual(await getActorHandle(actor), "@john@bar.example.com");
+      deepStrictEqual(await getActorHandle(actor), "@john@8.8.8.8");
     });
 
     fetchMock.removeRoutes();
     fetchMock.get(
-      "begin:https://foo.example.com/.well-known/webfinger?",
+      "begin:https://1.1.1.1/.well-known/webfinger?",
       { status: 404 },
     );
 
     await t.step("no WebFinger", async () => {
-      deepStrictEqual(await getActorHandle(actor), "@john@foo.example.com");
-      rejects(() => getActorHandle(actorId), TypeError);
+      deepStrictEqual(await getActorHandle(actor), "@john@1.1.1.1");
+      await rejects(() => getActorHandle(actorId), TypeError);
     });
 
     fetchMock.hardReset();

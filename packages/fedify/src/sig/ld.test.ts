@@ -8,6 +8,7 @@ import { assert } from "@std/assert/assert";
 import { assertEquals } from "@std/assert/assert-equals";
 import { assertFalse } from "@std/assert/assert-false";
 import { assertGreaterOrEqual } from "@std/assert/assert-greater-or-equal";
+import { assertInstanceOf } from "@std/assert/assert-instance-of";
 import { assertRejects } from "@std/assert/assert-rejects";
 import { assertThrows } from "@std/assert/assert-throws";
 import { encodeBase64 } from "byte-encodings/base64";
@@ -1432,3 +1433,86 @@ test("compactJsonLd() rejects inputs that compact into @graph wrappers", async (
 });
 
 // cSpell: ignore ostatus
+
+test("verifyJsonLd() rejects a key that claims a forged owner", async () => {
+  // Linked Data Signatures clear an activity's attributions with the `owner`
+  // the signing key declares about itself, and this path needs no HTTP
+  // signature at all.  See GHSA-q9f8-5hc7-898f.
+  const keyId = new URL("https://attacker.example/key");
+  const impersonated = "https://example.com/person";
+  const { publicKeyPem } = await rsaPublicKey2.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as { publicKeyPem: string };
+  const doc = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id: "https://attacker.example/activities/1",
+    type: "Create",
+    actor: impersonated,
+  };
+  const signed = await signJsonLd(doc, rsaPrivateKey2, keyId, {
+    contextLoader: mockDocumentLoader,
+  });
+  const serveKeyOwnedBy = (owner: string) => (resource: string) => {
+    if (resource === keyId.href) {
+      return Promise.resolve({
+        contextUrl: null,
+        documentUrl: resource,
+        document: {
+          "@context": "https://w3id.org/security/v1",
+          id: keyId.href,
+          type: "CryptographicKey",
+          owner,
+          publicKeyPem,
+        },
+      });
+    }
+    if (resource === "https://attacker.example/actor") {
+      return Promise.resolve({
+        contextUrl: null,
+        documentUrl: resource,
+        document: {
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            "https://w3id.org/security/v1",
+          ],
+          id: resource,
+          type: "Person",
+          publicKey: [keyId.href],
+        },
+      });
+    }
+    return mockDocumentLoader(resource);
+  };
+
+  assertEquals(
+    await verifySignature(signed, {
+      documentLoader: serveKeyOwnedBy(impersonated),
+      contextLoader: mockDocumentLoader,
+    }),
+    null,
+  );
+  assertFalse(
+    await verifyJsonLd(signed, {
+      documentLoader: serveKeyOwnedBy(impersonated),
+      contextLoader: mockDocumentLoader,
+    }),
+  );
+
+  // The signature itself is sound: served under an owner that really does
+  // link back to the key, the same signature verifies.  What it authenticates
+  // is that owner, though, and not the actor the activity claims.
+  const honestLoader = serveKeyOwnedBy("https://attacker.example/actor");
+  assertInstanceOf(
+    await verifySignature(signed, {
+      documentLoader: honestLoader,
+      contextLoader: mockDocumentLoader,
+    }),
+    CryptographicKey,
+  );
+  assertFalse(
+    await verifyJsonLd(signed, {
+      documentLoader: honestLoader,
+      contextLoader: mockDocumentLoader,
+    }),
+  );
+});

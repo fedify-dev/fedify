@@ -6,7 +6,7 @@ import {
 } from "@fedify/fixture";
 import { CryptographicKey, Multikey } from "@fedify/vocab";
 import { type DocumentLoader, FetchError } from "@fedify/vocab-runtime";
-import { assertEquals, assertRejects, assertThrows } from "@std/assert";
+import { assert, assertEquals, assertRejects, assertThrows } from "@std/assert";
 import {
   ed25519Multikey,
   rsaPrivateKey2,
@@ -401,7 +401,9 @@ test("fetchKeyDetailed()", async () => {
     ),
     { key: rsaPublicKey1, cached: false },
   );
-  assertEquals(documentLoaderCalls, 1);
+  // Two: the key document itself, and the owner it claims, which has to be
+  // dereferenced before the key may be used.  See GHSA-q9f8-5hc7-898f.
+  assertEquals(documentLoaderCalls, 2);
 
   const spans = exporter.getSpans("activitypub.fetch_key");
   assertEquals(spans.length, 2);
@@ -732,4 +734,244 @@ test("fetchKey() returns null for a malformed actor publicKey", async () => {
     key: null,
     cached: true,
   });
+});
+
+test("fetchKey() rejects a key whose owner does not link back", async () => {
+  // Both sides of the `owner` claim are written by the same host, so the
+  // claim is only worth what the named owner's own document says.  Neither
+  // impersonated actor below lists the attacker's key.
+  // See GHSA-q9f8-5hc7-898f.
+  const keyId = "https://attacker.example/key";
+  const keyDocument = await rsaPublicKey1.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  const serveKeyOwnedBy = (owner: string): FetchKeyOptions => ({
+    documentLoader(resource) {
+      if (resource === keyId) {
+        return Promise.resolve({
+          contextUrl: null,
+          documentUrl: resource,
+          document: { ...keyDocument, id: keyId, owner },
+        });
+      }
+      return mockDocumentLoader(resource);
+    },
+    contextLoader: mockDocumentLoader,
+  });
+
+  assertEquals(
+    await fetchKey(
+      keyId,
+      CryptographicKey,
+      serveKeyOwnedBy("https://example.com/person"),
+    ),
+    { key: null, cached: false },
+  );
+  // The impersonated actor does not even have to be resolvable.
+  assertEquals(
+    await fetchKey(
+      keyId,
+      CryptographicKey,
+      serveKeyOwnedBy("https://impersonated.invalid/users/victim"),
+    ),
+    { key: null, cached: false },
+  );
+});
+
+test("fetchKey() rejects a Multikey whose controller does not link back", async () => {
+  const keyId = "https://attacker.example/multikey";
+  const keyDocument = await ed25519Multikey.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  const options: FetchKeyOptions = {
+    documentLoader(resource) {
+      if (resource === keyId) {
+        return Promise.resolve({
+          contextUrl: null,
+          documentUrl: resource,
+          document: {
+            ...keyDocument,
+            id: keyId,
+            controller: "https://example.com/person2",
+          },
+        });
+      }
+      return mockDocumentLoader(resource);
+    },
+    contextLoader: mockDocumentLoader,
+  };
+  assertEquals(await fetchKey(keyId, Multikey, options), {
+    key: null,
+    cached: false,
+  });
+});
+
+test("fetchKey() rejects an actor document from another origin", async () => {
+  // A key document dressed up as somebody else's actor document.  The key it
+  // carries shares that actor's origin, so the vocabulary trusts it as
+  // embedded and never fetches it; the fragmentless key id then takes the
+  // single-key fallback below, and the attacker's key comes back attributed
+  // to the impersonated actor.  Only the host that serves an actor id can
+  // speak for it.  See GHSA-q9f8-5hc7-898f.
+  const keyId = "https://attacker.example/key";
+  const impersonated = "https://example.com/person";
+  const { publicKeyPem } = await rsaPublicKey1.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as { publicKeyPem: string };
+  const options: FetchKeyOptions = {
+    documentLoader(resource) {
+      if (resource === keyId) {
+        return Promise.resolve({
+          contextUrl: null,
+          documentUrl: resource,
+          document: {
+            "@context": [
+              "https://www.w3.org/ns/activitystreams",
+              "https://w3id.org/security/v1",
+            ],
+            id: impersonated,
+            type: "Person",
+            publicKey: [
+              {
+                id: `${impersonated}#main-key`,
+                type: "CryptographicKey",
+                owner: impersonated,
+                publicKeyPem,
+              },
+            ],
+          },
+        });
+      }
+      return mockDocumentLoader(resource);
+    },
+    contextLoader: mockDocumentLoader,
+  };
+  assertEquals(await fetchKey(keyId, CryptographicKey, options), {
+    key: null,
+    cached: false,
+  });
+});
+
+test("fetchKey() rejects a key that disowns the actor document holding it", async () => {
+  // The document is the attacker's own actor document, on the attacker's own
+  // origin, but the key inside it points its `owner` at somebody else.
+  const actorId = "https://attacker.example/actor";
+  const keyId = `${actorId}#main-key`;
+  const { publicKeyPem } = await rsaPublicKey1.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as { publicKeyPem: string };
+  const options: FetchKeyOptions = {
+    documentLoader(resource) {
+      if (resource === keyId || resource === actorId) {
+        return Promise.resolve({
+          contextUrl: null,
+          documentUrl: resource,
+          document: {
+            "@context": [
+              "https://www.w3.org/ns/activitystreams",
+              "https://w3id.org/security/v1",
+            ],
+            id: actorId,
+            type: "Person",
+            publicKey: [
+              {
+                id: keyId,
+                type: "CryptographicKey",
+                owner: "https://example.com/person",
+                publicKeyPem,
+              },
+            ],
+          },
+        });
+      }
+      return mockDocumentLoader(resource);
+    },
+    contextLoader: mockDocumentLoader,
+  };
+  assertEquals(await fetchKey(keyId, CryptographicKey, options), {
+    key: null,
+    cached: false,
+  });
+});
+
+test("fetchKey() records the owner its actor document establishes", async () => {
+  const options: FetchKeyOptions = {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  };
+  // The key is listed by the actor document it came from but declares no
+  // owner of its own.  That single fetch settles the question, so the answer
+  // is recorded on the key instead of being left for every caller to redo.
+  const { key } = await fetchKey(
+    "https://example.com/users/handle#main-key",
+    CryptographicKey,
+    options,
+  );
+  assertEquals(key?.ownerId, new URL("https://example.com/users/handle"));
+});
+
+test("fetchKey() accepts a key document that leaves its id implicit", async () => {
+  const keyId = "https://example.com/key";
+  const keyDocument = await rsaPublicKey1.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  delete keyDocument.id;
+  const options: FetchKeyOptions = {
+    documentLoader(resource) {
+      if (resource === keyId) {
+        return Promise.resolve({
+          contextUrl: null,
+          documentUrl: resource,
+          document: keyDocument,
+        });
+      }
+      return mockDocumentLoader(resource);
+    },
+    contextLoader: mockDocumentLoader,
+  };
+  const { key } = await fetchKey(keyId, CryptographicKey, options);
+  // The URL it was fetched from stands in for the id the document left out,
+  // which is what its owner links back to.
+  assertEquals(key?.id, new URL(keyId));
+  assertEquals(key?.ownerId, new URL("https://example.com/person"));
+  assert(key?.publicKey != null);
+});
+
+test("fetchKey() records the controller an actor document establishes", async () => {
+  const actorId = "https://example.com/multikey-actor";
+  const keyId = `${actorId}#assertion`;
+  const { publicKeyMultibase } = await ed25519Multikey.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as { publicKeyMultibase: string };
+  const options: FetchKeyOptions = {
+    documentLoader(resource) {
+      if (resource === actorId || resource === keyId) {
+        return Promise.resolve({
+          contextUrl: null,
+          documentUrl: actorId,
+          document: {
+            "@context": [
+              "https://www.w3.org/ns/activitystreams",
+              "https://w3id.org/security/v1",
+              "https://w3id.org/security/multikey/v1",
+              "https://w3id.org/security/data-integrity/v1",
+              "https://www.w3.org/ns/did/v1",
+            ],
+            id: actorId,
+            type: "Person",
+            assertionMethod: [
+              { id: keyId, type: "Multikey", publicKeyMultibase },
+            ],
+          },
+        });
+      }
+      return mockDocumentLoader(resource);
+    },
+    contextLoader: mockDocumentLoader,
+  };
+  // The same as for a CryptographicKey, but reached through `controller` and
+  // `assertionMethod`, which is what the Object Integrity Proof path reads.
+  const { key } = await fetchKey(keyId, Multikey, options);
+  assertEquals(key?.controllerId, new URL(actorId));
+  assert(key?.publicKey != null);
 });

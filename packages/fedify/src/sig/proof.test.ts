@@ -912,3 +912,100 @@ test("verifyObject()", async () => {
   assertInstanceOf(note, Note);
   assertEquals(note.content, "Hello world");
 });
+
+test("verifyObject() rejects a key that claims a forged controller", async () => {
+  // Object Integrity Proofs clear an object's attributions with the
+  // `controller` the signing key declares about itself, and this path needs
+  // no HTTP signature at all.  See GHSA-q9f8-5hc7-898f.
+  const keyId = new URL("https://attacker.example/multikey");
+  const impersonated = "https://example.com/person2";
+  const attackerActor = "https://attacker.example/actor";
+  const multikeyDocument = await ed25519Multikey.toJsonLd({
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  const options = {
+    format: "compact" as const,
+    contextLoader: mockDocumentLoader,
+    documentLoader: mockDocumentLoader,
+    context: [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+  };
+  const signed = await signObject(
+    new Create({
+      id: new URL("https://attacker.example/activities/1"),
+      actor: new URL(impersonated),
+      object: new Note({
+        id: new URL("https://attacker.example/notes/1"),
+        attribution: new URL(impersonated),
+        content: "Hello world",
+      }),
+    }),
+    ed25519PrivateKey,
+    keyId,
+    options,
+  );
+  const jsonLd = await signed.toJsonLd(options);
+  const serveKeyControlledBy = (controller: string) => (resource: string) => {
+    if (resource === keyId.href) {
+      return Promise.resolve({
+        contextUrl: null,
+        documentUrl: resource,
+        document: { ...multikeyDocument, id: keyId.href, controller },
+      });
+    }
+    if (resource === attackerActor) {
+      return Promise.resolve({
+        contextUrl: null,
+        documentUrl: resource,
+        document: {
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            "https://w3id.org/security/v1",
+            "https://w3id.org/security/multikey/v1",
+            "https://w3id.org/security/data-integrity/v1",
+            "https://www.w3.org/ns/did/v1",
+          ],
+          id: resource,
+          type: "Person",
+          assertionMethod: [keyId.href],
+        },
+      });
+    }
+    return mockDocumentLoader(resource);
+  };
+
+  assertEquals(
+    await verifyObject(Create, jsonLd, {
+      documentLoader: serveKeyControlledBy(impersonated),
+      contextLoader: mockDocumentLoader,
+    }),
+    null,
+  );
+
+  // The proof itself is sound: served under a controller that really does
+  // list the key, the same proof verifies.  What it authenticates is that
+  // controller, though, and not the actor the activity claims.
+  const honestLoader = serveKeyControlledBy(attackerActor);
+  let proof: DataIntegrityProof | null = null;
+  for await (const p of signed.getProofs(options)) {
+    proof = p;
+    break;
+  }
+  assertInstanceOf(proof, DataIntegrityProof);
+  assertInstanceOf(
+    await verifyProof(jsonLd, proof, {
+      documentLoader: honestLoader,
+      contextLoader: mockDocumentLoader,
+    }),
+    Multikey,
+  );
+  assertEquals(
+    await verifyObject(Create, jsonLd, {
+      documentLoader: honestLoader,
+      contextLoader: mockDocumentLoader,
+    }),
+    null,
+  );
+});

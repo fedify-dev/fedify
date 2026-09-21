@@ -7,6 +7,8 @@ import {
 import {
   Activity,
   Create,
+  CryptographicKey,
+  Multikey,
   Note,
   type Object,
   Person,
@@ -22,7 +24,9 @@ import {
 } from "@std/assert";
 import { parseAcceptSignature } from "../sig/accept.ts";
 import { signRequest } from "../sig/http.ts";
+import { generateCryptoKeyPair } from "../sig/key.ts";
 import { compactJsonLd, signJsonLd } from "../sig/ld.ts";
+import { signObject } from "../sig/proof.ts";
 import {
   createInboxContext,
   createOutboxContext,
@@ -5889,3 +5893,169 @@ test(
     );
   },
 );
+
+test("handleInbox() rejects forged key ownership", async () => {
+  // The reproduction from GHSA-q9f8-5hc7-898f: an attacker serves a key
+  // document of their own making, declares it owned by whichever actor they
+  // want to be, and signs an activity with it.  Both sides of that ownership
+  // claim are the attacker's, so nothing about it may be believed, and each
+  // of the three authentication paths has to turn the delivery down.  Two of
+  // them carry no HTTP signature at all.
+  const impersonated = "https://example.com/person2";
+  const attackerKeyId = new URL("https://attacker.example/key");
+  const attackerMultikeyId = new URL("https://attacker.example/multikey");
+  const { privateKey, publicKey } = await generateCryptoKeyPair(
+    "RSASSA-PKCS1-v1_5",
+  );
+  const forgedKeyDocument = await new CryptographicKey({
+    id: attackerKeyId,
+    owner: new URL(impersonated),
+    publicKey,
+  }).toJsonLd({ contextLoader: mockDocumentLoader });
+  const ed25519 = await generateCryptoKeyPair("Ed25519");
+  const forgedMultikeyDocument = await new Multikey({
+    id: attackerMultikeyId,
+    controller: new URL(impersonated),
+    publicKey: ed25519.publicKey,
+  }).toJsonLd({ contextLoader: mockDocumentLoader });
+  const documentLoader = (resource: string) => {
+    if (resource === attackerKeyId.href) {
+      return Promise.resolve({
+        contextUrl: null,
+        documentUrl: resource,
+        document: forgedKeyDocument,
+      });
+    }
+    if (resource === attackerMultikeyId.href) {
+      return Promise.resolve({
+        contextUrl: null,
+        documentUrl: resource,
+        document: forgedMultikeyDocument,
+      });
+    }
+    return mockDocumentLoader(resource);
+  };
+  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+  const inboxOptions = {
+    kv: new MemoryKvStore(),
+    kvPrefixes: {
+      activityIdempotence: ["_fedify", "activityIdempotence"],
+      publicKey: ["_fedify", "publicKey"],
+      acceptSignatureNonce: ["_fedify", "acceptSignatureNonce"],
+    },
+    actorDispatcher:
+      ((_ctx, identifier) =>
+        identifier === "someone"
+          ? new Person({ name: "Someone" })
+          : null) as ActorDispatcher<void>,
+    inboxListeners: new ActivityListenerSet<InboxContext<void>>(),
+    onNotFound: () => new Response("Not found", { status: 404 }),
+    signatureTimeWindow: { minutes: 5 },
+    skipSignatureVerification: false,
+  } as const;
+  const handle = async (request: Request) => {
+    const context = createRequestContext<void>({
+      federation,
+      request,
+      url: new URL(request.url),
+      data: undefined,
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+    });
+    return await handleInbox(request, {
+      recipient: null,
+      context,
+      inboxContextFactory(_activity) {
+        return createInboxContext({ ...context, clone: undefined });
+      },
+      ...inboxOptions,
+    });
+  };
+
+  const activity = {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/identity/v1",
+      "https://w3id.org/security/v1",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+    id: "https://attacker.example/activities/1",
+    type: "Create",
+    actor: impersonated,
+    object: {
+      id: "https://attacker.example/notes/1",
+      type: "Note",
+      attributedTo: impersonated,
+      content: "Hello World!",
+    },
+  };
+
+  // HTTP Signatures.
+  const httpSignedRequest = await signRequest(
+    new Request("https://example.com/", {
+      method: "POST",
+      body: JSON.stringify(activity),
+    }),
+    privateKey,
+    attackerKeyId,
+  );
+  const httpSignedResponse = await handle(httpSignedRequest);
+
+  // Linked Data Signatures, with no HTTP signature on the request.
+  const ldSignedRequest = new Request("https://example.com/", {
+    method: "POST",
+    body: JSON.stringify(
+      await signJsonLd(activity, privateKey, attackerKeyId, {
+        contextLoader: mockDocumentLoader,
+      }),
+    ),
+  });
+  const ldSignedResponse = await handle(ldSignedRequest);
+
+  // Object Integrity Proofs, with no HTTP signature on the request either.
+  const signedObject = await signObject(
+    await Create.fromJsonLd(activity, {
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+    }),
+    ed25519.privateKey,
+    attackerMultikeyId,
+    {
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      context: [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/data-integrity/v1",
+      ],
+    },
+  );
+  const proofSignedRequest = new Request("https://example.com/", {
+    method: "POST",
+    body: JSON.stringify(
+      await signedObject.toJsonLd({
+        format: "compact",
+        contextLoader: mockDocumentLoader,
+        context: [
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/security/data-integrity/v1",
+        ],
+      }),
+    ),
+  });
+  const proofSignedResponse = await handle(proofSignedRequest);
+
+  // Report all three together, so that a regression in any one of them is
+  // visible at once rather than hidden behind the first assertion.
+  assertEquals(
+    [
+      httpSignedResponse.status,
+      ldSignedResponse.status,
+      proofSignedResponse.status,
+    ],
+    [401, 401, 401],
+  );
+  assertEquals(
+    await httpSignedResponse.text(),
+    "Failed to verify the request signature.",
+  );
+});

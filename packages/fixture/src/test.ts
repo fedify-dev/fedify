@@ -5,6 +5,7 @@ import {
   reset,
   type Sink,
 } from "@logtape/logtape";
+import { createRequire } from "node:module";
 import type { TestContext } from "node:test";
 
 export const testDefinitions: Deno.TestDefinition[] = [];
@@ -128,19 +129,22 @@ export function test(
     if (def.ignore) bunTest.skip(def.name, fn);
     else if (def.only) bunTest.only(def.name, fn);
     else bunTest(def.name, fn);
-  } else {
-    try {
-      const { test: nodeTest } = require("node:test");
-      nodeTest(
-        def.name,
-        { only: def.only, skip: def.ignore },
-        async (t: TestContext) => {
-          await def.fn(intoDenoTestContext(def.name, t));
-        },
-      );
-    } catch {
-      // Fallback for environments without `node:test`
-    }
+  } else if (
+    globalThis.process?.release?.name === "node" &&
+    !("navigator" in globalThis &&
+      navigator.userAgent === "Cloudflare-Workers")
+  ) {
+    // Neutral ESM bundles have no require; Workers only collect definitions.
+    const { test: nodeTest } = createRequire(globalThis.process.cwd() + "/")(
+      "node:test",
+    );
+    nodeTest(
+      def.name,
+      { only: def.only, skip: def.ignore },
+      async (t: TestContext) => {
+        await def.fn(intoDenoTestContext(def.name, t));
+      },
+    );
   }
 }
 
