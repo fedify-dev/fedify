@@ -610,6 +610,86 @@ function collectPortableObjects(
 }
 
 /**
+ * Determines whether a received JSON tree contains a portable object ID
+ * outside a proof or context definition, without exceeding discovery limits.
+ *
+ * This is only an applicability check.  It does not authenticate the input;
+ * callers must still use {@link verifyCompoundPortableObjectProofs} to obtain
+ * an atomic result from an immutable snapshot.  `indeterminate` means the
+ * applicability scan itself reached a limit, so a caller must not treat the
+ * document as outside the compound profile.
+ *
+ * @internal
+ */
+export function inspectCompoundPortableObjectApplicability(
+  json: unknown,
+  limits: CompoundProofDiscoveryLimits,
+): "present" | "absent" | "indeterminate" {
+  validateLimits(limits);
+  let byteLength = 0;
+  let mapCount = 0;
+  const pending: Array<{
+    iterator: Iterator<unknown>;
+    depth: number;
+  }> = [{ iterator: [json].values(), depth: 0 }];
+
+  const addByteLength = (length: number): boolean => {
+    byteLength += length;
+    return byteLength <= limits.maxBytes;
+  };
+  while (pending.length > 0) {
+    const frame = pending[pending.length - 1];
+    const next = frame.iterator.next();
+    if (next.done) {
+      pending.pop();
+      if (byteLength > limits.maxBytes) return "indeterminate";
+      continue;
+    }
+    const value = next.value;
+    if (frame.depth > limits.maxDepth) return "indeterminate";
+    if (value === null) {
+      if (!addByteLength(4)) return "indeterminate";
+    } else if (typeof value === "boolean") {
+      if (!addByteLength(value ? 4 : 5)) return "indeterminate";
+    } else if (typeof value === "string" || typeof value === "number") {
+      if (!addByteLength(encodedLength(JSON.stringify(value)))) {
+        return "indeterminate";
+      }
+    } else if (Array.isArray(value)) {
+      if (!addByteLength(2 + Math.max(0, value.length - 1))) {
+        return "indeterminate";
+      }
+      pending.push({ iterator: value.values(), depth: frame.depth + 1 });
+    } else if (isJsonMap(value)) {
+      mapCount++;
+      if (mapCount > limits.maxMaps) return "indeterminate";
+      if (
+        [value.id, value["@id"]].some((id) =>
+          typeof id === "string" && PORTABLE_OBJECT_ID_PATTERN.test(id)
+        )
+      ) {
+        return "present";
+      }
+      if (!addByteLength(2)) return "indeterminate";
+      const children = function* (): Generator<unknown> {
+        let first = true;
+        for (const key in value) {
+          if (!Object.hasOwn(value, key)) continue;
+          if (key === "proof" || key === "@context") continue;
+          if (!first && !addByteLength(1)) return;
+          first = false;
+          if (!addByteLength(encodedLength(JSON.stringify(key)) + 1)) return;
+          yield value[key];
+        }
+      }();
+      pending.push({ iterator: children, depth: frame.depth + 1 });
+    }
+    if (byteLength > limits.maxBytes) return "indeterminate";
+  }
+  return "absent";
+}
+
+/**
  * Discovers direct literal proof-bearing maps in an immutable JSON snapshot.
  *
  * Discovery is bounded and atomic.  Unsupported proof shapes, non-JSON input,

@@ -6,6 +6,7 @@ import vector from "../../test-vectors/fep-8b32/map-local-create-note.json" with
 import {
   type CompoundProofDiscoveryLimits,
   discoverCompoundProofDocuments,
+  inspectCompoundPortableObjectApplicability,
 } from "./compound-proof.ts";
 
 const limits: CompoundProofDiscoveryLimits = {
@@ -14,6 +15,34 @@ const limits: CompoundProofDiscoveryLimits = {
   maxProofs: 8,
   maxBytes: 16_384,
 };
+
+test("portable applicability is bounded and ignores metadata", () => {
+  assertEquals(
+    inspectCompoundPortableObjectApplicability(
+      {
+        "@context": { id: "ap://did:key:context/object" },
+        proof: { id: "ap://did:key:proof/object" },
+        object: { id: "https://example.com/objects/1" },
+      },
+      limits,
+    ),
+    "absent",
+  );
+  assertEquals(
+    inspectCompoundPortableObjectApplicability(
+      { object: [{ "@id": "AP+EF61://did:key:child/objects/1" }] },
+      limits,
+    ),
+    "present",
+  );
+  assertEquals(
+    inspectCompoundPortableObjectApplicability(
+      { values: new Array(20_000).fill(0) },
+      { ...limits, maxBytes: 1_000 },
+    ),
+    "indeterminate",
+  );
+});
 
 test("discoverCompoundProofDocuments() returns immutable deepest-first candidates", () => {
   const input = {
