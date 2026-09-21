@@ -6,6 +6,14 @@ import type { KvKey, KvStore } from "./kv.ts";
 const NULL_KEY_CACHE_VALUE = { _fedify: "key-unavailable" };
 const NULL_KEY_CACHE_TTL = Temporal.Duration.from({ minutes: 5 });
 
+// Cached keys carry the owner that was verified when they were fetched, so
+// entries written by a version that did not verify ownership cannot be
+// trusted—an attacker who probed a vulnerable instance left a forged key
+// behind under their own key id.  Entries live under this segment so that
+// upgrading retires the whole previous generation, whatever prefix the
+// application configured.  See GHSA-q9f8-5hc7-898f.
+const KEY_CACHE_GENERATION = "2";
+
 export interface KvKeyCacheOptions {
   documentLoader?: DocumentLoader;
   contextLoader?: DocumentLoader;
@@ -32,11 +40,15 @@ export class KvKeyCache implements KeyCache {
     this.options = options;
   }
 
+  #entryKey(keyId: URL): KvKey {
+    return [...this.prefix, KEY_CACHE_GENERATION, keyId.href];
+  }
+
   async get(
     keyId: URL,
   ): Promise<CryptographicKey | Multikey | null | undefined> {
     if (this.nullKeys.has(keyId.href)) return null;
-    const serialized = await this.kv.get([...this.prefix, keyId.href]);
+    const serialized = await this.kv.get(this.#entryKey(keyId));
     if (serialized == null) return undefined;
     if (isNullKeyCacheValue(serialized)) {
       this.nullKeys.add(keyId.href);
@@ -48,7 +60,7 @@ export class KvKeyCache implements KeyCache {
       try {
         return await Multikey.fromJsonLd(serialized, this.options);
       } catch {
-        await this.kv.delete([...this.prefix, keyId.href]);
+        await this.kv.delete(this.#entryKey(keyId));
         return undefined;
       }
     }
@@ -61,7 +73,7 @@ export class KvKeyCache implements KeyCache {
     if (key == null) {
       this.nullKeys.add(keyId.href);
       await this.kv.set(
-        [...this.prefix, keyId.href],
+        this.#entryKey(keyId),
         NULL_KEY_CACHE_VALUE,
         { ttl: NULL_KEY_CACHE_TTL },
       );
@@ -69,6 +81,6 @@ export class KvKeyCache implements KeyCache {
     }
     this.nullKeys.delete(keyId.href);
     const serialized = await key.toJsonLd(this.options);
-    await this.kv.set([...this.prefix, keyId.href], serialized);
+    await this.kv.set(this.#entryKey(keyId), serialized);
   }
 }
