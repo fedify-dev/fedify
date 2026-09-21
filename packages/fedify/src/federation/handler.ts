@@ -12,6 +12,11 @@ import {
   OrderedCollectionPage,
 } from "@fedify/vocab";
 import type { DocumentLoader } from "@fedify/vocab-runtime";
+import {
+  BodyTooLargeError,
+  MAX_BODY_SIZE,
+  readBoundedText,
+} from "../utils/body.ts";
 import { getLogger } from "@logtape/logtape";
 import type {
   Span,
@@ -673,8 +678,19 @@ async function handleInboxInternal<TContextData>(
   }
   let json: unknown;
   try {
-    json = await request.clone().json();
+    json = JSON.parse(
+      await readBoundedText(
+        request.clone(),
+        MAX_BODY_SIZE,
+        request.url,
+      ),
+    );
   } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      void request.body?.cancel(error).catch(() => {});
+      span.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
+      return new Response("Inbox body too large.", { status: 413 });
+    }
     logger.error("Failed to parse JSON:\n{error}", { recipient, error });
     try {
       await inboxErrorHandler?.(ctx, error as Error);

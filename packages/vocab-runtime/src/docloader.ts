@@ -1,6 +1,7 @@
 import { getLogger } from "@logtape/logtape";
 import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
 import metadata from "../deno.json" with { type: "json" };
+import { MAX_BODY_SIZE, readBoundedText } from "./body.ts";
 import preloadedContexts from "./contexts.ts";
 import { HttpHeaderLink } from "./link.ts";
 import {
@@ -195,55 +196,52 @@ export async function getRemoteDocument(
   ) {
     // Security: Limit HTML response size to mitigate ReDoS attacks
     const MAX_HTML_SIZE = 1024 * 1024; // 1MB
-    const html = await response.text();
-    if (html.length > MAX_HTML_SIZE) {
-      logger.warn(
-        "HTML response too large, skipping alternate link discovery: {url}",
-        { url: documentUrl, size: html.length },
-      );
-      document = JSON.parse(html);
-    } else {
-      // Safe regex patterns without nested quantifiers to prevent ReDoS
-      // (CVE-2025-68475)
-      // Step 1: Extract <a ...> or <link ...> tags
-      const tagPattern = /<(a|link)\s+([^>]*?)\s*\/?>/gi;
-      // Step 2: Parse attributes
-      const attrPattern =
-        /([a-z][a-z:_-]*)=(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi;
+    const html = await readBoundedText(
+      response,
+      MAX_HTML_SIZE,
+      documentUrl,
+    );
+    // Safe regex patterns without nested quantifiers to prevent ReDoS
+    // (CVE-2025-68475)
+    // Step 1: Extract <a ...> or <link ...> tags
+    const tagPattern = /<(a|link)\s+([^>]*?)\s*\/?>/gi;
+    // Step 2: Parse attributes
+    const attrPattern = /([a-z][a-z:_-]*)=(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi;
 
-      let tagMatch: RegExpExecArray | null;
-      while ((tagMatch = tagPattern.exec(html)) !== null) {
-        const tagContent = tagMatch[2];
-        let attrMatch: RegExpExecArray | null;
-        const attribs: Record<string, string> = {};
+    let tagMatch: RegExpExecArray | null;
+    while ((tagMatch = tagPattern.exec(html)) !== null) {
+      const tagContent = tagMatch[2];
+      let attrMatch: RegExpExecArray | null;
+      const attribs: Record<string, string> = {};
 
-        // Reset regex state for attribute parsing
-        attrPattern.lastIndex = 0;
-        while ((attrMatch = attrPattern.exec(tagContent)) !== null) {
-          const key = attrMatch[1].toLowerCase();
-          const value = attrMatch[2] ?? attrMatch[3] ?? attrMatch[4] ?? "";
-          attribs[key] = value;
-        }
-
-        if (
-          attribs.rel === "alternate" && "type" in attribs && (
-            attribs.type === "application/activity+json" ||
-            attribs.type === "application/ld+json" ||
-            attribs.type.startsWith("application/ld+json;")
-          ) && "href" in attribs &&
-          new URL(attribs.href, docUrl).href !== docUrl.href
-        ) {
-          logger.debug(
-            "Found alternate document: {alternateUrl} from {url}",
-            { alternateUrl: attribs.href, url: documentUrl },
-          );
-          return await fetch(new URL(attribs.href, docUrl).href);
-        }
+      // Reset regex state for attribute parsing
+      attrPattern.lastIndex = 0;
+      while ((attrMatch = attrPattern.exec(tagContent)) !== null) {
+        const key = attrMatch[1].toLowerCase();
+        const value = attrMatch[2] ?? attrMatch[3] ?? attrMatch[4] ?? "";
+        attribs[key] = value;
       }
-      document = JSON.parse(html);
+
+      if (
+        attribs.rel === "alternate" && "type" in attribs && (
+          attribs.type === "application/activity+json" ||
+          attribs.type === "application/ld+json" ||
+          attribs.type.startsWith("application/ld+json;")
+        ) && "href" in attribs &&
+        new URL(attribs.href, docUrl).href !== docUrl.href
+      ) {
+        logger.debug(
+          "Found alternate document: {alternateUrl} from {url}",
+          { alternateUrl: attribs.href, url: documentUrl },
+        );
+        return await fetch(new URL(attribs.href, docUrl).href);
+      }
     }
+    document = JSON.parse(html);
   } else {
-    document = await response.json();
+    document = JSON.parse(
+      await readBoundedText(response, MAX_BODY_SIZE, documentUrl),
+    );
   }
   logger.debug(
     "Fetched document: {status} {url} {headers}",

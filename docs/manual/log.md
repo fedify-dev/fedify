@@ -231,7 +231,7 @@ this category with the `"debug"` level.
 
 *This category is available since Fedify 0.9.0.*
 
-The `["fedify", "sig", "ld"]` category is used for logging messages related
+The `["fedify", "sig", "http"]` category is used for logging messages related
 to [HTTP Signatures](./send.md#http-signatures).  When you are curious about
 the signature verification process, you can check the log messages in this
 category with the `"debug"` level.
@@ -262,6 +262,15 @@ The `["fedify", "sig", "key"]` category is used for logging messages related
 to key generation and key retrieval.  When you are curious about these
 processes, you can check the log messages in this category with the `"debug"`
 level.
+
+### `["fedify", "sig", "owner"]`
+
+*This category is available since Fedify 2.0.28.*
+
+The `["fedify", "sig", "owner"]` category is used for logging the decision of
+whether a signing key belongs to the actor that claims it, with the `"debug"`
+level.  Why a particular key was refused is logged where the key is resolved,
+under `["fedify", "sig", "key"]`.
 
 ### `["fedify", "vocab", "lookup"]`
 

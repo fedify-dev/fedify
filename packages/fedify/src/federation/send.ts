@@ -1,4 +1,5 @@
 import type { Recipient } from "@fedify/vocab";
+import { UrlError, validatePublicUrl } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
 import {
   type Span,
@@ -124,6 +125,12 @@ export interface SendActivityParameters {
   readonly inbox: URL;
 
   /**
+   * Whether to allow delivery to private network addresses, including redirects.
+   * Defaults to `false`.  Only enable this for local testing.
+   */
+  readonly allowPrivateAddress?: boolean;
+
+  /**
    * Whether the inbox is a shared inbox.
    * @since 1.3.0
    */
@@ -234,6 +241,7 @@ async function sendActivityInternal(
     activityId,
     keys,
     inbox,
+    allowPrivateAddress,
     headers,
     specDeterminer,
     tracerProvider,
@@ -241,12 +249,27 @@ async function sendActivityInternal(
   span: Span,
 ): Promise<void> {
   const logger = getLogger(["fedify", "federation", "outbox"]);
+  async function validateUrl(url: string): Promise<void> {
+    if (!allowPrivateAddress) {
+      try {
+        await validatePublicUrl(url);
+      } catch (error) {
+        if (error instanceof UrlError) {
+          logger.error("Disallowed private URL: {url}", { url, error });
+        }
+        throw error;
+      }
+    }
+  }
+
+  await validateUrl(inbox.href);
   headers = new Headers(headers);
   headers.set("Content-Type", "application/activity+json");
   const request = new Request(inbox, {
     method: "POST",
     headers,
     body: JSON.stringify(activity),
+    redirect: "manual",
   });
   let rsaKey: SenderKeyPair | null = null;
   for (const key of keys) {
@@ -273,8 +296,12 @@ async function sendActivityInternal(
   let response: Response;
   try {
     response = rsaKey == null
-      ? await fetch(request)
-      : await doubleKnock(request, rsaKey, { tracerProvider, specDeterminer });
+      ? await fetchWithValidatedRedirects(request, validateUrl)
+      : await doubleKnock(request, rsaKey, {
+        tracerProvider,
+        specDeterminer,
+        validateRedirect: validateUrl,
+      });
   } catch (error) {
     logger.error(
       "Failed to send activity {activityId} to {inbox}:\n{error}",
@@ -322,6 +349,52 @@ async function sendActivityInternal(
     "activitypub.inbox.url": inbox.href,
     "activitypub.activity.id": activityId ?? "",
   });
+}
+
+// Preserve Fetch's redirect semantics while validating every destination.
+async function fetchWithValidatedRedirects(
+  request: Request,
+  validateUrl: (url: string) => Promise<void>,
+): Promise<Response> {
+  let body: string | undefined = await request.clone().text();
+  for (let redirects = 0;; redirects++) {
+    // Bun also needs the redirect option on fetch() itself.
+    const response = await fetch(request, { redirect: "manual" });
+    const location = response.headers.get("Location");
+    if (
+      ![301, 302, 303, 307, 308].includes(response.status) || location == null
+    ) return response;
+    await response.body?.cancel();
+    if (redirects >= 20) throw new TypeError("Too many redirects");
+    const url = new URL(location, request.url);
+    await validateUrl(url.href);
+    const headers = new Headers(request.headers);
+    if (url.origin !== new URL(request.url).origin) {
+      headers.delete("Authorization");
+      headers.delete("Proxy-Authorization");
+      headers.delete("Cookie");
+      headers.delete("Host");
+    }
+    let method = request.method;
+    if (
+      (response.status === 301 || response.status === 302) &&
+        method === "POST" ||
+      response.status === 303 && method !== "GET" && method !== "HEAD"
+    ) {
+      method = "GET";
+      body = undefined;
+      for (
+        const name of [
+          "Content-Encoding",
+          "Content-Language",
+          "Content-Length",
+          "Content-Location",
+          "Content-Type",
+        ]
+      ) headers.delete(name);
+    }
+    request = new Request(url, { method, headers, body, redirect: "manual" });
+  }
 }
 
 /**

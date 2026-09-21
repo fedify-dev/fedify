@@ -48,6 +48,11 @@ allowBuilds:
   unrs-resolver: true
   workerd: true
 
+packageExtensions:
+  inquirer-toggle:
+    dependencies:
+      ansi-escapes: ^4.3.2
+
 catalog:
   "@cloudflare/workers-types": ^4.20250906.0
   "@fxts/core": ^1.21.1

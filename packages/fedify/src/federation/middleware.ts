@@ -764,6 +764,7 @@ export class FederationImpl<TContextData>
     }
     try {
       await sendActivity({
+        allowPrivateAddress: this.allowPrivateAddress,
         keys,
         activity: message.activity,
         activityId: message.activityId,
@@ -1418,6 +1419,7 @@ export class FederationImpl<TContextData>
       for (const inbox in inboxes) {
         promises.push(
           sendActivity({
+            allowPrivateAddress: this.allowPrivateAddress,
             keys,
             activity: jsonLd,
             activityId: activity.id?.href,
@@ -3258,6 +3260,7 @@ export class InboxContextImpl<TContextData> extends ContextImpl<TContextData>
       for (const inbox in inboxes) {
         promises.push(
           sendActivity({
+            allowPrivateAddress: this.federation.allowPrivateAddress,
             keys,
             activity: this.activity,
             activityId: this.activityId,

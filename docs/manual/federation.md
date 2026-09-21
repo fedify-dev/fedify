@@ -267,7 +267,8 @@ section](./context.md#document-loader-vs-context-loader)).
 > Do not turn on this option in production environments.  Disallowing fetching
 > private network addresses is a security feature to prevent [SSRF] attacks.
 
-Whether to allow fetching private network addresses in the document loader.
+Whether to allow private network addresses in the document loader and outbound
+activity delivery, including redirects.
 
 Mostly useful for testing purposes.
 
