@@ -12234,7 +12234,7 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
       if (v == null) continue;
     
       const decoded =
-    new URL(v[\\"@value\\"])
+    new URL(typeof v[\\"@value\\"] === \\"string\\" ? v[\\"@value\\"] : v[\\"@id\\"])
       ;
     
       if (!this._shouldCacheDecodedJsonLd(decoded)) {
@@ -29344,7 +29344,7 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
       if (v == null) continue;
     
       const decoded =
-    new URL(v[\\"@value\\"])
+    new URL(typeof v[\\"@value\\"] === \\"string\\" ? v[\\"@value\\"] : v[\\"@id\\"])
       ;
     
       if (!this._shouldCacheDecodedJsonLd(decoded)) {
@@ -52517,7 +52517,7 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
       if (v == null) continue;
     
       const decoded =
-    new URL(v[\\"@value\\"])
+    new URL(typeof v[\\"@value\\"] === \\"string\\" ? v[\\"@value\\"] : v[\\"@id\\"])
       ;
     
       if (!this._shouldCacheDecodedJsonLd(decoded)) {
@@ -71060,7 +71060,7 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
       if (v == null) continue;
     
       const decoded =
-    new URL(v[\\"@value\\"])
+    new URL(typeof v[\\"@value\\"] === \\"string\\" ? v[\\"@value\\"] : v[\\"@id\\"])
       ;
     
       if (!this._shouldCacheDecodedJsonLd(decoded)) {
