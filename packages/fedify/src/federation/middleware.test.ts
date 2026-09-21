@@ -1826,6 +1826,8 @@ test("FederationImpl.processQueuedTask()", async (t) => {
       },
     };
     const federation = new FederationImpl<void>({
+      // This step delivers to a mocked, unresolvable .example inbox.
+      allowPrivateAddress: true,
       kv,
       queue,
     });
@@ -1905,6 +1907,8 @@ test("FederationImpl.processQueuedTask()", async (t) => {
       },
     };
     const federation = new FederationImpl<void>({
+      // This step delivers to a mocked, unresolvable .example inbox.
+      allowPrivateAddress: true,
       kv,
       queue,
     });
