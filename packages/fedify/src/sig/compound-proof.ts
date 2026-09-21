@@ -216,9 +216,13 @@ function isCompoundProofJsonObject(
 
 function hasOnlyDataProperties(value: object): boolean {
   try {
-    return Object.values(Object.getOwnPropertyDescriptors(value)).every(
-      (descriptor) => "value" in descriptor && descriptor.enumerable,
-    );
+    return Reflect.ownKeys(value).every((key) => {
+      if (typeof key !== "string") return false;
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      return descriptor != null &&
+        "value" in descriptor &&
+        descriptor.enumerable;
+    });
   } catch {
     return false;
   }

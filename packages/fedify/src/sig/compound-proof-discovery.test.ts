@@ -243,6 +243,7 @@ test("discoverCompoundProofDocuments() rejects values that are not JSON trees", 
   const cyclic: Record<string, unknown> = { proof: {} };
   cyclic.self = cyclic;
   const shared = { proof: {} };
+  const symbolKeyed = { [Symbol("hidden")]: { proof: {} } };
 
   for (
     const input of [
@@ -251,6 +252,7 @@ test("discoverCompoundProofDocuments() rejects values that are not JSON trees", 
       { value: Number.NaN },
       cyclic,
       { first: shared, second: shared },
+      symbolKeyed,
     ]
   ) {
     const result = discoverCompoundProofDocuments(input, limits);
