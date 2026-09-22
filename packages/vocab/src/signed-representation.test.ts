@@ -3,7 +3,7 @@ import {
   isMarkerSafeContext,
   retainSignedRepresentation,
 } from "@fedify/vocab-runtime/internal/signed-representation";
-import { assert, assertEquals } from "@std/assert";
+import { deepStrictEqual, ok } from "node:assert/strict";
 import * as vocab from "./vocab.ts";
 import {
   Announce,
@@ -61,7 +61,7 @@ test("nested serialization embeds a retained signed representation", async () =>
 
   // `Create` is not compactable, so this goes through the expand-then-compact
   // path, which would otherwise dissolve the child's own contexts.
-  assertEquals(compact.object, securedNote);
+  deepStrictEqual(compact.object, securedNote);
 });
 
 test("nested serialization embeds a retained representation through a compactable parent", async () => {
@@ -70,7 +70,7 @@ test("nested serialization embeds a retained representation through a compactabl
     attachments: [retainedNote()],
   });
   const compact = await wrapper.toJsonLd(options) as Record<string, unknown>;
-  assertEquals(compact.attachment, securedNote);
+  deepStrictEqual(compact.attachment, securedNote);
 
   // … and still when a non-compactable ancestor compacts the whole tree.
   const question = new Question({
@@ -79,7 +79,7 @@ test("nested serialization embeds a retained representation through a compactabl
   });
   const compacted = await question.toJsonLd(options) as Record<string, unknown>;
   const embeddedWrapper = compacted.oneOf as Record<string, unknown>;
-  assertEquals(embeddedWrapper.attachment, securedNote);
+  deepStrictEqual(embeddedWrapper.attachment, securedNote);
 });
 
 test("nested serialization embeds one retained representation many times", async () => {
@@ -96,13 +96,13 @@ test("nested serialization embeds one retained representation many times", async
   }) as Record<string, unknown>;
   const objects = compact.object as Record<string, unknown>[];
 
-  assertEquals(objects.length, 2);
-  assertEquals(objects[0], securedNote);
-  assertEquals(objects[1], securedNote);
-  assertEquals(compact.tag, securedNote);
+  deepStrictEqual(objects.length, 2);
+  deepStrictEqual(objects[0], securedNote);
+  deepStrictEqual(objects[1], securedNote);
+  deepStrictEqual(compact.tag, securedNote);
   // Each site gets its own copy rather than an alias of one object.
-  assert(objects[0] !== objects[1]);
-  assert(objects[0] !== compact.tag);
+  ok(objects[0] !== objects[1]);
+  ok(objects[0] !== compact.tag);
 });
 
 test("nested serialization embeds a retained representation at any depth", async () => {
@@ -121,7 +121,7 @@ test("nested serialization embeds a retained representation at any depth", async
   }) as Record<string, unknown>;
   const create = compact.object as Record<string, unknown>;
 
-  assertEquals(create.object, securedNote);
+  deepStrictEqual(create.object, securedNote);
 });
 
 test("expanded serialization ignores a retained signed representation", async () => {
@@ -140,11 +140,11 @@ test("expanded serialization ignores a retained signed representation", async ()
 
   // An expanded document has no compact representation to preserve, so the
   // child is expanded like any other object.
-  assertEquals(
+  deepStrictEqual(
     objects[0]["@id"],
     "https://example.com/notes/1",
   );
-  assertEquals(
+  deepStrictEqual(
     objects[0]["@type"],
     ["https://www.w3.org/ns/activitystreams#Note"],
   );
@@ -172,8 +172,8 @@ test("a context that could hide a placeholder turns retention off", async () => 
 
   // Rather than risk corrupting the document, Fedify falls back to ordinary
   // serialization, which reconstructs the child under the parent's context.
-  assertEquals(embedded["@context"], undefined);
-  assertEquals(embedded.proof, undefined);
+  deepStrictEqual(embedded["@context"], undefined);
+  deepStrictEqual(embedded.proof, undefined);
 });
 
 test("a clone does not inherit a retained signed representation", async () => {
@@ -189,8 +189,8 @@ test("a clone does not inherit a retained signed representation", async () => {
   }) as Record<string, unknown>;
   const embedded = compact.object as Record<string, unknown>;
 
-  assertEquals(embedded["@context"], undefined);
-  assertEquals(embedded.content, "Changed");
+  deepStrictEqual(embedded["@context"], undefined);
+  deepStrictEqual(embedded.content, "Changed");
 });
 
 test("every generated default context keeps placeholders recoverable", async () => {
@@ -202,12 +202,12 @@ test("every generated default context keeps placeholders recoverable", async () 
     typeof value === "function" &&
     (value as { typeId?: unknown }).typeId instanceof URL
   ) as unknown as VocabClass[];
-  assert(classes.length > 0);
+  ok(classes.length > 0);
   for (const cls of classes) {
     const serialized = await new cls({
       id: new URL("https://example.com/objects/1"),
     }).toJsonLd() as Record<string, unknown>;
-    assert(
+    ok(
       isMarkerSafeContext(serialized["@context"]),
       `${cls.typeId.href} has a default context that could hide a placeholder`,
     );
@@ -224,8 +224,8 @@ test("a subtype that redefines an inherited property still embeds a retained rep
   });
   const compact = await collection.toJsonLd(options) as Record<string, unknown>;
 
-  assertEquals(compact.items, undefined);
-  assertEquals(compact.orderedItems, [securedNote]);
+  deepStrictEqual(compact.items, undefined);
+  deepStrictEqual(compact.orderedItems, [securedNote]);
 });
 
 test("a context that shadows the placeholder scheme turns retention off", async () => {
@@ -248,8 +248,8 @@ test("a context that shadows the placeholder scheme turns retention off", async 
   }) as Record<string, unknown>;
   const embedded = compact.object as Record<string, unknown>;
 
-  assertEquals(embedded["@context"], undefined);
-  assertEquals(embedded.proof, undefined);
+  deepStrictEqual(embedded["@context"], undefined);
+  deepStrictEqual(embedded.proof, undefined);
 });
 
 test("a context that aliases `@id` indirectly turns retention off", async () => {
@@ -272,6 +272,6 @@ test("a context that aliases `@id` indirectly turns retention off", async () => 
   }) as Record<string, unknown>;
   const embedded = compact.object as Record<string, unknown>;
 
-  assertEquals(embedded["@context"], undefined);
-  assertEquals(embedded.proof, undefined);
+  deepStrictEqual(embedded["@context"], undefined);
+  deepStrictEqual(embedded.proof, undefined);
 });
