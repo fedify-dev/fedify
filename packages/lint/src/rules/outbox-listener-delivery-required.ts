@@ -52,6 +52,15 @@ type FunctionLikeNode =
     body: unknown;
   });
 
+const FUNCTION_NODE_TYPES = new Set([
+  "FunctionDeclaration",
+  "FunctionExpression",
+  "ArrowFunctionExpression",
+]);
+
+const isFunctionLikeNode = (node: Node): node is FunctionLikeNode =>
+  FUNCTION_NODE_TYPES.has(node.type);
+
 const getMemberPropertyName = (expr: Expression): string | null => {
   if (expr.type !== "MemberExpression") return null;
   const property = expr.property as Node;
@@ -219,7 +228,15 @@ function buildContextExpressionPattern(contextName: string): string {
     .raw`(?:${boundedName}|\(\s*${boundedName}(?:\s+as\s+[^)]+)?\s*\))`;
 }
 
-const resolveListenerReference = (
+/**
+ * Resolves an expression to the function it refers to: a direct function
+ * literal, a local variable bound to one, or a property of a local object
+ * literal bound to one (e.g. `handlers.deliver` where
+ * `const handlers = { deliver() {} }`). Used both to resolve a listener
+ * argument (`.on(Activity, handler)`) and to resolve what a call expression
+ * inside a listener actually invokes.
+ */
+const resolveFunctionBinding = (
   expr: Expression,
   bindings: Map<string, unknown>,
   seen = new Set<string>(),
@@ -237,7 +254,7 @@ const resolveListenerReference = (
       return binding as FunctionLikeNode;
     }
     if (binding.type === "Identifier") {
-      return resolveListenerReference(binding, bindings, seen);
+      return resolveFunctionBinding(binding, bindings, seen);
     }
     return null;
   }
@@ -273,11 +290,407 @@ const resolveListenerReference = (
   return null;
 };
 
+// ---------------------------------------------------------------------------
+// Reachability: which statements can actually run, following control flow
+// (if/else, try/catch/finally, switch, loops) but never descending into a
+// nested function's own body, and pruning dead code (a statically-falsy `if`
+// branch, or anything after a statement that always returns/throws).
+// ---------------------------------------------------------------------------
+
+const isStaticallyFalsy = (test: Expression): boolean =>
+  test.type === "Literal" && !test.value;
+
+const isStaticallyTruthy = (test: Expression): boolean =>
+  test.type === "Literal" && Boolean(test.value);
+
+/**
+ * Whether every path through this statement unconditionally returns or
+ * throws, meaning anything textually after it in the same statement list
+ * never runs. Deliberately conservative: when it can't prove that, it
+ * answers `false`, which keeps the following code counted as reachable
+ * (a missed dead-code case is safer than wrongly hiding live code).
+ */
+function alwaysExits(node: Node): boolean {
+  switch (node.type) {
+    case "ReturnStatement":
+    case "ThrowStatement":
+      return true;
+
+    case "BlockStatement":
+      return node.body.some((statement) => alwaysExits(statement as Node));
+
+    case "IfStatement": {
+      const test = node.test as Expression;
+      if (isStaticallyFalsy(test)) {
+        return node.alternate != null && alwaysExits(node.alternate as Node);
+      }
+      if (isStaticallyTruthy(test)) {
+        return alwaysExits(node.consequent as Node);
+      }
+      if (node.alternate == null) return false;
+      return alwaysExits(node.consequent as Node) &&
+        alwaysExits(node.alternate as Node);
+    }
+
+    case "TryStatement":
+      // A `finally` that always exits dominates the whole statement. Beyond
+      // that, a `try` block can throw partway through and jump to `catch`,
+      // so proving more than this would need tracking which statements can
+      // throw -- stay conservative and say "not sure" instead.
+      return node.finalizer != null && alwaysExits(node.finalizer as Node);
+
+    default:
+      return false;
+  }
+}
+
+function collectReachableStatements(node: Node, out: Node[]): void {
+  switch (node.type) {
+    case "BlockStatement":
+      for (const statement of node.body) {
+        collectReachableStatements(statement as Node, out);
+        if (alwaysExits(statement as Node)) return;
+      }
+      return;
+
+    case "IfStatement": {
+      const test = node.test as Expression;
+      if (!isStaticallyFalsy(test)) {
+        collectReachableStatements(node.consequent as Node, out);
+      }
+      if (node.alternate != null && !isStaticallyTruthy(test)) {
+        collectReachableStatements(node.alternate as Node, out);
+      }
+      return;
+    }
+
+    case "TryStatement":
+      collectReachableStatements(node.block as Node, out);
+      if (node.handler != null) {
+        collectReachableStatements(node.handler.body as Node, out);
+      }
+      if (node.finalizer != null) {
+        collectReachableStatements(node.finalizer as Node, out);
+      }
+      return;
+
+    case "SwitchStatement":
+      for (const switchCase of node.cases) {
+        for (const statement of switchCase.consequent) {
+          collectReachableStatements(statement as Node, out);
+          if (alwaysExits(statement as Node)) break;
+        }
+      }
+      return;
+
+    case "WhileStatement":
+    case "DoWhileStatement":
+    case "ForStatement":
+    case "ForInStatement":
+    case "ForOfStatement":
+      collectReachableStatements(node.body as Node, out);
+      return;
+
+    case "LabeledStatement":
+    case "WithStatement":
+      collectReachableStatements(node.body as Node, out);
+      return;
+
+    default:
+      out.push(node);
+      return;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// What a listener (or a helper's own body) resolves to when scanned for a
+// delivery call: three independent mechanisms decide which nested function
+// bodies are folded into the scan instead of being masked out.
+// ---------------------------------------------------------------------------
+
+/**
+ * Collects plain-value references to identifiers: `deliver()`,
+ * `forEach(deliver)`, a shorthand `{ deliver }`, and so on. Skips positions
+ * that name something rather than reference a value -- a declaration's own
+ * `id`/params, and the non-computed `.property` of a member expression (so
+ * `someService.deliver()` never counts as a reference to an unrelated local
+ * `deliver`).
+ */
+function collectReferencedNames(node: unknown, out: Set<string>): void {
+  if (node == null || typeof node !== "object") return;
+  if (Array.isArray(node)) {
+    for (const item of node) collectReferencedNames(item, out);
+    return;
+  }
+  if (!isNode(node)) return;
+  const n = node;
+
+  if (n.type === "Identifier") {
+    out.add(n.name);
+    return;
+  }
+  if (n.type === "MemberExpression" && !n.computed) {
+    collectReferencedNames(n.object, out);
+    return;
+  }
+  if (n.type === "Property" && !n.computed) {
+    // `{ deliver: fn }` -- the key is a name, not a reference; only the
+    // value is (for shorthand `{ deliver }`, the value is the same name,
+    // so this still counts it).
+    collectReferencedNames(n.value, out);
+    return;
+  }
+  if (n.type === "VariableDeclarator") {
+    if ((n as VariableDeclarator).init != null) {
+      collectReferencedNames((n as VariableDeclarator).init, out);
+    }
+    return;
+  }
+  if (isFunctionLikeNode(n)) {
+    collectReferencedNames((n as { body: unknown }).body, out);
+    return;
+  }
+
+  const record = n as unknown as Record<string, unknown>;
+  for (const key in record) {
+    if (key === "parent") continue;
+    collectReferencedNames(record[key], out);
+  }
+}
+
+/**
+ * Collects every named local helper in scope: a `function name() {}`
+ * declaration, or a `const name = function/arrow` binding. Object-literal
+ * properties are handled separately, through `resolveFunctionBinding`,
+ * since their name is only meaningful together with the object it lives on.
+ */
+function collectNamedHelpers(
+  node: unknown,
+  out: Map<string, FunctionLikeNode>,
+): void {
+  if (node == null || typeof node !== "object") return;
+  if (Array.isArray(node)) {
+    for (const item of node) collectNamedHelpers(item, out);
+    return;
+  }
+  if (!isNode(node)) return;
+  const n = node;
+
+  if (n.type === "FunctionDeclaration") {
+    if (n.id?.name != null) out.set(n.id.name, n as FunctionLikeNode);
+    collectNamedHelpers((n as { body: unknown }).body, out);
+    return;
+  }
+  if (
+    n.type === "FunctionExpression" || n.type === "ArrowFunctionExpression"
+  ) {
+    collectNamedHelpers((n as { body: unknown }).body, out);
+    return;
+  }
+  if (n.type === "VariableDeclarator") {
+    const decl = n as VariableDeclarator;
+    if (decl.id.type === "Identifier" && decl.init != null) {
+      const init = decl.init as Node;
+      if (isFunctionLikeNode(init)) out.set(decl.id.name, init);
+    }
+    if (decl.init != null) collectNamedHelpers(decl.init, out);
+    return;
+  }
+
+  const record = n as unknown as Record<string, unknown>;
+  for (const key in record) {
+    if (key === "parent") continue;
+    collectNamedHelpers(record[key], out);
+  }
+}
+
+/**
+ * Resolves every call expression's callee against `bindings` (a local
+ * helper, or a property of a local object literal bound to one) and
+ * collects the functions those calls resolve to. This is also how a
+ * directly invoked function expression -- `(() => {...})()` -- gets found:
+ * `resolveFunctionBinding` returns a function literal callee as-is.
+ */
+function collectResolvedCallTargets(
+  node: unknown,
+  bindings: Map<string, unknown>,
+  out: Set<FunctionLikeNode>,
+): void {
+  if (node == null || typeof node !== "object") return;
+  if (Array.isArray(node)) {
+    for (const item of node) collectResolvedCallTargets(item, bindings, out);
+    return;
+  }
+  if (!isNode(node)) return;
+  const n = node;
+
+  if (n.type === "CallExpression") {
+    const resolved = resolveFunctionBinding(n.callee as Expression, bindings);
+    if (resolved != null) out.add(resolved);
+  }
+
+  const record = n as unknown as Record<string, unknown>;
+  for (const key in record) {
+    if (key === "parent") continue;
+    collectResolvedCallTargets(record[key], bindings, out);
+  }
+}
+
+/**
+ * Collects anonymous function-literal arguments that are reachable because
+ * the call chain they are passed to is awaited or returned, e.g. the arrow
+ * function in `await Promise.all(recipients.map((inbox) => ...))`. Named
+ * references passed the same way (`recipients.map(deliver)`) don't need
+ * this: `collectReferencedNames` already finds them regardless of whether
+ * the result is awaited, matching how `array.forEach(deliver)` always
+ * invokes `deliver`.
+ */
+function collectConsumedCallbacks(
+  statements: readonly Node[],
+  impliedReturn: boolean,
+  out: Set<FunctionLikeNode>,
+): void {
+  const walkConsumed = (expr: unknown): void => {
+    if (expr == null || typeof expr !== "object" || Array.isArray(expr)) {
+      return;
+    }
+    if (!isNode(expr)) return;
+    if (isFunctionLikeNode(expr)) {
+      out.add(expr);
+      return;
+    }
+    if (expr.type === "CallExpression" || expr.type === "NewExpression") {
+      for (const arg of expr.arguments) walkConsumed(arg);
+      return;
+    }
+  };
+
+  for (const statement of statements) {
+    if (statement.type === "ReturnStatement") {
+      if (statement.argument != null) walkConsumed(statement.argument);
+      continue;
+    }
+    if (
+      statement.type === "ExpressionStatement" &&
+      statement.expression.type === "AwaitExpression"
+    ) {
+      walkConsumed(statement.expression.argument);
+      continue;
+    }
+    if (statement.type === "VariableDeclaration") {
+      for (const decl of statement.declarations) {
+        const init = (decl as VariableDeclarator).init as
+          | Node
+          | null
+          | undefined;
+        if (init?.type === "AwaitExpression") {
+          walkConsumed((init as { argument: unknown }).argument);
+        }
+      }
+    }
+  }
+
+  if (impliedReturn && statements.length === 1) {
+    const [only] = statements;
+    if (only.type !== "BlockStatement") walkConsumed(only);
+  }
+}
+
+/**
+ * Finds function literals directly nested in a reachable statement, without
+ * descending past them -- their own reachability is decided separately.
+ */
+function collectNestedFunctions(
+  node: unknown,
+  out: FunctionLikeNode[],
+): void {
+  if (node == null || typeof node !== "object") return;
+  if (Array.isArray(node)) {
+    for (const item of node) collectNestedFunctions(item, out);
+    return;
+  }
+  if (!isNode(node)) return;
+  const n = node;
+
+  if (isFunctionLikeNode(n)) {
+    out.push(n);
+    return;
+  }
+
+  const record = n as unknown as Record<string, unknown>;
+  for (const key in record) {
+    if (key === "parent") continue;
+    collectNestedFunctions(record[key], out);
+  }
+}
+
+/**
+ * Builds the source text to scan for a delivery call: the reachable
+ * statements of `root`, with every nested function literal either folded in
+ * (its own reachable text spliced in place) or blanked out, depending on
+ * whether `used` says it is actually invoked.
+ */
+function collectDeliveryScanCode(
+  sourceCode: { getText(node: unknown): string },
+  root: Node,
+  used: Set<FunctionLikeNode>,
+  visited: Set<Node>,
+): string {
+  if (visited.has(root)) return "";
+  visited.add(root);
+
+  const statements: Node[] = [];
+  collectReachableStatements(root, statements);
+
+  const consumed = new Set<FunctionLikeNode>();
+  collectConsumedCallbacks(
+    statements,
+    root.type !== "BlockStatement",
+    consumed,
+  );
+
+  return statements
+    .map((statement) => {
+      let text = sourceCode.getText(statement);
+      const nested: FunctionLikeNode[] = [];
+      collectNestedFunctions(statement, nested);
+      for (const fn of nested) {
+        const fnText = sourceCode.getText(fn);
+        const replacement = used.has(fn) || consumed.has(fn)
+          ? collectDeliveryScanCode(sourceCode, fn.body as Node, used, visited)
+          : "";
+        text = text.split(fnText).join(
+          replacement.length > 0 ? replacement : "()=>{}",
+        );
+      }
+      return text;
+    })
+    .join("\n");
+}
+
 const listenerCallsDeliveryMethod = (
   sourceCode: { getText(node: unknown): string },
   listener: FunctionLikeNode,
+  bindings: Map<string, unknown>,
 ): boolean => {
-  const code = stripCommentsAndStrings(sourceCode.getText(listener));
+  const usedFunctions = new Set<FunctionLikeNode>();
+  const referencedNames = new Set<string>();
+  collectReferencedNames(listener.body, referencedNames);
+  const namedHelpers = new Map<string, FunctionLikeNode>();
+  collectNamedHelpers(listener.body, namedHelpers);
+  for (const [name, fn] of namedHelpers) {
+    if (referencedNames.has(name)) usedFunctions.add(fn);
+  }
+  collectResolvedCallTargets(listener.body, bindings, usedFunctions);
+
+  const code = stripCommentsAndStrings(
+    collectDeliveryScanCode(
+      sourceCode,
+      listener.body as Node,
+      usedFunctions,
+      new Set(),
+    ),
+  );
   const aliases = new Set<string>();
   const contextParam = unwrapContextParam(
     listener.params[0] as Node | undefined,
@@ -377,11 +790,15 @@ function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
         isNode(listener) && isFunction(listener as Expression)
           ? listener as FunctionLikeNode
           : isNode(listener)
-          ? resolveListenerReference(listener as Expression, bindings)
+          ? resolveFunctionBinding(listener as Expression, bindings)
           : null;
       if (resolvedListener == null) return;
 
-      if (listenerCallsDeliveryMethod(sourceCode, resolvedListener)) return;
+      if (
+        listenerCallsDeliveryMethod(sourceCode, resolvedListener, bindings)
+      ) {
+        return;
+      }
 
       (context as { report: (arg: unknown) => void }).report({
         node: resolvedListener,

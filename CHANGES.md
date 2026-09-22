@@ -272,7 +272,20 @@ To be released.
     when an actor dispatcher's return value does not include a
     `preferredUsername` property. [[#895], [#1022] by Jae-Hyuk-Jang\]
 
+ -  Changed `outbox-listener-delivery-required` (`@fedify/lint`) to decide
+    whether a `ctx.sendActivity()`/`forwardActivity()` call actually runs,
+    instead of scanning the listener's source as a flat block of text. It
+    now reports a listener whose only delivery call sits behind a dead
+    branch, after an unconditional `return`/`throw`, or inside a local
+    helper function that is never actually called. A helper that is
+    called still counts, however it's referenced — by name, passed by
+    reference to another function, or reached through a local object
+    literal — and so does an inline callback whose result is awaited or
+    returned, such as `await Promise.all(recipients.map(...))`.
+    [[#900]]
+
 [#895]: https://github.com/fedify-dev/fedify/issues/895
+[#900]: https://github.com/fedify-dev/fedify/issues/900
 [#1022]: https://github.com/fedify-dev/fedify/pull/1022
 
 ### @fedify/mysql

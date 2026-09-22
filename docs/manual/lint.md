@@ -752,13 +752,21 @@ Warns when an outbox listener body does not deliver the posted activity with
 `ctx.sendActivity()` or `ctx.forwardActivity()`.
 
 **When this rule applies:**
-You've registered an outbox listener with `setOutboxListeners()`, but the
-listener body never calls either delivery method.
+You've registered an outbox listener with `setOutboxListeners()`, but no
+reachable path through the listener body calls either delivery method.  The
+rule follows the listener's own control flow (`if`/`else`, `try`/`catch`,
+`switch`, loops) and resolves calls to local helper functions, so a delivery
+call that sits in a dead branch, after an unconditional `return`, or inside a
+helper that is declared but never actually called does not count.  A helper
+that *is* called does count, however it is referenced — by name, passed by
+reference to another function, or reached through a local object literal —
+and so does an inline callback whose result is awaited or returned, such as
+`await Promise.all(recipients.map((r) => ctx.sendActivity(...)))`.
 
 **Why it matters:**
 Fedify does not federate client-to-server outbox posts automatically.  If your
 application intends to deliver a posted activity, the listener must choose an
-explicit delivery path.
+explicit delivery path, and that path must actually run.
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
@@ -771,6 +779,19 @@ federation
   .setOutboxListeners("/users/{identifier}/outbox")
   .on(Activity, async (ctx, activity) => {
     console.log(ctx.identifier, activity.id?.href);
+  });
+
+// ❌ Bad: The delivery call is unreachable dead code
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    if (activity.id == null) return;
+    return;
+    await ctx.sendActivity(
+      { identifier: ctx.identifier },
+      "followers",
+      activity,
+    );
   });
 
 // ✅ Good: Listener federates explicitly
@@ -792,6 +813,20 @@ federation
       { identifier: ctx.identifier },
       "followers",
     );
+  });
+
+// ✅ Good: Delivery happens inside a helper that is actually called
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    async function deliver() {
+      await ctx.sendActivity(
+        { identifier: ctx.identifier },
+        "followers",
+        activity,
+      );
+    }
+    await deliver();
   });
 ~~~~
 

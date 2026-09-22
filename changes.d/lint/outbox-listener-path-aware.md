@@ -1,0 +1,11 @@
+ -  Changed `outbox-listener-delivery-required` (`@fedify/lint`) to decide
+    whether a `ctx.sendActivity()`/`forwardActivity()` call actually runs,
+    instead of scanning the listener's source as a flat block of text. It
+    now reports a listener whose only delivery call sits behind a dead
+    branch, after an unconditional `return`/`throw`, or inside a local
+    helper function that is never actually called. A helper that is
+    called still counts, however it's referenced — by name, passed by
+    reference to another function, or reached through a local object
+    literal — and so does an inline callback whose result is awaited or
+    returned, such as `await Promise.all(recipients.map(...))`.
+    [[#900]]
