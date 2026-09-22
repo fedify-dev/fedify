@@ -46,6 +46,7 @@
       "src/testing/",
       "tsdown.config.ts",
       "scripts/",
+      "test-vectors/",
       "wrangler.toml"
     ]
   },

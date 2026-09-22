@@ -1,0 +1,255 @@
+{
+  "id": "fedify-fep-8b32-map-local-create-note-v1",
+  "profile": "Fedify map-local compound proof profile",
+  "cryptosuite": "eddsa-jcs-2022",
+  "notes": [
+    "Each map has one direct literal proof property.",
+    "Each map has an explicit local context.",
+    "The outer unsecured document retains the complete secured inner map.",
+    "Combined inputs concatenate proof-configuration SHA-256 first and document SHA-256 second."
+  ],
+  "keys": {
+    "outer": {
+      "controller": "did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2",
+      "verificationMethod": "did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2#z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2",
+      "publicKeyMultibase": "z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2",
+      "publicKeyJwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "sA2Nk45_dz1RVlqtNqYj9TRPf10ZYPnPPo4SYg6igQ8",
+        "key_ops": [
+          "verify"
+        ],
+        "ext": true
+      },
+      "testPrivateKeyJwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "d": "yW756hDF5BTEcXI6_53nLDX6W3D66X6IMuysfS4rjtY",
+        "x": "sA2Nk45_dz1RVlqtNqYj9TRPf10ZYPnPPo4SYg6igQ8",
+        "key_ops": [
+          "sign"
+        ],
+        "ext": true
+      }
+    },
+    "inner": {
+      "controller": "did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3",
+      "verificationMethod": "did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3#z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3",
+      "publicKeyMultibase": "z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3",
+      "publicKeyJwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "LR8epAGDe-cVq5p2Tx49CCfphpk1rNhkNoY9i-XEUfg",
+        "key_ops": [
+          "verify"
+        ],
+        "ext": true
+      },
+      "testPrivateKeyJwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "d": "LledL195fP9TQGQrkE2l2Y2k48UvqCzYI9M1zXyh7zQ",
+        "x": "LR8epAGDe-cVq5p2Tx49CCfphpk1rNhkNoY9i-XEUfg",
+        "key_ops": [
+          "sign"
+        ],
+        "ext": true
+      }
+    }
+  },
+  "documents": {
+    "finalSecuredCompound": {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/data-integrity/v1"
+      ],
+      "id": "ap+ef61://did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2/activities/1",
+      "type": "Create",
+      "actor": "ap+ef61://did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2/actor",
+      "object": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/security/data-integrity/v1"
+        ],
+        "id": "ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/objects/1",
+        "type": "Note",
+        "attributedTo": "ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/actor",
+        "content": "A portable note",
+        "proof": {
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            "https://w3id.org/security/data-integrity/v1"
+          ],
+          "type": "DataIntegrityProof",
+          "cryptosuite": "eddsa-jcs-2022",
+          "verificationMethod": "did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3#z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3",
+          "proofPurpose": "assertionMethod",
+          "created": "2023-02-24T23:36:38Z",
+          "proofValue": "z2GCde7JjRjsTipz43CEeCjiDF7NCGbAcvqAkwuywq2u1mQTXs7U9WeT3jXmi6ib6uqpdiT53CxFrkSPLsHiQxhk7"
+        }
+      },
+      "proof": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/security/data-integrity/v1"
+        ],
+        "type": "DataIntegrityProof",
+        "cryptosuite": "eddsa-jcs-2022",
+        "verificationMethod": "did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2#z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2",
+        "proofPurpose": "assertionMethod",
+        "created": "2023-02-24T23:36:38Z",
+        "proofValue": "z5KEH1yoB2DsDs39emBhGJM2GqgM9waar91Mj34gqaa238KgyyEvyTrVvBTWKxHxR5Xin6X8tPYr4Ucb6WDzBkMMz"
+      }
+    },
+    "securedInner": {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/data-integrity/v1"
+      ],
+      "id": "ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/objects/1",
+      "type": "Note",
+      "attributedTo": "ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/actor",
+      "content": "A portable note",
+      "proof": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/security/data-integrity/v1"
+        ],
+        "type": "DataIntegrityProof",
+        "cryptosuite": "eddsa-jcs-2022",
+        "verificationMethod": "did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3#z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3",
+        "proofPurpose": "assertionMethod",
+        "created": "2023-02-24T23:36:38Z",
+        "proofValue": "z2GCde7JjRjsTipz43CEeCjiDF7NCGbAcvqAkwuywq2u1mQTXs7U9WeT3jXmi6ib6uqpdiT53CxFrkSPLsHiQxhk7"
+      }
+    },
+    "outerUnsecuredDocument": {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/data-integrity/v1"
+      ],
+      "id": "ap+ef61://did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2/activities/1",
+      "type": "Create",
+      "actor": "ap+ef61://did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2/actor",
+      "object": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/security/data-integrity/v1"
+        ],
+        "id": "ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/objects/1",
+        "type": "Note",
+        "attributedTo": "ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/actor",
+        "content": "A portable note",
+        "proof": {
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            "https://w3id.org/security/data-integrity/v1"
+          ],
+          "type": "DataIntegrityProof",
+          "cryptosuite": "eddsa-jcs-2022",
+          "verificationMethod": "did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3#z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3",
+          "proofPurpose": "assertionMethod",
+          "created": "2023-02-24T23:36:38Z",
+          "proofValue": "z2GCde7JjRjsTipz43CEeCjiDF7NCGbAcvqAkwuywq2u1mQTXs7U9WeT3jXmi6ib6uqpdiT53CxFrkSPLsHiQxhk7"
+        }
+      }
+    },
+    "innerUnsecuredDocument": {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/data-integrity/v1"
+      ],
+      "id": "ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/objects/1",
+      "type": "Note",
+      "attributedTo": "ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/actor",
+      "content": "A portable note"
+    },
+    "outerProofConfiguration": {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/data-integrity/v1"
+      ],
+      "type": "DataIntegrityProof",
+      "cryptosuite": "eddsa-jcs-2022",
+      "verificationMethod": "did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2#z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2",
+      "proofPurpose": "assertionMethod",
+      "created": "2023-02-24T23:36:38Z"
+    },
+    "innerProofConfiguration": {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/data-integrity/v1"
+      ],
+      "type": "DataIntegrityProof",
+      "cryptosuite": "eddsa-jcs-2022",
+      "verificationMethod": "did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3#z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3",
+      "proofPurpose": "assertionMethod",
+      "created": "2023-02-24T23:36:38Z"
+    },
+    "replacementInnerProof": {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/data-integrity/v1"
+      ],
+      "type": "DataIntegrityProof",
+      "cryptosuite": "eddsa-jcs-2022",
+      "verificationMethod": "did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3#z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3",
+      "proofPurpose": "assertionMethod",
+      "created": "2023-02-25T23:36:38Z",
+      "proofValue": "z2fmC2UAoxpesDmSJ6LWoRReCRhPGCKTHgBCsq1491B2Hx2SN8MszWgfcgJkF1poPnyhFAEGrpeqGWchiw261np9z"
+    }
+  },
+  "canonicalization": {
+    "outer": {
+      "documentJcs": "{\"@context\":[\"https://www.w3.org/ns/activitystreams\",\"https://w3id.org/security/data-integrity/v1\"],\"actor\":\"ap+ef61://did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2/actor\",\"id\":\"ap+ef61://did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2/activities/1\",\"object\":{\"@context\":[\"https://www.w3.org/ns/activitystreams\",\"https://w3id.org/security/data-integrity/v1\"],\"attributedTo\":\"ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/actor\",\"content\":\"A portable note\",\"id\":\"ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/objects/1\",\"proof\":{\"@context\":[\"https://www.w3.org/ns/activitystreams\",\"https://w3id.org/security/data-integrity/v1\"],\"created\":\"2023-02-24T23:36:38Z\",\"cryptosuite\":\"eddsa-jcs-2022\",\"proofPurpose\":\"assertionMethod\",\"proofValue\":\"z2GCde7JjRjsTipz43CEeCjiDF7NCGbAcvqAkwuywq2u1mQTXs7U9WeT3jXmi6ib6uqpdiT53CxFrkSPLsHiQxhk7\",\"type\":\"DataIntegrityProof\",\"verificationMethod\":\"did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3#z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3\"},\"type\":\"Note\"},\"type\":\"Create\"}",
+      "proofConfigurationJcs": "{\"@context\":[\"https://www.w3.org/ns/activitystreams\",\"https://w3id.org/security/data-integrity/v1\"],\"created\":\"2023-02-24T23:36:38Z\",\"cryptosuite\":\"eddsa-jcs-2022\",\"proofPurpose\":\"assertionMethod\",\"type\":\"DataIntegrityProof\",\"verificationMethod\":\"did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2#z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2\"}"
+    },
+    "inner": {
+      "documentJcs": "{\"@context\":[\"https://www.w3.org/ns/activitystreams\",\"https://w3id.org/security/data-integrity/v1\"],\"attributedTo\":\"ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/actor\",\"content\":\"A portable note\",\"id\":\"ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/objects/1\",\"type\":\"Note\"}",
+      "proofConfigurationJcs": "{\"@context\":[\"https://www.w3.org/ns/activitystreams\",\"https://w3id.org/security/data-integrity/v1\"],\"created\":\"2023-02-24T23:36:38Z\",\"cryptosuite\":\"eddsa-jcs-2022\",\"proofPurpose\":\"assertionMethod\",\"type\":\"DataIntegrityProof\",\"verificationMethod\":\"did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3#z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3\"}"
+    },
+    "replacementInner": {
+      "documentJcs": "{\"@context\":[\"https://www.w3.org/ns/activitystreams\",\"https://w3id.org/security/data-integrity/v1\"],\"attributedTo\":\"ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/actor\",\"content\":\"A portable note\",\"id\":\"ap+ef61://did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3/objects/1\",\"type\":\"Note\"}",
+      "proofConfigurationJcs": "{\"@context\":[\"https://www.w3.org/ns/activitystreams\",\"https://w3id.org/security/data-integrity/v1\"],\"created\":\"2023-02-25T23:36:38Z\",\"cryptosuite\":\"eddsa-jcs-2022\",\"proofPurpose\":\"assertionMethod\",\"type\":\"DataIntegrityProof\",\"verificationMethod\":\"did:key:z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3#z6MkhVPuyvgG1RkMv67azDqDCDERPXVrUg1i3qchXY5EACE3\"}"
+    }
+  },
+  "hashes": {
+    "outer": {
+      "documentSha256": "f49f8c592c02d0ee85b7f7182fd593ddf6e7f432d8388843e4d086238f45bafc",
+      "proofConfigurationSha256": "c9842a6bca0a0594e99f1525344ce4f0c8c6096f5a832525a05205aacd8791e0",
+      "combinedSigningInput": "c9842a6bca0a0594e99f1525344ce4f0c8c6096f5a832525a05205aacd8791e0f49f8c592c02d0ee85b7f7182fd593ddf6e7f432d8388843e4d086238f45bafc"
+    },
+    "inner": {
+      "documentSha256": "9c9ffa1efcc871d219b8622e98253168ac65867ee76d6e4183ee0ca0226c2fd3",
+      "proofConfigurationSha256": "1ebdc71cb480bd324b030f85c02dc6f8db879716faf0f7ee0f05df4c395d71b4",
+      "combinedSigningInput": "1ebdc71cb480bd324b030f85c02dc6f8db879716faf0f7ee0f05df4c395d71b49c9ffa1efcc871d219b8622e98253168ac65867ee76d6e4183ee0ca0226c2fd3"
+    },
+    "replacementInner": {
+      "documentSha256": "9c9ffa1efcc871d219b8622e98253168ac65867ee76d6e4183ee0ca0226c2fd3",
+      "proofConfigurationSha256": "00da7da35af5e922313de14cf0f8f63c9a27152205b1eb5ef049a7f6023589ad",
+      "combinedSigningInput": "00da7da35af5e922313de14cf0f8f63c9a27152205b1eb5ef049a7f6023589ad9c9ffa1efcc871d219b8622e98253168ac65867ee76d6e4183ee0ca0226c2fd3"
+    }
+  },
+  "proofValues": {
+    "outer": "z5KEH1yoB2DsDs39emBhGJM2GqgM9waar91Mj34gqaa238KgyyEvyTrVvBTWKxHxR5Xin6X8tPYr4Ucb6WDzBkMMz",
+    "inner": "z2GCde7JjRjsTipz43CEeCjiDF7NCGbAcvqAkwuywq2u1mQTXs7U9WeT3jXmi6ib6uqpdiT53CxFrkSPLsHiQxhk7",
+    "replacementInner": "z2fmC2UAoxpesDmSJ6LWoRReCRhPGCKTHgBCsq1491B2Hx2SN8MszWgfcgJkF1poPnyhFAEGrpeqGWchiw261np9z"
+  },
+  "expectedVerification": {
+    "original": {
+      "inner": true,
+      "outer": true
+    },
+    "tamperedInnerContent": {
+      "inner": false,
+      "outer": false
+    },
+    "replacedInnerProof": {
+      "inner": true,
+      "outer": false
+    },
+    "standaloneInner": true,
+    "standaloneOuter": true
+  }
+}

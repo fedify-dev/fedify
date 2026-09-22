@@ -31,6 +31,10 @@ import { uniq } from "es-toolkit";
 import metadata from "../../deno.json" with { type: "json" };
 import { formatAcceptSignature } from "../sig/accept.ts";
 import {
+  inspectCompoundPortableObjectApplicability,
+  verifyCompoundPortableObjectProofs,
+} from "../sig/compound-proof.ts";
+import {
   parseRfc9421SignatureInput,
   verifyRequestDetailed,
 } from "../sig/http.ts";
@@ -100,6 +104,13 @@ import { hasMalformedKnownTemporalLiteral } from "./temporal.ts";
 export const rawInboxContextFactorySymbol: unique symbol = Symbol(
   "fedify.rawInboxContextFactory",
 );
+
+const INBOX_COMPOUND_PROOF_LIMITS = {
+  maxDepth: 64,
+  maxMaps: 10_000,
+  maxProofs: 32,
+  maxBytes: 10 * 1024 * 1024,
+} as const;
 
 function isRemoteContextLoadingFailure(error: unknown): boolean {
   return error instanceof Error &&
@@ -1843,6 +1854,48 @@ async function handleInboxInternal<TContextData>(
       status: 401,
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
+  }
+  if (!skipSignatureVerification) {
+    const compoundApplicability = inspectCompoundPortableObjectApplicability(
+      json,
+      INBOX_COMPOUND_PROOF_LIMITS,
+    );
+    if (compoundApplicability !== "absent") {
+      const compoundProof = await verifyCompoundPortableObjectProofs(
+        json,
+        INBOX_COMPOUND_PROOF_LIMITS,
+        {
+          documentLoader: ctx.documentLoader,
+          keyCache,
+          meterProvider,
+          tracerProvider,
+        },
+      );
+      if (compoundProof.status !== "ok" || !compoundProof.verified) {
+        logger.error(
+          "Failed to verify compound portable Object Integrity Proofs.",
+          {
+            recipient,
+            activity: json,
+            reason: compoundProof.status === "unsupported"
+              ? compoundProof.reason.type
+              : "invalidProof",
+          },
+        );
+        span.setStatus({
+          code: SpanStatusCode.ERROR,
+          message:
+            "Failed to verify compound portable Object Integrity Proofs.",
+        });
+        return new Response(
+          "Failed to verify compound portable Object Integrity Proofs.",
+          {
+            status: 401,
+            headers: { "Content-Type": "text/plain; charset=utf-8" },
+          },
+        );
+      }
+    }
   }
   // Perform deferred nonce verification now that actor/key ownership is confirmed.
   if (pendingNonceLabel != null) {

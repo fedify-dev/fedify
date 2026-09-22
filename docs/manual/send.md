@@ -1139,6 +1139,51 @@ caller can apply the separate gateway trust policy allowed by [FEP-ef61].
 embedded portable object needs its own verification; success for an outer
 activity does not authenticate portable objects nested inside it.
 
+[FEP-8b32]: https://w3id.org/fep/8b32
+[FEP-ef61]: https://w3id.org/fep/ef61
+[FEP-fe34]: https://w3id.org/fep/fe34
+
+### Compound portable objects
+
+For compound documents containing [FEP-ef61] portable objects, Fedify inboxes
+use a bounded, map-local interoperability profile.  Neither [FEP-8b32] nor
+Verifiable Credential Data Integrity currently specifies this compound-document
+algorithm.
+
+The profile treats each JSON map with a direct literal `proof` property as a
+separate secured document.  Verification removes only that map's `proof` and
+leaves proofs on descendant maps in place.  Replacing a valid child proof
+therefore invalidates an outer proof that covered the original secured child.
+Fedify requires a direct proof.  It does not treat proof aliases, sets, chains,
+or remote references as alternatives.
+
+Every embedded portable map needs one direct inline proof and its own explicit
+`@context`.  Fedify verifies each map against an immutable copy of the received
+JSON and applies the FEP-ef61 portable-ID and controlling-DID policy to that
+map. It does not copy a parent's context into a child, try several
+proof-removal rules, or fetch an unpinned context from the live network.
+Inputs that exceed the traversal limits are rejected.  Fedify does not return
+authentication results for only part of a compound document.
+
+This profile authenticates JSON snapshots.  A child proof may be valid when
+verified in isolation even if the parent's active context causes the embedded
+JSON-LD to expand differently.  Proof success does not establish that the
+isolated and embedded expansions are equivalent.
+
+> [!WARNING]
+> Typed vocabulary serialization can change the secured representation of a
+> signed embedded object.  Signing a typed child, assigning it to a typed
+> parent, and serializing the parent can remove the child's document and proof
+> contexts while retaining its `proofValue`.  Do not serialize a signed typed
+> child through a typed parent when producing a map-local compound document.
+> The profile also accepts exactly one direct proof per map, while Fedify's
+> ordinary activity signer creates one proof for each Ed25519 key.  A sender
+> producing a portable compound document must arrange for exactly one direct
+> proof on each map.
+> When forwarding an already signed payload, use
+> [`forwardActivity()`](./outbox.md#federating-posted-activities) to avoid a
+> vocabulary-object round trip.
+
 > [!TIP]
 > HTTPS Signatures, Linked Data Signatures, and Object Integrity Proofs can
 > coexist in an application and be used together for maximum compatibility.
@@ -1153,10 +1198,6 @@ activity does not authenticate portable objects nested inside it.
 > To support HTTP Signatures, Linked Data Signatures, and Object Integrity
 > Proofs simultaneously, you need to generate both RSA-PKCS#1-v1.5 and Ed25519
 > key pairs for each actor, and store them in the database.
-
-[FEP-8b32]: https://w3id.org/fep/8b32
-[FEP-ef61]: https://w3id.org/fep/ef61
-[FEP-fe34]: https://w3id.org/fep/fe34
 
 
 Activity transformers

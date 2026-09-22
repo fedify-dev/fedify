@@ -441,6 +441,49 @@ export async function verifyProof(
   return await verifyProofWithMessageDigestCache(jsonLd, proof, options);
 }
 
+/**
+ * Verifies the one direct literal proof on a map-local secured document.
+ *
+ * Unlike {@link verifyProof}, this removes only the literal `proof` member
+ * from the message digest.  JSON-LD aliases remain part of the signed input,
+ * and the document's received `@context` is not replaced by the proof
+ * configuration context.
+ *
+ * @internal
+ */
+export async function verifyMapLocalProof(
+  jsonLd: unknown,
+  options: VerifyProofOptions = {},
+): Promise<Multikey | null> {
+  if (
+    !isJsonLdNode(jsonLd) || !globalThis.Object.hasOwn(jsonLd, "proof") ||
+    !isJsonLdNode(jsonLd.proof)
+  ) {
+    return null;
+  }
+  const proofContextLoader = getNormalizationContextLoader(
+    preloadedOnlyDocumentLoader,
+  );
+  try {
+    const [candidate] = await parseRawProofCandidates(
+      jsonLd,
+      [jsonLd.proof],
+      options,
+      proofContextLoader,
+    );
+    if (candidate.proof == null) return null;
+    return await verifyProofWithMessageDigestCache(
+      jsonLd,
+      candidate.proof,
+      options,
+      { proofContextLoader, proofPropertyMode: "literal" },
+      candidate,
+    );
+  } catch {
+    return null;
+  }
+}
+
 async function verifyProofWithMessageDigestCache(
   jsonLd: unknown,
   proof: DataIntegrityProof,
@@ -529,6 +572,7 @@ interface ProofMessageDigests {
 interface ProofMessageDigestCache {
   values?: Map<string, Promise<ProofMessageDigests>>;
   proofContextLoader?: DocumentLoader;
+  proofPropertyMode?: "jsonLd" | "literal";
 }
 
 function expandContextPropertyIri(
@@ -627,18 +671,25 @@ async function createProofMessageDigests(
   jsonLd: Record<string, unknown>,
   proofContextLoader?: DocumentLoader,
   context?: unknown,
+  proofPropertyMode: "jsonLd" | "literal" = "jsonLd",
 ): Promise<ProofMessageDigests> {
   const msg = { ...jsonLd };
-  // `verifyProof()` promises to ignore existing proofs on the input;
-  // strip every top-level property that the active JSON-LD context maps to
-  // the security proof predicate so its bytes are not folded into the JCS
-  // message digest.
-  for (
-    const property of await getProofPropertyNames(msg, proofContextLoader)
-  ) {
-    delete msg[property];
+  if (proofPropertyMode === "literal") {
+    delete msg.proof;
+  } else {
+    // `verifyProof()` promises to ignore existing proofs on the input;
+    // strip every top-level property that the active JSON-LD context maps to
+    // the security proof predicate so its bytes are not folded into the JCS
+    // message digest.
+    for (
+      const property of await getProofPropertyNames(msg, proofContextLoader)
+    ) {
+      delete msg[property];
+    }
   }
-  if (context != null) msg["@context"] = structuredClone(context);
+  if (proofPropertyMode === "jsonLd" && context != null) {
+    msg["@context"] = structuredClone(context);
+  }
   const encoder = new TextEncoder();
   const digest = async (value: unknown): Promise<ArrayBuffer> => {
     const bytes = encoder.encode(serialize(value));
@@ -1297,14 +1348,17 @@ async function verifyProofInternal(
       jsonLd,
       messageDigestCache.proofContextLoader,
       proofConfiguration.context,
+      messageDigestCache.proofPropertyMode,
     );
     messageDigestValues.set(messageDigestKey, messageDigestsPromise);
   }
   const messageDigests = await messageDigestsPromise;
   if (await verifyCandidate(messageDigests.onWire)) return publicKey;
-  const normalizedDigest = await messageDigests.normalized();
-  if (normalizedDigest != null && await verifyCandidate(normalizedDigest)) {
-    return publicKey;
+  if (messageDigestCache.proofPropertyMode !== "literal") {
+    const normalizedDigest = await messageDigests.normalized();
+    if (normalizedDigest != null && await verifyCandidate(normalizedDigest)) {
+      return publicKey;
+    }
   }
   if (fetchedKey.cached) {
     logger.debug(
@@ -1454,6 +1508,258 @@ async function expandPortableObjectRoot(
   };
 }
 
+interface PreparedPortableObjectProof {
+  readonly prepared: true;
+  readonly objectId: URL;
+  readonly proofs: readonly DataIntegrityProof[];
+  readonly rawProofValues: readonly unknown[];
+  readonly proofContextLoader: DocumentLoader;
+}
+
+type PreparePortableObjectProofResult =
+  | PreparedPortableObjectProof
+  | {
+    readonly prepared: false;
+    readonly result: Extract<VerifyPortableObjectProofResult, {
+      verified: false;
+    }>;
+  };
+
+async function preparePortableObjectProof(
+  jsonLd: unknown,
+  options: VerifyPortableObjectProofOptions,
+): Promise<PreparePortableObjectProofResult> {
+  if (
+    isJsonLdNode(jsonLd) &&
+    typeof jsonLd["@id"] === "string" &&
+    !PORTABLE_OBJECT_ID_PATTERN.test(jsonLd["@id"])
+  ) {
+    return {
+      prepared: false,
+      result: {
+        verified: false,
+        reason: { type: "notPortableObject" },
+      },
+    };
+  }
+  const { root, proofContextLoader } = await expandPortableObjectRoot(
+    jsonLd,
+    options.contextLoader,
+  );
+  const id = root["@id"];
+  if (
+    typeof id !== "string" ||
+    !PORTABLE_OBJECT_ID_PATTERN.test(id)
+  ) {
+    return {
+      prepared: false,
+      result: {
+        verified: false,
+        reason: { type: "notPortableObject" },
+      },
+    };
+  }
+  const objectId = parseIri(id);
+  // parseIri() validates the portable ID; this additionally guarantees that
+  // its authority is a valid cryptographic origin before any key work begins.
+  getFe34Origin(objectId);
+
+  const objectType = classifyFep2277CoreType(root);
+  if (
+    objectType === "verificationMethod" ||
+    objectType === "publicKey" ||
+    objectType === "link"
+  ) {
+    return {
+      prepared: false,
+      result: {
+        verified: false,
+        reason: { type: "unsupportedObjectType", objectType },
+      },
+    };
+  }
+
+  const proofValues = root[SECURITY_PROOF];
+  if (
+    proofValues == null || Array.isArray(proofValues) && proofValues.length < 1
+  ) {
+    return {
+      prepared: false,
+      result: objectType === "collection"
+        ? {
+          verified: false,
+          reason: { type: "unsecuredCollection" },
+        }
+        : {
+          verified: false,
+          reason: { type: "missingProof" },
+        },
+    };
+  }
+  if (!Array.isArray(proofValues)) {
+    return {
+      prepared: false,
+      result: {
+        verified: false,
+        reason: { type: "invalidProof", proofIndex: 0 },
+      },
+    };
+  }
+  const rawProofValues = isJsonLdNode(jsonLd)
+    ? await getRawProofValues(jsonLd, proofContextLoader)
+    : [];
+  const proofs: DataIntegrityProof[] = [];
+  for (let proofIndex = 0; proofIndex < proofValues.length; proofIndex++) {
+    const proofValue = proofValues[proofIndex];
+    if (!hasValidPortableProofShape(proofValue)) {
+      return {
+        prepared: false,
+        result: {
+          verified: false,
+          reason: { type: "invalidProof", proofIndex },
+        },
+      };
+    }
+    let proof: DataIntegrityProof;
+    try {
+      proof = await DataIntegrityProof.fromJsonLd(
+        proofValue,
+        options,
+      );
+    } catch {
+      return {
+        prepared: false,
+        result: {
+          verified: false,
+          reason: { type: "invalidProof", proofIndex },
+        },
+      };
+    }
+    proofs.push(proof);
+  }
+
+  // Validate the whole proof set before resolving any keys.  A later non-DID
+  // or cross-authority proof therefore cannot cause unnecessary
+  // attacker-controlled document fetches.
+  for (let proofIndex = 0; proofIndex < proofs.length; proofIndex++) {
+    const verificationMethod = proofs[proofIndex].verificationMethodId;
+    if (verificationMethod == null) {
+      return {
+        prepared: false,
+        result: {
+          verified: false,
+          reason: { type: "invalidProof", proofIndex },
+        },
+      };
+    }
+    if (verificationMethod.protocol !== "did:") {
+      return {
+        prepared: false,
+        result: {
+          verified: false,
+          reason: {
+            type: "unsupportedVerificationMethod",
+            proofIndex,
+            verificationMethod,
+          },
+        },
+      };
+    }
+    try {
+      getFe34Origin(verificationMethod);
+    } catch (error) {
+      if (!(error instanceof TypeError)) throw error;
+      return {
+        prepared: false,
+        result: {
+          verified: false,
+          reason: {
+            type: "unsupportedVerificationMethod",
+            proofIndex,
+            verificationMethod,
+          },
+        },
+      };
+    }
+    if (!haveSameFe34Origin(objectId, verificationMethod)) {
+      return {
+        prepared: false,
+        result: {
+          verified: false,
+          reason: {
+            type: "verificationMethodMismatch",
+            proofIndex,
+            objectId,
+            verificationMethod,
+          },
+        },
+      };
+    }
+  }
+
+  return {
+    prepared: true,
+    objectId,
+    proofs,
+    rawProofValues,
+    proofContextLoader,
+  };
+}
+
+/**
+ * Applies portable-object proof policy to one map-local cryptographic result.
+ *
+ * @internal
+ */
+export async function verifyPortableObjectProofPolicy(
+  jsonLd: unknown,
+  key: Multikey | null,
+  options: VerifyPortableObjectProofOptions = {},
+): Promise<
+  | Extract<VerifyPortableObjectProofResult, { verified: false }>
+  | {
+    readonly verified: true;
+    readonly keys: readonly Multikey[];
+    readonly objectId: string;
+  }
+> {
+  const policyOptions = {
+    ...options,
+    contextLoader: preloadedOnlyDocumentLoader,
+  };
+  const prepared = await preparePortableObjectProof(jsonLd, policyOptions);
+  if (!prepared.prepared) return prepared.result;
+  const policyProof = prepared.proofs[0];
+  const literalProof = isJsonLdNode(jsonLd) && isJsonLdNode(jsonLd.proof)
+    ? (await parseRawProofCandidates(
+      jsonLd,
+      [jsonLd.proof],
+      policyOptions,
+      prepared.proofContextLoader,
+    ))[0]?.proof
+    : null;
+  const verificationMethod = policyProof?.verificationMethodId;
+  if (
+    prepared.proofs.length !== 1 || key == null ||
+    policyProof == null || literalProof == null ||
+    !sameProof(policyProof, literalProof) || verificationMethod == null ||
+    key.id?.href !== verificationMethod.href
+  ) {
+    return {
+      verified: false,
+      reason: {
+        type: "invalidProof",
+        proofIndex: prepared.proofs.length > 1 ? 1 : 0,
+      },
+    };
+  }
+  return {
+    verified: true,
+    keys: [key],
+    objectId: formatIri(prepared.objectId),
+  };
+}
+
 /**
  * Verifies the FEP-ef61 Object Integrity Proof policy for a portable object.
  *
@@ -1477,140 +1783,9 @@ export async function verifyPortableObjectProof(
   jsonLd: unknown,
   options: VerifyPortableObjectProofOptions = {},
 ): Promise<VerifyPortableObjectProofResult> {
-  if (
-    isJsonLdNode(jsonLd) &&
-    typeof jsonLd["@id"] === "string" &&
-    !PORTABLE_OBJECT_ID_PATTERN.test(jsonLd["@id"])
-  ) {
-    return {
-      verified: false,
-      reason: { type: "notPortableObject" },
-    };
-  }
-  const { root, proofContextLoader } = await expandPortableObjectRoot(
-    jsonLd,
-    options.contextLoader,
-  );
-  const id = root["@id"];
-  if (
-    typeof id !== "string" ||
-    !PORTABLE_OBJECT_ID_PATTERN.test(id)
-  ) {
-    return {
-      verified: false,
-      reason: { type: "notPortableObject" },
-    };
-  }
-  const objectId = parseIri(id);
-  // parseIri() validates the portable ID; this additionally guarantees that
-  // its authority is a valid cryptographic origin before any key work begins.
-  getFe34Origin(objectId);
-
-  const objectType = classifyFep2277CoreType(root);
-  if (
-    objectType === "verificationMethod" ||
-    objectType === "publicKey" ||
-    objectType === "link"
-  ) {
-    return {
-      verified: false,
-      reason: { type: "unsupportedObjectType", objectType },
-    };
-  }
-
-  const proofValues = root[SECURITY_PROOF];
-  if (
-    proofValues == null || Array.isArray(proofValues) && proofValues.length < 1
-  ) {
-    return objectType === "collection"
-      ? {
-        verified: false,
-        reason: { type: "unsecuredCollection" },
-      }
-      : {
-        verified: false,
-        reason: { type: "missingProof" },
-      };
-  }
-  if (!Array.isArray(proofValues)) {
-    return {
-      verified: false,
-      reason: { type: "invalidProof", proofIndex: 0 },
-    };
-  }
-  const rawProofValues = isJsonLdNode(jsonLd)
-    ? await getRawProofValues(jsonLd, proofContextLoader)
-    : [];
-  const proofs: DataIntegrityProof[] = [];
-  for (let proofIndex = 0; proofIndex < proofValues.length; proofIndex++) {
-    const proofValue = proofValues[proofIndex];
-    if (!hasValidPortableProofShape(proofValue)) {
-      return {
-        verified: false,
-        reason: { type: "invalidProof", proofIndex },
-      };
-    }
-    let proof: DataIntegrityProof;
-    try {
-      proof = await DataIntegrityProof.fromJsonLd(
-        proofValue,
-        options,
-      );
-    } catch {
-      return {
-        verified: false,
-        reason: { type: "invalidProof", proofIndex },
-      };
-    }
-    proofs.push(proof);
-  }
-
-  // Validate the whole proof set before resolving any keys.  A later non-DID
-  // or cross-authority proof therefore cannot cause unnecessary
-  // attacker-controlled document fetches.
-  for (let proofIndex = 0; proofIndex < proofs.length; proofIndex++) {
-    const verificationMethod = proofs[proofIndex].verificationMethodId;
-    if (verificationMethod == null) {
-      return {
-        verified: false,
-        reason: { type: "invalidProof", proofIndex },
-      };
-    }
-    if (verificationMethod.protocol !== "did:") {
-      return {
-        verified: false,
-        reason: {
-          type: "unsupportedVerificationMethod",
-          proofIndex,
-          verificationMethod,
-        },
-      };
-    }
-    try {
-      getFe34Origin(verificationMethod);
-    } catch (error) {
-      if (!(error instanceof TypeError)) throw error;
-      return {
-        verified: false,
-        reason: {
-          type: "unsupportedVerificationMethod",
-          proofIndex,
-          verificationMethod,
-        },
-      };
-    }
-    if (!haveSameFe34Origin(objectId, verificationMethod)) {
-      return {
-        verified: false,
-        reason: {
-          type: "verificationMethodMismatch",
-          proofIndex,
-          objectId,
-          verificationMethod,
-        },
-      };
-    }
-  }
+  const prepared = await preparePortableObjectProof(jsonLd, options);
+  if (!prepared.prepared) return prepared.result;
+  const { proofs, rawProofValues, proofContextLoader } = prepared;
 
   const keys: Multikey[] = [];
   const rawProofCandidates = await parseRawProofCandidates(

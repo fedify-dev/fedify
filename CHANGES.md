@@ -127,6 +127,14 @@ To be released.
     `esnext.temporal` lib reference.
     [[#823], [#925]]
 
+ -  Security: Inbox processing now independently verifies each portable actor,
+    activity, and object in a compound JSON document against its own map-local
+    Object Integrity Proof before dispatch.  A valid outer proof no longer
+    authenticates an unsigned or invalid nested portable object.
+    Portable documents with proof sets or which exceed the inbox compound
+    traversal limits are rejected as unsupported.
+    [[#288], [#938], [#1041]]
+
 [key–value store guide]: https://fedify.dev/manual/kv
 [FEP-ef61]: https://w3id.org/fep/ef61
 [FEP-8b32]: https://w3id.org/fep/8b32
@@ -134,6 +142,7 @@ To be released.
 [ActivityPub Media Upload extension]: https://www.w3.org/wiki/SocialCG/ActivityPub/MediaUpload
 [Standard Schema]: https://standardschema.dev/
 [#206]: https://github.com/fedify-dev/fedify/issues/206
+[#288]: https://github.com/fedify-dev/fedify/issues/288
 [#754]: https://github.com/fedify-dev/fedify/issues/754
 [#797]: https://github.com/fedify-dev/fedify/issues/797
 [#798]: https://github.com/fedify-dev/fedify/issues/798
@@ -152,9 +161,11 @@ To be released.
 [#927]: https://github.com/fedify-dev/fedify/pull/927
 [#930]: https://github.com/fedify-dev/fedify/issues/930
 [#934]: https://github.com/fedify-dev/fedify/pull/934
+[#938]: https://github.com/fedify-dev/fedify/issues/938
 [#968]: https://github.com/fedify-dev/fedify/pull/968
 [#1017]: https://github.com/fedify-dev/fedify/issues/1017
 [#1027]: https://github.com/fedify-dev/fedify/pull/1027
+[#1041]: https://github.com/fedify-dev/fedify/pull/1041
 
 ### @fedify/adonisjs
 

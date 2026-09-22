@@ -55,4 +55,18 @@ export {
   getKeyOwner,
   type GetKeyOwnerOptions,
 } from "./owner.ts";
-export * from "./proof.ts";
+export {
+  createProof,
+  type CreateProofOptions,
+  hasProofLike,
+  signObject,
+  type SignObjectOptions,
+  verifyObject,
+  type VerifyObjectOptions,
+  verifyPortableObjectProof,
+  type VerifyPortableObjectProofFailureReason,
+  type VerifyPortableObjectProofOptions,
+  type VerifyPortableObjectProofResult,
+  verifyProof,
+  type VerifyProofOptions,
+} from "./proof.ts";

@@ -37,6 +37,26 @@ why some activities are rejected, you can turn on [logging](./log.md) for
 [Linked Data Signatures]: https://web.archive.org/web/20170923124140/https://w3c-dvcg.github.io/ld-signatures/
 [FEP-8b32]: https://w3id.org/fep/8b32
 
+### Compound portable objects
+
+The inbox independently verifies every JSON map with an [FEP-ef61] portable
+`id` or `@id`, including embedded collections, with the
+[map-local compound-proof profile](./send.md#compound-portable-objects).  A
+valid proof on the outer activity does not authenticate an unsigned or invalid
+portable object embedded within it.  The gateway trust allowance for an
+unsigned top-level portable collection does not apply inside a compound
+document; an embedded portable collection needs its own proof and `@context`.
+
+This check uses the original received JSON after the normal outer
+authentication and actor ownership checks.  Fedify consumes a deferred
+signature nonce only after the entire compound document passes verification.
+It also verifies the complete result before dispatching the activity through a
+queue, route, or listener.  Unsupported proof shapes and documents that exceed
+the inspection or verification limits receive `401 Unauthorized`.  Fedify does
+not dispatch any part of those documents to application code.
+
+[FEP-ef61]: https://w3id.org/fep/ef61
+
 ### `Accept-Signature` challenges
 
 *This API is available since Fedify 2.1.0.*
