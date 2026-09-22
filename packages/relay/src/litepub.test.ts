@@ -384,10 +384,7 @@ describe("LitePubRelay", () => {
 
     const deliveredActivities = recordInbox(daveInbox);
     const response = await relay.fetch(request);
-    ok(
-      response.status === 200 || response.status === 202,
-      `Unexpected inbox response status: ${response.status}`,
-    );
+    strictEqual(response.status, 202);
 
     // Verify handler was called
     strictEqual(handlerCalled, true);
@@ -460,7 +457,8 @@ describe("LitePubRelay", () => {
       rsaPublicKey.id,
     );
 
-    await relay.fetch(request);
+    const response = await relay.fetch(request);
+    strictEqual(response.status, 202);
 
     // Verify follower was NOT stored
     const followerData = await kv.get([
@@ -510,7 +508,8 @@ describe("LitePubRelay", () => {
       rsaPublicKey.id,
     );
 
-    await relay.fetch(request);
+    const response = await relay.fetch(request);
+    strictEqual(response.status, 202);
 
     // Verify follower was stored with "pending" state
     const followerData = await kv.get([
@@ -554,7 +553,8 @@ describe("LitePubRelay", () => {
       rsaPublicKey.id,
     );
 
-    await relay.fetch(request);
+    const response = await relay.fetch(request);
+    strictEqual(response.status, 202);
 
     // Verify follower was NOT stored
     const followerData = await kv.get([
@@ -611,7 +611,8 @@ describe("LitePubRelay", () => {
         rsaPublicKey.id,
       );
 
-      await relay.fetch(request);
+      const response = await relay.fetch(request);
+      strictEqual(response.status, 202);
 
       strictEqual(handlerCallCount, 1);
       const follower = await relay.getFollower(followerId);
@@ -668,7 +669,8 @@ describe("LitePubRelay", () => {
         rsaPublicKey.id,
       );
 
-      await relay.fetch(request);
+      const response = await relay.fetch(request);
+      strictEqual(response.status, 202);
 
       strictEqual(handlerCallCount, 0);
       const followerData = await kv.get([
@@ -731,7 +733,8 @@ describe("LitePubRelay", () => {
       rsaPublicKey.id,
     );
 
-    await relay.fetch(request);
+    const response = await relay.fetch(request);
+    strictEqual(response.status, 202);
 
     // Verify follower state changed to "accepted"
     const followerData = await kv.get([
@@ -792,7 +795,8 @@ describe("LitePubRelay", () => {
         rsaPublicKey.id,
       );
 
-      await relay.fetch(request);
+      const response = await relay.fetch(request);
+      strictEqual(response.status, 202);
 
       deepStrictEqual(await kv.get(["follower", followerId]), invalidRow);
     }
@@ -850,7 +854,8 @@ describe("LitePubRelay", () => {
         rsaPublicKey.id,
       );
 
-      await relay.fetch(request);
+      const response = await relay.fetch(request);
+      strictEqual(response.status, 202);
 
       const followerData = await kv.get(["follower", followerId]);
       strictEqual(followerData, undefined);

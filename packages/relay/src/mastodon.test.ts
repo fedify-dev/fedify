@@ -427,7 +427,8 @@ describe("MastodonRelay", () => {
       rsaPublicKey.id,
     );
 
-    await relay.fetch(request);
+    const response = await relay.fetch(request);
+    strictEqual(response.status, 202);
 
     // Verify handler was called
     strictEqual(handlerCalled, true);
@@ -483,7 +484,8 @@ describe("MastodonRelay", () => {
       rsaPublicKey.id,
     );
 
-    await relay.fetch(request);
+    const response = await relay.fetch(request);
+    strictEqual(response.status, 202);
 
     // Verify follower was NOT stored
     const followerData = await kv.get([
@@ -546,7 +548,8 @@ describe("MastodonRelay", () => {
       rsaPublicKey.id,
     );
 
-    await relay.fetch(request);
+    const response = await relay.fetch(request);
+    strictEqual(response.status, 202);
 
     // Verify follower was removed
     const followerData = await kv.get(["follower", followerId]);
@@ -825,7 +828,8 @@ describe("MastodonRelay", () => {
       rsaPublicKey.id,
     );
 
-    await relay.fetch(request);
+    const response = await relay.fetch(request);
+    strictEqual(response.status, 202);
 
     // Verify follower was NOT stored
     const followerData = await kv.get([
@@ -875,7 +879,8 @@ describe("MastodonRelay", () => {
       rsaPublicKey.id,
     );
 
-    await relay.fetch(request);
+    const response = await relay.fetch(request);
+    strictEqual(response.status, 202);
 
     // Verify follower was stored
     const followerData = await kv.get([
