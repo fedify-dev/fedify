@@ -108,6 +108,25 @@ function recordInbox(inbox: string): DeliveredRequest[] {
   return recorded;
 }
 
+const aliceDeliveries = recordInbox(aliceInbox);
+
+function assertAcceptDelivered(
+  follow: Follow,
+  deliveries: readonly DeliveredRequest[] = aliceDeliveries,
+): void {
+  const accepts = deliveries.filter(({ body }) =>
+    body.type === "Accept" && body.object?.id === follow.id?.href
+  );
+  strictEqual(accepts.length, 1, "Expected exactly one Accept for this Follow");
+  strictEqual(accepts[0].method, "POST");
+  strictEqual(accepts[0].body.actor, "https://relay.example.com/users/relay");
+  strictEqual(accepts[0].body.object.type, "Follow");
+  strictEqual(
+    accepts[0].body.object.actor?.id ?? accepts[0].body.object.actor,
+    follow.actorId?.href,
+  );
+}
+
 const nextFetch = globalThis.fetch;
 globalThis.fetch = (async (input: URL | RequestInfo, init?: RequestInit) => {
   const request = input instanceof Request ? input : new Request(input, init);
@@ -406,7 +425,10 @@ describe("MastodonRelay", () => {
     });
 
     const followActivity = new Follow({
-      id: new URL("https://remote.example.com/activities/follow/1"),
+      // Isolate delivery assertions from other tests and loop iterations.
+      id: new URL(
+        `https://remote.example.com/activities/follow/${crypto.randomUUID()}`,
+      ),
       actor: follower.id,
       object: new URL("https://relay.example.com/users/relay"),
     });
@@ -429,6 +451,7 @@ describe("MastodonRelay", () => {
 
     const response = await relay.fetch(request);
     strictEqual(response.status, 202);
+    assertAcceptDelivered(followActivity);
 
     // Verify handler was called
     strictEqual(handlerCalled, true);
@@ -858,7 +881,10 @@ describe("MastodonRelay", () => {
 
     // Public follow activity
     const followActivity = new Follow({
-      id: new URL("https://remote.example.com/activities/follow/1"),
+      // Isolate delivery assertions from other tests and loop iterations.
+      id: new URL(
+        `https://remote.example.com/activities/follow/${crypto.randomUUID()}`,
+      ),
       actor: follower.id,
       object: new URL("https://www.w3.org/ns/activitystreams#Public"),
     });
@@ -881,6 +907,7 @@ describe("MastodonRelay", () => {
 
     const response = await relay.fetch(request);
     strictEqual(response.status, 202);
+    assertAcceptDelivered(followActivity);
 
     // Verify follower was stored
     const followerData = await kv.get([

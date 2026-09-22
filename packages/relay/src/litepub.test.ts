@@ -142,6 +142,25 @@ function recordInbox(inbox: string): DeliveredRequest[] {
   return recorded;
 }
 
+const aliceDeliveries = recordInbox(aliceInbox);
+
+function assertAcceptDelivered(
+  follow: Follow,
+  deliveries: readonly DeliveredRequest[] = aliceDeliveries,
+): void {
+  const accepts = deliveries.filter(({ body }) =>
+    body.type === "Accept" && body.object?.id === follow.id?.href
+  );
+  strictEqual(accepts.length, 1, "Expected exactly one Accept for this Follow");
+  strictEqual(accepts[0].method, "POST");
+  strictEqual(accepts[0].body.actor, "https://relay.example.com/users/relay");
+  strictEqual(accepts[0].body.object.type, "Follow");
+  strictEqual(
+    accepts[0].body.object.actor?.id ?? accepts[0].body.object.actor,
+    follow.actorId?.href,
+  );
+}
+
 const nextFetch = globalThis.fetch;
 globalThis.fetch = (async (input: URL | RequestInfo, init?: RequestInit) => {
   const request = input instanceof Request ? input : new Request(input, init);
@@ -361,7 +380,10 @@ describe("LitePubRelay", () => {
     });
 
     const followActivity = new Follow({
-      id: new URL("https://remote.example.com/activities/follow/1"),
+      // Isolate delivery assertions from other tests and loop iterations.
+      id: new URL(
+        `https://remote.example.com/activities/follow/${crypto.randomUUID()}`,
+      ),
       actor: follower.id,
       object: new URL("https://relay.example.com/users/relay"),
     });
@@ -385,6 +407,7 @@ describe("LitePubRelay", () => {
     const deliveredActivities = recordInbox(daveInbox);
     const response = await relay.fetch(request);
     strictEqual(response.status, 202);
+    assertAcceptDelivered(followActivity, deliveredActivities);
 
     // Verify handler was called
     strictEqual(handlerCalled, true);
@@ -487,7 +510,10 @@ describe("LitePubRelay", () => {
 
     // Public follow activity
     const followActivity = new Follow({
-      id: new URL("https://remote.example.com/activities/follow/1"),
+      // Isolate delivery assertions from other tests and loop iterations.
+      id: new URL(
+        `https://remote.example.com/activities/follow/${crypto.randomUUID()}`,
+      ),
       actor: follower.id,
       object: new URL("https://www.w3.org/ns/activitystreams#Public"),
     });
@@ -510,6 +536,7 @@ describe("LitePubRelay", () => {
 
     const response = await relay.fetch(request);
     strictEqual(response.status, 202);
+    assertAcceptDelivered(followActivity);
 
     // Verify follower was stored with "pending" state
     const followerData = await kv.get([
@@ -594,7 +621,10 @@ describe("LitePubRelay", () => {
       strictEqual(await relay.getFollower(followerId), null);
 
       const followActivity = new Follow({
-        id: new URL("https://remote.example.com/activities/follow/1"),
+        // Isolate delivery assertions from other tests and loop iterations.
+        id: new URL(
+          `https://remote.example.com/activities/follow/${crypto.randomUUID()}`,
+        ),
         actor: new URL(followerId),
         object: new URL("https://relay.example.com/users/relay"),
       });
@@ -613,6 +643,7 @@ describe("LitePubRelay", () => {
 
       const response = await relay.fetch(request);
       strictEqual(response.status, 202);
+      assertAcceptDelivered(followActivity);
 
       strictEqual(handlerCallCount, 1);
       const follower = await relay.getFollower(followerId);
