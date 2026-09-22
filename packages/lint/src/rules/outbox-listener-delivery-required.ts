@@ -314,6 +314,8 @@ function alwaysExits(node: Node): boolean {
   switch (node.type) {
     case "ReturnStatement":
     case "ThrowStatement":
+    case "BreakStatement":
+    case "ContinueStatement":
       return true;
 
     case "BlockStatement":
@@ -447,7 +449,9 @@ function collectReferencedNames(node: unknown, out: Set<string>): void {
     return;
   }
   if (isFunctionLikeNode(n)) {
-    collectReferencedNames((n as { body: unknown }).body, out);
+    // Stop at a nested function's own boundary: whether a name it
+    // references counts is decided separately, only once that function
+    // itself is found to be reachable.
     return;
   }
 
@@ -459,10 +463,15 @@ function collectReferencedNames(node: unknown, out: Set<string>): void {
 }
 
 /**
- * Collects every named local helper in scope: a `function name() {}`
- * declaration, or a `const name = function/arrow` binding. Object-literal
- * properties are handled separately, through `resolveFunctionBinding`,
- * since their name is only meaningful together with the object it lives on.
+ * Collects every named local helper declared directly in `node`'s own
+ * scope: a `function name() {}` declaration, or a `const name =
+ * function/arrow` binding. Does not descend into a found function's own
+ * body -- a helper nested inside another helper is only found once that
+ * outer helper is itself resolved as reachable, so it can be layered on
+ * top of (and correctly shadow) the outer scope's helpers of the same
+ * name. Object-literal properties are handled separately, through
+ * `resolveFunctionBinding`, since their name is only meaningful together
+ * with the object it lives on.
  */
 function collectNamedHelpers(
   node: unknown,
@@ -478,13 +487,11 @@ function collectNamedHelpers(
 
   if (n.type === "FunctionDeclaration") {
     if (n.id?.name != null) out.set(n.id.name, n as FunctionLikeNode);
-    collectNamedHelpers((n as { body: unknown }).body, out);
     return;
   }
   if (
     n.type === "FunctionExpression" || n.type === "ArrowFunctionExpression"
   ) {
-    collectNamedHelpers((n as { body: unknown }).body, out);
     return;
   }
   if (n.type === "VariableDeclarator") {
@@ -493,7 +500,6 @@ function collectNamedHelpers(
       const init = decl.init as Node;
       if (isFunctionLikeNode(init)) out.set(decl.id.name, init);
     }
-    if (decl.init != null) collectNamedHelpers(decl.init, out);
     return;
   }
 
@@ -505,34 +511,49 @@ function collectNamedHelpers(
 }
 
 /**
- * Resolves every call expression's callee against `bindings` (a local
- * helper, or a property of a local object literal bound to one) and
- * collects the functions those calls resolve to. This is also how a
- * directly invoked function expression -- `(() => {...})()` -- gets found:
- * `resolveFunctionBinding` returns a function literal callee as-is.
+ * Resolves every call expression's callee and collects the functions those
+ * calls resolve to. A bare identifier callee is resolved against `helpers`
+ * first -- the current scope's own, correctly shadowed helper map -- so a
+ * call to a shadowed name never resolves to some other, same-named
+ * function declared elsewhere. Anything `helpers` doesn't have (a member
+ * call such as `handlers.deliver()`, or a name that isn't a local helper
+ * at all) falls back to `bindings`, the whole-file map used to resolve a
+ * local object literal's properties. This is also how a directly invoked
+ * function expression -- `(() => {...})()` -- gets found:
+ * `resolveFunctionBinding` returns a function literal callee as-is. Stops
+ * at a nested function's own boundary, so a call that only happens inside
+ * some other, not-yet-reachable function doesn't count here -- it is
+ * found on its own once that function is resolved as reachable.
  */
 function collectResolvedCallTargets(
   node: unknown,
+  helpers: ReadonlyMap<string, FunctionLikeNode>,
   bindings: Map<string, unknown>,
   out: Set<FunctionLikeNode>,
 ): void {
   if (node == null || typeof node !== "object") return;
   if (Array.isArray(node)) {
-    for (const item of node) collectResolvedCallTargets(item, bindings, out);
+    for (const item of node) {
+      collectResolvedCallTargets(item, helpers, bindings, out);
+    }
     return;
   }
   if (!isNode(node)) return;
   const n = node;
+  if (isFunctionLikeNode(n)) return;
 
   if (n.type === "CallExpression") {
-    const resolved = resolveFunctionBinding(n.callee as Expression, bindings);
+    const callee = n.callee as Expression;
+    const resolved = callee.type === "Identifier" && helpers.has(callee.name)
+      ? helpers.get(callee.name)!
+      : resolveFunctionBinding(callee, bindings);
     if (resolved != null) out.add(resolved);
   }
 
   const record = n as unknown as Record<string, unknown>;
   for (const key in record) {
     if (key === "parent") continue;
-    collectResolvedCallTargets(record[key], bindings, out);
+    collectResolvedCallTargets(record[key], helpers, bindings, out);
   }
 }
 
@@ -565,16 +586,35 @@ function collectConsumedCallbacks(
     }
   };
 
+  // Finds an `await` anywhere in `expr` -- not just at its top level, so
+  // `result = await Promise.all(...)` and similar wrapping still count --
+  // and feeds what it awaits into `walkConsumed`. Stops at a nested
+  // function's own boundary.
+  const walkAwaitExpressions = (expr: unknown): void => {
+    if (expr == null || typeof expr !== "object") return;
+    if (Array.isArray(expr)) {
+      for (const item of expr) walkAwaitExpressions(item);
+      return;
+    }
+    if (!isNode(expr) || isFunctionLikeNode(expr)) return;
+    if (expr.type === "AwaitExpression") {
+      walkConsumed((expr as { argument: unknown }).argument);
+      return;
+    }
+    const record = expr as unknown as Record<string, unknown>;
+    for (const key in record) {
+      if (key !== "parent") walkAwaitExpressions(record[key]);
+    }
+  };
+
   for (const statement of statements) {
     if (statement.type === "ReturnStatement") {
+      // A return value is consumed by definition -- no `await` needed.
       if (statement.argument != null) walkConsumed(statement.argument);
       continue;
     }
-    if (
-      statement.type === "ExpressionStatement" &&
-      statement.expression.type === "AwaitExpression"
-    ) {
-      walkConsumed(statement.expression.argument);
+    if (statement.type === "ExpressionStatement") {
+      walkAwaitExpressions(statement.expression);
       continue;
     }
     if (statement.type === "VariableDeclaration") {
@@ -583,9 +623,7 @@ function collectConsumedCallbacks(
           | Node
           | null
           | undefined;
-        if (init?.type === "AwaitExpression") {
-          walkConsumed((init as { argument: unknown }).argument);
-        }
+        if (init != null) walkAwaitExpressions(init);
       }
     }
   }
@@ -625,15 +663,75 @@ function collectNestedFunctions(
 }
 
 /**
+ * Computes the full set of function nodes that are actually reachable from
+ * `root`: `root` itself feeds a worklist, and each function it (or a
+ * function already on the worklist) references from *its own* reachable
+ * statements -- never from a dead branch or some other not-yet-reached
+ * function's body -- gets queued in turn. `outerHelpers` is layered fresh
+ * for each scope, so a helper declared at an inner scope shadows a
+ * same-named one further out instead of overwriting it globally, and a
+ * dead branch that merely mentions a helper's name never queues it.
+ */
+function computeUsedFunctions(
+  root: Node,
+  bindings: Map<string, unknown>,
+): Set<FunctionLikeNode> {
+  const used = new Set<FunctionLikeNode>();
+  const visited = new Set<Node>();
+
+  const processScope = (
+    scopeRoot: Node,
+    outerHelpers: ReadonlyMap<string, FunctionLikeNode>,
+  ): void => {
+    if (visited.has(scopeRoot)) return;
+    visited.add(scopeRoot);
+
+    const statements: Node[] = [];
+    collectReachableStatements(scopeRoot, statements);
+
+    const helpers = new Map(outerHelpers);
+    for (const statement of statements) {
+      collectNamedHelpers(statement, helpers);
+    }
+
+    const referencedNames = new Set<string>();
+    for (const statement of statements) {
+      collectReferencedNames(statement, referencedNames);
+    }
+    const reached = new Set<FunctionLikeNode>();
+    for (const [name, fn] of helpers) {
+      if (referencedNames.has(name)) reached.add(fn);
+    }
+    for (const statement of statements) {
+      collectResolvedCallTargets(statement, helpers, bindings, reached);
+    }
+    collectConsumedCallbacks(
+      statements,
+      scopeRoot.type !== "BlockStatement",
+      reached,
+    );
+
+    for (const fn of reached) {
+      used.add(fn);
+      processScope(fn.body as Node, helpers);
+    }
+  };
+
+  processScope(root, new Map());
+  return used;
+}
+
+/**
  * Builds the source text to scan for a delivery call: the reachable
- * statements of `root`, with every nested function literal either folded in
- * (its own reachable text spliced in place) or blanked out, depending on
- * whether `used` says it is actually invoked.
+ * statements of `root`, with every nested function literal either folded
+ * in (its own reachable text spliced in place, wherever that function's
+ * own declaration happens to live) or blanked out, depending on whether
+ * `used` (from `computeUsedFunctions`) says it is actually invoked.
  */
 function collectDeliveryScanCode(
   sourceCode: { getText(node: unknown): string },
   root: Node,
-  used: Set<FunctionLikeNode>,
+  used: ReadonlySet<FunctionLikeNode>,
   visited: Set<Node>,
 ): string {
   if (visited.has(root)) return "";
@@ -642,13 +740,6 @@ function collectDeliveryScanCode(
   const statements: Node[] = [];
   collectReachableStatements(root, statements);
 
-  const consumed = new Set<FunctionLikeNode>();
-  collectConsumedCallbacks(
-    statements,
-    root.type !== "BlockStatement",
-    consumed,
-  );
-
   return statements
     .map((statement) => {
       let text = sourceCode.getText(statement);
@@ -656,7 +747,7 @@ function collectDeliveryScanCode(
       collectNestedFunctions(statement, nested);
       for (const fn of nested) {
         const fnText = sourceCode.getText(fn);
-        const replacement = used.has(fn) || consumed.has(fn)
+        const replacement = used.has(fn)
           ? collectDeliveryScanCode(sourceCode, fn.body as Node, used, visited)
           : "";
         text = text.split(fnText).join(
@@ -673,21 +764,12 @@ const listenerCallsDeliveryMethod = (
   listener: FunctionLikeNode,
   bindings: Map<string, unknown>,
 ): boolean => {
-  const usedFunctions = new Set<FunctionLikeNode>();
-  const referencedNames = new Set<string>();
-  collectReferencedNames(listener.body, referencedNames);
-  const namedHelpers = new Map<string, FunctionLikeNode>();
-  collectNamedHelpers(listener.body, namedHelpers);
-  for (const [name, fn] of namedHelpers) {
-    if (referencedNames.has(name)) usedFunctions.add(fn);
-  }
-  collectResolvedCallTargets(listener.body, bindings, usedFunctions);
-
+  const used = computeUsedFunctions(listener.body as Node, bindings);
   const code = stripCommentsAndStrings(
     collectDeliveryScanCode(
       sourceCode,
       listener.body as Node,
-      usedFunctions,
+      used,
       new Set(),
     ),
   );

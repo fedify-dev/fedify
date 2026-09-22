@@ -4,7 +4,8 @@ links:
   '#900': https://github.com/fedify-dev/fedify/issues/900
 ---
  -  Changed `outbox-listener-delivery-required` (`@fedify/lint`) to decide
-    whether a `ctx.sendActivity()`/`forwardActivity()` call actually runs,
+    whether a `ctx.sendActivity()`/`ctx.forwardActivity()` call actually
+    runs,
     instead of scanning the listener's source as a flat block of text. It
     now reports a listener whose only delivery call sits behind a dead
     branch, after an unconditional `return`/`throw`, or inside a local
