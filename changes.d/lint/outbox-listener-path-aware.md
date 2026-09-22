@@ -3,11 +3,13 @@ links:
   '#1040': https://github.com/fedify-dev/fedify/pull/1040
   '#900': https://github.com/fedify-dev/fedify/issues/900
 ---
- -  Fixed `outbox-listener-delivery-required` (`@fedify/lint`) missing an
-    undelivered outbox listener when the only `ctx.sendActivity()` or
-    `ctx.forwardActivity()` call in its source never actually runs—for
-    example, inside an unused nested helper function, behind a
-    statically-dead branch, or inside a callback passed to an unrelated
-    function.  The rule now checks whether a delivery call is reachable
-    before treating the listener as compliant.
+ -  Changed `outbox-listener-delivery-required` (`@fedify/lint`) to check
+    whether its `ctx.sendActivity()`/`forwardActivity()` call is reachable,
+    rather than merely present somewhere in the source.  It now reports a
+    listener whose only delivery call sits in an unused nested helper
+    function, behind a statically-dead branch (such as `if (false)` or code
+    after an unconditional `return`), or inside a callback passed to an
+    unrelated function (such as `array.map()`).  Existing listeners that
+    deliver through a plain call, an aliased or destructured method, or a
+    helper function that is actually called are unaffected.
     [[#900], [#1040] by Jae-Hyuk-Jang]
