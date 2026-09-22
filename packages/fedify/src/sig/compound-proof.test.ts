@@ -1,5 +1,11 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
-import { Create, DataIntegrityProof, Note } from "@fedify/vocab";
+import {
+  Create,
+  DataIntegrityProof,
+  Note,
+  type Object,
+  Question,
+} from "@fedify/vocab";
 import { encodeMultibase, exportDidKey, parseIri } from "@fedify/vocab-runtime";
 import jsonld from "@fedify/vocab-runtime/jsonld";
 import { assert, assertEquals } from "@std/assert";
@@ -14,6 +20,10 @@ import conflictVector from "../../test-vectors/fep-8b32/map-local-context-confli
 import { normalizeOutgoingActivityJsonLd } from "../compat/outgoing-jsonld.ts";
 import { preloadedOnlyDocumentLoader } from "../compat/preloaded-context-loader.ts";
 import { ed25519PrivateKey, ed25519PublicKey } from "../testing/keys.ts";
+import {
+  type CompoundProofDiscoveryLimits,
+  verifyCompoundProofDocuments,
+} from "./compound-proof.ts";
 import { signObject, verifyProof } from "./proof.ts";
 
 const outerPrivateKey = await crypto.subtle.importKey(
@@ -69,6 +79,16 @@ const options = {
   context,
   contextLoader: mockDocumentLoader,
   documentLoader: mockDocumentLoader,
+};
+const inboundOptions = {
+  contextLoader: preloadedOnlyDocumentLoader,
+  documentLoader: preloadedOnlyDocumentLoader,
+};
+const compoundLimits: CompoundProofDiscoveryLimits = {
+  maxDepth: 16,
+  maxMaps: 32,
+  maxProofs: 8,
+  maxBytes: 16_384,
 };
 
 async function parseProof(
@@ -311,10 +331,6 @@ test("the context-conflict vector records valid proofs and divergent semantics",
     proofValue: conflictVector.proofValues.inner,
   });
 
-  const inboundOptions = {
-    contextLoader: preloadedOnlyDocumentLoader,
-    documentLoader: preloadedOnlyDocumentLoader,
-  };
   const verifiedInner = await verifyProof(
     embedded,
     await parseProof(embedded),
@@ -457,103 +473,243 @@ test("the raw same-context baseline verifies map-locally", async () => {
   );
 });
 
-test("typed Create serialization bypasses a parsed child's JSON-LD cache", async () => {
-  const created = Temporal.Instant.from("2023-02-24T23:36:38Z");
-  const unsignedInner = new Note({
-    id: parseIri(`ap+ef61://${innerDid}/objects/distinct-context`),
-    attribution: parseIri(`ap+ef61://${innerDid}/actor`),
-    content: "A portable note with its own context",
-  });
-  const inner = await signObject(
-    unsignedInner,
+async function signDistinctContextNote(
+  created: Temporal.Instant,
+  path: string,
+): Promise<Note> {
+  return await signObject(
+    new Note({
+      id: parseIri(`ap+ef61://${innerDid}/objects/${path}`),
+      attribution: parseIri(`ap+ef61://${innerDid}/actor`),
+      content: "A portable note with its own context",
+    }),
     ed25519PrivateKey,
     innerKeyId,
     { ...options, context: distinctInnerContext, created },
   );
-  const standaloneInner = await normalizeOutgoingActivityJsonLd(
-    await inner.toJsonLd({
+}
+
+async function serializeOutgoing(
+  object: Object,
+  context?: typeof distinctInnerContext,
+): Promise<Record<string, unknown>> {
+  return await normalizeOutgoingActivityJsonLd(
+    await object.toJsonLd({
       format: "compact",
       ...options,
-      context: distinctInnerContext,
+      context: context ?? options.context,
     }),
     mockDocumentLoader,
+    { preserveNestedSecuredDocuments: true },
   ) as Record<string, unknown>;
-  const outer = await signObject(
+}
+
+async function signOuterCreate(
+  created: Temporal.Instant,
+  path: string,
+  child: Note,
+): Promise<Create> {
+  return await signObject(
     new Create({
-      id: parseIri(`ap+ef61://${outerDid}/activities/distinct-context`),
+      id: parseIri(`ap+ef61://${outerDid}/activities/${path}`),
       actor: parseIri(`ap+ef61://${outerDid}/actor`),
-      object: inner,
+      object: child,
     }),
     outerPrivateKey,
     outerKeyId,
     { ...options, created },
   );
-  const compound = await normalizeOutgoingActivityJsonLd(
-    await outer.toJsonLd({ format: "compact", ...options }),
-    mockDocumentLoader,
-  ) as Record<string, unknown>;
+}
+
+test("typed Create serialization embeds the signed child representation", async () => {
+  const created = Temporal.Instant.from("2023-02-24T23:36:38Z");
+  const inner = await signDistinctContextNote(created, "distinct-context");
+  assert(inner instanceof Note);
+  const standaloneInner = await serializeOutgoing(inner, distinctInnerContext);
+  const outer = await signOuterCreate(created, "distinct-context", inner);
+  assert(outer instanceof Create);
+  const compound = await serializeOutgoing(outer);
   const embedded = compound.object as Record<string, unknown>;
   const embeddedProof = embedded.proof as Record<string, unknown>;
-  const standaloneProof = await parseProof(standaloneInner);
 
-  assertEquals(standaloneInner["@context"], distinctInnerContext);
+  // The child keeps its own document and proof contexts, which differ from
+  // the parent's, and is byte-identical to its standalone secured form.
+  assertEquals(embedded["@context"], distinctInnerContext);
+  assertEquals(embeddedProof["@context"], distinctInnerContext);
+  assertEquals(compound["@context"], context);
+  assertEquals(serialize(embedded), serialize(standaloneInner));
+  assertEquals(embedded.type, "Note");
+
   assertEquals(
-    (standaloneInner.proof as Record<string, unknown>)["@context"],
-    distinctInnerContext,
-  );
-  assertEquals(embedded["@context"], undefined);
-  assertEquals(embeddedProof["@context"], undefined);
-  assertEquals(
-    embeddedProof.proofValue,
-    (standaloneInner.proof as Record<string, unknown>).proofValue,
-  );
-  const compactedStandalone = structuredClone(standaloneInner);
-  const compactedStandaloneProof = compactedStandalone.proof as Record<
-    string,
-    unknown
-  >;
-  delete compactedStandalone["@context"];
-  delete compactedStandaloneProof["@context"];
-  assertEquals(embedded, compactedStandalone);
-  assertEquals(
-    (await verifyProof(standaloneInner, standaloneProof, options))?.id,
+    (await verifyProof(embedded, await parseProof(embedded), options))?.id,
     innerKeyId,
-  );
-  const rewrittenContext = structuredClone(standaloneInner);
-  rewrittenContext["@context"] = context;
-  assertEquals(
-    await verifyProof(rewrittenContext, standaloneProof, options),
-    null,
-  );
-  assertEquals(
-    await verifyProof(embedded, standaloneProof, options),
-    null,
   );
   assertEquals(
     (await verifyProof(compound, await parseProof(compound), options))?.id,
     outerKeyId,
   );
 
+  // The bytes on the wire also pass the inbound map-local verifier, which
+  // has no outgoing-normalization fallback to fall back on.
+  const mapLocal = await verifyCompoundProofDocuments(
+    compound,
+    compoundLimits,
+    inboundOptions,
+  );
+  assertEquals(mapLocal.status, "ok");
+  assert(mapLocal.status === "ok");
+  assert(mapLocal.verified);
+  assertEquals(
+    mapLocal.documents.map(({ path, verified }) => ({ path, verified })),
+    [{ path: "/object", verified: true }, { path: "", verified: true }],
+  );
+});
+
+test("tampering with an embedded signed child invalidates both proofs", async () => {
+  const created = Temporal.Instant.from("2023-02-24T23:36:38Z");
+  const inner = await signDistinctContextNote(created, "tampered");
+  const outer = await signOuterCreate(created, "tampered", inner);
+  const tampered = await serializeOutgoing(outer);
+  const tamperedInner = tampered.object as Record<string, unknown>;
+  tamperedInner.content = "A tampered portable note";
+
+  assertEquals(
+    await verifyProof(tamperedInner, await parseProof(tamperedInner), options),
+    null,
+  );
+  assertEquals(
+    await verifyProof(tampered, await parseProof(tampered), options),
+    null,
+  );
+});
+
+test("replacing an embedded child proof invalidates only the outer proof", async () => {
+  const created = Temporal.Instant.from("2023-02-24T23:36:38Z");
+  const replacementCreated = Temporal.Instant.from("2023-02-25T23:36:38Z");
+  const inner = await signDistinctContextNote(created, "replaced-proof");
+  const replacement = await signDistinctContextNote(
+    replacementCreated,
+    "replaced-proof",
+  );
+  const replacementProof =
+    (await serializeOutgoing(replacement, distinctInnerContext))
+      .proof as Record<string, unknown>;
+  const outer = await signOuterCreate(created, "replaced-proof", inner);
+  const compound = await serializeOutgoing(outer);
+  const replacedInner = compound.object as Record<string, unknown>;
+  replacedInner.proof = replacementProof;
+
+  assertEquals(
+    (await verifyProof(replacedInner, await parseProof(replacedInner), options))
+      ?.id,
+    innerKeyId,
+  );
+  assertEquals(
+    await verifyProof(compound, await parseProof(compound), options),
+    null,
+  );
+});
+
+test("cloning or re-signing a signed child drops its retained representation", async () => {
+  const created = Temporal.Instant.from("2023-02-24T23:36:38Z");
+  const inner = await signDistinctContextNote(created, "cloned");
+
+  // A clone may differ from the document the proof covers, so it must not
+  // reuse the retained JSON.
+  const cloned = inner.clone({});
+  assert(cloned instanceof Note);
+  const clonedCompound = await serializeOutgoing(
+    await signOuterCreate(created, "cloned", cloned),
+  );
+  const clonedEmbedded = clonedCompound.object as Record<string, unknown>;
+  assertEquals(clonedEmbedded["@context"], undefined);
+  assertEquals(
+    (clonedEmbedded.proof as Record<string, unknown>)["@context"],
+    undefined,
+  );
+
+  // A second proof puts the child outside the map-local profile, which
+  // accepts exactly one direct proof per map, so nothing is retained.
+  const reSigned = await signObject(
+    inner,
+    ed25519PrivateKey,
+    innerKeyId,
+    { ...options, context: distinctInnerContext, created },
+  );
+  const reSignedCompound = await serializeOutgoing(
+    await signOuterCreate(created, "re-signed", reSigned),
+  );
+  const reSignedEmbedded = reSignedCompound.object as Record<string, unknown>;
+  assertEquals(reSignedEmbedded["@context"], undefined);
+});
+
+test("mutating a signed child does not change its embedded representation", async () => {
+  const created = Temporal.Instant.from("2023-02-24T23:36:38Z");
+  const inner = await signDistinctContextNote(created, "mutated");
+  const standaloneInner = await serializeOutgoing(inner, distinctInnerContext);
+
+  // `signObject()` captures the document its proof covers.  Mutating the
+  // returned object in place is unsupported and leaves the snapshot alone,
+  // so the embedded child still verifies.
+  const proof = (await Array.fromAsync(inner.getProofs(options)))[0];
+  assert(proof.proofValue != null);
+  proof.proofValue[0] ^= 0xff;
+
+  const compound = await serializeOutgoing(
+    await signOuterCreate(created, "mutated", inner),
+  );
+  const embedded = compound.object as Record<string, unknown>;
+  assertEquals(serialize(embedded), serialize(standaloneInner));
+  assertEquals(
+    (await verifyProof(embedded, await parseProof(embedded), options))?.id,
+    innerKeyId,
+  );
+});
+
+test("a signed child is embedded through a compactable ancestor too", async () => {
+  const created = Temporal.Instant.from("2023-02-24T23:36:38Z");
+  const inner = await signDistinctContextNote(created, "compactable-parent");
+  const standaloneInner = await serializeOutgoing(inner, distinctInnerContext);
+  // `Note` is compactable and `Question` is not, so the inner note is
+  // embedded by the fast path and then passed through the enclosing
+  // question's JSON-LD compaction.
+  const wrapper = new Note({
+    id: parseIri(`ap+ef61://${innerDid}/objects/wrapper`),
+    attachments: [inner],
+  });
+  const question = new Question({
+    id: parseIri(`ap+ef61://${outerDid}/objects/question`),
+    exclusiveOptions: [wrapper],
+  });
+  const serialized = await question.toJsonLd() as Record<string, unknown>;
+  const embeddedWrapper = serialized.oneOf as Record<string, unknown>;
+  const embedded = embeddedWrapper.attachment as Record<string, unknown>;
+
+  assertEquals(serialize(embedded), serialize(standaloneInner));
+  assertEquals(
+    (await verifyProof(embedded, await parseProof(embedded), options))?.id,
+    innerKeyId,
+  );
+});
+
+test("typed Create serialization bypasses a parsed child's JSON-LD cache", async () => {
+  // Parsing does not establish which representation was signed, so
+  // `fromJsonLd()` does not retain one and a reparsed secured child still
+  // loses its contexts when it is embedded through a typed parent.
+  const created = Temporal.Instant.from("2023-02-24T23:36:38Z");
+  const inner = await signDistinctContextNote(created, "reparsed-context");
+  const standaloneInner = await serializeOutgoing(inner, distinctInnerContext);
+  const standaloneProof = await parseProof(standaloneInner);
   const reparsedInner = await Note.fromJsonLd(standaloneInner, {
     contextLoader: mockDocumentLoader,
     documentLoader: mockDocumentLoader,
   });
   assert(reparsedInner instanceof Note);
   assertEquals(await reparsedInner.toJsonLd(), standaloneInner);
-  const reparsedOuter = await signObject(
-    new Create({
-      id: parseIri(`ap+ef61://${outerDid}/activities/reparsed-context`),
-      actor: parseIri(`ap+ef61://${outerDid}/actor`),
-      object: reparsedInner,
-    }),
-    outerPrivateKey,
-    outerKeyId,
-    { ...options, created },
+
+  const reparsedCompound = await serializeOutgoing(
+    await signOuterCreate(created, "reparsed-context", reparsedInner),
   );
-  const reparsedCompound = await normalizeOutgoingActivityJsonLd(
-    await reparsedOuter.toJsonLd({ format: "compact", ...options }),
-    mockDocumentLoader,
-  ) as Record<string, unknown>;
   const reparsedEmbedded = reparsedCompound.object as Record<string, unknown>;
   const reparsedEmbeddedProof = reparsedEmbedded.proof as Record<
     string,
@@ -566,8 +722,6 @@ test("typed Create serialization bypasses a parsed child's JSON-LD cache", async
     reparsedEmbeddedProof.proofValue,
     (standaloneInner.proof as Record<string, unknown>).proofValue,
   );
-  assertEquals(reparsedEmbedded, compactedStandalone);
-  assertEquals(reparsedEmbedded, embedded);
   assertEquals(
     await verifyProof(reparsedEmbedded, standaloneProof, options),
     null,
@@ -588,10 +742,6 @@ test("verifyProof() does not invent a missing child context", async () => {
   const receivedInnerProof = receivedInner.proof as Record<string, unknown>;
   delete receivedInner["@context"];
   delete receivedInnerProof["@context"];
-  const inboundOptions = {
-    contextLoader: preloadedOnlyDocumentLoader,
-    documentLoader: preloadedOnlyDocumentLoader,
-  };
   const snapshot = structuredClone(received);
   const proof = await DataIntegrityProof.fromJsonLd(
     received.proof,
@@ -613,4 +763,33 @@ test("verifyProof() does not invent a missing child context", async () => {
     (await verifyProof(guessed, proof, inboundOptions))?.id,
     outerKeyId,
   );
+});
+
+test("signing a document too deep to retain still succeeds", async () => {
+  const created = Temporal.Instant.from("2023-02-24T23:36:38Z");
+  // A retained representation has to pass a bounded plain-JSON check.  A
+  // document that exceeds those bounds must fall back to ordinary
+  // serialization rather than make `signObject()` fail.
+  let deep = new Note({
+    id: parseIri(`ap+ef61://${innerDid}/objects/deep-leaf`),
+    content: "A portable note nested past the retention bounds",
+  });
+  for (let i = 0; i < 40; i++) {
+    deep = new Note({
+      id: parseIri(`ap+ef61://${innerDid}/objects/deep-${i}`),
+      attachments: [deep],
+    });
+  }
+  const signed = await signObject(deep, ed25519PrivateKey, innerKeyId, {
+    ...options,
+    context: distinctInnerContext,
+    created,
+  });
+
+  assertEquals((await Array.fromAsync(signed.getProofs(options))).length, 1);
+  const compound = await serializeOutgoing(
+    await signOuterCreate(created, "deep", signed),
+  );
+  const embedded = compound.object as Record<string, unknown>;
+  assertEquals(embedded["@context"], undefined);
 });

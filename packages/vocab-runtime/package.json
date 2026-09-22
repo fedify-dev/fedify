@@ -52,6 +52,16 @@
       "require": "./dist/internal/jsonld-cache.cjs",
       "default": "./dist/internal/jsonld-cache.js"
     },
+    "./internal/signed-representation": {
+      "types": {
+        "import": "./dist/internal/signed-representation.d.ts",
+        "require": "./dist/internal/signed-representation.d.cts",
+        "default": "./dist/internal/signed-representation.d.ts"
+      },
+      "import": "./dist/internal/signed-representation.js",
+      "require": "./dist/internal/signed-representation.cjs",
+      "default": "./dist/internal/signed-representation.js"
+    },
     "./temporal": {
       "types": {
         "import": "./dist/temporal.d.ts",

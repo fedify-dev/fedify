@@ -1249,6 +1249,7 @@ export class FederationImpl<TContextData>
       collectionSync: message.collectionSync,
       orderingKey: message.orderingKey,
       normalizeExistingProofs: message.normalizeExistingProofs,
+      activityJsonLd: message.activity,
       context,
     });
   }
@@ -2365,16 +2366,20 @@ export class FederationImpl<TContextData>
         }
       }
     }
-    let jsonLd = await activity.toJsonLd({
-      format: "compact",
-      contextLoader,
-    });
+    let jsonLd = !proofCreated && options.activityJsonLd != null
+      ? options.activityJsonLd
+      : await activity.toJsonLd({
+        format: "compact",
+        contextLoader,
+      });
     // Existing proofs are preserved by default because they may have been
     // created over the compact JSON-LD bytes exactly as supplied.  Fedify can
     // safely normalize unsigned activities, proofs it just created, or
     // locally pre-signed activities when callers opt in.
     if (proofCreated || !hasProof || options.normalizeExistingProofs) {
-      jsonLd = await normalizeOutgoingActivityJsonLd(jsonLd, contextLoader);
+      jsonLd = await normalizeOutgoingActivityJsonLd(jsonLd, contextLoader, {
+        preserveNestedSecuredDocuments: true,
+      });
     }
     if (rsaKey == null) {
       logger.warn(
@@ -3928,6 +3933,33 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         });
         proofCreated = true;
       }
+    } else {
+      // Explicit sender keys carry no Multikey, so sign with the key ID the
+      // caller supplied, which is exactly what the delivery worker would do
+      // after reparsing the activity.  Signing here instead keeps a signed
+      // child's retained representation intact: the reparsed activity no
+      // longer carries one, so a worker-side proof would cover a rebuilt
+      // child whose own proof no longer verifies.
+      const contextLoader = this.contextLoader;
+      // An activity the caller already signed keeps its own proof: appending
+      // another would turn a single-proof document into a proof set, which
+      // the map-local compound-proof profile does not accept.  This mirrors
+      // the guard `FederationImpl.sendActivity()` applies before signing.
+      let hasProof = false;
+      for await (const _ of activity.getProofs({ contextLoader })) {
+        hasProof = true;
+        break;
+      }
+      if (!hasProof) {
+        for (const { keyId, privateKey } of keys) {
+          if (privateKey.algorithm.name !== "Ed25519") continue;
+          activity = await signObject(activity, privateKey, keyId, {
+            contextLoader,
+            tracerProvider: this.tracerProvider,
+          });
+          proofCreated = true;
+        }
+      }
     }
     const inboxes = extractInboxes({
       recipients: expandedRecipients,
@@ -4916,6 +4948,14 @@ interface SendActivityInternalOptions<TContextData> {
   readonly collectionSync?: string;
   readonly orderingKey?: string;
   readonly normalizeExistingProofs?: boolean;
+  /**
+   * The compact JSON-LD document the activity was already serialized into,
+   * when the caller has one.  Reusing it keeps a document that embeds a
+   * secured child intact: reparsing an activity and serializing it again
+   * rebuilds the child under the parent's context and invalidates both its
+   * own proof and the outer proof that covered it.
+   */
+  readonly activityJsonLd?: unknown;
   readonly context: Context<TContextData>;
 }
 

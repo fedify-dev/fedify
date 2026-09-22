@@ -1170,19 +1170,87 @@ verified in isolation even if the parent's active context causes the embedded
 JSON-LD to expand differently.  Proof success does not establish that the
 isolated and embedded expansions are equivalent.
 
+#### Producing a compound document
+
+`signObject()` captures the secured JSON document that the proof it creates
+covers, and keeps it on the object it returns.  Assigning that object to a
+typed parent and serializing the parent embeds the captured document verbatim,
+so the child keeps its own `@context` and its own proof context even when they
+differ from the parent's:
+
+~~~~ typescript twoslash
+import { signObject } from "@fedify/fedify";
+import { Create, Note } from "@fedify/vocab";
+const noteId = new URL("ap://did:key:z6Mkabc/objects/1");
+const activityId = new URL("ap://did:key:z6Mkabc/activities/1");
+const actorId = new URL("ap://did:key:z6Mkabc/actor");
+const key = null as unknown as CryptoKey;
+const keyId = new URL("did:key:z6Mkabc#z6Mkabc");
+const portableContext = [
+  "https://www.w3.org/ns/activitystreams",
+  "https://w3id.org/security/data-integrity/v1",
+  "https://w3id.org/fep/ef61",
+];
+// ---cut-before---
+const note = await signObject(
+  new Note({ id: noteId, attribution: actorId, content: "Hello" }),
+  key,
+  keyId,
+  { context: portableContext },
+);
+const create = await signObject(
+  new Create({ id: activityId, actor: actorId, object: note }),
+  key,
+  keyId,
+  { context: portableContext },
+);
+const compound = await create.toJsonLd({
+  format: "compact",
+  context: portableContext,
+});
+~~~~
+
+Extracting `compound`'s `object` gives back exactly the bytes `note`'s proof
+covers, and the outer proof covers that same secured child.
+
+Serialize the parent with the same `context` it was signed with.  A proof
+covers one serialization, and a document emitted under a different context is
+a document the proof was never computed over.  This matters most when the
+activity goes out through
+[`sendActivity()`](#sending-an-activity), which
+serializes with the type's default context: omit the `context` option on the
+outer `signObject()` call in that case, so the proof covers the bytes Fedify
+actually sends.  The child keeps its own context either way, which is what
+makes a mismatch on the parent easy to misread as a working document.
+
+The captured document is a snapshot.  It is independent of anything done to
+the returned object afterwards, and `clone()` never carries it, because a
+clone may differ from the document the proof covers.  Sign the clone again
+when it has to be embedded as a secured child.
+
 > [!WARNING]
-> Typed vocabulary serialization can change the secured representation of a
-> signed embedded object.  Signing a typed child, assigning it to a typed
-> parent, and serializing the parent can remove the child's document and proof
-> contexts while retaining its `proofValue`.  Do not serialize a signed typed
-> child through a typed parent when producing a map-local compound document.
-> The profile also accepts exactly one direct proof per map, while Fedify's
-> ordinary activity signer creates one proof for each Ed25519 key.  A sender
-> producing a portable compound document must arrange for exactly one direct
-> proof on each map.
-> When forwarding an already signed payload, use
-> [`forwardActivity()`](./outbox.md#federating-posted-activities) to avoid a
-> vocabulary-object round trip.
+> Several things take a signed child outside this supported path, and each
+> one falls back to ordinary serialization, which rebuilds the child under the
+> parent's context and leaves it unable to verify on its own:
+>
+>  -  An object parsed with `fromJsonLd()`.  Parsing does not establish which
+>     representation was signed, so nothing is captured.  When forwarding an
+>     already signed payload, use
+>     [`forwardActivity()`](./outbox.md#federating-posted-activities) to avoid
+>     a vocabulary-object round trip.
+>  -  An object that already carried a proof.  The profile accepts exactly one
+>     direct proof per map, while Fedify's ordinary activity signer creates one
+>     proof for each Ed25519 key, so a sender producing a portable compound
+>     document must arrange for exactly one direct proof on each map.
+>  -  A `toJsonLd()` call whose `context` option could hide the marker Fedify
+>     uses to place the captured document, for example a context that aliases
+>     `@id` under a term other than `id`, declares `@nest`, uses an `@id` or
+>     `@type` container, or cannot be resolved from Fedify's preloaded
+>     contexts.
+>  -  A mutation applied to the returned object in place, through a plural
+>     accessor's array or a `proofValue` byte.  The snapshot still holds what
+>     was signed, so the embedded child keeps verifying while the typed object
+>     no longer matches it.
 
 > [!TIP]
 > HTTPS Signatures, Linked Data Signatures, and Object Integrity Proofs can

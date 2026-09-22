@@ -3,6 +3,10 @@ import jsonld from "@fedify/vocab-runtime/jsonld";
 import { getLogger } from "@logtape/logtape";
 import { preloadedOnlyDocumentLoader } from "./preloaded-context-loader.ts";
 import { normalizePublicAudience } from "./public-audience.ts";
+import {
+  isSelfContainedSecuredDocument,
+  type OutgoingNormalizationOptions,
+} from "./secured-document.ts";
 
 const logger = getLogger(["fedify", "compat", "outgoing-jsonld"]);
 
@@ -92,15 +96,23 @@ function getKnownSafeContextUrls(): ReadonlySet<string> {
  */
 function wrapScalarAttachments(
   jsonLd: unknown,
+  preserveSecured: boolean,
   depth: number = 0,
 ): unknown {
   if (depth >= MAX_TRAVERSAL_DEPTH) return jsonLd;
+  // A nested self-contained secured document is signed as it stands; its
+  // bytes belong to its own proof, not to this document's wire format.
+  if (
+    preserveSecured && depth > 0 && isSelfContainedSecuredDocument(jsonLd)
+  ) {
+    return jsonLd;
+  }
 
   if (Array.isArray(jsonLd)) {
     let normalized: unknown[] | null = null;
     for (let i = 0; i < jsonLd.length; i++) {
       const item = jsonLd[i];
-      const next = wrapScalarAttachments(item, depth + 1);
+      const next = wrapScalarAttachments(item, preserveSecured, depth + 1);
       if (normalized == null && next !== item) {
         normalized = jsonLd.slice(0, i);
       }
@@ -122,7 +134,7 @@ function wrapScalarAttachments(
     const next = key === "@context" ||
         (key === "@value" && isJsonLdValueObject(jsonLd))
       ? value
-      : wrapScalarAttachments(value, depth + 1);
+      : wrapScalarAttachments(value, preserveSecured, depth + 1);
     const shouldWrap = ATTACHMENT_FIELDS.has(key) &&
       next != null &&
       !Array.isArray(next) &&
@@ -247,8 +259,12 @@ function getLogSafeJsonLdMetadata(jsonLd: unknown): Record<string, unknown> {
 export async function normalizeAttachmentArrays(
   jsonLd: unknown,
   contextLoader?: DocumentLoader,
+  options: OutgoingNormalizationOptions = {},
 ): Promise<unknown> {
-  const normalized = wrapScalarAttachments(jsonLd);
+  const normalized = wrapScalarAttachments(
+    jsonLd,
+    options.preserveNestedSecuredDocuments ?? false,
+  );
   if (normalized === jsonLd) return jsonLd;
   if (exceedsTraversalDepth(jsonLd)) {
     logger.debug(
@@ -298,7 +314,8 @@ export async function normalizeAttachmentArrays(
 export async function normalizeOutgoingActivityJsonLd(
   jsonLd: unknown,
   contextLoader?: DocumentLoader,
+  options: OutgoingNormalizationOptions = {},
 ): Promise<unknown> {
-  jsonLd = await normalizePublicAudience(jsonLd, contextLoader);
-  return await normalizeAttachmentArrays(jsonLd, contextLoader);
+  jsonLd = await normalizePublicAudience(jsonLd, contextLoader, options);
+  return await normalizeAttachmentArrays(jsonLd, contextLoader, options);
 }

@@ -208,6 +208,13 @@ export async function* generateCloner(
   yield `
   /**
    * Clones this instance, optionally updating it with the given values.
+   *
+   * A clone never inherits a signed JSON-LD representation retained by
+   * \`signObject()\`: the clone may differ from the document that the proof
+   * covers, so embedding the original secured JSON in a parent document
+   * would be wrong.  Sign the clone again if it has to be embedded as a
+   * secured child.
+   *
    * @param values The values to update the clone with.
    * @param options The options to use for cloning.
    * @returns The cloned instance.
