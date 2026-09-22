@@ -282,11 +282,12 @@ To be released.
     reference to another function, or reached through a local object
     literal — and so does an inline callback whose result is awaited or
     returned, such as `await Promise.all(recipients.map(...))`.
-    [[#900]]
+    [[#900], [#1050] by Jae-Hyuk-Jang\]
 
 [#895]: https://github.com/fedify-dev/fedify/issues/895
 [#900]: https://github.com/fedify-dev/fedify/issues/900
 [#1022]: https://github.com/fedify-dev/fedify/pull/1022
+[#1050]: https://github.com/fedify-dev/fedify/pull/1050
 
 ### @fedify/mysql
 

@@ -1,3 +1,8 @@
+---
+links:
+  '#1050': https://github.com/fedify-dev/fedify/pull/1050
+  '#900': https://github.com/fedify-dev/fedify/issues/900
+---
  -  Changed `outbox-listener-delivery-required` (`@fedify/lint`) to decide
     whether a `ctx.sendActivity()`/`forwardActivity()` call actually runs,
     instead of scanning the listener's source as a flat block of text. It
@@ -8,4 +13,4 @@
     reference to another function, or reached through a local object
     literal — and so does an inline callback whose result is awaited or
     returned, such as `await Promise.all(recipients.map(...))`.
-    [[#900]]
+    [[#900], [#1050] by Jae-Hyuk-Jang]
