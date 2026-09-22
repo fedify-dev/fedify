@@ -38,7 +38,7 @@ const mockDocumentLoader = async (url: string): Promise<RemoteDocument> => {
         id: url,
         type: "Person",
         preferredUsername: "alice",
-        inbox: "https://remote.example.com/users/alice/inbox",
+        inbox: aliceInbox,
         publicKey: {
           id: "https://remote.example.com/users/alice#main-key",
           owner: url.replace(/#main-key$/, ""),
@@ -87,6 +87,7 @@ const rsaPublicKey = {
 // before the request is made.  litepub.test.ts uses a disjoint /48 so that
 // neither file's interceptor can swallow the other's deliveries.
 const INBOX_PREFIX = "https://[2001:db8:2::";
+const aliceInbox = `${INBOX_PREFIX}2]/users/alice/inbox`;
 const followerInbox = `${INBOX_PREFIX}1]/users/bob/inbox`;
 
 interface DeliveredRequest {
@@ -280,7 +281,7 @@ describe("MastodonRelay", () => {
     const follower = new Person({
       id: new URL(followerId),
       preferredUsername: "alice",
-      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+      inbox: new URL(aliceInbox),
     });
 
     // Simulate the relay's internal logic
@@ -302,7 +303,7 @@ describe("MastodonRelay", () => {
     const follower = new Person({
       id: new URL(followerId),
       preferredUsername: "alice",
-      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+      inbox: new URL(aliceInbox),
     });
 
     await kv.set(
@@ -401,7 +402,7 @@ describe("MastodonRelay", () => {
     const follower = new Person({
       id: new URL("https://remote.example.com/users/alice"),
       preferredUsername: "alice",
-      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+      inbox: new URL(aliceInbox),
     });
 
     const followActivity = new Follow({
@@ -457,7 +458,7 @@ describe("MastodonRelay", () => {
     const follower = new Person({
       id: new URL("https://remote.example.com/users/alice"),
       preferredUsername: "alice",
-      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+      inbox: new URL(aliceInbox),
     });
 
     const followActivity = new Follow({
@@ -500,7 +501,7 @@ describe("MastodonRelay", () => {
     const follower = new Person({
       id: new URL(followerId),
       preferredUsername: "alice",
-      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+      inbox: new URL(aliceInbox),
     });
 
     const followActivityId = "https://remote.example.com/activities/follow/1";
@@ -560,7 +561,7 @@ describe("MastodonRelay", () => {
     const follower = new Person({
       id: new URL(followerId),
       preferredUsername: "alice",
-      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+      inbox: new URL(aliceInbox),
     });
 
     await kv.set(
@@ -848,7 +849,7 @@ describe("MastodonRelay", () => {
     const follower = new Person({
       id: new URL("https://remote.example.com/users/alice"),
       preferredUsername: "alice",
-      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+      inbox: new URL(aliceInbox),
     });
 
     // Public follow activity
@@ -976,7 +977,7 @@ describe("MastodonRelay", () => {
       id: new URL(followerId),
       preferredUsername: "alice",
       name: "Alice Wonderland",
-      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+      inbox: new URL(aliceInbox),
     });
 
     await kv.set(
@@ -1009,7 +1010,7 @@ describe("MastodonRelay", () => {
     const follower1 = new Person({
       id: new URL("https://remote.example.com/users/alice"),
       preferredUsername: "alice",
-      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+      inbox: new URL(aliceInbox),
     });
     const follower2 = new Person({
       id: new URL("https://remote.example.com/users/bob"),
@@ -1075,7 +1076,7 @@ describe("MastodonRelay", () => {
     const follower = new Person({
       id: new URL("https://remote.example.com/users/alice"),
       preferredUsername: "alice",
-      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+      inbox: new URL(aliceInbox),
     });
 
     await kv.set(
@@ -1094,7 +1095,7 @@ describe("MastodonRelay", () => {
     strictEqual(result.actor.preferredUsername, "alice");
     strictEqual(
       result.actor.inboxId?.href,
-      "https://remote.example.com/users/alice/inbox",
+      aliceInbox,
     );
 
     // Test non-existent follower

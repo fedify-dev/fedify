@@ -39,7 +39,7 @@ const mockDocumentLoader = async (url: string): Promise<RemoteDocument> => {
         id: url,
         type: "Person",
         preferredUsername: "alice",
-        inbox: "https://remote.example.com/users/alice/inbox",
+        inbox: aliceInbox,
         publicKey: {
           id: "https://remote.example.com/users/alice#main-key",
           owner: url.replace(/#main-key$/, ""),
@@ -119,6 +119,7 @@ const davePublicKey = {
 // before the request is made.  mastodon.test.ts uses a disjoint /48 so that
 // neither file's interceptor can swallow the other's deliveries.
 const INBOX_PREFIX = "https://[2001:db8:1::";
+const aliceInbox = `${INBOX_PREFIX}4]/users/alice/inbox`;
 const daveInbox = `${INBOX_PREFIX}1]/users/dave/inbox`;
 const pendingInbox = `${INBOX_PREFIX}2]/users/bob/inbox`;
 const acceptedInbox = `${INBOX_PREFIX}3]/users/carol/inbox`;
@@ -434,7 +435,7 @@ describe("LitePubRelay", () => {
     const follower = new Person({
       id: new URL("https://remote.example.com/users/alice"),
       preferredUsername: "alice",
-      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+      inbox: new URL(aliceInbox),
     });
 
     const followActivity = new Follow({
@@ -483,7 +484,7 @@ describe("LitePubRelay", () => {
     const follower = new Person({
       id: new URL("https://remote.example.com/users/alice"),
       preferredUsername: "alice",
-      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+      inbox: new URL(aliceInbox),
     });
 
     // Public follow activity
@@ -639,7 +640,7 @@ describe("LitePubRelay", () => {
       const follower = new Person({
         id: new URL("https://remote.example.com/users/alice"),
         preferredUsername: "alice",
-        inbox: new URL("https://remote.example.com/users/alice/inbox"),
+        inbox: new URL(aliceInbox),
       });
       await kv.set(
         ["follower", "https://remote.example.com/users/alice"],
@@ -685,7 +686,7 @@ describe("LitePubRelay", () => {
     const follower = new Person({
       id: new URL("https://remote.example.com/users/alice"),
       preferredUsername: "alice",
-      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+      inbox: new URL(aliceInbox),
     });
 
     // Pre-populate with pending follower
@@ -805,7 +806,7 @@ describe("LitePubRelay", () => {
       const follower = new Person({
         id: new URL(followerId),
         preferredUsername: "alice",
-        inbox: new URL("https://remote.example.com/users/alice/inbox"),
+        inbox: new URL(aliceInbox),
       });
 
       await kv.set(
@@ -864,7 +865,7 @@ describe("LitePubRelay", () => {
     const follower = new Person({
       id: new URL(followerId),
       preferredUsername: "alice",
-      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+      inbox: new URL(aliceInbox),
     });
 
     await kv.set(
@@ -1314,7 +1315,7 @@ describe("LitePubRelay", () => {
       id: new URL(followerId),
       preferredUsername: "alice",
       name: "Alice Wonderland",
-      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+      inbox: new URL(aliceInbox),
     });
 
     await kv.set(
