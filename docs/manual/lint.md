@@ -758,9 +758,10 @@ rule follows the listener's own control flow (`if`/`else`, `try`/`catch`,
 `switch`, loops) and resolves calls to local helper functions, so a delivery
 call that sits in a dead branch, after an unconditional `return`, or inside a
 helper that is declared but never actually called does not count.  A helper
-that *is* called does count, however it is referenced — by name, passed by
-reference to another function, or reached through a local object literal —
-and so does an inline callback whose result is awaited or returned, such as
+that *is* called does count, regardless of how it is referenced: by name,
+passed by reference to another function, or reached through a local object
+literal.  An inline callback whose result is awaited or returned counts
+too, such as
 `await Promise.all(recipients.map((r) => ctx.sendActivity(...)))`.
 
 **Why it matters:**
