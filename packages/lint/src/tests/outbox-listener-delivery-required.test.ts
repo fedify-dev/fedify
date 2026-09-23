@@ -1210,7 +1210,9 @@ federation
     const sender = { identifier: ctx.identifier };
     await Promise.all(
       Object.values({
-        a: inboxes.map((inbox) => ctx.sendActivity(sender, inbox, activity)),
+        a: Promise.all(
+          inboxes.map((inbox) => ctx.sendActivity(sender, inbox, activity)),
+        ),
       }),
     );
   });
