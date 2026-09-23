@@ -13,5 +13,9 @@ links:
     called still counts, regardless of how it's referenced: by name,
     passed by reference to another function, or reached through a local
     object literal. An inline callback whose result is awaited or
-    returned counts too, such as `await Promise.all(recipients.map(...))`.
+    returned counts too, including one nested inside an array, a spread,
+    or an object literal, such as
+    `await Promise.all([...a.map(...), ...b.map(...)])`. A callback
+    passed to `forEach()` counts as well, since it always runs
+    synchronously regardless of what the call returns.
     [[#900], [#1050] by Jae-Hyuk-Jang]

@@ -43,6 +43,21 @@ const isChainedFromOutboxListeners = (
 
 const DELIVERY_METHOD_NAMES = new Set(["sendActivity", "forwardActivity"]);
 
+/**
+ * Iteration methods whose own return value is never meant to be consumed,
+ * so nothing is ever "forgotten" by not awaiting or collecting it -- the
+ * language spec guarantees each invokes its callback argument synchronously
+ * for every element regardless. `forEach` always returns `undefined`; a
+ * callback passed to it has run by the time the call completes whether or
+ * not anything looks at what the call returns. This is deliberately
+ * narrower than the full iteration protocol: `map`, `filter` and the rest
+ * return something that usually *is* meant to be consumed (an array of
+ * promises passed to `Promise.all`, for instance), so calling one of those
+ * without awaiting or returning the result stays a real thing to flag, not
+ * a rule limitation to work around.
+ */
+const SYNCHRONOUS_ITERATION_METHODS = new Set(["forEach"]);
+
 type FunctionLikeNode =
   | FunctionNode
   | (Node & {
@@ -558,19 +573,29 @@ function collectResolvedCallTargets(
 }
 
 /**
- * Collects anonymous function-literal arguments that are reachable because
- * the call chain they are passed to is awaited or returned, e.g. the arrow
- * function in `await Promise.all(recipients.map((inbox) => ...))`. Named
- * references passed the same way (`recipients.map(deliver)`) don't need
- * this: `collectReferencedNames` already finds them regardless of whether
- * the result is awaited, matching how `array.forEach(deliver)` always
- * invokes `deliver`.
+ * Collects anonymous function-literal arguments that are reachable through
+ * either of two paths: the call chain they are passed to is awaited or
+ * returned (e.g. the arrow function in
+ * `await Promise.all(recipients.map((inbox) => ...))`, including when a
+ * collection literal sits between the call and the `await`, as in
+ * `await Promise.all([...a.map(cb), ...b.map(cb)])`), or the call
+ * receiving them is a method known to invoke its callback synchronously
+ * regardless of what happens to its own return value (`SYNCHRONOUS_ITERATION_METHODS`,
+ * e.g. `recipients.forEach((inbox) => ...)`). Named references passed
+ * either way (`recipients.map(deliver)`) don't need this:
+ * `collectReferencedNames` already finds them regardless of context.
  */
 function collectConsumedCallbacks(
   statements: readonly Node[],
   impliedReturn: boolean,
   out: Set<FunctionLikeNode>,
 ): void {
+  // Expands outward from a value known to be consumed (awaited, returned,
+  // or the argument of a synchronously invoked method) through the shapes
+  // that merely carry it along -- a call's own arguments, and the
+  // collection literals (`[...]`, `...spread`, `{...}`) commonly used to
+  // gather several such values before consuming them together -- until it
+  // finds the function literals actually being passed.
   const walkConsumed = (expr: unknown): void => {
     if (expr == null || typeof expr !== "object" || Array.isArray(expr)) {
       return;
@@ -582,6 +607,37 @@ function collectConsumedCallbacks(
     }
     if (expr.type === "CallExpression" || expr.type === "NewExpression") {
       for (const arg of expr.arguments) walkConsumed(arg);
+      // A chained call's receiver carries the same value forward, e.g.
+      // `[a.map(cb)].flat()`: the array literal built from `a.map(cb)` is
+      // what `flat()` is called on, so it's still part of what ends up
+      // awaited or returned.
+      if (
+        expr.type === "CallExpression" &&
+        expr.callee.type === "MemberExpression"
+      ) {
+        walkConsumed(expr.callee.object);
+      }
+      return;
+    }
+    if (expr.type === "ArrayExpression") {
+      for (const element of expr.elements) {
+        if (element != null) walkConsumed(element);
+      }
+      return;
+    }
+    if (expr.type === "SpreadElement") {
+      walkConsumed((expr as { argument: unknown }).argument);
+      return;
+    }
+    if (expr.type === "ObjectExpression") {
+      for (const prop of expr.properties) {
+        if (
+          isNode(prop) && prop.type === "Property" &&
+          !(prop as { computed?: boolean }).computed
+        ) {
+          walkConsumed((prop as { value: unknown }).value);
+        }
+      }
       return;
     }
   };
@@ -607,7 +663,38 @@ function collectConsumedCallbacks(
     }
   };
 
+  // Finds every call to a `SYNCHRONOUS_ITERATION_METHODS` method anywhere
+  // in `node` and feeds its arguments to `walkConsumed`, independent of
+  // whether the call's own result is ever awaited, returned, or used at
+  // all. Stops at a nested function's own boundary.
+  const walkSynchronousCallbacks = (node: unknown): void => {
+    if (node == null || typeof node !== "object") return;
+    if (Array.isArray(node)) {
+      for (const item of node) walkSynchronousCallbacks(item);
+      return;
+    }
+    if (!isNode(node) || isFunctionLikeNode(node)) return;
+
+    if (node.type === "CallExpression") {
+      const callee = node.callee as Expression;
+      if (callee.type === "MemberExpression" && !callee.computed) {
+        const methodName = getMemberPropertyName(callee);
+        if (
+          methodName != null && SYNCHRONOUS_ITERATION_METHODS.has(methodName)
+        ) {
+          for (const arg of node.arguments) walkConsumed(arg);
+        }
+      }
+    }
+
+    const record = node as unknown as Record<string, unknown>;
+    for (const key in record) {
+      if (key !== "parent") walkSynchronousCallbacks(record[key]);
+    }
+  };
+
   for (const statement of statements) {
+    walkSynchronousCallbacks(statement);
     if (statement.type === "ReturnStatement") {
       // A return value is consumed by definition -- no `await` needed.
       if (statement.argument != null) walkConsumed(statement.argument);
@@ -698,6 +785,16 @@ function computeUsedFunctions(
     for (const statement of statements) {
       collectReferencedNames(statement, referencedNames);
     }
+    // A helper counts as reached as soon as its name is mentioned at all --
+    // passed to `console.log`, stored in a variable, anything -- not only
+    // when it's actually invoked. That's what lets `recipients.map(deliver)`
+    // resolve `deliver` as used without this code having to know that `map`
+    // invokes its argument; telling a real invocation apart from merely
+    // holding a reference would need knowing which APIs call what they're
+    // given, which is more than this rule should carry. The cost is a
+    // narrow false negative -- a helper that's only logged or reassigned,
+    // never called, is not reported -- accepted deliberately, since missing
+    // a case here is the safe direction. Leave this as is.
     const reached = new Set<FunctionLikeNode>();
     for (const [name, fn] of helpers) {
       if (referencedNames.has(name)) reached.add(fn);

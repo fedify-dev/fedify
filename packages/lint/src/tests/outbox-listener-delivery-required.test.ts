@@ -1155,3 +1155,84 @@ federation
       "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
   }),
 );
+
+test(
+  `${ruleName}: ✅ Good - awaited callback nested inside an array literal and spreads`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    await Promise.all([
+      ...inboxes.map((inbox) => ctx.sendActivity(sender, inbox, activity)),
+      ...others.map((inbox) => ctx.sendActivity(sender, inbox, activity)),
+    ]);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - awaited callback nested inside an array literal and a chained call`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    await Promise.all(
+      [inboxes.map((inbox) => ctx.sendActivity(sender, inbox, activity))]
+        .flat(),
+    );
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - callback passed to a bare forEach that is never awaited`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    inboxes.forEach((inbox) => ctx.sendActivity(sender, inbox, activity));
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - callback passed to a bare forEach that never delivers`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    inboxes.forEach((inbox) => {
+      console.log(inbox);
+    });
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
