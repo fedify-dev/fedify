@@ -789,7 +789,7 @@ federation
 );
 
 test(
-  `${ruleName}: ❌ Bad - delivery call only inside an unawaited callback`,
+  `${ruleName}: ✅ Good - delivery call inside a callback whose result is dropped`,
   lintTest({
     code: `
 import { Activity } from "@fedify/vocab";
@@ -806,8 +806,6 @@ federation
 `,
     rule,
     ruleName,
-    expectedError:
-      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
   }),
 );
 
@@ -1550,7 +1548,7 @@ federation
 );
 
 test(
-  `${ruleName}: ❌ Bad - map result kept in a variable but never used`,
+  `${ruleName}: ✅ Good - callback passed to map whose result is never used`,
   lintTest({
     code: `
 import { Activity } from "@fedify/vocab";
@@ -1568,8 +1566,6 @@ federation
 `,
     rule,
     ruleName,
-    expectedError:
-      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
   }),
 );
 
@@ -1961,6 +1957,127 @@ federation
     if (false) {
       await ctx.sendActivity(sender, inbox, activity);
     }
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - callback passed to queue.push`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    const queue = [];
+    queue.push(() => ctx.sendActivity(sender, inbox, activity));
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - callback passed to setTimeout`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    setTimeout(() => ctx.sendActivity(sender, inbox, activity), 0);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - callback passed to a then that is not awaited`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    Promise.resolve().then(() => ctx.sendActivity(sender, inbox, activity));
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - callback inside an object passed to a call`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    const handlers = {};
+    Object.assign(handlers, {
+      deliver: () => ctx.sendActivity(sender, inbox, activity),
+    });
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - delivery call that is never awaited`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    ctx.sendActivity(sender, inbox, activity);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - callback passed to a call that never delivers`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    const queue = [];
+    queue.push(() => console.log("no delivery in here"));
   });
 `,
     rule,

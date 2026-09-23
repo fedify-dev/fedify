@@ -43,21 +43,6 @@ const isChainedFromOutboxListeners = (
 
 const DELIVERY_METHOD_NAMES = new Set(["sendActivity", "forwardActivity"]);
 
-/**
- * Iteration methods whose own return value is never meant to be consumed,
- * so nothing is ever "forgotten" by not awaiting or collecting it -- the
- * language spec guarantees each invokes its callback argument synchronously
- * for every element regardless. `forEach` always returns `undefined`; a
- * callback passed to it has run by the time the call completes whether or
- * not anything looks at what the call returns. This is deliberately
- * narrower than the full iteration protocol: `map`, `filter` and the rest
- * return something that usually *is* meant to be consumed (an array of
- * promises passed to `Promise.all`, for instance), so calling one of those
- * without awaiting or returning the result stays a real thing to flag, not
- * a rule limitation to work around.
- */
-const SYNCHRONOUS_ITERATION_METHODS = new Set(["forEach"]);
-
 type FunctionLikeNode =
   | FunctionNode
   | (Node & {
@@ -247,9 +232,8 @@ function buildContextExpressionPattern(contextName: string): string {
  * Resolves an expression to the function it refers to: a direct function
  * literal, a local variable bound to one, or a property of a local object
  * literal bound to one (e.g. `handlers.deliver` where
- * `const handlers = { deliver() {} }`). Used both to resolve a listener
- * argument (`.on(Activity, handler)`) and to resolve what a call expression
- * inside a listener actually invokes.
+ * `const handlers = { deliver() {} }`). Used to resolve a listener argument
+ * (`.on(Activity, handler)`).
  */
 const resolveFunctionBinding = (
   expr: Expression,
@@ -456,17 +440,20 @@ function collectReachableStatements(node: Node, out: Node[]): void {
 
 // ---------------------------------------------------------------------------
 // What a listener (or a helper's own body) resolves to when scanned for a
-// delivery call: three independent mechanisms decide which nested function
-// bodies are folded into the scan instead of being masked out.
+// delivery call: two rules decide which nested function bodies are folded
+// into the scan instead of being masked out.
 //
-// The rule reports only when none of them can account for a delivery call,
-// so each one errs toward treating a function as used. Working out how a
-// function value travels through arbitrary JavaScript (an alias, a
-// destructured property, an array, a wrapper call) is open-ended, but
-// showing that a name never appears anywhere that runs is not. A function
-// held under a name is therefore used as soon as that name is mentioned,
-// without tracing how it is then passed around. A missed warning is the
-// safe direction; a warning on code that delivers is not.
+// The rule reports only when neither can account for a delivery call, so
+// both err toward treating a function as used. Working out how a function
+// value travels through arbitrary JavaScript (an alias, a destructured
+// property, an array, a wrapper call) is open-ended, and so is working out
+// what a call does with a callback it receives. Showing that a name never
+// appears anywhere that runs is not. So a function held under a name is
+// used as soon as that name is mentioned, without tracing how it is then
+// passed around, and any other function literal, such as a callback handed
+// to a call, is used wherever it appears, since the rule cannot show that
+// the receiving call never runs it. A missed warning is the safe direction;
+// a warning on code that delivers is not.
 // ---------------------------------------------------------------------------
 
 /**
@@ -586,17 +573,45 @@ function collectBoundNames(pattern: unknown, out: string[]): void {
 }
 
 /**
- * Collects the functions each name in `node`'s own scope holds, wherever
- * they sit in what the name is bound to: `function name() {}`,
- * `class Name {}`, the value of `const name = ...` or a later
- * `name = ...` or `name.prop = ...`, including a function inside an object
- * or array literal or passed through a call (`const deliver = once(fn)`).
- * A function held under a name counts as used as soon as the name is
- * mentioned, however it is mentioned, so this never has to work out how the
- * name reaches the function. Does not descend into a found function's own
- * body: a name bound inside it is only found once that function is itself
- * resolved as reachable, so it can be layered on top of (and correctly
- * shadow) the outer scope's names.
+ * Finds the function literals a value holds itself: the value is the
+ * function, or it sits in an object or array literal, a conditional, or a
+ * class body. Stops at a call, so a function handed to one as an argument,
+ * or invoked by it, is not held by whatever the call's result is bound to.
+ * Those count on their own wherever they appear.
+ */
+function collectHeldFunctions(node: unknown, out: FunctionLikeNode[]): void {
+  if (node == null || typeof node !== "object") return;
+  if (Array.isArray(node)) {
+    for (const item of node) collectHeldFunctions(item, out);
+    return;
+  }
+  if (!isNode(node)) return;
+  const n = node;
+
+  if (isFunctionLikeNode(n)) {
+    out.push(n);
+    return;
+  }
+  if (n.type === "CallExpression" || n.type === "NewExpression") return;
+
+  const record = n as unknown as Record<string, unknown>;
+  for (const key in record) {
+    if (key === "parent") continue;
+    collectHeldFunctions(record[key], out);
+  }
+}
+
+/**
+ * Collects the functions each name in `node`'s own scope holds: `function
+ * name() {}`, `class Name {}`, and the value of `const name = ...` or a
+ * later `name = ...` or `name.prop = ...`, including a function inside an
+ * object or array literal (see `collectHeldFunctions`). A function held
+ * under a name counts as used as soon as the name is mentioned, however it
+ * is mentioned, so this never has to work out how the name reaches the
+ * function. Does not descend into a found function's own body: a name bound
+ * inside it is only found once that function is itself resolved as
+ * reachable, so it can be layered on top of (and correctly shadow) the outer
+ * scope's names.
  */
 function collectFunctionsByName(
   node: unknown,
@@ -612,7 +627,7 @@ function collectFunctionsByName(
 
   const bindTo = (names: string[], from: unknown): void => {
     const functions: FunctionLikeNode[] = [];
-    collectNestedFunctions(from, functions);
+    collectHeldFunctions(from, functions);
     if (functions.length < 1) return;
     for (const name of names) {
       out.set(name, [...(out.get(name) ?? []), ...functions]);
@@ -653,212 +668,6 @@ function collectFunctionsByName(
 }
 
 /**
- * Resolves every call expression's callee and collects the functions those
- * calls resolve to, for the callees that mentioning a name doesn't already
- * cover. A bare identifier this scope holds functions under
- * (`functionsByName`, correctly shadowed) is skipped: its mention reaches
- * those functions, and resolving it again against the file-wide `bindings`
- * could land on some other, same-named function declared elsewhere.
- * Anything else, such as a member call like `handlers.deliver()` or a name
- * that isn't held locally, is resolved against `bindings`, the whole-file
- * map used to resolve a local object literal's properties. This is also how
- * a directly invoked function expression, `(() => {...})()`, gets found:
- * `resolveFunctionBinding` returns a function literal callee as-is. Stops
- * at a nested function's own boundary, so a call that only happens inside
- * some other, not-yet-reachable function doesn't count here. It is found
- * on its own once that function is resolved as reachable.
- */
-function collectResolvedCallTargets(
-  node: unknown,
-  functionsByName: ReadonlyMap<string, FunctionLikeNode[]>,
-  bindings: Map<string, unknown>,
-  out: Set<FunctionLikeNode>,
-): void {
-  if (node == null || typeof node !== "object") return;
-  if (Array.isArray(node)) {
-    for (const item of node) {
-      collectResolvedCallTargets(item, functionsByName, bindings, out);
-    }
-    return;
-  }
-  if (!isNode(node)) return;
-  const n = node;
-  if (isFunctionLikeNode(n)) return;
-
-  if (n.type === "CallExpression") {
-    const callee = n.callee as Expression;
-    // A name this scope already holds functions under is reached through
-    // its mention, and must not fall through to the file-wide map, which
-    // could hold a different function of the same name.
-    const heldLocally = callee.type === "Identifier" &&
-      functionsByName.has(callee.name);
-    const resolved = heldLocally
-      ? null
-      : resolveFunctionBinding(callee, bindings);
-    if (resolved != null) out.add(resolved);
-  }
-
-  const record = n as unknown as Record<string, unknown>;
-  for (const key in record) {
-    if (key === "parent") continue;
-    collectResolvedCallTargets(record[key], functionsByName, bindings, out);
-  }
-}
-
-/**
- * Collects anonymous function-literal arguments that are reachable through
- * either of two paths: the call chain they are passed to is awaited or
- * returned (e.g. the arrow function in
- * `await Promise.all(recipients.map((inbox) => ...))`, including when a
- * collection literal sits between the call and the `await`, as in
- * `await Promise.all([...a.map(cb), ...b.map(cb)])`), or the call
- * receiving them is a method known to invoke its callback synchronously
- * regardless of what happens to its own return value (`SYNCHRONOUS_ITERATION_METHODS`,
- * e.g. `recipients.forEach((inbox) => ...)`). Named references passed
- * either way (`recipients.map(deliver)`) don't need this:
- * `collectReferencedNames` already finds them regardless of context.
- */
-function collectConsumedCallbacks(
-  statements: readonly Node[],
-  impliedReturn: boolean,
-  out: Set<FunctionLikeNode>,
-): void {
-  // Expands outward from a value known to be consumed (awaited, returned,
-  // or the argument of a synchronously invoked method) through the shapes
-  // that merely carry it along -- a call's own arguments, and the
-  // collection literals (`[...]`, `...spread`, `{...}`) commonly used to
-  // gather several such values before consuming them together -- until it
-  // finds the function literals actually being passed.
-  const walkConsumed = (expr: unknown): void => {
-    if (expr == null || typeof expr !== "object" || Array.isArray(expr)) {
-      return;
-    }
-    if (!isNode(expr)) return;
-    if (isFunctionLikeNode(expr)) {
-      out.add(expr);
-      return;
-    }
-    if (expr.type === "CallExpression" || expr.type === "NewExpression") {
-      for (const arg of expr.arguments) walkConsumed(arg);
-      // A chained call's receiver carries the same value forward, e.g.
-      // `[a.map(cb)].flat()`: the array literal built from `a.map(cb)` is
-      // what `flat()` is called on, so it's still part of what ends up
-      // awaited or returned.
-      if (
-        expr.type === "CallExpression" &&
-        expr.callee.type === "MemberExpression"
-      ) {
-        walkConsumed(expr.callee.object);
-      }
-      return;
-    }
-    if (expr.type === "ArrayExpression") {
-      for (const element of expr.elements) {
-        if (element != null) walkConsumed(element);
-      }
-      return;
-    }
-    if (expr.type === "SpreadElement") {
-      walkConsumed((expr as { argument: unknown }).argument);
-      return;
-    }
-    if (expr.type === "ObjectExpression") {
-      for (const prop of expr.properties) {
-        if (
-          isNode(prop) && prop.type === "Property" &&
-          !(prop as { computed?: boolean }).computed
-        ) {
-          walkConsumed((prop as { value: unknown }).value);
-        }
-      }
-      return;
-    }
-  };
-
-  // Finds an `await` anywhere in `expr` -- not just at its top level, so
-  // `result = await Promise.all(...)` and similar wrapping still count --
-  // and feeds what it awaits into `walkConsumed`. Stops at a nested
-  // function's own boundary.
-  const walkAwaitExpressions = (expr: unknown): void => {
-    if (expr == null || typeof expr !== "object") return;
-    if (Array.isArray(expr)) {
-      for (const item of expr) walkAwaitExpressions(item);
-      return;
-    }
-    if (!isNode(expr) || isFunctionLikeNode(expr)) return;
-    if (expr.type === "AwaitExpression") {
-      walkConsumed((expr as { argument: unknown }).argument);
-      return;
-    }
-    const record = expr as unknown as Record<string, unknown>;
-    for (const key in record) {
-      if (key !== "parent") walkAwaitExpressions(record[key]);
-    }
-  };
-
-  // Finds every call to a `SYNCHRONOUS_ITERATION_METHODS` method anywhere
-  // in `node` and feeds its arguments to `walkConsumed`, independent of
-  // whether the call's own result is ever awaited, returned, or used at
-  // all. Stops at a nested function's own boundary.
-  const walkSynchronousCallbacks = (node: unknown): void => {
-    if (node == null || typeof node !== "object") return;
-    if (Array.isArray(node)) {
-      for (const item of node) walkSynchronousCallbacks(item);
-      return;
-    }
-    if (!isNode(node) || isFunctionLikeNode(node)) return;
-
-    if (node.type === "CallExpression") {
-      const callee = node.callee as Expression;
-      if (callee.type === "MemberExpression" && !callee.computed) {
-        const methodName = getMemberPropertyName(callee);
-        if (
-          methodName != null && SYNCHRONOUS_ITERATION_METHODS.has(methodName)
-        ) {
-          for (const arg of node.arguments) walkConsumed(arg);
-        }
-      }
-    }
-
-    const record = node as unknown as Record<string, unknown>;
-    for (const key in record) {
-      if (key !== "parent") walkSynchronousCallbacks(record[key]);
-    }
-  };
-
-  for (const statement of statements) {
-    walkSynchronousCallbacks(statement);
-    if (statement.type === "ReturnStatement") {
-      // A return value is consumed by definition -- no `await` needed.
-      if (statement.argument != null) walkConsumed(statement.argument);
-      continue;
-    }
-    if (statement.type === "ExpressionStatement") {
-      walkAwaitExpressions(statement.expression);
-      continue;
-    }
-    if (statement.type === "VariableDeclaration") {
-      for (const decl of statement.declarations) {
-        const init = (decl as VariableDeclarator).init as
-          | Node
-          | null
-          | undefined;
-        if (init != null) walkAwaitExpressions(init);
-      }
-      continue;
-    }
-    // Anything else is a control-flow head expression, such as the
-    // `await ...` in `if (await ...)`.
-    walkAwaitExpressions(statement);
-  }
-
-  if (impliedReturn && statements.length === 1) {
-    const [only] = statements;
-    if (only.type !== "BlockStatement") walkConsumed(only);
-  }
-}
-
-/**
  * Finds function literals directly nested in a reachable statement, without
  * descending past them -- their own reachability is decided separately.
  */
@@ -889,17 +698,14 @@ function collectNestedFunctions(
 /**
  * Computes the full set of function nodes that are actually reachable from
  * `root`: `root` itself feeds a worklist, and each function it (or a
- * function already on the worklist) references from *its own* reachable
+ * function already on the worklist) uses from *its own* reachable
  * statements -- never from a dead branch or some other not-yet-reached
  * function's body -- gets queued in turn. `outerFunctionsByName` is layered
  * fresh for each scope, so a name bound at an inner scope shadows a
  * same-named one further out instead of overwriting it globally, and a
  * dead branch that merely mentions a name never queues what it holds.
  */
-function computeUsedFunctions(
-  root: Node,
-  bindings: Map<string, unknown>,
-): Set<FunctionLikeNode> {
+function computeUsedFunctions(root: Node): Set<FunctionLikeNode> {
   const used = new Set<FunctionLikeNode>();
   const visited = new Set<Node>();
 
@@ -945,14 +751,24 @@ function computeUsedFunctions(
       if (!referencedNames.has(name)) continue;
       for (const fn of functions) reached.add(fn);
     }
-    for (const statement of statements) {
-      collectResolvedCallTargets(statement, functionsByName, bindings, reached);
+
+    // Every other function literal counts wherever it appears: a callback
+    // handed to `map`, `forEach`, `queue.push` or a call the rule has never
+    // heard of, an immediately invoked function, a returned closure. The
+    // rule cannot show that the receiving code never runs it, and it does
+    // not check whether the result is awaited: a delivery call that is
+    // never awaited is left alone too. Leave this as is.
+    const held = new Set<FunctionLikeNode>();
+    for (const functions of functionsHere.values()) {
+      for (const fn of functions) held.add(fn);
     }
-    collectConsumedCallbacks(
-      statements,
-      scopeRoot.type !== "BlockStatement",
-      reached,
-    );
+    for (const statement of statements) {
+      const nested: FunctionLikeNode[] = [];
+      collectNestedFunctions(statement, nested);
+      for (const fn of nested) {
+        if (!held.has(fn)) reached.add(fn);
+      }
+    }
 
     for (const fn of reached) {
       used.add(fn);
@@ -1034,9 +850,8 @@ function collectDeliveryScanCode(
 const listenerCallsDeliveryMethod = (
   sourceCode: { getText(node: unknown): string },
   listener: FunctionLikeNode,
-  bindings: Map<string, unknown>,
 ): boolean => {
-  const used = computeUsedFunctions(listener.body as Node, bindings);
+  const used = computeUsedFunctions(listener.body as Node);
   const code = stripCommentsAndStrings(
     collectDeliveryScanCode(
       sourceCode,
@@ -1148,9 +963,7 @@ function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
           : null;
       if (resolvedListener == null) return;
 
-      if (
-        listenerCallsDeliveryMethod(sourceCode, resolvedListener, bindings)
-      ) {
+      if (listenerCallsDeliveryMethod(sourceCode, resolvedListener)) {
         return;
       }
 

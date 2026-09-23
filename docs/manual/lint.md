@@ -756,8 +756,7 @@ You've registered an outbox listener with `setOutboxListeners()`, and the rule
 can show that no path through the listener body calls either delivery method.
 It follows the listener's own control flow (`if`/`else`, `try`/`catch`,
 `switch`, loops), so a delivery call that sits in a dead branch, after an
-unconditional `return`, in a function that is never used, or in an inline
-callback whose result is dropped does not count.
+unconditional `return`, or in a function that is never used does not count.
 
 The rule reports only when it can account for every delivery call it can see
 and show that each one does not run.  When it cannot tell, it stays quiet: a
@@ -770,12 +769,8 @@ not.  In practice:
     reached through an array or a wrapper call.  The rule does not follow the
     value any further, so a function that is only logged or stored, and never
     called, is not reported.
- -  An inline callback counts when its result is awaited or returned, such as
-    `await Promise.all(recipients.map((r) => ctx.sendActivity(...)))`, even
-    when it sits inside an array or an object literal.  A callback passed to
-    `forEach()` counts too, since `forEach()` always runs it.  A callback
-    passed to any other call whose result is dropped, such as an unawaited
-    `recipients.map(...)`, does not.
+ -  An inline callback counts wherever it is passed, since the rule cannot show
+    that the receiving call never runs it.
  -  The rule reads only the listener body.  A delivery call in a helper that
     is declared outside the listener, or in another module, is not seen.
 
@@ -783,6 +778,12 @@ not.  In practice:
 Fedify does not federate client-to-server outbox posts automatically.  If your
 application intends to deliver a posted activity, the listener must choose an
 explicit delivery path, and that path must actually run.
+
+The rule checks that a delivery call exists and can run, not that the delivery
+completes, so a listener it accepts is not guaranteed to federate.  A delivery
+call that is never awaited is not reported;
+[#1057] tracks a rule for
+that.
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
@@ -857,6 +858,8 @@ federation
     await deliver();
   });
 ~~~~
+
+[#1057]: https://github.com/fedify-dev/fedify/issues/1057
 
 ### `media-uploader-object-uri-required`
 
