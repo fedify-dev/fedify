@@ -310,6 +310,12 @@ const resolveFunctionBinding = (
 // (if/else, try/catch/finally, switch, loops) but never descending into a
 // nested function's own body, and pruning dead code (a statically-falsy `if`
 // branch, or anything after a statement that always returns/throws).
+//
+// A control-flow statement's head expressions (an `if` test, a `switch`
+// discriminant and case tests, a loop's `init`/`test`/`update`/`right`) run
+// whenever the statement itself does, whichever branch is taken, so they are
+// collected alongside the bodies. Collecting one never revives the branch
+// behind it: `if (false)` still hides its consequent.
 // ---------------------------------------------------------------------------
 
 const isStaticallyFalsy = (test: Expression): boolean =>
@@ -381,6 +387,7 @@ function collectReachableStatements(node: Node, out: Node[]): void {
 
     case "IfStatement": {
       const test = node.test as Expression;
+      out.push(test);
       if (!isStaticallyFalsy(test)) {
         collectReachableStatements(node.consequent as Node, out);
       }
@@ -401,7 +408,9 @@ function collectReachableStatements(node: Node, out: Node[]): void {
       return;
 
     case "SwitchStatement":
+      out.push(node.discriminant as Node);
       for (const switchCase of node.cases) {
+        if (switchCase.test != null) out.push(switchCase.test as Node);
         for (const statement of switchCase.consequent) {
           collectReachableStatements(statement as Node, out);
           if (alwaysExits(statement as Node)) break;
@@ -411,14 +420,31 @@ function collectReachableStatements(node: Node, out: Node[]): void {
 
     case "WhileStatement":
     case "DoWhileStatement":
+      out.push(node.test as Node);
+      collectReachableStatements(node.body as Node, out);
+      return;
+
     case "ForStatement":
+      for (const head of [node.init, node.test, node.update]) {
+        if (head != null) out.push(head as Node);
+      }
+      collectReachableStatements(node.body as Node, out);
+      return;
+
     case "ForInStatement":
     case "ForOfStatement":
+      // Only `right` is evaluated as a value; `left` declares or assigns the
+      // loop variable.
+      out.push(node.right as Node);
       collectReachableStatements(node.body as Node, out);
       return;
 
     case "LabeledStatement":
+      collectReachableStatements(node.body as Node, out);
+      return;
+
     case "WithStatement":
+      out.push(node.object as Node);
       collectReachableStatements(node.body as Node, out);
       return;
 
@@ -819,7 +845,11 @@ function collectConsumedCallbacks(
           | undefined;
         if (init != null) walkAwaitExpressions(init);
       }
+      continue;
     }
+    // Anything else is a control-flow head expression, such as the
+    // `await ...` in `if (await ...)`.
+    walkAwaitExpressions(statement);
   }
 
   if (impliedReturn && statements.length === 1) {

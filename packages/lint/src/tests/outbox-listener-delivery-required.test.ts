@@ -1650,3 +1650,322 @@ federation
       "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
   }),
 );
+
+test(
+  `${ruleName}: ✅ Good - delivery call in an if test`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    if (await ctx.sendActivity(sender, inbox, activity)) {
+      console.log("sent");
+    }
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - helper call in a switch discriminant`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    async function deliver() {
+      await ctx.sendActivity(sender, inbox, activity);
+      return 1;
+    }
+    switch (await deliver()) {
+      case 1:
+        break;
+    }
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - helper call in a switch case test`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    async function deliver() {
+      await ctx.sendActivity(sender, inbox, activity);
+      return 1;
+    }
+    switch (1) {
+      case await deliver():
+        break;
+    }
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - helper call in a while test`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    async function deliver() {
+      await ctx.sendActivity(sender, inbox, activity);
+      return 1;
+    }
+    while (await deliver() > 1) {
+      console.log("looping");
+    }
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - helper call in a do-while test`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    async function deliver() {
+      await ctx.sendActivity(sender, inbox, activity);
+      return 1;
+    }
+    do {
+      console.log("once");
+    } while (await deliver() > 1);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - delivery call in a for loop init`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    for (let sent = await ctx.sendActivity(sender, inbox, activity); false;) {
+      console.log(sent);
+    }
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - helper call in a for loop test`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    async function deliver() {
+      await ctx.sendActivity(sender, inbox, activity);
+      return 1;
+    }
+    for (let i = 0; i < await deliver(); i++) {
+      console.log(i);
+    }
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - helper call in a for loop update`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    async function deliver() {
+      await ctx.sendActivity(sender, inbox, activity);
+      return 1;
+    }
+    for (let i = 0; i < 1; i += await deliver()) {
+      console.log(i);
+    }
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - helpers held in an array and run by a for-of loop`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    const jobs = [
+      () => ctx.sendActivity(sender, inbox, activity),
+      () => ctx.sendActivity(sender, inbox, activity),
+    ];
+    for (const job of jobs) await job();
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - awaited callback inside an if test`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    if (await Promise.all(inboxes.map((target) =>
+      ctx.sendActivity(sender, target, activity)
+    ))) {
+      console.log("sent");
+    }
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - unrelated helper called in an if test`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    async function check() {
+      return true;
+    }
+    async function deliver() {
+      await ctx.sendActivity(sender, inbox, activity);
+    }
+    if (await check()) {
+      console.log("checked");
+    }
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - unrelated for-of head next to an unused helper`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    const deliver = () => ctx.sendActivity(sender, inbox, activity);
+    for (const target of [inbox]) {
+      console.log(target);
+    }
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - delivery call in the branch behind an if test that is scanned`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    if (await Promise.resolve(false)) {
+      return;
+    }
+    if (false) {
+      await ctx.sendActivity(sender, inbox, activity);
+    }
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
