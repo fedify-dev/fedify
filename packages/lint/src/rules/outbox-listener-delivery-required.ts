@@ -722,11 +722,33 @@ function computeUsedFunctions(
 }
 
 /**
+ * A node's `[start, end)` character offsets into the whole source file.
+ * Both engines always populate this -- ESLint forces it on regardless of
+ * parser options, and Deno.lint exposes it the same way as every other
+ * child property (see the `for...in` note on why plain property access
+ * still works even though it's not an own enumerable property).
+ */
+function getRange(node: Node): readonly [number, number] {
+  return (node as unknown as { range: [number, number] }).range;
+}
+
+/**
  * Builds the source text to scan for a delivery call: the reachable
  * statements of `root`, with every nested function literal either folded
  * in (its own reachable text spliced in place, wherever that function's
  * own declaration happens to live) or blanked out, depending on whether
  * `used` (from `computeUsedFunctions`) says it is actually invoked.
+ *
+ * Splices each function by its own range rather than by matching its
+ * source text, and applies the splices from the end of the statement
+ * backward. That keeps two functions with byte-identical bodies (e.g. two
+ * object-literal methods that both merely call `ctx.sendActivity(...)`)
+ * from colliding: a text-based replacement would find and blank out both
+ * occurrences the first time either one is processed, since it matches by
+ * content everywhere in the statement rather than by which node is
+ * actually being replaced. Replacing from the end backward also means a
+ * later replacement's length change never shifts the still-unprocessed
+ * offsets of an earlier one.
  */
 function collectDeliveryScanCode(
   sourceCode: { getText(node: unknown): string },
@@ -742,19 +764,26 @@ function collectDeliveryScanCode(
 
   return statements
     .map((statement) => {
-      let text = sourceCode.getText(statement);
+      const text = sourceCode.getText(statement);
+      const [statementStart] = getRange(statement);
+
       const nested: FunctionLikeNode[] = [];
       collectNestedFunctions(statement, nested);
-      for (const fn of nested) {
-        const fnText = sourceCode.getText(fn);
+      const byDescendingStart = [...nested].sort((a, b) =>
+        getRange(b)[0] - getRange(a)[0]
+      );
+
+      let result = text;
+      for (const fn of byDescendingStart) {
+        const [fnStart, fnEnd] = getRange(fn);
         const replacement = used.has(fn)
           ? collectDeliveryScanCode(sourceCode, fn.body as Node, used, visited)
           : "";
-        text = text.split(fnText).join(
-          replacement.length > 0 ? replacement : "()=>{}",
-        );
+        result = result.slice(0, fnStart - statementStart) +
+          (replacement.length > 0 ? replacement : "()=>{}") +
+          result.slice(fnEnd - statementStart);
       }
-      return text;
+      return result;
     })
     .join("\n");
 }

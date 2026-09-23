@@ -1105,3 +1105,53 @@ federation
     ruleName,
   }),
 );
+
+test(
+  `${ruleName}: ✅ Good - used helper has byte-identical text to an unused one`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const inbox = new URL("https://example.com/inbox");
+    const handlers = {
+      unused: () =>
+        ctx.sendActivity({ identifier: ctx.identifier }, inbox, activity),
+      used: () =>
+        ctx.sendActivity({ identifier: ctx.identifier }, inbox, activity),
+    };
+    await handlers.used();
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - unused helper has byte-identical text to a used one`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const inbox = new URL("https://example.com/inbox");
+    const handlers = {
+      used: () =>
+        ctx.sendActivity({ identifier: ctx.identifier }, inbox, activity),
+      unused: () =>
+        ctx.sendActivity({ identifier: ctx.identifier }, inbox, activity),
+    };
+    console.log("never actually calls a handler");
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
