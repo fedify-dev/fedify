@@ -156,7 +156,7 @@ function assertAcceptDelivered(
   strictEqual(accepts[0].body.actor, "https://relay.example.com/users/relay");
   strictEqual(accepts[0].body.object.type, "Follow");
   strictEqual(
-    accepts[0].body.object.actor?.id ?? accepts[0].body.object.actor,
+    accepts[0].body.object.actor.id,
     follow.actorId?.href,
   );
 }
