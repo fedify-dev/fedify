@@ -1199,6 +1199,28 @@ federation
 );
 
 test(
+  `${ruleName}: ✅ Good - awaited callback nested inside an object literal property`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    await Promise.all(
+      Object.values({
+        a: inboxes.map((inbox) => ctx.sendActivity(sender, inbox, activity)),
+      }),
+    );
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
   `${ruleName}: ✅ Good - callback passed to a bare forEach that is never awaited`,
   lintTest({
     code: `
