@@ -752,17 +752,32 @@ Warns when an outbox listener body does not deliver the posted activity with
 `ctx.sendActivity()` or `ctx.forwardActivity()`.
 
 **When this rule applies:**
-You've registered an outbox listener with `setOutboxListeners()`, but no
-reachable path through the listener body calls either delivery method.  The
-rule follows the listener's own control flow (`if`/`else`, `try`/`catch`,
-`switch`, loops) and resolves calls to local helper functions, so a delivery
-call that sits in a dead branch, after an unconditional `return`, or inside a
-helper that is declared but never actually called does not count.  A helper
-that *is* called does count, regardless of how it is referenced: by name,
-passed by reference to another function, or reached through a local object
-literal.  An inline callback whose result is awaited or returned counts
-too, such as
-`await Promise.all(recipients.map((r) => ctx.sendActivity(...)))`.
+You've registered an outbox listener with `setOutboxListeners()`, and the rule
+can show that no path through the listener body calls either delivery method.
+It follows the listener's own control flow (`if`/`else`, `try`/`catch`,
+`switch`, loops), so a delivery call that sits in a dead branch, after an
+unconditional `return`, in a function that is never used, or in an inline
+callback whose result is dropped does not count.
+
+The rule reports only when it can account for every delivery call it can see
+and show that each one does not run.  When it cannot tell, it stays quiet: a
+missed warning is the safe direction, while a warning on code that delivers is
+not.  In practice:
+
+ -  A function held under a name counts as used as soon as that name is
+    mentioned anywhere in code that runs, however it is mentioned: called,
+    passed to another function, aliased, destructured from an object, or
+    reached through an array or a wrapper call.  The rule does not follow the
+    value any further, so a function that is only logged or stored, and never
+    called, is not reported.
+ -  An inline callback counts when its result is awaited or returned, such as
+    `await Promise.all(recipients.map((r) => ctx.sendActivity(...)))`, even
+    when it sits inside an array or an object literal.  A callback passed to
+    `forEach()` counts too, since `forEach()` always runs it.  A callback
+    passed to any other call whose result is dropped, such as an unawaited
+    `recipients.map(...)`, does not.
+ -  The rule reads only the listener body.  A delivery call in a helper that
+    is declared outside the listener, or in another module, is not seen.
 
 **Why it matters:**
 Fedify does not federate client-to-server outbox posts automatically.  If your
@@ -827,6 +842,18 @@ federation
         activity,
       );
     }
+    await deliver();
+  });
+
+// ✅ Good: A helper reached through a destructured property still counts
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const handlers = {
+      deliver: () =>
+        ctx.sendActivity({ identifier: ctx.identifier }, "followers", activity),
+    };
+    const { deliver } = handlers;
     await deliver();
   });
 ~~~~

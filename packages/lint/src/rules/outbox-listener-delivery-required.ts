@@ -364,9 +364,18 @@ function alwaysExits(node: Node): boolean {
 function collectReachableStatements(node: Node, out: Node[]): void {
   switch (node.type) {
     case "BlockStatement":
-      for (const statement of node.body) {
+      for (const [index, statement] of node.body.entries()) {
         collectReachableStatements(statement as Node, out);
-        if (alwaysExits(statement as Node)) return;
+        if (alwaysExits(statement as Node)) {
+          // Function declarations hoist: one written below an exit is still
+          // callable from the code above it.
+          for (const rest of node.body.slice(index + 1)) {
+            if ((rest as Node).type === "FunctionDeclaration") {
+              out.push(rest as Node);
+            }
+          }
+          return;
+        }
       }
       return;
 
@@ -423,15 +432,25 @@ function collectReachableStatements(node: Node, out: Node[]): void {
 // What a listener (or a helper's own body) resolves to when scanned for a
 // delivery call: three independent mechanisms decide which nested function
 // bodies are folded into the scan instead of being masked out.
+//
+// The rule reports only when none of them can account for a delivery call,
+// so each one errs toward treating a function as used. Working out how a
+// function value travels through arbitrary JavaScript (an alias, a
+// destructured property, an array, a wrapper call) is open-ended, but
+// showing that a name never appears anywhere that runs is not. A function
+// held under a name is therefore used as soon as that name is mentioned,
+// without tracing how it is then passed around. A missed warning is the
+// safe direction; a warning on code that delivers is not.
 // ---------------------------------------------------------------------------
 
 /**
  * Collects plain-value references to identifiers: `deliver()`,
  * `forEach(deliver)`, a shorthand `{ deliver }`, and so on. Skips positions
- * that name something rather than reference a value -- a declaration's own
- * `id`/params, and the non-computed `.property` of a member expression (so
+ * that name something rather than reference a value: a declaration's own
+ * `id`/params, the non-computed `.property` of a member expression (so
  * `someService.deliver()` never counts as a reference to an unrelated local
- * `deliver`).
+ * `deliver`), and the target of an assignment, which writes to a name
+ * instead of reading it.
  */
 function collectReferencedNames(node: unknown, out: Set<string>): void {
   if (node == null || typeof node !== "object") return;
@@ -463,6 +482,28 @@ function collectReferencedNames(node: unknown, out: Set<string>): void {
     }
     return;
   }
+  if (n.type === "ClassDeclaration" || n.type === "ClassExpression") {
+    // The class's own name is a declaration, not a mention of it.
+    collectReferencedNames(n.superClass, out);
+    collectReferencedNames(n.body, out);
+    return;
+  }
+  if (
+    (n.type === "MethodDefinition" || n.type === "PropertyDefinition") &&
+    !n.computed
+  ) {
+    // Same as an object literal's `Property`: the key names a member, and
+    // only what it holds can reference something.
+    collectReferencedNames(n.value, out);
+    return;
+  }
+  if (n.type === "AssignmentExpression" && n.operator === "=") {
+    // `x = fn` and `obj.x = fn` write to a name rather than mention it.
+    if (getAssignmentTargetName(n.left as Node) != null) {
+      collectReferencedNames(n.right, out);
+      return;
+    }
+  }
   if (isFunctionLikeNode(n)) {
     // Stop at a nested function's own boundary: whether a name it
     // references counts is decided separately, only once that function
@@ -478,78 +519,139 @@ function collectReferencedNames(node: unknown, out: Set<string>): void {
 }
 
 /**
- * Collects every named local helper declared directly in `node`'s own
- * scope: a `function name() {}` declaration, or a `const name =
- * function/arrow` binding. Does not descend into a found function's own
- * body -- a helper nested inside another helper is only found once that
- * outer helper is itself resolved as reachable, so it can be layered on
- * top of (and correctly shadow) the outer scope's helpers of the same
- * name. Object-literal properties are handled separately, through
- * `resolveFunctionBinding`, since their name is only meaningful together
- * with the object it lives on.
+ * The name an assignment writes to: `x` for `x = ...`, and the root object
+ * for `obj.a.b = ...`. `null` for anything more exotic.
  */
-function collectNamedHelpers(
+function getAssignmentTargetName(target: Node): string | null {
+  let current: Node = target;
+  while (current.type === "MemberExpression") current = current.object as Node;
+  return current.type === "Identifier" ? current.name : null;
+}
+
+/** Every identifier a declaration pattern binds (`a`, `{ a, b: c }`, `[a]`). */
+function collectBoundNames(pattern: unknown, out: string[]): void {
+  if (pattern == null || typeof pattern !== "object" || !isNode(pattern)) {
+    return;
+  }
+  const p = pattern as Node;
+  switch (p.type) {
+    case "Identifier":
+      out.push(p.name);
+      return;
+    case "AssignmentPattern":
+      collectBoundNames(p.left, out);
+      return;
+    case "RestElement":
+      collectBoundNames(p.argument, out);
+      return;
+    case "ArrayPattern":
+      for (const element of p.elements) collectBoundNames(element, out);
+      return;
+    case "ObjectPattern":
+      for (const prop of p.properties) {
+        collectBoundNames(
+          (prop as { value?: unknown; argument?: unknown }).value ??
+            (prop as { argument?: unknown }).argument,
+          out,
+        );
+      }
+      return;
+  }
+}
+
+/**
+ * Collects the functions each name in `node`'s own scope holds, wherever
+ * they sit in what the name is bound to: `function name() {}`,
+ * `class Name {}`, the value of `const name = ...` or a later
+ * `name = ...` or `name.prop = ...`, including a function inside an object
+ * or array literal or passed through a call (`const deliver = once(fn)`).
+ * A function held under a name counts as used as soon as the name is
+ * mentioned, however it is mentioned, so this never has to work out how the
+ * name reaches the function. Does not descend into a found function's own
+ * body: a name bound inside it is only found once that function is itself
+ * resolved as reachable, so it can be layered on top of (and correctly
+ * shadow) the outer scope's names.
+ */
+function collectFunctionsByName(
   node: unknown,
-  out: Map<string, FunctionLikeNode>,
+  out: Map<string, FunctionLikeNode[]>,
 ): void {
   if (node == null || typeof node !== "object") return;
   if (Array.isArray(node)) {
-    for (const item of node) collectNamedHelpers(item, out);
+    for (const item of node) collectFunctionsByName(item, out);
     return;
   }
   if (!isNode(node)) return;
   const n = node;
 
+  const bindTo = (names: string[], from: unknown): void => {
+    const functions: FunctionLikeNode[] = [];
+    collectNestedFunctions(from, functions);
+    if (functions.length < 1) return;
+    for (const name of names) {
+      out.set(name, [...(out.get(name) ?? []), ...functions]);
+    }
+  };
+
   if (n.type === "FunctionDeclaration") {
-    if (n.id?.name != null) out.set(n.id.name, n as FunctionLikeNode);
+    if (n.id?.name != null) bindTo([n.id.name], n);
     return;
   }
-  if (
-    n.type === "FunctionExpression" || n.type === "ArrowFunctionExpression"
-  ) {
+  if (n.type === "ClassDeclaration") {
+    if (n.id?.name != null) bindTo([n.id.name], n);
     return;
   }
+  if (isFunctionLikeNode(n)) return;
   if (n.type === "VariableDeclarator") {
     const decl = n as VariableDeclarator;
-    if (decl.id.type === "Identifier" && decl.init != null) {
-      const init = decl.init as Node;
-      if (isFunctionLikeNode(init)) out.set(decl.id.name, init);
+    if (decl.init != null) {
+      const names: string[] = [];
+      collectBoundNames(decl.id, names);
+      bindTo(names, decl.init);
+      collectFunctionsByName(decl.init, out);
     }
+    return;
+  }
+  if (n.type === "AssignmentExpression") {
+    const name = getAssignmentTargetName(n.left as Node);
+    if (name != null) bindTo([name], n.right);
+    collectFunctionsByName(n.right, out);
     return;
   }
 
   const record = n as unknown as Record<string, unknown>;
   for (const key in record) {
     if (key === "parent") continue;
-    collectNamedHelpers(record[key], out);
+    collectFunctionsByName(record[key], out);
   }
 }
 
 /**
  * Resolves every call expression's callee and collects the functions those
- * calls resolve to. A bare identifier callee is resolved against `helpers`
- * first -- the current scope's own, correctly shadowed helper map -- so a
- * call to a shadowed name never resolves to some other, same-named
- * function declared elsewhere. Anything `helpers` doesn't have (a member
- * call such as `handlers.deliver()`, or a name that isn't a local helper
- * at all) falls back to `bindings`, the whole-file map used to resolve a
- * local object literal's properties. This is also how a directly invoked
- * function expression -- `(() => {...})()` -- gets found:
+ * calls resolve to, for the callees that mentioning a name doesn't already
+ * cover. A bare identifier this scope holds functions under
+ * (`functionsByName`, correctly shadowed) is skipped: its mention reaches
+ * those functions, and resolving it again against the file-wide `bindings`
+ * could land on some other, same-named function declared elsewhere.
+ * Anything else, such as a member call like `handlers.deliver()` or a name
+ * that isn't held locally, is resolved against `bindings`, the whole-file
+ * map used to resolve a local object literal's properties. This is also how
+ * a directly invoked function expression, `(() => {...})()`, gets found:
  * `resolveFunctionBinding` returns a function literal callee as-is. Stops
  * at a nested function's own boundary, so a call that only happens inside
- * some other, not-yet-reachable function doesn't count here -- it is
- * found on its own once that function is resolved as reachable.
+ * some other, not-yet-reachable function doesn't count here. It is found
+ * on its own once that function is resolved as reachable.
  */
 function collectResolvedCallTargets(
   node: unknown,
-  helpers: ReadonlyMap<string, FunctionLikeNode>,
+  functionsByName: ReadonlyMap<string, FunctionLikeNode[]>,
   bindings: Map<string, unknown>,
   out: Set<FunctionLikeNode>,
 ): void {
   if (node == null || typeof node !== "object") return;
   if (Array.isArray(node)) {
     for (const item of node) {
-      collectResolvedCallTargets(item, helpers, bindings, out);
+      collectResolvedCallTargets(item, functionsByName, bindings, out);
     }
     return;
   }
@@ -559,8 +661,13 @@ function collectResolvedCallTargets(
 
   if (n.type === "CallExpression") {
     const callee = n.callee as Expression;
-    const resolved = callee.type === "Identifier" && helpers.has(callee.name)
-      ? helpers.get(callee.name)!
+    // A name this scope already holds functions under is reached through
+    // its mention, and must not fall through to the file-wide map, which
+    // could hold a different function of the same name.
+    const heldLocally = callee.type === "Identifier" &&
+      functionsByName.has(callee.name);
+    const resolved = heldLocally
+      ? null
       : resolveFunctionBinding(callee, bindings);
     if (resolved != null) out.add(resolved);
   }
@@ -568,7 +675,7 @@ function collectResolvedCallTargets(
   const record = n as unknown as Record<string, unknown>;
   for (const key in record) {
     if (key === "parent") continue;
-    collectResolvedCallTargets(record[key], helpers, bindings, out);
+    collectResolvedCallTargets(record[key], functionsByName, bindings, out);
   }
 }
 
@@ -754,10 +861,10 @@ function collectNestedFunctions(
  * `root`: `root` itself feeds a worklist, and each function it (or a
  * function already on the worklist) references from *its own* reachable
  * statements -- never from a dead branch or some other not-yet-reached
- * function's body -- gets queued in turn. `outerHelpers` is layered fresh
- * for each scope, so a helper declared at an inner scope shadows a
+ * function's body -- gets queued in turn. `outerFunctionsByName` is layered
+ * fresh for each scope, so a name bound at an inner scope shadows a
  * same-named one further out instead of overwriting it globally, and a
- * dead branch that merely mentions a helper's name never queues it.
+ * dead branch that merely mentions a name never queues what it holds.
  */
 function computeUsedFunctions(
   root: Node,
@@ -768,7 +875,7 @@ function computeUsedFunctions(
 
   const processScope = (
     scopeRoot: Node,
-    outerHelpers: ReadonlyMap<string, FunctionLikeNode>,
+    outerFunctionsByName: ReadonlyMap<string, FunctionLikeNode[]>,
   ): void => {
     if (visited.has(scopeRoot)) return;
     visited.add(scopeRoot);
@@ -776,31 +883,40 @@ function computeUsedFunctions(
     const statements: Node[] = [];
     collectReachableStatements(scopeRoot, statements);
 
-    const helpers = new Map(outerHelpers);
+    const functionsHere = new Map<string, FunctionLikeNode[]>();
     for (const statement of statements) {
-      collectNamedHelpers(statement, helpers);
+      collectFunctionsByName(statement, functionsHere);
+    }
+    const functionsByName = new Map(outerFunctionsByName);
+    for (const [name, functions] of functionsHere) {
+      functionsByName.set(name, functions);
     }
 
     const referencedNames = new Set<string>();
     for (const statement of statements) {
       collectReferencedNames(statement, referencedNames);
     }
-    // A helper counts as reached as soon as its name is mentioned at all --
+    // A function held under a name counts as reached as soon as that name
+    // is mentioned at all -- called, passed along, aliased, destructured,
     // passed to `console.log`, stored in a variable, anything -- not only
     // when it's actually invoked. That's what lets `recipients.map(deliver)`
-    // resolve `deliver` as used without this code having to know that `map`
-    // invokes its argument; telling a real invocation apart from merely
-    // holding a reference would need knowing which APIs call what they're
-    // given, which is more than this rule should carry. The cost is a
-    // narrow false negative -- a helper that's only logged or reassigned,
-    // never called, is not reported -- accepted deliberately, since missing
-    // a case here is the safe direction. Leave this as is.
+    // and `const { deliver } = handlers` resolve as used without this code
+    // having to know that `map` invokes its argument or how a destructured
+    // property gets from the object to the call. Telling a real invocation
+    // apart from merely holding a reference would need following every
+    // shape a function value can travel in and knowing which APIs call what
+    // they're given, which is more than this rule should carry, and any
+    // shape it missed would report code that delivers. The cost is a
+    // narrow false negative: a function that's only logged or reassigned,
+    // never called, is not reported. That is accepted deliberately, since
+    // missing a case here is the safe direction. Leave this as is.
     const reached = new Set<FunctionLikeNode>();
-    for (const [name, fn] of helpers) {
-      if (referencedNames.has(name)) reached.add(fn);
+    for (const [name, functions] of functionsByName) {
+      if (!referencedNames.has(name)) continue;
+      for (const fn of functions) reached.add(fn);
     }
     for (const statement of statements) {
-      collectResolvedCallTargets(statement, helpers, bindings, reached);
+      collectResolvedCallTargets(statement, functionsByName, bindings, reached);
     }
     collectConsumedCallbacks(
       statements,
@@ -810,7 +926,7 @@ function computeUsedFunctions(
 
     for (const fn of reached) {
       used.add(fn);
-      processScope(fn.body as Node, helpers);
+      processScope(fn.body as Node, functionsByName);
     }
   };
 

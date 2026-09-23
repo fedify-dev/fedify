@@ -274,19 +274,14 @@ To be released.
 
  -  Changed `outbox-listener-delivery-required` (`@fedify/lint`) to decide
     whether a `ctx.sendActivity()`/`ctx.forwardActivity()` call actually
-    runs,
-    instead of scanning the listener's source as a flat block of text. It
-    now reports a listener whose only delivery call sits behind a dead
-    branch, after an unconditional `return`/`throw`, or inside a local
-    helper function that is never actually called. A helper that is
-    called still counts, regardless of how it's referenced: by name,
-    passed by reference to another function, or reached through a local
-    object literal. An inline callback whose result is awaited or
-    returned counts too, including one nested inside an array, a spread,
-    or an object literal, such as
-    `await Promise.all([...a.map(...), ...b.map(...)])`. A callback
-    passed to `forEach()` counts as well, since it always runs
-    synchronously regardless of what the call returns.
+    runs, instead of scanning the listener's source as a flat block of text.
+    It now reports a listener whose only delivery calls sit behind a dead
+    branch, after an unconditional `return`/`throw`, inside a function that
+    is never used, or inside an inline callback whose result is dropped.
+    When it cannot tell whether a delivery call runs, it stays quiet: a
+    function held under a name counts as used as soon as that name is
+    mentioned, however it is passed around, and a callback that is awaited,
+    returned, or passed to `forEach()` counts too.
     [[#900], [#1050] by Jae-Hyuk-Jang\]
 
 [#895]: https://github.com/fedify-dev/fedify/issues/895
