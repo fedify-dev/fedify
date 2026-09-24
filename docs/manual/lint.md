@@ -752,13 +752,38 @@ Warns when an outbox listener body does not deliver the posted activity with
 `ctx.sendActivity()` or `ctx.forwardActivity()`.
 
 **When this rule applies:**
-You've registered an outbox listener with `setOutboxListeners()`, but the
-listener body never calls either delivery method.
+You've registered an outbox listener with `setOutboxListeners()`, and the rule
+can show that no path through the listener body calls either delivery method.
+It follows the listener's own control flow (`if`/`else`, `try`/`catch`,
+`switch`, loops), so a delivery call that sits in a dead branch, after an
+unconditional `return`, or in a function that is never used does not count.
+
+The rule reports only when it can account for every delivery call it can see
+and show that each one does not run.  When it cannot tell, it stays quiet: a
+missed warning is the safe direction, while a warning on code that delivers is
+not.  In practice:
+
+ -  A function held under a name counts as used as soon as that name is
+    mentioned anywhere in code that runs, however it is mentioned: called,
+    passed to another function, aliased, destructured from an object, or
+    reached through an array or a wrapper call.  The rule does not follow the
+    value any further, so a function that is only logged or stored, and never
+    called, is not reported.
+ -  An inline callback counts wherever it is passed, since the rule cannot show
+    that the receiving call never runs it.
+ -  The rule reads only the listener body.  A delivery call in a helper that
+    is declared outside the listener, or in another module, is not seen.
 
 **Why it matters:**
 Fedify does not federate client-to-server outbox posts automatically.  If your
 application intends to deliver a posted activity, the listener must choose an
-explicit delivery path.
+explicit delivery path, and that path must actually run.
+
+The rule checks that a delivery call exists and can run, not that the delivery
+completes, so a listener it accepts is not guaranteed to federate.  A delivery
+call that is never awaited is not reported;
+[#1057] tracks a rule for
+that.
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
@@ -771,6 +796,19 @@ federation
   .setOutboxListeners("/users/{identifier}/outbox")
   .on(Activity, async (ctx, activity) => {
     console.log(ctx.identifier, activity.id?.href);
+  });
+
+// ❌ Bad: The delivery call is unreachable dead code
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    if (activity.id == null) return;
+    return;
+    await ctx.sendActivity(
+      { identifier: ctx.identifier },
+      "followers",
+      activity,
+    );
   });
 
 // ✅ Good: Listener federates explicitly
@@ -793,7 +831,35 @@ federation
       "followers",
     );
   });
+
+// ✅ Good: Delivery happens inside a helper that is actually called
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    async function deliver() {
+      await ctx.sendActivity(
+        { identifier: ctx.identifier },
+        "followers",
+        activity,
+      );
+    }
+    await deliver();
+  });
+
+// ✅ Good: A helper reached through a destructured property still counts
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const handlers = {
+      deliver: () =>
+        ctx.sendActivity({ identifier: ctx.identifier }, "followers", activity),
+    };
+    const { deliver } = handlers;
+    await deliver();
+  });
 ~~~~
+
+[#1057]: https://github.com/fedify-dev/fedify/issues/1057
 
 ### `media-uploader-object-uri-required`
 
