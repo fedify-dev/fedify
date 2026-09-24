@@ -8,6 +8,16 @@ Version 2.0.29
 
 To be released.
 
+### @fedify/fedify
+
+ -  Fixed outbound delivery raising `UrlError` instead of `FetchError` when
+    resolving an inbox or redirect hostname fails or returns no usable IP
+    addresses.  Applications can now distinguish these network failures from
+    disallowed destinations; the original error is preserved in `cause`.
+    [[#1055] by Jiwon Kwon\]
+
+[#1055]: https://github.com/fedify-dev/fedify/issues/1055
+
 ### @fedify/postgres
 
  -  Fixed `PostgresKvStore` rejecting `null` values with a PostgreSQL constraint
@@ -15,6 +25,13 @@ To be released.
 
 [#1042]: https://github.com/fedify-dev/fedify/issues/1042
 [#1056]: https://github.com/fedify-dev/fedify/pull/1056
+
+### @fedify/vocab-runtime
+
+ -  Added `UrlError.reason` to distinguish DNS resolution failures (`"dns"`)
+    from disallowed URLs (`"disallowed"`) without inspecting error messages
+    or `cause`.  Existing constructor calls default to `"disallowed"`.
+    [[#1055] by Jiwon Kwon\]
 
 
 Version 2.0.28
