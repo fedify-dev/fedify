@@ -1,5 +1,5 @@
 import type { Recipient } from "@fedify/vocab";
-import { UrlError, validatePublicUrl } from "@fedify/vocab-runtime";
+import { FetchError, UrlError, validatePublicUrl } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
 import {
   type Span,
@@ -254,6 +254,11 @@ async function sendActivityInternal(
       try {
         await validatePublicUrl(url);
       } catch (error) {
+        if (error instanceof UrlError && error.reason === "dns") {
+          const failure = new FetchError(url, error.message);
+          failure.cause = error;
+          throw failure;
+        }
         if (error instanceof UrlError) {
           logger.error("Disallowed private URL: {url}", { url, error });
         }
