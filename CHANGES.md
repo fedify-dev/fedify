@@ -8,6 +8,14 @@ Version 2.0.29
 
 To be released.
 
+### @fedify/postgres
+
+ -  Fixed `PostgresKvStore` rejecting `null` values with a PostgreSQL constraint
+    error.  Callers can now store JSON `null`.  [[#1042], [#1056]]
+
+[#1042]: https://github.com/fedify-dev/fedify/issues/1042
+[#1056]: https://github.com/fedify-dev/fedify/pull/1056
+
 
 Version 2.0.28
 --------------
