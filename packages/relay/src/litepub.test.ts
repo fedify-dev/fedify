@@ -39,7 +39,7 @@ const mockDocumentLoader = async (url: string): Promise<RemoteDocument> => {
         id: url,
         type: "Person",
         preferredUsername: "alice",
-        inbox: "https://remote.example.com/users/alice/inbox",
+        inbox: aliceInbox,
         publicKey: {
           id: "https://remote.example.com/users/alice#main-key",
           owner: url.replace(/#main-key$/, ""),
@@ -119,6 +119,7 @@ const davePublicKey = {
 // before the request is made.  mastodon.test.ts uses a disjoint /48 so that
 // neither file's interceptor can swallow the other's deliveries.
 const INBOX_PREFIX = "https://[2001:db8:1::";
+const aliceInbox = `${INBOX_PREFIX}4]/users/alice/inbox`;
 const daveInbox = `${INBOX_PREFIX}1]/users/dave/inbox`;
 const pendingInbox = `${INBOX_PREFIX}2]/users/bob/inbox`;
 const acceptedInbox = `${INBOX_PREFIX}3]/users/carol/inbox`;
@@ -139,6 +140,25 @@ function recordInbox(inbox: string): DeliveredRequest[] {
   const recorded: DeliveredRequest[] = [];
   recorders.set(inbox, recorded);
   return recorded;
+}
+
+const aliceDeliveries = recordInbox(aliceInbox);
+
+function assertAcceptDelivered(
+  follow: Follow,
+  deliveries: readonly DeliveredRequest[] = aliceDeliveries,
+): void {
+  const accepts = deliveries.filter(({ body }) =>
+    body.type === "Accept" && body.object?.id === follow.id?.href
+  );
+  strictEqual(accepts.length, 1, "Expected exactly one Accept for this Follow");
+  strictEqual(accepts[0].method, "POST");
+  strictEqual(accepts[0].body.actor, "https://relay.example.com/users/relay");
+  strictEqual(accepts[0].body.object.type, "Follow");
+  strictEqual(
+    accepts[0].body.object.actor.id,
+    follow.actorId?.href,
+  );
 }
 
 const nextFetch = globalThis.fetch;
@@ -360,7 +380,10 @@ describe("LitePubRelay", () => {
     });
 
     const followActivity = new Follow({
-      id: new URL("https://remote.example.com/activities/follow/1"),
+      // Isolate delivery assertions from other tests and loop iterations.
+      id: new URL(
+        `https://remote.example.com/activities/follow/${crypto.randomUUID()}`,
+      ),
       actor: follower.id,
       object: new URL("https://relay.example.com/users/relay"),
     });
@@ -383,10 +406,8 @@ describe("LitePubRelay", () => {
 
     const deliveredActivities = recordInbox(daveInbox);
     const response = await relay.fetch(request);
-    ok(
-      response.status === 200 || response.status === 202,
-      `Unexpected inbox response status: ${response.status}`,
-    );
+    strictEqual(response.status, 202);
+    assertAcceptDelivered(followActivity, deliveredActivities);
 
     // Verify handler was called
     strictEqual(handlerCalled, true);
@@ -434,7 +455,7 @@ describe("LitePubRelay", () => {
     const follower = new Person({
       id: new URL("https://remote.example.com/users/alice"),
       preferredUsername: "alice",
-      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+      inbox: new URL(aliceInbox),
     });
 
     const followActivity = new Follow({
@@ -459,7 +480,8 @@ describe("LitePubRelay", () => {
       rsaPublicKey.id,
     );
 
-    await relay.fetch(request);
+    const response = await relay.fetch(request);
+    strictEqual(response.status, 202);
 
     // Verify follower was NOT stored
     const followerData = await kv.get([
@@ -483,12 +505,15 @@ describe("LitePubRelay", () => {
     const follower = new Person({
       id: new URL("https://remote.example.com/users/alice"),
       preferredUsername: "alice",
-      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+      inbox: new URL(aliceInbox),
     });
 
     // Public follow activity
     const followActivity = new Follow({
-      id: new URL("https://remote.example.com/activities/follow/1"),
+      // Isolate delivery assertions from other tests and loop iterations.
+      id: new URL(
+        `https://remote.example.com/activities/follow/${crypto.randomUUID()}`,
+      ),
       actor: follower.id,
       object: new URL("https://www.w3.org/ns/activitystreams#Public"),
     });
@@ -509,7 +534,9 @@ describe("LitePubRelay", () => {
       rsaPublicKey.id,
     );
 
-    await relay.fetch(request);
+    const response = await relay.fetch(request);
+    strictEqual(response.status, 202);
+    assertAcceptDelivered(followActivity);
 
     // Verify follower was stored with "pending" state
     const followerData = await kv.get([
@@ -553,7 +580,8 @@ describe("LitePubRelay", () => {
       rsaPublicKey.id,
     );
 
-    await relay.fetch(request);
+    const response = await relay.fetch(request);
+    strictEqual(response.status, 202);
 
     // Verify follower was NOT stored
     const followerData = await kv.get([
@@ -593,7 +621,10 @@ describe("LitePubRelay", () => {
       strictEqual(await relay.getFollower(followerId), null);
 
       const followActivity = new Follow({
-        id: new URL("https://remote.example.com/activities/follow/1"),
+        // Isolate delivery assertions from other tests and loop iterations.
+        id: new URL(
+          `https://remote.example.com/activities/follow/${crypto.randomUUID()}`,
+        ),
         actor: new URL(followerId),
         object: new URL("https://relay.example.com/users/relay"),
       });
@@ -610,7 +641,9 @@ describe("LitePubRelay", () => {
         rsaPublicKey.id,
       );
 
-      await relay.fetch(request);
+      const response = await relay.fetch(request);
+      strictEqual(response.status, 202);
+      assertAcceptDelivered(followActivity);
 
       strictEqual(handlerCallCount, 1);
       const follower = await relay.getFollower(followerId);
@@ -639,7 +672,7 @@ describe("LitePubRelay", () => {
       const follower = new Person({
         id: new URL("https://remote.example.com/users/alice"),
         preferredUsername: "alice",
-        inbox: new URL("https://remote.example.com/users/alice/inbox"),
+        inbox: new URL(aliceInbox),
       });
       await kv.set(
         ["follower", "https://remote.example.com/users/alice"],
@@ -667,7 +700,8 @@ describe("LitePubRelay", () => {
         rsaPublicKey.id,
       );
 
-      await relay.fetch(request);
+      const response = await relay.fetch(request);
+      strictEqual(response.status, 202);
 
       strictEqual(handlerCallCount, 0);
       const followerData = await kv.get([
@@ -685,7 +719,7 @@ describe("LitePubRelay", () => {
     const follower = new Person({
       id: new URL("https://remote.example.com/users/alice"),
       preferredUsername: "alice",
-      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+      inbox: new URL(aliceInbox),
     });
 
     // Pre-populate with pending follower
@@ -730,7 +764,8 @@ describe("LitePubRelay", () => {
       rsaPublicKey.id,
     );
 
-    await relay.fetch(request);
+    const response = await relay.fetch(request);
+    strictEqual(response.status, 202);
 
     // Verify follower state changed to "accepted"
     const followerData = await kv.get([
@@ -791,7 +826,8 @@ describe("LitePubRelay", () => {
         rsaPublicKey.id,
       );
 
-      await relay.fetch(request);
+      const response = await relay.fetch(request);
+      strictEqual(response.status, 202);
 
       deepStrictEqual(await kv.get(["follower", followerId]), invalidRow);
     }
@@ -805,7 +841,7 @@ describe("LitePubRelay", () => {
       const follower = new Person({
         id: new URL(followerId),
         preferredUsername: "alice",
-        inbox: new URL("https://remote.example.com/users/alice/inbox"),
+        inbox: new URL(aliceInbox),
       });
 
       await kv.set(
@@ -849,7 +885,8 @@ describe("LitePubRelay", () => {
         rsaPublicKey.id,
       );
 
-      await relay.fetch(request);
+      const response = await relay.fetch(request);
+      strictEqual(response.status, 202);
 
       const followerData = await kv.get(["follower", followerId]);
       strictEqual(followerData, undefined);
@@ -864,7 +901,7 @@ describe("LitePubRelay", () => {
     const follower = new Person({
       id: new URL(followerId),
       preferredUsername: "alice",
-      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+      inbox: new URL(aliceInbox),
     });
 
     await kv.set(
@@ -1314,7 +1351,7 @@ describe("LitePubRelay", () => {
       id: new URL(followerId),
       preferredUsername: "alice",
       name: "Alice Wonderland",
-      inbox: new URL("https://remote.example.com/users/alice/inbox"),
+      inbox: new URL(aliceInbox),
     });
 
     await kv.set(
