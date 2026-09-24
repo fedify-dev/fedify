@@ -1,5 +1,5 @@
 import type { LookupAddress } from "node:dns";
-import { lookup } from "node:dns/promises";
+import dns from "node:dns/promises";
 import { isIP } from "node:net";
 
 export class UrlError extends Error {
@@ -61,7 +61,7 @@ export async function validatePublicUrl(url: string): Promise<void> {
   // and ensure that they are all public:
   let addresses: LookupAddress[];
   try {
-    addresses = await lookup(hostname, { all: true });
+    addresses = await dns.lookup(hostname, { all: true });
   } catch (error) {
     throw new UrlError("DNS lookup failed", { cause: error, reason: "dns" });
   }
