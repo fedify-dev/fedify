@@ -86,8 +86,33 @@ function fromERequest(req: ERequest): Request {
     duplex: "half",
     body: req.method === "GET" || req.method === "HEAD"
       ? undefined
-      : (Readable.toWeb(req)),
+      : lazyRequestBody(req),
   });
+}
+
+/**
+ * Wraps the raw `IncomingMessage` in a `ReadableStream` that stays inert until
+ * first read.  The `Request` is built before Fedify decides whether it handles
+ * the request; an eager `Readable.toWeb()` would start draining the socket and
+ * leave the body parsers of the declined requests waiting forever.
+ */
+function lazyRequestBody(message: Readable): ReadableStream<Uint8Array> {
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+  return new ReadableStream<Uint8Array>(
+    {
+      async pull(controller) {
+        reader ??= (Readable.toWeb(message) as ReadableStream<Uint8Array>)
+          .getReader();
+        const { done, value } = await reader.read();
+        if (done) controller.close();
+        else controller.enqueue(value);
+      },
+      cancel(reason) {
+        return reader?.cancel(reason);
+      },
+    },
+    { highWaterMark: 0 },
+  );
 }
 
 function setEResponse(res: EResponse, response: Response): Promise<void> {
