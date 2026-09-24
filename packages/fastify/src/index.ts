@@ -130,13 +130,41 @@ function toWebRequest(fastifyReq: FastifyRequest): Request {
     ? typeof fastifyReq.body === "string"
       ? fastifyReq.body
       : JSON.stringify(fastifyReq.body)
-    : Readable.toWeb(fastifyReq.raw) as ReadableStream;
+    : lazyRequestBody(fastifyReq.raw);
 
   return new Request(url, {
     method: fastifyReq.method,
     headers,
     body,
+    // @ts-ignore: duplex is not supported in Deno, but it is in Node.js
+    duplex: "half",
   });
+}
+
+/**
+ * Wraps the raw `IncomingMessage` in a `ReadableStream` that stays inert until
+ * first read.  The `Request` is built in the `onRequest` hook, before Fedify
+ * decides whether it handles the request; an eager `Readable.toWeb()` would
+ * start draining the socket and break Fastify's own body parsing of the
+ * declined requests.
+ */
+function lazyRequestBody(message: Readable): ReadableStream<Uint8Array> {
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+  return new ReadableStream<Uint8Array>(
+    {
+      async pull(controller) {
+        reader ??= (Readable.toWeb(message) as ReadableStream<Uint8Array>)
+          .getReader();
+        const { done, value } = await reader.read();
+        if (done) controller.close();
+        else controller.enqueue(value);
+      },
+      cancel(reason) {
+        return reader?.cancel(reason);
+      },
+    },
+    { highWaterMark: 0 },
+  );
 }
 
 export default fedifyPlugin;
