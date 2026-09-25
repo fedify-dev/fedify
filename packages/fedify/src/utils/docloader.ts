@@ -87,7 +87,11 @@ export function getAuthenticatedDocumentLoader(
         await validatePublicUrl(url);
       } catch (error) {
         if (error instanceof UrlError) {
-          logger.error("Disallowed private URL: {url}", { url, error });
+          if (error.reason === "dns") {
+            logger.debug("DNS lookup failed for {url}", { url, error });
+          } else {
+            logger.error("Disallowed private URL: {url}", { url, error });
+          }
         }
         throw error;
       }

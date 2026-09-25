@@ -10,6 +10,13 @@ To be released.
 
 ### @fedify/fedify
 
+ -  Fixed `getAuthenticatedDocumentLoader()` and `getNodeInfo()` logging
+    hostnames that fail to resolve as if they had been blocked for pointing
+    at a private address, which could send operators looking for an SSRF
+    attempt when a remote instance was simply gone.  These failures are now
+    logged as “DNS lookup failed for {url}”: at the debug level by
+    `getAuthenticatedDocumentLoader()`, and at the error level by
+    `getNodeInfo()`, as with its other network failures.  [[#1062], [#1065]]
  -  Fixed outbound delivery raising `UrlError` instead of `FetchError` when
     resolving an inbox or redirect hostname fails or returns no usable IP
     addresses.  Applications can now distinguish these network failures from
@@ -18,6 +25,8 @@ To be released.
 
 [#1055]: https://github.com/fedify-dev/fedify/issues/1055
 [#1060]: https://github.com/fedify-dev/fedify/pull/1060
+[#1062]: https://github.com/fedify-dev/fedify/issues/1062
+[#1065]: https://github.com/fedify-dev/fedify/pull/1065
 
 ### @fedify/express
 
@@ -76,6 +85,18 @@ To be released.
     from disallowed URLs (`"disallowed"`) without inspecting error messages
     or `cause`.  Existing constructor calls default to `"disallowed"`.
     [[#1055], [#1060] by Jiwon Kwon\]
+ -  Fixed `getDocumentLoader()` logging hostnames that fail to resolve as
+    “Disallowed private URL” errors, as if they had been blocked for pointing
+    at a private address.  These failures are now logged as “DNS lookup
+    failed for {url}” at the debug level, and the thrown `UrlError` is
+    unchanged.  [[#1062]]
+
+### @fedify/webfinger
+
+ -  Fixed `lookupWebFinger()` logging hostnames that fail to resolve as
+    “Invalid URL for WebFinger resource descriptor” errors.  These failures
+    are now logged as “DNS lookup failed for {url}” at the debug level.
+    `lookupWebFinger()` still returns `null` in this case.  [[#1062]]
 
 
 Version 2.0.28

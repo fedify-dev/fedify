@@ -31,8 +31,8 @@ const DEFAULT_MAX_REDIRECTION = 5;
  * bounce the request to an internal address.
  * @param url The URL to fetch.
  * @param headers The request headers.
- * @returns The final response, or `null` if the URL is disallowed or there
- *          are too many redirects.
+ * @returns The final response, or `null` if the URL is disallowed, its
+ *          hostname cannot be resolved, or there are too many redirects.
  */
 async function fetchPublicUrl(
   url: URL | string,
@@ -45,10 +45,17 @@ async function fetchPublicUrl(
       await validatePublicUrl(current.href);
     } catch (e) {
       if (e instanceof UrlError) {
-        logger.error(
-          "Refused to fetch a private or invalid URL {url}: {error}",
-          { url: current.href, error: e },
-        );
+        if (e.reason === "dns") {
+          logger.error("DNS lookup failed for {url}: {error}", {
+            url: current.href,
+            error: e,
+          });
+        } else {
+          logger.error(
+            "Refused to fetch a private or invalid URL {url}: {error}",
+            { url: current.href, error: e },
+          );
+        }
         return null;
       }
       throw e;

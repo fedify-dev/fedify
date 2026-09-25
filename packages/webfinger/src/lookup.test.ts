@@ -1,7 +1,10 @@
 import { test } from "@fedify/fixture";
+import { UrlError } from "@fedify/vocab-runtime";
+import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { withTimeout } from "es-toolkit";
 import fetchMock from "fetch-mock";
-import { deepStrictEqual } from "node:assert/strict";
+import { deepStrictEqual, ok } from "node:assert/strict";
+import dns from "node:dns/promises";
 import type { ResourceDescriptor } from "./jrd.ts";
 import { lookupWebFinger } from "./lookup.ts";
 
@@ -363,5 +366,69 @@ test("lookupWebFinger() bounds resource descriptors", async () => {
     );
   } finally {
     fetchMock.hardReset();
+  }
+});
+
+test("lookupWebFinger() logs DNS failures as such", async (t) => {
+  // The validator skips DNS when Deno has no network permission.  Checked
+  // here rather than with top-level await, which the CommonJS build rejects.
+  if (
+    "Deno" in globalThis &&
+    (await Deno.permissions.query({ name: "net" })).state !== "granted"
+  ) return;
+  for (const result of ["throws", "empty", "private"] as const) {
+    await t.step(result, async () => {
+      // Stubbing works only because vocab-runtime's url.ts uses the default
+      // node:dns/promises import; see the FIXME there.
+      const originalLookup = dns.lookup;
+      dns.lookup = (() =>
+        result === "throws"
+          ? Promise.reject(new Error("Resolver unavailable"))
+          : Promise.resolve(
+            result === "empty" ? [] : [{ address: "127.0.0.1", family: 4 }],
+          )) as typeof dns.lookup;
+      const records: LogRecord[] = [];
+      await configure({
+        sinks: {
+          buffer: (record) =>
+            records.push(record),
+        },
+        loggers: [
+          { category: "fedify", sinks: ["buffer"], lowestLevel: "debug" },
+          { category: ["logtape", "meta"], sinks: [] },
+        ],
+        reset: true,
+      });
+      try {
+        deepStrictEqual(
+          await lookupWebFinger("acct:alice@dns-failure.invalid"),
+          null,
+        );
+        const failures = records.filter((r) =>
+          r.rawMessage !==
+            "Fetching WebFinger resource descriptor from {url}..."
+        );
+        deepStrictEqual(
+          failures.map((r) => [r.level, r.rawMessage]),
+          [
+            result === "private"
+              ? [
+                "error",
+                "Invalid URL for WebFinger resource descriptor: {error}",
+              ]
+              : ["debug", "DNS lookup failed for {url}"],
+          ],
+        );
+        const { error } = failures[0].properties;
+        ok(error instanceof UrlError);
+        deepStrictEqual(
+          error.reason,
+          result === "private" ? "disallowed" : "dns",
+        );
+      } finally {
+        await reset();
+        dns.lookup = originalLookup;
+      }
+    });
   }
 });
