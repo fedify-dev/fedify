@@ -267,6 +267,10 @@ async function sendActivityInternal(
     }
   }
 
+  // TODO: When forwarding to 2.3+, include initial DNS failures in delivery
+  // metrics without changing disallowed-URL handling. Test metrics and
+  // circuit-breaker accounting for both direct and redirected destinations.
+  // https://github.com/fedify-dev/fedify/issues/1055
   await validateUrl(inbox.href);
   headers = new Headers(headers);
   headers.set("Content-Type", "application/activity+json");
