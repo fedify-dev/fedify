@@ -139,10 +139,20 @@ async function lookupWebFingerInternal(
         await validatePublicUrl(url.href);
       } catch (e) {
         if (e instanceof UrlError) {
-          logger.error(
-            "Invalid URL for WebFinger resource descriptor: {error}",
-            { error: e },
-          );
+          if (e.reason === "dns") {
+            logger.debug("DNS lookup failed for {url}", {
+              url: url.href,
+              error: e,
+            });
+          } else {
+            logger.error(
+              "Invalid URL for WebFinger resource descriptor: {error}",
+              { error: e },
+            );
+          }
+          // TODO: When merging forward into 2.3-maintenance and later, where
+          // this returns { resource: null, result: "network_error", remoteHost }
+          // instead of null, keep that return value for both reasons.
           return null;
         }
         throw e;

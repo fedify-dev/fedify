@@ -1,6 +1,9 @@
 import { test } from "@fedify/fixture";
-import { assertEquals } from "@std/assert";
+import { UrlError } from "@fedify/vocab-runtime";
+import { configure, type LogRecord, reset } from "@logtape/logtape";
+import { assertEquals, assertInstanceOf } from "@std/assert";
 import fetchMock from "fetch-mock";
+import dns from "node:dns/promises";
 import {
   getNodeInfo,
   parseInboundService,
@@ -1055,5 +1058,60 @@ test("getNodeInfo() bounds both discovery and document responses", async () => {
     );
   } finally {
     fetchMock.hardReset();
+  }
+});
+
+test("getNodeInfo() logs DNS failures as such", {
+  // The validator skips DNS when Deno has no network permission.
+  ignore: "Deno" in globalThis &&
+    (await Deno.permissions.query({ name: "net" })).state !== "granted",
+}, async (t) => {
+  for (const result of ["throws", "empty", "private"] as const) {
+    await t.step(result, async () => {
+      // Stubbing works only because vocab-runtime's url.ts uses the default
+      // node:dns/promises import; see the FIXME there.
+      const originalLookup = dns.lookup;
+      dns.lookup = (() =>
+        result === "throws"
+          ? Promise.reject(new Error("Resolver unavailable"))
+          : Promise.resolve(
+            result === "empty" ? [] : [{ address: "127.0.0.1", family: 4 }],
+          )) as typeof dns.lookup;
+      const records: LogRecord[] = [];
+      await configure({
+        sinks: {
+          buffer: (record) =>
+            records.push(record),
+        },
+        loggers: [
+          { category: "fedify", sinks: ["buffer"], lowestLevel: "debug" },
+          { category: ["logtape", "meta"], sinks: [] },
+        ],
+        reset: true,
+      });
+      try {
+        assertEquals(
+          await getNodeInfo("https://dns-failure.invalid/"),
+          undefined,
+        );
+        const url = "https://dns-failure.invalid/.well-known/nodeinfo";
+        assertEquals(
+          records.map((r) => [r.level, r.rawMessage, r.properties.url]),
+          [[
+            "error",
+            result === "private"
+              ? "Refused to fetch a private or invalid URL {url}: {error}"
+              : "DNS lookup failed for {url}: {error}",
+            url,
+          ]],
+        );
+        const { error } = records[0].properties;
+        assertInstanceOf(error, UrlError);
+        assertEquals(error.reason, result === "private" ? "disallowed" : "dns");
+      } finally {
+        await reset();
+        dns.lookup = originalLookup;
+      }
+    });
   }
 });

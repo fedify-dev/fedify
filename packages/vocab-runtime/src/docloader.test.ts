@@ -1,5 +1,7 @@
+import { configure, type LogRecord, reset } from "@logtape/logtape";
 import fetchMock from "fetch-mock";
 import { deepStrictEqual, ok, rejects } from "node:assert";
+import dns from "node:dns/promises";
 import { test } from "node:test";
 import { createServer } from "node:http";
 import { gzipSync } from "node:zlib";
@@ -621,4 +623,67 @@ test("getRemoteDocument() bounds JSON by default", async () => {
   );
   deepStrictEqual(canceled, true);
   deepStrictEqual(pulls, 257);
+});
+
+test("getDocumentLoader() logs DNS failures as such", async (t) => {
+  // The validator skips DNS when Deno has no network permission.  Checked
+  // here rather than with top-level await, which the CommonJS build rejects.
+  if (
+    "Deno" in globalThis &&
+    (await Deno.permissions.query({ name: "net" })).state !== "granted"
+  ) {
+    t.skip("requires the net permission");
+    return;
+  }
+  const loader = getDocumentLoader();
+  for (const result of ["throws", "empty", "private"] as const) {
+    await t.test(result, async () => {
+      // Stubbing works only because url.ts uses the default node:dns/promises
+      // import; see the FIXME there.
+      const originalLookup = dns.lookup;
+      dns.lookup = (() =>
+        result === "throws"
+          ? Promise.reject(new Error("Resolver unavailable"))
+          : Promise.resolve(
+            result === "empty" ? [] : [{ address: "127.0.0.1", family: 4 }],
+          )) as typeof dns.lookup;
+      const records: LogRecord[] = [];
+      await configure({
+        sinks: {
+          buffer: (record) =>
+            records.push(record),
+        },
+        loggers: [
+          { category: "fedify", sinks: ["buffer"], lowestLevel: "debug" },
+          { category: ["logtape", "meta"], sinks: [] },
+        ],
+        reset: true,
+      });
+      try {
+        const url = "https://dns-failure.invalid/object";
+        let error: unknown;
+        await rejects(() => loader(url), (e) => {
+          error = e;
+          return true;
+        });
+        ok(error instanceof UrlError);
+        deepStrictEqual(
+          error.reason,
+          result === "private" ? "disallowed" : "dns",
+        );
+        deepStrictEqual(
+          records.map((r) => [r.level, r.rawMessage, r.properties.url]),
+          [
+            result === "private"
+              ? ["error", "Disallowed private URL: {url}", url]
+              : ["debug", "DNS lookup failed for {url}", url],
+          ],
+        );
+        ok(records[0].properties.error === error);
+      } finally {
+        await reset();
+        dns.lookup = originalLookup;
+      }
+    });
+  }
 });
