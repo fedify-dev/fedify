@@ -1,4 +1,7 @@
 import type { LookupAddress } from "node:dns";
+// FIXME: the default dns import exists since tests can stub `dns.lookup()`.
+// This should be replaced by injecting the lookup function such as an internal
+// option on `validatePublicUrl()`
 import dns from "node:dns/promises";
 import { isIP } from "node:net";
 
