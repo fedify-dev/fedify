@@ -19,6 +19,49 @@ To be released.
 [#1055]: https://github.com/fedify-dev/fedify/issues/1055
 [#1060]: https://github.com/fedify-dev/fedify/pull/1060
 
+### @fedify/express
+
+ -  Fixed `integrateFederation()` breaking the request bodies of routes that
+    Fedify does not handle.  The middleware started reading the body of every
+    non-`GET` request before Fedify decided whether the route was its own, so
+    a body parser mounted after it could receive a truncated body or wait
+    forever.  Small bodies usually got through, which is why the problem
+    tended to show up only with large ones, such as long posts submitted to
+    an application's own API.  The middleware now reads the body only when
+    Fedify handles the request.  If you limited the middleware to federation
+    paths to work around this, you can remove that workaround.
+    [[#1059], [#1061]]
+
+[#1059]: https://github.com/fedify-dev/fedify/issues/1059
+[#1061]: https://github.com/fedify-dev/fedify/pull/1061
+
+### @fedify/fastify
+
+ -  Fixed the plugin failing every request with a body on Node.js.  Building
+    the `Request` for Fedify threw
+    `RequestInit: duplex option is required when sending a body.`, so every
+    `POST` or `PUT` got a 500 response, including activities delivered to the
+    inbox.  [[#1059], [#1061]]
+ -  Fixed the plugin breaking the request bodies of routes that Fedify does
+    not handle.  The plugin started reading the body of every non-`GET`
+    request in its `onRequest` hook, before Fedify decided whether the route
+    was its own.  On Deno, which does not require the `duplex` option,
+    Fastify's own parsing of a large body could then hang.  The plugin now
+    reads the body only when Fedify handles the request.  [[#1059], [#1061]]
+
+### @fedify/koa
+
+ -  Fixed `createMiddleware()` breaking the request bodies of routes that
+    Fedify does not handle.  The middleware started reading the body of every
+    non-`GET` request before Fedify decided whether the route was its own, so
+    a body parser mounted after it could receive a truncated body or wait
+    forever.  Small bodies usually got through, which is why the problem
+    tended to show up only with large ones, such as long posts submitted to
+    an application's own API.  The middleware now reads the body only when
+    Fedify handles the request.  If you limited the middleware to federation
+    paths to work around this, you can remove that workaround.
+    [[#1059], [#1061]]
+
 ### @fedify/postgres
 
  -  Fixed `PostgresKvStore` rejecting `null` values with a PostgreSQL constraint

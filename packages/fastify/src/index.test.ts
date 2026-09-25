@@ -252,3 +252,70 @@ test("Fedify should handle notFound with custom error handler", async () => {
 
   await fastify.close();
 });
+
+// Large enough to fill the stream buffers that used to stall; see
+// <https://github.com/fedify-dev/fedify/issues/1059>.
+const LARGE_BODY_SIZE = 512 * 1024;
+
+test("Fedify should leave request bodies it declines intact", async () => {
+  const fastify = Fastify({ logger: false });
+  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+  federation.setActorDispatcher("/users/{identifier}", () => null);
+  await fastify.register(fedifyPlugin, { federation });
+  fastify.post("/api/articles", (request) => {
+    return String((request.body as string).length);
+  });
+  const origin = await fastify.listen({ port: 0, host: "127.0.0.1" });
+
+  try {
+    for (const size of [1024, LARGE_BODY_SIZE]) {
+      const response = await fetch(`${origin}/api/articles`, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: "x".repeat(size),
+        signal: AbortSignal.timeout(5000),
+      });
+      assert.equal(response.status, 200);
+      assert.equal(await response.text(), String(size));
+    }
+  } finally {
+    await fastify.close();
+  }
+});
+
+test("Fedify should receive request bodies it handles", async () => {
+  const fastify = Fastify({ logger: false });
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    skipSignatureVerification: true,
+  });
+  federation.setActorDispatcher("/users/{identifier}", () => null);
+  federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
+  await fastify.register(fedifyPlugin, { federation });
+  const origin = await fastify.listen({ port: 0, host: "127.0.0.1" });
+
+  try {
+    // Fedify rejects a truncated body as invalid JSON, so an accepted
+    // activity means the whole body reached it:
+    const response = await fetch(`${origin}/inbox`, {
+      method: "POST",
+      headers: { "Content-Type": "application/activity+json" },
+      body: JSON.stringify({
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Create",
+        id: "https://remote.example/activities/1",
+        actor: "https://remote.example/users/alice",
+        object: {
+          type: "Note",
+          id: "https://remote.example/notes/1",
+          attributedTo: "https://remote.example/users/alice",
+          content: "x".repeat(LARGE_BODY_SIZE),
+        },
+      }),
+      signal: AbortSignal.timeout(5000),
+    });
+    assert.equal(response.status, 202);
+  } finally {
+    await fastify.close();
+  }
+});
