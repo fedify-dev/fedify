@@ -255,6 +255,7 @@ async function sendActivityInternal(
         await validatePublicUrl(url);
       } catch (error) {
         if (error instanceof UrlError && error.reason === "dns") {
+          logger.error("DNS resolution failed for URL: {url}", { url, error });
           const failure = new FetchError(url, error.message);
           failure.cause = error;
           throw failure;
