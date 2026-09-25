@@ -1,11 +1,25 @@
 import type { LookupAddress } from "node:dns";
-import { lookup } from "node:dns/promises";
+// FIXME: the default dns import exists since tests can stub `dns.lookup()`.
+// This should be replaced by injecting the lookup function such as an internal
+// option on `validatePublicUrl()`
+import dns from "node:dns/promises";
 import { isIP } from "node:net";
 
 export class UrlError extends Error {
-  constructor(message: string, options?: { cause?: unknown }) {
+  /**
+   * The failure category. Defaults to `"disallowed"`.
+   * `"dns"` includes lookup errors and results with no usable IP addresses.
+   * @since 2.0.29
+   */
+  readonly reason: "dns" | "disallowed";
+
+  constructor(
+    message: string,
+    options?: { cause?: unknown; reason?: "dns" | "disallowed" },
+  ) {
     super(message, options);
     this.name = "UrlError";
+    this.reason = options?.reason ?? "disallowed";
   }
 }
 
@@ -50,9 +64,9 @@ export async function validatePublicUrl(url: string): Promise<void> {
   // and ensure that they are all public:
   let addresses: LookupAddress[];
   try {
-    addresses = await lookup(hostname, { all: true });
+    addresses = await dns.lookup(hostname, { all: true });
   } catch (error) {
-    throw new UrlError("DNS lookup failed", { cause: error });
+    throw new UrlError("DNS lookup failed", { cause: error, reason: "dns" });
   }
   validateLookupAddresses(addresses);
 }
@@ -85,7 +99,9 @@ export function validateLookupAddresses(
     validatePublicIpAddress(address, family);
   }
   if (ipAddressCount === 0) {
-    throw new UrlError("DNS lookup did not return any IP address");
+    throw new UrlError("DNS lookup did not return any IP address", {
+      reason: "dns",
+    });
   }
 }
 
