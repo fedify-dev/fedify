@@ -2,6 +2,7 @@
 links:
   '#1059': https://github.com/fedify-dev/fedify/issues/1059
   '#1061': https://github.com/fedify-dev/fedify/pull/1061
+  '#1068': https://github.com/fedify-dev/fedify/pull/1068
 ---
  -  Fixed the plugin failing every request with a body on Node.js.  Building
     the `Request` for Fedify threw
@@ -14,4 +15,5 @@ links:
     request in its `onRequest` hook, before Fedify decided whether the route
     was its own.  On Deno, which does not require the `duplex` option,
     Fastify's own parsing of a large body could then hang.  The plugin now
-    reads the body only when Fedify handles the request.  [[#1059], [#1061]]
+    reads the body only when Fedify handles the request.
+    [[#1059], [#1061], [#1068]]

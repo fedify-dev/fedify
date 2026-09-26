@@ -30,10 +30,11 @@ To be released.
     an application's own API.  The middleware now reads the body only when
     Fedify handles the request.  If you limited the middleware to federation
     paths to work around this, you can remove that workaround.
-    [[#1059], [#1061]]
+    [[#1059], [#1061], [#1068]]
 
 [#1059]: https://github.com/fedify-dev/fedify/issues/1059
 [#1061]: https://github.com/fedify-dev/fedify/pull/1061
+[#1068]: https://github.com/fedify-dev/fedify/pull/1068
 
 ### @fedify/fastify
 
@@ -47,7 +48,8 @@ To be released.
     request in its `onRequest` hook, before Fedify decided whether the route
     was its own.  On Deno, which does not require the `duplex` option,
     Fastify's own parsing of a large body could then hang.  The plugin now
-    reads the body only when Fedify handles the request.  [[#1059], [#1061]]
+    reads the body only when Fedify handles the request.
+    [[#1059], [#1061], [#1068]]
 
 ### @fedify/koa
 
@@ -60,7 +62,7 @@ To be released.
     an application's own API.  The middleware now reads the body only when
     Fedify handles the request.  If you limited the middleware to federation
     paths to work around this, you can remove that workaround.
-    [[#1059], [#1061]]
+    [[#1059], [#1061], [#1068]]
 
 ### @fedify/postgres
 
