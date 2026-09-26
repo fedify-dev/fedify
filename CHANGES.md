@@ -283,6 +283,18 @@ To be released.
     when an actor dispatcher's return value does not include a
     `preferredUsername` property. [[#895], [#1022] by Jae-Hyuk-Jang\]
 
+ -  Added the `outbox-listener-delivery-not-awaited` rule to `@fedify/lint`.
+    It reports an outbox listener that calls `ctx.sendActivity()` or
+    `ctx.forwardActivity()` and drops the returned promise, so that the
+    activity may never leave on a runtime such as Cloudflare Workers, which
+    discards pending work once the response is returned. A call counts as
+    handled when its promise is awaited, returned, passed to `Promise.all()`
+    and its siblings, or handed to `waitUntil()`, and `void` opts a call out.
+    The ESLint `recommended` configuration enables the rule as a warning and
+    `strict` as an error, and Oxlint users enable it by name. It is not
+    available in Deno Lint, which turns on every rule of a plugin at once.
+    [[#1057] by Jae-Hyuk-Jang\]
+
  -  Changed `outbox-listener-delivery-required` (`@fedify/lint`) to decide
     whether a `ctx.sendActivity()`/`ctx.forwardActivity()` call actually
     runs, instead of scanning the listener's source as a flat block of text.
@@ -298,6 +310,7 @@ To be released.
 [#900]: https://github.com/fedify-dev/fedify/issues/900
 [#1022]: https://github.com/fedify-dev/fedify/pull/1022
 [#1050]: https://github.com/fedify-dev/fedify/pull/1050
+[#1057]: https://github.com/fedify-dev/fedify/issues/1057
 
 ### @fedify/mysql
 
