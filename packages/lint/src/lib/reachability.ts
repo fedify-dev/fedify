@@ -22,7 +22,7 @@ const FUNCTION_NODE_TYPES = new Set([
   "ArrowFunctionExpression",
 ]);
 
-const isFunctionLikeNode = (node: Node): node is FunctionLikeNode =>
+export const isFunctionLikeNode = (node: Node): node is FunctionLikeNode =>
   FUNCTION_NODE_TYPES.has(node.type);
 
 // ---------------------------------------------------------------------------
@@ -201,10 +201,14 @@ export function collectReachableStatements(node: Node, out: Node[]): void {
  * `deliver`), and the target of an assignment, which writes to a name
  * instead of reading it.
  */
-function collectReferencedNames(node: unknown, out: Set<string>): void {
+export function collectReferencedNames(
+  node: unknown,
+  out: Set<string>,
+  crossFunctions = false,
+): void {
   if (node == null || typeof node !== "object") return;
   if (Array.isArray(node)) {
-    for (const item of node) collectReferencedNames(item, out);
+    for (const item of node) collectReferencedNames(item, out, crossFunctions);
     return;
   }
   if (!isNode(node)) return;
@@ -215,26 +219,30 @@ function collectReferencedNames(node: unknown, out: Set<string>): void {
     return;
   }
   if (n.type === "MemberExpression" && !n.computed) {
-    collectReferencedNames(n.object, out);
+    collectReferencedNames(n.object, out, crossFunctions);
     return;
   }
   if (n.type === "Property" && !n.computed) {
     // `{ deliver: fn }` -- the key is a name, not a reference; only the
     // value is (for shorthand `{ deliver }`, the value is the same name,
     // so this still counts it).
-    collectReferencedNames(n.value, out);
+    collectReferencedNames(n.value, out, crossFunctions);
     return;
   }
   if (n.type === "VariableDeclarator") {
     if ((n as VariableDeclarator).init != null) {
-      collectReferencedNames((n as VariableDeclarator).init, out);
+      collectReferencedNames(
+        (n as VariableDeclarator).init,
+        out,
+        crossFunctions,
+      );
     }
     return;
   }
   if (n.type === "ClassDeclaration" || n.type === "ClassExpression") {
     // The class's own name is a declaration, not a mention of it.
-    collectReferencedNames(n.superClass, out);
-    collectReferencedNames(n.body, out);
+    collectReferencedNames(n.superClass, out, crossFunctions);
+    collectReferencedNames(n.body, out, crossFunctions);
     return;
   }
   if (
@@ -243,27 +251,32 @@ function collectReferencedNames(node: unknown, out: Set<string>): void {
   ) {
     // Same as an object literal's `Property`: the key names a member, and
     // only what it holds can reference something.
-    collectReferencedNames(n.value, out);
+    collectReferencedNames(n.value, out, crossFunctions);
     return;
   }
   if (n.type === "AssignmentExpression" && n.operator === "=") {
     // `x = fn` and `obj.x = fn` write to a name rather than mention it.
     if (getAssignmentTargetName(n.left as Node) != null) {
-      collectReferencedNames(n.right, out);
+      collectReferencedNames(n.right, out, crossFunctions);
       return;
     }
   }
   if (isFunctionLikeNode(n)) {
-    // Stop at a nested function's own boundary: whether a name it
+    // Stop at a nested function's own boundary by default: whether a name it
     // references counts is decided separately, only once that function
-    // itself is found to be reachable.
+    // itself is found to be reachable. A caller that wants every mention in
+    // a function, such as whether a stored value is used anywhere, asks to
+    // cross it.
+    if (crossFunctions) {
+      collectReferencedNames(n.body, out, crossFunctions);
+    }
     return;
   }
 
   const record = n as unknown as Record<string, unknown>;
   for (const key in record) {
     if (key === "parent") continue;
-    collectReferencedNames(record[key], out);
+    collectReferencedNames(record[key], out, crossFunctions);
   }
 }
 
@@ -271,7 +284,7 @@ function collectReferencedNames(node: unknown, out: Set<string>): void {
  * The name an assignment writes to: `x` for `x = ...`, and the root object
  * for `obj.a.b = ...`. `null` for anything more exotic.
  */
-function getAssignmentTargetName(target: Node): string | null {
+export function getAssignmentTargetName(target: Node): string | null {
   let current: Node = target;
   while (current.type === "MemberExpression") current = current.object as Node;
   return current.type === "Identifier" ? current.name : null;
@@ -432,21 +445,42 @@ export function collectNestedFunctions(
 }
 
 /**
- * Computes the full set of function nodes that are actually reachable from
- * `root`: `root` itself feeds a worklist, and each function it (or a
- * function already on the worklist) uses from *its own* reachable
- * statements -- never from a dead branch or some other not-yet-reached
- * function's body -- gets queued in turn. `outerFunctionsByName` is layered
- * fresh for each scope, so a name bound at an inner scope shadows a
- * same-named one further out instead of overwriting it globally, and a
- * dead branch that merely mentions a name never queues what it holds.
+ * One scope of the used-function walk: the body of the root, or of a function
+ * found to be used.
  */
-export function computeUsedFunctions(root: Node): Set<FunctionLikeNode> {
+export type UsedScope = {
+  /** The function whose body this scope is, or `null` for the root. */
+  fn: FunctionLikeNode | null;
+  /** The statements and control-flow head expressions that can run here. */
+  statements: readonly Node[];
+  /**
+   * The functions each name holds at this point, with a name bound in an
+   * inner scope shadowing a same-named one further out.
+   */
+  functionsByName: ReadonlyMap<string, FunctionLikeNode[]>;
+};
+
+/**
+ * Walks every scope that is actually reachable from `root`, calling `visit`
+ * for each, and returns the set of function nodes found to be used: `root`
+ * itself feeds a worklist, and each function it (or a function already on
+ * the worklist) uses from *its own* reachable statements -- never from a
+ * dead branch or some other not-yet-reached function's body -- gets queued in
+ * turn. `outerFunctionsByName` is layered fresh for each scope, so a name
+ * bound at an inner scope shadows a same-named one further out instead of
+ * overwriting it globally, and a dead branch that merely mentions a name
+ * never queues what it holds.
+ */
+export function walkUsedScopes(
+  root: Node,
+  visit: (scope: UsedScope) => void,
+): Set<FunctionLikeNode> {
   const used = new Set<FunctionLikeNode>();
   const visited = new Set<Node>();
 
   const processScope = (
     scopeRoot: Node,
+    scopeFn: FunctionLikeNode | null,
     outerFunctionsByName: ReadonlyMap<string, FunctionLikeNode[]>,
   ): void => {
     if (visited.has(scopeRoot)) return;
@@ -463,6 +497,7 @@ export function computeUsedFunctions(root: Node): Set<FunctionLikeNode> {
     for (const [name, functions] of functionsHere) {
       functionsByName.set(name, functions);
     }
+    visit({ fn: scopeFn, statements, functionsByName });
 
     const referencedNames = new Set<string>();
     for (const statement of statements) {
@@ -506,14 +541,22 @@ export function computeUsedFunctions(root: Node): Set<FunctionLikeNode> {
       }
     }
 
-    for (const fn of reached) {
-      used.add(fn);
-      processScope(fn.body as Node, functionsByName);
+    for (const reachedFn of reached) {
+      used.add(reachedFn);
+      processScope(reachedFn.body as Node, reachedFn, functionsByName);
     }
   };
 
-  processScope(root, new Map());
+  processScope(root, null, new Map());
   return used;
+}
+
+/**
+ * The set of function nodes that are actually reachable from `root`. See
+ * `walkUsedScopes`.
+ */
+export function computeUsedFunctions(root: Node): Set<FunctionLikeNode> {
+  return walkUsedScopes(root, () => {});
 }
 
 /**
