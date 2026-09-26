@@ -74,7 +74,7 @@
     "@std/testing": "jsr:@std/testing@^0.224.0",
     "@std/yaml": "jsr:@std/yaml@^1.0.8",
     "@types/emscripten": "npm:@types/emscripten@^1.41.1",
-    "@types/node": "npm:@types/node@^22.16.0",
+    "@types/node": "npm:@types/node@^24.12.2",
     "amqplib": "npm:amqplib@^0.10.9",
     "asn1js": "npm:asn1js@^3.0.10",
     "astro": "npm:astro@^7.0.0",

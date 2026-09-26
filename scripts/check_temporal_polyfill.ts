@@ -6,6 +6,7 @@
 // esnext.temporal library reference rather than polyfill-specific imports.
 // The final type-consumer checks make sure the generated declarations work
 // under the TypeScript module resolution modes used by modern app templates.
+// The consumer projects use the repository root's @types/node and typescript.
 
 import { join } from "node:path";
 
@@ -60,41 +61,45 @@ async function* walk(dir: string): AsyncGenerator<string> {
 
 let failures = 0;
 
-async function findTypeScriptCompiler(): Promise<string> {
-  const candidates = [
-    join(root, "node_modules", "typescript", "bin", "tsc"),
-  ];
-  for (const store of [".deno", ".pnpm"]) {
-    const storeDir = join(root, "node_modules", store);
-    try {
-      for await (const entry of Deno.readDir(storeDir)) {
-        if (!entry.isDirectory || !entry.name.startsWith("typescript@")) {
-          continue;
-        }
-        candidates.push(
-          join(
-            storeDir,
-            entry.name,
-            "node_modules",
-            "typescript",
-            "bin",
-            "tsc",
-          ),
-        );
-      }
-    } catch (error) {
-      if (!(error instanceof Deno.errors.NotFound)) throw error;
-    }
+const depsHint = "Run `mise deps` first.";
+
+async function exists(path: string): Promise<boolean> {
+  try {
+    await Deno.stat(path);
+    return true;
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) return false;
+    throw error;
   }
-  for (const candidate of candidates) {
-    try {
-      if ((await Deno.stat(candidate)).isFile) return candidate;
-    } catch (error) {
-      if (!(error instanceof Deno.errors.NotFound)) throw error;
-    }
-  }
-  throw new Error("Could not find the TypeScript compiler.");
 }
+
+async function findTypeScriptCompiler(): Promise<string> {
+  const typescriptDir = join(root, "node_modules", "typescript");
+  const tsc = join(typescriptDir, "bin", "tsc");
+  if (!await exists(tsc)) {
+    throw new Error(
+      `Could not find the TypeScript compiler at ${tsc}.  ${depsHint}`,
+    );
+  }
+  // TypeScript 6 is the first release that ships the esnext.temporal lib the
+  // generated declarations reference; older compilers bury that fact under
+  // hundreds of unrelated errors.
+  if (!await exists(join(typescriptDir, "lib", "lib.esnext.temporal.d.ts"))) {
+    throw new Error(
+      `The TypeScript compiler at ${tsc} does not provide the ` +
+        `esnext.temporal lib; TypeScript 6 or later is required.  ${depsHint}`,
+    );
+  }
+  return tsc;
+}
+
+const nodeTypesDir = join(root, "node_modules", "@types", "node");
+if (!await exists(join(nodeTypesDir, "package.json"))) {
+  throw new Error(
+    `Could not find @types/node at ${nodeTypesDir}.  ${depsHint}`,
+  );
+}
+const tsc = await findTypeScriptCompiler();
 
 for (const pkg of packages) {
   const dist = `packages/${pkg}/dist`;
@@ -153,6 +158,7 @@ async function prepareTypeConsumerProject(
     dir: join(root, "tmp"),
     prefix: `temporal-polyfill-${name}-`,
   });
+  const symlinkType = Deno.build.os === "windows" ? "junction" : "dir";
   await Deno.mkdir(join(dir, "node_modules", "@fedify"), { recursive: true });
   for (const pkg of typeConsumerPackages) {
     // Symlink the package root so package.json exports resolve to the dist
@@ -160,9 +166,17 @@ async function prepareTypeConsumerProject(
     await Deno.symlink(
       join(root, "packages", pkg),
       join(dir, "node_modules", "@fedify", pkg),
-      { type: Deno.build.os === "windows" ? "junction" : "dir" },
+      { type: symlinkType },
     );
   }
+  // Link the repository's pinned @types/node the same way an app template
+  // installs it, so `types: ["node"]` never depends on an ancestor directory.
+  await Deno.mkdir(join(dir, "node_modules", "@types"), { recursive: true });
+  await Deno.symlink(
+    nodeTypesDir,
+    join(dir, "node_modules", "@types", "node"),
+    { type: symlinkType },
+  );
   await Deno.writeTextFile(
     join(dir, "package.json"),
     `${JSON.stringify({ type: "module", private: true }, null, 2)}\n`,
@@ -254,11 +268,7 @@ async function checkTypeConsumerProject(
     const command = new Deno.Command(
       "node",
       {
-        args: [
-          await findTypeScriptCompiler(),
-          "-p",
-          "tsconfig.json",
-        ],
+        args: [tsc, "-p", "tsconfig.json"],
         cwd: dir,
         stdout: "piped",
         stderr: "piped",
