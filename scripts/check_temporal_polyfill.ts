@@ -60,41 +60,31 @@ async function* walk(dir: string): AsyncGenerator<string> {
 
 let failures = 0;
 
-async function findTypeScriptCompiler(): Promise<string> {
-  const candidates = [
-    join(root, "node_modules", "typescript", "bin", "tsc"),
-  ];
-  for (const store of [".deno", ".pnpm"]) {
-    const storeDir = join(root, "node_modules", store);
-    try {
-      for await (const entry of Deno.readDir(storeDir)) {
-        if (!entry.isDirectory || !entry.name.startsWith("typescript@")) {
-          continue;
-        }
-        candidates.push(
-          join(
-            storeDir,
-            entry.name,
-            "node_modules",
-            "typescript",
-            "bin",
-            "tsc",
-          ),
-        );
-      }
-    } catch (error) {
-      if (!(error instanceof Deno.errors.NotFound)) throw error;
+async function resolveVocabDependency(name: string): Promise<string> {
+  const path = join(
+    root,
+    "packages",
+    "vocab",
+    "node_modules",
+    ...name.split("/"),
+  );
+  try {
+    return await Deno.realPath(path);
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) {
+      throw new Error(`Missing ${path}; run \`mise deps\` first.`);
     }
+    throw error;
   }
-  for (const candidate of candidates) {
-    try {
-      if ((await Deno.stat(candidate)).isFile) return candidate;
-    } catch (error) {
-      if (!(error instanceof Deno.errors.NotFound)) throw error;
-    }
-  }
-  throw new Error("Could not find the TypeScript compiler.");
 }
+
+const nodeTypesPath = await resolveVocabDependency("@types/node");
+const typescriptPath = await resolveVocabDependency("typescript");
+const compilerPath = join(typescriptPath, "bin", "tsc");
+const { version: typescriptVersion } = JSON.parse(
+  await Deno.readTextFile(join(typescriptPath, "package.json")),
+) as { version: string };
+console.log(`Using TypeScript ${typescriptVersion}: ${compilerPath}`);
 
 for (const pkg of packages) {
   const dist = `packages/${pkg}/dist`;
@@ -163,6 +153,12 @@ async function prepareTypeConsumerProject(
       { type: Deno.build.os === "windows" ? "junction" : "dir" },
     );
   }
+  await Deno.mkdir(join(dir, "node_modules", "@types"));
+  await Deno.symlink(
+    nodeTypesPath,
+    join(dir, "node_modules", "@types", "node"),
+    { type: Deno.build.os === "windows" ? "junction" : "dir" },
+  );
   await Deno.writeTextFile(
     join(dir, "package.json"),
     `${JSON.stringify({ type: "module", private: true }, null, 2)}\n`,
@@ -255,7 +251,7 @@ async function checkTypeConsumerProject(
       "node",
       {
         args: [
-          await findTypeScriptCompiler(),
+          compilerPath,
           "-p",
           "tsconfig.json",
         ],
