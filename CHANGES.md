@@ -293,7 +293,7 @@ To be released.
     The ESLint `recommended` configuration enables the rule as a warning and
     `strict` as an error, and Oxlint users enable it by name. It is not
     available in Deno Lint, which turns on every rule of a plugin at once.
-    [[#1057] by Jae-Hyuk-Jang\]
+    [[#1057], [#1067] by Jae-Hyuk-Jang\]
 
  -  Changed `outbox-listener-delivery-required` (`@fedify/lint`) to decide
     whether a `ctx.sendActivity()`/`ctx.forwardActivity()` call actually
@@ -311,6 +311,7 @@ To be released.
 [#1022]: https://github.com/fedify-dev/fedify/pull/1022
 [#1050]: https://github.com/fedify-dev/fedify/pull/1050
 [#1057]: https://github.com/fedify-dev/fedify/issues/1057
+[#1067]: https://github.com/fedify-dev/fedify/pull/1067
 
 ### @fedify/mysql
 

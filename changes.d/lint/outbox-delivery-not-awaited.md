@@ -1,6 +1,7 @@
 ---
 links:
   '#1057': https://github.com/fedify-dev/fedify/issues/1057
+  '#1067': https://github.com/fedify-dev/fedify/pull/1067
 ---
  -  Added the `outbox-listener-delivery-not-awaited` rule to `@fedify/lint`.
     It reports an outbox listener that calls `ctx.sendActivity()` or
@@ -12,4 +13,4 @@ links:
     The ESLint `recommended` configuration enables the rule as a warning and
     `strict` as an error, and Oxlint users enable it by name. It is not
     available in Deno Lint, which turns on every rule of a plugin at once.
-    [[#1057] by Jae-Hyuk-Jang]
+    [[#1057], [#1067] by Jae-Hyuk-Jang]
