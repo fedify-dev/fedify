@@ -82,6 +82,9 @@ import {
   eslint as mediaUploaderObjectUriRequired,
 } from "./rules/media-uploader-object-uri-required.ts";
 import {
+  eslint as outboxListenerDeliveryNotAwaited,
+} from "./rules/outbox-listener-delivery-not-awaited.ts";
+import {
   eslint as outboxListenerDeliveryRequired,
 } from "./rules/outbox-listener-delivery-required.ts";
 
@@ -116,6 +119,7 @@ const rules: Record<
   [RULE_IDS.actorPreferredUsernameRequired]: actorPreferredUsernameRequired,
   [RULE_IDS.collectionFilteringNotImplemented]: collectionFiltering,
   [RULE_IDS.outboxListenerDeliveryRequired]: outboxListenerDeliveryRequired,
+  [RULE_IDS.outboxListenerDeliveryNotAwaited]: outboxListenerDeliveryNotAwaited,
   [RULE_IDS.mediaUploaderObjectUriRequired]: mediaUploaderObjectUriRequired,
   [RULE_IDS.mediaUploaderAuthorizationRequired]:
     mediaUploaderAuthorizationRequired,
