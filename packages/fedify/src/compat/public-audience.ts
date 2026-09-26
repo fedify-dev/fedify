@@ -3,6 +3,10 @@ import { type DocumentLoader, preloadedContexts } from "@fedify/vocab-runtime";
 import jsonld from "@fedify/vocab-runtime/jsonld";
 import { getLogger } from "@logtape/logtape";
 import { preloadedOnlyDocumentLoader } from "./preloaded-context-loader.ts";
+import {
+  isSelfContainedSecuredDocument,
+  type OutgoingNormalizationOptions,
+} from "./secured-document.ts";
 
 const logger = getLogger(["fedify", "compat", "public-audience"]);
 
@@ -35,6 +39,7 @@ const KNOWN_SAFE_CONTEXT_URLS: ReadonlySet<string> = new Set(
 
 function hasPublicCurieInAddressing(
   value: unknown,
+  preserveSecured: boolean,
   parentKey?: string,
   depth: number = 0,
 ): boolean {
@@ -49,10 +54,16 @@ function hasPublicCurieInAddressing(
   if (depth >= MAX_TRAVERSAL_DEPTH) return false;
   if (Array.isArray(value)) {
     return value.some((item) =>
-      hasPublicCurieInAddressing(item, parentKey, depth + 1)
+      hasPublicCurieInAddressing(item, preserveSecured, parentKey, depth + 1)
     );
   }
   if (typeof value !== "object" || value == null) return false;
+  // A nested self-contained secured document is signed as it stands; leaving
+  // it out of the scan keeps the rewrite from touching bytes its own proof
+  // covers.
+  if (preserveSecured && depth > 0 && isSelfContainedSecuredDocument(value)) {
+    return false;
+  }
   const record = value as Record<string, unknown>;
   for (const key of Object.keys(record)) {
     // Some relay implementations compare a subscription's Follow.object as a
@@ -68,13 +79,18 @@ function hasPublicCurieInAddressing(
     // `@context` holds term definitions, not addressing values; skip it so
     // we do not traverse potentially large inline context objects.
     if (key === "@context") continue;
-    if (hasPublicCurieInAddressing(record[key], key, depth + 1)) return true;
+    if (
+      hasPublicCurieInAddressing(record[key], preserveSecured, key, depth + 1)
+    ) {
+      return true;
+    }
   }
   return false;
 }
 
 function rewritePublicAudience(
   value: unknown,
+  preserveSecured: boolean,
   parentKey?: string,
   depth: number = 0,
 ): unknown {
@@ -94,13 +110,21 @@ function rewritePublicAudience(
   if (Array.isArray(value)) {
     let changed = false;
     const mapped = value.map((item) => {
-      const rewritten = rewritePublicAudience(item, parentKey, depth + 1);
+      const rewritten = rewritePublicAudience(
+        item,
+        preserveSecured,
+        parentKey,
+        depth + 1,
+      );
       if (rewritten !== item) changed = true;
       return rewritten;
     });
     return changed ? mapped : value;
   }
   if (typeof value !== "object" || value == null) return value;
+  if (preserveSecured && depth > 0 && isSelfContainedSecuredDocument(value)) {
+    return value;
+  }
   const record = value as Record<string, unknown>;
   let changed = false;
   // Clone into a null-prototype object so that writing back a key called
@@ -119,7 +143,7 @@ function rewritePublicAudience(
           key === "object" &&
           (record[key] === "as:Public" || record[key] === "Public")
       ? PUBLIC_COLLECTION.href
-      : rewritePublicAudience(record[key], key, depth + 1);
+      : rewritePublicAudience(record[key], preserveSecured, key, depth + 1);
     if (rewritten !== record[key]) changed = true;
     normalized[key] = rewritten;
   }
@@ -233,9 +257,11 @@ function hasKnownSafeContext(jsonLd: unknown): boolean {
 export async function normalizePublicAudience(
   jsonLd: unknown,
   contextLoader?: DocumentLoader,
+  options: OutgoingNormalizationOptions = {},
 ): Promise<unknown> {
-  if (!hasPublicCurieInAddressing(jsonLd)) return jsonLd;
-  const normalized = rewritePublicAudience(jsonLd);
+  const preserveSecured = options.preserveNestedSecuredDocuments ?? false;
+  if (!hasPublicCurieInAddressing(jsonLd, preserveSecured)) return jsonLd;
+  const normalized = rewritePublicAudience(jsonLd, preserveSecured);
   if (hasKnownSafeContext(jsonLd)) return normalized;
   const loader = contextLoader ?? preloadedOnlyDocumentLoader;
   try {

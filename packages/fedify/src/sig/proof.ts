@@ -7,6 +7,7 @@ import {
 } from "@fedify/vocab";
 import {
   type DocumentLoader,
+  encodeMultibase,
   formatIri,
   getDocumentLoader,
   getFe34Origin,
@@ -14,6 +15,10 @@ import {
   parseIri,
   type RemoteDocument,
 } from "@fedify/vocab-runtime";
+import {
+  isPlainJsonTree,
+  retainSignedRepresentation,
+} from "@fedify/vocab-runtime/internal/signed-representation";
 import jsonld from "@fedify/vocab-runtime/jsonld";
 import { getLogger } from "@logtape/logtape";
 import {
@@ -152,21 +157,96 @@ export interface CreateProofOptions {
 }
 
 /**
- * Creates a proof for the given object.
- * @param object The object to create a proof for.
- * @param privateKey The private key to sign the proof with.
- * @param keyId The key ID to use in the proof. It will be used by the verifier.
- * @param options Additional options.  See also {@link CreateProofOptions}.
- * @returns The created proof.
- * @throws {TypeError} If the private key is invalid or unsupported.
- * @since 0.10.0
+ * The outcome of {@link createProofInternal}: the proof, and the secured JSON
+ * document that the proof covers when Fedify was able to capture one.
  */
-export async function createProof(
+interface CreatedProof {
+  readonly proof: DataIntegrityProof;
+  /**
+   * The complete secured JSON document, or `null` when it could not be
+   * captured with certainty.  It is the exact JSON value the signer hashed,
+   * plus the proof that was computed over it, so removing its direct `proof`
+   * member reproduces the signing input byte for byte.
+   */
+  readonly securedDocument: Record<string, unknown> | null;
+}
+
+function isJsonMap(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value != null && !Array.isArray(value);
+}
+
+/**
+ * Assembles the secured JSON document from the bytes that were just signed.
+ *
+ * The document is not re-derived from the vocabulary object: it is
+ * `compactMsg`, the value whose JCS form was hashed, with the serialized
+ * proof added.  Every part of it is then checked against the digests and the
+ * signature that {@link createProofInternal} produced, so a document that is
+ * returned verifies under the map-local compound-proof profile by
+ * construction.  Anything that does not check out yields `null`, and the
+ * caller simply does not retain a representation.
+ */
+async function captureSecuredDocument(
+  proof: DataIntegrityProof,
+  compactMsg: unknown,
+  msgCanon: string,
+  proofCanon: string,
+  proofValue: string,
+  contextLoader: DocumentLoader | undefined,
+): Promise<Record<string, unknown> | null> {
+  if (!isJsonMap(compactMsg)) return null;
+  const documentContext = compactMsg["@context"];
+  // A secured child has to carry its own context; without one it cannot be
+  // extracted from a parent document and verified on its own.
+  if (documentContext == null) return null;
+  if (globalThis.Object.hasOwn(compactMsg, "proof")) return null;
+  try {
+    const proofJson = await proof.toJsonLd({
+      format: "compact",
+      contextLoader,
+      context: documentContext as
+        | string
+        | Record<string, string>
+        | (string | Record<string, string>)[],
+    });
+    if (!isJsonMap(proofJson)) return null;
+    const { proofValue: serializedProofValue, ...proofConfiguration } =
+      proofJson;
+    if (serializedProofValue !== proofValue) return null;
+    if (serialize(proofConfiguration) !== proofCanon) return null;
+    const securedDocument: Record<string, unknown> = {
+      ...structuredClone(compactMsg),
+      proof: structuredClone(proofJson),
+    };
+    const { proof: _embeddedProof, ...unsecuredDocument } = securedDocument;
+    if (serialize(unsecuredDocument) !== msgCanon) return null;
+    // A document that is too large or too deep to validate cannot be
+    // retained.  Signing still succeeds; only the representation is dropped.
+    if (!isPlainJsonTree(securedDocument)) return null;
+    return securedDocument;
+  } catch (error) {
+    logger.debug(
+      "Failed to capture the secured JSON document for a created proof; " +
+        "the signed object will not preserve its representation when it is " +
+        "embedded in another object.\n{error}",
+      { error },
+    );
+    return null;
+  }
+}
+
+async function createProofInternal(
   object: Object,
   privateKey: CryptoKey,
   keyId: URL,
   { contextLoader, context, created }: CreateProofOptions = {},
-): Promise<DataIntegrityProof> {
+  /**
+   * Whether to assemble the secured JSON document.  Only `signObject()` needs
+   * it, and only when it can retain it, so `createProof()` skips the extra
+   * serialization.
+   */
+  capture = false,
+): Promise<CreatedProof> {
   validateCryptoKey(privateKey, "private");
   if (privateKey.algorithm.name !== "Ed25519") {
     throw new TypeError("Unsupported algorithm: " + privateKey.algorithm.name);
@@ -180,6 +260,10 @@ export async function createProof(
   compactMsg = await normalizeOutgoingActivityJsonLd(
     compactMsg,
     contextLoader,
+    // An embedded secured child is signed as it stands; rewriting anything
+    // inside it here would sign bytes that differ from the child's own
+    // signing input.
+    { preserveNestedSecuredDocuments: true },
   );
   const msgCanon = serialize(compactMsg);
   const encoder = new TextEncoder();
@@ -201,14 +285,52 @@ export async function createProof(
   const digest = new Uint8Array(proofDigest.byteLength + msgDigest.byteLength);
   digest.set(new Uint8Array(proofDigest), 0);
   digest.set(new Uint8Array(msgDigest), proofDigest.byteLength);
-  const sig = await crypto.subtle.sign("Ed25519", privateKey, digest);
-  return new DataIntegrityProof({
+  const sig = new Uint8Array(
+    await crypto.subtle.sign("Ed25519", privateKey, digest),
+  );
+  const proof = new DataIntegrityProof({
     cryptosuite: "eddsa-jcs-2022",
     verificationMethod: keyId,
     proofPurpose: "assertionMethod",
-    created: created ?? Temporal.Now.instant(),
-    proofValue: new Uint8Array(sig),
+    created,
+    proofValue: sig,
   });
+  const securedDocument = capture
+    ? await captureSecuredDocument(
+      proof,
+      compactMsg,
+      msgCanon,
+      proofCanon,
+      new TextDecoder().decode(encodeMultibase("base58btc", sig)),
+      contextLoader,
+    )
+    : null;
+  return { proof, securedDocument };
+}
+
+/**
+ * Creates a proof for the given object.
+ * @param object The object to create a proof for.
+ * @param privateKey The private key to sign the proof with.
+ * @param keyId The key ID to use in the proof. It will be used by the verifier.
+ * @param options Additional options.  See also {@link CreateProofOptions}.
+ * @returns The created proof.
+ * @throws {TypeError} If the private key is invalid or unsupported.
+ * @since 0.10.0
+ */
+export async function createProof(
+  object: Object,
+  privateKey: CryptoKey,
+  keyId: URL,
+  options: CreateProofOptions = {},
+): Promise<DataIntegrityProof> {
+  const { proof } = await createProofInternal(
+    object,
+    privateKey,
+    keyId,
+    options,
+  );
+  return proof;
 }
 
 /**
@@ -261,7 +383,16 @@ export async function signObject<T extends Object>(
         for await (const proof of object.getProofs(options)) {
           existingProofs.push(proof);
         }
-        const proof = await createProof(object, privateKey, keyId, options);
+        // The map-local compound-proof profile accepts exactly one direct
+        // proof per map, so an object that already carried one cannot be
+        // embedded as a secured child and needs no capture.
+        const { proof, securedDocument } = await createProofInternal(
+          object,
+          privateKey,
+          keyId,
+          options,
+          existingProofs.length < 1,
+        );
         if (span.isRecording()) {
           if (proof.cryptosuite != null) {
             span.setAttribute(
@@ -282,7 +413,24 @@ export async function signObject<T extends Object>(
             );
           }
         }
-        return object.clone({ proofs: [...existingProofs, proof] }) as T;
+        const signed = object.clone({
+          proofs: [...existingProofs, proof],
+        }) as T;
+        if (securedDocument != null) {
+          // Retain the secured JSON document so that embedding this object in
+          // another object's typed property emits the exact bytes its proof
+          // covers instead of reconstructing it under the parent's context.
+          retainSignedRepresentation(signed, securedDocument);
+        } else if (existingProofs.length > 0) {
+          logger.debug(
+            "The object {objectId} already had {proofCount} proof(s), so its " +
+              "signed representation is not retained for embedding; the " +
+              "map-local compound-proof profile accepts exactly one direct " +
+              "proof per map.",
+            { objectId: object.id?.href, proofCount: existingProofs.length },
+          );
+        }
+        return signed;
       } catch (error) {
         span.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
         throw error;

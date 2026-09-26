@@ -285,3 +285,114 @@ test("normalizeOutgoingActivityJsonLd() applies outgoing JSON-LD workarounds", a
   const normalizedObject = normalized.object as Record<string, unknown>;
   assertEquals(Array.isArray(normalizedObject.attachment), true);
 });
+
+const securedChild = {
+  "@context": [
+    "https://www.w3.org/ns/activitystreams",
+    "https://w3id.org/security/data-integrity/v1",
+  ],
+  id: "ap://did:key:z6Mkabc/objects/1",
+  type: "Note",
+  content: "Hello",
+  to: "as:Public",
+  attachment: {
+    type: "Document",
+    mediaType: "image/png",
+    url: "https://example.com/image.png",
+  },
+  proof: {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+    type: "DataIntegrityProof",
+    cryptosuite: "eddsa-jcs-2022",
+    created: "2023-02-24T23:36:38Z",
+    verificationMethod: "did:key:z6Mkabc#z6Mkabc",
+    proofPurpose: "assertionMethod",
+    proofValue: "z3FXQ",
+  },
+};
+
+function compoundWithSecuredChild(): Record<string, unknown> {
+  return {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+    id: "ap://did:key:z6Mkdef/activities/1",
+    type: "Create",
+    actor: "ap://did:key:z6Mkdef/actor",
+    to: "as:Public",
+    object: structuredClone(securedChild),
+  };
+}
+
+test("normalizeOutgoingActivityJsonLd() can preserve a nested secured child", async () => {
+  const input = compoundWithSecuredChild();
+  const preserved = await normalizeOutgoingActivityJsonLd(
+    input,
+    mockDocumentLoader,
+    { preserveNestedSecuredDocuments: true },
+  ) as Record<string, unknown>;
+
+  // The parent is still normalized …
+  assertEquals(preserved.to, PUBLIC_COLLECTION.href);
+  // … while every byte the child's own proof covers is left alone.
+  assertEquals(preserved.object, securedChild);
+});
+
+test("normalizeOutgoingActivityJsonLd() rewrites a nested secured child by default", async () => {
+  const input = compoundWithSecuredChild();
+  const normalized = await normalizeOutgoingActivityJsonLd(
+    input,
+    mockDocumentLoader,
+  ) as Record<string, unknown>;
+  const child = normalized.object as Record<string, unknown>;
+
+  assertEquals(normalized.to, PUBLIC_COLLECTION.href);
+  assertEquals(child.to, PUBLIC_COLLECTION.href);
+  assertEquals(child.attachment, [securedChild.attachment]);
+});
+
+test("normalizeOutgoingActivityJsonLd() only preserves a complete secured child", async () => {
+  const cases: Record<string, (child: Record<string, unknown>) => void> = {
+    "no proof": (child) => delete child.proof,
+    "null proof": (child) => child.proof = null,
+    "proof set": (child) => child.proof = [securedChild.proof],
+    "proof without a verification method": (child) =>
+      delete (child.proof as Record<string, unknown>).verificationMethod,
+    "incomplete proof": (child) =>
+      delete (child.proof as Record<string, unknown>).cryptosuite,
+    "empty proof value": (child) =>
+      (child.proof as Record<string, unknown>).proofValue = "",
+  };
+  for (const [name, mutate] of Object.entries(cases)) {
+    const input = compoundWithSecuredChild();
+    mutate(input.object as Record<string, unknown>);
+    const normalized = await normalizeOutgoingActivityJsonLd(
+      input,
+      mockDocumentLoader,
+      { preserveNestedSecuredDocuments: true },
+    ) as Record<string, unknown>;
+    const child = normalized.object as Record<string, unknown>;
+
+    assertEquals(child.to, PUBLIC_COLLECTION.href, name);
+    assertEquals(child.attachment, [securedChild.attachment], name);
+  }
+});
+
+test("normalizeOutgoingActivityJsonLd() still normalizes a top-level secured document", async () => {
+  const input = {
+    ...structuredClone(securedChild),
+    id: "ap://did:key:z6Mkabc/objects/top-level",
+  };
+  const normalized = await normalizeOutgoingActivityJsonLd(
+    input,
+    mockDocumentLoader,
+    { preserveNestedSecuredDocuments: true },
+  ) as Record<string, unknown>;
+
+  assertEquals(normalized.to, PUBLIC_COLLECTION.href);
+  assertEquals(normalized.attachment, [securedChild.attachment]);
+});

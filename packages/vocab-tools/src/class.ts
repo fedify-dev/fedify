@@ -18,6 +18,11 @@ const INTERNAL_RUNTIME_IMPORTS = [
   "isTrustedIriOrigin",
   "normalizeJsonLdIris",
 ].join(",\n    ");
+const SIGNED_REPRESENTATION_IMPORTS = [
+  "enterSignedValueScope",
+  "resolveSignedValues",
+  "retainedSignedValueRef",
+].join(",\n    ");
 const RUNTIME_IMPORTS = [
   "canParseDecimal",
   "decodeMultibase",
@@ -268,6 +273,7 @@ export async function* generateClasses(
     from "@opentelemetry/api";\n`;
   yield `import {\n    ${RUNTIME_IMPORTS}\n} from "@fedify/vocab-runtime";\n`;
   yield `import {\n    ${INTERNAL_RUNTIME_IMPORTS}\n} from "@fedify/vocab-runtime/internal/jsonld-cache";\n`;
+  yield `import {\n    ${SIGNED_REPRESENTATION_IMPORTS}\n} from "@fedify/vocab-runtime/internal/signed-representation";\n`;
   yield `import {
     isTemporalDuration,
     isTemporalInstant,

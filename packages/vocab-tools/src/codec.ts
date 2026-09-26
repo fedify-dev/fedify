@@ -95,6 +95,10 @@ export async function* generateEncoder(
       ...options,
       contextLoader: options.contextLoader ?? getDocumentLoader(),
     };
+    // Joins the enclosing frame's signed-value scope, or starts one when this
+    // frame is the outermost.  Only the owning frame puts retained signed
+    // child documents back in place of their placeholders.
+    const signedValues = enterSignedValueScope(options);
   `;
   if (isCompactableType(typeUri, types)) {
     yield `
@@ -127,6 +131,7 @@ export async function* generateEncoder(
         const item = (
       `;
       if (!areAllScalarTypes(property.range, types)) {
+        yield "retainedSignedValueRef(v, signedValues.scope) ?? (";
         yield "v instanceof URL ? formatIri(v) : ";
       }
       const encoders = getEncoders(
@@ -137,6 +142,7 @@ export async function* generateEncoder(
         true,
       );
       for (const code of encoders) yield code;
+      if (!areAllScalarTypes(property.range, types)) yield ")";
       yield `
         );
         compactItems.push(item);
@@ -180,7 +186,9 @@ export async function* generateEncoder(
     }
       if (this.id != null) result["id"] = formatIri(this.id);
       result["@context"] = ${JSON.stringify(type.defaultContext)};
-      return result;
+      return signedValues.owner
+        ? resolveSignedValues(result, signedValues.scope)
+        : result;
     }
     `;
   }
@@ -210,11 +218,13 @@ export async function* generateEncoder(
       let element = (
     `;
     if (!areAllScalarTypes(property.range, types)) {
+      yield "retainedSignedValueRef(v, signedValues.scope) ?? (";
       yield 'v instanceof URL ? { "@id": formatIri(v) } : ';
     }
     for (const code of getEncoders(property.range, types, "v", "options")) {
       yield code;
     }
+    if (!areAllScalarTypes(property.range, types)) yield ")";
     yield `
       );
       if (Array.isArray(element)) {
@@ -325,7 +335,9 @@ export async function* generateEncoder(
   }
   yield `
     }
-    return compacted;
+    return signedValues.owner
+      ? resolveSignedValues(compacted, signedValues.scope)
+      : compacted;
   }
 
   protected ${emitOverride(typeUri, types)} isCompactable(): boolean {
