@@ -44,8 +44,10 @@ const DROPPED: Outcome = { fate: "dropped", owner: null };
  * What the value being followed is. An array of promises, such as what
  * `map()` returns, waits for nothing until it reaches `Promise.all()` or one
  * of its siblings: awaiting or returning it leaves every promise in flight.
+ * So does an object with a promise in one of its properties, which nothing
+ * waits for at all.
  */
-type Shape = "promise" | "promises";
+type Shape = "promise" | "promises" | "object";
 
 /** Wrappers that pass a value through unchanged. */
 const TRANSPARENT_WRAPPERS = new Set([
@@ -272,11 +274,12 @@ function returnedOutcome(
 }
 
 /**
- * Where an array of promises goes when it is returned. The listener's caller
- * does not wait for what is inside it. Any other function hands it to its
- * own callers, who may well pass it to `Promise.all()`.
+ * Where an array of promises, or an object holding one, goes when it is
+ * returned. The listener's caller does not wait for what is inside it. Any
+ * other function hands it to its own callers, who may well pass it to
+ * `Promise.all()` or read the promise back out of it.
  */
-function returnedArrayOutcome(
+function returnedContainerOutcome(
   fn: FunctionLikeNode | null,
   analysis: Analysis,
 ): Outcome {
@@ -301,7 +304,8 @@ function fateOf(
     }
 
     switch (parent.type) {
-      // Awaiting an array of promises waits for none of them.
+      // Awaiting an array of promises, or an object holding one, waits for
+      // none of them.
       case "AwaitExpression":
         return currentShape === "promise"
           ? { fate: "awaited", owner: enclosingFunction(parent) }
@@ -310,13 +314,13 @@ function fateOf(
       case "ReturnStatement":
         return currentShape === "promise"
           ? returnedOutcome(enclosingFunction(parent), analysis)
-          : returnedArrayOutcome(enclosingFunction(parent), analysis);
+          : returnedContainerOutcome(enclosingFunction(parent), analysis);
 
       case "ArrowFunctionExpression":
         if (get(parent, "body") !== current) return HANDLED;
         return currentShape === "promise"
           ? returnedOutcome(parent as FunctionLikeNode, analysis)
-          : returnedArrayOutcome(parent as FunctionLikeNode, analysis);
+          : returnedContainerOutcome(parent as FunctionLikeNode, analysis);
 
       case "ExpressionStatement":
         return DROPPED;
@@ -333,25 +337,41 @@ function fateOf(
         continue;
       }
 
+      // A promise is always truthy, so testing one waits for nothing. A `for`
+      // loop discards the value of its initializer and its update as well.
       case "ConditionalExpression":
-        if (get(parent, "test") === current) return HANDLED;
+        if (get(parent, "test") === current) return DROPPED;
         current = parent;
         continue;
+
+      case "IfStatement":
+      case "WhileStatement":
+      case "DoWhileStatement":
+      case "ForStatement":
+        return DROPPED;
 
       case "LogicalExpression":
       case "Property":
-      case "ObjectExpression":
         current = parent;
         continue;
 
-      // A promise in an array literal is an array of promises. An array
-      // spread into one is flattened into it, and stays what it was.
+      // A promise in an object literal is an object holding a promise. An
+      // array of promises in one is still an array of promises.
+      case "ObjectExpression":
+        if (currentShape === "promise") currentShape = "object";
+        current = parent;
+        continue;
+
+      // A promise in an array literal is an array of promises. An array or an
+      // object in one is left alone.
       case "ArrayExpression":
-        if (currentShape === "promises") return HANDLED;
+        if (currentShape !== "promise") return HANDLED;
         currentShape = "promises";
         current = parent;
         continue;
 
+      // An array spread into an array literal is flattened into it, and stays
+      // an array of promises.
       case "SpreadElement": {
         const array = parentOf(parent);
         if (currentShape !== "promises" || array?.type !== "ArrayExpression") {

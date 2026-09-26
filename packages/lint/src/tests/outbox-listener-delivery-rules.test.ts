@@ -837,6 +837,82 @@ federation
   });
 `,
   ],
+  [
+    "awaited object literal that holds a delivery promise",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    await { pending: ctx.sendActivity(sender, inbox, activity) };
+  });
+`,
+  ],
+  [
+    "object literal that holds a delivery promise, returned from the listener",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    return { pending: ctx.sendActivity(sender, inbox, activity) };
+  });
+`,
+  ],
+  [
+    "delivery promise used as the test of a conditional expression",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    const label = ctx.sendActivity(sender, inbox, activity) ? "sent" : "not sent";
+    console.log(label);
+  });
+`,
+  ],
+  [
+    "delivery promise used as the test of an if statement",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    if (ctx.sendActivity(sender, inbox, activity)) {
+      console.log("sent");
+    }
+  });
+`,
+  ],
+  [
+    "helper that delivers, called as the test of an if statement",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    const deliver = () => ctx.sendActivity(sender, inbox, activity);
+    if (deliver()) {
+      console.log("sent");
+    }
+  });
+`,
+  ],
 ];
 
 // A listener with no delivery call that can run is the required rule's business.
