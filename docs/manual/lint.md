@@ -886,13 +886,17 @@ When it cannot tell where a promise goes, the rule stays quiet.  In practice:
  -  `void ctx.sendActivity(...)`, `Promise.race(...)` and `Promise.any(...)` are
     read as deliberate choices to stop waiting, and are not reported.  A
     `race()` or `any()` whose own result is dropped is still reported, and so is
-    any other operator applied to a promise, such as `!` or `typeof`.  A
-    discarded `.catch()`, `.then()` or `.finally()` chain is reported, since a
-    `.catch()` handles the error but does not wait.
+    any other operator applied to a promise, such as `!` or `typeof`.  So is a
+    promise used as the test of an `if` statement, a loop or a conditional
+    expression, since a promise is always truthy and testing it waits for
+    nothing.  A discarded `.catch()`, `.then()` or `.finally()` chain is
+    reported, since a `.catch()` handles the error but does not wait.
  -  An array of promises, such as the result of `map()`, waits for nothing on
-    its own.  Awaiting it, or returning it from the listener, is reported.  It
-    counts as handled once it reaches `Promise.all()` or one of its siblings,
-    or when it is kept in a variable that is mentioned again.
+    its own, and neither does an object that holds a promise, such as
+    `{ pending: ctx.sendActivity(...) }`.  Awaiting one, or returning it from
+    the listener, is reported.  An array counts as handled once it reaches
+    `Promise.all()` or one of its siblings, and either one counts as handled
+    when it is kept in a variable that is mentioned again.
  -  An `async` callback that awaits a delivery is judged by where the callback
     goes, since its own promise is what carries the delivery.  `forEach()` drops
     that promise, so `inboxes.forEach(async (inbox) => { await ... })` is
@@ -901,7 +905,11 @@ When it cannot tell where a promise goes, the rule stays quiet.  In practice:
     function passed by name, as in `inboxes.forEach(deliver)`.
  -  A local helper that delivers is judged by how it is called: `deliver();` is
     reported when `deliver()` awaits or returns a delivery, and
-    `await deliver();` is not.
+    `await deliver();` is not.  An array of promises, or an object holding one,
+    that a helper returns is not followed to where the helper is called, since
+    the caller may pass it to `Promise.all()`.  So `await deliverAll();` and a
+    bare `deliverAll();` are not reported when `deliverAll()` returns the
+    result of `map()`.
  -  A promise passed to a function the rule does not know, such as
     `queue.push(...)` or `setTimeout(...)`, is left alone, since the rule cannot
     tell what that function does with it.
