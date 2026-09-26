@@ -77,6 +77,9 @@ import {
   deno as outboxListenerDeliveryRequired,
 } from "./rules/outbox-listener-delivery-required.ts";
 
+// `outbox-listener-delivery-not-awaited` is deliberately not registered here:
+// Deno turns on every rule of a plugin as soon as the plugin is listed, and
+// gives the rule no way to stay off until a project asks for it.
 const plugin: Deno.lint.Plugin = {
   name: "fedify-lint",
   rules: {

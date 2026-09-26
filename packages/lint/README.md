@@ -140,6 +140,9 @@ federation code:
     callback does not derive its return value from `getObjectUri`
  -  **`media-uploader-authorization-required`**: Warns when `setMediaUploader`
     is registered without an `authorize` hook
+ -  **`outbox-listener-delivery-not-awaited`**: Warns when an outbox listener
+    calls `sendActivity` or `forwardActivity` and does not wait for the result
+    (ESLint and Oxlint only)
 
 
 Installation

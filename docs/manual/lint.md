@@ -781,9 +781,9 @@ explicit delivery path, and that path must actually run.
 
 The rule checks that a delivery call exists and can run, not that the delivery
 completes, so a listener it accepts is not guaranteed to federate.  A delivery
-call that is never awaited is not reported;
-[#1057] tracks a rule for
-that.
+call that is never awaited is not reported here; the
+[`outbox-listener-delivery-not-awaited`](#outbox-listener-delivery-not-awaited)
+rule checks for that.
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
@@ -859,7 +859,128 @@ federation
   });
 ~~~~
 
-[#1057]: https://github.com/fedify-dev/fedify/issues/1057
+### `outbox-listener-delivery-not-awaited`
+
+Warns when an outbox listener calls `ctx.sendActivity()` or
+`ctx.forwardActivity()` and lets the returned promise go without waiting for it.
+
+::: info
+This rule is available in ESLint and Oxlint, but not in Deno Lint: Deno turns on
+every rule of a plugin as soon as the plugin is listed, and gives a project no
+way to keep one off until it asks for it.  In ESLint, the *recommended*
+configuration enables it as a warning and *strict* as an error.  In Oxlint,
+enable it by name.
+:::
+
+**When this rule applies:**
+You've registered an outbox listener with `setOutboxListeners()`, and it calls
+`ctx.sendActivity()` or `ctx.forwardActivity()` in a way that drops the
+returned promise.  The rule follows the promise from the call to where it ends
+up.  A call counts as handled when its promise is awaited, returned, passed to
+`Promise.all()` or `Promise.allSettled()`, or handed to a method named
+`waitUntil()`.  A call is reported when its promise is discarded, including when
+it is only kept in a variable that nothing else uses.
+
+When it cannot tell where a promise goes, the rule stays quiet.  In practice:
+
+ -  `void ctx.sendActivity(...)`, `Promise.race(...)` and `Promise.any(...)` are
+    read as deliberate choices to stop waiting, and are not reported.  A
+    `race()` or `any()` whose own result is dropped is still reported, and so is
+    any other operator applied to a promise, such as `!` or `typeof`.  A
+    discarded `.catch()`, `.then()` or `.finally()` chain is reported, since a
+    `.catch()` handles the error but does not wait.
+ -  An array of promises, such as the result of `map()`, waits for nothing on
+    its own.  Awaiting it, or returning it from the listener, is reported.  It
+    counts as handled once it reaches `Promise.all()` or one of its siblings,
+    or when it is kept in a variable that is mentioned again.
+ -  An `async` callback that awaits a delivery is judged by where the callback
+    goes, since its own promise is what carries the delivery.  `forEach()` drops
+    that promise, so `inboxes.forEach(async (inbox) => { await ... })` is
+    reported.  A callback that is invoked immediately, or given to `map()` or
+    `then()`, is only as safe as the result of that call.  The same holds for a
+    function passed by name, as in `inboxes.forEach(deliver)`.
+ -  A local helper that delivers is judged by how it is called: `deliver();` is
+    reported when `deliver()` awaits or returns a delivery, and
+    `await deliver();` is not.
+ -  A promise passed to a function the rule does not know, such as
+    `queue.push(...)` or `setTimeout(...)`, is left alone, since the rule cannot
+    tell what that function does with it.
+ -  The rule leans towards quiet where a name is only mentioned.  A stored
+    promise counts as used when its variable is mentioned anywhere in the
+    listener, even only in a dead branch or in a helper that is never called.  A
+    helper that delivers counts as running once its name is mentioned, even if
+    it is only stored or logged, so a bare delivery call inside it is still
+    reported.
+ -  As in `outbox-listener-delivery-required`, the rule reads only the listener
+    body.  A delivery call in a helper that is declared outside the listener,
+    or in another module, is not seen.
+
+**Why it matters:**
+`ctx.sendActivity()` returns a promise.  A listener that calls it without
+waiting hands that promise to nobody, and the handler can return while delivery
+is still in flight.  On a long-lived Node.js or Deno process this usually works
+out.  On Cloudflare Workers, which Fedify supports through `@fedify/cfworkers`,
+pending work is dropped once the response is returned, so the activity may never
+leave.  Every `sendActivity()` example in [*Sending activities*](./send.md)
+awaits the call.
+
+This rule is separate from
+[`outbox-listener-delivery-required`](#outbox-listener-delivery-required),
+which asks whether a delivery call exists and can run, not whether anything
+waits for it.
+
+~~~~ typescript twoslash
+// @noErrors: 2345
+import { createFederation } from "@fedify/fedify";
+import { Activity } from "@fedify/vocab";
+import type { Recipient } from "@fedify/vocab";
+const federation = createFederation<void>({ kv: null as any });
+declare const recipients: Recipient[];
+declare const executionCtx: { waitUntil(promise: Promise<unknown>): void };
+// ---cut-before---
+// ❌ Bad: The promise is dropped, so the activity can be lost
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    ctx.sendActivity({ identifier: ctx.identifier }, "followers", activity);
+  });
+
+// ❌ Bad: forEach() discards what its callback returns
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    recipients.forEach((recipient) =>
+      ctx.sendActivity({ identifier: ctx.identifier }, recipient, activity)
+    );
+  });
+
+// ✅ Good: The delivery is awaited
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await ctx.sendActivity({ identifier: ctx.identifier }, "followers", activity);
+  });
+
+// ✅ Good: Every delivery is awaited together
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await Promise.all(
+      recipients.map((recipient) =>
+        ctx.sendActivity({ identifier: ctx.identifier }, recipient, activity)
+      ),
+    );
+  });
+
+// ✅ Good: The runtime keeps the work alive after the response is returned
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    executionCtx.waitUntil(
+      ctx.sendActivity({ identifier: ctx.identifier }, "followers", activity),
+    );
+  });
+~~~~
 
 ### `media-uploader-object-uri-required`
 
