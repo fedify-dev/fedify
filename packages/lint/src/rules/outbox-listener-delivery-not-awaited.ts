@@ -19,16 +19,33 @@ const MESSAGE =
   "Delivery is not awaited, so the activity may be lost once the handler returns (for example on Cloudflare Workers). Await it, return it, or pass it to waitUntil().";
 
 /**
- * What becomes of the promise a delivery call returns:
+ * What becomes of a promise the rule is following:
  *
  *  -  `"dropped"`: nothing keeps hold of it, which is what the rule reports.
  *  -  `"awaited"`: it reaches an `await`.
  *  -  `"returned"`: it is handed back to whoever called the function.
- *  -  `"handled"`: it is opted out of (`void`), owned by the runtime
- *     (`waitUntil()`), used somewhere the rule cannot follow, or stored in a
- *     variable that is mentioned again. The rule stays quiet.
+ *  -  `"handled"`: it is opted out of (`void`, `Promise.race()`), owned by the
+ *     runtime (`waitUntil()`), used somewhere the rule cannot follow, or
+ *     stored in a variable that is mentioned again. The rule stays quiet.
  */
 type Fate = "dropped" | "awaited" | "returned" | "handled";
+
+/**
+ * A fate, with the function the promise ended up in when that is an `await`
+ * or a `return`: the function that now carries the promise on to its own
+ * callers.
+ */
+type Outcome = { fate: Fate; owner: FunctionLikeNode | null };
+
+const HANDLED: Outcome = { fate: "handled", owner: null };
+const DROPPED: Outcome = { fate: "dropped", owner: null };
+
+/**
+ * What the value being followed is. An array of promises, such as what
+ * `map()` returns, waits for nothing until it reaches `Promise.all()` or one
+ * of its siblings: awaiting or returning it leaves every promise in flight.
+ */
+type Shape = "promise" | "promises";
 
 /** Wrappers that pass a value through unchanged. */
 const TRANSPARENT_WRAPPERS = new Set([
@@ -40,21 +57,16 @@ const TRANSPARENT_WRAPPERS = new Set([
   "ParenthesizedExpression",
 ]);
 
-/** `Promise` methods that settle once every promise they are given has. */
+/**
+ * `Promise` methods that turn promises into one promise. `race()` and
+ * `any()` settle as soon as one input does, which is accepted as a
+ * deliberate choice to stop waiting, like `void`. A `race()` or `any()`
+ * that is itself dropped is still reported.
+ */
 const PROMISE_COMBINATORS = new Set(["all", "allSettled", "race", "any"]);
 
 /** Methods on a promise that return a new promise carrying the chain on. */
 const PROMISE_CHAIN_METHODS = new Set(["then", "catch", "finally"]);
-
-/**
- * Methods whose own result is what a callback's return value ends up in, so
- * a promise a callback returns is only as safe as that result is.
- */
-const CALLBACK_RESULT_METHODS = new Set([
-  "map",
-  "flatMap",
-  ...PROMISE_CHAIN_METHODS,
-]);
 
 const get = (node: Node | null | undefined, key: string): unknown =>
   node == null ? undefined : (node as unknown as Record<string, unknown>)[key];
@@ -86,44 +98,44 @@ function memberName(node: Node): string | null {
     return property.value;
   }
   if (property.type === "TemplateLiteral") {
-    const quasis = get(property, "quasis") as { value: { cooked?: string } }[];
+    // ESTree keeps the text under `value`, and Deno.lint exposes it directly.
+    const quasis = get(property, "quasis") as {
+      cooked?: string;
+      value?: { cooked?: string };
+    }[];
     const expressions = get(property, "expressions") as unknown[];
     if (expressions.length === 0 && quasis.length === 1) {
-      return quasis[0].value.cooked ?? null;
+      return quasis[0].cooked ?? quasis[0].value?.cooked ?? null;
     }
   }
   return null;
 }
 
-function visitAll(node: unknown, visitor: (node: Node) => void): void {
+/** Visits every node in `node`, stopping at a nested function unless asked to cross it. */
+function visitAll(
+  node: unknown,
+  visitor: (node: Node) => void,
+  crossFunctions = true,
+): void {
   if (node == null || typeof node !== "object") return;
   if (Array.isArray(node)) {
-    for (const item of node) visitAll(item, visitor);
+    for (const item of node) visitAll(item, visitor, crossFunctions);
     return;
   }
   if (!isNode(node)) return;
+  if (!crossFunctions && isFunctionLikeNode(node as Node)) return;
   visitor(node as Node);
   const record = node as unknown as Record<string, unknown>;
   for (const key in record) {
-    if (key !== "parent") visitAll(record[key], visitor);
+    if (key !== "parent") visitAll(record[key], visitor, crossFunctions);
   }
 }
 
 /** Collects the calls in `node` that run in the same function, not in one nested in it. */
 function collectCalls(node: unknown, out: CallExpression[]): void {
-  if (node == null || typeof node !== "object") return;
-  if (Array.isArray(node)) {
-    for (const item of node) collectCalls(item, out);
-    return;
-  }
-  if (!isNode(node)) return;
-  const n = node as Node;
-  if (isFunctionLikeNode(n)) return;
-  if (n.type === "CallExpression") out.push(n as CallExpression);
-  const record = n as unknown as Record<string, unknown>;
-  for (const key in record) {
-    if (key !== "parent") collectCalls(record[key], out);
-  }
+  visitAll(node, (n) => {
+    if (n.type === "CallExpression") out.push(n as CallExpression);
+  }, false);
 }
 
 function enclosingFunction(node: Node): FunctionLikeNode | null {
@@ -163,10 +175,14 @@ type DeliveryTargets = {
 /**
  * Works out how the listener refers to the delivery methods: through its
  * context parameter (`ctx.sendActivity`), or through a name bound to one of
- * them, either in the parameter (`{ sendActivity }`) or in the body
- * (`const { sendActivity } = ctx`, `const send = ctx.sendActivity`).
+ * them, either in the parameter (`{ sendActivity }`) or in code that can run
+ * (`const { sendActivity } = ctx`, `const send = ctx.sendActivity`). A name
+ * bound in a helper nothing uses, or in a dead branch, does not count.
  */
-function findDeliveryTargets(listener: FunctionLikeNode): DeliveryTargets {
+function findDeliveryTargets(
+  listener: FunctionLikeNode,
+  scopes: readonly UsedScope[],
+): DeliveryTargets {
   const aliases = new Set<string>();
   const contextParam = unwrapContextParam(
     listener.params[0] as Node | undefined,
@@ -177,28 +193,32 @@ function findDeliveryTargets(listener: FunctionLikeNode): DeliveryTargets {
   if (contextParam != null) deliveryAliasesOf(contextParam, aliases);
 
   if (contextName != null) {
-    visitAll(listener.body, (node) => {
-      if (node.type !== "VariableDeclarator") return;
-      const id = asNode(get(node, "id"));
-      const init = asNode(get(node, "init"));
-      if (id == null || init == null) return;
-      const source = unwrap(init);
-      if (source.type === "Identifier" && source.name === contextName) {
-        deliveryAliasesOf(id, aliases);
-        return;
+    for (const scope of scopes) {
+      for (const statement of scope.statements) {
+        visitAll(statement, (node) => {
+          if (node.type !== "VariableDeclarator") return;
+          const id = asNode(get(node, "id"));
+          const init = asNode(get(node, "init"));
+          if (id == null || init == null) return;
+          const source = unwrap(init);
+          if (source.type === "Identifier" && source.name === contextName) {
+            deliveryAliasesOf(id, aliases);
+            return;
+          }
+          if (id.type !== "Identifier" || source.type !== "MemberExpression") {
+            return;
+          }
+          const object = unwrap(asNode(get(source, "object")) ?? source);
+          const name = memberName(source);
+          if (
+            object.type === "Identifier" && object.name === contextName &&
+            name != null && DELIVERY_METHOD_NAMES.has(name)
+          ) {
+            aliases.add(id.name);
+          }
+        }, false);
       }
-      if (id.type !== "Identifier" || source.type !== "MemberExpression") {
-        return;
-      }
-      const object = unwrap(asNode(get(source, "object")) ?? source);
-      const name = memberName(source);
-      if (
-        object.type === "Identifier" && object.name === contextName &&
-        name != null && DELIVERY_METHOD_NAMES.has(name)
-      ) {
-        aliases.add(id.name);
-      }
-    });
+    }
   }
   return { contextName, aliases };
 }
@@ -209,42 +229,71 @@ type Analysis = {
   mentioned: ReadonlySet<string>;
 };
 
+/**
+ * Where the value a callback returns goes, judged by the call that receives
+ * the callback.
+ */
+function callbackResultOutcome(call: Node, analysis: Analysis): Outcome {
+  const callee = unwrap(asNode(get(call, "callee")) ?? call);
+  const name = memberName(callee);
+  // `forEach()` discards what its callback returns, which is the one callback
+  // consumer the rule knows for certain. An unknown one, such as
+  // `setTimeout()`, may well keep it.
+  if (name === "forEach") return DROPPED;
+  if (name === "map" || name === "flatMap") {
+    return fateOf(call, analysis, "promises");
+  }
+  if (name != null && PROMISE_CHAIN_METHODS.has(name)) {
+    return fateOf(call, analysis, "promise");
+  }
+  return HANDLED;
+}
+
 /** Where the promise a function returns goes, given who calls the function. */
-function returnedFate(
+function returnedOutcome(
   fn: FunctionLikeNode | null,
   analysis: Analysis,
-): Fate {
-  if (fn == null) return "handled";
-  if (fn === analysis.listener) return "returned";
+): Outcome {
+  if (fn == null) return HANDLED;
+  if (fn === analysis.listener) return { fate: "returned", owner: fn };
   const parent = parentOf(fn);
   if (parent?.type === "CallExpression") {
     // An immediately invoked function returns to the call itself.
-    if (get(parent, "callee") === fn) return fateOf(parent, analysis);
-    const args = get(parent, "arguments") as unknown[];
-    if (args.includes(fn)) {
-      const callee = unwrap(asNode(get(parent, "callee")) ?? parent);
-      const name = memberName(callee);
-      // `forEach()` discards what its callback returns, which is the one
-      // callback consumer the rule knows for certain. An unknown one, such
-      // as `setTimeout()`, may well keep it.
-      if (name === "forEach") return "dropped";
-      if (name != null && CALLBACK_RESULT_METHODS.has(name)) {
-        return fateOf(parent, analysis);
-      }
-      return "handled";
+    if (get(parent, "callee") === fn) {
+      return fateOf(parent, analysis, "promise");
+    }
+    if ((get(parent, "arguments") as unknown[]).includes(fn)) {
+      return callbackResultOutcome(parent, analysis);
     }
   }
   // A function declared or held under a name hands the promise to its
   // callers, who are judged at each call.
-  return "returned";
+  return { fate: "returned", owner: fn };
+}
+
+/**
+ * Where an array of promises goes when it is returned. The listener's caller
+ * does not wait for what is inside it. Any other function hands it to its
+ * own callers, who may well pass it to `Promise.all()`.
+ */
+function returnedArrayOutcome(
+  fn: FunctionLikeNode | null,
+  analysis: Analysis,
+): Outcome {
+  return fn === analysis.listener ? DROPPED : HANDLED;
 }
 
 /** Follows the value of `expression` up through its parents to where it ends up. */
-function fateOf(expression: Node, analysis: Analysis): Fate {
+function fateOf(
+  expression: Node,
+  analysis: Analysis,
+  shape: Shape = "promise",
+): Outcome {
   let current = expression;
+  let currentShape = shape;
   for (;;) {
     const parent = parentOf(current);
-    if (parent == null) return "handled";
+    if (parent == null) return HANDLED;
 
     if (TRANSPARENT_WRAPPERS.has(parent.type)) {
       current = parent;
@@ -252,64 +301,86 @@ function fateOf(expression: Node, analysis: Analysis): Fate {
     }
 
     switch (parent.type) {
+      // Awaiting an array of promises waits for none of them.
       case "AwaitExpression":
-        return "awaited";
+        return currentShape === "promise"
+          ? { fate: "awaited", owner: enclosingFunction(parent) }
+          : DROPPED;
 
       case "ReturnStatement":
-        return returnedFate(enclosingFunction(parent), analysis);
+        return currentShape === "promise"
+          ? returnedOutcome(enclosingFunction(parent), analysis)
+          : returnedArrayOutcome(enclosingFunction(parent), analysis);
 
       case "ArrowFunctionExpression":
-        return get(parent, "body") === current
-          ? returnedFate(parent as FunctionLikeNode, analysis)
-          : "handled";
+        if (get(parent, "body") !== current) return HANDLED;
+        return currentShape === "promise"
+          ? returnedOutcome(parent as FunctionLikeNode, analysis)
+          : returnedArrayOutcome(parent as FunctionLikeNode, analysis);
 
       case "ExpressionStatement":
-        return "dropped";
+        return DROPPED;
 
-      // `void` is the way to say a promise is deliberately not awaited, and
-      // any other operator uses the value somewhere the rule cannot follow.
+      // `void` is the way to say a promise is deliberately not awaited. Any
+      // other operator (`!`, `typeof`, ...) makes no use of the promise.
       case "UnaryExpression":
-        return "handled";
+        return get(parent, "operator") === "void" ? HANDLED : DROPPED;
 
       case "SequenceExpression": {
         const expressions = get(parent, "expressions") as Node[];
-        if (expressions[expressions.length - 1] !== current) return "dropped";
+        if (expressions[expressions.length - 1] !== current) return DROPPED;
         current = parent;
         continue;
       }
 
       case "ConditionalExpression":
-        if (get(parent, "test") === current) return "handled";
+        if (get(parent, "test") === current) return HANDLED;
         current = parent;
         continue;
 
       case "LogicalExpression":
-      case "ArrayExpression":
-      case "SpreadElement":
       case "Property":
       case "ObjectExpression":
         current = parent;
         continue;
 
+      // A promise in an array literal is an array of promises. An array
+      // spread into one is flattened into it, and stays what it was.
+      case "ArrayExpression":
+        if (currentShape === "promises") return HANDLED;
+        currentShape = "promises";
+        current = parent;
+        continue;
+
+      case "SpreadElement": {
+        const array = parentOf(parent);
+        if (currentShape !== "promises" || array?.type !== "ArrayExpression") {
+          return HANDLED;
+        }
+        current = array;
+        continue;
+      }
+
       case "MemberExpression": {
-        if (get(parent, "object") !== current) return "handled";
+        if (get(parent, "object") !== current) return HANDLED;
         const call = parentOf(parent);
         const name = memberName(parent);
         if (
-          call?.type === "CallExpression" && get(call, "callee") === parent &&
-          name != null && PROMISE_CHAIN_METHODS.has(name)
+          currentShape === "promise" && call?.type === "CallExpression" &&
+          get(call, "callee") === parent && name != null &&
+          PROMISE_CHAIN_METHODS.has(name)
         ) {
           current = call;
           continue;
         }
-        return "handled";
+        return HANDLED;
       }
 
       case "CallExpression": {
-        if (get(parent, "callee") === current) return "handled";
+        if (get(parent, "callee") === current) return HANDLED;
         const callee = unwrap(asNode(get(parent, "callee")) ?? parent);
         const name = memberName(callee);
-        if (name === "waitUntil") return "handled";
+        if (name === "waitUntil") return HANDLED;
         const object = callee.type === "MemberExpression"
           ? unwrap(asNode(get(callee, "object")) ?? callee)
           : null;
@@ -318,9 +389,10 @@ function fateOf(expression: Node, analysis: Analysis): Fate {
           name != null && PROMISE_COMBINATORS.has(name)
         ) {
           current = parent;
+          currentShape = "promise";
           continue;
         }
-        return "handled";
+        return HANDLED;
       }
 
       // A promise kept in a variable is safe when the variable is used
@@ -328,32 +400,35 @@ function fateOf(expression: Node, analysis: Analysis): Fate {
       case "VariableDeclarator": {
         const id = asNode(get(parent, "id"));
         if (get(parent, "init") !== current || id?.type !== "Identifier") {
-          return "handled";
+          return HANDLED;
         }
-        return analysis.mentioned.has(id.name) ? "handled" : "dropped";
+        return analysis.mentioned.has(id.name) ? HANDLED : DROPPED;
       }
 
       case "AssignmentExpression": {
-        if (get(parent, "right") !== current) return "handled";
+        if (get(parent, "right") !== current) return HANDLED;
         const name = getAssignmentTargetName(
           asNode(get(parent, "left")) ?? parent,
         );
-        if (name == null) return "handled";
-        return analysis.mentioned.has(name) ? "handled" : "dropped";
+        if (name == null) return HANDLED;
+        return analysis.mentioned.has(name) ? HANDLED : DROPPED;
       }
 
       default:
-        return "handled";
+        return HANDLED;
     }
   }
 }
 
-/** Reports every delivery call in `listener` whose promise is dropped. */
+/** Reports every place in `listener` where a delivery promise is dropped. */
 function checkListener(
   listener: FunctionLikeNode,
   report: (node: Node) => void,
 ): void {
-  const targets = findDeliveryTargets(listener);
+  const scopes: UsedScope[] = [];
+  walkUsedScopes(listener.body as Node, (scope) => scopes.push(scope));
+
+  const targets = findDeliveryTargets(listener, scopes);
   if (targets.contextName == null && targets.aliases.size === 0) return;
 
   const isDeliveryCall = (call: CallExpression): boolean => {
@@ -372,17 +447,19 @@ function checkListener(
   collectReferencedNames(listener.body, mentioned, true);
   const analysis: Analysis = { listener, mentioned };
 
-  const scopes: UsedScope[] = [];
-  walkUsedScopes(listener.body as Node, (scope) => scopes.push(scope));
   const callsByScope = scopes.map((scope) => {
     const calls: CallExpression[] = [];
     for (const statement of scope.statements) collectCalls(statement, calls);
     return calls;
   });
 
-  // A local helper that delivers and hands its promise back, by awaiting the
-  // delivery or by returning it, is only as safe as the way it is called.
-  const carrying = new Set<FunctionLikeNode>();
+  // A function that delivers and carries the promise on, by awaiting the
+  // delivery or by returning it, is only as safe as what its own callers do
+  // with the promise it returns. `fateOf()` says which function the promise
+  // ended up in, which is not always the one that made the call: a delivery
+  // inside a `map()` callback lands in whatever function awaits or returns
+  // the `Promise.all()` around it.
+  const carrying = new Map<FunctionLikeNode, Fate>();
   const carriesDelivery = (call: CallExpression, scope: UsedScope): boolean => {
     if (isDeliveryCall(call)) return true;
     const callee = unwrap(call.callee as Node);
@@ -390,30 +467,67 @@ function checkListener(
     const helpers = scope.functionsByName.get(callee.name);
     return helpers?.some((helper) => carrying.has(helper)) ?? false;
   };
+  const noteCarrying = ({ fate, owner }: Outcome): boolean => {
+    if (owner == null || owner === listener) return false;
+    if (fate !== "awaited" && fate !== "returned") return false;
+    const known = carrying.get(owner);
+    if (known === "awaited" || known === fate) return false;
+    carrying.set(owner, fate);
+    return true;
+  };
   for (let changed = true; changed;) {
     changed = false;
     scopes.forEach((scope, index) => {
-      const fn = scope.fn;
-      if (fn == null || carrying.has(fn)) return;
       for (const call of callsByScope[index]) {
-        if (!carriesDelivery(call, scope)) continue;
-        const fate = fateOf(call, analysis);
-        if (fate === "awaited" || fate === "returned") {
-          carrying.add(fn);
+        if (
+          carriesDelivery(call, scope) && noteCarrying(fateOf(call, analysis))
+        ) {
           changed = true;
-          return;
         }
       }
     });
   }
 
   const reported = new Set<Node>();
+  const flag = (node: Node): void => {
+    if (reported.has(node)) return;
+    reported.add(node);
+    report(node);
+  };
+
+  // A delivery call, or a call to a helper that delivers, whose promise is
+  // dropped.
   scopes.forEach((scope, index) => {
     for (const call of callsByScope[index]) {
-      if (reported.has(call) || !carriesDelivery(call, scope)) continue;
-      if (fateOf(call, analysis) !== "dropped") continue;
-      reported.add(call);
-      report(call);
+      if (!carriesDelivery(call, scope)) continue;
+      if (fateOf(call, analysis).fate === "dropped") flag(call);
+    }
+  });
+
+  // A callback that awaits a delivery hands its own promise to whoever runs
+  // it: `forEach()` drops it, an immediately invoked one is as safe as the
+  // call, and one given to `map()` is as safe as the array it builds. A
+  // callback that returns the delivery was already judged above.
+  for (const [fn, kind] of carrying) {
+    if (
+      kind === "awaited" && returnedOutcome(fn, analysis).fate === "dropped"
+    ) {
+      flag(fn);
+    }
+  }
+
+  // The same for a function that delivers when it is handed over by name,
+  // as in `inboxes.forEach(deliver)`.
+  scopes.forEach((scope, index) => {
+    for (const call of callsByScope[index]) {
+      for (const arg of call.arguments as Node[]) {
+        if (arg.type !== "Identifier") continue;
+        const held = scope.functionsByName.get(arg.name);
+        if (held == null || !held.some((fn) => carrying.has(fn))) continue;
+        if (callbackResultOutcome(call, analysis).fate === "dropped") {
+          flag(arg);
+        }
+      }
     }
   });
 }

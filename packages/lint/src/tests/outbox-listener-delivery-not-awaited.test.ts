@@ -1533,3 +1533,851 @@ federation
     expectedError: "Delivery is not awaited",
   }),
 );
+
+test(
+  `${ruleName}: ❌ Bad - awaiting the array of promises that map returns`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    await inboxes.map((target) => ctx.sendActivity(sender, target, activity));
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - awaiting the array of promises that flatMap returns`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    await inboxes.flatMap((target) =>
+      ctx.sendActivity(sender, target, activity)
+    );
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - awaiting an array literal of promises`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    await [ctx.sendActivity(sender, inbox, activity)];
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - returning the array of promises that map returns from the listener`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    return inboxes.map((target) => ctx.sendActivity(sender, target, activity));
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - async callback passed to forEach`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    inboxes.forEach(async (target) => {
+      await ctx.sendActivity(sender, target, activity);
+    });
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - async callback passed to map, with the result dropped`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    inboxes.map(async (target) => {
+      await ctx.sendActivity(sender, target, activity);
+    });
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - async function invoked immediately without await`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    (async () => {
+      await ctx.sendActivity(sender, inbox, activity);
+    })();
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - named function that returns delivery, passed to forEach`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    const deliver = (target) => ctx.sendActivity(sender, target, activity);
+    inboxes.forEach(deliver);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - named async function that awaits delivery, passed to forEach`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    async function deliver(target) {
+      await ctx.sendActivity(sender, target, activity);
+    }
+    inboxes.forEach(deliver);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - named function that returns delivery, passed to map with the result dropped`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    const deliver = (target) => ctx.sendActivity(sender, target, activity);
+    inboxes.map(deliver);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - named async function that awaits delivery, passed to a then that is not awaited`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    async function deliver() {
+      await ctx.sendActivity(sender, inbox, activity);
+    }
+    Promise.resolve().then(deliver);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - helper returning Promise.all over a map, called without await`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    function deliverAll() {
+      return Promise.all(inboxes.map((target) => ctx.sendActivity(sender, target, activity)));
+    }
+    deliverAll();
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - helper awaiting Promise.all over a map, called without await`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    async function deliverAll() {
+      await Promise.all(inboxes.map((target) => ctx.sendActivity(sender, target, activity)));
+    }
+    deliverAll();
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - not operator applied to a delivery promise`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    !ctx.sendActivity(sender, inbox, activity);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - typeof applied to a delivery promise`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    typeof ctx.sendActivity(sender, inbox, activity);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - Promise.race that is never awaited`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    Promise.race([ctx.sendActivity(sender, inbox, activity)]);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - Promise.any that is never awaited`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    Promise.any([ctx.sendActivity(sender, inbox, activity)]);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - helper that delivers but is only mentioned and never called`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    const deliver = () => {
+      ctx.sendActivity(sender, inbox, activity);
+    };
+    console.log(deliver);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - Promise.all over an async callback that awaits delivery`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    await Promise.all(
+      inboxes.map(async (target) => {
+        await ctx.sendActivity(sender, target, activity);
+      }),
+    );
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - async function invoked immediately and awaited`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    await (async () => {
+      await ctx.sendActivity(sender, inbox, activity);
+    })();
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - named async function passed to map inside Promise.all`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    async function deliver(target) {
+      await ctx.sendActivity(sender, target, activity);
+    }
+    await Promise.all(inboxes.map(deliver));
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - async callback handed to an unknown function`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    setTimeout(async () => {
+      await ctx.sendActivity(sender, inbox, activity);
+    }, 0);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - awaited Promise.race`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    await Promise.race([ctx.sendActivity(sender, inbox, activity)]);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - awaited Promise.any`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    await Promise.any([ctx.sendActivity(sender, inbox, activity)]);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - helper returning an array of promises, passed to Promise.all`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    const deliverAll = () => inboxes.map((target) => ctx.sendActivity(sender, target, activity));
+    await Promise.all(deliverAll());
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - helper returning Promise.all, awaited by the caller`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    async function deliverAll() {
+      return Promise.all(inboxes.map((target) => ctx.sendActivity(sender, target, activity)));
+    }
+    await deliverAll();
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - delivery method taken from ctx in a helper nothing uses`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    function unused() {
+      const send = ctx.sendActivity;
+      return send;
+    }
+    function send() {}
+    send(sender, inbox, activity);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - delivery method taken from ctx in a dead branch`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    function send() {}
+    if (false) {
+      const send = ctx.sendActivity;
+    }
+    send(sender, inbox, activity);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - promise mentioned only in a dead branch`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    const pending = ctx.sendActivity(sender, inbox, activity);
+    if (false) {
+      await pending;
+    }
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - delivery promise handed to an unknown function`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    track(ctx.sendActivity(sender, inbox, activity));
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - delivery promise used as a condition`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    const label = ctx.sendActivity(sender, inbox, activity) ? "sent" : "not sent";
+    console.log(label);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - delivery promise as the last operand of an awaited sequence`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    await (console.log("sending"), ctx.sendActivity(sender, inbox, activity));
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - delivery promise handed to a constructor`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    new Tracker(ctx.sendActivity(sender, inbox, activity));
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - promise stored on an object that is read later`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    const state = {};
+    state.pending = ctx.sendActivity(sender, inbox, activity);
+    console.log(state);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - awaited call through template literal bracket notation`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    await ctx[\`sendActivity\`](sender, inbox, activity);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - listener without a context parameter`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async () => {
+    console.log("no context to deliver with");
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - listener that destructures unrelated fields`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async ({ identifier, ...rest }, activity) => {
+    console.log(identifier, rest, activity);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - delivery method with a default in the parameters, awaited`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async ({ sendActivity = fallbackSend }, activity) => {
+    await sendActivity({ identifier: "alice" }, "followers", activity);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - bare call through template literal bracket notation`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    ctx[\`sendActivity\`](sender, inbox, activity);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - promise stored on an object that is never read`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    const state = {};
+    state.pending = ctx.sendActivity(sender, inbox, activity);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - delivery method with a default in the parameters, called without await`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async ({ sendActivity = fallbackSend }, activity) => {
+    sendActivity({ identifier: "alice" }, "followers", activity);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);

@@ -519,6 +519,324 @@ federation
   });
 `,
   ],
+  [
+    "awaiting the array of promises that map returns",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    await inboxes.map((target) => ctx.sendActivity(sender, target, activity));
+  });
+`,
+  ],
+  [
+    "awaiting the array of promises that flatMap returns",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    await inboxes.flatMap((target) =>
+      ctx.sendActivity(sender, target, activity)
+    );
+  });
+`,
+  ],
+  [
+    "awaiting an array literal of promises",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    await [ctx.sendActivity(sender, inbox, activity)];
+  });
+`,
+  ],
+  [
+    "returning the array of promises that map returns from the listener",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    return inboxes.map((target) => ctx.sendActivity(sender, target, activity));
+  });
+`,
+  ],
+  [
+    "async callback passed to forEach",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    inboxes.forEach(async (target) => {
+      await ctx.sendActivity(sender, target, activity);
+    });
+  });
+`,
+  ],
+  [
+    "async callback passed to map, with the result dropped",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    inboxes.map(async (target) => {
+      await ctx.sendActivity(sender, target, activity);
+    });
+  });
+`,
+  ],
+  [
+    "async function invoked immediately without await",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    (async () => {
+      await ctx.sendActivity(sender, inbox, activity);
+    })();
+  });
+`,
+  ],
+  [
+    "named function that returns delivery, passed to forEach",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    const deliver = (target) => ctx.sendActivity(sender, target, activity);
+    inboxes.forEach(deliver);
+  });
+`,
+  ],
+  [
+    "named async function that awaits delivery, passed to forEach",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    async function deliver(target) {
+      await ctx.sendActivity(sender, target, activity);
+    }
+    inboxes.forEach(deliver);
+  });
+`,
+  ],
+  [
+    "named function that returns delivery, passed to map with the result dropped",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    const deliver = (target) => ctx.sendActivity(sender, target, activity);
+    inboxes.map(deliver);
+  });
+`,
+  ],
+  [
+    "named async function that awaits delivery, passed to a then that is not awaited",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    async function deliver() {
+      await ctx.sendActivity(sender, inbox, activity);
+    }
+    Promise.resolve().then(deliver);
+  });
+`,
+  ],
+  [
+    "helper returning Promise.all over a map, called without await",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    function deliverAll() {
+      return Promise.all(inboxes.map((target) => ctx.sendActivity(sender, target, activity)));
+    }
+    deliverAll();
+  });
+`,
+  ],
+  [
+    "helper awaiting Promise.all over a map, called without await",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    async function deliverAll() {
+      await Promise.all(inboxes.map((target) => ctx.sendActivity(sender, target, activity)));
+    }
+    deliverAll();
+  });
+`,
+  ],
+  [
+    "not operator applied to a delivery promise",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    !ctx.sendActivity(sender, inbox, activity);
+  });
+`,
+  ],
+  [
+    "typeof applied to a delivery promise",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    typeof ctx.sendActivity(sender, inbox, activity);
+  });
+`,
+  ],
+  [
+    "Promise.race that is never awaited",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    Promise.race([ctx.sendActivity(sender, inbox, activity)]);
+  });
+`,
+  ],
+  [
+    "Promise.any that is never awaited",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    Promise.any([ctx.sendActivity(sender, inbox, activity)]);
+  });
+`,
+  ],
+  [
+    "helper that delivers but is only mentioned and never called",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    const deliver = () => {
+      ctx.sendActivity(sender, inbox, activity);
+    };
+    console.log(deliver);
+  });
+`,
+  ],
+  [
+    "bare call through template literal bracket notation",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    ctx[\`sendActivity\`](sender, inbox, activity);
+  });
+`,
+  ],
+  [
+    "promise stored on an object that is never read",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    const state = {};
+    state.pending = ctx.sendActivity(sender, inbox, activity);
+  });
+`,
+  ],
+  [
+    "delivery method with a default in the parameters, called without await",
+    `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async ({ sendActivity = fallbackSend }, activity) => {
+    sendActivity({ identifier: "alice" }, "followers", activity);
+  });
+`,
+  ],
 ];
 
 // A listener with no delivery call that can run is the required rule's business.
