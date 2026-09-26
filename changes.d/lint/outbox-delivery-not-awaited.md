@@ -9,7 +9,9 @@ links:
     activity may never leave on a runtime such as Cloudflare Workers, which
     discards pending work once the response is returned. A call counts as
     handled when its promise is awaited, returned, passed to `Promise.all()`
-    and its siblings, or handed to `waitUntil()`, and `void` opts a call out.
+    or `Promise.allSettled()`, or handed to `waitUntil()`, and `void`,
+    `Promise.race()` and `Promise.any()` are accepted as deliberate choices to
+    stop waiting.
     The ESLint `recommended` configuration enables the rule as a warning and
     `strict` as an error, and Oxlint users enable it by name. It is not
     available in Deno Lint, which turns on every rule of a plugin at once.

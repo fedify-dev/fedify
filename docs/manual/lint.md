@@ -781,7 +781,7 @@ explicit delivery path, and that path must actually run.
 
 The rule checks that a delivery call exists and can run, not that the delivery
 completes, so a listener it accepts is not guaranteed to federate.  A delivery
-call that is never awaited is not reported here; the opt-in
+call that is never awaited is not reported here; the
 [`outbox-listener-delivery-not-awaited`](#outbox-listener-delivery-not-awaited)
 rule checks for that.
 
@@ -877,22 +877,40 @@ You've registered an outbox listener with `setOutboxListeners()`, and it calls
 `ctx.sendActivity()` or `ctx.forwardActivity()` in a way that drops the
 returned promise.  The rule follows the promise from the call to where it ends
 up.  A call counts as handled when its promise is awaited, returned, passed to
-`Promise.all()`, `Promise.allSettled()`, `Promise.race()` or `Promise.any()`,
-or handed to a method named `waitUntil()`.  A call is reported when its promise
-is discarded, including when it is only kept in a variable that nothing else
-uses, or returned from a callback that is passed to `forEach()`.
+`Promise.all()` or `Promise.allSettled()`, or handed to a method named
+`waitUntil()`.  A call is reported when its promise is discarded, including when
+it is only kept in a variable that nothing else uses.
 
 When it cannot tell where a promise goes, the rule stays quiet.  In practice:
 
- -  `void ctx.sendActivity(...)` is read as a deliberate choice and is not
-    reported.  A discarded `.catch()`, `.then()` or `.finally()` chain is
-    reported, since a `.catch()` handles the error but does not wait.
+ -  `void ctx.sendActivity(...)`, `Promise.race(...)` and `Promise.any(...)` are
+    read as deliberate choices to stop waiting, and are not reported.  A
+    `race()` or `any()` whose own result is dropped is still reported, and so is
+    any other operator applied to a promise, such as `!` or `typeof`.  A
+    discarded `.catch()`, `.then()` or `.finally()` chain is reported, since a
+    `.catch()` handles the error but does not wait.
+ -  An array of promises, such as the result of `map()`, waits for nothing on
+    its own.  Awaiting it, or returning it from the listener, is reported.  It
+    counts as handled once it reaches `Promise.all()` or one of its siblings,
+    or when it is kept in a variable that is mentioned again.
+ -  An `async` callback that awaits a delivery is judged by where the callback
+    goes, since its own promise is what carries the delivery.  `forEach()` drops
+    that promise, so `inboxes.forEach(async (inbox) => { await ... })` is
+    reported.  A callback that is invoked immediately, or given to `map()` or
+    `then()`, is only as safe as the result of that call.  The same holds for a
+    function passed by name, as in `inboxes.forEach(deliver)`.
  -  A local helper that delivers is judged by how it is called: `deliver();` is
     reported when `deliver()` awaits or returns a delivery, and
     `await deliver();` is not.
  -  A promise passed to a function the rule does not know, such as
     `queue.push(...)` or `setTimeout(...)`, is left alone, since the rule cannot
     tell what that function does with it.
+ -  The rule leans towards quiet where a name is only mentioned.  A stored
+    promise counts as used when its variable is mentioned anywhere in the
+    listener, even only in a dead branch or in a helper that is never called.  A
+    helper that delivers counts as running once its name is mentioned, even if
+    it is only stored or logged, so a bare delivery call inside it is still
+    reported.
  -  As in `outbox-listener-delivery-required`, the rule reads only the listener
     body.  A delivery call in a helper that is declared outside the listener,
     or in another module, is not seen.
