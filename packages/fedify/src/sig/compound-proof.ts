@@ -694,6 +694,101 @@ export function inspectCompoundPortableObjectApplicability(
 }
 
 /**
+ * Walks every JSON map in a finite, already-materialized JSON tree, depth
+ * first in insertion order, skipping the values of `proof` and `@context`
+ * members.  A map reached a second time through a repeated reference is not
+ * visited again, so a cyclic input terminates.  The walk stops as soon as
+ * the visitor returns a value other than `undefined`.
+ */
+function findInJsonMaps<T>(
+  json: unknown,
+  visit: (map: Record<string, unknown>, path: string) => T | undefined,
+): T | undefined {
+  const seen = new Set<object>();
+  const pending: Array<{ value: unknown; path: string }> = [
+    { value: json, path: "" },
+  ];
+  while (pending.length > 0) {
+    const { value, path } = pending.pop()!;
+    if (typeof value !== "object" || value == null || seen.has(value)) {
+      continue;
+    }
+    seen.add(value);
+    if (Array.isArray(value)) {
+      for (let index = value.length - 1; index >= 0; index--) {
+        pending.push({
+          value: value[index],
+          path: childPath(path, String(index)),
+        });
+      }
+      continue;
+    }
+    const map = value as Record<string, unknown>;
+    const result = visit(map, path);
+    if (result !== undefined) return result;
+    const keys = Object.keys(map);
+    for (let index = keys.length - 1; index >= 0; index--) {
+      const key = keys[index];
+      if (key === "proof" || key === "@context") continue;
+      pending.push({ value: map[key], path: childPath(path, key) });
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Determines whether an outgoing JSON tree contains portable content that
+ * requires producer-side proof-shape checks: a map, outside proof and context
+ * values, whose direct `id` or `@id` is a portable ActivityPub URI.
+ *
+ * This deliberately differs from
+ * {@link inspectCompoundPortableObjectApplicability}: it applies no resource
+ * limits, so a portable map or an unsupported proof beyond the inbox limits
+ * is still found, and a large document without portable maps stays outside
+ * the compound-proof profile.  The input must be a finite JSON tree that has
+ * already been materialized, such as a compact JSON-LD document about to be
+ * sent.
+ *
+ * @internal
+ */
+export function containsCompoundPortableObject(json: unknown): boolean {
+  return findInJsonMaps(
+    json,
+    (map) =>
+      [map.id, map["@id"]].some((id) =>
+          typeof id === "string" && PORTABLE_OBJECT_ID_PATTERN.test(id)
+        )
+        ? true
+        : undefined,
+  ) ?? false;
+}
+
+/**
+ * Finds the first direct `proof` member whose value the map-local
+ * compound-proof profile does not accept, i.e., anything other than a single
+ * JSON map: a proof set, `null`, or a scalar.  Like the inbox discovery, it
+ * does not look inside proof or context values.
+ *
+ * The input must be a finite, already-materialized JSON tree; see
+ * {@link containsCompoundPortableObject}.
+ *
+ * @returns The RFC 6901 JSON Pointer to the unsupported `proof` member, or
+ *          `null` if every direct proof is a single JSON map.
+ * @internal
+ */
+export function findUnsupportedCompoundProofShape(
+  json: unknown,
+): string | null {
+  return findInJsonMaps(
+    json,
+    (map, path) =>
+      Object.hasOwn(map, "proof") && !isJsonMap(map.proof)
+        ? childPath(path, "proof")
+        : undefined,
+  ) ?? null;
+}
+
+/**
  * Discovers direct literal proof-bearing maps in an immutable JSON snapshot.
  *
  * Discovery is bounded and atomic.  Unsupported proof shapes, non-JSON input,
