@@ -1082,7 +1082,9 @@ Fedify automatically includes the integrity proof of activities by signing
 them with the sender's private key if the [actor keys dispatcher is
 set](./actor.md#public-keys-of-an-actor) and the actor has any Ed25519 key pair.
 If there are multiple key pairs, Fedify creates the number of integrity proofs
-equal to the number of Ed25519 key pairs.
+equal to the number of Ed25519 key pairs.  An activity containing [FEP-ef61]
+portable objects is the exception: it gets at most one proof, as described in
+[*Choosing the proof key*](#choosing-the-proof-key).
 
 When verifying incoming Object Integrity Proofs, Fedify can resolve Ed25519
 `did:key` verification methods locally.  A proof whose `verificationMethod`
@@ -1228,6 +1230,69 @@ the returned object afterwards, and `clone()` never carries it, because a
 clone may differ from the document the proof covers.  Sign the clone again
 when it has to be embedded as a secured child.
 
+#### Choosing the proof key
+
+Outside the compound profile, `sendActivity()` signs an activity once for each
+Ed25519 key it is given, which yields a proof set when there are several keys.
+Fedify inboxes reject a proof set in a document that contains a portable
+object, so an activity whose JSON contains a map identified by an `ap:` or
+`ap+ef61:` URI, whether the activity itself or anything embedded in it, gets at
+most one proof:
+
+ -  An activity that already carries a proof is sent as is.  Fedify does not
+    add another proof to it, not even with the keys from the [actor key pairs
+    dispatcher](./actor.md#public-keys-of-an-actor).
+ -  With a single Ed25519 key, that key signs the activity.
+ -  With several Ed25519 keys, a portable activity is signed only by the key
+    whose ID is a DID URL for the activity's own DID, such as
+    `did:key:z6Mk…#z6Mk…` for `ap://did:key:z6Mk…/activities/1`.  This is the
+    only proof [FEP-ef61] accepts for it.
+
+When no key or more than one key qualifies, or when a non-portable activity
+embeds portable objects and several Ed25519 keys are available,
+`sendActivity()` rejects with a `TypeError` instead of guessing.  Nothing is
+delivered or queued in that case.  To choose the key yourself, pass explicit
+sender keys that contain exactly one Ed25519 key, or sign the activity with
+`signObject()` before sending it.  RSA keys in the same list keep signing the
+HTTP request and the Linked Data Signature as usual:
+
+~~~~ typescript twoslash
+import type { Context } from "@fedify/fedify";
+import type { Create, Recipient } from "@fedify/vocab";
+const ctx = null as unknown as Context<void>;
+const rsaPrivateKey = null as unknown as CryptoKey;
+const ed25519PrivateKey = null as unknown as CryptoKey;
+const recipient = null as unknown as Recipient;
+const activity = null as unknown as Create;
+// ---cut-before---
+await ctx.sendActivity(
+  [
+    {
+      keyId: new URL("https://example.com/users/alice#main-key"),
+      privateKey: rsaPrivateKey,
+    },
+    {
+      keyId: new URL("did:key:z6Mkabc#z6Mkabc"),
+      privateKey: ed25519PrivateKey,
+    },
+  ],
+  recipient,
+  activity,
+);
+~~~~
+
+The Multikey IDs Fedify derives for the actor key pairs dispatcher are
+fragments of the actor URI, such as `…/actor#multikey-1`, not DID URLs.  With
+several dispatched Ed25519 keys, an unsigned portable activity sent by actor
+identifier is therefore always rejected; send it with explicit sender keys or
+pre-sign it instead.
+
+Fedify also refuses to send an activity with portable objects if any map in it
+already carries a proof set, which happens, for example, when `signObject()`
+is called twice on the same object.  The error names the JSON Pointer of the
+offending `proof`.  These checks only prevent unsupported proof shapes.  They
+do not otherwise validate a proof created with a single key.
+
 > [!WARNING]
 > Several things take a signed child outside this supported path, and each
 > one falls back to ordinary serialization, which rebuilds the child under the
@@ -1239,9 +1304,9 @@ when it has to be embedded as a secured child.
 >     [`forwardActivity()`](./outbox.md#federating-posted-activities) to avoid
 >     a vocabulary-object round trip.
 >  -  An object that already carried a proof.  The profile accepts exactly one
->     direct proof per map, while Fedify's ordinary activity signer creates one
->     proof for each Ed25519 key, so a sender producing a portable compound
->     document must arrange for exactly one direct proof on each map.
+>     direct proof per map, so sign each object with exactly one key.  Fedify
+>     refuses to send an activity whose portable content carries a proof set;
+>     see [*Choosing the proof key*](#choosing-the-proof-key).
 >  -  A `toJsonLd()` call whose `context` option could hide the marker Fedify
 >     uses to place the captured document, for example a context that aliases
 >     `@id` under a term other than `id`, declares `@nest`, uses an `@id` or

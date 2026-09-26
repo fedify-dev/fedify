@@ -78,7 +78,7 @@ import {
   wrapContextLoaderForJsonLd,
 } from "../sig/ld.ts";
 import { getKeyOwner, type GetKeyOwnerOptions } from "../sig/owner.ts";
-import { hasProofLike, signObject, verifyObject } from "../sig/proof.ts";
+import { hasProofLike, verifyObject } from "../sig/proof.ts";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 import { kvCache } from "../utils/kv-cache.ts";
 import {
@@ -153,6 +153,10 @@ import {
 } from "./metrics.ts";
 import type { MessageQueue } from "./mq.ts";
 import { acceptsJsonLd } from "./negotiation.ts";
+import {
+  assertSupportedCompoundProofShape,
+  signOutgoingActivity,
+} from "./outgoing-proof.ts";
 import type {
   FanoutMessage,
   InboxMessage,
@@ -2339,8 +2343,6 @@ export class FederationImpl<TContextData>
       this.#getLoaderOptions(ctx.origin),
     );
     const activityId = activity.id.href;
-    let hasProof = false;
-    let proofCreated = false;
     let rsaKey: { keyId: URL; privateKey: CryptoKey } | null = null;
     for (const { keyId, privateKey } of keys) {
       validateCryptoKey(privateKey, "private");
@@ -2350,22 +2352,20 @@ export class FederationImpl<TContextData>
     }
     // If Object Integrity Proofs were already created before fanout (e.g., in
     // sendActivityInternal()), skip signing to avoid duplicates.
-    for await (const _ of activity.getProofs({ contextLoader })) {
-      hasProof = true;
-      break;
-    }
-    if (!hasProof) {
-      for (const { keyId, privateKey } of keys) {
-        if (privateKey.algorithm.name === "Ed25519") {
-          activity = await signObject(activity, privateKey, keyId, {
-            contextLoader,
-            tracerProvider: this.tracerProvider,
-          });
-          hasProof = true;
-          proofCreated = true;
-        }
-      }
-    }
+    const signed = await signOutgoingActivity(
+      activity,
+      keys.map(({ keyId, privateKey }) => ({
+        verificationMethod: keyId,
+        privateKey,
+      })),
+      {
+        contextLoader,
+        tracerProvider: this.tracerProvider,
+        appendToExistingProofs: false,
+      },
+    );
+    activity = signed.activity;
+    const { hasProof, proofCreated } = signed;
     let jsonLd = !proofCreated && options.activityJsonLd != null
       ? options.activityJsonLd
       : await activity.toJsonLd({
@@ -2381,6 +2381,7 @@ export class FederationImpl<TContextData>
         preserveNestedSecuredDocuments: true,
       });
     }
+    assertSupportedCompoundProofShape(jsonLd, activityId);
     if (rsaKey == null) {
       logger.warn(
         "No supported key found to create a Linked Data signature for " +
@@ -3919,48 +3920,41 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     // Pre-sign with Object Integrity Proofs before fanout so that all
     // recipients receive the same signed activity.  Uses Multikey IDs so that
     // verifiers can look up the correct key type in the actor document.
-    let proofCreated = false;
-    if (actorKeyPairs != null) {
-      const contextLoader = this.contextLoader;
-      for (const kp of actorKeyPairs) {
-        if (
-          kp.privateKey.algorithm.name !== "Ed25519" ||
-          kp.multikey.id == null
-        ) continue;
-        activity = await signObject(activity, kp.privateKey, kp.multikey.id, {
-          contextLoader,
+    //
+    // Explicit sender keys carry no Multikey, so they sign with the key ID
+    // the caller supplied, which is exactly what the delivery worker would do
+    // after reparsing the activity.  Signing here instead keeps a signed
+    // child's retained representation intact: the reparsed activity no
+    // longer carries one, so a worker-side proof would cover a rebuilt child
+    // whose own proof no longer verifies.
+    //
+    // An activity the caller already signed keeps its own proof when sent
+    // with explicit keys: appending another would turn a single-proof
+    // document into a proof set, which the map-local compound-proof profile
+    // does not accept.  This mirrors the guard `FederationImpl.sendActivity()`
+    // applies before signing.  Actor key pairs keep appending outside that
+    // profile, as they always have.
+    const { activity: signedActivity, proofCreated } =
+      await signOutgoingActivity(
+        activity,
+        actorKeyPairs == null
+          ? keys.map(({ keyId, privateKey }) => ({
+            verificationMethod: keyId,
+            privateKey,
+          }))
+          : actorKeyPairs.flatMap((kp) =>
+            kp.multikey.id == null ? [] : [{
+              verificationMethod: kp.multikey.id,
+              privateKey: kp.privateKey,
+            }]
+          ),
+        {
+          contextLoader: this.contextLoader,
           tracerProvider: this.tracerProvider,
-        });
-        proofCreated = true;
-      }
-    } else {
-      // Explicit sender keys carry no Multikey, so sign with the key ID the
-      // caller supplied, which is exactly what the delivery worker would do
-      // after reparsing the activity.  Signing here instead keeps a signed
-      // child's retained representation intact: the reparsed activity no
-      // longer carries one, so a worker-side proof would cover a rebuilt
-      // child whose own proof no longer verifies.
-      const contextLoader = this.contextLoader;
-      // An activity the caller already signed keeps its own proof: appending
-      // another would turn a single-proof document into a proof set, which
-      // the map-local compound-proof profile does not accept.  This mirrors
-      // the guard `FederationImpl.sendActivity()` applies before signing.
-      let hasProof = false;
-      for await (const _ of activity.getProofs({ contextLoader })) {
-        hasProof = true;
-        break;
-      }
-      if (!hasProof) {
-        for (const { keyId, privateKey } of keys) {
-          if (privateKey.algorithm.name !== "Ed25519") continue;
-          activity = await signObject(activity, privateKey, keyId, {
-            contextLoader,
-            tracerProvider: this.tracerProvider,
-          });
-          proofCreated = true;
-        }
-      }
-    }
+          appendToExistingProofs: actorKeyPairs != null,
+        },
+      );
+    activity = signedActivity;
     const inboxes = extractInboxes({
       recipients: expandedRecipients,
       preferSharedInbox: options.preferSharedInbox,
@@ -3990,6 +3984,13 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       });
       return true;
     }
+    const activityJsonLd = await activity.toJsonLd({
+      format: "compact",
+      contextLoader: this.contextLoader,
+    });
+    // Reject before anything is enqueued, so the caller learns about it
+    // instead of the fanout worker.
+    assertSupportedCompoundProofShape(activityJsonLd, activity.id?.href);
     const keyJwkPairs = await Promise.all(
       keys.map(async ({ keyId, privateKey }) => ({
         keyId: keyId.href,
@@ -4008,10 +4009,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           [k, { actorIds, sharedInbox }],
         ) => [k, { actorIds: [...actorIds], sharedInbox }]),
       ),
-      activity: await activity.toJsonLd({
-        format: "compact",
-        contextLoader: this.contextLoader,
-      }),
+      activity: activityJsonLd,
       activityId: activity.id?.href,
       activityType: getTypeId(activity).href,
       collectionSync: opts.collectionSync,
