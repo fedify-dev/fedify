@@ -2086,3 +2086,124 @@ federation
       "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
   }),
 );
+
+test(
+  `${ruleName}: ✅ Good - bare delivery call in a class method`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    class Sender {
+      deliver() {
+        ctx.sendActivity(sender, inbox, activity);
+      }
+    }
+    new Sender().deliver();
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - bare delivery call in a static class method`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    class Sender {
+      static deliver() {
+        ctx.sendActivity(sender, inbox, activity);
+      }
+    }
+    Sender.deliver();
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - bare delivery call in an object method`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    const handlers = {
+      deliver() {
+        ctx.sendActivity(sender, inbox, activity);
+      },
+    };
+    handlers.deliver();
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - bare delivery call in an async object method`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    const handlers = {
+      async deliver() {
+        ctx.sendActivity(sender, inbox, activity);
+      },
+    };
+    await handlers.deliver();
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - bare delivery call in an object getter`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const sender = { identifier: ctx.identifier };
+    const inbox = new URL("https://example.com/inbox");
+    const handlers = {
+      get deliver() {
+        ctx.sendActivity(sender, inbox, activity);
+        return 1;
+      },
+    };
+    console.log(handlers.deliver);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);

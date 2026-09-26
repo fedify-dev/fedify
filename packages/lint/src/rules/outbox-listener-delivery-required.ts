@@ -213,8 +213,11 @@ function collectDeliveryScanCode(
         const replacement = used.has(fn)
           ? collectDeliveryScanCode(sourceCode, fn.body as Node, used, visited)
           : "";
+        // A method's range starts right after its key (`go` in `go() {}`)
+        // on some parsers, so keep the spliced text apart from what
+        // surrounds it, or `go` and `ctx` fuse into a single `goctx`.
         result = result.slice(0, fnStart - statementStart) +
-          (replacement.length > 0 ? replacement : "()=>{}") +
+          `\n${replacement.length > 0 ? replacement : "()=>{}"}\n` +
           result.slice(fnEnd - statementStart);
       }
       return result;
