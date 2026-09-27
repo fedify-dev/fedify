@@ -161,7 +161,7 @@
     "@fedify/vocab-tools": "workspace:^",
     "@std/assert": "jsr:^0.226.0",
     "@std/path": "catalog:",
-    "@types/node": "^24.2.1",
+    "@types/node": "catalog:",
     "fetch-mock": "catalog:",
     "miniflare": "^4.20250523.0",
     "tsdown": "catalog:",

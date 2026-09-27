@@ -94,7 +94,7 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^24.2.1",
+    "@types/node": "catalog:",
     "fetch-mock": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"

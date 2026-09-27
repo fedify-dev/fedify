@@ -2,6 +2,10 @@
   "scripts": {
     "prepare": "pnpm -r run build:self"
   },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  },
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild"

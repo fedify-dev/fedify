@@ -241,6 +241,13 @@ jobs:
     - run: deno task test:cfworkers
       working-directory: ${{ github.workspace }}/packages/fedify/
 
+  test-temporal-polyfill:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+    - uses: ./.github/actions/setup-mise
+    - run: mise run --skip-deps test:temporal-polyfill
+
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -328,7 +335,7 @@ jobs:
 
   build-cli:
     if: github.event_name == 'push'
-    needs: [test, test-node, test-bun, test-cfworkers, lint, release-test, determine-version]
+    needs: [test, test-node, test-bun, test-cfworkers, test-temporal-polyfill, lint, release-test, determine-version]
     runs-on: namespace-profile-linux-amd64-32gb
     steps:
     - uses: actions/checkout@v6
@@ -348,7 +355,7 @@ jobs:
 
   build-packages:
     if: github.event_name == 'push'
-    needs: [test, test-node, test-bun, test-cfworkers, lint, release-test, determine-version]
+    needs: [test, test-node, test-bun, test-cfworkers, test-temporal-polyfill, lint, release-test, determine-version]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
@@ -372,7 +379,7 @@ jobs:
 
   publish-jsr:
     if: github.event_name == 'push'
-    needs: [test, test-node, test-bun, test-cfworkers, lint, release-test, determine-version]
+    needs: [test, test-node, test-bun, test-cfworkers, test-temporal-polyfill, lint, release-test, determine-version]
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
