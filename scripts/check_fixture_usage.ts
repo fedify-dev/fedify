@@ -10,7 +10,6 @@
  * Reviewers must NOT treat a passing run as proof of safety; code
  * review and the published package contents remain the source of truth.
  */
-import { walk } from "@std/fs/walk";
 import {
   dirname,
   fromFileUrl,
@@ -39,9 +38,6 @@ const ALLOWLIST: readonly string[] = [
   // as documentation; not a real runtime import.
   "packages/testing/src/mq-tester.ts",
 ].map((path) => join(...path.split("/") as [string, ...string[]]));
-
-const projectRoot = resolve(dirname(fromFileUrl(import.meta.url)), "..");
-const packagesDir = resolve(projectRoot, "packages");
 
 /**
  * Statement-level pattern for any `import` or `export ... from`
@@ -73,26 +69,53 @@ const packagesDir = resolve(projectRoot, "packages");
 const IMPORT_PATTERN =
   /(?:import|export)\b[^;]*?["']@fedify\/fixture(?:\/[^"']*)?["']/;
 
-const allowed = new Set(ALLOWLIST);
-let hasViolation = false;
-
-for await (
-  const entry of walk(packagesDir, {
-    includeDirs: false,
-    exts: [".ts"],
-    match: [new RegExp(`${SEPARATOR}src${SEPARATOR}`)],
-    skip: [new RegExp(`^packages${SEPARATOR}fixture`)],
-  })
-) {
-  const rel = relative(projectRoot, entry.path);
-  if (rel.endsWith(".test.ts") || rel.endsWith(".bench.ts")) continue;
-  if (allowed.has(rel)) continue;
-
-  const content = await Deno.readTextFile(entry.path);
-  if (IMPORT_PATTERN.test(content)) {
-    console.error(rel);
-    hasViolation = true;
+/** Walk each directory separately so a vanished child cannot end the scan. */
+async function* walkPackages(directory: string): AsyncGenerator<string> {
+  try {
+    for await (const entry of Deno.readDir(directory)) {
+      if (entry.name === ".vocab-codegen.lock") continue;
+      const path = join(directory, entry.name);
+      if (entry.isDirectory) {
+        yield* walkPackages(path);
+      } else {
+        yield path;
+      }
+    }
+  } catch (error) {
+    if (!(error instanceof Deno.errors.NotFound)) throw error;
   }
 }
 
-if (hasViolation) Deno.exit(1);
+/** Return paths containing disallowed fixture imports, relative to the root. */
+export async function checkFixtureUsage(
+  projectRoot: string,
+): Promise<string[]> {
+  const packagesDir = resolve(projectRoot, "packages");
+  const allowed = new Set(ALLOWLIST);
+  const violations: string[] = [];
+  const sourcePattern = new RegExp(`${SEPARATOR}src${SEPARATOR}`);
+
+  for await (const path of walkPackages(packagesDir)) {
+    if (!path.endsWith(".ts") || !sourcePattern.test(path)) continue;
+    const rel = relative(projectRoot, path);
+    if (rel.endsWith(".test.ts") || rel.endsWith(".bench.ts")) continue;
+    if (allowed.has(rel)) continue;
+
+    let content: string;
+    try {
+      content = await Deno.readTextFile(path);
+    } catch (error) {
+      if (error instanceof Deno.errors.NotFound) continue;
+      throw error;
+    }
+    if (IMPORT_PATTERN.test(content)) violations.push(rel);
+  }
+  return violations;
+}
+
+if (import.meta.main) {
+  const projectRoot = resolve(dirname(fromFileUrl(import.meta.url)), "..");
+  const violations = await checkFixtureUsage(projectRoot);
+  for (const path of violations) console.error(path);
+  if (violations.length > 0) Deno.exit(1);
+}

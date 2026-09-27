@@ -192,7 +192,8 @@
   },
   "test": {
     "include": [
-      "./packages"
+      "./packages",
+      "./scripts"
     ],
     "exclude": [
       "./packages/init/src/templates/**"
