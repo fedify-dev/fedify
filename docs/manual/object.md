@@ -211,3 +211,139 @@ the gateway endpoint.
 
 [FEP-ef61]: https://w3id.org/fep/ef61
 [DID]: https://www.w3.org/TR/did-core/
+
+
+Serving hashlink media
+----------------------
+
+*This API is available since Fedify 2.4.0.*
+
+A [FEP-ef61] portable object refers to an external resource, such as an image
+attachment, by a [hashlink], an `hl:` URI that carries the SHA-256 digest of
+the resource, along with the same digest in the `digestMultibase` property:
+
+~~~~ json
+{
+  "type": "Image",
+  "url": "hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n",
+  "mediaType": "image/png",
+  "digestMultibase": "zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n"
+}
+~~~~
+
+A gateway that stores the resource serves it at its `/.well-known/apgateway`
+endpoint followed by the hashlink:
+
+~~~~ http
+GET /.well-known/apgateway/hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n HTTP/1.1
+Host: example.com
+~~~~
+
+To serve such requests, register a hashlink media dispatcher with
+the `~Federatable.setHashlinkMediaDispatcher()` method.  Unlike other
+dispatchers, it returns a `Response` rather than an object, so that it can
+stream the resource and set the response headers:
+
+~~~~ typescript twoslash
+import { type Federation } from "@fedify/fedify";
+const federation = null as unknown as Federation<void>;
+interface StoredMedia {
+  readonly mediaType: string;
+  readonly size: number;
+  readonly public: boolean;
+  open(): ReadableStream<Uint8Array>;
+}
+async function findMedia(_sha256Hex: string): Promise<StoredMedia | null> {
+  return null;
+}
+// ---cut-before---
+federation.setHashlinkMediaDispatcher(async (ctx, media) => {
+  // Look the file up by the raw digest, which does not depend on
+  // the multibase encoding of the requested hashlink:
+  const sha256Hex = Array.from(
+    media.digest,
+    (byte) => byte.toString(16).padStart(2, "0"),
+  ).join("");
+  const file = await findMedia(sha256Hex);
+  if (file == null || !file.public) return null;
+  return new Response(
+    // Do not open the file for a HEAD request:
+    ctx.request.method === "HEAD" ? null : file.open(),
+    {
+      headers: {
+        // The media type that the application decided when it stored
+        // the file, not the one that the uploader claimed:
+        "Content-Type": file.mediaType,
+        "Content-Length": file.size.toString(),
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "ETag": `"${sha256Hex}"`,
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "sandbox",
+      },
+    },
+  );
+});
+~~~~
+
+The second parameter of the dispatcher is a `HashlinkMediaRequest` object with
+the following properties:
+
+`hashlink`
+:   The requested hashlink, e.g.,
+    `hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n`.
+
+`digestMultibase`
+:   The multibase-encoded multihash in the hashlink as requested, e.g.,
+    `zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n`, which is also the value
+    of the `digestMultibase` property.  The same digest can be encoded in other
+    multibase encodings, so prefer `digest` as a storage key.
+
+`algorithm`
+:   The hash algorithm, which is always `"sha2-256"` for now.
+
+`digest`
+:   The raw 32-byte SHA-256 digest as a `Uint8Array`.
+
+`multihash`
+:   The multihash decoded from `digestMultibase` as a `Uint8Array`.
+
+Fedify validates the hashlink before calling the dispatcher, so it responds
+with `400 Bad Request` to a malformed hashlink, a hashlink with metadata, or
+a digest that is not SHA-256.  If the dispatcher returns `null`, Fedify
+responds with `404 Not Found`; otherwise, it sends the returned response as
+is.  A `HEAD` request is also passed to the dispatcher, and Fedify removes
+the body from its response.  Requests with other methods get
+`405 Method Not Allowed`.
+
+> [!IMPORTANT]
+> Fedify does not verify the response body against the digest, as that would
+> require reading the whole body before sending it.  The dispatcher must serve
+> only a resource whose complete bytes hash to the requested digest, e.g., by
+> storing resources under their digests, and must not transform them.
+> Clients verify the digest of a retrieved resource, so a mismatching one
+> fails for them anyway.
+
+Conditional and range requests are left to the dispatcher as well.  It can
+read headers such as `If-None-Match`, `Range`, and `If-Range` from
+`~RequestContext.request` and respond with, e.g., `304 Not Modified` or
+`206 Partial Content`.  Note that a client cannot verify a partial response
+by itself, since the digest covers the whole resource.
+
+> [!WARNING]
+> Anyone who knows the digest of a resource can retrieve it through this
+> endpoint; hashlink media have no access control.  Serve only resources that
+> are meant to be public, and look them up by what this server has stored
+> rather than fetching them from elsewhere on a miss.
+>
+> The resources are served from the origin of your application, so treat them
+> as untrusted content: use the media type that your application decided,
+> and send `X-Content-Type-Options: nosniff` and
+> `Content-Security-Policy: sandbox`, or `Content-Disposition: attachment` for
+> types that browsers run, such as HTML and SVG.
+
+As with portable objects, a route of your own that matches
+the `/.well-known/apgateway/hl:...` path takes precedence over the gateway
+endpoint.  Also, this is not the [media upload](./media-upload.md) endpoint;
+the hashlink media dispatcher only serves resources.
+
+[hashlink]: https://datatracker.ietf.org/doc/html/draft-sporny-hashlink-07

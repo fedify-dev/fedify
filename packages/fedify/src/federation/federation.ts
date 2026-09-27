@@ -25,6 +25,7 @@ import type {
   CustomCollectionCounter,
   CustomCollectionCursor,
   CustomCollectionDispatcher,
+  HashlinkMediaDispatcher,
   InboxErrorHandler,
   InboxListener,
   MediaUploaderCallback,
@@ -387,6 +388,56 @@ export interface Federatable<TContextData> extends TaskRegistry<TContextData> {
     path: `${string}${Rfc6570Expression<"identifier">}${string}`,
     callback: MediaUploaderCallback<TContextData>,
   ): MediaUploaderSetters<TContextData>;
+
+  /**
+   * Registers a dispatcher that serves resources addressed by hashlinks, such
+   * as media attached to portable objects, through the
+   * [FEP-ef61](https://w3id.org/fep/ef61) gateway endpoint, e.g.,
+   * `GET /.well-known/apgateway/hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n`.
+   *
+   * Fedify responds with `400 Bad Request` without calling the dispatcher if
+   * the hashlink is malformed or its digest is not a SHA-256 multihash, and
+   * with `404 Not Found` if the dispatcher returns `null`.  Otherwise, the
+   * response returned by the dispatcher is sent as is.  Requests with methods
+   * other than `GET` and `HEAD` get `405 Method Not Allowed`.
+   *
+   * Fedify does not verify the served bytes against the digest, as that would
+   * require buffering the whole response body.  The dispatcher must serve only
+   * the resource whose complete representation hashes to the requested
+   * digest, e.g., by using the digest as the storage key.
+   *
+   * This is not the upload API of the ActivityPub Media Upload extension,
+   * which is registered through {@link Federatable.setMediaUploader}.
+   *
+   * @example
+   * ``` typescript
+   * federation.setHashlinkMediaDispatcher(async (ctx, media) => {
+   *   const file = await findPublicMedia(media.digest);
+   *   if (file == null) return null;
+   *   return new Response(
+   *     ctx.request.method === "HEAD" ? null : file.stream(),
+   *     {
+   *       headers: {
+   *         "Content-Type": file.mediaType,
+   *         "Content-Length": file.size.toString(),
+   *         "Cache-Control": "public, max-age=31536000, immutable",
+   *         "X-Content-Type-Options": "nosniff",
+   *       },
+   *     },
+   *   );
+   * });
+   * ```
+   *
+   * @param dispatcher A callback that returns the response serving the
+   *                   requested resource, or `null` if it is not stored on
+   *                   this server.
+   * @throws {RouterError} Thrown if a hashlink media dispatcher is already
+   *                       registered.
+   * @since 2.4.0
+   */
+  setHashlinkMediaDispatcher(
+    dispatcher: HashlinkMediaDispatcher<TContextData>,
+  ): void;
 
   /**
    * Registers a following collection dispatcher.

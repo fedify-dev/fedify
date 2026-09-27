@@ -1,10 +1,14 @@
 import {
   canonicalizePortableUri,
+  decodeMultibase,
   formatIri,
   fromCompatibleEf61Id,
   getFe34Origin,
+  parseDigestMultibase,
+  parseHashlink,
   parseIri,
 } from "@fedify/vocab-runtime";
+import type { HashlinkMediaRequest } from "./callback.ts";
 import type { PortableRequest } from "./context.ts";
 
 /**
@@ -15,6 +19,14 @@ export const PORTABLE_OBJECT_CONTENT_TYPE =
 
 const GATEWAY_OBJECT_PATH_PATTERN = /^\/\.well-known\/apgateway\/did(?::|%3A)/i;
 const BARE_DID_PATTERN = /^did:[a-z0-9]+:[^/?#]+$/i;
+const GATEWAY_PATH_PREFIX = "/.well-known/apgateway/";
+const HASHLINK_SCHEME_PATTERN = /^hl(?::|%3A)/i;
+
+/**
+ * The route template of hashlink media requests, used for metrics and traces.
+ */
+export const HASHLINK_MEDIA_ROUTE_TEMPLATE =
+  "/.well-known/apgateway/hl:{digestMultibase}";
 
 /**
  * The result of {@link parsePortableGatewayRequest}.
@@ -94,4 +106,67 @@ export function buildPortableUri(authority: unknown, path: string): URL {
   // Validates the DID syntax:
   getFe34Origin(authority);
   return parseIri(`ap+ef61://${authority}${path}`);
+}
+
+/**
+ * The result of {@link parseHashlinkGatewayRequest}.
+ */
+export type HashlinkGatewayRequest =
+  | {
+    readonly type: "media";
+    /** The request information passed to the hashlink media dispatcher. */
+    readonly media: HashlinkMediaRequest;
+  }
+  | {
+    readonly type: "malformed";
+    readonly error: TypeError;
+  };
+
+/**
+ * Recognizes an FEP-ef61 gateway request for a resource addressed by
+ * a hashlink, e.g.,
+ * `GET /.well-known/apgateway/hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n`.
+ *
+ * The rest of the path, including any slashes, is taken as the hashlink, as
+ * a digest in a multibase encoding like base64 may contain slashes.  The query
+ * is not part of the hashlink, so it is ignored here.
+ *
+ * @param url The request URL.
+ * @returns The parsed request, or `null` if the URL is not a gateway request
+ *          for a hashlink, e.g., a request for a portable object.
+ */
+export function parseHashlinkGatewayRequest(
+  url: URL,
+): HashlinkGatewayRequest | null {
+  if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+  if (!url.pathname.startsWith(GATEWAY_PATH_PREFIX)) return null;
+  const encoded = url.pathname.slice(GATEWAY_PATH_PREFIX.length);
+  if (!HASHLINK_SCHEME_PATTERN.test(encoded)) return null;
+  let digestMultibase: string;
+  let digest: Uint8Array;
+  let multihash: Uint8Array;
+  try {
+    let hashlink: string;
+    try {
+      hashlink = decodeURIComponent(encoded);
+    } catch (error) {
+      throw new TypeError("Invalid percent-encoding in the hashlink.", {
+        cause: error,
+      });
+    }
+    ({ digestMultibase } = parseHashlink(hashlink));
+    ({ digest } = parseDigestMultibase(digestMultibase));
+    multihash = decodeMultibase(digestMultibase);
+  } catch (error) {
+    if (error instanceof TypeError) return { type: "malformed", error };
+    throw error;
+  }
+  const media: HashlinkMediaRequest = Object.freeze({
+    hashlink: `hl:${digestMultibase}` as const,
+    digestMultibase,
+    algorithm: "sha2-256" as const,
+    digest,
+    multihash,
+  });
+  return { type: "media", media };
 }

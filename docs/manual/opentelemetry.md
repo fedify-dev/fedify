@@ -937,13 +937,12 @@ when you need trace-level collection IDs, cursor values, or custom route names.
 
 The `fedify.endpoint` attribute is drawn from a fixed enumeration:
 `webfinger`, `nodeinfo`, `actor`, `inbox`, `shared_inbox`, `outbox`,
-`media_upload`, `object`, `following`, `followers`, `liked`, `featured`,
-`featured_tags`, `collection`, `not_found`, `not_acceptable`, and `error`.
-When a request
-throws an exception after Fedify has already classified its endpoint, the
-metric retains the matched endpoint (for example `actor`) so that
-fault-attribution stays per endpoint; `error` is only used when classification
-itself failed.
+`media_upload`, `hashlink_media`, `object`, `following`, `followers`, `liked`,
+`featured`, `featured_tags`, `collection`, `not_found`, `not_acceptable`, and
+`error`.  When a request throws an exception after Fedify has already
+classified its endpoint, the metric retains the matched endpoint (for example
+`actor`) so that fault-attribution stays per endpoint; `error` is only used
+when classification itself failed.
 
 For turning these metrics into a production dashboard and alert rules, see the
 [*Production monitoring* guide](./monitoring.md).  It maps the metrics above to

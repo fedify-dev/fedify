@@ -161,6 +161,9 @@ import type { MessageQueue } from "./mq.ts";
 import { acceptsJsonLd } from "./negotiation.ts";
 import {
   buildPortableUri,
+  HASHLINK_MEDIA_ROUTE_TEMPLATE,
+  type HashlinkGatewayRequest,
+  parseHashlinkGatewayRequest,
   parsePortableGatewayRequest,
   type PortableGatewayRequest,
 } from "./portable.ts";
@@ -2608,7 +2611,13 @@ export class FederationImpl<TContextData>
                   tracer,
                   metricState,
                 });
-                if (acceptsJsonLd(request)) {
+                // Hashlink media responses are not negotiated, and they are
+                // sent as the application returns them, whose headers may
+                // even be immutable:
+                if (
+                  metricState.endpoint !== "hashlink_media" &&
+                  acceptsJsonLd(request)
+                ) {
                   response.headers.set("Vary", "Accept");
                 }
               } catch (error) {
@@ -2699,6 +2708,17 @@ export class FederationImpl<TContextData>
     if (route == null) {
       // Routes registered by the application take precedence over the FEP-ef61
       // gateway endpoint, so that existing routes keep working unchanged:
+      const media = this.hashlinkMediaDispatcher == null
+        ? null
+        : parseHashlinkGatewayRequest(url);
+      if (media != null) {
+        return await this.#fetchHashlinkMedia(request, media, {
+          onNotFound,
+          contextData,
+          span,
+          metricState,
+        });
+      }
       const portable = request.method === "GET" || request.method === "HEAD"
         ? parsePortableGatewayRequest(url)
         : null;
@@ -2712,14 +2732,7 @@ export class FederationImpl<TContextData>
           metricState,
         });
         // Also covers the responses of the application's callbacks:
-        if (request.method !== "HEAD" || response.body == null) return response;
-        // Release the discarded body, which may be a stream of, e.g., a file:
-        await response.body.cancel();
-        return new Response(null, {
-          status: response.status,
-          statusText: response.statusText,
-          headers: response.headers,
-        });
+        return await discardBodyForHead(request, response);
       }
       metricState.endpoint = "not_found";
       return await onNotFound(request);
@@ -3145,9 +3158,93 @@ export class FederationImpl<TContextData>
       onNotFound,
     });
   }
+
+  async #fetchHashlinkMedia(
+    request: Request,
+    media: HashlinkGatewayRequest,
+    {
+      onNotFound,
+      contextData,
+      span,
+      metricState,
+    }:
+      & Required<Pick<FederationFetchOptions<TContextData>, "onNotFound">>
+      & {
+        contextData: TContextData;
+        span: Span;
+        metricState: HttpMetricState;
+      },
+  ): Promise<Response> {
+    metricState.endpoint = "hashlink_media";
+    metricState.routeTemplate = HASHLINK_MEDIA_ROUTE_TEMPLATE;
+    span.updateName(`${request.method} ${HASHLINK_MEDIA_ROUTE_TEMPLATE}`);
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      return new Response("Method not allowed.", {
+        status: 405,
+        headers: {
+          Allow: "GET, HEAD",
+          "Content-Type": "text/plain; charset=utf-8",
+        },
+      });
+    }
+    if (media.type === "malformed") {
+      getLogger(["fedify", "federation", "hashlinkMedia"]).debug(
+        "Malformed FEP-ef61 hashlink media request {url}: {error}",
+        { url: request.url, error: media.error },
+      );
+      return new Response(
+        request.method === "HEAD" ? null : "Malformed hashlink.",
+        {
+          status: 400,
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        },
+      );
+    }
+    const context = this.#createContext(request, contextData);
+    const response = await this.hashlinkMediaDispatcher!(context, media.media);
+    // The onNotFound response is returned as is, since integrations may
+    // recognize it by its identity:
+    if (response == null) return await onNotFound(request);
+    // The body may be, e.g., a clone of a cached response, whose cancellation
+    // does not settle until the other branch is consumed on Node.js, so this
+    // does not wait for it:
+    return await discardBodyForHead(request, response, false);
+  }
 }
 
 const PORTABLE_GATEWAY_ROUTE_PREFIX = "/.well-known/apgateway/{did}";
+
+/**
+ * Removes the body of a response to a `HEAD` request.
+ * @param request The request.
+ * @param response The response to the request.
+ * @param waitForCancel Whether to wait until the discarded body is cancelled.
+ * @returns The response without a body if the request is a `HEAD` request,
+ *          or the response itself otherwise.
+ */
+async function discardBodyForHead(
+  request: Request,
+  response: Response,
+  waitForCancel: boolean = true,
+): Promise<Response> {
+  if (request.method !== "HEAD" || response.body == null) return response;
+  // Release the discarded body, which may be a stream of, e.g., a file:
+  const cancelled = response.body.cancel();
+  if (waitForCancel) await cancelled;
+  else {
+    cancelled.catch((error) => {
+      getLogger(["fedify", "federation", "http"]).debug(
+        "Failed to cancel the body of a response to {method} {url}: {error}",
+        { method: request.method, url: request.url, error },
+      );
+    });
+  }
+  return new Response(null, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+}
 
 type FedifyEndpoint =
   | "webfinger"
@@ -3157,6 +3254,7 @@ type FedifyEndpoint =
   | "shared_inbox"
   | "outbox"
   | "media_upload"
+  | "hashlink_media"
   | "object"
   | "following"
   | "followers"

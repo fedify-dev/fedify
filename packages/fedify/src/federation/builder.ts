@@ -30,6 +30,7 @@ import type {
   CustomCollectionCounter,
   CustomCollectionCursor,
   CustomCollectionDispatcher,
+  HashlinkMediaDispatcher,
   InboxErrorHandler,
   InboxListener,
   MediaUploaderCallback,
@@ -174,6 +175,7 @@ export class FederationBuilderImpl<TContextData>
   mediaUploaderPath?: string;
   mediaUploaderCallback?: MediaUploaderCallback<TContextData>;
   mediaUploaderAuthorizePredicate?: AuthorizePredicate<TContextData>;
+  hashlinkMediaDispatcher?: HashlinkMediaDispatcher<TContextData>;
   sharedInboxKeyDispatcher?: SharedInboxKeyDispatcher<TContextData>;
   unverifiedActivityHandler?: UnverifiedActivityHandler<TContextData>;
   outboxPermanentFailureHandler?: OutboxPermanentFailureHandler<TContextData>;
@@ -273,6 +275,7 @@ export class FederationBuilderImpl<TContextData>
     f.mediaUploaderPath = this.mediaUploaderPath;
     f.mediaUploaderCallback = this.mediaUploaderCallback;
     f.mediaUploaderAuthorizePredicate = this.mediaUploaderAuthorizePredicate;
+    f.hashlinkMediaDispatcher = this.hashlinkMediaDispatcher;
     f.sharedInboxKeyDispatcher = this.sharedInboxKeyDispatcher;
     f.unverifiedActivityHandler = this.unverifiedActivityHandler;
     f.outboxPermanentFailureHandler = this.outboxPermanentFailureHandler;
@@ -955,6 +958,15 @@ export class FederationBuilderImpl<TContextData>
       },
     };
     return setters;
+  }
+
+  setHashlinkMediaDispatcher(
+    dispatcher: HashlinkMediaDispatcher<TContextData>,
+  ): void {
+    if (this.hashlinkMediaDispatcher != null) {
+      throw new RouterError("Hashlink media dispatcher already set.");
+    }
+    this.hashlinkMediaDispatcher = dispatcher;
   }
 
   setFollowingDispatcher(

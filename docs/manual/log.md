@@ -168,6 +168,16 @@ messages related to collections (e.g., outbox, followers, following).
 The `["fedify", "federation", "fanout"]` category is used for logging
 messages related to fanning out outgoing activities.
 
+### `["fedify", "federation", "hashlinkMedia"]`
+
+*This category is available since Fedify 2.4.0.*
+
+The `["fedify", "federation", "hashlinkMedia"]` category is used for logging
+messages related to [serving hashlink media](./object.md#serving-hashlink-media)
+through the FEP-ef61 gateway endpoint.  When a request for hashlink media gets
+`400 Bad Request`, you can check the reason in this category with
+the `"debug"` level.
+
 ### `["fedify", "federation", "http"]`
 
 *This category is available since Fedify 0.9.0.*
