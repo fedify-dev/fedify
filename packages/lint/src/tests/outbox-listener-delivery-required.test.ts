@@ -2362,3 +2362,139 @@ federation
     expectedError: "Outbox listeners should deliver posted activities",
   }),
 );
+
+test(
+  `${ruleName}: ❌ Bad - statically false while loop hides delivery`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    while (false) {
+      await ctx.sendActivity(
+        { identifier: ctx.identifier },
+        new URL("https://example.com/inbox"),
+        activity,
+      );
+    }
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Outbox listeners should deliver posted activities",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - statically false for loop hides delivery`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    for (; false;) {
+      await ctx.sendActivity(
+        { identifier: ctx.identifier },
+        new URL("https://example.com/inbox"),
+        activity,
+      );
+    }
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Outbox listeners should deliver posted activities",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - statically false for loop update hides delivery`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    for (let i = 0; false; await ctx.sendActivity(
+      { identifier: ctx.identifier },
+      new URL("https://example.com/inbox"),
+      activity,
+    )) {}
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Outbox listeners should deliver posted activities",
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - do while (false) executes once`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    do {
+      await ctx.sendActivity(
+        { identifier: ctx.identifier },
+        new URL("https://example.com/inbox"),
+        activity,
+      );
+    } while (false);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - delivery in loop binding pattern`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    for (const { id = await ctx.sendActivity(
+      { identifier: ctx.identifier },
+      new URL("https://example.com/inbox"),
+      activity,
+    ) } of [{}]) {}
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - delivery in loop binding computed member expression`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    let target: Record<string, unknown> = {};
+    for ({ id: target[await ctx.sendActivity(
+      { identifier: ctx.identifier },
+      new URL("https://example.com/inbox"),
+      activity,
+    ) as unknown as string] } of [{}]) {}
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);

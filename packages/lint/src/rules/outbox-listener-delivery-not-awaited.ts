@@ -351,7 +351,18 @@ function fateOf(
         return DROPPED;
 
       case "LogicalExpression":
+        if (
+          get(parent, "operator") === "&&" && get(parent, "left") === current
+        ) {
+          return DROPPED;
+        }
+        current = parent;
+        continue;
+
       case "Property":
+        if (get(parent, "computed") && get(parent, "key") === current) {
+          return DROPPED;
+        }
         current = parent;
         continue;
 
@@ -382,6 +393,9 @@ function fateOf(
       }
 
       case "MemberExpression": {
+        if (get(parent, "computed") && get(parent, "property") === current) {
+          return DROPPED;
+        }
         if (get(parent, "object") !== current) return HANDLED;
         const call = parentOf(parent);
         const name = memberName(parent);
@@ -426,6 +440,15 @@ function fateOf(
       }
 
       case "AssignmentExpression": {
+        if (get(parent, "right") !== current) return HANDLED;
+        const name = getAssignmentTargetName(
+          asNode(get(parent, "left")) ?? parent,
+        );
+        if (name == null) return HANDLED;
+        return analysis.mentioned.has(name) ? HANDLED : DROPPED;
+      }
+
+      case "AssignmentPattern": {
         if (get(parent, "right") !== current) return HANDLED;
         const name = getAssignmentTargetName(
           asNode(get(parent, "left")) ?? parent,

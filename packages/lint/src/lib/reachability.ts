@@ -87,6 +87,51 @@ function alwaysExits(node: Node): boolean {
   }
 }
 
+function collectBindingExpressions(node: Node, out: Node[]): void {
+  switch (node.type) {
+    case "VariableDeclaration":
+      for (const decl of node.declarations) {
+        collectBindingExpressions(decl.id as Node, out);
+      }
+      break;
+    case "ObjectPattern":
+      for (const prop of node.properties) {
+        if (prop.type === "Property") {
+          // If the key is computed, e.g. { [doSomething()]: value }
+          // Then the key itself is an expression that executes
+          if (prop.computed) {
+            out.push(prop.key as Node);
+          }
+          collectBindingExpressions(prop.value as Node, out);
+        } else if (prop.type === "RestElement") {
+          collectBindingExpressions(prop.argument as Node, out);
+        }
+      }
+      break;
+    case "ArrayPattern":
+      for (const elem of node.elements) {
+        if (elem != null) {
+          collectBindingExpressions(elem as Node, out);
+        }
+      }
+      break;
+    case "AssignmentPattern":
+      // This is the default value, e.g. { id = ctx.sendActivity(...) }
+      out.push(node);
+      collectBindingExpressions(node.left as Node, out);
+      break;
+    case "RestElement":
+      collectBindingExpressions(node.argument as Node, out);
+      break;
+    case "MemberExpression": {
+      const object = node.object as Node;
+      if (object.type !== "Identifier") out.push(object);
+      if (node.computed) out.push(node.property as Node);
+      break;
+    }
+  }
+}
+
 export function collectReachableStatements(node: Node, out: Node[]): void {
   switch (node.type) {
     case "BlockStatement":
@@ -139,22 +184,32 @@ export function collectReachableStatements(node: Node, out: Node[]): void {
       return;
 
     case "WhileStatement":
+      out.push(node.test as Node);
+      if (!isStaticallyFalsy(node.test)) {
+        collectReachableStatements(node.body as Node, out);
+      }
+      return;
+
     case "DoWhileStatement":
       out.push(node.test as Node);
       collectReachableStatements(node.body as Node, out);
       return;
 
     case "ForStatement":
-      for (const head of [node.init, node.test, node.update]) {
-        if (head != null) out.push(head as Node);
+      if (node.init != null) out.push(node.init as Node);
+      if (node.test != null) out.push(node.test as Node);
+
+      if (node.test == null || !isStaticallyFalsy(node.test)) {
+        if (node.update != null) out.push(node.update as Node);
+        collectReachableStatements(node.body as Node, out);
       }
-      collectReachableStatements(node.body as Node, out);
       return;
 
     case "ForInStatement":
     case "ForOfStatement":
       // Only `right` is evaluated as a value; `left` declares or assigns the
       // loop variable.
+      collectBindingExpressions(node.left as Node, out);
       out.push(node.right as Node);
       collectReachableStatements(node.body as Node, out);
       return;
@@ -258,6 +313,26 @@ export function collectReferencedNames(
     // `x = fn` and `obj.x = fn` write to a name rather than mention it.
     if (getAssignmentTargetName(n.left as Node) != null) {
       collectReferencedNames(n.right, out, crossFunctions);
+      let current = n.left as Node;
+      while (current.type === "MemberExpression") {
+        if (current.computed) {
+          collectReferencedNames(current.property as Node, out, crossFunctions);
+        }
+        current = current.object as Node;
+      }
+      return;
+    }
+  }
+  if (n.type === "AssignmentPattern") {
+    if (getAssignmentTargetName(n.left as Node) != null) {
+      collectReferencedNames(n.right, out, crossFunctions);
+      let current = n.left as Node;
+      while (current.type === "MemberExpression") {
+        if (current.computed) {
+          collectReferencedNames(current.property as Node, out, crossFunctions);
+        }
+        current = current.object as Node;
+      }
       return;
     }
   }
@@ -400,6 +475,13 @@ function collectFunctionsByName(
       bindTo(names, decl.init);
       collectFunctionsByName(decl.init, out);
     }
+    return;
+  }
+  if (n.type === "AssignmentPattern") {
+    const names: string[] = [];
+    collectBoundNames(n.left, names);
+    bindTo(names, n.right);
+    collectFunctionsByName(n.right, out);
     return;
   }
   if (n.type === "AssignmentExpression") {
