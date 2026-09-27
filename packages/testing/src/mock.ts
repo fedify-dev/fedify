@@ -294,6 +294,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   private outboxListenerErrorHandler?: any;
   private mediaUploaderCallback?: any;
   private mediaUploaderAuthorizePredicate?: any;
+  private hashlinkMediaDispatcher?: any;
   private followingDispatcher?: any;
   private followersDispatcher?: any;
   private likedDispatcher?: any;
@@ -520,6 +521,13 @@ class MockFederation<TContextData> implements Federation<TContextData> {
         return this;
       },
     };
+  }
+
+  setHashlinkMediaDispatcher(dispatcher: any): void {
+    if (this.hashlinkMediaDispatcher != null) {
+      throw new TypeError("Hashlink media dispatcher already set.");
+    }
+    this.hashlinkMediaDispatcher = dispatcher;
   }
 
   setOutboxPermanentFailureHandler(_handler: any): void {

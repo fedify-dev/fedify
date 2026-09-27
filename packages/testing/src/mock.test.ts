@@ -1828,3 +1828,13 @@ test("MockContext.enqueueTask rejects a handle from another federation", async (
   );
   assertEquals(called, 0);
 });
+
+test("MockFederation.setHashlinkMediaDispatcher()", () => {
+  const federation = createFederation<void>();
+  federation.setHashlinkMediaDispatcher(() => null);
+  assertThrows(
+    () => federation.setHashlinkMediaDispatcher(() => null),
+    TypeError,
+    "Hashlink media dispatcher already set.",
+  );
+});

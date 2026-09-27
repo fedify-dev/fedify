@@ -236,6 +236,69 @@ export type MediaUploaderCallback<TContextData> = (
 ) => Object | URL | Promise<Object | URL>;
 
 /**
+ * A request for a resource addressed by a hashlink, which an
+ * [FEP-ef61](https://w3id.org/fep/ef61) gateway serves at
+ * `/.well-known/apgateway/hl:<digestMultibase>`.
+ *
+ * Fedify validates the hashlink before creating this object, so the digest is
+ * always a well-formed SHA-256 multihash.
+ *
+ * @since 2.4.0
+ */
+export interface HashlinkMediaRequest {
+  /**
+   * The requested hashlink, i.e., `hl:` followed by
+   * {@link HashlinkMediaRequest.digestMultibase}, after percent-decoding and
+   * with its scheme lowercased.
+   */
+  readonly hashlink: `hl:${string}`;
+
+  /**
+   * The multibase-encoded multihash as requested, which is the value that
+   * publishers put in the `digestMultibase` property.  The same digest can be
+   * encoded in several multibase encodings; use
+   * {@link HashlinkMediaRequest.digest} as a storage key to find a resource
+   * regardless of the encoding.
+   */
+  readonly digestMultibase: string;
+
+  /** The hash algorithm of the digest. */
+  readonly algorithm: "sha2-256";
+
+  /** The raw 32-byte SHA-256 digest of the resource. */
+  readonly digest: Uint8Array;
+
+  /**
+   * The multihash decoded from
+   * {@link HashlinkMediaRequest.digestMultibase}, i.e., the hash algorithm
+   * code and the digest length followed by the digest.
+   */
+  readonly multihash: Uint8Array;
+}
+
+/**
+ * A callback that serves a resource addressed by a hashlink through the
+ * [FEP-ef61](https://w3id.org/fep/ef61) gateway endpoint.
+ *
+ * The returned response is sent as is, so the callback can stream its body
+ * and set headers such as `Content-Type` and `Cache-Control`.  Fedify does not
+ * verify the response body against the digest, so the complete
+ * representation must be the exact bytes that hash to the requested digest.
+ *
+ * @template TContextData The context data to pass to the {@link Context}.
+ * @param context The request context.
+ * @param media The requested hashlink and its digest.
+ * @returns The response to send, or `null` if the resource is not stored on
+ *          this server, which results in `404 Not Found`.  It may be returned
+ *          synchronously or wrapped in a `Promise`.
+ * @since 2.4.0
+ */
+export type HashlinkMediaDispatcher<TContextData> = (
+  context: RequestContext<TContextData>,
+  media: HashlinkMediaRequest,
+) => Response | null | Promise<Response | null>;
+
+/**
  * The reason why an incoming activity could not be verified.
  *
  * Unlike inbox listeners registered through {@link InboxListenerSetters.on},
