@@ -311,10 +311,17 @@ export function getDocumentLoader(
         await validatePublicUrl(currentUrl);
       } catch (error) {
         if (error instanceof UrlError) {
-          logger.error("Disallowed private URL: {url}", {
-            url: currentUrl,
-            error,
-          });
+          if (error.reason === "dns") {
+            logger.debug("DNS lookup failed for {url}", {
+              url: currentUrl,
+              error,
+            });
+          } else {
+            logger.error("Disallowed private URL: {url}", {
+              url: currentUrl,
+              error,
+            });
+          }
         }
         throw error;
       }
