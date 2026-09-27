@@ -74,6 +74,8 @@ async function* generateProperty(
         suppressError?: boolean,
         tracerProvider?: TracerProvider,
         crossOrigin?: "ignore" | "throw" | "trust";
+        gateways?: readonly (string | URL)[];
+        verifyPortableObject?: PortableObjectVerifier;
       } = {},
     ): Promise<${getTypeNames(property.range, types)} | null> {
       const documentLoader =
@@ -87,6 +89,44 @@ async function* generateProperty(
         ${JSON.stringify(metadata.version)},
       );
       return await tracer.startActiveSpan("activitypub.lookup_object", async (span) => {
+        if (isPortableIri(url)) {
+          try {
+            const obj = await dereferencePortableIri(url, {
+              documentLoader,
+              contextLoader,
+              tracerProvider,
+              gateways: options.gateways,
+              verifyPortableObject: options.verifyPortableObject,
+              suppressError: options.suppressError,
+              crossOrigin: options.crossOrigin,
+              span,
+              parse: (document, parseOptions) =>
+                this.#${property.singularName}_fromJsonLd(document, {
+                  documentLoader,
+                  contextLoader: parseOptions.contextLoader,
+                  tracerProvider,
+                  baseUrl: parseOptions.baseUrl,
+                }),
+            });
+            if (obj != null) {
+              span.setAttribute("activitypub.object.id", (obj.id ?? url).href);
+              span.setAttribute(
+                "activitypub.object.type",
+                // @ts-ignore: obj.constructor always has a typeId.
+                obj.constructor.typeId.href
+              );
+            }
+            return obj;
+          } catch (e) {
+            span.setStatus({
+              code: SpanStatusCode.ERROR,
+              message: String(e),
+            });
+            throw e;
+          } finally {
+            span.end();
+          }
+        }
         const lookupUrl = formatIri(url);
         let fetchResult: RemoteDocument;
         try {
@@ -266,6 +306,8 @@ async function* generateProperty(
           suppressError?: boolean,
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
+          gateways?: readonly (string | URL)[];
+          verifyPortableObject?: PortableObjectVerifier;
         } = {}
       ): Promise<${getTypeNames(property.range, types)} | null> {
         if (this._warning != null) {
@@ -381,6 +423,8 @@ async function* generateProperty(
           suppressError?: boolean,
           tracerProvider?: TracerProvider,
           crossOrigin?: "ignore" | "throw" | "trust";
+          gateways?: readonly (string | URL)[];
+          verifyPortableObject?: PortableObjectVerifier;
         } = {}
       ): AsyncIterable<${getTypeNames(property.range, types)}> {
         if (this._warning != null) {

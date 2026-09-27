@@ -1,0 +1,872 @@
+import {
+  createTestTracerProvider,
+  mockDocumentLoader,
+  test,
+} from "@fedify/fixture";
+import {
+  type DocumentLoader,
+  FetchError,
+  getDocumentLoader,
+  type PortableObjectVerifier,
+  type RemoteDocument,
+} from "@fedify/vocab-runtime";
+import fetchMock from "fetch-mock";
+import { deepStrictEqual, ok, rejects } from "node:assert/strict";
+import { assertInstanceOf } from "./utils.ts";
+import { Create, Note } from "./vocab.ts";
+
+const did = "did:key:z6Mkabc";
+const objectId = `ap+ef61://${did}/objects/1`;
+const gatewayPath = `/.well-known/apgateway/${did}/objects/1`;
+
+function note(id: string = `ap://${did}/objects/1`): Record<string, unknown> {
+  return {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id,
+    type: "Note",
+    content: "Portable note",
+  };
+}
+
+type Response = Record<string, unknown> | unknown[] | number | Error;
+
+function createLoader(
+  responses: Record<string, Response>,
+): DocumentLoader & { readonly fetched: string[] } {
+  const fetched: string[] = [];
+  // deno-lint-ignore require-await
+  const loader = async (url: string): Promise<RemoteDocument> => {
+    fetched.push(url);
+    const response = responses[url];
+    if (response == null) {
+      throw new FetchError(
+        url,
+        "HTTP 404",
+        new globalThis.Response(null, {
+          status: 404,
+        }),
+      );
+    }
+    if (response instanceof Error) throw response;
+    if (typeof response === "number") {
+      throw new FetchError(
+        url,
+        `HTTP ${response}`,
+        new globalThis.Response(null, { status: response }),
+      );
+    }
+    return { contextUrl: null, documentUrl: url, document: response };
+  };
+  return Object.assign(loader, { fetched });
+}
+
+function createVerifier(
+  verified = true,
+): PortableObjectVerifier & { readonly documents: unknown[] } {
+  const documents: unknown[] = [];
+  // deno-lint-ignore require-await
+  const verifier = async (document: unknown) => {
+    documents.push(document);
+    return { verified };
+  };
+  return Object.assign(verifier, { documents });
+}
+
+function createActivity(object: string = objectId): Promise<Create> {
+  return Create.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Create",
+    id: `ap://${did}/activities/1`,
+    object,
+  }, { contextLoader: mockDocumentLoader });
+}
+
+test("getObject() dereferences a portable IRI through explicit gateways", async () => {
+  const document = note();
+  const documentLoader = createLoader({
+    [`https://gw1.example${gatewayPath}`]: document,
+  });
+  const verifyPortableObject = createVerifier();
+  const activity = await createActivity();
+  const object = await activity.getObject({
+    documentLoader,
+    contextLoader: mockDocumentLoader,
+    gateways: ["https://gw1.example", new URL("https://gw2.example/")],
+    verifyPortableObject,
+  });
+  assertInstanceOf(object, Note);
+  deepStrictEqual(
+    object.id,
+    new URL("ap+ef61://did%3Akey%3Az6Mkabc/objects/1"),
+  );
+  deepStrictEqual(object.content, "Portable note");
+  deepStrictEqual(documentLoader.fetched, [
+    `https://gw1.example${gatewayPath}`,
+  ]);
+  // The verifier receives the fetched JSON as is:
+  deepStrictEqual(verifyPortableObject.documents, [document]);
+
+  // The fetched object is cached like any other dereferenced object:
+  deepStrictEqual(
+    (await activity.getObject({
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+    }))?.content,
+    "Portable note",
+  );
+  deepStrictEqual(documentLoader.fetched.length, 1);
+});
+
+test("getObject() keeps non-hint query parameters for gateways", async () => {
+  const documentLoader = createLoader({
+    [`https://gw.example${gatewayPath}?page=2`]: note(
+      `ap://${did}/objects/1?page=2`,
+    ),
+  });
+  const activity = await createActivity(
+    `${objectId}?page=2&@gateway=https%3A%2F%2Fgw.example`,
+  );
+  const object = await activity.getObject({
+    documentLoader,
+    contextLoader: mockDocumentLoader,
+    verifyPortableObject: createVerifier(),
+  });
+  assertInstanceOf(object, Note);
+  deepStrictEqual(documentLoader.fetched, [
+    `https://gw.example${gatewayPath}?page=2`,
+  ]);
+});
+
+test("getObject() tries the next gateway after failures", async () => {
+  const documentLoader = createLoader({
+    [`https://gw2.example${gatewayPath}`]: new TypeError("Network error"),
+    [`https://gw3.example${gatewayPath}`]: 500,
+    [`https://gw4.example${gatewayPath}`]: note(),
+    [`https://gw5.example${gatewayPath}`]: note(),
+  });
+  const [tracerProvider, exporter] = createTestTracerProvider();
+  const activity = await createActivity();
+  const object = await activity.getObject({
+    documentLoader,
+    contextLoader: mockDocumentLoader,
+    tracerProvider,
+    gateways: [
+      "https://gw1.example", // 404 Not Found
+      "https://gw2.example", // network error
+      "https://gw3.example", // 500 Internal Server Error
+      "https://gw4.example",
+      "https://gw5.example",
+    ],
+    verifyPortableObject: createVerifier(),
+  });
+  assertInstanceOf(object, Note);
+  // Stops at the first gateway that serves a valid object:
+  deepStrictEqual(documentLoader.fetched, [
+    `https://gw1.example${gatewayPath}`,
+    `https://gw2.example${gatewayPath}`,
+    `https://gw3.example${gatewayPath}`,
+    `https://gw4.example${gatewayPath}`,
+  ]);
+  const spans = exporter.getSpans("activitypub.lookup_object");
+  deepStrictEqual(spans.length, 1);
+  deepStrictEqual(spans[0].status.code, 0); // UNSET
+  deepStrictEqual(
+    spans[0].attributes["activitypub.gateway"],
+    "https://gw4.example/",
+  );
+  deepStrictEqual(
+    spans[0].attributes["activitypub.object.type"],
+    "https://www.w3.org/ns/activitystreams#Note",
+  );
+});
+
+test("getObject() reports errors when every gateway fails", async () => {
+  const single = createLoader({ [`https://gw1.example${gatewayPath}`]: 500 });
+  await rejects(
+    async () =>
+      await (await createActivity()).getObject({
+        documentLoader: single,
+        contextLoader: mockDocumentLoader,
+        gateways: ["https://gw1.example"],
+        verifyPortableObject: createVerifier(),
+      }),
+    FetchError,
+  );
+
+  const multiple = createLoader({
+    [`https://gw1.example${gatewayPath}`]: 500,
+    [`https://gw2.example${gatewayPath}`]: new TypeError("Network error"),
+  });
+  const options = {
+    documentLoader: multiple,
+    contextLoader: mockDocumentLoader,
+    gateways: ["https://gw1.example", "https://gw2.example"],
+    verifyPortableObject: createVerifier(),
+  };
+  await rejects(
+    async () => await (await createActivity()).getObject(options),
+    (error) => {
+      assertInstanceOf(error, AggregateError);
+      deepStrictEqual(error.errors.length, 2);
+      assertInstanceOf(error.errors[0], FetchError);
+      assertInstanceOf(error.errors[1], TypeError);
+      return true;
+    },
+  );
+
+  const [tracerProvider, exporter] = createTestTracerProvider();
+  deepStrictEqual(
+    await (await createActivity()).getObject({
+      ...options,
+      suppressError: true,
+      tracerProvider,
+    }),
+    null,
+  );
+  const spans = exporter.getSpans("activitypub.lookup_object");
+  deepStrictEqual(spans.length, 1);
+  deepStrictEqual(spans[0].status.code, 2); // ERROR
+
+  // A document that cannot be parsed is an error as well:
+  const unparsable = createLoader({
+    [`https://gw1.example${gatewayPath}`]: {
+      ...note(),
+      "@context": "https://example.com/unknown-context",
+    },
+  });
+  await rejects(
+    async () =>
+      await (await createActivity()).getObject({
+        documentLoader: unparsable,
+        contextLoader: mockDocumentLoader,
+        gateways: ["https://gw1.example"],
+        verifyPortableObject: createVerifier(),
+      }),
+  );
+});
+
+test("getObject() rejects objects with a mismatching portable ID", async (t) => {
+  const mismatches = {
+    "another DID": `ap://did:key:z6Mkdef/objects/1`,
+    "another path": `ap://${did}/objects/2`,
+    "a dot segment": `ap://${did}/objects/x/../1`,
+    "a fragment": `ap://${did}/objects/1#fragment`,
+    "a compatible identifier": `https://gw1.example${gatewayPath}`,
+    "an HTTP(S) ID": "https://gw1.example/objects/1",
+  };
+  for (const [name, id] of globalThis.Object.entries(mismatches)) {
+    await t.step(name, async () => {
+      const documentLoader = createLoader({
+        [`https://gw1.example${gatewayPath}`]: note(id),
+      });
+      const options = {
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        gateways: ["https://gw1.example"],
+        verifyPortableObject: createVerifier(),
+      };
+      deepStrictEqual(await (await createActivity()).getObject(options), null);
+      deepStrictEqual(
+        await (await createActivity()).getObject({
+          ...options,
+          crossOrigin: "trust",
+        }),
+        null,
+      );
+      deepStrictEqual(
+        await (await createActivity()).getObject({
+          ...options,
+          crossOrigin: "throw",
+          suppressError: true,
+        }),
+        null,
+      );
+      await rejects(
+        async () =>
+          await (await createActivity()).getObject({
+            ...options,
+            crossOrigin: "throw",
+          }),
+        /No gateway returned a valid portable object/,
+      );
+    });
+  }
+
+  await t.step("equivalent spellings", async () => {
+    for (
+      const id of [
+        `ap+ef61://${did}/objects/1`,
+        `ap://did%3Akey%3Az6Mkabc/objects/1`,
+        `ap://${did}/objects/1?@gateway=https%3A%2F%2Fother.example`,
+      ]
+    ) {
+      const documentLoader = createLoader({
+        [`https://gw1.example${gatewayPath}`]: note(id),
+      });
+      const object = await (await createActivity()).getObject({
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        gateways: ["https://gw1.example"],
+        verifyPortableObject: createVerifier(),
+      });
+      assertInstanceOf(object, Note);
+    }
+  });
+
+  await t.step("a mismatch does not stop other gateways", async () => {
+    const documentLoader = createLoader({
+      [`https://gw1.example${gatewayPath}`]: note(`ap://${did}/objects/2`),
+      [`https://gw2.example${gatewayPath}`]: 500,
+      [`https://gw3.example${gatewayPath}`]: note(),
+    });
+    const object = await (await createActivity()).getObject({
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      gateways: [
+        "https://gw1.example",
+        "https://gw2.example",
+        "https://gw3.example",
+      ],
+      verifyPortableObject: createVerifier(),
+      crossOrigin: "throw",
+    });
+    assertInstanceOf(object, Note);
+  });
+
+  await t.step(
+    "a mismatch among errors is reported as a mismatch",
+    async () => {
+      const documentLoader = createLoader({
+        [`https://gw1.example${gatewayPath}`]: 500,
+        [`https://gw2.example${gatewayPath}`]: note(`ap://${did}/objects/2`),
+      });
+      deepStrictEqual(
+        await (await createActivity()).getObject({
+          documentLoader,
+          contextLoader: mockDocumentLoader,
+          gateways: ["https://gw1.example", "https://gw2.example"],
+          verifyPortableObject: createVerifier(),
+        }),
+        null,
+      );
+    },
+  );
+});
+
+test("getObject() rejects documents with other shapes", async () => {
+  for (
+    const document of [
+      [note()],
+      {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        "@graph": [note(), note(`ap://${did}/objects/2`)],
+      },
+    ]
+  ) {
+    const documentLoader = createLoader({
+      [`https://gw1.example${gatewayPath}`]: document,
+    });
+    deepStrictEqual(
+      await (await createActivity()).getObject({
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        gateways: ["https://gw1.example"],
+        verifyPortableObject: createVerifier(),
+      }),
+      null,
+    );
+  }
+});
+
+test("getObject() leaves documents without @id to the verifier", async () => {
+  const document = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Note",
+    content: "No ID",
+  };
+  const documentLoader = createLoader({
+    [`https://gw1.example${gatewayPath}`]: document,
+  });
+  const options = {
+    documentLoader,
+    contextLoader: mockDocumentLoader,
+    gateways: ["https://gw1.example"],
+  };
+  const rejecting = createVerifier(false);
+  deepStrictEqual(
+    await (await createActivity()).getObject({
+      ...options,
+      verifyPortableObject: rejecting,
+    }),
+    null,
+  );
+  deepStrictEqual(rejecting.documents, [document]);
+  const object = await (await createActivity()).getObject({
+    ...options,
+    verifyPortableObject: createVerifier(),
+  });
+  assertInstanceOf(object, Note);
+  deepStrictEqual(object.id, null);
+});
+
+test("getObject() applies the portable object verifier", async () => {
+  const gateways = ["https://gw1.example", "https://gw2.example"];
+  const documentLoader = createLoader({
+    [`https://gw1.example${gatewayPath}`]: note(),
+    [`https://gw2.example${gatewayPath}`]: note(),
+  });
+  const failing = createVerifier(false);
+  deepStrictEqual(
+    await (await createActivity()).getObject({
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      gateways,
+      verifyPortableObject: failing,
+      crossOrigin: "trust",
+    }),
+    null,
+  );
+  deepStrictEqual(failing.documents.length, 2);
+  await rejects(
+    async () =>
+      await (await createActivity()).getObject({
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        gateways,
+        verifyPortableObject: failing,
+        crossOrigin: "throw",
+      }),
+    /No gateway returned a valid portable object/,
+  );
+
+  deepStrictEqual(
+    await (await createActivity()).getObject({
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      gateways,
+      // deno-lint-ignore require-await
+      verifyPortableObject: async () => {
+        throw new Error("Verifier failure");
+      },
+    }),
+    null,
+  );
+
+  // A failed dereference is not cached; a later call retries:
+  const activity = await createActivity();
+  deepStrictEqual(
+    await activity.getObject({
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      gateways,
+      verifyPortableObject: failing,
+    }),
+    null,
+  );
+  assertInstanceOf(
+    await activity.getObject({
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      gateways,
+      verifyPortableObject: createVerifier(),
+    }),
+    Note,
+  );
+});
+
+test("getObject() requires a verifier before fetching portable IRIs", async () => {
+  const documentLoader = createLoader({
+    [`https://gw1.example${gatewayPath}`]: note(),
+  });
+  await rejects(
+    async () =>
+      await (await createActivity()).getObject({
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        gateways: ["https://gw1.example"],
+      }),
+    (error) => {
+      assertInstanceOf(error, TypeError);
+      ok(error.message.includes("verifyPortableObject"));
+      return true;
+    },
+  );
+  deepStrictEqual(
+    await (await createActivity()).getObject({
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      gateways: ["https://gw1.example"],
+      suppressError: true,
+    }),
+    null,
+  );
+  deepStrictEqual(documentLoader.fetched, []);
+});
+
+test("getObject() suppresses errors for malformed portable IRIs", async () => {
+  const activity = await createActivity(`ap://${did}/objects/%ZZ`);
+  for (const gateways of [[], ["https://gw1.example"]]) {
+    const documentLoader = createLoader({});
+    deepStrictEqual(
+      await activity.getObject({
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        gateways,
+        verifyPortableObject: createVerifier(),
+        suppressError: true,
+      }),
+      null,
+    );
+    deepStrictEqual(documentLoader.fetched, []);
+    await rejects(async () =>
+      await activity.getObject({
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        gateways,
+        verifyPortableObject: createVerifier(),
+      }), TypeError);
+  }
+});
+
+test("getObject() rejects invalid gateways before fetching", async () => {
+  const documentLoader = createLoader({});
+  for (
+    const gateway of [
+      "https://gw.example/path",
+      "https://gw.example/?query",
+      "https://user@gw.example",
+      "ftp://gw.example",
+      "not a URL",
+    ]
+  ) {
+    await rejects(
+      async () =>
+        await (await createActivity()).getObject({
+          documentLoader,
+          contextLoader: mockDocumentLoader,
+          gateways: [gateway],
+          verifyPortableObject: createVerifier(),
+          suppressError: true,
+        }),
+      TypeError,
+    );
+  }
+  deepStrictEqual(documentLoader.fetched, []);
+});
+
+test("getObject() uses @gateway location hints", async (t) => {
+  await t.step("in order, skipping invalid and duplicate hints", async () => {
+    const documentLoader = createLoader({
+      [`https://gw2.example${gatewayPath}`]: note(),
+    });
+    const activity = await createActivity(
+      `${objectId}?@gateway=https%3A%2F%2Fgw1.example` +
+        "&@gateway=https%3A%2F%2Fgw1.example%2F" +
+        "&@gateway=https%3A%2F%2Finvalid.example%2Fpath" +
+        "&%40gateway=https%3A%2F%2Fgw2.example" +
+        "&gateways=https%3A%2F%2Flegacy.example",
+    );
+    const object = await activity.getObject({
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      verifyPortableObject: createVerifier(),
+    });
+    assertInstanceOf(object, Note);
+    deepStrictEqual(documentLoader.fetched, [
+      `https://gw1.example${gatewayPath}`,
+      `https://gw2.example${gatewayPath}`,
+    ]);
+  });
+
+  await t.step("up to five hints", async () => {
+    const documentLoader = createLoader({});
+    const hints = [1, 2, 3, 4, 5, 6, 7].map((i) =>
+      `@gateway=https%3A%2F%2Fgw${i}.example`
+    );
+    const activity = await createActivity(`${objectId}?${hints.join("&")}`);
+    await rejects(async () =>
+      await activity.getObject({
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        verifyPortableObject: createVerifier(),
+      })
+    );
+    deepStrictEqual(
+      documentLoader.fetched,
+      [1, 2, 3, 4, 5].map((i) => `https://gw${i}.example${gatewayPath}`),
+    );
+  });
+
+  await t.step("replaced by explicit gateways", async () => {
+    const documentLoader = createLoader({
+      [`https://explicit.example${gatewayPath}`]: note(),
+    });
+    const activity = await createActivity(
+      `${objectId}?@gateway=https%3A%2F%2Fhint.example`,
+    );
+    const object = await activity.getObject({
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      gateways: ["https://explicit.example"],
+      verifyPortableObject: createVerifier(),
+    });
+    assertInstanceOf(object, Note);
+    deepStrictEqual(documentLoader.fetched, [
+      `https://explicit.example${gatewayPath}`,
+    ]);
+  });
+
+  await t.step("disabled by an empty gateway list", async () => {
+    const documentLoader = createLoader({});
+    const activity = await createActivity(
+      `${objectId}?@gateway=https%3A%2F%2Fhint.example`,
+    );
+    deepStrictEqual(
+      await activity.getObject({
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        gateways: [],
+        verifyPortableObject: createVerifier(),
+        suppressError: true,
+      }),
+      null,
+    );
+    deepStrictEqual(documentLoader.fetched, [
+      `ap+ef61://${did}/objects/1?@gateway=https%3A%2F%2Fhint.example`,
+    ]);
+  });
+});
+
+test("getObject() lets the document loader handle portable IRIs without gateways", async () => {
+  const documentLoader = createLoader({ [objectId]: note() });
+  const activity = await createActivity();
+  const object = await activity.getObject({
+    documentLoader,
+    contextLoader: mockDocumentLoader,
+    verifyPortableObject: createVerifier(),
+  });
+  assertInstanceOf(object, Note);
+  deepStrictEqual(documentLoader.fetched, [objectId]);
+
+  // The same validation applies:
+  const spoofing = createLoader({ [objectId]: note(`ap://${did}/objects/2`) });
+  deepStrictEqual(
+    await (await createActivity()).getObject({
+      documentLoader: spoofing,
+      contextLoader: mockDocumentLoader,
+      verifyPortableObject: createVerifier(),
+    }),
+    null,
+  );
+  deepStrictEqual(
+    await (await createActivity()).getObject({
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      verifyPortableObject: createVerifier(false),
+    }),
+    null,
+  );
+});
+
+test("getObject() shares context documents within a dereference", async (t) => {
+  const contextUrl = "https://example.com/portable-context";
+  const document = {
+    "@context": ["https://www.w3.org/ns/activitystreams", contextUrl],
+    id: `ap://${did}/objects/1`,
+    type: "Note",
+    content: "Portable note",
+  };
+
+  await t.step("custom contexts are loaded once", async () => {
+    const loaded: string[] = [];
+    let version = 0;
+    const contextLoader: DocumentLoader = async (url) => {
+      loaded.push(url);
+      if (url === contextUrl) {
+        version++;
+        return {
+          contextUrl: null,
+          documentUrl: url,
+          document: { "@context": { version: `urn:version:${version}` } },
+        };
+      }
+      return await mockDocumentLoader(url);
+    };
+    const contexts: unknown[] = [];
+    const verifyPortableObject: PortableObjectVerifier = async (
+      _,
+      { contextLoader },
+    ) => {
+      contexts.push((await contextLoader!(contextUrl)).document);
+      contexts.push((await contextLoader!(contextUrl)).document);
+      return { verified: true };
+    };
+    const object = await (await createActivity()).getObject({
+      documentLoader: createLoader({
+        [`https://gw1.example${gatewayPath}`]: document,
+      }),
+      contextLoader,
+      gateways: ["https://gw1.example"],
+      verifyPortableObject,
+    });
+    assertInstanceOf(object, Note);
+    deepStrictEqual(loaded.filter((url) => url === contextUrl).length, 1);
+    deepStrictEqual(contexts, [
+      { "@context": { version: "urn:version:1" } },
+      { "@context": { version: "urn:version:1" } },
+    ]);
+  });
+
+  await t.step("baseline contexts use built-in copies", async () => {
+    const loaded: string[] = [];
+    const contextLoader: DocumentLoader = async (url) => {
+      loaded.push(url);
+      return await mockDocumentLoader(url);
+    };
+    const object = await (await createActivity()).getObject({
+      documentLoader: createLoader({
+        [`https://gw1.example${gatewayPath}`]: note(),
+      }),
+      contextLoader,
+      gateways: ["https://gw1.example"],
+      verifyPortableObject: createVerifier(),
+    });
+    assertInstanceOf(object, Note);
+    deepStrictEqual(loaded, []);
+  });
+
+  await t.step("the snapshot ends with the dereference", async () => {
+    const loaded: string[] = [];
+    const contextLoader: DocumentLoader = async (url) => {
+      loaded.push(url);
+      return await mockDocumentLoader(url);
+    };
+    const object = await (await createActivity()).getObject({
+      documentLoader: createLoader({
+        [`https://gw1.example${gatewayPath}`]: {
+          ...note(),
+          attributedTo: "https://example.com/person",
+        },
+      }),
+      contextLoader,
+      gateways: ["https://gw1.example"],
+      verifyPortableObject: createVerifier(),
+    });
+    assertInstanceOf(object, Note);
+    deepStrictEqual(loaded, []);
+    // Later dereferences on the returned object use the caller's context
+    // loader again, including for the baseline contexts:
+    const person = await object.getAttribution({
+      documentLoader: createLoader({
+        "https://example.com/person": {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          id: "https://example.com/person",
+          type: "Person",
+        },
+      }),
+    });
+    deepStrictEqual(person?.id, new URL("https://example.com/person"));
+    ok((loaded as string[]).includes("https://www.w3.org/ns/activitystreams"));
+  });
+
+  await t.step("failed context loads are retried", async () => {
+    let failures = 1;
+    const contextLoader: DocumentLoader = async (url) => {
+      if (url === contextUrl && failures-- > 0) {
+        throw new TypeError("Temporary failure");
+      }
+      if (url === contextUrl) {
+        return {
+          contextUrl: null,
+          documentUrl: url,
+          document: { "@context": {} },
+        };
+      }
+      return await mockDocumentLoader(url);
+    };
+    const object = await (await createActivity()).getObject({
+      documentLoader: createLoader({
+        [`https://gw1.example${gatewayPath}`]: document,
+        [`https://gw2.example${gatewayPath}`]: document,
+      }),
+      contextLoader,
+      gateways: ["https://gw1.example", "https://gw2.example"],
+      verifyPortableObject: createVerifier(),
+    });
+    assertInstanceOf(object, Note);
+  });
+});
+
+test("getObjects() dereferences each portable IRI separately", async () => {
+  const activity = await Create.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Create",
+    id: `ap://${did}/activities/1`,
+    object: [objectId, `ap://${did}/objects/2`],
+  }, { contextLoader: mockDocumentLoader });
+  const documentLoader = createLoader({
+    [`https://gw.example${gatewayPath}`]: note(),
+    [`https://gw.example/.well-known/apgateway/${did}/objects/2`]: note(),
+  });
+  const objects = await Array.fromAsync(activity.getObjects({
+    documentLoader,
+    contextLoader: mockDocumentLoader,
+    gateways: ["https://gw.example"],
+    verifyPortableObject: createVerifier(),
+  }));
+  // The second one is rejected because its @id does not match:
+  deepStrictEqual(objects.length, 1);
+  deepStrictEqual(
+    objects[0].id?.href,
+    "ap+ef61://did%3Akey%3Az6Mkabc/objects/1",
+  );
+});
+
+test("getObject() ignores gateway options for HTTP(S) IRIs", async () => {
+  const activity = new Create({
+    object: new URL("https://example.com/object"),
+  });
+  const object = await activity.getObject({
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+    gateways: ["https://gw.example"],
+  });
+  deepStrictEqual(object?.id, new URL("https://example.com/object"));
+});
+
+test("getObject() sends the ActivityStreams Accept header to gateways", {
+  sanitizeResources: false,
+  sanitizeOps: false,
+}, async () => {
+  fetchMock.spyGlobal();
+  let accept: string | null = null;
+  fetchMock.get(`https://example.com${gatewayPath}`, (callLog) => {
+    accept = callLog.request?.headers.get("Accept") ??
+      new Headers(callLog.options.headers).get("Accept");
+    return {
+      headers: {
+        "Content-Type":
+          'application/ld+json; profile="https://www.w3.org/ns/activitystreams"',
+      },
+      body: note(),
+    };
+  });
+  try {
+    const object = await (await createActivity()).getObject({
+      documentLoader: getDocumentLoader(),
+      contextLoader: mockDocumentLoader,
+      gateways: ["https://example.com"],
+      verifyPortableObject: createVerifier(),
+    });
+    assertInstanceOf(object, Note);
+    ok(
+      accept != null &&
+        (accept as string).includes(
+          'application/ld+json; profile="https://www.w3.org/ns/activitystreams"',
+        ),
+      `Unexpected Accept header: ${accept}`,
+    );
+  } finally {
+    fetchMock.hardReset();
+  }
+});

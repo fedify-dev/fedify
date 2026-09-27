@@ -1830,6 +1830,8 @@ test("Activity.getObject() fetches canonical portable IRIs", async () => {
   const object = await activity.getObject({
     documentLoader,
     contextLoader: mockDocumentLoader,
+    // deno-lint-ignore require-await
+    verifyPortableObject: async () => ({ verified: true }),
   });
 
   assertInstanceOf(object, Note);
@@ -4284,7 +4286,12 @@ test(
       throw new Error("Document not found");
     };
 
-    const result = await create.getObject({ documentLoader });
+    const result = await create.getObject({
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      // deno-lint-ignore require-await
+      verifyPortableObject: async () => ({ verified: true }),
+    });
     assertInstanceOf(result, Note);
     deepStrictEqual(result.content, "Fetched portable note");
   },

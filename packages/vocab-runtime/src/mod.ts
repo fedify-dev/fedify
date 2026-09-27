@@ -45,6 +45,10 @@ export {
   verifyHashlink,
 } from "./digest.ts";
 export { LanguageString } from "./langstr.ts";
+export type {
+  PortableObjectVerifier,
+  PortableObjectVerifierOptions,
+} from "./portable.ts";
 export {
   decodeMultibase,
   encodeMultibase,

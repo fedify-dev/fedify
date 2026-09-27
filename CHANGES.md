@@ -460,6 +460,18 @@ To be released.
 
 ### @fedify/vocab
 
+ -  Added [FEP-ef61] gateway dereferencing to property accessors such as
+    `Create.getObject()`.  Accessors now fetch `ap:` and `ap+ef61:`
+    references through the gateways given by the new `gateways` option, or
+    through the `@gateway` location hints in the reference when the option is
+    omitted, trying each gateway in order until one serves a valid object.
+    A fetched object is returned only if its `@id` canonically matches the
+    reference and the new `verifyPortableObject` option, typically
+    `verifyPortableObjectProof()` from `@fedify/fedify`, accepts it.  Portable
+    references can no longer be dereferenced without `verifyPortableObject`,
+    and the `crossOrigin: "trust"` option does not skip these checks.
+    HTTP(S) references are fetched as before.  [[#288], [#834], [#1077]]
+
  -  Added [FEP-ef61] vocabulary terms for portable ActivityPub objects.
     Actor classes now expose ordered `gateways` lists, and `Link` plus
     document/media classes expose `digestMultibase` for external resource
@@ -521,11 +533,13 @@ To be released.
 [#810]: https://github.com/fedify-dev/fedify/issues/810
 [#826]: https://github.com/fedify-dev/fedify/issues/826
 [#830]: https://github.com/fedify-dev/fedify/issues/830
+[#834]: https://github.com/fedify-dev/fedify/issues/834
 [#850]: https://github.com/fedify-dev/fedify/pull/850
 [#914]: https://github.com/fedify-dev/fedify/pull/914
 [#928]: https://github.com/fedify-dev/fedify/pull/928
 [#1037]: https://github.com/fedify-dev/fedify/issues/1037
 [#1038]: https://github.com/fedify-dev/fedify/pull/1038
+[#1077]: https://github.com/fedify-dev/fedify/pull/1077
 
 ### @fedify/vocab-runtime
 
@@ -566,6 +580,11 @@ To be released.
     [[#912], [#913]]
  -  Added <https://w3id.org/fep/22cd> to preloaded JSON-LD contexts.
     [[#1037], [#1038]]
+ -  Added the `PortableObjectVerifier` and `PortableObjectVerifierOptions`
+    types, which describe the `verifyPortableObject` option of property
+    accessors for [FEP-ef61] portable references.
+    `verifyPortableObjectProof()` from `@fedify/fedify` satisfies
+    `PortableObjectVerifier`.  [[#288], [#834], [#1077]]
  -  Added `toCompatibleEf61Id()` and `fromCompatibleEf61Id()` for converting
     between [FEP-ef61] portable IDs and compatible identifiers, which are
     HTTP(S) URLs under a gateway's fixed `/.well-known/apgateway/` path that
@@ -585,7 +604,6 @@ To be released.
 [#828]: https://github.com/fedify-dev/fedify/issues/828
 [#831]: https://github.com/fedify-dev/fedify/issues/831
 [#833]: https://github.com/fedify-dev/fedify/issues/833
-[#834]: https://github.com/fedify-dev/fedify/issues/834
 [#912]: https://github.com/fedify-dev/fedify/issues/912
 [#913]: https://github.com/fedify-dev/fedify/pull/913
 [#924]: https://github.com/fedify-dev/fedify/pull/924
