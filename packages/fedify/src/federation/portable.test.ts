@@ -612,7 +612,9 @@ test("RequestContext.portableRequest", async (t) => {
     assertEquals(globalThis.Object.isFrozen(portableRequest), true);
     assertEquals(formatIri(portableRequest.id), `ap+ef61://${did}/notes/1`);
     assertInstanceOf(portableRequest.id, URL);
-    assertEquals(portableRequest.id === portableRequest.id, false);
+    const first = portableRequest.id;
+    const second = portableRequest.id;
+    assertEquals(first === second, false);
   });
 
   await t.step("is kept by derived contexts", () => {
