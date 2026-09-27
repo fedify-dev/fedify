@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { serve } from "srvx";
-import { buildFleet } from "../actor/fleet.ts";
 import { getContextLoader, getDocumentLoader } from "../../docloader.ts";
+import { buildFleet } from "../actor/fleet.ts";
 import type { Clock } from "../load/clock.ts";
 import { normalizeSuite } from "../scenario/normalize.ts";
 import type { Suite } from "../scenario/types.ts";
@@ -185,11 +185,19 @@ test("failureRunner - shares sink base across remote fault mix", async () => {
       fault: ["remote-404", "remote-410"],
       sender: "alice",
       sinkBase,
-      load: { concurrency: 1 },
+      load: { rate: 100 },
       duration: "25ms",
       queueDrainTimeout: "1s",
     }],
   }).scenarios[0];
+  let now = 0;
+  const clock: Clock = {
+    now: () => now,
+    sleepUntil: (timeMs) => {
+      now = Math.max(now, timeMs);
+      return Promise.resolve();
+    },
+  };
   let triggerCalls = 0;
   const recipientInboxes: string[] = [];
 
@@ -219,9 +227,11 @@ test("failureRunner - shares sink base across remote fault mix", async () => {
       return Promise.resolve(new Response("unexpected", { status: 500 }));
     },
     assertDestinationAllowed: () => {},
+    clock,
   });
 
-  assert.ok(measurement.requests.total > 1);
+  assert.strictEqual(measurement.requests.total, 3);
+  assert.strictEqual(measurement.requests.total, triggerCalls);
   assert.strictEqual(measurement.requests.failed, 0);
   assert.ok(recipientInboxes.includes(new URL("/inbox/0", sinkBase).href));
   assert.ok(recipientInboxes.includes(new URL("/inbox/1", sinkBase).href));
