@@ -33,6 +33,7 @@ import {
   assertRejects,
 } from "@std/assert";
 import { decodeHex } from "byte-encodings/hex";
+import fetchMock from "fetch-mock";
 import serialize from "json-canon";
 import {
   ed25519Multikey,
@@ -41,6 +42,8 @@ import {
   rsaPrivateKey2,
   rsaPublicKey2,
 } from "../testing/keys.ts";
+import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
+import { verifyRequest } from "./http.ts";
 import type { KeyCache } from "./key.ts";
 import {
   createProof,
@@ -2489,6 +2492,94 @@ test("verifyObject() hydrates pending proof references", async () => {
   assertInstanceOf(verified, Note);
 });
 
+test("verifyObject() hydrates portable proof references with gateway hints", async () => {
+  const did = await exportDidKey(ed25519PublicKey.publicKey);
+  const method = did.substring("did:key:".length);
+  const keyId = new URL(`${did}#${method}`);
+  const proofId = `ap://did:key:${method}/proofs/1`;
+  const proofReference = `${proofId}?@gateway=https%3A%2F%2Fgateway.example`;
+  const signed = await signPortableJsonLd({
+    "@context": portableContext,
+    id: `ap://did:key:${method}/objects/1`,
+    type: "Note",
+    attributedTo: `ap://did:key:${method}/actor`,
+    content: "Portable note with a hinted proof reference",
+  }, {
+    verificationMethod: keyId,
+    proofOptions: { id: proofId },
+  });
+  const rawProof = signed.proof as Record<string, unknown>;
+  const referencedJsonLd = { ...signed };
+  delete referencedJsonLd.proof;
+  referencedJsonLd["https://w3id.org/security#proof"] = [
+    { "@graph": [rawProof] },
+    { "@graph": [{ "@id": proofReference }] },
+  ];
+
+  const fetched: string[] = [];
+  const verified = await verifyObject(Note, referencedJsonLd, {
+    documentLoader(url) {
+      fetched.push(url);
+      return Promise.resolve({
+        contextUrl: null,
+        document: structuredClone(rawProof),
+        documentUrl: url,
+      });
+    },
+    contextLoader: mockDocumentLoader,
+  });
+
+  assertEquals(fetched, [formatIri(parseIri(proofReference))]);
+  assertInstanceOf(verified, Note);
+});
+
+test("verifyObject() rejects portable proof references it cannot dereference", async () => {
+  const did = await exportDidKey(ed25519PublicKey.publicKey);
+  const method = did.substring("did:key:".length);
+  const keyId = new URL(`${did}#${method}`);
+  const proofUrl = `ap://did:key:${method}/proofs/2`;
+  const signed = await signPortableJsonLd({
+    "@context": portableContext,
+    id: `ap://did:key:${method}/objects/1`,
+    type: "Note",
+    attributedTo: `ap://did:key:${method}/actor`,
+    content: "Portable note with an extra referenced proof",
+  }, { verificationMethod: keyId });
+  const rawProof = signed.proof as Record<string, unknown>;
+  const withProofs = (proofs: unknown[]) => {
+    const referencedJsonLd: Record<string, unknown> = { ...signed };
+    delete referencedJsonLd.proof;
+    referencedJsonLd["https://w3id.org/security#proof"] = proofs;
+    return referencedJsonLd;
+  };
+  const embedded = { "@graph": [rawProof] };
+  const referenced = { "@graph": [{ "@id": proofUrl }] };
+
+  for (
+    const [id, referencedJsonLd] of [
+      [`ap://did:key:${method}/proofs/3`, withProofs([embedded, referenced])],
+      [
+        `ap://did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK/proofs/2`,
+        withProofs([embedded, referenced]),
+      ],
+      // The rejected reference comes before an identical embedded proof:
+      [`ap://did:key:${method}/proofs/3`, withProofs([referenced, embedded])],
+    ] as const
+  ) {
+    const verified = await verifyObject(Note, referencedJsonLd, {
+      documentLoader(url) {
+        return Promise.resolve({
+          contextUrl: null,
+          document: { ...rawProof, id },
+          documentUrl: url,
+        });
+      },
+      contextLoader: mockDocumentLoader,
+    });
+    assertEquals(verified, null);
+  }
+});
+
 test("verifyObject() accepts multiple portable attributions from the same did:key origin", async () => {
   const did = await exportDidKey(ed25519PublicKey.publicKey);
   const method = did.substring("did:key:".length);
@@ -2797,3 +2888,186 @@ test("verifyObject() rejects a key that claims a forged controller", async () =>
     null,
   );
 });
+
+test("verifyPortableObjectProof() verifies objects fetched through gateways", async (t) => {
+  const objectId = `ap://${portableDid}/objects/gateway`;
+  const gatewayUrl =
+    `https://gateway.example/.well-known/apgateway/${portableDid}/objects/gateway`;
+  const signedNote = await signPortableJsonLd({
+    "@context": portableContext,
+    id: objectId,
+    type: "Note",
+    attributedTo: `ap://${portableDid}/actor`,
+    content: "Hello from a gateway",
+  });
+  const getObject = async (
+    document: unknown,
+    object: string = objectId,
+    url: string = gatewayUrl,
+  ) => {
+    const create = await Create.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Create",
+      id: `ap://${portableDid}/activities/1`,
+      object,
+    }, { contextLoader: mockDocumentLoader });
+    return await create.getObject({
+      // deno-lint-ignore require-await
+      documentLoader: async (requestUrl) => {
+        if (requestUrl !== url) {
+          throw new Error(`Unexpected URL: ${requestUrl}`);
+        }
+        return { contextUrl: null, documentUrl: requestUrl, document };
+      },
+      contextLoader: mockDocumentLoader,
+      gateways: ["https://gateway.example"],
+      verifyPortableObject: verifyPortableObjectProof,
+    });
+  };
+
+  await t.step("a properly signed object", async () => {
+    const object = await getObject(signedNote);
+    assertInstanceOf(object, Note);
+    assertEquals(object.content, "Hello from a gateway");
+  });
+
+  await t.step("a tampered object", async () => {
+    assertEquals(
+      await getObject({ ...signedNote, content: "Tampered" }),
+      null,
+    );
+  });
+
+  await t.step("an object without a proof", async () => {
+    const { proof: _, ...unsigned } = signedNote;
+    assertEquals(await getObject(unsigned), null);
+  });
+
+  await t.step("an object without an ID", async () => {
+    const withoutId = await signPortableJsonLd({
+      "@context": portableContext,
+      type: "Note",
+      content: "Hello from a gateway",
+    });
+    assertEquals(await getObject(withoutId), null);
+  });
+
+  await t.step("another object of the same DID", async () => {
+    assertEquals(
+      await getObject(
+        signedNote,
+        `ap://${portableDid}/objects/other`,
+        `https://gateway.example/.well-known/apgateway/${portableDid}/objects/other`,
+      ),
+      null,
+    );
+  });
+
+  await t.step("an object signed by another DID", async () => {
+    const otherPublicKey = await crypto.subtle.importKey(
+      "jwk",
+      {
+        kty: "OKP",
+        crv: "Ed25519",
+        // cSpell: disable
+        x: "sA2Nk45_dz1RVlqtNqYj9TRPf10ZYPnPPo4SYg6igQ8",
+        // cSpell: enable
+        key_ops: ["verify"],
+        ext: true,
+      },
+      "Ed25519",
+      true,
+      ["verify"],
+    );
+    const otherDid = await exportDidKey(otherPublicKey);
+    const otherObjectId = `ap://${otherDid}/objects/gateway`;
+    const otherGatewayUrl =
+      `https://gateway.example/.well-known/apgateway/${otherDid}/objects/gateway`;
+    // Signed by the portable DID's key, but claims the other DID's ID:
+    const spoofed = await signPortableJsonLd({
+      "@context": portableContext,
+      id: otherObjectId,
+      type: "Note",
+      content: "Spoofed",
+    });
+    assertEquals(
+      await getObject(spoofed, otherObjectId, otherGatewayUrl),
+      null,
+    );
+    // Signed by the other DID's key, which does not match its proof's
+    // verification method:
+    const forged = await signPortableJsonLd({
+      "@context": portableContext,
+      id: objectId,
+      type: "Note",
+      content: "Forged",
+    }, { privateKey: fep8b32TestVectorPrivateKey });
+    assertEquals(await getObject(forged), null);
+  });
+});
+
+test(
+  "getAuthenticatedDocumentLoader() signs portable object requests to gateways",
+  {
+    sanitizeResources: false,
+    sanitizeOps: false,
+  },
+  async () => {
+    const objectId = `ap://${portableDid}/objects/private`;
+    const signedNote = await signPortableJsonLd({
+      "@context": portableContext,
+      id: objectId,
+      type: "Note",
+      attributedTo: `ap://${portableDid}/actor`,
+      content: "Followers only",
+    });
+    fetchMock.spyGlobal();
+    let signed = false;
+    let accept: string | null = null;
+    fetchMock.get(
+      `https://example.com/.well-known/apgateway/${portableDid}/objects/private`,
+      async (cl) => {
+        accept = cl.request!.headers.get("Accept");
+        signed = await verifyRequest(cl.request!, {
+          documentLoader: mockDocumentLoader,
+          contextLoader: mockDocumentLoader,
+          currentTime: Temporal.Now.instant(),
+        }) != null;
+        if (!signed) return new Response(null, { status: 401 });
+        return new Response(JSON.stringify(signedNote), {
+          headers: {
+            "Content-Type":
+              'application/ld+json; profile="https://www.w3.org/ns/activitystreams"',
+          },
+        });
+      },
+    );
+    try {
+      const create = await Create.fromJsonLd({
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Create",
+        id: `ap://${portableDid}/activities/1`,
+        object: objectId,
+      }, { contextLoader: mockDocumentLoader });
+      const object = await create.getObject({
+        documentLoader: getAuthenticatedDocumentLoader({
+          keyId: new URL("https://example.com/key2"),
+          privateKey: rsaPrivateKey2,
+        }),
+        contextLoader: mockDocumentLoader,
+        gateways: ["https://example.com"],
+        verifyPortableObject: verifyPortableObjectProof,
+      });
+      assertInstanceOf(object, Note);
+      assertEquals(object.content, "Followers only");
+      assert(signed);
+      assertEquals(
+        accept,
+        "application/activity+json, " +
+          'application/ld+json; profile="https://www.w3.org/ns/activitystreams"',
+      );
+    } finally {
+      fetchMock.hardReset();
+    }
+  },
+);

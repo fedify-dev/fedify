@@ -13,6 +13,7 @@ import {
   getFe34Origin,
   haveSameFe34Origin,
   parseIri,
+  type PortableObjectVerifier,
   type RemoteDocument,
 } from "@fedify/vocab-runtime";
 import {
@@ -2052,11 +2053,25 @@ export async function verifyObject<T extends Object>(
   };
   const baseDocumentLoader = options.documentLoader ?? defaultDocumentLoader;
   const hydratedCandidates = new Set<number>();
+  // Portable proof references are loaded through the gateway dereferencing
+  // path, which rejects a document whose @id does not match the reference
+  // before it reaches the verifier.  Counting both sides tells whether any
+  // loaded portable proof was rejected, so that it is not skipped silently:
+  let loadedPortableProofs = 0;
+  let acceptedPortableProofs = 0;
+  // A portable proof document carries no proof of its own; it is
+  // authenticated below, by verifying it against the object:
+  // deno-lint-ignore require-await
+  const acceptPortableProofDocument: PortableObjectVerifier = async () => {
+    acceptedPortableProofs++;
+    return { verified: true };
+  };
   const proofDocumentLoader: DocumentLoader = async (
     url,
     loaderOptions,
   ) => {
     const remoteDocument = await baseDocumentLoader(url, loaderOptions);
+    if (PORTABLE_OBJECT_ID_PATTERN.test(url)) loadedPortableProofs++;
     const reference = normalizeDocumentUrl(url);
     const candidateIndex = rawProofCandidates.findIndex(
       (candidate, index) =>
@@ -2092,6 +2107,11 @@ export async function verifyObject<T extends Object>(
     const proof of object.getProofs({
       ...options,
       documentLoader: proofDocumentLoader,
+      // Keep loading portable proof references through the document loader
+      // under their own IRIs, so that proofDocumentLoader can match them with
+      // their raw proof candidates:
+      gateways: [],
+      verifyPortableObject: acceptPortableProofDocument,
     })
   ) {
     const rawProofCandidate = takeRawProofCandidate(
@@ -2122,6 +2142,10 @@ export async function verifyObject<T extends Object>(
       key.controllerId,
       proof.verificationMethodId,
     );
+  }
+  if (acceptedPortableProofs < loadedPortableProofs) {
+    logger.debug("Some portable proof references could not be dereferenced.");
+    return null;
   }
   if (attributions.size > 0) {
     logger.debug(

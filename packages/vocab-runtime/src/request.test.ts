@@ -2,7 +2,7 @@ import { deepStrictEqual } from "node:assert";
 import process from "node:process";
 import { test } from "node:test";
 import metadata from "../deno.json" with { type: "json" };
-import { getUserAgent } from "./request.ts";
+import { createActivityPubRequest, getUserAgent } from "./request.ts";
 
 test("getUserAgent()", () => {
   if ("Deno" in globalThis) {
@@ -90,4 +90,13 @@ test("getUserAgent()", () => {
       `MyApp/1.0.0 (Fedify/${metadata.version}; Node.js/${process.versions.node}; +https://example.com/)`,
     );
   }
+});
+
+test("createActivityPubRequest() asks for the ActivityStreams profile", () => {
+  const request = createActivityPubRequest("https://example.com/object");
+  deepStrictEqual(
+    request.headers.get("Accept"),
+    "application/activity+json, " +
+      'application/ld+json; profile="https://www.w3.org/ns/activitystreams"',
+  );
 });

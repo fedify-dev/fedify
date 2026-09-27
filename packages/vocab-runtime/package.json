@@ -52,6 +52,16 @@
       "require": "./dist/internal/jsonld-cache.cjs",
       "default": "./dist/internal/jsonld-cache.js"
     },
+    "./internal/portable-dereference": {
+      "types": {
+        "import": "./dist/internal/portable-dereference.d.ts",
+        "require": "./dist/internal/portable-dereference.d.cts",
+        "default": "./dist/internal/portable-dereference.d.ts"
+      },
+      "import": "./dist/internal/portable-dereference.js",
+      "require": "./dist/internal/portable-dereference.cjs",
+      "default": "./dist/internal/portable-dereference.js"
+    },
     "./internal/signed-representation": {
       "types": {
         "import": "./dist/internal/signed-representation.d.ts",

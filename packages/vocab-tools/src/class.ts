@@ -18,6 +18,10 @@ const INTERNAL_RUNTIME_IMPORTS = [
   "isTrustedIriOrigin",
   "normalizeJsonLdIris",
 ].join(",\n    ");
+const PORTABLE_DEREFERENCE_IMPORTS = [
+  "dereferencePortableIri",
+  "isPortableIri",
+].join(",\n    ");
 const SIGNED_REPRESENTATION_IMPORTS = [
   "enterSignedValueScope",
   "resolveSignedValues",
@@ -42,6 +46,7 @@ const RUNTIME_IMPORTS = [
   "parseGatewayUrl",
   "parseIri",
   "parseJsonLdId",
+  "type PortableObjectVerifier",
   "type RemoteDocument",
 ].join(",\n    ");
 
@@ -273,6 +278,7 @@ export async function* generateClasses(
     from "@opentelemetry/api";\n`;
   yield `import {\n    ${RUNTIME_IMPORTS}\n} from "@fedify/vocab-runtime";\n`;
   yield `import {\n    ${INTERNAL_RUNTIME_IMPORTS}\n} from "@fedify/vocab-runtime/internal/jsonld-cache";\n`;
+  yield `import {\n    ${PORTABLE_DEREFERENCE_IMPORTS}\n} from "@fedify/vocab-runtime/internal/portable-dereference";\n`;
   yield `import {\n    ${SIGNED_REPRESENTATION_IMPORTS}\n} from "@fedify/vocab-runtime/internal/signed-representation";\n`;
   yield `import {
     isTemporalDuration,

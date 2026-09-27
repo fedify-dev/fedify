@@ -32,6 +32,14 @@ export class FetchError extends Error {
 }
 
 /**
+ * The `Accept` header value for fetching ActivityPub objects.  ActivityPub
+ * and FEP-ef61 gateways require the ActivityStreams profile on the JSON-LD
+ * media type.
+ */
+const ACTIVITYPUB_ACCEPT =
+  'application/activity+json, application/ld+json; profile="https://www.w3.org/ns/activitystreams"';
+
+/**
  * Options for creating a request.
  * @internal
  */
@@ -52,7 +60,7 @@ export function createActivityPubRequest(
 ): Request {
   return new Request(url, {
     headers: {
-      Accept: "application/activity+json, application/ld+json",
+      Accept: ACTIVITYPUB_ACCEPT,
       "User-Agent": typeof options.userAgent === "string"
         ? options.userAgent
         : getUserAgent(options.userAgent),

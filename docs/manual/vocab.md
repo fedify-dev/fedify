@@ -294,6 +294,89 @@ yet.
 > to act for the DID.  Verify the object's Object Integrity Proof against the
 > DID before trusting it.
 
+[FEP-ef61]: https://w3id.org/fep/ef61
+
+### Dereferencing portable references
+
+A portable object is not served from its ID, but from *gateways*: servers
+that expose it under their */.well-known/apgateway/* path.  Property accessors
+such as `Create.getObject()` fetch a portable reference through gateways when
+you tell them how to verify what the gateways return:
+
+~~~~ typescript twoslash
+import type { Create } from "@fedify/vocab";
+declare const create: Create;
+// ---cut-before---
+import { verifyPortableObjectProof } from "@fedify/fedify";
+
+const note = await create.getObject({
+  gateways: ["https://server1.example", "https://server2.example"],
+  verifyPortableObject: verifyPortableObjectProof,
+});
+~~~~
+
+The accessor asks each gateway in order for the compatible identifier of the
+referenced object, with an `Accept` header that asks for the ActivityStreams
+JSON-LD profile, and returns the first object that passes two checks:
+
+ -  Its `@id` must identify the same portable object as the reference.  IDs
+    are compared in their canonical form, so the `ap:` and `ap+ef61:` schemes,
+    percent-encoded DIDs, and query parameters do not matter.  A document
+    without an `@id` is left to `verifyPortableObject`, and
+    `verifyPortableObjectProof()` rejects it.
+ -  The `verifyPortableObject` function must accept it.
+    `verifyPortableObjectProof()` checks that the object has a valid [FEP-8b32]
+    Object Integrity Proof made by the DID of its portable ID.
+
+A gateway that responds with `404 Not Found`, any other error, or an object
+that fails either check is skipped, and the next gateway is tried.  If one or
+more gateways returned objects but none of them passed the checks, the
+accessor logs a warning and returns `null`, or throws an error if
+`crossOrigin: "throw"` is set.  If every gateway failed with an error, the
+accessor throws it (or an `AggregateError` for multiple gateways), unless
+`suppressError: true` is set.  Note that `crossOrigin: "trust"` does not skip
+these checks.
+
+The `gateways` option lists gateway origins such as `https://server.example`;
+gateways with a path are not supported.  If you omit it, the accessor uses
+the `@gateway` location hints in the reference, e.g.,
+`ap://did:key:z6Mk.../actor?@gateway=https%3A%2F%2Fserver1.example`.  Since
+hints come from the document that contains the reference, only the first five
+are used.  An explicit `gateways` list replaces the hints, and an empty list
+turns them off.  When there is no gateway to try, the accessor passes the
+portable ID itself to the document loader, which lets a custom document loader
+retrieve portable objects in its own way.  The two checks above apply in that
+case as well.
+
+Requests to gateways go through the document loader, so an authenticated
+document loader signs them, which lets you fetch non-public portable objects
+that gateways serve only to their audience:
+
+~~~~ typescript twoslash
+import type { Context } from "@fedify/fedify";
+import type { Create } from "@fedify/vocab";
+declare const ctx: Context<void>;
+declare const create: Create;
+// ---cut-before---
+import { verifyPortableObjectProof } from "@fedify/fedify";
+
+const documentLoader = await ctx.getDocumentLoader({ identifier: "alice" });
+const note = await create.getObject({
+  documentLoader,
+  gateways: ["https://server.example"],
+  verifyPortableObject: verifyPortableObjectProof,
+});
+~~~~
+
+Portable references cannot be dereferenced without `verifyPortableObject`:
+the accessor throws a `TypeError` (or returns `null` with
+`suppressError: true`) before sending any request.  The options apply to that
+call only, so pass them again when you dereference references in the returned
+object.  As with other dereferenced objects, a verified object is cached in its
+parent object, and later calls return it without fetching it again.  Portable
+objects embedded in a document are not fetched or verified by accessors; see
+the [*Origin-based security model* section](#origin-based-security-model).
+
 Links and media/document objects expose `digestMultibase` for the integrity
 digest required when portable objects reference external resources.  Use
 `computeDigestMultibase()` to compute the SHA-256 multihash and
@@ -330,7 +413,7 @@ SHA-256 digests and simple `hl:` URIs without metadata; malformed values,
 unsupported hash algorithms, metadata-bearing hashlinks, and legacy `?hl=`
 URLs cause a `TypeError`.
 
-[FEP-ef61]: https://w3id.org/fep/ef61
+[FEP-8b32]: https://w3id.org/fep/8b32
 
 
 Object IDs and remote objects
