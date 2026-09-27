@@ -346,6 +346,241 @@ export function parseGatewayUrl(url: string): URL {
   return parsed;
 }
 
+const COMPATIBLE_ID_PATH_PREFIX = "/.well-known/apgateway/";
+const COMPATIBLE_ID_DID_PATTERN = /^did(?::|%3A)/i;
+// `gateways` is the location hint parameter name used by earlier FEP-ef61
+// revisions; strip it as well for compatibility with older publishers.
+const LOCATION_HINT_PARAMETERS: ReadonlySet<string> = new Set([
+  "@gateway",
+  "gateways",
+]);
+
+/**
+ * Converts an [FEP-ef61] compatible identifier into a portable ActivityPub
+ * URI.
+ *
+ * A compatible identifier is an HTTP(S) URL under a gateway's fixed
+ * `/.well-known/apgateway/` path, such as
+ * `https://server.example/.well-known/apgateway/did:key:z6Mk.../objects/1`.
+ * This function removes the gateway part and returns the corresponding
+ * portable URI, e.g., `ap+ef61://did:key:z6Mk.../objects/1`, in the same
+ * internal `URL` form that {@link parseIri} produces.  The path, query, and
+ * fragment are preserved, so the result is a portable URI, not a comparison
+ * form; pass its `href` to {@link canonicalizePortableUri} or
+ * {@link arePortableUrisEqual} to compare it with other portable URIs.
+ *
+ * The conversion only reveals the *claimed* portable identifier.  Anyone can
+ * publish a compatible identifier for any DID on their own server, so the
+ * gateway that served it is neither the object's origin nor authorized to act
+ * for the DID.  Callers must still verify the retrieved document's Object
+ * Integrity Proof against the DID, as FEP-ef61 requires, and should keep the
+ * original URL if they need the gateway as a retrieval hint.
+ *
+ * Arbitrary gateway paths are not supported.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
+ *
+ * @param input The URL to convert.
+ * @returns The portable ActivityPub URI, or `null` if the input is not an
+ *          HTTP(S) URL whose path starts with `/.well-known/apgateway/did:`.
+ *          Other gateway routes, such as the gateway discovery endpoint and
+ *          hashlink media URLs, also yield `null`.
+ * @throws {TypeError} If the input looks like a compatible identifier but is
+ *                     malformed, e.g., it has an invalid DID, no object path,
+ *                     invalid percent-encoding, credentials, or location
+ *                     hints (`@gateway` query parameters, or the legacy
+ *                     `gateways` parameter), which FEP-ef61 forbids in
+ *                     compatible identifiers.
+ * @since 2.4.0
+ */
+export function fromCompatibleEf61Id(input: string | URL): URL | null {
+  return convertCompatibleEf61Id(input)?.url ?? null;
+}
+
+function convertCompatibleEf61Id(
+  input: string | URL,
+): { url: URL; iri: string } | null {
+  let url: URL;
+  if (input instanceof URL) url = input;
+  else if (typeof input === "string" && URL.canParse(input)) {
+    url = new URL(input);
+  } else return null;
+  if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+  if (!url.pathname.startsWith(COMPATIBLE_ID_PATH_PREFIX)) return null;
+  const tail = url.pathname.slice(COMPATIBLE_ID_PATH_PREFIX.length);
+  if (!COMPATIBLE_ID_DID_PATTERN.test(tail)) return null;
+  if (url.username !== "" || url.password !== "") {
+    throw new TypeError(
+      "Invalid FEP-ef61 compatible identifier: credentials are not allowed.",
+    );
+  }
+  // Slice href instead of concatenating pathname, search, and hash, because
+  // the latter two drop empty query and fragment delimiters.
+  const iri = "ap+ef61://" +
+    url.href.slice(url.origin.length + COMPATIBLE_ID_PATH_PREFIX.length);
+  try {
+    const parsed = parsePortableIri(iri);
+    if (parsed == null) throw new TypeError("Not a portable IRI.");
+    // parsePortableIri() does not validate path and fragment
+    // percent-encoding, but canonicalizePortableUri() does:
+    canonicalizePortableUri(iri);
+    // canonicalizePortableUri() ignores the query, so validate it here too.
+    // Compatible identifiers must not have location hints:
+    const query = url.search === ""
+      ? []
+      : normalizePortableComponent(url.search.slice(1)).split("&");
+    if (query.some(isLocationHint)) {
+      throw new TypeError("Location hints are not allowed.");
+    }
+    return { url: parsed, iri };
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new TypeError("Invalid FEP-ef61 compatible identifier.", {
+        cause: error,
+      });
+    }
+    throw error;
+  }
+}
+
+/**
+ * Converts a portable ActivityPub URI into an [FEP-ef61] compatible
+ * identifier, which is an HTTP(S) URL under the gateway's fixed
+ * `/.well-known/apgateway/` path.
+ *
+ * For example, `ap+ef61://did:key:z6Mk.../objects/1` and
+ * `https://server.example` yield
+ * `https://server.example/.well-known/apgateway/did:key:z6Mk.../objects/1`.
+ * Both `ap:` and `ap+ef61:` URIs with decoded or percent-encoded DID
+ * authorities are accepted.  Publishers should use the first gateway in the
+ * actor's `gateways` list, as FEP-ef61 requires.
+ *
+ * The path and fragment are preserved, with characters that are not allowed
+ * in HTTP(S) URLs percent-encoded the same way as
+ * {@link canonicalizePortableUri} does.  FEP-ef61 location hints (`@gateway`
+ * query parameters, and the legacy `gateways` parameter) are removed, since
+ * compatible identifiers must not have them; other query parameters are kept
+ * in order.
+ *
+ * Arbitrary gateway paths are not supported.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
+ *
+ * @param portableId The `ap:` or `ap+ef61:` URI to convert.
+ * @param gateway The gateway's HTTP(S) origin, e.g., `https://server.example`.
+ * @returns The compatible identifier.
+ * @throws {TypeError} If the portable ID is not a valid `ap:` or `ap+ef61:`
+ *                     URI, if its path has `.` or `..` segments (which
+ *                     HTTP(S) URLs cannot represent), or if the gateway is
+ *                     not an HTTP(S) origin with no credentials, path, query,
+ *                     or fragment.
+ * @since 2.4.0
+ */
+export function toCompatibleEf61Id(
+  portableId: string | URL,
+  gateway: string | URL,
+): URL {
+  const gatewayUrl = parseCompatibleEf61Gateway(gateway);
+  const raw = getRawPortableIri(portableId);
+  const match = raw.match(PORTABLE_IRI_PATTERN);
+  const parsed = parsePortableIri(raw);
+  if (match == null || parsed == null) {
+    throw new TypeError("Invalid portable ActivityPub IRI.");
+  }
+  // The parser decodes %25 once in a did:-prefixed authority, so escape
+  // percent signs only when that would otherwise change the DID.  Other DIDs
+  // are kept literal (e.g., did:web:example.com%3A8080) so that gateways
+  // which read the path segment as is see the same DID:
+  let did = decodePortableAuthority(parsed.host);
+  if (/%25/i.test(did)) did = did.replace(/%/g, "%25");
+  const path = normalizePortableComponent(match[3]);
+  if (path.split("/").some((segment) => segment === "." || segment === "..")) {
+    throw new TypeError(
+      "FEP-ef61 compatible identifiers cannot represent portable IRI paths " +
+        "with dot segments.",
+    );
+  }
+  // Normalize the query before looking for location hints so that characters
+  // which the URL parser strips (e.g., tabs) cannot form a hint name later:
+  const query = match[4] == null
+    ? ""
+    : stripLocationHints(normalizePortableComponent(match[4].slice(1)));
+  const fragment = match[5] == null ? "" : normalizePortableComponent(match[5]);
+  const result = new URL(
+    gatewayUrl.origin + COMPATIBLE_ID_PATH_PREFIX + did + path + query +
+      fragment,
+  );
+  // Guard against URL parser normalization that would silently change the
+  // identified object or reintroduce location hints (the latter makes
+  // convertCompatibleEf61Id() throw):
+  const converted = convertCompatibleEf61Id(result);
+  if (
+    converted == null ||
+    canonicalizePortableUri(converted.iri) !== canonicalizePortableUri(raw)
+  ) {
+    throw new TypeError(
+      "The portable ActivityPub IRI cannot be represented as an FEP-ef61 " +
+        "compatible identifier.",
+    );
+  }
+  return result;
+}
+
+function parseCompatibleEf61Gateway(gateway: string | URL): URL {
+  const url = gateway instanceof URL
+    ? gateway
+    : typeof gateway === "string" && URL.canParse(gateway)
+    ? new URL(gateway)
+    : null;
+  // Comparing href with the origin also rejects credentials, a path, and
+  // query and fragment components, including empty ? and # delimiters.
+  if (
+    url == null || (url.protocol !== "http:" && url.protocol !== "https:") ||
+    url.href !== `${url.origin}/`
+  ) {
+    throw new TypeError(
+      "FEP-ef61 gateways for compatible identifiers must be HTTP(S) origins " +
+        "with no credentials, path, query, or fragment.",
+    );
+  }
+  return url;
+}
+
+function getRawPortableIri(portableId: string | URL): string {
+  if (portableId instanceof URL) {
+    if (portableId.protocol !== "ap:" && portableId.protocol !== "ap+ef61:") {
+      throw new TypeError("Invalid portable ActivityPub IRI.");
+    }
+    // parseIri() would fold a port into the DID and drop credentials:
+    if (
+      portableId.username !== "" || portableId.password !== "" ||
+      portableId.port !== ""
+    ) {
+      throw new TypeError("Invalid portable ActivityPub IRI authority.");
+    }
+    return portableId.href;
+  }
+  if (typeof portableId !== "string") {
+    throw new TypeError("Invalid portable ActivityPub IRI.");
+  }
+  return portableId;
+}
+
+function stripLocationHints(query: string): string {
+  const pairs = query.split("&").filter((pair) => !isLocationHint(pair));
+  return pairs.length < 1 ? "" : `?${pairs.join("&")}`;
+}
+
+function isLocationHint(pair: string): boolean {
+  const name = pair.split("=", 1)[0].replace(/\+/g, " ");
+  try {
+    return LOCATION_HINT_PARAMETERS.has(decodeURIComponent(name));
+  } catch (error) {
+    if (error instanceof URIError) return false;
+    throw error;
+  }
+}
+
 /**
  * Validates a URL to prevent SSRF attacks.
  */

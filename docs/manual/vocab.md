@@ -251,6 +251,49 @@ const actor = new Person({
 
 Each gateway must be an HTTP(S) base URI with no path, query, or fragment.
 
+Software that does not understand portable IRIs can still refer to portable
+objects through *compatible identifiers*: HTTP(S) URLs under a gateway's
+fixed `/.well-known/apgateway/` path.  Use `toCompatibleEf61Id()` to build
+one from a portable ID and a gateway origin, which should be the first item in
+the actor's `gateways`, and `fromCompatibleEf61Id()` to get the portable ID
+back:
+
+~~~~ typescript twoslash
+import {
+  canonicalizePortableUri,
+  fromCompatibleEf61Id,
+  toCompatibleEf61Id,
+} from "@fedify/vocab-runtime";
+
+const compatibleId = toCompatibleEf61Id(
+  "ap+ef61://did:key:z6Mkabc/objects/1",
+  "https://server1.example",
+);
+// https://server1.example/.well-known/apgateway/did:key:z6Mkabc/objects/1
+
+const portableId = fromCompatibleEf61Id(compatibleId);
+if (portableId != null) {
+  canonicalizePortableUri(portableId.href);
+  // ap+ef61://did:key:z6Mkabc/objects/1
+}
+~~~~
+
+`toCompatibleEf61Id()` removes location hints (`@gateway` query parameters,
+and the legacy `gateways` parameter) from the query, because FEP-ef61 forbids
+them in compatible identifiers.
+`fromCompatibleEf61Id()` returns `null` for URLs that are not compatible
+identifiers, and throws a `TypeError` for compatible identifiers that are
+malformed or carry location hints.  Arbitrary gateway paths are not supported
+yet.
+
+> [!WARNING]
+>
+> A compatible identifier only tells you which portable object it *claims* to
+> be.  Anyone can serve a compatible identifier for any DID from their own
+> server, so the gateway's host is neither the object's origin nor authorized
+> to act for the DID.  Verify the object's Object Integrity Proof against the
+> DID before trusting it.
+
 Links and media/document objects expose `digestMultibase` for the integrity
 digest required when portable objects reference external resources.  Use
 `computeDigestMultibase()` to compute the SHA-256 multihash and

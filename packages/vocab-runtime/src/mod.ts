@@ -68,6 +68,7 @@ export {
   canonicalizePortableUri,
   expandIPv6Address,
   formatIri,
+  fromCompatibleEf61Id,
   getFe34Origin,
   haveSameFe34Origin,
   haveSameIriOrigin,
@@ -77,6 +78,7 @@ export {
   parseGatewayUrl,
   parseIri,
   parseJsonLdId,
+  toCompatibleEf61Id,
   UrlError,
   validatePublicUrl,
 } from "./url.ts";
