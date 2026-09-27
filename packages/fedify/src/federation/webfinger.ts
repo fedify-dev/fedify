@@ -106,7 +106,12 @@ function getPortableWebFingerSubjectAndAliases(
   };
   let subject: string;
   if (resourceUrl.protocol === "acct:") {
-    subject = `acct:${preferredUsername ?? acctUsername}@${gatewayHost}`;
+    // acctUsername is null when the resource did not match user@host and
+    // reached the actor alias mapper instead, e.g., acct:alice:
+    const username = preferredUsername ?? acctUsername;
+    subject = username == null
+      ? resourceUrl.href
+      : `acct:${username}@${gatewayHost}`;
     add(compatibleId.href);
     add(resourceUrl.href);
   } else {

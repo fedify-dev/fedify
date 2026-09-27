@@ -900,6 +900,7 @@ test("handleWebFinger() for FEP-ef61 portable actors", async (t) => {
   const actorAliasMapper: ActorAliasMapper<void> = (_ctx, resource) => {
     if (resource.href === compatibleId) return { identifier: "alice" };
     if (resource.protocol === "ap+ef61:") return { identifier: "anonymous" };
+    if (resource.href === "acct:anonymous") return { identifier: "anonymous" };
     return null;
   };
 
@@ -979,6 +980,16 @@ test("handleWebFinger() for FEP-ef61 portable actors", async (t) => {
     assertEquals(response.status, 200);
     assertEquals(await response.json(), {
       subject: "acct:anonymous@example.com",
+      aliases: [compatibleId],
+      links: [selfLink],
+    });
+  });
+
+  await t.step("acct: without a host or preferredUsername", async () => {
+    const response = await query("acct:anonymous");
+    assertEquals(response.status, 200);
+    assertEquals(await response.json(), {
+      subject: "acct:anonymous",
       aliases: [compatibleId],
       links: [selfLink],
     });
