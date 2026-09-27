@@ -1540,7 +1540,7 @@ async function verifyProofInternal(
   return null;
 }
 
-type Fep2277CoreType =
+export type Fep2277CoreType =
   | "actor"
   | "activity"
   | "collection"
@@ -1659,6 +1659,8 @@ async function expandPortableObjectRoot(
 
 interface PreparedPortableObjectProof {
   readonly prepared: true;
+  readonly root: Record<string, unknown>;
+  readonly objectType: Fep2277CoreType;
   readonly objectId: URL;
   readonly proofs: readonly DataIntegrityProof[];
   readonly rawProofValues: readonly unknown[];
@@ -1672,6 +1674,10 @@ type PreparePortableObjectProofResult =
     readonly result: Extract<VerifyPortableObjectProofResult, {
       verified: false;
     }>;
+    /** The expanded root node, if the document got as far as expansion. */
+    readonly root?: Record<string, unknown>;
+    /** The FEP-2277 core type of the root node, if it was classified. */
+    readonly objectType?: Fep2277CoreType;
   };
 
 async function preparePortableObjectProof(
@@ -1734,6 +1740,8 @@ async function preparePortableObjectProof(
   ) {
     return {
       prepared: false,
+      root,
+      objectType,
       result: objectType === "collection"
         ? {
           verified: false,
@@ -1848,6 +1856,8 @@ async function preparePortableObjectProof(
 
   return {
     prepared: true,
+    root,
+    objectType,
     objectId,
     proofs,
     rawProofValues,
@@ -1932,8 +1942,60 @@ export async function verifyPortableObjectProof(
   jsonLd: unknown,
   options: VerifyPortableObjectProofOptions = {},
 ): Promise<VerifyPortableObjectProofResult> {
+  return (await verifyPortableObjectProofWithRoot(jsonLd, options)).result;
+}
+
+/**
+ * The result of {@link verifyPortableObjectProofWithRoot}.
+ * @internal
+ */
+export interface PortableObjectProofVerification {
+  /** The same result as {@link verifyPortableObjectProof} returns. */
+  readonly result: VerifyPortableObjectProofResult;
+  /**
+   * The expanded root node that the proof policy examined, if the document
+   * was a portable object that got as far as expansion.
+   */
+  readonly root?: Record<string, unknown>;
+  /** The FEP-2277 core type of {@link root}. */
+  readonly objectType?: Fep2277CoreType;
+}
+
+/**
+ * Same as {@link verifyPortableObjectProof}, but also returns the expanded
+ * root node and its FEP-2277 core type, so that a caller can apply further
+ * policy, such as the gateway trust policy for unsecured collections, to the
+ * same interpretation of the document.
+ * @internal
+ */
+export async function verifyPortableObjectProofWithRoot(
+  jsonLd: unknown,
+  options: VerifyPortableObjectProofOptions = {},
+): Promise<PortableObjectProofVerification> {
   const prepared = await preparePortableObjectProof(jsonLd, options);
-  if (!prepared.prepared) return prepared.result;
+  if (!prepared.prepared) {
+    return {
+      result: prepared.result,
+      ...(prepared.root == null ? {} : { root: prepared.root }),
+      ...(prepared.objectType == null
+        ? {}
+        : { objectType: prepared.objectType }),
+    };
+  }
+  const { root, objectType } = prepared;
+  const result = await verifyPreparedPortableObjectProof(
+    jsonLd,
+    prepared,
+    options,
+  );
+  return { result, root, objectType };
+}
+
+async function verifyPreparedPortableObjectProof(
+  jsonLd: unknown,
+  prepared: PreparedPortableObjectProof,
+  options: VerifyPortableObjectProofOptions,
+): Promise<VerifyPortableObjectProofResult> {
   const { proofs, rawProofValues, proofContextLoader } = prepared;
 
   const keys: Multikey[] = [];

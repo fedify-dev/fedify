@@ -687,6 +687,31 @@ export interface TraverseCollectionOptions {
    * @default `{ seconds: 0 }`
    */
   interval?: Temporal.Duration | Temporal.DurationLike;
+  /**
+   * Whether to trust objects whose origin differs from the collection or page
+   * that refers to them.  See the `crossOrigin` option of property accessors
+   * such as `Collection.getItems()`.
+   * @since 2.4.0
+   */
+  crossOrigin?: "ignore" | "throw" | "trust";
+
+  /**
+   * The [FEP-ef61] gateways to fetch portable (`ap:`/`ap+ef61:`) pages and
+   * items through, in order.  See the `gateways` option of property
+   * accessors.
+   *
+   * [FEP-ef61]: https://w3id.org/fep/ef61
+   * @since 2.4.0
+   */
+  gateways?: readonly (string | URL)[];
+
+  /**
+   * The policy to apply to portable pages and items fetched through
+   * gateways, typically `verifyPortableObject()` from `@fedify/fedify`.
+   * Portable pages and items are not fetched without it.
+   * @since 2.4.0
+   */
+  verifyPortableObject?: PortableObjectVerifier;
 }
 
 /**

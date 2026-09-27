@@ -19,8 +19,15 @@ const INTERNAL_RUNTIME_IMPORTS = [
   "normalizeJsonLdIris",
 ].join(",\n    ");
 const PORTABLE_DEREFERENCE_IMPORTS = [
+  "copyPortableProvenance",
   "dereferencePortableIri",
+  "isCompatibleEf61Iri",
+  "isInPortableChain",
   "isPortableIri",
+  "isUnsecuredPortableObject",
+  "recordPortableReferrer",
+  "rejectPortableChainReference",
+  "warnUnverifiableEmbeddedObject",
 ].join(",\n    ");
 const SIGNED_REPRESENTATION_IMPORTS = [
   "enterSignedValueScope",

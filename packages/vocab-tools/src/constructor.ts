@@ -246,6 +246,7 @@ export async function* generateCloner(
       { id: values.id ?? this.id },
       options
     );
+    copyPortableProvenance(this, clone);
     `;
   } else {
     yield `const clone = super.clone(values, options) as unknown as ${type.name};`;
