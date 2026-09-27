@@ -2,6 +2,7 @@ import { mockDocumentLoader, test } from "@fedify/fixture";
 import {
   Collection,
   Create,
+  lookupObject,
   Note,
   Object,
   Person,
@@ -14,6 +15,7 @@ import {
   assertStrictEquals,
   assertThrows,
 } from "@std/assert";
+import type { ResourceDescriptor } from "@fedify/webfinger";
 import { signRequest } from "../sig/http.ts";
 import { signObject, verifyPortableObjectProof } from "../sig/proof.ts";
 import {
@@ -24,7 +26,7 @@ import {
   rsaPublicKey2,
   rsaPublicKey3,
 } from "../testing/keys.ts";
-import type { RequestContext } from "./context.ts";
+import type { Context, RequestContext } from "./context.ts";
 import { MemoryKvStore } from "./kv.ts";
 import { createFederation } from "./middleware.ts";
 import { PORTABLE_OBJECT_CONTENT_TYPE } from "./portable.ts";
@@ -704,4 +706,98 @@ test("Context.getPortableObjectUri()", async (t) => {
     );
     assertThrows(() => ctx.getPortableObjectUri(Person, values, did));
   });
+});
+
+test("Federation.fetch() serves portable actors through WebFinger", async () => {
+  const federation = createTestFederation();
+  const getActor = async (
+    ctx: Context<void>,
+    name: string,
+  ): Promise<Person | null> => {
+    if (name !== "alice") return null;
+    return await sign(
+      new Person({
+        id: ctx.getPortableObjectUri(Person, { name }, did),
+        preferredUsername: name,
+        gateways: [new URL("https://example.com")],
+      }),
+    );
+  };
+  federation
+    .setActorDispatcher(
+      "/users/{identifier}",
+      (ctx, identifier) => getActor(ctx, identifier),
+    )
+    .mapHandle((_ctx, username) => username);
+  federation.setObjectDispatcher(
+    Person,
+    "/actors/{name}",
+    (ctx, values) =>
+      ctx.portableRequest?.authority === did
+        ? getActor(ctx, values.name)
+        : null,
+  );
+
+  const webFinger = await federation.fetch(
+    new Request(
+      "https://example.com/.well-known/webfinger?resource=acct:alice@example.com",
+    ),
+    { contextData: undefined },
+  );
+  assertEquals(webFinger.status, 200);
+  const jrd: ResourceDescriptor = await webFinger.json();
+  const compatibleId = gatewayUrl("/actors/alice");
+  assertEquals(jrd.subject, "acct:alice@example.com");
+  assertEquals(jrd.links?.[0], {
+    rel: "self",
+    href: compatibleId,
+    type: "application/activity+json",
+  });
+
+  const documentLoader = async (url: string) => {
+    const response = await federation.fetch(
+      new Request(url, { headers: { Accept: ACCEPT } }),
+      { contextData: undefined },
+    );
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${url}`);
+    return {
+      contextUrl: null,
+      documentUrl: url,
+      document: await response.json(),
+    };
+  };
+  const actor = await lookupObject(compatibleId, {
+    documentLoader,
+    contextLoader: mockDocumentLoader,
+    verifyPortableObject: verifyPortableObjectProof,
+  });
+  assertInstanceOf(actor, Person);
+  assertEquals(formatIri(actor.id!), `ap+ef61://${did}/actors/alice`);
+  assertEquals(actor.preferredUsername, "alice");
+
+  // Context.lookupObject() verifies portable objects by default:
+  const ctx = federation.createContext(
+    new URL("https://example.com/"),
+    undefined,
+  );
+  assertInstanceOf(
+    await ctx.lookupObject(compatibleId, { documentLoader }),
+    Person,
+  );
+  const unsigned = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id: `ap://${did}/actors/alice`,
+    type: "Person",
+  };
+  assertEquals(
+    await ctx.lookupObject(compatibleId, {
+      documentLoader: (url) =>
+        Promise.resolve({
+          contextUrl: null,
+          documentUrl: url,
+          document: unsigned,
+        }),
+    }),
+    null,
+  );
 });

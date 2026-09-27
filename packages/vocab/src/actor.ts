@@ -1,5 +1,11 @@
 import type { GetUserAgentOptions } from "@fedify/vocab-runtime";
-import { lookupWebFinger } from "@fedify/webfinger";
+import {
+  canonicalizePortableUri,
+  formatIri,
+  fromCompatibleEf61Id,
+  isGatewayUrl,
+} from "@fedify/vocab-runtime";
+import { lookupWebFinger, type ResourceDescriptor } from "@fedify/webfinger";
 import {
   type Attributes,
   type Counter,
@@ -93,6 +99,11 @@ function getActorDiscoveryRemoteHost(
 ): string | undefined {
   const id = actor instanceof URL ? actor : actor.id;
   if (id == null) return undefined;
+  // The authority of a portable ID is a DID, not a host; the handle of
+  // a portable actor comes from its first gateway:
+  if (isPortableActorId(id)) {
+    return actor instanceof URL ? undefined : actor.gateway?.host;
+  }
   return id.host === "" ? undefined : id.host;
 }
 
@@ -234,6 +245,17 @@ export interface GetActorHandleOptions extends NormalizeActorHandleOptions {
  * await getActorHandle(new URL("https://fosstodon.org/users/hongminhee"));
  * ```
  *
+ * For an [FEP-ef61] portable actor, whose ID is an `ap:` or `ap+ef61:` URI,
+ * the domain is taken from the first gateway in the actor's `gateways` rather
+ * than from its ID.  The handle is returned only if its WebFinger response
+ * links back to the actor, since the actor's `gateways` are claimed by the
+ * actor itself; a failed WebFinger lookup is not enough information to get
+ * the handle.  A portable actor without `gateways` or
+ * `preferredUsername`, or a portable actor URI (which does not tell its
+ * gateways), is not supported.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
+ *
  * @param actor The actor or actor URI to get the handle from.
  * @param options The extra options for getting the actor handle.
  * @returns The actor handle.  It starts with `@` and is followed by the
@@ -302,6 +324,10 @@ async function getActorHandleInternal(
   options: GetActorHandleOptions = {},
 ): Promise<`@${string}@${string}` | `${string}@${string}`> {
   const actorId = actor instanceof URL ? actor : actor.id;
+  if (actorId != null && isPortableActorId(actorId)) {
+    if (actor instanceof URL) throw new ActorHandleNotFoundError();
+    return await getPortableActorHandle(actor, actorId, options);
+  }
   if (actorId != null) {
     const result = await lookupWebFinger(actorId, {
       userAgent: options.userAgent,
@@ -342,6 +368,89 @@ async function getActorHandleInternal(
     );
   }
   throw new ActorHandleNotFoundError();
+}
+
+function isPortableActorId(id: URL): boolean {
+  return id.protocol === "ap:" || id.protocol === "ap+ef61:";
+}
+
+/**
+ * The reverse discovery of an FEP-ef61 portable actor's WebFinger address,
+ * which takes the domain from the first gateway in its `gateways`.
+ */
+async function getPortableActorHandle(
+  actor: Actor,
+  actorId: URL,
+  options: GetActorHandleOptions,
+): Promise<`@${string}@${string}` | `${string}@${string}`> {
+  const gateway = actor.gateway;
+  const username = actor.preferredUsername?.toString();
+  if (gateway == null || !isGatewayUrl(gateway) || username == null) {
+    throw new ActorHandleNotFoundError();
+  }
+  const canonicalId = canonicalizePortableUri(formatIri(actorId));
+  const handle = `acct:${username}@${gateway.host}`;
+  const result = await lookupWebFinger(handle, {
+    userAgent: options.userAgent,
+    tracerProvider: options.tracerProvider,
+    meterProvider: options.meterProvider,
+  });
+  // Unlike an ordinary actor, whose ID vouches for its host, a portable
+  // actor's gateways are claimed by the actor itself, so there is no
+  // fallback when the gateway does not link back to the actor:
+  if (result == null || !linksToPortableActor(result, canonicalId)) {
+    throw new ActorHandleNotFoundError();
+  }
+  // The subject is the canonical address when it differs from the queried
+  // one; follow it once if it also links back to the actor:
+  const subject = result.subject?.match(/^acct:([^@]+)@([^@]+)$/);
+  if (subject != null && result.subject !== handle) {
+    const subjectResult = await lookupWebFinger(result.subject!, {
+      userAgent: options.userAgent,
+      tracerProvider: options.tracerProvider,
+      meterProvider: options.meterProvider,
+    });
+    if (
+      subjectResult != null && linksToPortableActor(subjectResult, canonicalId)
+    ) {
+      return normalizeActorHandle(`@${subject[1]}@${subject[2]}`, options);
+    }
+  }
+  return normalizeActorHandle(`@${username}@${gateway.host}`, options);
+}
+
+/**
+ * Checks if the first ActivityStreams `self` link of a WebFinger response
+ * identifies the portable actor, either by its portable ID or by
+ * a compatible identifier.
+ */
+function linksToPortableActor(
+  jrd: ResourceDescriptor,
+  canonicalId: string,
+): boolean {
+  const link = jrd.links?.find((l) =>
+    l.rel === "self" && l.href != null &&
+    (l.type === "application/activity+json" ||
+      l.type?.match(
+          /application\/ld\+json;\s*profile="https:\/\/www.w3.org\/ns\/activitystreams"/,
+        ) != null)
+  );
+  if (link?.href == null) return false;
+  try {
+    let id: string;
+    if (/^ap(?:\+ef61)?:/i.test(link.href)) id = link.href;
+    else {
+      const portable = URL.canParse(link.href)
+        ? fromCompatibleEf61Id(link.href)
+        : null;
+      if (portable == null) return false;
+      id = formatIri(portable);
+    }
+    return canonicalizePortableUri(id) === canonicalId;
+  } catch (error) {
+    if (error instanceof TypeError) return false;
+    throw error;
+  }
 }
 
 async function verifyCrossOriginActorHandle(

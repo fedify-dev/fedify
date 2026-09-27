@@ -78,7 +78,11 @@ import {
   wrapContextLoaderForJsonLd,
 } from "../sig/ld.ts";
 import { getKeyOwner, type GetKeyOwnerOptions } from "../sig/owner.ts";
-import { hasProofLike, verifyObject } from "../sig/proof.ts";
+import {
+  hasProofLike,
+  verifyObject,
+  verifyPortableObjectProof,
+} from "../sig/proof.ts";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 import { kvCache } from "../utils/kv-cache.ts";
 import {
@@ -3798,6 +3802,8 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       userAgent: options.userAgent ?? this.federation.userAgent,
       tracerProvider: options.tracerProvider ?? this.tracerProvider,
       meterProvider: options.meterProvider ?? this.meterProvider,
+      verifyPortableObject: options.verifyPortableObject ??
+        verifyPortableObjectProof,
       // @ts-ignore: `allowPrivateAddress` is not in the type definition.
       allowPrivateAddress: this.federation.allowPrivateAddress,
     });

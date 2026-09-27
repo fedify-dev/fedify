@@ -325,7 +325,13 @@ export interface Context<TContextData> {
    * ```
    *
    * It's almost the same as the {@link lookupObject} function, but it uses
-   * the context's document loader and context loader by default.
+   * the context's document loader and context loader by default.  It also
+   * uses `verifyPortableObjectProof()` as the `verifyPortableObject`
+   * option by default (since 2.4.0), so [FEP-ef61] portable objects,
+   * including portable actors found through WebFinger, are looked up through
+   * their gateways and returned only if they have valid proofs.
+   *
+   * [FEP-ef61]: https://w3id.org/fep/ef61
    *
    * @param identifier The URI or fediverse handle to look up.
    * @param options Lookup options.
