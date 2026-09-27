@@ -85,11 +85,19 @@ To be released.
     from disallowed URLs (`"disallowed"`) without inspecting error messages
     or `cause`.  Existing constructor calls default to `"disallowed"`.
     [[#1055], [#1060] by Jiwon Kwon\]
+ -  Added the [FEP-7aa9] context to the preloaded JSON-LD contexts.  The default
+    document loader now resolves <https://w3id.org/fep/7aa9> locally, so
+    transient Codeberg Pages outages no longer prevent otherwise valid inbound
+    documents from being parsed or verified.  [[#1078], [#1079]]
  -  Fixed `getDocumentLoader()` logging hostnames that fail to resolve as
     “Disallowed private URL” errors, as if they had been blocked for pointing
     at a private address.  These failures are now logged as “DNS lookup
     failed for {url}” at the debug level, and the thrown `UrlError` is
     unchanged.  [[#1062]]
+
+[FEP-7aa9]: https://w3id.org/fep/7aa9
+[#1078]: https://github.com/fedify-dev/fedify/issues/1078
+[#1079]: https://github.com/fedify-dev/fedify/pull/1079
 
 ### @fedify/webfinger
 

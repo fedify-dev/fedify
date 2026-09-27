@@ -330,6 +330,43 @@ test("getDocumentLoader()", async (t) => {
     });
   });
 
+  // A Codeberg Pages outage must not prevent loading the FEP-7aa9 context.
+  // See: https://github.com/fedify-dev/fedify/issues/1078
+  fetchMock.get("https://w3id.org/fep/7aa9", { status: 502 });
+  await t.test("preloaded FEP-7aa9 context", async () => {
+    const url = "https://w3id.org/fep/7aa9";
+    deepStrictEqual(await fetchDocumentLoader(url), {
+      contextUrl: null,
+      documentUrl: url,
+      document: {
+        "@context": {
+          "FeaturedCollection": "https://w3id.org/fep/7aa9#FeaturedCollection",
+          "FeaturedItem": "https://w3id.org/fep/7aa9#FeaturedItem",
+          "FeatureRequest": "https://w3id.org/fep/7aa9#FeatureRequest",
+          "FeatureAuthorization":
+            "https://w3id.org/fep/7aa9#FeatureAuthorization",
+          "topic": {
+            "@id": "https://w3id.org/fep/7aa9#topic",
+            "@type": "@id",
+          },
+          "featuredObject": {
+            "@id": "https://w3id.org/fep/7aa9#featuredObject",
+            "@type": "@id",
+          },
+          "canFeature": {
+            "@id": "https://w3id.org/fep/7aa9#canFeature",
+            "@type": "@id",
+          },
+          "featureAuthorization": {
+            "@id": "https://w3id.org/fep/7aa9#featureAuthorization",
+            "@type": "@id",
+          },
+        },
+      },
+    });
+    deepStrictEqual(fetchMock.callHistory.calls(url).length, 0);
+  });
+
   await t.test("deny non-HTTP/HTTPS", async () => {
     await rejects(
       () => fetchDocumentLoader("ftp://localhost"),
