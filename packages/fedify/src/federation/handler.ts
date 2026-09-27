@@ -12,12 +12,17 @@ import {
   OrderedCollectionPage,
   Tombstone,
 } from "@fedify/vocab";
-import type { DocumentLoader } from "@fedify/vocab-runtime";
+import {
+  canonicalizePortableUri,
+  type DocumentLoader,
+  formatIri,
+} from "@fedify/vocab-runtime";
 import {
   BodyTooLargeError,
   MAX_BODY_SIZE,
   readBoundedText,
 } from "../utils/body.ts";
+import jsonld from "@fedify/vocab-runtime/jsonld";
 import { getLogger } from "@logtape/logtape";
 import type {
   MeterProvider,
@@ -50,7 +55,11 @@ import {
   wrapContextLoaderForJsonLd,
 } from "../sig/ld.ts";
 import { doesActorOwnKey } from "../sig/owner.ts";
-import { verifyObject } from "../sig/proof.ts";
+import {
+  verifyObject,
+  verifyPortableObjectProof,
+  type VerifyPortableObjectProofResult,
+} from "../sig/proof.ts";
 import type {
   ActorDispatcher,
   AuthorizePredicate,
@@ -99,6 +108,7 @@ import {
 } from "./metrics.ts";
 import type { MessageQueue } from "./mq.ts";
 import { acceptsJsonLd } from "./negotiation.ts";
+import { PORTABLE_OBJECT_CONTENT_TYPE } from "./portable.ts";
 import { hasMalformedKnownTemporalLiteral } from "./temporal.ts";
 
 export const rawInboxContextFactorySymbol: unique symbol = Symbol(
@@ -289,6 +299,163 @@ export async function handleObject<TContextData>(
       Vary: "Accept",
     },
   });
+}
+
+/**
+ * Parameters for handling an FEP-ef61 portable object request.
+ * @template TContextData The context data to pass to the context.
+ */
+export interface PortableObjectHandlerParameters<TContextData>
+  extends ObjectHandlerParameters<TContextData> {
+  /**
+   * The canonical form of the requested portable ID.
+   */
+  canonicalId: string;
+}
+
+/**
+ * Handles an FEP-ef61 gateway request for a portable object through an object
+ * dispatcher.  The object is served only if its ID canonically matches the
+ * requested portable ID and it satisfies the FEP-ef61 proof policy.
+ * @template TContextData The context data to pass to the context.
+ * @param request The HTTP request.
+ * @param parameters The parameters for handling the portable object.
+ * @returns A promise that resolves to an HTTP response.
+ */
+export async function handlePortableObject<TContextData>(
+  request: Request,
+  {
+    values,
+    context,
+    objectDispatcher,
+    authorizePredicate,
+    canonicalId,
+    onNotFound,
+    onUnauthorized,
+  }: PortableObjectHandlerParameters<TContextData>,
+): Promise<Response> {
+  const logger = getLogger(["fedify", "federation", "object"]);
+  if (objectDispatcher == null) return await onNotFound(request);
+  const object = await objectDispatcher(context, values);
+  if (object == null) return await onNotFound(request);
+  if (!isRequestedPortableObject(object, canonicalId)) {
+    // This is also what happens when an application that does not serve
+    // portable objects receives a gateway request, so it is not a warning:
+    logger.debug(
+      "The object {objectId} does not match the requested portable object " +
+        "{portableId}.",
+      { objectId: object.id?.href, portableId: canonicalId },
+    );
+    return await onNotFound(request);
+  }
+  if (authorizePredicate != null) {
+    if (!await authorizePredicate(context, values)) {
+      return await onUnauthorized(request);
+    }
+  }
+  let jsonLd: unknown;
+  let servedId: string | null;
+  let result: VerifyPortableObjectProofResult;
+  try {
+    jsonLd = await object.toJsonLd(context);
+    servedId = await getJsonLdRootId(jsonLd, context.contextLoader);
+    result = await verifyPortableObjectProof(jsonLd, {
+      contextLoader: context.contextLoader,
+      documentLoader: context.documentLoader,
+      tracerProvider: context.tracerProvider,
+      meterProvider: context.meterProvider,
+    });
+  } catch (error) {
+    logger.error(
+      "Failed to verify the Object Integrity Proofs of the portable object " +
+        "{portableId}:\n{error}",
+      { portableId: canonicalId, error },
+    );
+    return portableObjectInternalServerError(request);
+  }
+  // The serialized document can differ from object.id, e.g., when the object
+  // keeps its signed JSON-LD but its id URL was mutated afterwards, so check
+  // the ID that is actually served too:
+  if (servedId == null || !isRequestedPortableId(servedId, canonicalId)) {
+    logger.debug(
+      "The serialized object does not match the requested portable object " +
+        "{portableId}.",
+      { portableId: canonicalId },
+    );
+    return await onNotFound(request);
+  }
+  if (
+    !result.verified && result.reason.type !== "unsecuredCollection" &&
+    result.reason.type !== "unsupportedObjectType"
+  ) {
+    logger.error(
+      "Refusing to serve the portable object {portableId}, as it does not " +
+        "satisfy the FEP-ef61 proof policy: {reason}.  Portable actors, " +
+        "activities, and objects need an Object Integrity Proof made with " +
+        "a key of the DID in their ID.",
+      { portableId: canonicalId, reason: result.reason.type },
+    );
+    return portableObjectInternalServerError(request);
+  }
+  return new Response(
+    request.method === "HEAD" ? null : JSON.stringify(jsonLd),
+    {
+      headers: {
+        "Content-Type": PORTABLE_OBJECT_CONTENT_TYPE,
+        Vary: "Accept",
+      },
+    },
+  );
+}
+
+function isRequestedPortableObject(
+  object: Object,
+  canonicalId: string,
+): boolean {
+  if (object.id == null) return false;
+  if (object.id.protocol !== "ap:" && object.id.protocol !== "ap+ef61:") {
+    return false;
+  }
+  try {
+    return canonicalizePortableUri(formatIri(object.id)) === canonicalId;
+  } catch (error) {
+    if (error instanceof TypeError) return false;
+    throw error;
+  }
+}
+
+async function getJsonLdRootId(
+  jsonLd: unknown,
+  contextLoader: DocumentLoader,
+): Promise<string | null> {
+  // Expands the document rather than reading its "id" key, since the document
+  // may be in the expanded form or alias @id differently:
+  const expanded = await jsonld.expand(jsonLd, {
+    documentLoader: getNormalizationContextLoader(contextLoader),
+    keepFreeFloatingNodes: true,
+  });
+  if (expanded.length !== 1) return null;
+  const id = expanded[0]["@id"];
+  return typeof id === "string" ? id : null;
+}
+
+function isRequestedPortableId(id: string, canonicalId: string): boolean {
+  try {
+    return canonicalizePortableUri(id) === canonicalId;
+  } catch (error) {
+    if (error instanceof TypeError) return false;
+    throw error;
+  }
+}
+
+function portableObjectInternalServerError(request: Request): Response {
+  return new Response(
+    request.method === "HEAD" ? null : "Internal server error.",
+    {
+      status: 500,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    },
+  );
 }
 
 /**

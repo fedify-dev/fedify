@@ -134,6 +134,40 @@ export interface Context<TContextData> {
   ): URL;
 
   /**
+   * Builds the [FEP-ef61] portable ID of an object with the given class and
+   * values under the given DID authority.
+   *
+   * The path is the same as the one {@link Context.getObjectUri} builds from
+   * the object dispatcher's path, but the result is an `ap+ef61:` URI whose
+   * authority is the DID, e.g., `ap+ef61://did:key:z6Mk.../notes/123`.
+   * Such an object can be served through the FEP-ef61 gateway endpoint,
+   * `/.well-known/apgateway/did:key:z6Mk.../notes/123`, by the same object
+   * dispatcher.
+   *
+   * The returned `URL` keeps the DID authority percent-encoded, because
+   * the `URL` class cannot represent the canonical form.  Use `formatIri()`
+   * from `@fedify/vocab-runtime` to get the canonical string, e.g.,
+   * `ap+ef61://did:key:z6Mk.../notes/123`.
+   *
+   * [FEP-ef61]: https://w3id.org/fep/ef61
+   *
+   * @param cls The class of the object.
+   * @param values The values to pass to the object dispatcher.
+   * @param authority The DID that controls the object, e.g.,
+   *                  `did:key:z6Mk...`.  It must be a bare DID, without
+   *                  a path, query, or fragment.
+   * @returns The object's portable ID.
+   * @throws {RouterError} If no object dispatcher is available for the class.
+   * @throws {TypeError} If values are invalid or the authority is not a DID.
+   * @since 2.4.0
+   */
+  getPortableObjectUri<TObject extends Object>(
+    cls: ConstructorWithTypeId<TObject>,
+    values: Record<string, string>,
+    authority: string,
+  ): URL;
+
+  /**
    * Builds the URI of an actor's outbox with the given identifier.
    * @param identifier The actor's identifier.
    * @returns The actor's outbox URI.
@@ -509,6 +543,31 @@ export interface Context<TContextData> {
 }
 
 /**
+ * Information about an [FEP-ef61] portable object requested through
+ * the gateway endpoint.  See {@link RequestContext.portableRequest}.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
+ * @since 2.4.0
+ */
+export interface PortableRequest {
+  /**
+   * The DID authority of the requested portable object, e.g.,
+   * `did:key:z6Mk...`.  It comes from the request path, so it is not
+   * evidence that this server hosts objects for the DID.
+   */
+  readonly authority: string;
+
+  /**
+   * The ID of the requested portable object, e.g.,
+   * `ap+ef61://did:key:z6Mk.../notes/123`, without a query.  Like other
+   * portable IDs, the `URL` keeps the DID authority percent-encoded; use
+   * `formatIri()` from `@fedify/vocab-runtime` to get the canonical string.
+   * Each access returns a new `URL` instance.
+   */
+  readonly id: URL;
+}
+
+/**
  * Options for {@link RequestContext.getActor}.
  * @since 2.2.0
  */
@@ -535,6 +594,52 @@ export interface RequestContext<TContextData> extends Context<TContextData> {
    * The URL of the request.
    */
   readonly url: URL;
+
+  /**
+   * Information about the [FEP-ef61] portable object requested through
+   * the gateway endpoint, e.g.,
+   * `GET /.well-known/apgateway/did:key:z6Mk.../notes/123`.  It is
+   * `undefined` for ordinary requests.
+   *
+   * The authority comes from the request path, so it is not evidence that
+   * this server hosts objects for the DID.  An object dispatcher has to check
+   * that by itself.
+   *
+   * It describes the incoming request, so it stays the same in contexts
+   * derived from this one, e.g., by {@link RequestContext.getObject}.
+   *
+   * [FEP-ef61]: https://w3id.org/fep/ef61
+   * @since 2.4.0
+   */
+  readonly portableRequest?: PortableRequest;
+
+  /**
+   * Builds the [FEP-ef61] portable ID of an object with the given class and
+   * values.  It works the same as {@link Context.getPortableObjectUri}, except
+   * that the authority can be omitted while handling a portable gateway
+   * request.  In that case, the DID in {@link RequestContext.portableRequest}
+   * is used.
+   *
+   * [FEP-ef61]: https://w3id.org/fep/ef61
+   *
+   * @param cls The class of the object.
+   * @param values The values to pass to the object dispatcher.
+   * @param authority The DID that controls the object, e.g.,
+   *                  `did:key:z6Mk...`.  It must be a bare DID, without
+   *                  a path, query, or fragment.  Defaults to the DID of
+   *                  the requested portable object.
+   * @returns The object's portable ID.
+   * @throws {RouterError} If no object dispatcher is available for the class.
+   * @throws {TypeError} If values are invalid, the authority is not a DID, or
+   *                     the authority is omitted outside a portable gateway
+   *                     request.
+   * @since 2.4.0
+   */
+  getPortableObjectUri<TObject extends Object>(
+    cls: ConstructorWithTypeId<TObject>,
+    values: Record<string, string>,
+    authority?: string,
+  ): URL;
 
   /**
    * Creates a new context with the same properties as this one,
