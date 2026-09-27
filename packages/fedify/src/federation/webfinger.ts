@@ -3,6 +3,12 @@ import {
   Link as LinkObject,
   Tombstone,
 } from "@fedify/vocab";
+import {
+  formatIri,
+  isGatewayUrl,
+  parseIri,
+  toCompatibleEf61Id,
+} from "@fedify/vocab-runtime";
 import type { Link, ResourceDescriptor } from "@fedify/webfinger";
 import { getLogger } from "@logtape/logtape";
 import type { MeterProvider, Span, Tracer } from "@opentelemetry/api";
@@ -65,6 +71,51 @@ function getWebFingerSubjectAndAliases(
       preferredUsername !== acctUsername
     ) {
       aliases.push(`acct:${preferredUsername}@${contextHost}`);
+    }
+  }
+  return { subject, aliases };
+}
+
+interface PortableWebFingerSubjectAndAliasesOptions {
+  resourceUrl: URL;
+  compatibleId: URL;
+  preferredUsername: string | LanguageString | null | undefined;
+  acctUsername: string | null;
+  gatewayHost: string;
+}
+
+/**
+ * Computes the subject and aliases for an FEP-ef61 portable actor, whose
+ * WebFinger address takes its domain from the first gateway of the actor
+ * rather than from the actor ID.  The canonical `ap:` ID is not emitted,
+ * since it is not a valid URI for software that does not support FEP-ef61;
+ * the compatible identifier stands for it.
+ */
+function getPortableWebFingerSubjectAndAliases(
+  {
+    resourceUrl,
+    compatibleId,
+    preferredUsername,
+    acctUsername,
+    gatewayHost,
+  }: PortableWebFingerSubjectAndAliasesOptions,
+): Pick<ResourceDescriptor, "subject" | "aliases"> {
+  const aliases: string[] = [];
+  const add = (alias: string) => {
+    if (alias !== subject && !aliases.includes(alias)) aliases.push(alias);
+  };
+  let subject: string;
+  if (resourceUrl.protocol === "acct:") {
+    subject = `acct:${preferredUsername ?? acctUsername}@${gatewayHost}`;
+    add(compatibleId.href);
+    add(resourceUrl.href);
+  } else {
+    subject = preferredUsername == null
+      ? compatibleId.href
+      : `acct:${preferredUsername}@${gatewayHost}`;
+    add(compatibleId.href);
+    if (resourceUrl.protocol === "http:" || resourceUrl.protocol === "https:") {
+      add(resourceUrl.href);
     }
   }
   return { subject, aliases };
@@ -284,7 +335,9 @@ async function handleWebFingerInternal<TContextData>(
   span?.setAttribute("webfinger.resource", resource);
   let resourceUrl: URL;
   try {
-    resourceUrl = new URL(resource);
+    // parseIri() also accepts FEP-ef61 portable IRIs, e.g., ap://did:key:...,
+    // which the URL constructor rejects:
+    resourceUrl = parseIri(resource);
   } catch (e) {
     if (e instanceof TypeError) {
       return new Response("Invalid resource URL.", { status: 400 });
@@ -362,7 +415,35 @@ async function handleWebFingerInternal<TContextData>(
       },
     });
   }
-  const actorUri = context.getActorUri(identifier);
+  let actorUri = context.getActorUri(identifier);
+  let portable: { compatibleId: URL; gatewayHost: string } | undefined;
+  if (
+    actor.id != null &&
+    (actor.id.protocol === "ap:" || actor.id.protocol === "ap+ef61:")
+  ) {
+    // FEP-ef61 portable actor; its WebFinger address and compatible
+    // identifier are based on the first gateway in its gateways:
+    const gateway = actor.gateway;
+    let compatibleId: URL | undefined;
+    if (gateway != null && isGatewayUrl(gateway)) {
+      try {
+        compatibleId = toCompatibleEf61Id(actor.id, gateway);
+      } catch (error) {
+        if (!(error instanceof TypeError)) throw error;
+      }
+    }
+    if (gateway == null || compatibleId == null) {
+      logger.error(
+        "The portable actor {actorId} (identifier: {identifier}) needs " +
+          "an HTTP(S) origin as the first item of its gateways property " +
+          "to be discovered through WebFinger.",
+        { actorId: formatIri(actor.id), identifier },
+      );
+      return await onNotFound(request);
+    }
+    actorUri = compatibleId;
+    portable = { compatibleId, gatewayHost: gateway.host };
+  }
   const links: Link[] = [
     {
       rel: "self",
@@ -402,14 +483,22 @@ async function handleWebFingerInternal<TContextData>(
     }
   }
 
-  const { subject, aliases } = getWebFingerSubjectAndAliases({
-    resourceUrl,
-    actorUri,
-    preferredUsername: actor.preferredUsername,
-    acctUsername,
-    host,
-    contextHost: context.url.host,
-  });
+  const { subject, aliases } = portable == null
+    ? getWebFingerSubjectAndAliases({
+      resourceUrl,
+      actorUri,
+      preferredUsername: actor.preferredUsername,
+      acctUsername,
+      host,
+      contextHost: context.url.host,
+    })
+    : getPortableWebFingerSubjectAndAliases({
+      resourceUrl,
+      compatibleId: portable.compatibleId,
+      preferredUsername: actor.preferredUsername,
+      acctUsername,
+      gatewayHost: portable.gatewayHost,
+    });
   const jrd: ResourceDescriptor = {
     subject,
     aliases,

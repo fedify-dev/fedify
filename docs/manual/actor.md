@@ -757,3 +757,115 @@ for the actor's profile URL with the corresponding actor URI.
 > [!TIP]
 > The callback function of the `~ActorCallbackSetters.mapAlias()` method
 > can be an async function.
+
+
+Portable actors and WebFinger
+-----------------------------
+
+*This API is available since Fedify 2.4.0.*
+
+An [FEP-ef61] portable actor has an ID that is not tied to a server, such as
+`ap+ef61://did:key:z6Mk.../actors/alice`, and a `gateways` property that lists
+the servers where the actor can be retrieved.  Since the ID has no host,
+FEP-ef61 takes the domain of the actor's WebFinger address from the *first*
+gateway instead: a portable actor with `preferredUsername` `alice` and
+`https://example.com` as its first gateway is `@alice@example.com`.
+
+Fedify's WebFinger endpoint supports portable actors through the same actor
+dispatcher, `~ActorCallbackSetters.mapHandle()`, and
+`~ActorCallbackSetters.mapAlias()` as ordinary actors.  If the actor dispatcher
+returns an actor whose ID is a portable ID, Fedify responds as follows:
+
+ -  The `self` link is the actor's *compatible identifier* made from its first
+    gateway, e.g.,
+    `https://example.com/.well-known/apgateway/did:key:z6Mk.../actors/alice`,
+    so that software that does not support portable IDs can still fetch the
+    actor.  Software that supports them recovers the portable ID from it.
+    The portable ID itself is not put in the response, as it is not a valid
+    URI for most WebFinger clients.
+ -  The `subject` is the `acct:` URI whose domain is the host of the first
+    gateway.  If this server is not the first gateway, the queried `acct:`
+    URI is listed in `aliases` instead.
+ -  If the actor has no `gateways`, or its first gateway is not an HTTP(S)
+    origin, Fedify logs an error and responds as if the actor were not found.
+
+Fedify serves portable objects at their compatible identifiers only through
+object dispatchers (see the [*Serving portable objects*
+section](./object.md#serving-portable-objects)), so register an object
+dispatcher for the actor as well, and use the portable ID it builds as
+the actor's ID:
+
+~~~~ typescript twoslash
+import { type Context, type Federation, signObject } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
+const federation = null as unknown as Federation<void>;
+interface User { username: string; did: string }
+async function findUser(_username: string): Promise<User | null> {
+  return null;
+}
+async function getPortableKey(
+  _did: string,
+): Promise<{ privateKey: CryptoKey; keyId: URL }> {
+  return null!;
+}
+// ---cut-before---
+async function getPortableActor(
+  ctx: Context<void>,
+  user: User,
+): Promise<Person> {
+  const { privateKey, keyId } = await getPortableKey(user.did);
+  return await signObject(
+    new Person({
+      // ap+ef61://did:key:z6Mk.../actors/alice
+      id: ctx.getPortableObjectUri(Person, { name: user.username }, user.did),
+      preferredUsername: user.username,
+      gateways: [new URL("https://example.com")],
+    }),
+    privateKey,
+    keyId,  // e.g., did:key:z6Mk...#z6Mk...
+  );
+}
+
+federation
+  .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+    const user = await findUser(identifier);
+    if (user == null) return null;
+    return await getPortableActor(ctx, user);
+  })
+  // Maps the WebFinger username (preferredUsername) back to the identifier:
+  .mapHandle((ctx, username) => username);
+
+// Serves GET /.well-known/apgateway/did:key:z6Mk.../actors/alice:
+federation.setObjectDispatcher(
+  Person,
+  "/actors/{name}",
+  async (ctx, values) => {
+    const user = await findUser(values.name);
+    if (user == null || ctx.portableRequest?.authority !== user.did) {
+      return null;
+    }
+    return await getPortableActor(ctx, user);
+  },
+);
+~~~~
+
+> [!NOTE]
+> Fedify generates only one `self` link for a portable actor, but links
+> returned by the [WebFinger links dispatcher](#webfinger-links) are added
+> as they are.  Also note that WebFinger discovery alone does not make
+> a portable actor usable for software without FEP-ef61 support, which may
+> still refuse the actor document whose ID is a portable ID.
+
+On the other side, `Context.lookupObject()` resolves a handle of a portable
+actor, e.g., `@alice@example.com`, whether the `self` link of the WebFinger
+response is a portable ID or a compatible identifier.  It fetches the actor
+through gateways, asking the WebFinger server first, and returns it only if it
+has a valid Object Integrity Proof made by the DID in its ID; the WebFinger
+server is never treated as the actor's origin.  See the [*Looking up remote
+objects* section](./context.md#looking-up-remote-objects) for details.
+The `getActorHandle()` function, in turn, takes the domain of a portable
+actor's handle from its first gateway, and returns the handle only if the
+WebFinger response for it links back to the actor, since anyone can list any
+server in the `gateways` of their actor.
+
+[FEP-ef61]: https://w3id.org/fep/ef61

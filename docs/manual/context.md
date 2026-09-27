@@ -502,6 +502,54 @@ const note = await ctx.lookupObject(
 
 [FEP-fe34]: https://w3id.org/fep/fe34
 
+### Portable objects
+
+*This API is available since Fedify 2.4.0.*
+
+The `~Context.lookupObject()` method also looks up [FEP-ef61] portable objects,
+whose IDs are `ap:` or `ap+ef61:` URIs with a [DID] instead of a host, e.g.,
+`ap://did:key:z6Mk.../actor`.  A portable object is not served from its ID,
+but from *gateways*, so the method fetches it through gateways in the same way
+as [dereferencing accessors](./vocab.md#dereferencing-portable-references):
+
+ -  A portable ID is fetched through the gateways in its `@gateway` location
+    hints, e.g.,
+    `ap://did:key:z6Mk.../actor?@gateway=https%3A%2F%2Fexample.com`.
+ -  A compatible identifier, e.g.,
+    `https://example.com/.well-known/apgateway/did:key:z6Mk.../actor`, is
+    fetched through the gateway it names.
+ -  When a fediverse handle of a [portable
+    actor](./actor.md#portable-actors-and-webfinger) is looked up, the `self`
+    link of the WebFinger response can be either of them.  A portable ID is
+    fetched through the WebFinger server first, as it is the actor's first
+    gateway, and then through the location hints.
+
+In every case, the fetched object is returned only if its `@id` identifies the
+requested portable object and it has a valid [Object Integrity
+Proof](./send.md#object-integrity-proofs) made by the DID in its ID, since
+a portable object belongs to its DID, not to the server that serves it.
+`Context.lookupObject()` checks the proof with `verifyPortableObjectProof()` by
+default; pass the `verifyPortableObject` option to use another policy.  If
+a gateway returns an object that fails these checks, the next candidate is
+tried; `crossOrigin: "throw"` makes the method throw an error instead, and
+`crossOrigin: "trust"` does not skip the checks.  To limit the number of
+servers a single lookup reaches, the method asks at most five gateways.
+
+Note that a document served at a compatible identifier whose `@id` is the
+compatible identifier itself, rather than a portable ID, is not accepted as
+a portable object.
+
+> [!NOTE]
+> The `lookupObject()` function from `@fedify/vocab` does not look up portable
+> objects unless you pass the `verifyPortableObject` option, e.g.,
+> `verifyPortableObjectProof` from `@fedify/fedify`.  Without it, compatible
+> identifiers are fetched as ordinary HTTP(S) URLs, and an object with
+> a portable ID served there is refused as a cross-origin object, even with
+> `crossOrigin: "trust"`.
+
+[FEP-ef61]: https://w3id.org/fep/ef61
+[DID]: https://www.w3.org/TR/did-core/
+
 
 WebFinger lookups
 -----------------

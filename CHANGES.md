@@ -10,6 +10,30 @@ To be released.
 
 ### @fedify/fedify
 
+ -  Added WebFinger support for [FEP-ef61] portable actors.  When an actor
+    dispatcher returns an actor whose ID is an `ap:` or `ap+ef61:` URI, the
+    WebFinger response takes the domain of the actor's `acct:` URI from the
+    first gateway in its `gateways`, as FEP-ef61 requires, and its `self`
+    link is the actor's compatible identifier based on that gateway, e.g.,
+    `https://example.com/.well-known/apgateway/did:key:z6Mk.../actor`, so
+    that software without portable ID support can fetch it.  A portable
+    actor without a valid first gateway is not found.  Existing
+    `mapHandle()` and `mapAlias()` callbacks work as before, and WebFinger
+    resources can now be `ap:` or `ap+ef61:` URIs, which are passed to
+    `mapAlias()`.  To serve the actor itself at its compatible identifier,
+    register an object dispatcher for it.  [[#288], [#837], [#1082]]
+
+ -  `Context.lookupObject()` now uses `verifyPortableObjectProof()` as its
+    new `verifyPortableObject` option by default, so it looks up
+    [FEP-ef61] portable objects, including portable actors found through
+    WebFinger, through their gateways and returns them only if they have
+    valid Object Integrity Proofs made by the DIDs in their IDs.
+    [[#288], [#837], [#1082]]
+
+ -  Actor dispatchers no longer log warnings that a portable actor's ID or
+    collection URIs do not match the URIs that `Context` builds, such as
+    `Context.getActorUri()`.  [[#288], [#837], [#1082]]
+
  -  Added serving of [FEP-ef61] portable objects through the gateway endpoint,
     e.g., `GET /.well-known/apgateway/did:key:z6Mk.../notes/123`.  Existing
     object dispatchers serve such a request with the path after the DID, so
@@ -214,6 +238,7 @@ To be released.
 [#829]: https://github.com/fedify-dev/fedify/issues/829
 [#832]: https://github.com/fedify-dev/fedify/issues/832
 [#835]: https://github.com/fedify-dev/fedify/issues/835
+[#837]: https://github.com/fedify-dev/fedify/issues/837
 [#915]: https://github.com/fedify-dev/fedify/pull/915
 [#923]: https://github.com/fedify-dev/fedify/pull/923
 [#925]: https://github.com/fedify-dev/fedify/pull/925
@@ -231,6 +256,7 @@ To be released.
 [#1051]: https://github.com/fedify-dev/fedify/pull/1051
 [#1073]: https://github.com/fedify-dev/fedify/pull/1073
 [#1076]: https://github.com/fedify-dev/fedify/pull/1076
+[#1082]: https://github.com/fedify-dev/fedify/pull/1082
 
 ### @fedify/adonisjs
 
@@ -527,6 +553,34 @@ To be released.
     `temporal-polyfill`, while type declarations rely on the standard
     `esnext.temporal` lib reference.
     [[#823], [#925]]
+
+ -  Added the `verifyPortableObject` option to `LookupObjectOptions`.  With
+    it, `lookupObject()` looks up [FEP-ef61] portable objects: `ap:` and
+    `ap+ef61:` URIs through their `@gateway` location hints, compatible
+    identifiers through the gateways they name, and portable actors'
+    handles through the `self` links of their WebFinger responses, which
+    can be either of them.  A fetched object is returned only if its `@id`
+    identifies the requested portable object and the option accepts it;
+    otherwise, the next candidate is tried, at most five gateways per
+    lookup.  `crossOrigin: "throw"` makes a rejected object throw an error,
+    and `crossOrigin: "trust"` does not skip the checks.
+    [[#288], [#837], [#1082]]
+
+ -  `crossOrigin: "trust"` no longer makes `lookupObject()` return an object
+    whose `@id` is an `ap:` or `ap+ef61:` URI from a document URL of another
+    origin, such as a compatible identifier fetched as an ordinary HTTP(S)
+    URL, since a portable object is authenticated by its proofs, not by the
+    server that serves it.  Look such objects up with the
+    `verifyPortableObject` option instead.  [[#288], [#837], [#1082]]
+
+ -  `getActorHandle()` now supports [FEP-ef61] portable actors.  It takes the
+    domain of a portable actor's handle from the first gateway in its
+    `gateways` instead of its ID, and returns the handle only if its
+    WebFinger response links back to the actor, either by its portable ID
+    or by a compatible identifier, since the gateways are claimed by the
+    actor itself.  It throws a `TypeError` otherwise, including when the
+    WebFinger lookup fails, and for a portable actor without `gateways` or
+    `preferredUsername` or a portable actor URI.  [[#288], [#837], [#1082]]
 
  -  Added vocabulary support for the [FEP-22cd] draft, associating each
     translated version with its translators, source object, and optional source

@@ -181,11 +181,31 @@ export interface DereferencePortableIriOptions<T> {
   verifyPortableObject?: PortableObjectVerifier;
   suppressError?: boolean;
   crossOrigin?: "ignore" | "throw" | "trust";
+  /**
+   * The signal for cancelling the dereference.  It is passed to the document
+   * loader for requests to gateways, and checked between attempts.  Requests
+   * for JSON-LD contexts and verification methods may not be cancelled.
+   */
+  signal?: AbortSignal;
   parse: (
     document: unknown,
     options: { contextLoader: DocumentLoader; baseUrl: URL },
   ) => Promise<T>;
-  span: Span;
+  span?: Span;
+}
+
+/**
+ * The error thrown by {@link dereferencePortableIri} under
+ * `crossOrigin: "throw"` when gateways returned objects but none of them
+ * satisfied the identity and proof checks.
+ *
+ * @internal Not part of the public API contract.
+ */
+export class PortableObjectRejectedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PortableObjectRejectedError";
+  }
 }
 
 type Attempt =
@@ -228,7 +248,7 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
   // Invalid gateways are a programming error, so they are never suppressed:
   const gateways = getPortableGatewayCandidates(url, options.gateways);
   const fail = (error: unknown): null => {
-    span.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
+    span?.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
     if (options.suppressError) {
       logger.error("Failed to dereference {url}: {error}", {
         url: lookupUrl,
@@ -266,12 +286,18 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
   const snapshot = createSnapshotContextLoader(options.contextLoader);
   const contextLoader = snapshot.loader;
   const attempts: Attempt[] = [];
+  const { signal } = options;
   try {
     for (const { url: requestUrl, gateway } of requestUrls) {
+      signal?.throwIfAborted();
       let remoteDocument: RemoteDocument;
       try {
-        remoteDocument = await options.documentLoader(requestUrl);
+        remoteDocument = await options.documentLoader(
+          requestUrl,
+          signal == null ? undefined : { signal },
+        );
       } catch (error) {
+        signal?.throwIfAborted();
         logger.debug("Failed to fetch {url} from {requestUrl}: {error}", {
           url: lookupUrl,
           requestUrl,
@@ -306,11 +332,13 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
           contextLoader,
           baseUrl: url,
         });
+        signal?.throwIfAborted();
         if (gateway != null) {
-          span.setAttribute("activitypub.gateway", gateway.href);
+          span?.setAttribute("activitypub.gateway", gateway.href);
         }
         return object;
       } catch (error) {
+        signal?.throwIfAborted();
         if (error instanceof PortableObjectRejection) {
           logger.warn(
             "Rejected the portable object {url} served from {requestUrl}, " +
@@ -337,11 +365,11 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
       lookupUrl + "; refusing to return the object.  Objects retrieved " +
       "from: " + rejected.map((a) => a.source).join(", ") + ".";
     if (options.suppressError || options.crossOrigin !== "throw") {
-      span.setStatus({ code: SpanStatusCode.ERROR, message });
+      span?.setStatus({ code: SpanStatusCode.ERROR, message });
       logger.warn(message);
       return null;
     }
-    throw new Error(message);
+    throw new PortableObjectRejectedError(message);
   }
   const errors = attempts.flatMap((a) => a.type === "error" ? [a.error] : []);
   return fail(

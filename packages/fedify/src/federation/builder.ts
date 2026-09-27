@@ -331,12 +331,18 @@ export class FederationBuilderImpl<TContextData>
         );
         if (actor == null) return null;
         const logger = getLogger(["fedify", "federation", "actor"]);
+        // An FEP-ef61 portable actor's URIs are not this server's URIs, so
+        // they are not compared with the ones Context builds:
+        const portable = actor.id?.protocol === "ap:" ||
+          actor.id?.protocol === "ap+ef61:";
         if (actor.id == null) {
           logger.warn(
             "Actor dispatcher returned an actor without an id property.  " +
               "Set the property with Context.getActorUri(identifier).",
           );
-        } else if (actor.id.href != context.getActorUri(identifier).href) {
+        } else if (
+          !portable && actor.id.href != context.getActorUri(identifier).href
+        ) {
           logger.warn(
             "Actor dispatcher returned an actor with an id property that " +
               "does not match the actor URI.  Set the property with " +
@@ -355,6 +361,7 @@ export class FederationBuilderImpl<TContextData>
                 "with Context.getFollowingUri(identifier).",
             );
           } else if (
+            !portable &&
             actor.followingId.href != context.getFollowingUri(identifier).href
           ) {
             logger.warn(
@@ -376,6 +383,7 @@ export class FederationBuilderImpl<TContextData>
                 "with Context.getFollowersUri(identifier).",
             );
           } else if (
+            !portable &&
             actor.followersId.href != context.getFollowersUri(identifier).href
           ) {
             logger.warn(
@@ -397,6 +405,7 @@ export class FederationBuilderImpl<TContextData>
                 "with Context.getOutboxUri(identifier).",
             );
           } else if (
+            !portable &&
             actor.outboxId.href != context.getOutboxUri(identifier).href
           ) {
             logger.warn(
@@ -417,6 +426,7 @@ export class FederationBuilderImpl<TContextData>
                 "with Context.getLikedUri(identifier).",
             );
           } else if (
+            !portable &&
             actor.likedId.href != context.getLikedUri(identifier).href
           ) {
             logger.warn(
@@ -437,6 +447,7 @@ export class FederationBuilderImpl<TContextData>
                 "with Context.getFeaturedUri(identifier).",
             );
           } else if (
+            !portable &&
             actor.featuredId.href != context.getFeaturedUri(identifier).href
           ) {
             logger.warn(
@@ -457,6 +468,7 @@ export class FederationBuilderImpl<TContextData>
                 "with Context.getFeaturedTagsUri(identifier).",
             );
           } else if (
+            !portable &&
             actor.featuredTagsId.href !=
               context.getFeaturedTagsUri(identifier).href
           ) {
@@ -476,6 +488,7 @@ export class FederationBuilderImpl<TContextData>
                 "Context.getInboxUri(identifier).",
             );
           } else if (
+            !portable &&
             actor.inboxId.href != context.getInboxUri(identifier).href
           ) {
             logger.warn(
@@ -491,6 +504,7 @@ export class FederationBuilderImpl<TContextData>
                 "Context.getInboxUri().",
             );
           } else if (
+            !portable &&
             actor.endpoints.sharedInbox.href != context.getInboxUri().href
           ) {
             logger.warn(
