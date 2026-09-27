@@ -9,6 +9,19 @@ import Fastify from "fastify";
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 
+// Sends the body only after a delay, so that the request reaches Fedify
+// before any of its body has arrived:
+function delayedBody(body: string): ReadableStream<Uint8Array> {
+  return new ReadableStream({
+    start(controller) {
+      setTimeout(() => {
+        controller.enqueue(new TextEncoder().encode(body));
+        controller.close();
+      }, 100);
+    },
+  });
+}
+
 test("Fedify should handle requests successfully", async () => {
   const fastify = Fastify({ logger: false });
   const federation = createFederation<void>({ kv: new MemoryKvStore() });
@@ -317,5 +330,45 @@ test("Fedify should receive request bodies it handles", async () => {
     assert.equal(response.status, 202);
   } finally {
     await fastify.close();
+  }
+});
+
+test("Fedify should restore request bodies it read before declining", async () => {
+  // A dispatcher may clone the request, e.g., through ctx.getSignedKey(), and
+  // then return null; the clone tees the body, which starts reading it.
+  for (const readClone of [false, true]) {
+    const fastify = Fastify({ logger: false });
+    const federation = createFederation<void>({ kv: new MemoryKvStore() });
+    federation.setActorDispatcher("/users/{identifier}", async (ctx) => {
+      const clone = ctx.request.clone();
+      if (readClone) await clone.arrayBuffer();
+      return null;
+    });
+    await fastify.register(fedifyPlugin, { federation });
+    fastify.post("/users/:identifier", (request) => request.body);
+    const origin = await fastify.listen({ port: 0, host: "127.0.0.1" });
+
+    try {
+      for (const size of [1024, LARGE_BODY_SIZE]) {
+        for (const delayed of [false, true]) {
+          const body = "0123456789".repeat(size / 10);
+          const response = await fetch(`${origin}/users/alice`, {
+            method: "POST",
+            headers: {
+              Accept: "application/activity+json",
+              "Content-Type": "text/plain",
+            },
+            body: delayed ? delayedBody(body) : body,
+            // @ts-ignore: Node.js requires duplex for streaming request bodies
+            duplex: "half",
+            signal: AbortSignal.timeout(5000),
+          });
+          assert.equal(response.status, 200);
+          assert.equal(await response.text(), body);
+        }
+      }
+    } finally {
+      await fastify.close();
+    }
   }
 });

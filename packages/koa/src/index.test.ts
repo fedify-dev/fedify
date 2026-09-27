@@ -34,6 +34,19 @@ function readBody(message: IncomingMessage): Promise<string> {
   });
 }
 
+// Sends the body only after a delay, so that the request reaches Fedify
+// before any of its body has arrived:
+function delayedBody(body: string): ReadableStream<Uint8Array> {
+  return new ReadableStream({
+    start(controller) {
+      setTimeout(() => {
+        controller.enqueue(new TextEncoder().encode(body));
+        controller.close();
+      }, 100);
+    },
+  });
+}
+
 test("createMiddleware() leaves request bodies it declines intact", async () => {
   const federation = createFederation<void>({ kv: new MemoryKvStore() });
   federation.setActorDispatcher("/users/{identifier}", () => null);
@@ -89,4 +102,43 @@ test("createMiddleware() passes request bodies to Fedify", async () => {
     });
     assert.equal(response.status, 202);
   });
+});
+
+test("createMiddleware() restores request bodies Fedify read before declining", async () => {
+  // A dispatcher may clone the request, e.g., through ctx.getSignedKey(), and
+  // then return null; the clone tees the body, which starts reading it.
+  for (const readClone of [false, true]) {
+    const federation = createFederation<void>({ kv: new MemoryKvStore() });
+    federation.setActorDispatcher("/users/{identifier}", async (ctx) => {
+      const clone = ctx.request.clone();
+      if (readClone) await clone.arrayBuffer();
+      return null;
+    });
+    const app = new Koa();
+    app.use(createMiddleware(federation, () => undefined));
+    app.use(async (ctx: Koa.Context) => {
+      ctx.body = await readBody(ctx.req);
+    });
+
+    await withServer(app, async (origin) => {
+      for (const size of [1024, LARGE_BODY_SIZE]) {
+        for (const delayed of [false, true]) {
+          const body = "0123456789".repeat(size / 10);
+          const response = await fetch(`${origin}/users/alice`, {
+            method: "POST",
+            headers: {
+              Accept: "application/activity+json",
+              "Content-Type": "text/plain",
+            },
+            body: delayed ? delayedBody(body) : body,
+            // @ts-ignore: Node.js requires duplex for streaming request bodies
+            duplex: "half",
+            signal: AbortSignal.timeout(5000),
+          });
+          assert.equal(response.status, 200);
+          assert.equal(await response.text(), body);
+        }
+      }
+    });
+  }
 });

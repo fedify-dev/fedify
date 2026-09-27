@@ -2,6 +2,7 @@
 links:
   '#1059': https://github.com/fedify-dev/fedify/issues/1059
   '#1061': https://github.com/fedify-dev/fedify/pull/1061
+  '#1068': https://github.com/fedify-dev/fedify/pull/1068
 ---
  -  Fixed `integrateFederation()` breaking the request bodies of routes that
     Fedify does not handle.  The middleware started reading the body of every
@@ -12,4 +13,4 @@ links:
     an application's own API.  The middleware now reads the body only when
     Fedify handles the request.  If you limited the middleware to federation
     paths to work around this, you can remove that workaround.
-    [[#1059], [#1061]]
+    [[#1059], [#1061], [#1068]]
