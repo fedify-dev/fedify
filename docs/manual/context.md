@@ -99,6 +99,7 @@ shows the methods:
  -  `~Context.getNodeInfoUri()`
  -  `~Context.getActorUri()`
  -  `~Context.getObjectUri()`
+ -  `~Context.getPortableObjectUri()`
  -  `~Context.getInboxUri()`
  -  `~Context.getOutboxUri()`
  -  `~Context.getMediaUploaderUri()`

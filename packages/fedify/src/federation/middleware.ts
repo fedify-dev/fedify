@@ -106,6 +106,7 @@ import type {
   InboxContext,
   OutboxContext,
   ParseUriResult,
+  PortableRequest,
   RequestContext,
   RouteActivityOptions,
   SendActivityOptionsForCollection,
@@ -128,6 +129,7 @@ import {
   handleObject,
   handleOrderedCollection,
   handleOutbox,
+  handlePortableObject,
   rawInboxContextFactorySymbol,
 } from "./handler.ts";
 import { routeActivity } from "./inbox.ts";
@@ -153,6 +155,11 @@ import {
 } from "./metrics.ts";
 import type { MessageQueue } from "./mq.ts";
 import { acceptsJsonLd } from "./negotiation.ts";
+import {
+  buildPortableUri,
+  parsePortableGatewayRequest,
+  type PortableGatewayRequest,
+} from "./portable.ts";
 import {
   assertSupportedCompoundProofShape,
   signOutgoingActivity,
@@ -2263,6 +2270,7 @@ export class FederationImpl<TContextData>
         cls: ConstructorWithTypeId<Object>;
         values: Record<string, string>;
       };
+      portableRequest?: PortableRequest;
     },
   ): RequestContextImpl<TContextData>;
 
@@ -2276,6 +2284,7 @@ export class FederationImpl<TContextData>
         cls: ConstructorWithTypeId<Object>;
         values: Record<string, string>;
       };
+      portableRequest?: PortableRequest;
     } = {},
   ): ContextImpl<TContextData> | RequestContextImpl<TContextData> {
     const request = urlOrRequest instanceof Request ? urlOrRequest : null;
@@ -2302,6 +2311,7 @@ export class FederationImpl<TContextData>
       request,
       invokedFromActorDispatcher: opts.invokedFromActorDispatcher,
       invokedFromObjectDispatcher: opts.invokedFromObjectDispatcher,
+      portableRequest: opts.portableRequest,
     });
   }
 
@@ -2683,6 +2693,30 @@ export class FederationImpl<TContextData>
     const url = new URL(request.url);
     const route = this.router.route(url.pathname as Path);
     if (route == null) {
+      // Routes registered by the application take precedence over the FEP-ef61
+      // gateway endpoint, so that existing routes keep working unchanged:
+      const portable = request.method === "GET" || request.method === "HEAD"
+        ? parsePortableGatewayRequest(url)
+        : null;
+      if (portable != null) {
+        const response = await this.#fetchPortableObject(request, portable, {
+          onNotFound,
+          onNotAcceptable,
+          onUnauthorized,
+          contextData,
+          span,
+          metricState,
+        });
+        // Also covers the responses of the application's callbacks:
+        if (request.method !== "HEAD" || response.body == null) return response;
+        // Release the discarded body, which may be a stream of, e.g., a file:
+        await response.body.cancel();
+        return new Response(null, {
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers,
+        });
+      }
       metricState.endpoint = "not_found";
       return await onNotFound(request);
     }
@@ -3040,7 +3074,76 @@ export class FederationImpl<TContextData>
       }
     }
   }
+
+  async #fetchPortableObject(
+    request: Request,
+    portable: PortableGatewayRequest,
+    {
+      onNotFound,
+      onNotAcceptable,
+      onUnauthorized,
+      contextData,
+      span,
+      metricState,
+    }:
+      & Required<
+        Pick<
+          FederationFetchOptions<TContextData>,
+          "onNotFound" | "onNotAcceptable" | "onUnauthorized"
+        >
+      >
+      & {
+        contextData: TContextData;
+        span: Span;
+        metricState: HttpMetricState;
+      },
+  ): Promise<Response> {
+    if (portable.type === "malformed") {
+      metricState.endpoint = "not_found";
+      getLogger(["fedify", "federation", "object"]).debug(
+        "Malformed FEP-ef61 gateway request {url}: {error}",
+        { url: request.url, error: portable.error },
+      );
+      return new Response(
+        request.method === "HEAD" ? null : "Malformed portable object ID.",
+        {
+          status: 400,
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        },
+      );
+    }
+    const route = this.router.route(portable.path);
+    if (route == null || !route.name.startsWith("object:")) {
+      metricState.endpoint = "not_found";
+      return await onNotFound(request);
+    }
+    metricState.routeTemplate = PORTABLE_GATEWAY_ROUTE_PREFIX + route.template;
+    metricState.endpoint = "object";
+    span.updateName(`${request.method} ${metricState.routeTemplate}`);
+    if (!acceptsJsonLd(request)) {
+      metricState.endpoint = "not_acceptable";
+      return await onNotAcceptable(request);
+    }
+    const typeId = route.name.replace(/^object:/, "");
+    const callbacks = this.objectCallbacks[typeId];
+    const cls = this.objectTypeIds[typeId];
+    const context = this.#createContext(request, contextData, {
+      invokedFromObjectDispatcher: { cls, values: route.values },
+      portableRequest: portable.portableRequest,
+    });
+    return await handlePortableObject(request, {
+      values: route.values,
+      context,
+      objectDispatcher: callbacks?.dispatcher,
+      authorizePredicate: callbacks?.authorizePredicate,
+      canonicalId: portable.canonicalId,
+      onUnauthorized,
+      onNotFound,
+    });
+  }
 }
+
+const PORTABLE_GATEWAY_ROUTE_PREFIX = "/.well-known/apgateway/{did}";
 
 type FedifyEndpoint =
   | "webfinger"
@@ -3289,6 +3392,28 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     cls: ConstructorWithTypeId<TObject>,
     values: Record<string, string>,
   ): URL {
+    return new URL(this.#getObjectPath(cls, values), this.canonicalOrigin);
+  }
+
+  getPortableObjectUri<TObject extends Object>(
+    cls: ConstructorWithTypeId<TObject>,
+    values: Record<string, string>,
+    authority?: string,
+  ): URL {
+    const path = this.#getObjectPath(cls, values);
+    if (authority == null) {
+      throw new TypeError(
+        "The authority of a portable ID is required outside an FEP-ef61 " +
+          "gateway request.",
+      );
+    }
+    return buildPortableUri(authority, path);
+  }
+
+  #getObjectPath<TObject extends Object>(
+    cls: ConstructorWithTypeId<TObject>,
+    values: Record<string, string>,
+  ): string {
     const callbacks = this.federation.objectCallbacks[cls.typeId.href];
     if (callbacks == null) {
       throw new RouterError("No object dispatcher registered.");
@@ -3305,7 +3430,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     if (path == null) {
       throw new RouterError("No object dispatcher registered.");
     }
-    return new URL(path, this.canonicalOrigin);
+    return path;
   }
 
   getOutboxUri(identifier: string): URL {
@@ -4279,6 +4404,7 @@ interface RequestContextOptions<TContextData>
     cls: ConstructorWithTypeId<Object>;
     values: Record<string, string>;
   };
+  portableRequest?: PortableRequest;
 }
 
 class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
@@ -4291,6 +4417,9 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
   readonly request: Request;
   // deno-lint-ignore no-explicit-any
   override readonly url: URL = undefined as any;
+  // An own property, so that the contexts derived by spreading this one, e.g.,
+  // in getActor() and getObject(), keep it:
+  readonly portableRequest?: PortableRequest;
 
   constructor(options: RequestContextOptions<TContextData>) {
     super(options);
@@ -4298,6 +4427,7 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
     this.#invokedFromObjectDispatcher = options.invokedFromObjectDispatcher;
     this.request = options.request;
     this.url = options.url;
+    this.portableRequest = options.portableRequest;
   }
 
   override clone(data: TContextData): RequestContext<TContextData> {
@@ -4311,8 +4441,21 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
         this.invokedFromActorKeyPairsDispatcher,
       invokedFromActorDispatcher: this.#invokedFromActorDispatcher,
       invokedFromObjectDispatcher: this.#invokedFromObjectDispatcher,
+      portableRequest: this.portableRequest,
       request: this.request,
     });
+  }
+
+  override getPortableObjectUri<TObject extends Object>(
+    cls: ConstructorWithTypeId<TObject>,
+    values: Record<string, string>,
+    authority?: string,
+  ): URL {
+    return super.getPortableObjectUri(
+      cls,
+      values,
+      authority ?? this.portableRequest?.authority,
+    );
   }
 
   getActor(

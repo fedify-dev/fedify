@@ -18,7 +18,7 @@ import type {
   Object,
   TraverseCollectionOptions,
 } from "@fedify/vocab";
-import type { DocumentLoader } from "@fedify/vocab-runtime";
+import { type DocumentLoader, parseIri } from "@fedify/vocab-runtime";
 import {
   createContext,
   createInboxContext,
@@ -1089,6 +1089,21 @@ class MockContext<TContextData> implements Context<TContextData> {
       .map(([key, value]) => `${key}/${value}`)
       .join("/");
     return new URL(`/objects/${cls.name.toLowerCase()}/${path}`, this.origin);
+  }
+
+  getPortableObjectUri<TObject extends Object>(
+    cls: (new (...args: any[]) => TObject) & { typeId: URL },
+    values: Record<string, string>,
+    authority: string,
+  ): URL {
+    if (!/^did:[a-z0-9]+:[^/?#]+$/i.test(authority)) {
+      throw new TypeError(
+        "The authority of a portable ID must be a DID without a path, " +
+          "query, or fragment.",
+      );
+    }
+    const { pathname } = this.getObjectUri(cls, values);
+    return parseIri(`ap+ef61://${authority}${pathname}`);
   }
 
   getOutboxUri(identifier: string): URL {
