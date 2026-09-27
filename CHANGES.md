@@ -576,10 +576,16 @@ To be released.
     `TypeError` for malformed ones, including those with location hints.
     Converting a compatible identifier does not authenticate it; the object's
     proof still has to be verified against its DID.  [[#288], [#833], [#1074]]
+ -  Changed the `Accept` header that document loaders send when fetching
+    ActivityPub objects to
+    `application/activity+json, application/ld+json; profile="https://www.w3.org/ns/activitystreams"`,
+    as ActivityPub and [FEP-ef61] gateways require.  Previously, the JSON-LD
+    media type lacked the ActivityStreams profile.  [[#288], [#834]]
 
 [#828]: https://github.com/fedify-dev/fedify/issues/828
 [#831]: https://github.com/fedify-dev/fedify/issues/831
 [#833]: https://github.com/fedify-dev/fedify/issues/833
+[#834]: https://github.com/fedify-dev/fedify/issues/834
 [#912]: https://github.com/fedify-dev/fedify/issues/912
 [#913]: https://github.com/fedify-dev/fedify/pull/913
 [#924]: https://github.com/fedify-dev/fedify/pull/924
