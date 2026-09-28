@@ -51,10 +51,13 @@ To be released.
     activity is authenticated by its own Object Integrity Proof or Linked Data
     Signature.  Each activity is forwarded to each gateway at most once, which
     requires a `KvStore` that supports `cas()`; with other stores, Fedify logs
-    a warning and does not forward.  Forwarded requests are not signed with
-    HTTP Signatures.  Configure the `origin` option on gateways so that Fedify
-    can tell which gateway it is regardless of the `Host` header.
-    [[#288], [#839], [#1092]]
+    a warning and does not forward.  Forwarded requests are signed with HTTP
+    Signatures by this server's gateway key for the actor if
+    `mapPortableActorId()` maps the recipient to the same portable actor and
+    the key pairs dispatcher returns an RSA key pair for it, and are sent
+    unsigned otherwise.  Configure the `origin` option on gateways so that
+    Fedify can tell which gateway it is regardless of the `Host` header.
+    [[#288], [#839], [#1092], [#1100], [#1104]]
 
  -  Added the `Context.getPortableInboxUri()` method, which builds the portable
     inbox ID of an actor from the inbox path and a DID.  Custom
@@ -382,7 +385,9 @@ To be released.
 [#1092]: https://github.com/fedify-dev/fedify/pull/1092
 [#1094]: https://github.com/fedify-dev/fedify/issues/1094
 [#1099]: https://github.com/fedify-dev/fedify/pull/1099
+[#1100]: https://github.com/fedify-dev/fedify/issues/1100
 [#1102]: https://github.com/fedify-dev/fedify/pull/1102
+[#1104]: https://github.com/fedify-dev/fedify/pull/1104
 
 ### @fedify/adonisjs
 

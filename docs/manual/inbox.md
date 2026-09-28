@@ -880,9 +880,9 @@ the sender retries it.  All of the following have to hold as well:
 
  -  The activity is authenticated by its own [Object Integrity
     Proof](./send.md#object-integrity-proofs) or Linked Data Signature, not
-    only by HTTP Signatures, since forwarded requests are not signed with
-    HTTP Signatures and the other gateways have to authenticate the activity
-    by itself.
+    only by HTTP Signatures, since the other gateways have to authenticate
+    the activity by itself: an HTTP Signature on a forwarded request, if any,
+    is made by this server, not by the activity's actor.
  -  The `~FederationOptions.skipSignatureVerification` option is not turned on.
  -  The activity has an `id`.
  -  The key–value store supports `~KvStore.cas()`.  Otherwise, Fedify logs
@@ -896,6 +896,19 @@ to at most 10 gateways per delivery by default.  With an outbox queue,
 forwarding is queued like other outgoing activities and retried on failures.
 Without one, the requests are made immediately, and Fedify waits for them for
 up to 10 seconds by default before responding to the delivery.
+
+Forwarded requests are signed with HTTP Signatures by this server's [gateway
+key](./actor.md#gateway-keys-of-portable-actors) for the actor, as some
+servers reject unsigned requests even if the activity has a valid proof.
+It takes the first RSA key pair that `~Context.getActorKeyPairs()` returns for
+the identifier in the inbox path, and only if
+`~ActorCallbackSetters.mapPortableActorId()` maps the identifier to the same
+portable actor as the recipient.  Otherwise, e.g., without a key pairs
+dispatcher, a portable actor ID mapper, or an RSA key pair, the requests are
+sent without HTTP Signatures.  The other gateways can verify the signature
+only if the actor document they get from this server is signed by the actor's
+DID, embeds the key as a `Multikey` in its `assertionMethod`, and lists this
+server in its `gateways`.  They accept the activity for its proof either way.
 
 Fedify remembers each gateway that it has forwarded an activity to for 30 days
 by default under the `~FederationKvPrefixes.portableInboxForwarding` key
