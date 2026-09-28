@@ -95,7 +95,7 @@ import type {
   IdempotencyStrategy,
   InboxChallengePolicy,
 } from "./federation.ts";
-import { routeActivity } from "./inbox.ts";
+import { routeActivity, type RouteActivityResult } from "./inbox.ts";
 import { KvKeyCache } from "./keycache.ts";
 import type { KvKey, KvStore } from "./kv.ts";
 import {
@@ -114,6 +114,7 @@ import {
 import type { MessageQueue } from "./mq.ts";
 import { acceptsJsonLd } from "./negotiation.ts";
 import { PORTABLE_OBJECT_CONTENT_TYPE } from "./portable.ts";
+import type { PortableInboxRecipient } from "./portable-inbox.ts";
 import { hasMalformedKnownTemporalLiteral } from "./temporal.ts";
 
 export const rawInboxContextFactorySymbol: unique symbol = Symbol(
@@ -1468,6 +1469,31 @@ export interface InboxHandlerParameters<TContextData> {
    */
   meterProvider?: MeterProvider;
   tracerProvider?: TracerProvider;
+  /**
+   * Set if the request is a delivery to an FEP-ef61 portable inbox through
+   * the gateway endpoint, whose recipient has already been resolved.
+   */
+  portableInbox?: PortableInboxDelivery;
+}
+
+/**
+ * A delivery to an FEP-ef61 portable inbox through the gateway endpoint.
+ */
+export interface PortableInboxDelivery {
+  /** The portable actor that owns the inbox. */
+  readonly recipient: PortableInboxRecipient;
+
+  /**
+   * Forwards the received activity to the other gateways of the recipient.
+   * @param activity The activity, exactly as it was received.
+   * @param activityId The ID of the activity.
+   * @param activityType The qualified URI of the activity type.
+   */
+  forward(
+    activity: unknown,
+    activityId: URL,
+    activityType: string,
+  ): Promise<unknown>;
 }
 
 /**
@@ -1536,6 +1562,7 @@ async function handleInboxInternal<TContextData>(
     inboxChallengePolicy,
     meterProvider,
     tracerProvider,
+    portableInbox,
   } = parameters;
   const logger = getLogger(["fedify", "federation", "inbox"]);
   if (actorDispatcher == null) {
@@ -1545,7 +1572,8 @@ async function handleInboxInternal<TContextData>(
       message: "Actor dispatcher is not set.",
     });
     return await onNotFound(request);
-  } else if (recipient != null) {
+  } else if (recipient != null && portableInbox == null) {
+    // The recipient of a portable inbox delivery has already been resolved.
     const actor = await actorDispatcher(ctx, recipient);
     if (actor == null || actor instanceof Tombstone) {
       logger.error("Actor {recipient} not found.", { recipient });
@@ -2195,6 +2223,47 @@ async function handleInboxInternal<TContextData>(
     tracerProvider,
     idempotencyStrategy: parameters.idempotencyStrategy,
   });
+  if (
+    portableInbox != null && activity.id != null &&
+    PORTABLE_INBOX_FORWARDABLE_RESULTS.has(routeResult)
+  ) {
+    // A Linked Data Signature never authenticates a portable actor's activity,
+    // but such an activity has been rejected above unless its Object
+    // Integrity Proof is verified:
+    if (skipSignatureVerification || !(ldSigVerified || proofVerified)) {
+      // The other gateways could not authenticate the activity, as forwarded
+      // requests are not signed with HTTP Signatures, and with
+      // skipSignatureVerification, the FEP-ef61 proof policy has not been
+      // applied to the portable objects in the activity:
+      logger.debug(
+        "Not forwarding activity {activityId} to the other gateways of " +
+          "the portable inbox {inbox}, as it is not authenticated by its " +
+          "own proof.",
+        {
+          activityId: activity.id.href,
+          inbox: portableInbox.recipient.canonicalInboxId,
+        },
+      );
+    } else {
+      try {
+        await portableInbox.forward(
+          json,
+          activity.id,
+          getTypeId(activity).href,
+        );
+      } catch (error) {
+        logger.error(
+          "Failed to forward activity {activityId} to the other gateways of " +
+            "the portable inbox {inbox}:\n{error}",
+          {
+            activityId: activity.id.href,
+            inbox: portableInbox.recipient.canonicalInboxId,
+            error,
+          },
+        );
+      }
+    }
+  }
   if (routeResult === "alreadyProcessed") {
     return new Response(
       `Activity <${activity.id}> has already been processed.`,
@@ -2230,6 +2299,16 @@ async function handleInboxInternal<TContextData>(
     });
   }
 }
+
+// The results of routeActivity() for which a delivery to a portable inbox is
+// accepted, and therefore forwarded to the other gateways:
+const PORTABLE_INBOX_FORWARDABLE_RESULTS: ReadonlySet<RouteActivityResult> =
+  new Set<RouteActivityResult>([
+    "success",
+    "enqueued",
+    "alreadyProcessed",
+    "unsupportedActivity",
+  ]);
 
 /**
  * Callbacks for handling a custom collection.

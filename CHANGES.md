@@ -34,6 +34,37 @@ To be released.
     collection URIs do not match the URIs that `Context` builds, such as
     `Context.getActorUri()`.  [[#288], [#837], [#1082]]
 
+ -  Added delivery to [FEP-ef61] portable inboxes through the gateway endpoint,
+    e.g., `POST /.well-known/apgateway/did:key:z6Mk.../users/alice/inbox`.
+    Existing inbox listeners handle such a delivery with the path after the
+    DID, so the inbox path `/users/{identifier}/inbox` also receives
+    deliveries to the portable inbox
+    `ap+ef61://did:key:z6Mk.../users/alice/inbox`.  Fedify accepts a delivery
+    only if the actor dispatcher returns, for the identifier, a portable actor
+    with the same DID whose `inbox` is the requested portable inbox and whose
+    `gateways` include this server; otherwise, it responds with
+    `404 Not Found`.  Applications without portable actors are unaffected.
+    [[#288], [#839], [#1092]]
+
+ -  Fedify now forwards an activity delivered to a portable inbox to the same
+    inbox on the actor's other gateways, as FEP-ef61 recommends, if the
+    activity is authenticated by its own Object Integrity Proof or Linked Data
+    Signature.  Each activity is forwarded to each gateway at most once, which
+    requires a `KvStore` that supports `cas()`; with other stores, Fedify logs
+    a warning and does not forward.  Forwarded requests are not signed with
+    HTTP Signatures.  Configure the `origin` option on gateways so that Fedify
+    can tell which gateway it is regardless of the `Host` header.
+    [[#288], [#839], [#1092]]
+
+ -  Added the `Context.getPortableInboxUri()` method, which builds the portable
+    inbox ID of an actor from the inbox path and a DID.  Custom
+    implementations of the `Context` interface need to implement the new
+    method.  [[#288], [#839], [#1092]]
+
+ -  Added the `FederationKvPrefixes.portableInboxForwarding` option, the key
+    prefix for remembering forwarded activities, which defaults to
+    `["_fedify", "portableInboxForwarding"]`.  [[#288], [#839], [#1092]]
+
  -  Added serving of [FEP-ef61] portable objects through the gateway endpoint,
     e.g., `GET /.well-known/apgateway/did:key:z6Mk.../notes/123`.  Existing
     object dispatchers serve such a request with the path after the DID, so
@@ -317,6 +348,7 @@ To be released.
 [#836]: https://github.com/fedify-dev/fedify/issues/836
 [#837]: https://github.com/fedify-dev/fedify/issues/837
 [#838]: https://github.com/fedify-dev/fedify/issues/838
+[#839]: https://github.com/fedify-dev/fedify/issues/839
 [#840]: https://github.com/fedify-dev/fedify/issues/840
 [#915]: https://github.com/fedify-dev/fedify/pull/915
 [#923]: https://github.com/fedify-dev/fedify/pull/923
@@ -338,6 +370,7 @@ To be released.
 [#1080]: https://github.com/fedify-dev/fedify/pull/1080
 [#1082]: https://github.com/fedify-dev/fedify/pull/1082
 [#1084]: https://github.com/fedify-dev/fedify/pull/1084
+[#1092]: https://github.com/fedify-dev/fedify/pull/1092
 [#1099]: https://github.com/fedify-dev/fedify/pull/1099
 
 ### @fedify/adonisjs
@@ -580,6 +613,11 @@ To be released.
  -  Added `testKvStore()`, a conformance test suite for `KvStore`
     implementations, complementing `testMessageQueue()`.
     [[#1018], [#1020] by ChanHaeng Lee\]
+ -  Added the `getPortableInboxUri()` method to the mock contexts that
+    `createFederation()`, `createContext()`, `createRequestContext()`,
+    `createInboxContext()`, and `createOutboxContext()` create, following
+    the new `Context.getPortableInboxUri()` method of `@fedify/fedify`.
+    [[#288], [#839], [#1092]]
  -  Added the `mapPortableActorId()` method to the setters that
     `MockFederation.setActorDispatcher()` returns, which `ActorCallbackSetters`
     gained for [FEP-ef61] portable actors.  [[#288], [#840], [#1099]]

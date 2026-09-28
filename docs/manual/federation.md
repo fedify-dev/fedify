@@ -94,7 +94,17 @@ that the `Federation` object uses:
     ([double-knocking] technique).
     `["_fedify", "httpMessageSignaturesSpec"]` by default.
 
+`~FederationKvPrefixes.portableInboxForwarding`
+:   *This API is available since Fedify 2.4.0.*
+
+    The key prefix used for remembering which activities received in
+    [FEP-ef61] portable inboxes have been forwarded to which gateways, so that
+    each activity is forwarded at most once (see the [*Portable inboxes*
+    section](./inbox.md#portable-inboxes)).
+    `["_fedify", "portableInboxForwarding"]` by default.
+
 [double-knocking]: https://swicg.github.io/activitypub-http-signature/#how-to-upgrade-supported-versions
+[FEP-ef61]: https://w3id.org/fep/ef61
 
 ### `publicKeyTtl`
 
