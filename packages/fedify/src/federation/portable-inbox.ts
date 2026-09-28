@@ -1,8 +1,6 @@
 import type { Actor } from "@fedify/vocab";
 import {
-  canonicalizePortableUri,
-  formatIri,
-  getFe34Origin,
+  fromCompatibleEf61Id,
   isGatewayUrl,
   toCompatibleEf61Id,
 } from "@fedify/vocab-runtime";
@@ -15,6 +13,12 @@ import {
 } from "@opentelemetry/api";
 import type { HttpMessageSignaturesSpecDeterminer } from "../sig/http.ts";
 import { exportJwk, validateCryptoKey } from "../sig/key.ts";
+import {
+  getCanonicalPortableId,
+  getPortableDid,
+  isPortableId,
+  isPortableUri,
+} from "../sig/portable-key-id.ts";
 import type { PortableInboxForwardingOptions } from "./federation.ts";
 import type { KvKey, KvStore } from "./kv.ts";
 import { recordOutboxEnqueue } from "./metrics.ts";
@@ -76,9 +80,16 @@ export function resolvePortableInboxForwardingOptions(
  * this server.
  */
 export interface PortableInboxRecipient {
-  /** The ID of the portable actor. */
+  /**
+   * The ID of the portable actor, either an `ap:` or `ap+ef61:` URI or
+   * a compatible identifier.
+   */
   readonly actorId: URL;
-  /** The ID of the portable inbox, e.g., `ap+ef61://did:key:.../inbox`. */
+  /**
+   * The portable ID of the portable inbox, e.g.,
+   * `ap+ef61://did:key:.../inbox`, even if the actor's `inbox` is its
+   * compatible identifier.
+   */
   readonly inboxId: URL;
   /** The canonical form of {@link inboxId}. */
   readonly canonicalInboxId: string;
@@ -122,15 +133,18 @@ export function resolvePortableInboxRecipient(
   },
 ): PortableInboxResolution {
   if (actor == null) return { status: "rejected", reason: "notFound" };
+  // The actor may be identified by a compatible identifier instead of an ap:
+  // URI, as FEP-ef61 allows, in which case its inbox usually is one too:
   const id = actor.id;
-  if (id == null || (id.protocol !== "ap:" && id.protocol !== "ap+ef61:")) {
+  const did = id == null || !isPortableId(id) ? null : getPortableDid(id);
+  if (id == null || did == null) {
     return { status: "rejected", reason: "notPortable" };
   }
-  if (!isSameAuthority(id, authority)) {
+  if (did !== authority) {
     return { status: "rejected", reason: "authorityMismatch" };
   }
-  const inboxId = actor.inboxId;
-  if (inboxId == null || canonicalize(inboxId) !== canonicalInboxId) {
+  const inboxId = actor.inboxId == null ? null : toPortableUri(actor.inboxId);
+  if (inboxId == null || getCanonicalPortableId(inboxId) !== canonicalInboxId) {
     return { status: "rejected", reason: "inboxMismatch" };
   }
   const gateways = actor.gateways;
@@ -143,20 +157,15 @@ export function resolvePortableInboxRecipient(
   };
 }
 
-function isSameAuthority(id: URL, authority: string): boolean {
+/**
+ * Gets the portable form of an `ap:` or `ap+ef61:` URI or a compatible
+ * identifier, keeping its query.
+ * @returns The portable URI, or `null` if the ID is neither, or is malformed.
+ */
+function toPortableUri(id: URL): URL | null {
+  if (isPortableUri(id)) return id;
   try {
-    return getFe34Origin(id) === authority;
-  } catch (error) {
-    if (error instanceof TypeError) return false;
-    throw error;
-  }
-}
-
-function canonicalize(iri: URL | string): string | null {
-  try {
-    return canonicalizePortableUri(
-      typeof iri === "string" ? iri : formatIri(iri),
-    );
+    return fromCompatibleEf61Id(id);
   } catch (error) {
     if (error instanceof TypeError) return null;
     throw error;
@@ -238,7 +247,10 @@ export async function forwardPortableInboxActivity(
   const { maxTargets, ttl } = parameters.options ??
     resolvePortableInboxForwardingOptions();
   if (kv.cas == null || maxTargets < 1) return [];
-  const canonicalActivityId = canonicalize(activityId) ?? activityId.href;
+  // A compatible activity ID is canonicalized too, so that its equivalent
+  // representations share the same forwarding claims:
+  const canonicalActivityId = getCanonicalPortableId(activityId) ??
+    activityId.href;
   const targets = getForwardingTargets(recipient, excludedOrigins);
   if (targets.length > maxTargets) {
     logger.warn(

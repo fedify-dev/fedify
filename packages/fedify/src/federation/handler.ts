@@ -15,7 +15,6 @@ import {
 import {
   canonicalizePortableUri,
   type DocumentLoader,
-  formatIri,
   parseIri,
 } from "@fedify/vocab-runtime";
 import {
@@ -422,16 +421,10 @@ function isRequestedPortableObject(
   object: Object,
   canonicalId: string,
 ): boolean {
-  if (object.id == null) return false;
-  if (object.id.protocol !== "ap:" && object.id.protocol !== "ap+ef61:") {
-    return false;
-  }
-  try {
-    return canonicalizePortableUri(formatIri(object.id)) === canonicalId;
-  } catch (error) {
-    if (error instanceof TypeError) return false;
-    throw error;
-  }
+  // The ID may be either a portable ID or a compatible identifier, on any
+  // gateway; FEP-ef61 treats objects on different gateways as instances of
+  // the same object:
+  return object.id != null && getCanonicalPortableId(object.id) === canonicalId;
 }
 
 async function getJsonLdRootId(
@@ -450,7 +443,14 @@ async function getJsonLdRootId(
 }
 
 function isRequestedPortableId(id: string, canonicalId: string): boolean {
+  if (!/^ap(?:\+ef61)?:\/\//i.test(id)) {
+    // A compatible identifier, which is an ordinary HTTP(S) URL:
+    return URL.canParse(id) &&
+      getCanonicalPortableId(new URL(id)) === canonicalId;
+  }
   try {
+    // Canonicalizes the raw string, since the URL class would normalize
+    // the opaque path of a portable ID:
     return canonicalizePortableUri(id) === canonicalId;
   } catch (error) {
     if (error instanceof TypeError) return false;

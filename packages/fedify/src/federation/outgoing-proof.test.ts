@@ -1,6 +1,7 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
 import { Create, Note, Person } from "@fedify/vocab";
 import { exportDidKey, parseIri } from "@fedify/vocab-runtime";
+import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { assert, assertEquals, assertRejects } from "@std/assert";
 import fetchMock from "fetch-mock";
 import {
@@ -16,6 +17,7 @@ import { exportJwk } from "../sig/key.ts";
 import { MemoryKvStore } from "./kv.ts";
 import { createFederation, FederationImpl } from "./middleware.ts";
 import type { MessageQueue } from "./mq.ts";
+import { assertPortableActorActivity } from "./outgoing-proof.ts";
 import type { FanoutMessage, Message } from "./queue.ts";
 import type { SenderKeyPair } from "./send.ts";
 
@@ -636,4 +638,371 @@ test("a Fedify inbox accepts a portable activity Fedify produced", async () => {
     contextData: undefined,
   });
   assertEquals([response.status, received], [202, 1]);
+});
+
+// Compatible-ID actors and activities
+
+const gateway = "https://gw.example";
+
+function compatibleId(
+  did: string,
+  path: string,
+  origin: string = gateway,
+): URL {
+  return new URL(`${origin}/.well-known/apgateway/${did}${path}`);
+}
+
+function compatibleCreate(
+  owner: DidKey,
+  object?: Note,
+  { id, actor }: { id?: URL; actor?: URL } = {},
+): Create {
+  // As tootik's are, both the activity and the actor are identified by
+  // compatible identifiers:
+  return new Create({
+    id: id ?? compatibleId(owner.did, `/activities/${crypto.randomUUID()}`),
+    actor: actor ?? compatibleId(owner.did, "/actor"),
+    object,
+  });
+}
+
+test("a compatible-ID activity is signed only by the key matching its DID", async () => {
+  const owner = await didKey();
+  const childOwner = await didKey();
+  const child = await signedChild(childOwner);
+  const federation = createTestFederation();
+  const ctx = federation.createContext(new URL("https://example.com/"));
+  const { bodies, requests } = await capture(async () =>
+    ctx.sendActivity(
+      [rsaKey, sender(await didKey()), sender(owner), sender(childOwner)],
+      recipient,
+      compatibleCreate(owner, child),
+    )
+  );
+  assertEquals(bodies.length, 1);
+  assertEquals(proofOf(bodies[0]).verificationMethod, owner.keyId.href);
+  // The RSA key signs the request, but not the document, as for an actor
+  // with an ap: ID:
+  assert(requests[0].headers.has("Signature"));
+  assertEquals(bodies[0].signature, undefined);
+  await assertCompoundVerifies(bodies[0]);
+});
+
+test("a compatible-ID actor's activity needs an ID of the actor's DID", async () => {
+  const owner = await didKey();
+  const other = await didKey();
+  const cases: [string, Create, string][] = [
+    [
+      "a compatible activity ID of another DID",
+      compatibleCreate(owner, undefined, {
+        id: compatibleId(other.did, "/activities/1"),
+      }),
+      "with the same DID",
+    ],
+    [
+      "an ap: activity ID of another DID",
+      compatibleCreate(owner, undefined, {
+        id: parseIri(`ap://${other.did}/activities/1`),
+      }),
+      "with the same DID",
+    ],
+    [
+      "an ordinary activity ID",
+      compatibleCreate(owner, undefined, {
+        id: new URL("https://gw.example/activities/1"),
+      }),
+      "with the same DID",
+    ],
+    [
+      // FEP-ef61 forbids location hints in compatible identifiers:
+      "a malformed compatible activity ID",
+      compatibleCreate(owner, undefined, {
+        id: new URL(
+          compatibleId(owner.did, "/activities/1").href +
+            "?@gateway=https%3A%2F%2Fgw.example",
+        ),
+      }),
+      "with the same DID",
+    ],
+    [
+      "a malformed compatible actor ID",
+      compatibleCreate(owner, undefined, {
+        actor: new URL(
+          compatibleId(owner.did, "/actor").href +
+            "?@gateway=https%3A%2F%2Fgw.example",
+        ),
+      }),
+      "malformed FEP-ef61 portable ID",
+    ],
+    [
+      "compatible actors of different DIDs",
+      new Create({
+        id: compatibleId(owner.did, "/activities/1"),
+        actors: [
+          compatibleId(owner.did, "/actor"),
+          compatibleId(other.did, "/actor"),
+        ],
+      }),
+      "different DIDs",
+    ],
+  ];
+  for (const [name, activity, message] of cases) {
+    const federation = createTestFederation();
+    const ctx = federation.createContext(new URL("https://example.com/"));
+    const { bodies } = await capture(() =>
+      assertRejects(
+        () => ctx.sendActivity([rsaKey, sender(owner)], recipient, activity),
+        TypeError,
+        message,
+      )
+    );
+    assertEquals(bodies.length, 0, name);
+  }
+});
+
+test("a compatible-ID activity without exactly one DID-matching key is rejected", async () => {
+  const owner = await didKey();
+  const cases: [string, SenderKeyPair[], string][] = [
+    [
+      "no key matches",
+      [sender(await didKey())],
+      "none of its 1 Ed25519 keys",
+    ],
+    [
+      // A gateway key never signs proofs, even for the actor's own DID:
+      "only a gateway key",
+      [{
+        keyId: compatibleId(owner.did, "/actor#main-key"),
+        privateKey: owner.privateKey,
+      }],
+      "none of its 0 Ed25519 keys",
+    ],
+    [
+      "several keys match",
+      [
+        sender(owner),
+        { keyId: new URL(`${owner.did}#second`), privateKey: owner.privateKey },
+      ],
+      "2 of its Ed25519 keys",
+    ],
+  ];
+  for (const [name, keys, message] of cases) {
+    const federation = createTestFederation();
+    const ctx = federation.createContext(new URL("https://example.com/"));
+    const { bodies } = await capture(() =>
+      assertRejects(
+        () =>
+          ctx.sendActivity(
+            [rsaKey, ...keys],
+            recipient,
+            compatibleCreate(owner),
+          ),
+        TypeError,
+        message,
+      )
+    );
+    assertEquals(bodies.length, 0, name);
+  }
+});
+
+test("compatible and ap: IDs of the same DID can be mixed", async () => {
+  const owner = await didKey();
+  const activities = [
+    compatibleCreate(owner, undefined, {
+      id: parseIri(`ap://${owner.did}/activities/${crypto.randomUUID()}`),
+    }),
+    compatibleCreate(owner, undefined, {
+      actor: parseIri(`ap+ef61://${owner.did}/actor`),
+    }),
+    // FEP-ef61 treats objects on different gateways as instances of the same
+    // object, so an activity on another gateway is still the actor's:
+    compatibleCreate(owner, undefined, {
+      id: compatibleId(owner.did, "/activities/1", "https://other.example"),
+    }),
+  ];
+  for (const activity of activities) {
+    const federation = createTestFederation();
+    const ctx = federation.createContext(new URL("https://example.com/"));
+    const { bodies } = await capture(async () =>
+      ctx.sendActivity(
+        [rsaKey, sender(await didKey()), sender(owner)],
+        recipient,
+        activity,
+      )
+    );
+    assertEquals(bodies.length, 1, activity.id?.href);
+    assertEquals(proofOf(bodies[0]).verificationMethod, owner.keyId.href);
+  }
+});
+
+test("a pre-signed compatible-ID activity is not re-signed", async () => {
+  const owner = await didKey();
+  const activity = await signObject(
+    compatibleCreate(owner, await signedChild(await didKey())),
+    owner.privateKey,
+    owner.keyId,
+    { ...options, created },
+  );
+  const federation = createTestFederation();
+  const ctx = federation.createContext(new URL("https://example.com/"));
+  const { bodies } = await capture(async () =>
+    ctx.sendActivity(
+      [rsaKey, sender(await didKey()), sender(await didKey())],
+      recipient,
+      activity,
+    )
+  );
+  assertEquals(bodies.length, 1);
+  assertEquals(proofOf(bodies[0]).verificationMethod, owner.keyId.href);
+  await assertCompoundVerifies(bodies[0]);
+});
+
+test("forced fanout selects the DID-matching key for a compatible-ID activity", async () => {
+  const owner = await didKey();
+  const { queue, queued } = createQueue();
+  const federation = createTestFederation(queue);
+  const ctx = federation.createContext(new URL("https://example.com/"));
+  const { bodies } = await capture(async () => {
+    await ctx.sendActivity(
+      [rsaKey, sender(await didKey()), sender(owner)],
+      recipient,
+      compatibleCreate(owner, await signedChild(await didKey())),
+      { fanout: "force" },
+    );
+    assertEquals(queued.length, 1);
+    for (let i = 0; i < queued.length; i++) {
+      await federation.processQueuedTask(undefined, queued[i]);
+    }
+  });
+  assertEquals(bodies.length, 1);
+  assertEquals(proofOf(bodies[0]).verificationMethod, owner.keyId.href);
+  await assertCompoundVerifies(bodies[0]);
+});
+
+test("a Fedify inbox accepts an activity Fedify produced for a compatible-ID actor", async () => {
+  const owner = await didKey();
+  const child = await signedChild(await didKey());
+  const sending = createTestFederation();
+  const ctx = sending.createContext(new URL("https://example.com/"));
+  // Without an RSA key, no HTTP Signature is made, so the proof alone has to
+  // authenticate the activity:
+  const { requests } = await capture(async () =>
+    ctx.sendActivity(
+      [sender(await didKey()), sender(owner)],
+      recipient,
+      compatibleCreate(owner, child),
+    )
+  );
+  assertEquals(requests.length, 1);
+
+  let received = 0;
+  const receiving = createFederation<void>({
+    kv: new MemoryKvStore(),
+    contextLoaderFactory: () => mockDocumentLoader,
+    documentLoaderFactory: () => mockDocumentLoader,
+  });
+  receiving.setActorDispatcher("/users/{identifier}", () => null);
+  receiving
+    .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+    .on(Create, () => {
+      received++;
+    });
+  const body = await requests[0].text();
+  const deliver = (json: string) =>
+    receiving.fetch(
+      new Request(requests[0].url, {
+        method: "POST",
+        headers: requests[0].headers,
+        body: json,
+      }),
+      { contextData: undefined },
+    );
+  const response = await deliver(body);
+  assertEquals([response.status, received], [202, 1]);
+
+  // The same activity claiming another DID's actor is rejected:
+  const forged = JSON.parse(body);
+  forged.actor = compatibleId((await didKey()).did, "/actor").href;
+  const rejected = await deliver(JSON.stringify(forged));
+  assertEquals([rejected.status, received], [401, 1]);
+});
+
+async function captureLogs(run: () => unknown): Promise<LogRecord[]> {
+  const records: LogRecord[] = [];
+  await reset();
+  try {
+    await configure({
+      sinks: { buffer: (record: LogRecord) => records.push(record) },
+      filters: {},
+      loggers: [
+        { category: ["logtape", "meta"], sinks: [] },
+        { category: [], sinks: ["buffer"], lowestLevel: "warning" },
+      ],
+    });
+    await run();
+  } finally {
+    await reset();
+  }
+  return records.filter((record) => record.category[0] === "fedify");
+}
+
+test("an activity on another gateway than its compatible-ID actor is warned about", async () => {
+  const owner = await didKey();
+  const warnings = (activity: Create) =>
+    captureLogs(() => assertPortableActorActivity(activity)).then((records) =>
+      records.map((r) => r.properties.activityId)
+    );
+  const other = compatibleId(
+    owner.did,
+    "/activities/1",
+    "https://other.example",
+  );
+  assertEquals(
+    await warnings(compatibleCreate(owner, undefined, { id: other })),
+    [other.href],
+  );
+  // The same gateway, or mixed forms, are not warned about:
+  assertEquals(await warnings(compatibleCreate(owner)), []);
+  assertEquals(
+    await warnings(
+      compatibleCreate(owner, undefined, {
+        id: parseIri(`ap://${owner.did}/activities/1`),
+      }),
+    ),
+    [],
+  );
+  assertEquals(
+    await warnings(
+      compatibleCreate(owner, undefined, {
+        id: other,
+        actor: parseIri(`ap://${owner.did}/actor`),
+      }),
+    ),
+    [],
+  );
+});
+
+test("an unsigned activity with a malformed compatible ID is rejected", async () => {
+  const owner = await didKey();
+  const federation = createTestFederation();
+  const ctx = federation.createContext(new URL("https://example.com/"));
+  const { bodies } = await capture(() =>
+    assertRejects(
+      () =>
+        ctx.sendActivity(
+          [rsaKey, sender(owner)],
+          recipient,
+          new Create({
+            id: new URL(
+              compatibleId(owner.did, "/activities/1").href +
+                "?@gateway=https%3A%2F%2Fgw.example",
+            ),
+            actor: new URL("https://example.com/users/alice"),
+          }),
+        ),
+      TypeError,
+      "malformed FEP-ef61 portable ID",
+    )
+  );
+  assertEquals(bodies.length, 0);
 });
