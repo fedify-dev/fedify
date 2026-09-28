@@ -1246,8 +1246,8 @@ Outside the compound profile, `sendActivity()` signs an activity once for each
 Ed25519 key it is given, which yields a proof set when there are several keys.
 Fedify inboxes reject a proof set in a document that contains a portable
 object, so an activity whose JSON contains a map identified by an `ap:` or
-`ap+ef61:` URI, whether the activity itself or anything embedded in it, gets at
-most one proof:
+`ap+ef61:` URI or an FEP-ef61 compatible identifier, whether the activity
+itself or anything embedded in it, gets at most one proof:
 
  -  An activity that already carries a proof is sent as is.  Fedify does not
     add another proof to it, not even with the keys from the [actor key pairs
