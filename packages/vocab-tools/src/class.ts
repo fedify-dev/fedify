@@ -154,6 +154,17 @@ export async function* generateClasses(
     isTemporalInstant,
 } from "@fedify/vocab-runtime/temporal";\n`;
   yield `
+function canDecodeIri(iri: string): boolean {
+  return URL.canParse(iri) || iri.startsWith("at://");
+}
+
+function decodeIri(iri: string): URL {
+  return !URL.canParse(iri) && iri.startsWith("at://")
+    ? new URL("at://" + encodeURIComponent(iri.substring(5)))
+    : new URL(iri);
+}
+`;
+  yield `
 function isValidLanguageTag(language: string): boolean {
   try {
     new Intl.Locale(language);
