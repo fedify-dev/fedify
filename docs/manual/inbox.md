@@ -888,18 +888,32 @@ the sender retries it.  All of the following have to hold as well:
 The activity is sent as received to the compatible inbox URL on each gateway
 other than this server, e.g.,
 `https://other.example/.well-known/apgateway/did:key:z6Mk.../users/alice/inbox`,
-to at most 10 gateways per delivery.  With an outbox queue, forwarding is
-queued like other outgoing activities and retried on failures.  Without one,
-the requests are made immediately, and Fedify waits for them for up to
-10 seconds before responding to the delivery.
+to at most 10 gateways per delivery by default.  With an outbox queue,
+forwarding is queued like other outgoing activities and retried on failures.
+Without one, the requests are made immediately, and Fedify waits for them for
+up to 10 seconds by default before responding to the delivery.
 
 Fedify remembers each gateway that it has forwarded an activity to for 30 days
-under the `~FederationKvPrefixes.portableInboxForwarding` key prefix, and
+by default under the `~FederationKvPrefixes.portableInboxForwarding` key
+prefix, and
 never forwards the same activity from the same inbox to the same gateway
 again within that period, even if the forwarding failed.  So forwarding is
 best effort; configure an [outbox queue](./mq.md) to retry transient
 failures.  A gateway that the activity is forwarded back to drops it the same
 way, which ends the forwarding.
+
+The limits above can be changed with the
+[`portableInboxForwarding`](./federation.md#portableinboxforwarding) option,
+which can also turn off forwarding:
+
+~~~~ typescript twoslash
+import { createFederation, MemoryKvStore } from "@fedify/fedify";
+
+const federation = createFederation<void>({
+  kv: new MemoryKvStore(),
+  portableInboxForwarding: { maxTargets: 0 },  // Turns off forwarding
+});
+~~~~
 
 > [!WARNING]
 > Fedify tells which gateway it is by `~Context.canonicalOrigin`, which comes

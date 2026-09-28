@@ -175,6 +175,8 @@ import {
 } from "./portable.ts";
 import {
   forwardPortableInboxActivity,
+  type ResolvedPortableInboxForwardingOptions,
+  resolvePortableInboxForwardingOptions,
   resolvePortableInboxRecipient,
 } from "./portable-inbox.ts";
 import {
@@ -644,6 +646,7 @@ export class FederationImpl<TContextData>
   kvPrefixes: FederationKvPrefixes;
   publicKeyTtl: Temporal.Duration;
   httpMessageSignaturesSpecTtl: Temporal.Duration;
+  portableInboxForwarding: ResolvedPortableInboxForwardingOptions;
   inboxQueue?: MessageQueue;
   outboxQueue?: MessageQueue;
   fanoutQueue?: MessageQueue;
@@ -739,6 +742,9 @@ export class FederationImpl<TContextData>
     );
     this.httpMessageSignaturesSpecTtl = Temporal.Duration.from(
       options.httpMessageSignaturesSpecTtl ?? { days: 90 },
+    );
+    this.portableInboxForwarding = resolvePortableInboxForwardingOptions(
+      options.portableInboxForwarding,
     );
     if (options.queue == null) {
       this.inboxQueue = undefined;
@@ -3322,6 +3328,7 @@ export class FederationImpl<TContextData>
       portableInbox: {
         recipient,
         forward: async (activity, activityId, activityType) => {
+          if (this.portableInboxForwarding.maxTargets < 1) return;
           if (this.kv.cas == null) {
             if (!this.#portableInboxForwardingWarned) {
               this.#portableInboxForwardingWarned = true;
@@ -3348,6 +3355,7 @@ export class FederationImpl<TContextData>
               ? undefined
               : () => this._startQueueInternal(contextData),
             allowPrivateAddress: this.allowPrivateAddress,
+            options: this.portableInboxForwarding,
             meterProvider: this.meterProvider,
             tracerProvider: this.tracerProvider,
           });

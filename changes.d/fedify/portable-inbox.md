@@ -31,6 +31,13 @@ links:
     implementations of the `Context` interface need to implement the new
     method.  [[#288], [#839], [#1092]]
 
+ -  Added the `FederationOptions.portableInboxForwarding` option, whose
+    `maxTargets`, `ttl`, and `deadline` properties change how many gateways
+    a delivery is forwarded to (10 by default; `0` turns off forwarding), how
+    long forwarded activities are remembered (30 days by default), and how
+    long a delivery waits for forwarding without an outbox queue (10 seconds
+    by default).  [[#288], [#839], [#1092]]
+
  -  Added the `FederationKvPrefixes.portableInboxForwarding` option, the key
     prefix for remembering forwarded activities, which defaults to
     `["_fedify", "portableInboxForwarding"]`.  [[#288], [#839], [#1092]]

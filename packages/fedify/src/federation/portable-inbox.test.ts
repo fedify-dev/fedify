@@ -26,7 +26,10 @@ import { type KvKey, type KvStore, MemoryKvStore } from "./kv.ts";
 import type { FederationOptions } from "./federation.ts";
 import { createFederation } from "./middleware.ts";
 import type { MessageQueue } from "./mq.ts";
-import { forwardPortableInboxActivity } from "./portable-inbox.ts";
+import {
+  forwardPortableInboxActivity,
+  resolvePortableInboxForwardingOptions,
+} from "./portable-inbox.ts";
 import type { Message, OutboxMessage } from "./queue.ts";
 
 const did = await exportDidKey(ed25519PublicKey.publicKey);
@@ -568,6 +571,106 @@ test("Federation.fetch() forwards each portable inbox delivery at most once", as
   });
 });
 
+test("FederationOptions.portableInboxForwarding", async (t) => {
+  await t.step("maxTargets", async () => {
+    const queue = new RecordingQueue();
+    const { federation } = setup({
+      queue,
+      options: { portableInboxForwarding: { maxTargets: 1 } },
+    });
+    const response = await federation.fetch(
+      post(inboxUrl(), await signedFollow()),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 202);
+    assertEquals(queue.outbox.map((m) => m.inbox), [
+      inboxUrl(did, "/users/alice/inbox", GATEWAY2),
+    ]);
+  });
+
+  await t.step("maxTargets: 0 turns off forwarding", async () => {
+    const queue = new RecordingQueue();
+    const { federation, received } = setup({
+      queue,
+      options: { portableInboxForwarding: { maxTargets: 0 } },
+    });
+    const response = await federation.fetch(
+      post(inboxUrl(), await signedFollow()),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 202);
+    assertEquals(received.length, 1);
+    assertEquals(queue.outbox.length, 0);
+  });
+
+  await t.step("ttl", async () => {
+    const queue = new RecordingQueue();
+    const memory = new MemoryKvStore();
+    const claimTtls: (Temporal.Duration | undefined)[] = [];
+    const kv: KvStore = {
+      get: (key) => memory.get(key),
+      set: (key, value, options) => memory.set(key, value, options),
+      delete: (key) => memory.delete(key),
+      list: (prefix) => memory.list(prefix),
+      cas: (key, expected, value, options) => {
+        if (key[1] === "portableInboxForwarding") {
+          claimTtls.push(options?.ttl);
+        }
+        return memory.cas(key, expected, value, options);
+      },
+    };
+    const { federation } = setup({
+      queue,
+      kv,
+      options: {
+        // A Temporal.Duration is accepted as well as a DurationLike:
+        portableInboxForwarding: { ttl: Temporal.Duration.from({ days: 7 }) },
+      },
+    });
+    const response = await federation.fetch(
+      post(inboxUrl(), await signedFollow()),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 202);
+    assertEquals(queue.outbox.length, 2);
+    assertEquals(claimTtls.map((ttl) => ttl?.total("day")), [7, 7]);
+  });
+
+  await t.step("longest deadline", () => {
+    const resolved = resolvePortableInboxForwardingOptions({
+      deadline: { milliseconds: 2 ** 31 - 1 },
+    });
+    assertEquals(resolved.deadline.total("millisecond"), 2 ** 31 - 1);
+  });
+
+  await t.step("defaults", () => {
+    const resolved = resolvePortableInboxForwardingOptions();
+    assertEquals(resolved.maxTargets, 10);
+    assertEquals(resolved.ttl.total("day"), 30);
+    assertEquals(resolved.deadline.total("second"), 10);
+  });
+
+  await t.step("invalid values", () => {
+    const invalid = [
+      { maxTargets: -1 },
+      { maxTargets: 1.5 },
+      { maxTargets: Number.NaN },
+      { ttl: { seconds: 0 } },
+      { ttl: { weeks: 1 } },
+      { ttl: { months: 1 } },
+      { deadline: { seconds: -1 } },
+      { deadline: { years: 1 } },
+      { deadline: { milliseconds: 2 ** 31 } },
+    ];
+    for (const portableInboxForwarding of invalid) {
+      assertThrows(
+        () => setup({ options: { portableInboxForwarding } }),
+        RangeError,
+      );
+    }
+  });
+});
+
 test("Federation.fetch() forwards portable inbox deliveries immediately without a queue", async () => {
   fetchMock.spyGlobal();
   const requests: { url: string; headers: Headers; body: unknown }[] = [];
@@ -671,7 +774,9 @@ test("forwardPortableInboxActivity() does not wait for slow gateways", async () 
       baseUrl: LOCAL,
       kv,
       kvPrefix: ["_fedify", "portableInboxForwarding"],
-      deadline: 10,
+      options: resolvePortableInboxForwardingOptions({
+        deadline: { milliseconds: 10 },
+      }),
       // The mocked gateway is not resolved:
       allowPrivateAddress: true,
     } as const;

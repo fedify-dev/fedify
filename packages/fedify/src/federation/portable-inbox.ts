@@ -13,6 +13,7 @@ import {
   propagation,
   type TracerProvider,
 } from "@opentelemetry/api";
+import type { PortableInboxForwardingOptions } from "./federation.ts";
 import type { KvKey, KvStore } from "./kv.ts";
 import { recordOutboxEnqueue } from "./metrics.ts";
 import type { MessageQueue } from "./mq.ts";
@@ -20,23 +21,53 @@ import type { OutboxMessage } from "./queue.ts";
 import { sendActivity } from "./send.ts";
 
 /**
- * How long Fedify remembers that it has forwarded an activity from
- * a portable inbox to a gateway.
+ * {@link PortableInboxForwardingOptions} with the defaults filled in.
  */
-export const PORTABLE_INBOX_FORWARDING_TTL: Temporal.Duration = Temporal
-  .Duration.from({ days: 30 });
+export interface ResolvedPortableInboxForwardingOptions {
+  readonly maxTargets: number;
+  readonly ttl: Temporal.Duration;
+  readonly deadline: Temporal.Duration;
+}
+
+// The longest delay that setTimeout() supports:
+const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 
 /**
- * The maximum number of other gateways that a single delivery to a portable
- * inbox is forwarded to.
+ * Fills in the defaults of {@link PortableInboxForwardingOptions} and
+ * validates them.
+ * @param options The options.
+ * @returns The resolved options.
+ * @throws {RangeError} If `maxTargets` is not a non-negative integer, if `ttl`
+ *                      is not positive, if `deadline` is negative or longer
+ *                      than 2,147,483,647 milliseconds (about 24.8 days), or
+ *                      if either duration has calendar units, i.e., weeks,
+ *                      months, or years, whose length depends on the date.
  */
-export const MAX_PORTABLE_INBOX_FORWARDING_TARGETS = 10;
-
-/**
- * How long Fedify waits for immediate forwarding requests, which are made when
- * no outbox queue is configured, before responding to the delivery.
- */
-export const PORTABLE_INBOX_FORWARDING_DEADLINE_MS = 10_000;
+export function resolvePortableInboxForwardingOptions(
+  options: PortableInboxForwardingOptions = {},
+): ResolvedPortableInboxForwardingOptions {
+  const maxTargets = options.maxTargets ?? 10;
+  if (!Number.isInteger(maxTargets) || maxTargets < 0) {
+    throw new RangeError(
+      "portableInboxForwarding.maxTargets must be a non-negative integer.",
+    );
+  }
+  const ttl = Temporal.Duration.from(options.ttl ?? { days: 30 });
+  // total() also rejects calendar units, whose length depends on the date:
+  if (ttl.total("millisecond") <= 0) {
+    throw new RangeError("portableInboxForwarding.ttl must be positive.");
+  }
+  const deadline = Temporal.Duration.from(options.deadline ?? { seconds: 10 });
+  const deadlineMs = deadline.total("millisecond");
+  // setTimeout() fires almost immediately for longer delays:
+  if (deadlineMs < 0 || deadlineMs > MAX_TIMEOUT_MS) {
+    throw new RangeError(
+      "portableInboxForwarding.deadline must be between 0 and " +
+        `${MAX_TIMEOUT_MS} milliseconds.`,
+    );
+  }
+  return { maxTargets, ttl, deadline };
+}
 
 /**
  * The portable actor that owns a portable inbox and accepts deliveries through
@@ -154,11 +185,8 @@ export interface ForwardPortableInboxActivityParameters {
   /** Starts the queue unless it is started manually. */
   readonly startQueue?: () => void;
   readonly allowPrivateAddress?: boolean;
-  /**
-   * How long to wait for immediate forwarding requests in milliseconds.
-   * Defaults to {@link PORTABLE_INBOX_FORWARDING_DEADLINE_MS}.
-   */
-  readonly deadline?: number;
+  /** The forwarding options.  Defaults are used if omitted. */
+  readonly options?: ResolvedPortableInboxForwardingOptions;
   readonly meterProvider?: MeterProvider;
   readonly tracerProvider?: TracerProvider;
 }
@@ -191,10 +219,12 @@ export async function forwardPortableInboxActivity(
     kvPrefix,
     outboxQueue,
   } = parameters;
-  if (kv.cas == null) return [];
+  const { maxTargets, ttl } = parameters.options ??
+    resolvePortableInboxForwardingOptions();
+  if (kv.cas == null || maxTargets < 1) return [];
   const canonicalActivityId = canonicalize(activityId) ?? activityId.href;
   const targets = getForwardingTargets(recipient, excludedOrigins);
-  if (targets.length > MAX_PORTABLE_INBOX_FORWARDING_TARGETS) {
+  if (targets.length > maxTargets) {
     logger.warn(
       "The portable actor that owns the inbox {inbox} has more than " +
         "{max} other gateways; the activity {activityId} is forwarded only " +
@@ -202,10 +232,10 @@ export async function forwardPortableInboxActivity(
       {
         inbox: recipient.canonicalInboxId,
         activityId: activityId.href,
-        max: MAX_PORTABLE_INBOX_FORWARDING_TARGETS,
+        max: maxTargets,
       },
     );
-    targets.length = MAX_PORTABLE_INBOX_FORWARDING_TARGETS;
+    targets.length = maxTargets;
   }
   const claimed: URL[] = [];
   for (const { gateway, inbox } of targets) {
@@ -215,9 +245,7 @@ export async function forwardPortableInboxActivity(
       canonicalActivityId,
       gateway,
     ];
-    if (
-      await kv.cas(key, undefined, true, { ttl: PORTABLE_INBOX_FORWARDING_TTL })
-    ) {
+    if (await kv.cas(key, undefined, true, { ttl })) {
       claimed.push(inbox);
     }
   }
@@ -272,13 +300,15 @@ async function forwardImmediately(
     activityId,
     activityType,
     allowPrivateAddress,
-    deadline = PORTABLE_INBOX_FORWARDING_DEADLINE_MS,
+    options,
     meterProvider,
     tracerProvider,
   }: ForwardPortableInboxActivityParameters,
   inboxes: readonly URL[],
 ): Promise<void> {
   const logger = getLogger(["fedify", "federation", "inbox"]);
+  const deadline = (options ?? resolvePortableInboxForwardingOptions())
+    .deadline.total("millisecond");
   const sends = inboxes.map((inbox) =>
     sendActivity({
       activity,
