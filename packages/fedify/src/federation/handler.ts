@@ -2116,13 +2116,18 @@ async function handleInboxInternal<TContextData>(
     });
   }
   if (!skipSignatureVerification) {
+    // A Linked Data Signature is made after the Object Integrity Proofs, so
+    // the top-level signature is excluded from their verification, as it is
+    // for verifyObject() above.  A signature property of an embedded map is
+    // kept, since it is part of what that map's own proof covers:
+    const compoundJson = Array.isArray(json) ? json : jsonWithoutSig;
     const compoundApplicability = inspectCompoundPortableObjectApplicability(
-      json,
+      compoundJson,
       INBOX_COMPOUND_PROOF_LIMITS,
     );
     if (compoundApplicability !== "absent") {
       const compoundProof = await verifyCompoundPortableObjectProofs(
-        json,
+        compoundJson,
         INBOX_COMPOUND_PROOF_LIMITS,
         {
           documentLoader: ctx.documentLoader,
