@@ -89,6 +89,7 @@ interface Setup {
   actor?: (ctx: Context<void>, identifier: string) => Person | Tombstone | null;
   listenerError?: boolean;
   keyPairs?: boolean;
+  onSharedInboxKey?: () => void;
 }
 
 function setup(
@@ -100,6 +101,7 @@ function setup(
     actor,
     listenerError = false,
     keyPairs = true,
+    onSharedInboxKey,
   }: Setup = {},
 ) {
   const federation = createFederation<void>({
@@ -143,8 +145,15 @@ function setup(
         : []
     );
   }
-  federation
-    .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  const inboxListeners = federation
+    .setInboxListeners("/users/{identifier}/inbox", "/inbox");
+  if (onSharedInboxKey != null) {
+    inboxListeners.setSharedKeyDispatcher(() => {
+      onSharedInboxKey();
+      return null;
+    });
+  }
+  inboxListeners
     .on(Follow, (ctx: InboxContext<void>, activity) => {
       received.push({
         activity,
@@ -612,9 +621,11 @@ test("Federation.fetch() forwards portable inbox deliveries immediately without 
 test("Federation.fetch() forwards portable inbox deliveries when it enqueues them", async () => {
   const queue = new RecordingQueue();
   const inboxQueue = new RecordingQueue();
+  let sharedInboxKeyCalls = 0;
   const { federation, received } = setup({
     queue,
     keyPairs: false,
+    onSharedInboxKey: () => sharedInboxKeyCalls++,
     options: { queue: { inbox: inboxQueue, outbox: queue } },
   });
   const response = await federation.fetch(
@@ -628,10 +639,12 @@ test("Federation.fetch() forwards portable inbox deliveries when it enqueues the
   assertEquals(inboxQueue.messages.length, 1);
   assertEquals(inboxQueue.messages[0].type, "inbox");
   assertEquals(queue.outbox.length, 2);
-  // The worker processes it even without key pairs:
+  // The worker processes it even without key pairs, and does not treat it as
+  // a shared inbox delivery:
   await federation.processQueuedTask(undefined, inboxQueue.messages[0]);
   assertEquals(received.length, 1);
   assertEquals(received[0].recipient, "alice");
+  assertEquals(sharedInboxKeyCalls, 0);
 });
 
 test("forwardPortableInboxActivity() does not wait for slow gateways", async () => {

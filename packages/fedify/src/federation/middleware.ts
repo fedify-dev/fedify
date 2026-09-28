@@ -1798,7 +1798,9 @@ export class FederationImpl<TContextData>
           identifier: message.identifier,
         }),
       });
-    } else if (this.sharedInboxKeyDispatcher != null) {
+    } else if (
+      message.identifier == null && this.sharedInboxKeyDispatcher != null
+    ) {
       const identity = await this.sharedInboxKeyDispatcher(context);
       if (identity != null) {
         context = this.#createContext(baseUrl, ctxData, {
