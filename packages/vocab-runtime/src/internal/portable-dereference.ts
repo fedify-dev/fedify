@@ -16,6 +16,7 @@ import {
   canonicalizePortableUri,
   formatIri,
   fromCompatibleEf61Id,
+  haveSameFe34Origin,
   parseIri,
   toCompatibleEf61Id,
 } from "../url.ts";
@@ -185,30 +186,230 @@ export function copyPortableProvenance(from: object, to: object): void {
 }
 
 /**
- * Rejects a reference from a portable object that would be dereferenced as
- * an ordinary HTTP(S) object although it stands for a portable object, i.e.,
- * an FEP-ef61 compatible identifier, or a document whose final URL or `@id`
- * is a compatible identifier or a portable IRI.  Such a document would skip
- * the portable object policy, so it is rejected regardless of the
- * `crossOrigin` option, except that `crossOrigin: "throw"` makes it throw.
+ * Recognizes an FEP-ef61 compatible identifier to dereference as a portable
+ * object.
  *
- * @param url The rejected URL, for the log message.
- * @param crossOrigin The `crossOrigin` option of the accessor.
- * @returns Always `null`.
- * @throws {Error} If `crossOrigin` is `"throw"`.
+ * @returns `undefined` if the URL is not a compatible identifier; `null` if
+ *          it is a malformed compatible identifier; otherwise, the portable
+ *          ID it stands for and the gateway it names.
  * @internal Technically exported for generated vocabulary classes, but not
  * part of the public API contract.  This is not considered public API for
  * Semantic Versioning decisions.
  */
-export function rejectPortableChainReference(
+export function parseCompatibleEf61Reference(
+  url: URL | string,
+): { readonly id: URL; readonly gateway: URL } | null | undefined {
+  if (typeof url === "string") {
+    if (!URL.canParse(url)) return undefined;
+    url = new URL(url);
+  }
+  try {
+    const id = fromCompatibleEf61Id(url);
+    if (id == null) return undefined;
+    return { id, gateway: new URL(url.origin) };
+  } catch (error) {
+    if (error instanceof TypeError) {
+      logger.debug(
+        "Invalid FEP-ef61 compatible identifier {url}: {error}",
+        { url: url.href, error },
+      );
+      return null;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Checks whether a property accessor call on a vocabulary object applies the
+ * FEP-ef61 portable object policy, i.e., whether the `verifyPortableObject`
+ * option is given or the object is part of a chain of portable objects.
+ * In this mode, compatible identifiers are dereferenced as portable objects,
+ * and fetched documents that turn out to stand for portable objects are
+ * verified as such.
+ *
+ * @internal Technically exported for generated vocabulary classes, but not
+ * part of the public API contract.  This is not considered public API for
+ * Semantic Versioning decisions.
+ */
+export function isPortableMode(
+  object: object,
+  options: { readonly verifyPortableObject?: PortableObjectVerifier },
+): boolean {
+  return options.verifyPortableObject != null || isInPortableChain(object);
+}
+
+/**
+ * Checks whether an object embedded in a property of a vocabulary object has
+ * to be dereferenced by its `@id` and verified as a portable object rather
+ * than trusted as embedded, even with `crossOrigin: "trust"`.  This is the
+ * case in {@link isPortableMode | portable mode} if its `@id` is an FEP-ef61
+ * compatible identifier, or a portable IRI whose DID differs from the
+ * owner's portable ID.
+ *
+ * @param parent The object whose property embeds the object.
+ * @param ownerId The ID of the object that vouches for embedded objects, or
+ *                `null` if embedded objects are not trusted by their owner.
+ * @param id The `@id` of the embedded object.
+ * @param options The options of the accessor.
+ * @internal Technically exported for generated vocabulary classes, but not
+ * part of the public API contract.  This is not considered public API for
+ * Semantic Versioning decisions.
+ */
+export function mustDereferencePortableObject(
+  parent: object,
+  ownerId: URL | null,
+  id: URL,
+  options: { readonly verifyPortableObject?: PortableObjectVerifier },
+): boolean {
+  if (!isPortableMode(parent, options)) return false;
+  if (isCompatibleEf61Iri(id)) return true;
+  if (!isPortableIri(id)) return false;
+  return ownerId == null || !isPortableIri(ownerId) ||
+    !haveSameFe34Origin(ownerId, id);
+}
+
+const PORTABLE_IRI_PATTERN = /^ap(?:\+ef61)?:/i;
+
+/**
+ * The portable object that a document fetched as an ordinary HTTP(S)
+ * document claims to be.
+ *
+ * @internal
+ */
+export interface PortableResponseClaim {
+  /** The portable ID that the document has to have. */
+  readonly id: URL;
+  /**
+   * The gateways inferred from the document's URL or `@id`, which are
+   * reported to the verifier as gateway hints.
+   */
+  readonly inferredGateways: readonly URL[];
+}
+
+/**
+ * Finds out whether a document fetched as an ordinary HTTP(S) document
+ * claims to be a portable object: its final URL is a portable IRI or an
+ * FEP-ef61 compatible identifier, or else its `@id` is.  The final URL takes
+ * precedence, so a document whose `@id` claims another object fails the
+ * identity check against the final URL.
+ *
+ * @param documentUrl The final URL of the document.
+ * @param objectId The `@id` of the parsed document.
+ * @returns `undefined` if the document does not claim to be a portable
+ *          object; `null` if the claim is malformed; otherwise, the claim.
+ * @internal Technically exported for generated vocabulary classes, but not
+ * part of the public API contract.  This is not considered public API for
+ * Semantic Versioning decisions.
+ */
+export function getPortableResponseClaim(
+  documentUrl: string,
+  objectId: URL | null,
+): PortableResponseClaim | null | undefined {
+  if (PORTABLE_IRI_PATTERN.test(documentUrl)) {
+    let id: URL;
+    try {
+      id = parseIri(documentUrl);
+      // URL parsing normalizes dot segments in the opaque path, which would
+      // make the parsed IRI identify another portable object:
+      if (
+        canonicalizePortableUri(documentUrl) !==
+          canonicalizePortableUri(formatIri(id))
+      ) {
+        return null;
+      }
+    } catch (error) {
+      if (error instanceof TypeError) return null;
+      throw error;
+    }
+    return { id, inferredGateways: getPortableGatewayCandidates(id) };
+  }
+  for (const url of [documentUrl, objectId]) {
+    if (url == null) continue;
+    const compatible = parseCompatibleEf61Reference(url);
+    if (compatible === null) return null;
+    if (compatible != null) {
+      return { id: compatible.id, inferredGateways: [compatible.gateway] };
+    }
+    if (url instanceof URL && isPortableIri(url)) {
+      return { id: url, inferredGateways: getPortableGatewayCandidates(url) };
+    }
+  }
+  return undefined;
+}
+
+// Objects that were fetched as ordinary HTTP(S) objects although they stand
+// for portable objects, i.e., without the portable object policy:
+const unverifiedPortableClaims = new WeakSet<object>();
+
+/**
+ * Records that an object fetched as an ordinary HTTP(S) object stands for
+ * a portable object if its reference, its final URL, or its `@id` is
+ * a portable IRI or an FEP-ef61 compatible identifier.  Accessors do not
+ * cache such objects in their parents, so that a later call with the
+ * `verifyPortableObject` option dereferences and verifies them.
+ *
+ * @internal Technically exported for generated vocabulary classes, but not
+ * part of the public API contract.  This is not considered public API for
+ * Semantic Versioning decisions.
+ */
+export function markUnverifiedPortableClaim(
+  object: object,
+  reference: URL,
+  documentUrl: string,
+): void {
+  const objectId = getObjectId(object);
+  if (
+    isPortableIri(reference) || isCompatibleEf61Iri(reference) ||
+    PORTABLE_IRI_PATTERN.test(documentUrl) ||
+    isCompatibleEf61Iri(documentUrl) ||
+    (objectId != null &&
+      (isPortableIri(objectId) || isCompatibleEf61Iri(objectId)))
+  ) {
+    unverifiedPortableClaims.add(object);
+  }
+}
+
+/**
+ * Checks whether an object was fetched as an ordinary HTTP(S) object although
+ * it stands for a portable object.  See {@link markUnverifiedPortableClaim}.
+ *
+ * @internal Technically exported for generated vocabulary classes, but not
+ * part of the public API contract.  This is not considered public API for
+ * Semantic Versioning decisions.
+ */
+export function isUnverifiedPortableClaim(object: object): boolean {
+  return unverifiedPortableClaims.has(object);
+}
+
+/**
+ * Rejects a malformed FEP-ef61 compatible identifier found in a reference,
+ * the final URL of a fetched document, or its `@id`, when it would be
+ * dereferenced as a portable object.  It is rejected without a request (or
+ * without returning the fetched document), since it cannot be verified as
+ * a portable object, and fetching it as an ordinary HTTP(S) object would
+ * skip the portable object policy.
+ *
+ * @param url The rejected URL, for the log message.
+ * @param options The options of the accessor.
+ * @returns Always `null`.
+ * @throws {Error} If `crossOrigin` is `"throw"` and `suppressError` is not
+ *                 set.
+ * @internal Technically exported for generated vocabulary classes, but not
+ * part of the public API contract.  This is not considered public API for
+ * Semantic Versioning decisions.
+ */
+export function rejectMalformedCompatibleReference(
   url: string,
-  crossOrigin: "ignore" | "throw" | "trust" | undefined,
+  options: {
+    readonly crossOrigin?: "ignore" | "throw" | "trust";
+    readonly suppressError?: boolean;
+  },
 ): null {
-  const message = "Refusing to dereference {url} from a portable object as " +
-    "an ordinary HTTP(S) object, because it stands for an FEP-ef61 portable " +
-    "object that is not verified this way.";
-  if (crossOrigin === "throw") {
-    throw new Error(message.replace("{url}", url));
+  const message = "Refusing to dereference {url}, because it is a malformed " +
+    "FEP-ef61 compatible identifier, which cannot be verified as a portable " +
+    "object.";
+  if (options.crossOrigin === "throw" && !options.suppressError) {
+    throw new PortableObjectRejectedError(message.replace("{url}", url));
   }
   logger.warn(message, { url });
   return null;
@@ -354,14 +555,29 @@ function parseGatewayOrigin(gateway: string | URL): URL | null {
  * The parsed object keeps the loader for its own later dereferences, so
  * `release()` turns it into a plain pass-through to the underlying loader
  * once the operation is over.
+ *
+ * @internal Technically exported for generated vocabulary classes, but not
+ * part of the public API contract.  This is not considered public API for
+ * Semantic Versioning decisions.
  */
-function createSnapshotContextLoader(
+export function createSnapshotContextLoader(
   contextLoader: DocumentLoader,
 ): { loader: DocumentLoader; release: () => void } {
+  // Objects parsed during a dereference keep its loader, so later
+  // dereferences from them would otherwise wrap released pass-throughs in
+  // ever deeper chains:
+  for (
+    let wrapped = snapshotLoaders.get(contextLoader);
+    wrapped?.released;
+    wrapped = snapshotLoaders.get(contextLoader)
+  ) {
+    contextLoader = wrapped.base;
+  }
   const cache = new Map<string, Promise<RemoteDocument>>();
   let released = false;
   const release = () => {
     released = true;
+    state.released = true;
     cache.clear();
   };
   const loader: DocumentLoader = async (url, options) => {
@@ -387,8 +603,15 @@ function createSnapshotContextLoader(
     }
     return structuredClone(await promise);
   };
+  const state = { base: contextLoader, released: false };
+  snapshotLoaders.set(loader, state);
   return { loader, release };
 }
+
+const snapshotLoaders = new WeakMap<
+  DocumentLoader,
+  { readonly base: DocumentLoader; released: boolean }
+>();
 
 /**
  * Options for {@link dereferencePortableIri}.
@@ -402,6 +625,20 @@ export interface DereferencePortableIriOptions<T> {
   contextLoader: DocumentLoader;
   tracerProvider: TracerProvider;
   gateways?: readonly (string | URL)[];
+  /**
+   * The gateways inferred from where the reference came from, e.g., the
+   * gateway of a compatible identifier.  When given, they replace the
+   * `@gateway` location hints of the IRI, are asked before the explicit
+   * `gateways`, and are reported to the verifier as gateway hints unless
+   * `gateways` is given.
+   */
+  inferredGateways?: readonly URL[];
+  /**
+   * An already fetched document to validate instead of fetching the object
+   * from gateways.  It is validated the same way as a gateway's response,
+   * and nothing else is tried if it is rejected.
+   */
+  response?: RemoteDocument;
   verifyPortableObject?: PortableObjectVerifier;
   referrer?: PortableReferrerLink;
   suppressError?: boolean;
@@ -449,9 +686,10 @@ class PortableObjectRejection {
  *
  * Gateways are tried one by one until one of them returns a single-node
  * document whose `@id`, if any, canonically matches the requested IRI and
- * which passes `verifyPortableObject`.  When there is no gateway to try, the document
- * loader is asked for the portable IRI itself, and its result is validated
- * the same way.
+ * which passes `verifyPortableObject`.  When there is no gateway to try, the
+ * document loader is asked for the portable IRI itself, and its result is
+ * validated the same way.  If the `response` option is given, only that
+ * document is validated, and nothing is fetched.
  *
  * @returns The parsed object, or `null` if no valid object was retrieved and
  *          `suppressError` is set or the failure was a rejected object
@@ -471,7 +709,15 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
   const lookupUrl = formatIri(url);
   const { span } = options;
   // Invalid gateways are a programming error, so they are never suppressed:
-  const gateways = getPortableGatewayCandidates(url, options.gateways);
+  const explicitGateways = options.gateways == null
+    ? undefined
+    : getPortableGatewayCandidates(url, options.gateways);
+  const inferredGateways = options.inferredGateways ??
+    (explicitGateways == null ? getPortableGatewayCandidates(url) : []);
+  const gateways = [...inferredGateways];
+  for (const gateway of explicitGateways ?? []) {
+    if (!gateways.some((g) => g.href === gateway.href)) gateways.push(gateway);
+  }
   const fail = (error: unknown): null => {
     span?.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
     if (options.suppressError) {
@@ -493,12 +739,27 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
       ),
     );
   }
-  const requestUrls: { url: string; gateway: URL | null }[] = [];
+  const requestUrls: {
+    url: string;
+    gateway: URL | null;
+    response?: RemoteDocument;
+  }[] = [];
   let expectedId: string;
   try {
     expectedId = canonicalizePortableUri(lookupUrl);
-    for (const gateway of gateways) {
-      requestUrls.push({ url: toCompatibleEf61Id(url, gateway).href, gateway });
+    if (options.response != null) {
+      requestUrls.push({
+        url: options.response.documentUrl,
+        gateway: null,
+        response: options.response,
+      });
+    } else {
+      for (const gateway of gateways) {
+        requestUrls.push({
+          url: toCompatibleEf61Id(url, gateway).href,
+          gateway,
+        });
+      }
     }
   } catch (error) {
     return fail(error);
@@ -512,17 +773,16 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
   const contextLoader = snapshot.loader;
   const attempts: Attempt[] = [];
   const { signal } = options;
-  const explicitGateways = options.gateways == null ? undefined : gateways;
-  const gatewayHints = options.gateways == null && gateways.length > 0
-    ? gateways
+  const gatewayHints = explicitGateways == null && inferredGateways.length > 0
+    ? inferredGateways
     : undefined;
   const referrer = buildReferrerChain(options.referrer);
   try {
-    for (const { url: requestUrl, gateway } of requestUrls) {
+    for (const { url: requestUrl, gateway, response } of requestUrls) {
       signal?.throwIfAborted();
       let remoteDocument: RemoteDocument;
       try {
-        remoteDocument = await options.documentLoader(
+        remoteDocument = response ?? await options.documentLoader(
           requestUrl,
           signal == null ? undefined : { signal },
         );

@@ -6,7 +6,6 @@ import {
   canonicalizePortableUri,
   type DocumentLoader,
   formatIri,
-  fromCompatibleEf61Id,
   getDocumentLoader,
   haveSameFe34Origin,
   haveSameIriOrigin,
@@ -14,9 +13,12 @@ import {
   type RemoteDocument,
 } from "@fedify/vocab-runtime";
 import {
+  createSnapshotContextLoader,
   dereferencePortableIri,
   getPortableGatewayCandidates,
+  getPortableResponseClaim,
   isPortableIri,
+  parseCompatibleEf61Reference,
   PortableObjectRejectedError,
 } from "@fedify/vocab-runtime/internal/portable-dereference";
 import { lookupWebFinger } from "@fedify/webfinger";
@@ -193,8 +195,11 @@ export interface LookupObjectOptions {
    * whether they are looked up directly or found in the `self` links of
    * a WebFinger response, are fetched through FEP-ef61 gateways.  A fetched
    * portable object is returned only if its `@id` identifies the requested
-   * portable object and this function accepts it.  Note that
-   * `crossOrigin: "trust"` does not skip these checks.
+   * portable object and this function accepts it.  A document fetched from
+   * an ordinary HTTP(S) URL is checked the same way if its final URL or its
+   * `@id` is a portable or compatible identifier, instead of being trusted
+   * because of its origin.  Note that `crossOrigin: "trust"` does not skip
+   * these checks.
    *
    * Without it, portable identifiers are not looked up, and compatible
    * identifiers are fetched as ordinary HTTP(S) URLs, whose objects with
@@ -434,52 +439,82 @@ async function lookupObjectInternal(
     }
   }
   if (remoteDoc == null) return null;
-  let object: Object;
-  let documentUrl: URL;
+  // With verifyPortableObject, the document may turn out to be a portable
+  // object, which has to be verified with the same context documents:
+  const snapshot = options.verifyPortableObject == null
+    ? null
+    : createSnapshotContextLoader(
+      options.contextLoader ??
+        getDocumentLoader({ userAgent: options.userAgent }),
+    );
   try {
-    documentUrl = parseIri(remoteDoc.documentUrl);
-    object = await Object.fromJsonLd(remoteDoc.document, {
-      documentLoader,
-      contextLoader: options.contextLoader,
-      tracerProvider: options.tracerProvider,
-      baseUrl: documentUrl,
-    });
-  } catch (error) {
-    if (error instanceof TypeError) {
-      logger.debug(
-        "Failed to parse JSON-LD document: {error}\n{document}",
-        { ...remoteDoc, error },
+    let object: Object;
+    let documentUrl: URL;
+    try {
+      documentUrl = parseIri(remoteDoc.documentUrl);
+      object = await Object.fromJsonLd(remoteDoc.document, {
+        documentLoader,
+        contextLoader: snapshot?.loader ?? options.contextLoader,
+        tracerProvider: options.tracerProvider,
+        baseUrl: documentUrl,
+      });
+    } catch (error) {
+      if (error instanceof TypeError) {
+        logger.debug(
+          "Failed to parse JSON-LD document: {error}\n{document}",
+          { ...remoteDoc, error },
+        );
+        return null;
+      }
+      throw error;
+    }
+    if (snapshot != null) {
+      // A document whose final URL or @id stands for a portable object is
+      // verified as one instead of being trusted because of its origin:
+      const claim = getPortableResponseClaim(remoteDoc.documentUrl, object.id);
+      if (claim === null) {
+        logger.debug(
+          "Refusing the document {documentUrl}, as it claims to be " +
+            "a portable object with a malformed compatible identifier.",
+          { documentUrl: remoteDoc.documentUrl },
+        );
+        return null;
+      } else if (claim != null) {
+        return await dereference(portable, claim.id, claim.inferredGateways, {
+          response: remoteDoc,
+          contextLoader: snapshot.loader,
+        });
+      }
+    }
+    if (
+      object.id != null &&
+      // A portable object belongs to its DID, not to the server that serves
+      // it, so crossOrigin: "trust" does not let a server vouch for it:
+      (options.crossOrigin !== "trust" || isPortableIri(object.id)) &&
+      !haveSameIriOrigin(object.id, documentUrl) &&
+      !haveSameFe34Origin(object.id, documentUrl)
+    ) {
+      if (options.crossOrigin === "throw") {
+        throw new Error(
+          `The object's @id (${object.id.href}) has a different origin than ` +
+            `the document URL (${remoteDoc.documentUrl}); refusing to return ` +
+            `the object.  If you want to bypass this check and are aware of ` +
+            `the security implications, set the crossOrigin option to "trust".`,
+        );
+      }
+      logger.warn(
+        "The object's @id ({objectId}) has a different origin than the " +
+          "document URL ({documentUrl}); refusing to return the object.  If " +
+          "you want to bypass this check and are aware of the security " +
+          'implications, set the crossOrigin option to "trust".',
+        { ...remoteDoc, objectId: object.id.href },
       );
       return null;
     }
-    throw error;
+    return object;
+  } finally {
+    snapshot?.release();
   }
-  if (
-    object.id != null &&
-    // A portable object belongs to its DID, not to the server that serves
-    // it, so crossOrigin: "trust" does not let a server vouch for it:
-    (options.crossOrigin !== "trust" || isPortableIri(object.id)) &&
-    !haveSameIriOrigin(object.id, documentUrl) &&
-    !haveSameFe34Origin(object.id, documentUrl)
-  ) {
-    if (options.crossOrigin === "throw") {
-      throw new Error(
-        `The object's @id (${object.id.href}) has a different origin than ` +
-          `the document URL (${remoteDoc.documentUrl}); refusing to return ` +
-          `the object.  If you want to bypass this check and are aware of ` +
-          `the security implications, set the crossOrigin option to "trust".`,
-      );
-    }
-    logger.warn(
-      "The object's @id ({objectId}) has a different origin than the document " +
-        "URL ({documentUrl}); refusing to return the object.  If you want to " +
-        "bypass this check and are aware of the security implications, " +
-        'set the crossOrigin option to "trust".',
-      { ...remoteDoc, objectId: object.id.href },
-    );
-    return null;
-  }
-  return object;
 }
 
 const PORTABLE_IRI_PATTERN = /^ap(?:\+ef61)?:/i;
@@ -534,25 +569,9 @@ function parsePortableCandidate(iri: string): URL | null {
 function getCompatibleCandidate(
   href: string,
   options: LookupObjectOptions,
-): { id: URL; gateway: URL } | null | undefined {
-  if (options.verifyPortableObject == null || !URL.canParse(href)) {
-    return undefined;
-  }
-  const url = new URL(href);
-  try {
-    const id = fromCompatibleEf61Id(url);
-    if (id == null) return undefined;
-    return { id, gateway: new URL(url.origin) };
-  } catch (error) {
-    if (error instanceof TypeError) {
-      logger.debug(
-        "Invalid FEP-ef61 compatible identifier {href}: {error}",
-        { href, error },
-      );
-      return null;
-    }
-    throw error;
-  }
+): { readonly id: URL; readonly gateway: URL } | null | undefined {
+  if (options.verifyPortableObject == null) return undefined;
+  return parseCompatibleEf61Reference(href);
 }
 
 /**
@@ -629,15 +648,20 @@ async function dereference(
   { options, documentLoader }: PortableLookup,
   id: URL,
   gateways: readonly URL[],
+  extra: { response?: RemoteDocument; contextLoader?: DocumentLoader } = {},
 ): Promise<Object | null> {
   const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
   try {
     return await dereferencePortableIri(id, {
       documentLoader,
-      contextLoader: options.contextLoader ??
+      contextLoader: extra.contextLoader ?? options.contextLoader ??
         getDocumentLoader({ userAgent: options.userAgent }),
       tracerProvider,
-      gateways,
+      // Gateways are inferred from the identifier, WebFinger, or location
+      // hints, rather than given by the caller, so they are reported to the
+      // verifier as hints:
+      inferredGateways: gateways,
+      response: extra.response,
       verifyPortableObject: options.verifyPortableObject,
       crossOrigin: options.crossOrigin === "throw" ? "throw" : "ignore",
       signal: options.signal,

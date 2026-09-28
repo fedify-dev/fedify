@@ -535,6 +535,11 @@ tried; `crossOrigin: "throw"` makes the method throw an error instead, and
 `crossOrigin: "trust"` does not skip the checks.  To limit the number of
 servers a single lookup reaches, the method asks at most five gateways.
 
+The same checks apply to a document looked up by an ordinary HTTP(S) URL if it
+turns out to be a portable object: if it is served from a compatible
+identifier after redirects, or its `@id` is a portable ID, it is returned only
+if it passes them, instead of being trusted because of where it came from.
+
 Note that a document served at a compatible identifier whose `@id` is the
 compatible identifier itself, rather than a portable ID, is not accepted as
 a portable object.

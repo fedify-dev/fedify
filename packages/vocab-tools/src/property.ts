@@ -89,13 +89,22 @@ async function* generateProperty(
         ${JSON.stringify(metadata.version)},
       );
       return await tracer.startActiveSpan("activitypub.lookup_object", async (span) => {
-        if (isPortableIri(url)) {
+        const dereferencePortable = async (
+          portableUrl: URL,
+          extra: {
+            inferredGateways?: readonly URL[];
+            response?: RemoteDocument;
+            contextLoader?: DocumentLoader;
+          } = {},
+        ) => {
           try {
-            const obj = await dereferencePortableIri(url, {
+            const obj = await dereferencePortableIri(portableUrl, {
               documentLoader,
-              contextLoader,
+              contextLoader: extra.contextLoader ?? contextLoader,
               tracerProvider,
               gateways: options.gateways,
+              inferredGateways: extra.inferredGateways,
+              response: extra.response,
               verifyPortableObject: options.verifyPortableObject,
               referrer: {
                 object: this,
@@ -113,7 +122,10 @@ async function* generateProperty(
                 }),
             });
             if (obj != null) {
-              span.setAttribute("activitypub.object.id", (obj.id ?? url).href);
+              span.setAttribute(
+                "activitypub.object.id",
+                (obj.id ?? portableUrl).href,
+              );
               span.setAttribute(
                 "activitypub.object.type",
                 // @ts-ignore: obj.constructor always has a typeId.
@@ -130,12 +142,20 @@ async function* generateProperty(
           } finally {
             span.end();
           }
-        }
+        };
+        if (isPortableIri(url)) return await dereferencePortable(url);
         const lookupUrl = formatIri(url);
-        const inPortableChain = isInPortableChain(this);
-        if (inPortableChain && isCompatibleEf61Iri(url)) {
-          span.end();
-          return rejectPortableChainReference(lookupUrl, options.crossOrigin);
+        const portableMode = isPortableMode(this, options);
+        if (portableMode) {
+          const compatible = parseCompatibleEf61Reference(url);
+          if (compatible === null) {
+            span.end();
+            return rejectMalformedCompatibleReference(lookupUrl, options);
+          } else if (compatible != null) {
+            return await dereferencePortable(compatible.id, {
+              inferredGateways: [compatible.gateway],
+            });
+          }
         }
         let fetchResult: RemoteDocument;
         try {
@@ -156,63 +176,90 @@ async function* generateProperty(
           throw error;
         }
         const { document, documentUrl } = fetchResult;
-        const baseUrl = parseIri(documentUrl);
+        // In portable mode, the document may turn out to be a portable object,
+        // which has to be verified with the same context documents:
+        const snapshot = portableMode
+          ? createSnapshotContextLoader(contextLoader)
+          : null;
         try {
-          const obj = await this.#${property.singularName}_fromJsonLd(
-            document,
-            { documentLoader, contextLoader, tracerProvider, baseUrl }
-          );
-          if (
-            inPortableChain &&
-            (isCompatibleEf61Iri(documentUrl) ||
-              (obj.id != null &&
-                (isPortableIri(obj.id) || isCompatibleEf61Iri(obj.id))))
-          ) {
-            return rejectPortableChainReference(
-              documentUrl,
-              options.crossOrigin,
+          let claim: PortableResponseClaim | null | undefined;
+          try {
+            const baseUrl = parseIri(documentUrl);
+            const obj = await this.#${property.singularName}_fromJsonLd(
+              document,
+              {
+                documentLoader,
+                contextLoader: snapshot?.loader ?? contextLoader,
+                tracerProvider,
+                baseUrl,
+              }
             );
-          }
-          if (obj?.id != null && !isTrustedIriOrigin(options, obj.id, baseUrl)) {
-            if (options.crossOrigin === "throw") {
-              throw new Error(
-                "The object's @id (" + obj.id.href + ") has a different origin " +
-                "than the document URL (" + baseUrl.href + "); refusing to return " +
-                "the object.  If you want to bypass this check and are aware of" +
-                'the security implications, set the crossOrigin option to "trust".'
-              );
+            if (snapshot == null) {
+              markUnverifiedPortableClaim(obj, url, documentUrl);
+            } else {
+              claim = getPortableResponseClaim(documentUrl, obj.id);
             }
-            getLogger(["fedify", "vocab"]).warn(
-              "The object's @id ({objectId}) has a different origin than the document " +
-              "URL ({documentUrl}); refusing to return the object.  If you want to " +
-              "bypass this check and are aware of the security implications, " +
-              'set the crossOrigin option to "trust".',
-              { ...fetchResult, objectId: obj.id.href },
-            );
-            return null;
+            if (claim === undefined) {
+              if (
+                obj?.id != null &&
+                !isTrustedIriOrigin(options, obj.id, baseUrl)
+              ) {
+                if (options.crossOrigin === "throw") {
+                  throw new Error(
+                    "The object's @id (" + obj.id.href + ") has a different origin " +
+                    "than the document URL (" + baseUrl.href + "); refusing to return " +
+                    "the object.  If you want to bypass this check and are aware of" +
+                    'the security implications, set the crossOrigin option to "trust".'
+                  );
+                }
+                getLogger(["fedify", "vocab"]).warn(
+                  "The object's @id ({objectId}) has a different origin than the document " +
+                  "URL ({documentUrl}); refusing to return the object.  If you want to " +
+                  "bypass this check and are aware of the security implications, " +
+                  'set the crossOrigin option to "trust".',
+                  { ...fetchResult, objectId: obj.id.href },
+                );
+                span.end();
+                return null;
+              }
+              span.setAttribute("activitypub.object.id", (obj.id ?? url).href);
+              span.setAttribute(
+                "activitypub.object.type",
+                // @ts-ignore: obj.constructor always has a typeId.
+                obj.constructor.typeId.href
+              );
+              span.end();
+              return obj;
+            }
+          } catch (e) {
+            if (options.suppressError) {
+              getLogger(["fedify", "vocab"]).error(
+                "Failed to parse {url}: {error}",
+                { error: e, url: lookupUrl }
+              );
+              span.end();
+              return null;
+            }
+            span.setStatus({
+              code: SpanStatusCode.ERROR,
+              message: String(e),
+            });
+            span.end();
+            throw e;
           }
-          span.setAttribute("activitypub.object.id", (obj.id ?? url).href);
-          span.setAttribute(
-            "activitypub.object.type",
-            // @ts-ignore: obj.constructor always has a typeId.
-            obj.constructor.typeId.href
-          );
-          return obj;
-        } catch (e) {
-          if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
-              "Failed to parse {url}: {error}",
-              { error: e, url: lookupUrl }
-            );
-            return null;
+          // The document stands for a portable object, so it is verified as
+          // one instead of being trusted because of where it came from:
+          if (claim === null) {
+            span.end();
+            return rejectMalformedCompatibleReference(documentUrl, options);
           }
-          span.setStatus({
-            code: SpanStatusCode.ERROR,
-            message: String(e),
+          return await dereferencePortable(claim.id, {
+            inferredGateways: claim.inferredGateways,
+            response: fetchResult,
+            contextLoader: snapshot?.loader,
           });
-          throw e;
         } finally {
-          span.end();
+          snapshot?.release();
         }
       });
     }
@@ -350,7 +397,7 @@ async function* generateProperty(
           } else if (
             !isTrustedIriOrigin(options, v.id, ${trustOwner}) ||
             isUnsecuredPortableObject(this) ||
-            (isInPortableChain(this) && isCompatibleEf61Iri(v.id))
+            mustDereferencePortableObject(this, ${trustOwner}, v.id, options)
           ) {
             v = v.id;
           }
@@ -359,6 +406,9 @@ async function* generateProperty(
           const fetched =
             await this.#fetch${pascalCase(property.singularName)}(v, options);
           if (fetched == null) return null;
+          // Not cached, so that it is verified when the portable object
+          // policy applies later:
+          if (isUnverifiedPortableClaim(fetched)) return fetched;
           this.${await getFieldName(property.uri)}[0] = fetched;
           this.${await getFieldName(property.uri, "#_trust")}.add(0);
           this._cachedJsonLd = undefined;
@@ -398,7 +448,9 @@ async function* generateProperty(
         type.trustEmbeddedObjects === false ? "" : "this.id != null && "
       }!isTrustedIriOrigin(options, v.id, ${trustOwner})) ||
               isUnsecuredPortableObject(this) ||
-              (isInPortableChain(this) && isCompatibleEf61Iri(v.id))) &&
+              mustDereferencePortableObject(
+                this, ${trustOwner}, v.id, options,
+              )) &&
             !this.${await getFieldName(property.uri, "#_trust")}.has(0)) {
           if (options.crossOrigin === "throw") {
             throw new Error(
@@ -485,7 +537,7 @@ async function* generateProperty(
             } else if (
               !isTrustedIriOrigin(options, v.id, ${trustOwner}) ||
               isUnsecuredPortableObject(this) ||
-              (isInPortableChain(this) && isCompatibleEf61Iri(v.id))
+              mustDereferencePortableObject(this, ${trustOwner}, v.id, options)
             ) {
               v = v.id;
             }
@@ -494,6 +546,12 @@ async function* generateProperty(
             const fetched =
               await this.#fetch${pascalCase(property.singularName)}(v, options);
             if (fetched == null) continue;
+            // Not cached, so that it is verified when the portable object
+            // policy applies later:
+            if (isUnverifiedPortableClaim(fetched)) {
+              yield fetched;
+              continue;
+            }
             vs[i] = fetched;
             this.${await getFieldName(property.uri, "#_trust")}.add(i);
             this._cachedJsonLd = undefined;
@@ -534,7 +592,9 @@ async function* generateProperty(
         type.trustEmbeddedObjects === false ? "" : "this.id != null && "
       }!isTrustedIriOrigin(options, v.id, ${trustOwner})) ||
                 isUnsecuredPortableObject(this) ||
-                (isInPortableChain(this) && isCompatibleEf61Iri(v.id))) &&
+                mustDereferencePortableObject(
+                  this, ${trustOwner}, v.id, options,
+                )) &&
               !this.${await getFieldName(property.uri, "#_trust")}.has(i)) {
             if (options.crossOrigin === "throw") {
               throw new Error(

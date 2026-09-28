@@ -800,3 +800,115 @@ test("verifyPortableObject() fetches the owner through attributedTo hints", asyn
   strictEqual(result.method, "gateway");
   deepStrictEqual(documentLoader.fetched, [gatewayUrl(gw2, actorId)]);
 });
+
+test("verifyPortableObject() applies to compatible identifiers in accessors", async (t) => {
+  const noteId = `ap://${did}/notes/1`;
+  const signedNote = await sign({
+    "@context": context,
+    id: noteId,
+    type: "Note",
+    attributedTo: actorId,
+    content: "Hello",
+  });
+  const forgedNote = {
+    "@context": context,
+    id: noteId,
+    type: "Note",
+    attributedTo: actorId,
+    content: "Forged",
+  };
+  const collection = (items: unknown[]) =>
+    Collection.fromJsonLd({
+      "@context": context,
+      id: "https://example.com/collection",
+      type: "Collection",
+      items,
+    }, { contextLoader });
+  const getItems = async (
+    items: unknown[],
+    documentLoader: DocumentLoader,
+  ) =>
+    await Array.fromAsync(
+      (await collection(items)).getItems({
+        documentLoader,
+        contextLoader,
+        verifyPortableObject,
+      }),
+    );
+
+  await t.step("signed objects", async () => {
+    const documentLoader = createLoader({
+      [gatewayUrl(gw1, noteId)]: signedNote,
+    });
+    const items = await getItems([gatewayUrl(gw1, noteId)], documentLoader);
+    deepStrictEqual(
+      items.map((item) => item instanceof Note ? item.content : null),
+      ["Hello"],
+    );
+  });
+
+  await t.step("forged objects", async () => {
+    const documentLoader = createLoader({
+      [gatewayUrl(evil, noteId)]: forgedNote,
+      // A forged object identified by the compatible identifier itself:
+      [gatewayUrl(evil, `ap://${did}/notes/2`)]: {
+        ...forgedNote,
+        id: gatewayUrl(evil, `ap://${did}/notes/2`),
+        attributedTo: gatewayUrl(evil, actorId),
+      },
+      // A redirect to a gateway serving a forged object:
+      "https://evil.example/notes/1": { redirect: gatewayUrl(evil, noteId) },
+      [gatewayUrl("https://example.com", noteId)]: forgedNote,
+    });
+    deepStrictEqual(
+      await getItems([
+        gatewayUrl(evil, noteId),
+        gatewayUrl(evil, `ap://${did}/notes/2`),
+        "https://evil.example/notes/1",
+        // An embedded object of the parent's origin is not trusted either:
+        {
+          id: gatewayUrl("https://example.com", noteId),
+          type: "Note",
+          content: "Forged",
+        },
+      ], documentLoader),
+      [],
+    );
+  });
+
+  await t.step("unsecured collections", async () => {
+    const unsecured = outbox({ attributedTo: actorId });
+    const documentLoader = createLoader({
+      [gatewayUrl(gw1, actorId)]: signedActor,
+      [gatewayUrl(gw1, outboxId)]: unsecured,
+      [gatewayUrl(evil, actorId)]: signedActor,
+      [gatewayUrl(evil, outboxId)]: unsecured,
+    });
+    const items = await getItems([gatewayUrl(gw1, outboxId)], documentLoader);
+    strictEqual(items.length, 1);
+    ok(items[0] instanceof OrderedCollection);
+    // The owner was fetched through the gateway that the compatible
+    // identifier names:
+    deepStrictEqual(documentLoader.fetched, [
+      gatewayUrl(gw1, outboxId),
+      gatewayUrl(gw1, actorId),
+    ]);
+    // A gateway that the owner does not list is not trusted:
+    deepStrictEqual(
+      await getItems([gatewayUrl(evil, outboxId)], documentLoader),
+      [],
+    );
+    // Nor is a redirect from a listed gateway to an unlisted one:
+    deepStrictEqual(
+      await getItems(
+        [gatewayUrl(gw1, outboxId)],
+        createLoader({
+          [gatewayUrl(gw1, actorId)]: signedActor,
+          [gatewayUrl(gw1, outboxId)]: { redirect: gatewayUrl(evil, outboxId) },
+          [gatewayUrl(evil, outboxId)]: unsecured,
+        }),
+      ),
+      [],
+    );
+  });
+});

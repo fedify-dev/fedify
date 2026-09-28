@@ -45,8 +45,12 @@ export interface PortableObjectVerifierOptions {
   readonly gateways?: readonly URL[];
 
   /**
-   * The gateways taken from the `@gateway` location hints of the reference,
-   * in order, when the caller did not pass the `gateways` option.
+   * The gateways inferred from the reference, in order, when the caller did
+   * not pass the `gateways` option: the `@gateway` location hints of
+   * a portable IRI, the gateway named by an FEP-ef61 compatible identifier,
+   * or the WebFinger server of a portable actor.  They only tell where the
+   * document and related objects might be retrieved, and must not be
+   * trusted to act for the portable object's DID.
    * @since 2.4.0
    */
   readonly gatewayHints?: readonly URL[];
