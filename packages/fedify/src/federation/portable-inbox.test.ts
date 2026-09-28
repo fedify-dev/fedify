@@ -29,7 +29,7 @@ import {
   rsaPublicKey2,
   rsaPublicKey3,
 } from "../testing/keys.ts";
-import type { Context, InboxContext } from "./context.ts";
+import type { InboxContext, RequestContext } from "./context.ts";
 import { type KvKey, type KvStore, MemoryKvStore } from "./kv.ts";
 import type { FederationOptions } from "./federation.ts";
 import { createFederation } from "./middleware.ts";
@@ -101,7 +101,10 @@ interface Setup {
   kv?: KvStore;
   queue?: RecordingQueue;
   options?: Partial<FederationOptions<void>>;
-  actor?: (ctx: Context<void>, identifier: string) => Person | Tombstone | null;
+  actor?: (
+    ctx: RequestContext<void>,
+    identifier: string,
+  ) => Person | Tombstone | null | Promise<Person | Tombstone | null>;
   listenerError?: boolean;
   keyPairs?: boolean;
   /** Alice's key pairs, which are her gateway keys if she has a mapper. */
@@ -2048,6 +2051,53 @@ test("Context.getPortableInboxUri()", async (t) => {
       `ap+ef61://${did}/users/alice/inbox`,
     );
   });
+});
+
+test("Federation.fetch() serves and delivers to one portable actor dispatcher", async () => {
+  const { federation, received } = setup({
+    actor: async (ctx, identifier) => {
+      if (identifier !== "alice") return null;
+      // The DID in a gateway request path is not evidence that this server
+      // hosts the actor for it.  Deliveries to portable inboxes do not set
+      // portableRequest, so the actor is returned for them:
+      if (
+        ctx.portableRequest != null && ctx.portableRequest.authority !== did
+      ) {
+        return null;
+      }
+      return await signObject(
+        new Person({
+          id: ctx.getPortableActorUri(identifier, did),
+          inbox: ctx.getPortableInboxUri(identifier, did),
+          gateways: [new URL(LOCAL)],
+        }),
+        ed25519PrivateKey,
+        keyId,
+        { contextLoader: mockDocumentLoader },
+      );
+    },
+  });
+  const response = await federation.fetch(
+    post(inboxUrl(), await signedFollow()),
+    { contextData: undefined },
+  );
+  assertEquals(response.status, 202);
+  assertEquals(received.length, 1);
+  assertEquals(received[0].recipient, "alice");
+
+  const get = (authority: string) =>
+    federation.fetch(
+      new Request(inboxUrl(authority, "/users/alice"), {
+        headers: { Accept: "application/activity+json" },
+      }),
+      { contextData: undefined },
+    );
+  const actor = await get(did);
+  assertEquals(actor.status, 200);
+  const json = await actor.json() as Record<string, unknown>;
+  assertEquals(json.id, `ap+ef61://${did}/users/alice`);
+  assertEquals(json.inbox, `ap+ef61://${did}/users/alice/inbox`);
+  assertEquals((await get(otherDid)).status, 404);
 });
 
 test("Federation.fetch() keeps ordinary inbox deliveries unchanged", async () => {

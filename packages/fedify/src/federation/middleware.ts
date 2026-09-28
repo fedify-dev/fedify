@@ -3171,16 +3171,45 @@ export class FederationImpl<TContextData>
       );
     }
     const route = this.router.route(portable.path);
-    if (route == null || !route.name.startsWith("object:")) {
+    const isActor = route != null &&
+      (route.name === "actor" || route.name.startsWith(ACTOR_ALIAS_PREFIX));
+    if (route == null || (!isActor && !route.name.startsWith("object:"))) {
       metricState.endpoint = "not_found";
       return await onNotFound(request);
     }
     metricState.routeTemplate = PORTABLE_GATEWAY_ROUTE_PREFIX + route.template;
-    metricState.endpoint = "object";
+    metricState.endpoint = isActor ? "actor" : "object";
     span.updateName(`${request.method} ${metricState.routeTemplate}`);
     if (!acceptsJsonLd(request)) {
       metricState.endpoint = "not_acceptable";
       return await onNotAcceptable(request);
+    }
+    if (isActor) {
+      const identifier = route.name.startsWith(ACTOR_ALIAS_PREFIX)
+        ? route.name.substring(ACTOR_ALIAS_PREFIX.length)
+        : route.values.identifier;
+      const context = this.#createContext(request, contextData, {
+        invokedFromActorDispatcher: { identifier },
+        portableRequest: portable.portableRequest,
+      });
+      const actorDispatcher = this.actorCallbacks?.dispatcher;
+      const authorizePredicate = this.actorCallbacks?.authorizePredicate;
+      return await handlePortableObject(request, {
+        values: { identifier },
+        context,
+        objectDispatcher: actorDispatcher == null ? undefined : async (ctx) => {
+          const actor = await actorDispatcher(ctx, identifier);
+          // A tombstone would need its own proof to be served as
+          // a portable object, so it is treated as not stored here:
+          return actor instanceof Tombstone ? null : actor;
+        },
+        authorizePredicate: authorizePredicate == null
+          ? undefined
+          : (ctx) => authorizePredicate(ctx, identifier),
+        canonicalId: portable.canonicalId,
+        onUnauthorized,
+        onNotFound,
+      });
     }
     const typeId = route.name.replace(/^object:/, "");
     const callbacks = this.objectCallbacks[typeId];
@@ -3768,6 +3797,21 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   }
 
   getActorUri(identifier: string): URL {
+    return new URL(this.#getActorPath(identifier), this.canonicalOrigin);
+  }
+
+  getPortableActorUri(identifier: string, authority?: string): URL {
+    const path = this.#getActorPath(identifier);
+    if (authority == null) {
+      throw new TypeError(
+        "The authority of a portable ID is required outside an FEP-ef61 " +
+          "gateway request.",
+      );
+    }
+    return buildPortableUri(authority, path);
+  }
+
+  #getActorPath(identifier: string): string {
     const path = this.federation.router.build(
       `${ACTOR_ALIAS_PREFIX}${identifier}`,
       {},
@@ -3778,7 +3822,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     if (path == null) {
       throw new RouterError("No actor dispatcher registered.");
     }
-    return new URL(path, this.canonicalOrigin);
+    return path;
   }
 
   getObjectUri<TObject extends Object>(
@@ -4890,6 +4934,13 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
       portableRequest: this.portableRequest,
       request: this.request,
     });
+  }
+
+  override getPortableActorUri(identifier: string, authority?: string): URL {
+    return super.getPortableActorUri(
+      identifier,
+      authority ?? this.portableRequest?.authority,
+    );
   }
 
   override getPortableObjectUri<TObject extends Object>(

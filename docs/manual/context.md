@@ -98,6 +98,7 @@ shows the methods:
 
  -  `~Context.getNodeInfoUri()`
  -  `~Context.getActorUri()`
+ -  `~Context.getPortableActorUri()`
  -  `~Context.getObjectUri()`
  -  `~Context.getPortableObjectUri()`
  -  `~Context.getInboxUri()`
@@ -137,6 +138,94 @@ federation.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => 
 On the other way around, you can use the `~Context.parseUri()` method to
 determine the type of the URI and extract the identifier or other values from
 the URI.
+
+### Portable IDs
+
+*This API is available since Fedify 2.4.0.*
+
+An [FEP-ef61] portable actor or object has an ID whose authority is a [DID]
+instead of a host name, e.g., `ap+ef61://did:key:z6Mk.../users/alice`, so that
+it is not tied to a server.  The following methods build such portable IDs
+from the same paths as their counterparts above:
+
+`~Context.getPortableActorUri()`
+:   The portable ID of an actor, with the path of `~Context.getActorUri()`.
+
+`~Context.getPortableObjectUri()`
+:   The portable ID of an object, with the path of `~Context.getObjectUri()`.
+
+`~Context.getPortableInboxUri()`
+:   The portable ID of an actor's inbox, with the path of
+    `~Context.getInboxUri()`.
+
+They take the DID that controls the actor or object as their last argument.
+Portable objects are authenticated by Object Integrity Proofs, so the DID is
+usually a `did:key` DID made from the Ed25519 public key that signs them.
+The `exportDidKey()` function from `@fedify/vocab-runtime` makes one; store it
+along with the actor rather than taking it from a request:
+
+~~~~ typescript twoslash
+import { type Context, signObject } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
+import { exportDidKey, formatIri } from "@fedify/vocab-runtime";
+const ctx = null as unknown as Context<void>;
+const { publicKey, privateKey } = await crypto.subtle.generateKey(
+  "Ed25519",
+  true,
+  ["sign", "verify"],
+) as CryptoKeyPair;
+// ---cut-before---
+const did = await exportDidKey(publicKey);  // did:key:z6Mk...
+const id = ctx.getPortableActorUri("alice", did);
+console.log(formatIri(id));  // ap+ef61://did:key:z6Mk.../users/alice
+
+// The proof has to be made with a key of the same DID:
+const keyId = new URL(`${did}#${did.slice("did:key:".length)}`);
+const actor = await signObject(
+  new Person({
+    id,
+    inbox: ctx.getPortableInboxUri("alice", did),
+    gateways: [new URL("https://example.com")],
+  }),
+  privateKey,
+  keyId,  // did:key:z6Mk...#z6Mk...
+);
+~~~~
+
+A few things to note about them:
+
+ -  The DID has to be a bare DID, without a path, query, or fragment.
+    A `did:key` DID has to be encoded in base58-btc, i.e., start with
+    `did:key:z`, as FEP-ef61 requires, so that the same key does not yield
+    two different IDs; `exportDidKey()` always makes such DIDs.  The gateway
+    endpoint responds with `400 Bad Request` to requests whose path has
+    a `did:key` DID in another encoding.  Other DID
+    methods are only checked for their syntax, which does not mean that
+    Fedify can verify proofs made by them.
+ -  While an actor dispatcher or an object dispatcher is handling a request
+    through the FEP-ef61 gateway endpoint, i.e.,
+    `~RequestContext.portableRequest` is set, the DID can be omitted, and
+    the one in the request path is used.  It is anyone's to choose, though,
+    so it is not evidence that this server hosts anything for the DID.
+    Elsewhere, the DID is required.
+ -  The returned `URL` keeps the DID percent-encoded, e.g.,
+    `ap+ef61://did%3Akey%3Az6Mk.../users/alice`, as the `URL` class cannot
+    represent the canonical form.  Generated vocabulary classes serialize
+    it in the canonical form, and `formatIri()` from `@fedify/vocab-runtime`
+    returns the canonical string.
+ -  They build portable IDs only.  To get the *compatible identifier* of
+    a portable ID on a gateway, an HTTP(S) URL for software that does not
+    support portable IDs, use `toCompatibleEf61Id()` from
+    `@fedify/vocab-runtime`.
+
+Portable actors and objects with such IDs can be served by the same
+dispatchers through the gateway endpoint; see the [*Portable actors and
+WebFinger* section](./actor.md#portable-actors-and-webfinger), the [*Serving
+portable objects* section](./object.md#serving-portable-objects), and the
+[*Portable inboxes* section](./inbox.md#portable-inboxes).
+
+[FEP-ef61]: https://w3id.org/fep/ef61
+[DID]: https://www.w3.org/TR/did-core/
 
 
 Enqueuing an outgoing activity
@@ -552,9 +641,6 @@ a portable object.
 > identifiers are fetched as ordinary HTTP(S) URLs, and an object with
 > a portable ID served there is refused as a cross-origin object, even with
 > `crossOrigin: "trust"`.
-
-[FEP-ef61]: https://w3id.org/fep/ef61
-[DID]: https://www.w3.org/TR/did-core/
 
 
 WebFinger lookups

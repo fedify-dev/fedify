@@ -765,7 +765,7 @@ Portable actors and WebFinger
 *This API is available since Fedify 2.4.0.*
 
 An [FEP-ef61] portable actor has an ID that is not tied to a server, such as
-`ap+ef61://did:key:z6Mk.../actors/alice`, and a `gateways` property that lists
+`ap+ef61://did:key:z6Mk.../users/alice`, and a `gateways` property that lists
 the servers where the actor can be retrieved.  Since the ID has no host,
 FEP-ef61 takes the domain of the actor's WebFinger address from the *first*
 gateway instead: a portable actor with `preferredUsername` `alice` and
@@ -778,7 +778,7 @@ returns an actor whose ID is a portable ID, Fedify responds as follows:
 
  -  The `self` link is the actor's *compatible identifier* made from its first
     gateway, e.g.,
-    `https://example.com/.well-known/apgateway/did:key:z6Mk.../actors/alice`,
+    `https://example.com/.well-known/apgateway/did:key:z6Mk.../users/alice`,
     so that software that does not support portable IDs can still fetch the
     actor.  Software that supports them recovers the portable ID from it.
     The portable ID itself is not put in the response, as it is not a valid
@@ -792,18 +792,20 @@ returns an actor whose ID is a portable ID, Fedify responds as follows:
  -  If the actor has no `gateways`, or its first gateway is not an HTTP(S)
     origin, Fedify logs an error and responds as if the actor were not found.
 
-Fedify serves portable objects at their compatible identifiers only through
-object dispatchers (see the [*Serving portable objects*
-section](./object.md#serving-portable-objects)), so register an object
-dispatcher for the actor as well, and use the portable ID it builds as
-the actor's ID:
+The actor dispatcher also serves portable actors at their compatible
+identifiers, i.e., requests through the FEP-ef61 gateway endpoint like
+`GET /.well-known/apgateway/did:key:z6Mk.../users/alice`, with the path after
+the DID.  So use the portable ID that `~Context.getPortableActorUri()` builds
+from the same path as the actor's ID (see the [*Portable IDs*
+section](./context.md#portable-ids) for how to get a DID):
 
 ~~~~ typescript twoslash
-import { type Context, type Federation, signObject } from "@fedify/fedify";
+import { signObject } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
 import { Person } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 interface User { username: string; did: string }
-async function findUser(_username: string): Promise<User | null> {
+async function findUser(_identifier: string): Promise<User | null> {
   return null;
 }
 async function getPortableKey(
@@ -812,45 +814,50 @@ async function getPortableKey(
   return null!;
 }
 // ---cut-before---
-async function getPortableActor(
-  ctx: Context<void>,
-  user: User,
-): Promise<Person> {
-  const { privateKey, keyId } = await getPortableKey(user.did);
-  return await signObject(
-    new Person({
-      // ap+ef61://did:key:z6Mk.../actors/alice
-      id: ctx.getPortableObjectUri(Person, { name: user.username }, user.did),
-      preferredUsername: user.username,
-      gateways: [new URL("https://example.com")],
-    }),
-    privateKey,
-    keyId,  // e.g., did:key:z6Mk...#z6Mk...
-  );
-}
-
 federation
   .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
     const user = await findUser(identifier);
     if (user == null) return null;
-    return await getPortableActor(ctx, user);
+    // Serving GET /.well-known/apgateway/did:key:z6Mk.../users/alice; the DID
+    // comes from the request path, so make sure that it is the user's:
+    if (
+      ctx.portableRequest != null &&
+      ctx.portableRequest.authority !== user.did
+    ) {
+      return null;
+    }
+    const { privateKey, keyId } = await getPortableKey(user.did);
+    return await signObject(
+      new Person({
+        // ap+ef61://did:key:z6Mk.../users/alice
+        id: ctx.getPortableActorUri(identifier, user.did),
+        preferredUsername: user.username,
+        gateways: [new URL("https://example.com")],
+      }),
+      privateKey,
+      keyId,  // e.g., did:key:z6Mk...#z6Mk...
+    );
   })
   // Maps the WebFinger username (preferredUsername) back to the identifier:
   .mapHandle((ctx, username) => username);
-
-// Serves GET /.well-known/apgateway/did:key:z6Mk.../actors/alice:
-federation.setObjectDispatcher(
-  Person,
-  "/actors/{name}",
-  async (ctx, values) => {
-    const user = await findUser(values.name);
-    if (user == null || ctx.portableRequest?.authority !== user.did) {
-      return null;
-    }
-    return await getPortableActor(ctx, user);
-  },
-);
 ~~~~
+
+Such a request is handled the same way as a portable object request that an
+object dispatcher serves (see the [*Serving portable objects*
+section](./object.md#serving-portable-objects)): the actor is served only if
+its ID canonically equals the requested portable ID and it has an Object
+Integrity Proof made with a key of the DID, and
+the `~ActorCallbackSetters.authorize()` predicate, if any, is applied.
+Otherwise, including when the dispatcher returns a `Tombstone`, Fedify
+responds with `404 Not Found`, or with `500 Internal Server Error` if the
+proof is missing or invalid.  Ordinary requests for the actor, WebFinger, and
+[portable inbox](./inbox.md#portable-inboxes) deliveries do not set
+`~RequestContext.portableRequest`, so the dispatcher returns the actor for
+them as usual.
+
+An object dispatcher can serve a portable actor as well, if you want its ID
+to have a path other than the actor dispatcher's; in that case, build the
+actor's ID with `~Context.getPortableObjectUri()` instead.
 
 > [!NOTE]
 > Fedify generates only one `self` link for a portable actor, but links
@@ -880,11 +887,11 @@ Compatible identifiers as actor IDs
 *This API is available since Fedify 2.4.0.*
 
 Software that does not support [FEP-ef61] cannot handle portable IDs like
-`ap+ef61://did:key:z6Mk.../actors/alice`, and may refuse an actor document
+`ap+ef61://did:key:z6Mk.../users/alice`, and may refuse an actor document
 whose ID is one.  For such software, FEP-ef61 lets a portable actor, and its
 activities and objects, be identified by their *compatible identifiers*
 instead, e.g.,
-`https://example.com/.well-known/apgateway/did:key:z6Mk.../actors/alice`.
+`https://example.com/.well-known/apgateway/did:key:z6Mk.../users/alice`.
 Some implementations, such as [tootik], identify all their portable actors
 this way.
 
@@ -907,9 +914,9 @@ FEP-ef61 turns the compatible identifier back into the portable ID it contains:
     each has to have a portable ID or a compatible identifier of the actor's
     DID, and is signed only by the DID's key.  See the [*Choosing the proof
     key* section](./send.md#choosing-the-proof-key).
- -  The [object dispatcher](./object.md#serving-portable-objects) that serves
-    the actor or its objects may return them with compatible identifiers as
-    their IDs.
+ -  The [actor dispatcher](#portable-actors-and-webfinger) and the [object
+    dispatchers](./object.md#serving-portable-objects) that serve the actor
+    and its objects may return them with compatible identifiers as their IDs.
  -  Its WebFinger `self` link is its ID as is, while the domain of its
     address still comes from its first gateway.
  -  Its inbox may be a compatible identifier as well, through which Fedify
@@ -919,11 +926,11 @@ FEP-ef61 turns the compatible identifier back into the portable ID it contains:
     compatible identifier; see the [*Gateway keys of portable actors*
     section](#gateway-keys-of-portable-actors).
 
-The `~Context.getPortableObjectUri()` and `~Context.getPortableInboxUri()`
-methods build portable IDs only.  Turn them into compatible identifiers on
-the actor's first gateway with `toCompatibleEf61Id()`, before signing the
-documents that contain them; a signed document cannot be rewritten without
-invalidating its proof:
+The `~Context.getPortableActorUri()`, `~Context.getPortableObjectUri()`, and
+`~Context.getPortableInboxUri()` methods build portable IDs only.  Turn them
+into compatible identifiers on the actor's first gateway with
+`toCompatibleEf61Id()`, before signing the documents that contain them; a
+signed document cannot be rewritten without invalidating its proof:
 
 ~~~~ typescript twoslash
 import { type Context, signObject } from "@fedify/fedify";
@@ -945,9 +952,9 @@ async function getPortableActor(
   const { privateKey, keyId } = await getPortableKey(user.did);
   return await signObject(
     new Person({
-      // https://example.com/.well-known/apgateway/did:key:z6Mk.../actors/alice
+      // https://example.com/.well-known/apgateway/did:key:z6Mk.../users/alice
       id: toCompatibleEf61Id(
-        ctx.getPortableObjectUri(Person, { name: user.username }, user.did),
+        ctx.getPortableActorUri(user.identifier, user.did),
         gateways[0],
       ),
       // https://example.com/.well-known/apgateway/did:key:z6Mk.../users/alice/inbox
@@ -993,7 +1000,7 @@ federation
   .mapAlias(async (ctx, resource) => {
     let portableId: URL | null;
     try {
-      // e.g., ap+ef61://did:key:z6Mk.../actors/alice:
+      // e.g., ap+ef61://did:key:z6Mk.../users/alice:
       portableId = fromCompatibleEf61Id(resource);
     } catch {
       return null;  // A malformed compatible identifier.
@@ -1001,7 +1008,10 @@ federation
     if (portableId == null) return null;  // Not a compatible identifier.
     // did:key:z6Mk...
     const user = await findUserByDid(getFe34Origin(portableId));
-    if (user == null || portableId.pathname !== `/actors/${user.username}`) {
+    if (
+      user == null ||
+      portableId.pathname !== ctx.getActorUri(user.identifier).pathname
+    ) {
       return null;
     }
     return { identifier: user.identifier };
@@ -1035,7 +1045,6 @@ the `~ActorCallbackSetters.mapPortableActorId()` method:
 
 ~~~~ typescript twoslash
 import { type Federation } from "@fedify/fedify";
-import { Person } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 interface User { username: string; did: string }
 async function findUser(_identifier: string): Promise<User | null> {
@@ -1059,8 +1068,9 @@ federation
   .mapPortableActorId(async (ctx, identifier) => {
     const user = await findUser(identifier);
     if (user == null) return null;  // Not a portable actor.
-    // ap+ef61://did:key:z6Mk.../actors/alice
-    return ctx.getPortableObjectUri(Person, { name: user.username }, user.did);
+    // The same ID as the actor dispatcher returns for the actor, e.g.,
+    // ap+ef61://did:key:z6Mk.../users/alice:
+    return ctx.getPortableActorUri(identifier, user.did);
   });
 ~~~~
 
@@ -1070,11 +1080,10 @@ For an actor the callback returns a portable ID for, the
  -  The key IDs are the actor's [compatible identifier] on this server,
     i.e., the canonical origin of the federation, with `#main-key` for
     the first key and `#key-2`, `#key-3`, and so on for the rest, e.g.,
-    `https://example.com/.well-known/apgateway/did:key:z6Mk.../actors/alice#main-key`.
+    `https://example.com/.well-known/apgateway/did:key:z6Mk.../users/alice#main-key`.
     Such key IDs can be dereferenced to the actor document that this server
-    serves through the
-    [object dispatcher](./object.md#serving-portable-objects), and tell which
-    gateway made the signature.
+    serves through the [actor dispatcher](#portable-actors-and-webfinger), and
+    tell which gateway made the signature.
  -  The `cryptographicKey` and the `multikey` of each key pair have the key ID
     as their IDs, so that verifiers find the key with the signature's key ID
     in both `publicKey` and `assertionMethod`.  Their owner and controller is
@@ -1117,7 +1126,7 @@ async function getPortableActor(
   const keys = await ctx.getActorKeyPairs(user.identifier);
   return await signObject(
     new Person({
-      id: ctx.getPortableObjectUri(Person, { name: user.username }, user.did),
+      id: ctx.getPortableActorUri(user.identifier, user.did),
       preferredUsername: user.username,
       gateways: [new URL("https://example.com"), new URL("https://other.example")],
       publicKeys: keys.map((key) => key.cryptographicKey),

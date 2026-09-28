@@ -806,12 +806,12 @@ deliveries, so you do not need a separate API for portable inboxes.  The path
 after the DID has to match the inbox path you passed to
 `~Federatable.setInboxListeners()`, e.g., `/users/{identifier}/inbox`, and
 the `~Context.getPortableInboxUri()` method builds such a portable inbox ID
-for the actor dispatcher to use:
+for the actor dispatcher to use, just like `~Context.getPortableActorUri()`
+builds the actor's portable ID:
 
 ~~~~ typescript twoslash
 import { type Federation, signObject } from "@fedify/fedify";
 import { Follow, Person } from "@fedify/vocab";
-import { parseIri } from "@fedify/vocab-runtime";
 const federation = null as unknown as Federation<void>;
 interface User { username: string; did: string }
 async function findUser(_username: string): Promise<User | null> {
@@ -832,7 +832,7 @@ federation.setActorDispatcher(
     return await signObject(
       new Person({
         // ap+ef61://did:key:z6Mk.../users/alice
-        id: parseIri(`ap+ef61://${user.did}/users/${identifier}`),
+        id: ctx.getPortableActorUri(identifier, user.did),
         // ap+ef61://did:key:z6Mk.../users/alice/inbox
         inbox: ctx.getPortableInboxUri(identifier, user.did),
         gateways: [

@@ -199,12 +199,13 @@ portable objects by compatible identifiers.
 
 The `~Context.getPortableObjectUri()` method takes the DID as its third
 argument.  It can be omitted only while handling a portable object request,
-in which case the DID of the requested object is used.  The returned `URL`
-keeps the DID percent-encoded, e.g.,
+in which case the DID of the requested object is used (see the [*Portable IDs*
+section](./context.md#portable-ids) for more about building portable IDs).  The
+returned `URL` keeps the DID percent-encoded, e.g.,
 `ap+ef61://did%3Akey%3Az6Mk.../users/alice/notes/123`, as the `URL` class
-cannot represent the canonical form; `formatIri()` from
-`@fedify/vocab-runtime` returns the canonical string, and generated
-vocabulary classes serialize it in the canonical form.
+cannot represent the canonical form; `formatIri()` from `@fedify/vocab-runtime`
+returns the canonical string, and generated vocabulary classes serialize it in
+the canonical form.
 
 If the object dispatcher has an [authorization predicate](./access-control.md),
 it is also applied to portable object requests.  [FEP-ef61] requires that
@@ -213,10 +214,12 @@ in its audience, so check the signature in the predicate, e.g., with
 `~RequestContext.getSignedKeyOwner()`.  Without a predicate, the object is
 served to anyone.
 
-Note that only object dispatchers serve portable objects for now.  Actor
-dispatchers and collection dispatchers are not reachable through the gateway
-endpoint, whereas deliveries to portable inboxes are handled by inbox
-listeners (see the [*Portable inboxes* section](./inbox.md#portable-inboxes)).
+Note that only object dispatchers and the actor dispatcher (see the
+[*Portable actors and WebFinger*
+section](./actor.md#portable-actors-and-webfinger)) serve portable objects for
+now.  Collection dispatchers are not reachable through the gateway endpoint,
+whereas deliveries to portable inboxes are handled by inbox listeners (see the
+[*Portable inboxes* section](./inbox.md#portable-inboxes)).
 Also, a route of your own that matches the `/.well-known/apgateway/...` path,
 e.g., `/{+path}`, takes precedence over the gateway endpoint.
 

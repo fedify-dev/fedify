@@ -19,6 +19,8 @@ export const PORTABLE_OBJECT_CONTENT_TYPE =
 
 const GATEWAY_OBJECT_PATH_PATTERN = /^\/\.well-known\/apgateway\/did(?::|%3A)/i;
 const BARE_DID_PATTERN = /^did:[a-z0-9]+:[^/?#]+$/i;
+const DID_KEY_PREFIX = "did:key:";
+const BASE58BTC_MULTIBASE_PATTERN = /^z[1-9A-HJ-NP-Za-km-z]+$/;
 const GATEWAY_PATH_PREFIX = "/.well-known/apgateway/";
 const HASHLINK_SCHEME_PATTERN = /^hl(?::|%3A)/i;
 
@@ -74,6 +76,14 @@ export function parsePortableGatewayRequest(
     throw error;
   }
   const authority = getFe34Origin(id);
+  try {
+    // Rejects DIDs that the portable ID helpers would refuse to build IDs
+    // with, as RequestContext uses this authority as their default:
+    assertBase58BtcDidKey(authority);
+  } catch (error) {
+    if (error instanceof TypeError) return { type: "malformed", error };
+    throw error;
+  }
   const href = id.href;
   const portableRequest: PortableRequest = Object.freeze({
     authority,
@@ -94,7 +104,8 @@ export function parsePortableGatewayRequest(
  * @param authority The bare DID, e.g., `did:key:z6Mk...`.
  * @param path The object path, e.g., `/notes/123`.
  * @returns The portable ID.
- * @throws {TypeError} If the authority is not a bare DID.
+ * @throws {TypeError} If the authority is not a bare DID, or it is
+ *                     a `did:key` DID that is not encoded in base58-btc.
  */
 export function buildPortableUri(authority: unknown, path: string): URL {
   if (typeof authority !== "string" || !BARE_DID_PATTERN.test(authority)) {
@@ -103,9 +114,32 @@ export function buildPortableUri(authority: unknown, path: string): URL {
         "or fragment.",
     );
   }
-  // Validates the DID syntax:
-  getFe34Origin(authority);
-  return parseIri(`ap+ef61://${authority}${path}`);
+  // Validates the DID syntax, and normalizes its scheme, method, and
+  // percent-encoding:
+  const did = getFe34Origin(authority);
+  assertBase58BtcDidKey(did);
+  return parseIri(`ap+ef61://${did}${path}`);
+}
+
+/**
+ * Checks that a normalized DID, if it is a `did:key` DID, is encoded in
+ * base58-btc, as FEP-ef61 requires so that the same key does not yield two
+ * portable IDs.  This only checks the encoding, not whether the DID is
+ * a valid key.
+ * @param did The DID normalized by `getFe34Origin()`.
+ * @throws {TypeError} If the DID is a `did:key` DID that is not encoded in
+ *                     base58-btc.
+ */
+function assertBase58BtcDidKey(did: string): void {
+  if (
+    did.startsWith(DID_KEY_PREFIX) &&
+    !BASE58BTC_MULTIBASE_PATTERN.test(did.slice(DID_KEY_PREFIX.length))
+  ) {
+    throw new TypeError(
+      "The did:key authority of a portable ID must be encoded in base58-btc, " +
+        "i.e., start with z.",
+    );
+  }
 }
 
 /**

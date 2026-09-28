@@ -18,7 +18,11 @@ import type {
   Object,
   TraverseCollectionOptions,
 } from "@fedify/vocab";
-import { type DocumentLoader, parseIri } from "@fedify/vocab-runtime";
+import {
+  type DocumentLoader,
+  getFe34Origin,
+  parseIri,
+} from "@fedify/vocab-runtime";
 import {
   createContext,
   createInboxContext,
@@ -118,6 +122,33 @@ function expandUriTemplate(
         return match;
     }
   });
+}
+
+/**
+ * Builds an FEP-ef61 portable ID from a DID authority and a path, validating
+ * the authority the same way as `@fedify/fedify` does.
+ */
+function buildPortableUri(authority: string, path: string): URL {
+  if (
+    typeof authority !== "string" ||
+    !/^did:[a-z0-9]+:[^/?#]+$/i.test(authority)
+  ) {
+    throw new TypeError(
+      "The authority of a portable ID must be a DID without a path, " +
+        "query, or fragment.",
+    );
+  }
+  const did = getFe34Origin(authority);
+  if (
+    did.startsWith("did:key:") &&
+    !/^z[1-9A-HJ-NP-Za-km-z]+$/.test(did.slice("did:key:".length))
+  ) {
+    throw new TypeError(
+      "The did:key authority of a portable ID must be encoded in base58-btc, " +
+        "i.e., start with z.",
+    );
+  }
+  return parseIri(`ap+ef61://${did}${path}`);
 }
 
 function validateOutboxListenerPath(
@@ -1101,30 +1132,23 @@ class MockContext<TContextData> implements Context<TContextData> {
     return new URL(`/objects/${cls.name.toLowerCase()}/${path}`, this.origin);
   }
 
+  getPortableActorUri(identifier: string, authority: string): URL {
+    const { pathname } = this.getActorUri(identifier);
+    return buildPortableUri(authority, pathname);
+  }
+
   getPortableObjectUri<TObject extends Object>(
     cls: (new (...args: any[]) => TObject) & { typeId: URL },
     values: Record<string, string>,
     authority: string,
   ): URL {
-    if (!/^did:[a-z0-9]+:[^/?#]+$/i.test(authority)) {
-      throw new TypeError(
-        "The authority of a portable ID must be a DID without a path, " +
-          "query, or fragment.",
-      );
-    }
     const { pathname } = this.getObjectUri(cls, values);
-    return parseIri(`ap+ef61://${authority}${pathname}`);
+    return buildPortableUri(authority, pathname);
   }
 
   getPortableInboxUri(identifier: string, authority: string): URL {
-    if (!/^did:[a-z0-9]+:[^/?#]+$/i.test(authority)) {
-      throw new TypeError(
-        "The authority of a portable ID must be a DID without a path, " +
-          "query, or fragment.",
-      );
-    }
     const { pathname } = this.getInboxUri(identifier);
-    return parseIri(`ap+ef61://${authority}${pathname}`);
+    return buildPortableUri(authority, pathname);
   }
 
   getOutboxUri(identifier: string): URL {

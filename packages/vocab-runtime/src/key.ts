@@ -174,12 +174,22 @@ export async function importDidKey(did: string | URL): Promise<CryptoKey> {
 /**
  * Exports an Ed25519 public key as a `did:key` DID.
  *
+ * The DID is encoded in base58-btc with the Ed25519 multicodec prefix, e.g.,
+ * `did:key:z6Mk...`, as [FEP-ef61] requires for the DIDs of portable
+ * objects.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
+ *
  * @param key The Ed25519 public key.
  * @returns The `did:key` DID.
- * @throws {TypeError} If the key is invalid or unsupported.
+ * @throws {TypeError} If the key is invalid or unsupported, or it is not
+ *                     a public key.
  * @since 2.4.0
  */
 export async function exportDidKey(key: CryptoKey): Promise<string> {
+  if (key.type !== "public") {
+    throw new TypeError("The key must be a public key.");
+  }
   if (key.algorithm.name !== "Ed25519") {
     throw new TypeError(
       "Unsupported key type: " + JSON.stringify(key.algorithm),
