@@ -18,6 +18,7 @@ import { encodeHex } from "byte-encodings/hex";
 import {
   decodeDict,
   type Dictionary,
+  encodeDict,
   encodeItem,
   Item,
 } from "structured-field-values";
@@ -479,6 +480,109 @@ export function parseRfc9421Signature(
     }
   }
   return result;
+}
+
+/**
+ * Parses the `Signature` header of draft-cavage HTTP Signatures into its
+ * fields, e.g., `keyId` and `headers`.
+ */
+function parseDraftSignature(signature: string): Record<string, string> {
+  return Object.fromEntries(
+    signature.split(",").map((pair) =>
+      pair.match(/^\s*([A-Za-z]+)=(?:"([^"]*)"|(\d+))\s*$/)
+    ).filter((m) => m != null).map((m) =>
+      [m![1], m![2] ?? m![3]] as [string, string]
+    ),
+  );
+}
+
+/**
+ * A signature that a request claims to carry, which is not verified yet.
+ * @internal
+ */
+export interface RequestSignature {
+  /** The ID of the key that the signature claims to be made with. */
+  readonly keyId: URL;
+  /**
+   * The label of an RFC 9421 signature, or `null` for a draft-cavage
+   * signature.
+   */
+  readonly label: string | null;
+  /**
+   * The components that the signature covers, as they are spelled in the
+   * request.  The header names of a draft-cavage signature have no
+   * parameters.
+   */
+  readonly components: readonly AcceptSignatureComponent[];
+}
+
+/**
+ * Lists the HTTP Signatures that a request claims to carry, without verifying
+ * any of them.  Signatures whose key IDs are not URLs are left out.
+ * @param request The request.
+ * @returns The signatures; RFC 9421 ones if the request has
+ *          a `Signature-Input` header, or a draft-cavage one otherwise.
+ * @internal
+ */
+export function listRequestSignatures(request: Request): RequestSignature[] {
+  const signatureInput = request.headers.get("Signature-Input");
+  if (signatureInput != null) {
+    const signatures: RequestSignature[] = [];
+    const inputs = parseRfc9421SignatureInput(signatureInput);
+    for (const [label, input] of Object.entries(inputs)) {
+      const keyId = parseKeyId(input.keyId);
+      if (keyId == null) continue;
+      signatures.push({ keyId, label, components: input.components });
+    }
+    return signatures;
+  }
+  const signature = request.headers.get("Signature");
+  if (signature == null) return [];
+  const values = parseDraftSignature(signature);
+  const keyId = parseKeyId(values.keyId);
+  if (keyId == null) return [];
+  const components = (values.headers ?? "").split(/\s+/g)
+    .filter((name) => name !== "")
+    .map((name) => ({ value: name, params: {} }));
+  return [{ keyId, label: null, components }];
+}
+
+/**
+ * Makes a copy of a request that carries only one of its RFC 9421 signatures,
+ * so that verifying the copy verifies that signature and no other.
+ * A draft-cavage signature is the only one in its request, so the request is
+ * just copied.
+ * @param request The request, whose body must not be consumed.
+ * @param signature One of the signatures that {@link listRequestSignatures}
+ *                  lists for the request.
+ * @returns The copy of the request.
+ * @internal
+ */
+export function selectRequestSignature(
+  request: Request,
+  signature: RequestSignature,
+): Request {
+  const copy = request.clone() as Request;
+  if (signature.label == null) return copy;
+  const { label } = signature;
+  const pick = (header: string | null): string => {
+    if (header == null) return "";
+    let dict: Dictionary;
+    try {
+      dict = decodeDict(header);
+    } catch {
+      return "";
+    }
+    return Object.hasOwn(dict, label)
+      ? encodeDict(
+        { [label]: (dict as Record<string, Item>)[label] } as Dictionary,
+      )
+      : "";
+  };
+  const headers = new Headers(copy.headers);
+  headers.set("Signature-Input", pick(headers.get("Signature-Input")));
+  headers.set("Signature", pick(headers.get("Signature")));
+  return new Request(copy, { headers });
 }
 
 async function signRequestRfc9421(
@@ -963,13 +1067,7 @@ async function verifyRequestDraft(
     );
     return noSignatureResult();
   }
-  const sigValues = Object.fromEntries(
-    sigHeader.split(",").map((pair) =>
-      pair.match(/^\s*([A-Za-z]+)=(?:"([^"]*)"|(\d+))\s*$/)
-    ).filter((m) => m != null).map((m) =>
-      [m![1], m![2] ?? m![3]] as [string, string]
-    ),
-  );
+  const sigValues = parseDraftSignature(sigHeader);
   const parsedKeyId = parseKeyId(sigValues.keyId);
   const dateHeader = request.headers.get("Date");
   if (dateHeader == null) {

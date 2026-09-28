@@ -1,4 +1,4 @@
-import type { Actor } from "@fedify/vocab";
+import type { Actor, CryptographicKey } from "@fedify/vocab";
 import {
   fromCompatibleEf61Id,
   isGatewayUrl,
@@ -11,11 +11,15 @@ import {
   propagation,
   type TracerProvider,
 } from "@opentelemetry/api";
-import type { HttpMessageSignaturesSpecDeterminer } from "../sig/http.ts";
+import type {
+  HttpMessageSignaturesSpecDeterminer,
+  RequestSignature,
+} from "../sig/http.ts";
 import { exportJwk, validateCryptoKey } from "../sig/key.ts";
 import {
   getCanonicalPortableId,
   getPortableDid,
+  isCompatibleKeyId,
   isPortableId,
   isPortableUri,
 } from "../sig/portable-key-id.ts";
@@ -173,6 +177,54 @@ function toPortableUri(id: URL): URL | null {
 }
 
 /**
+ * An HTTP Signature of a delivery to a portable inbox, which may tell which
+ * gateway of the recipient forwarded the delivery.
+ */
+export interface PortableInboxSignature {
+  /** The ID of the key that the signature claims to be made with. */
+  readonly keyId: URL;
+  /**
+   * Whether the signature covers the method, the target URI, and the body of
+   * the request, so that it cannot be reused for another delivery.
+   */
+  readonly coversDelivery: boolean;
+  /**
+   * Verifies this signature, and no other signature of the request.
+   * @returns The key that the signature is verified with, or `null` if it is
+   *          not verified.
+   */
+  verify(): Promise<CryptographicKey | null>;
+}
+
+// The components that a signature has to cover to be bound to a delivery,
+// spelled exactly as the specifications do, since a different spelling may
+// skip a check, e.g., Content-Digest is verified only if content-digest is
+// covered:
+const RFC9421_DELIVERY_COMPONENTS = [
+  "@method",
+  "@target-uri",
+  "content-digest",
+];
+const DRAFT_DELIVERY_COMPONENTS = ["(request-target)", "host", "digest"];
+
+/**
+ * Checks whether an HTTP Signature covers the method, the target URI, and the
+ * body of a request, which both Fedify and Mitra sign when forwarding.
+ * @param signature The signature.
+ * @returns `true` if the signature covers them.
+ */
+export function coversDelivery(signature: RequestSignature): boolean {
+  const required = signature.label == null
+    ? DRAFT_DELIVERY_COMPONENTS
+    : RFC9421_DELIVERY_COMPONENTS;
+  return required.every((name) =>
+    signature.components.some((c) =>
+      c.value === name && Object.keys(c.params).length < 1
+    )
+  );
+}
+
+/**
  * Parameters for {@link forwardPortableInboxActivity}.
  */
 export interface ForwardPortableInboxActivityParameters {
@@ -207,6 +259,11 @@ export interface ForwardPortableInboxActivityParameters {
   readonly getKeys?: () => Promise<readonly SenderKeyPair[]>;
   /** The spec determiner for signing forwarded requests with double-knocking. */
   readonly specDeterminer?: HttpMessageSignaturesSpecDeterminer;
+  /**
+   * The HTTP Signatures of the delivery, which may identify the gateway that
+   * forwarded it, so that the activity is not forwarded back to it.
+   */
+  readonly signatures?: readonly PortableInboxSignature[];
   /** The forwarding options.  Defaults are used if omitted. */
   readonly options?: ResolvedPortableInboxForwardingOptions;
   readonly meterProvider?: MeterProvider;
@@ -229,6 +286,10 @@ export interface ForwardPortableInboxActivityParameters {
  * servers requiring HTTP Signatures accept them, and are sent unsigned
  * otherwise.  Either way, the receiving gateways authenticate the activity by
  * its own proof.
+ *
+ * If the delivery is signed with a gateway key of the recipient by one of its
+ * other gateways, that gateway has the activity already, so it is claimed
+ * without forwarding the activity to it.  See {@link identifySendingGateway}.
  * @param parameters The parameters.
  * @returns The target inbox URLs that the activity was handed off to.
  */
@@ -244,14 +305,46 @@ export async function forwardPortableInboxActivity(
     kvPrefix,
     outboxQueue,
   } = parameters;
-  const { maxTargets, ttl } = parameters.options ??
+  const options = parameters.options ??
     resolvePortableInboxForwardingOptions();
+  const { maxTargets, ttl } = options;
   if (kv.cas == null || maxTargets < 1) return [];
+  // The deadline covers both identifying the sending gateway and, without
+  // an outbox queue, forwarding:
+  const deadline = Date.now() + options.deadline.total("millisecond");
   // A compatible activity ID is canonicalized too, so that its equivalent
   // representations share the same forwarding claims:
   const canonicalActivityId = getCanonicalPortableId(activityId) ??
     activityId.href;
-  const targets = getForwardingTargets(recipient, excludedOrigins);
+  const claimKey = (gateway: string): KvKey => [
+    ...kvPrefix,
+    recipient.canonicalInboxId,
+    canonicalActivityId,
+    gateway,
+  ];
+  let targets = getForwardingTargets(recipient, excludedOrigins);
+  // Before the targets are capped, so that the sender does not take a slot:
+  const sender = await identifySendingGateway(
+    parameters,
+    targets.map((t) => t.gateway),
+    claimKey,
+    deadline,
+  );
+  if (sender != null) {
+    logger.debug(
+      "Not forwarding activity {activityId} from the portable inbox {inbox} " +
+        "back to the gateway {gateway}, which delivered it.",
+      {
+        activityId: activityId.href,
+        inbox: recipient.canonicalInboxId,
+        gateway: sender,
+      },
+    );
+    // Claimed so that the activity is never forwarded to the gateway, which
+    // has it already, even if it is delivered again through another gateway:
+    await kv.cas(claimKey(sender), undefined, true, { ttl });
+    targets = targets.filter((t) => t.gateway !== sender);
+  }
   if (targets.length > maxTargets) {
     logger.warn(
       "The portable actor that owns the inbox {inbox} has more than " +
@@ -267,13 +360,7 @@ export async function forwardPortableInboxActivity(
   }
   const claimed: URL[] = [];
   for (const { gateway, inbox } of targets) {
-    const key: KvKey = [
-      ...kvPrefix,
-      recipient.canonicalInboxId,
-      canonicalActivityId,
-      gateway,
-    ];
-    if (await kv.cas(key, undefined, true, { ttl })) {
+    if (await kv.cas(claimKey(gateway), undefined, true, { ttl })) {
       claimed.push(inbox);
     }
   }
@@ -288,11 +375,128 @@ export async function forwardPortableInboxActivity(
     },
   );
   if (outboxQueue == null) {
-    await forwardImmediately(parameters, claimed);
+    await forwardImmediately(parameters, claimed, deadline);
   } else {
     await enqueueForwarding(parameters, outboxQueue, claimed);
   }
   return claimed;
+}
+
+/**
+ * Identifies the gateway of the recipient that forwarded a delivery to its
+ * portable inbox, by the delivery's HTTP Signature made with the recipient's
+ * gateway key, which FEP-ef61 has each gateway use for requests on behalf of
+ * an actor.  Since the activity is authenticated by its own proof, the
+ * signature only tells which gateway to skip, and a delivery whose signature
+ * is invalid or cannot be verified is still forwarded to every gateway.
+ *
+ * Verifying the signature fetches the recipient's actor document from the
+ * sending gateway, as gateway keys are not cached, so only the first signature
+ * that may save a request is verified: one that covers the delivery and names
+ * a gateway key of the recipient on one of the forwarding targets that the
+ * activity has not been forwarded to yet.
+ * @param parameters The forwarding parameters.
+ * @param targets The origins of the gateways to forward to.
+ * @param claimKey Gets the key of the claim for a gateway.
+ * @param deadline The time by which identification has to finish, in
+ *                 milliseconds since the epoch; afterwards, the sending
+ *                 gateway is left unidentified.
+ * @returns The origin of the sending gateway, or `null` if it is not
+ *          identified.
+ */
+async function identifySendingGateway(
+  { recipient, activityId, kv, signatures }:
+    ForwardPortableInboxActivityParameters,
+  targets: readonly string[],
+  claimKey: (gateway: string) => KvKey,
+  deadline: number,
+): Promise<string | null> {
+  if (signatures == null || signatures.length < 1) return null;
+  const logger = getLogger(["fedify", "federation", "inbox"]);
+  const actorId = getCanonicalPortableId(recipient.actorId);
+  if (actorId == null) return null;
+  const isGatewayKeyOfRecipient = (keyId: URL): boolean => {
+    if (!isCompatibleKeyId(keyId) || !targets.includes(keyId.origin)) {
+      return false;
+    }
+    const base = new URL(keyId.href);
+    base.hash = "";
+    return getCanonicalPortableId(base) === actorId;
+  };
+  let signature: PortableInboxSignature | undefined;
+  for (const candidate of signatures) {
+    if (
+      candidate.coversDelivery && isGatewayKeyOfRecipient(candidate.keyId) &&
+      await kv.get(claimKey(candidate.keyId.origin)) === undefined
+    ) {
+      signature = candidate;
+      break;
+    }
+  }
+  if (signature == null) return null;
+  const { keyId } = signature;
+  const logProperties = {
+    activityId: activityId.href,
+    inbox: recipient.canonicalInboxId,
+    keyId: keyId.href,
+  };
+  // A verification that fails after the deadline must not be left unhandled:
+  const verification = Promise.resolve().then(() => signature.verify()).then(
+    (key) => {
+      if (key == null) {
+        logger.debug(
+          "The HTTP Signature of the delivery of activity {activityId} to " +
+            "the portable inbox {inbox} is not verified with the key " +
+            "{keyId}; forwarding it without identifying the sending gateway.",
+          logProperties,
+        );
+      }
+      return key;
+    },
+    (error) => {
+      logger.debug(
+        "Failed to verify the HTTP Signature of the delivery of activity " +
+          "{activityId} to the portable inbox {inbox} with the key {keyId}; " +
+          "forwarding it without identifying the sending gateway:\n{error}",
+        { ...logProperties, error },
+      );
+      return null;
+    },
+  );
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const key = await Promise.race([
+    verification,
+    new Promise<null>((resolve) => {
+      timer = setTimeout(() => {
+        logger.debug(
+          "Verifying the HTTP Signature of the delivery of activity " +
+            "{activityId} to the portable inbox {inbox} did not finish in " +
+            "time; forwarding it without identifying the sending gateway.",
+          logProperties,
+        );
+        resolve(null);
+      }, Math.max(0, deadline - Date.now()));
+    }),
+  ]);
+  clearTimeout(timer);
+  if (key == null) return null;
+  // Only a key that the recipient's DID-signed actor document vouches for as
+  // a gateway key has a portable actor as its owner:
+  if (
+    key.id == null || key.id.href !== keyId.href ||
+    !isGatewayKeyOfRecipient(key.id) || key.ownerId == null ||
+    !isPortableUri(key.ownerId) ||
+    getCanonicalPortableId(key.ownerId) !== actorId
+  ) {
+    logger.debug(
+      "The delivery of activity {activityId} to the portable inbox {inbox} " +
+        "is not signed with a gateway key of the recipient; forwarding it " +
+        "without identifying the sending gateway.",
+      logProperties,
+    );
+    return null;
+  }
+  return key.id.origin;
 }
 
 function getForwardingTargets(
@@ -364,6 +568,7 @@ async function resolveForwardingKey(
 async function forwardImmediately(
   parameters: ForwardPortableInboxActivityParameters,
   inboxes: readonly URL[],
+  deadlineAt: number,
 ): Promise<void> {
   const {
     activity,
@@ -371,13 +576,11 @@ async function forwardImmediately(
     activityType,
     allowPrivateAddress,
     specDeterminer,
-    options,
     meterProvider,
     tracerProvider,
   } = parameters;
   const logger = getLogger(["fedify", "federation", "inbox"]);
-  const deadline = (options ?? resolvePortableInboxForwardingOptions())
-    .deadline.total("millisecond");
+  const deadline = Math.max(0, deadlineAt - Date.now());
   // The deadline also covers resolving the key, which may be slow:
   const forwarding = resolveForwardingKey(parameters).then((key) =>
     Promise.all(inboxes.map((inbox) =>

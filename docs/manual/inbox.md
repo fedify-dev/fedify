@@ -941,14 +941,29 @@ only if the actor document they get from this server is signed by the actor's
 DID, embeds the key as a `Multikey` in its `assertionMethod`, and lists this
 server in its `gateways`.  They accept the activity for its proof either way.
 
-Fedify remembers each gateway that it has forwarded an activity to for 30 days
-by default under the `~FederationKvPrefixes.portableInboxForwarding` key
-prefix, and
-never forwards the same activity from the same inbox to the same gateway
-again within that period, even if the forwarding failed.  So forwarding is
-best effort; configure an [outbox queue](./mq.md) to retry transient
-failures.  A gateway that the activity is forwarded back to drops it the same
-way, which ends the forwarding.
+Fedify does not forward an activity back to the gateway that forwarded it,
+if it can tell which gateway that is: a delivery signed with HTTP Signatures
+by one of the actor's other gateways, with the gateway key for the recipient
+actor, as Fedify signs forwarded requests.  The signature has to cover the
+method, the target URI, and the body of the request, i.e., `@method`,
+`@target-uri`, and `content-digest` for [RFC 9421], or
+`(request-target)`, `host`, and `digest` for draft-cavage HTTP Signatures.
+Verifying it means fetching the actor document from that gateway, as gateway
+keys are not cached, so Fedify verifies at most one signature per delivery,
+and only one that names a gateway that the activity has not been forwarded to
+yet.  If the signature is invalid, the key cannot be fetched, the actor
+document does not vouch for the key, or the verification does not finish in
+time, the delivery is still accepted for the activity's own proof, and the
+activity is forwarded to that gateway as well.
+
+Fedify remembers each gateway that it has forwarded an activity to, or has
+received the activity from as above, for 30 days by default under the
+`~FederationKvPrefixes.portableInboxForwarding` key prefix, and never forwards
+the same activity from the same inbox to the same gateway again within that
+period, even if the forwarding failed.  So forwarding is best effort;
+configure an [outbox queue](./mq.md) to retry transient failures.
+A gateway that the activity is forwarded back to drops it the same way, which
+ends the forwarding.
 
 The limits above can be changed with the
 [`portableInboxForwarding`](./federation.md#portableinboxforwarding) option,

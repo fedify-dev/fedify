@@ -174,8 +174,10 @@ the following properties, all optional:
 `~PortableInboxForwardingOptions.deadline`
 :   How long a delivery waits for forwarding requests made immediately, i.e.,
     when no outbox queue is configured, before Fedify responds to it.
-    Requests still running afterwards continue in the background.  It is
-    10 seconds by default.
+    Requests still running afterwards continue in the background.  It also
+    bounds identifying the gateway that forwarded the delivery, with or
+    without an outbox queue, and the activity is forwarded back to that
+    gateway if it is not identified in time.  It is 10 seconds by default.
 
 ~~~~ typescript twoslash
 import { createFederation, MemoryKvStore } from "@fedify/fedify";

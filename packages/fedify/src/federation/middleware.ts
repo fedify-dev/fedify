@@ -3329,7 +3329,7 @@ export class FederationImpl<TContextData>
       onNotFound,
       portableInbox: {
         recipient,
-        forward: async (activity, activityId, activityType) => {
+        forward: async (activity, activityId, activityType, signatures) => {
           if (this.portableInboxForwarding.maxTargets < 1) return;
           if (this.kv.cas == null) {
             if (!this.#portableInboxForwardingWarned) {
@@ -3365,6 +3365,7 @@ export class FederationImpl<TContextData>
               this.firstKnock,
               { specTtl: this.httpMessageSignaturesSpecTtl },
             ),
+            signatures,
             options: this.portableInboxForwarding,
             meterProvider: this.meterProvider,
             tracerProvider: this.tracerProvider,

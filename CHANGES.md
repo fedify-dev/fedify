@@ -55,9 +55,12 @@ To be released.
     Signatures by this server's gateway key for the actor if
     `mapPortableActorId()` maps the recipient to the same portable actor and
     the key pairs dispatcher returns an RSA key pair for it, and are sent
-    unsigned otherwise.  Configure the `origin` option on gateways so that
-    Fedify can tell which gateway it is regardless of the `Host` header.
-    [[#288], [#839], [#1092], [#1100], [#1104]]
+    unsigned otherwise.  An activity is not forwarded back to the gateway that
+    forwarded it if the delivery is signed by that gateway with its gateway
+    key for the actor, which costs fetching the actor document from that
+    gateway.  Configure the `origin` option on gateways so that Fedify can
+    tell which gateway it is regardless of the `Host` header.
+    [[#288], [#839], [#1092], [#1100], [#1101], [#1104], [#1110]]
 
  -  Added the `Context.getPortableInboxUri()` method, which builds the portable
     inbox ID of an actor from the inbox path and a DID.  Custom
@@ -68,8 +71,9 @@ To be released.
     `maxTargets`, `ttl`, and `deadline` properties change how many gateways
     a delivery is forwarded to (10 by default; `0` turns off forwarding), how
     long forwarded activities are remembered (30 days by default), and how
-    long a delivery waits for forwarding without an outbox queue (10 seconds
-    by default).  [[#288], [#839], [#1092]]
+    long a delivery waits for forwarding without an outbox queue, and for
+    identifying the gateway that forwarded it (10 seconds by default).
+    [[#288], [#839], [#1092], [#1101], [#1110]]
 
  -  Added the `FederationKvPrefixes.portableInboxForwarding` option, the key
     prefix for remembering forwarded activities, which defaults to
@@ -484,11 +488,13 @@ To be released.
 [#1094]: https://github.com/fedify-dev/fedify/issues/1094
 [#1099]: https://github.com/fedify-dev/fedify/pull/1099
 [#1100]: https://github.com/fedify-dev/fedify/issues/1100
+[#1101]: https://github.com/fedify-dev/fedify/issues/1101
 [#1102]: https://github.com/fedify-dev/fedify/pull/1102
 [#1104]: https://github.com/fedify-dev/fedify/pull/1104
 [#1105]: https://github.com/fedify-dev/fedify/pull/1105
 [#1106]: https://github.com/fedify-dev/fedify/issues/1106
 [#1109]: https://github.com/fedify-dev/fedify/pull/1109
+[#1110]: https://github.com/fedify-dev/fedify/pull/1110
 
 ### @fedify/adonisjs
 
