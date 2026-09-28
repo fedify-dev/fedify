@@ -195,9 +195,10 @@ test("a portable activity with one Ed25519 key gets one direct proof", async () 
   );
   assertEquals(bodies.length, 1);
   assertEquals(proofOf(bodies[0]).verificationMethod, owner.keyId.href);
-  // The RSA key still signs the request and the document.
+  // The RSA key still signs the request, but not the document: a portable
+  // actor's activity is authenticated only by its DID's proof.
   assert(requests[0].headers.has("Signature"));
-  assert(bodies[0].signature != null);
+  assertEquals(bodies[0].signature, undefined);
   await assertCompoundVerifies(bodies[0]);
 });
 

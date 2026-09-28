@@ -42,6 +42,7 @@ import {
   type KeyCache,
   validateCryptoKey,
 } from "./key.ts";
+import { verifyPortableGatewayKeyDocument } from "./portable-key.ts";
 
 const DEFAULT_MAX_REDIRECTION = 20;
 const DOUBLE_KNOCK_TRANSPORT_RETRY_DELAY_MS = 100;
@@ -1158,6 +1159,14 @@ async function verifyRequestDraft(
         keyCache,
         tracerProvider,
         meterProvider,
+        portableGatewayKeyResolver: (document, actor, keyId) =>
+          verifyPortableGatewayKeyDocument(document, actor, keyId, {
+            documentLoader,
+            contextLoader,
+            keyCache,
+            tracerProvider,
+            meterProvider,
+          }),
       }),
   );
   const { key, cached, fetchError } = fetchResult;
@@ -1510,6 +1519,14 @@ async function verifyRequestRfc9421(
           keyCache,
           tracerProvider,
           meterProvider,
+          portableGatewayKeyResolver: (document, actor, gatewayKeyId) =>
+            verifyPortableGatewayKeyDocument(document, actor, gatewayKeyId, {
+              documentLoader,
+              contextLoader,
+              keyCache,
+              tracerProvider,
+              meterProvider,
+            }),
         }),
     );
     const { key, cached, fetchError } = rfcFetchResult;

@@ -40,6 +40,7 @@ import type {
   OutboxListener,
   OutboxListenerErrorHandler,
   OutboxPermanentFailureHandler,
+  PortableActorIdMapper,
   SharedInboxKeyDispatcher,
   UnverifiedActivityHandler,
   WebFingerLinksDispatcher,
@@ -592,6 +593,10 @@ export class FederationBuilderImpl<TContextData>
       },
       mapAlias(mapper: ActorAliasMapper<TContextData>) {
         callbacks.aliasMapper = mapper;
+        return setters;
+      },
+      mapPortableActorId(mapper: PortableActorIdMapper<TContextData>) {
+        callbacks.portableActorIdMapper = mapper;
         return setters;
       },
       mapActorAlias: (path: Path, identifier: string) => {
@@ -1562,6 +1567,7 @@ interface ActorCallbacks<TContextData> {
   keyPairsDispatcher?: ActorKeyPairsDispatcher<TContextData>;
   handleMapper?: ActorHandleMapper<TContextData>;
   aliasMapper?: ActorAliasMapper<TContextData>;
+  portableActorIdMapper?: PortableActorIdMapper<TContextData>;
   authorizePredicate?: AuthorizePredicate<TContextData>;
 }
 

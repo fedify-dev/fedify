@@ -1702,6 +1702,20 @@ test("MockContext.getActorKeyPairs() calls registered key pairs dispatcher", asy
   );
 });
 
+test("MockFederation actor setters chain from mapPortableActorId()", () => {
+  const mockFederation = createFederation<void>();
+  const keyPairsDispatcher = () => [];
+  mockFederation
+    .setActorDispatcher("/users/{identifier}", () => null)
+    .mapPortableActorId(() => null)
+    .setKeyPairsDispatcher(keyPairsDispatcher);
+  assertEquals(
+    (mockFederation as unknown as { actorKeyPairsDispatcher: unknown })
+      .actorKeyPairsDispatcher,
+    keyPairsDispatcher,
+  );
+});
+
 test("MockContext.getActorKeyPairs() returns empty array when no dispatcher registered", async () => {
   const mockFederation = createFederation<void>();
   const context = mockFederation.createContext(

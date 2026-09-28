@@ -74,6 +74,29 @@ export type ActorHandleMapper<TContextData> = (
 ) => string | null | Promise<string | null>;
 
 /**
+ * A callback that maps an actor's internal identifier to the ID of the
+ * [FEP-ef61] portable actor it dispatches, or `null` if the actor is not
+ * portable.
+ *
+ * The returned ID is an `ap:` or `ap+ef61:` URI, e.g.,
+ * `ap+ef61://did:key:z6Mk.../actors/alice`, or its compatible identifier.
+ * It must be the same ID that the actor dispatcher puts in the actor's `id`,
+ * and must not have a fragment.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
+ *
+ * @template TContextData The context data to pass to the {@link Context}.
+ * @param context The context.
+ * @param identifier The actor's internal identifier.
+ * @returns The portable actor's ID, or `null` if the actor is not portable.
+ * @since 2.4.0
+ */
+export type PortableActorIdMapper<TContextData> = (
+  context: Context<TContextData>,
+  identifier: string,
+) => URL | null | Promise<URL | null>;
+
+/**
  * A callback that maps a WebFinger query to the corresponding actor's
  * internal identifier or username, or `null` if the query is not found.
  * @template TContextData The context data to pass to the {@link Context}.

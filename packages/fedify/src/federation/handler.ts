@@ -56,6 +56,11 @@ import {
 } from "../sig/ld.ts";
 import { doesActorOwnKey } from "../sig/owner.ts";
 import {
+  hasPortableActor,
+  isCompatibleKeyId,
+  isPortableUri,
+} from "../sig/portable-key-id.ts";
+import {
   verifyObject,
   verifyPortableObjectProof,
   type VerifyPortableObjectProofResult,
@@ -1742,6 +1747,9 @@ async function handleInboxInternal<TContextData>(
   }
   let activity: Activity | null = null;
   let activityVerified = false;
+  // Whether the activity is authenticated by its Object Integrity Proofs,
+  // as opposed to Linked Data Signatures or HTTP Signatures:
+  let proofVerified = false;
   if (ldSigVerified) {
     logger.debug("Linked Data Signatures are verified.", { recipient, json });
     try {
@@ -1763,6 +1771,26 @@ async function handleInboxInternal<TContextData>(
       return await respondInvalidActivity(error);
     }
     activityVerified = true;
+    if (!skipSignatureVerification && hasPortableActor(activity)) {
+      // A Linked Data Signature never authenticates a portable actor's
+      // activity; only an Object Integrity Proof made by its DID does:
+      try {
+        proofVerified = await verifyObject(Activity, jsonWithoutSig, {
+          contextLoader: wrapContextLoaderForJsonLd(ctx.contextLoader),
+          documentLoader: ctx.documentLoader,
+          keyCache,
+          meterProvider,
+          tracerProvider,
+        }) != null;
+      } catch (error) {
+        if (!isPermanentActivityParseError(error)) throw error;
+        logger.debug(
+          "Failed to verify the Object Integrity Proofs of the portable " +
+            "actor's activity:\n{error}",
+          { recipient, error },
+        );
+      }
+    }
   } else {
     logger.debug(
       "Linked Data Signatures are not verified.",
@@ -1831,6 +1859,7 @@ async function handleInboxInternal<TContextData>(
         { recipient, activity: json },
       );
       activityVerified = true;
+      proofVerified = true;
     }
   }
   let httpSigKey: CryptographicKey | null = null;
@@ -1994,6 +2023,42 @@ async function handleInboxInternal<TContextData>(
     "http_signatures.key_id": httpSigKey?.id?.href ?? "",
   });
 
+  if (
+    !skipSignatureVerification && !proofVerified &&
+    (hasPortableActor(activity) || isPortableGatewayKey(httpSigKey))
+  ) {
+    // HTTP Signatures made with a portable actor's gateway key only tell
+    // which gateway sent the request.  FEP-ef61 authenticates portable
+    // actors' activities by the Object Integrity Proofs of their DIDs alone.
+    // This comes before the key ownership check, which cannot change the
+    // outcome, so that such a request costs no further fetches:
+    if (deferredLdSignatureError != null) throw deferredLdSignatureError;
+    logger.error(
+      "The activity {activityId} of the portable actor {actorId} is not " +
+        "authenticated by a valid Object Integrity Proof.",
+      {
+        activity: json,
+        recipient,
+        activityId: activity.id?.href,
+        actorId: activity.actorId?.href,
+        keyId: httpSigKey?.id?.href,
+      },
+    );
+    span.setStatus({
+      code: SpanStatusCode.ERROR,
+      message: `The activity of the portable actor ` +
+        `(${activity.actorId?.href}) is not authenticated by a valid ` +
+        `Object Integrity Proof.`,
+    });
+    return new Response(
+      "Activities of portable actors must have valid Object Integrity " +
+        "Proofs.",
+      {
+        status: 401,
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      },
+    );
+  }
   if (
     httpSigKey != null && !await doesActorOwnKey(activity, httpSigKey, ctx)
   ) {
@@ -3225,3 +3290,14 @@ const MIN_COMPONENTS = [
   "@target-uri",
   "@authority",
 ];
+
+/**
+ * Checks whether an HTTP Signature key is a gateway key of an FEP-ef61
+ * portable actor, i.e., its ID is a compatible identifier and it is owned by
+ * a portable actor, which only the portable actor's signed document can
+ * establish.
+ */
+function isPortableGatewayKey(key: CryptographicKey | null): boolean {
+  return key?.id != null && isCompatibleKeyId(key.id) &&
+    key.ownerId != null && isPortableUri(key.ownerId);
+}

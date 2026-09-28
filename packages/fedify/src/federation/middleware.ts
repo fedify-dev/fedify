@@ -79,6 +79,11 @@ import {
 } from "../sig/ld.ts";
 import { getKeyOwner, type GetKeyOwnerOptions } from "../sig/owner.ts";
 import {
+  getGatewayKeyBase,
+  hasPortableActor,
+  isCompatibleKeyId,
+} from "../sig/portable-key-id.ts";
+import {
   hasProofLike,
   verifyObject,
   verifyPortableObjectProof,
@@ -2361,9 +2366,17 @@ export class FederationImpl<TContextData>
     );
     const activityId = activity.id.href;
     let rsaKey: { keyId: URL; privateKey: CryptoKey } | null = null;
+    // A Linked Data Signature attests authorship, which neither a gateway key
+    // nor any key other than the DID's can do for a portable actor's
+    // activity; its Object Integrity Proof does that instead:
+    const ldSignable = !hasPortableActor(activity);
     for (const { keyId, privateKey } of keys) {
       validateCryptoKey(privateKey, "private");
-      if (rsaKey == null && privateKey.algorithm.name === "RSASSA-PKCS1-v1_5") {
+      if (
+        ldSignable && rsaKey == null &&
+        privateKey.algorithm.name === "RSASSA-PKCS1-v1_5" &&
+        !isCompatibleKeyId(keyId)
+      ) {
         rsaKey = { keyId, privateKey };
       }
     }
@@ -2399,7 +2412,13 @@ export class FederationImpl<TContextData>
       });
     }
     assertSupportedCompoundProofShape(jsonLd, activityId);
-    if (rsaKey == null) {
+    if (rsaKey == null && !ldSignable) {
+      logger.debug(
+        "The activity {activityId} is performed by a portable actor, so it " +
+          "is sent without a Linked Data signature.",
+        { activityId },
+      );
+    } else if (rsaKey == null) {
       logger.warn(
         "No supported key found to create a Linked Data signature for " +
           "the activity {activityId}.  The activity will be sent without " +
@@ -3350,6 +3369,17 @@ interface ContextOptions<TContextData> {
 
 const FANOUT_THRESHOLD = 5;
 
+/**
+ * A portable actor whose gateway keys this server holds, as resolved through
+ * the portable actor ID mapper.
+ */
+interface PortableActorKeyOwner {
+  /** The portable actor's ID, as the application publishes it. */
+  readonly id: URL;
+  /** The actor's compatible identifier on this server, the key ID base. */
+  readonly keyBase: URL;
+}
+
 export class ContextImpl<TContextData> implements Context<TContextData> {
   readonly url: URL;
   readonly federation: FederationImpl<TContextData>;
@@ -3751,14 +3781,20 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         },
       );
     }
+    // Resolved outside the try block below, so that errors from the portable
+    // actor ID mapper are not mistaken for a missing key pairs dispatcher:
+    const portableActor = await this.getPortableActorKeyOwner(identifier);
     let keyPairs: (CryptoKeyPair & { keyId: URL })[];
     try {
-      keyPairs = await this.getKeyPairsFromIdentifier(identifier);
+      keyPairs = await this.getKeyPairsFromIdentifier(
+        identifier,
+        portableActor,
+      );
     } catch (_) {
       logger.warn("No actor key pairs dispatcher registered.");
       return [];
     }
-    const owner = this.getActorUri(identifier);
+    const owner = portableActor?.id ?? this.getActorUri(identifier);
     const result = [];
     let i = 1;
     for (const keyPair of keyPairs) {
@@ -3770,7 +3806,12 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           publicKey: keyPair.publicKey,
         }),
         multikey: new Multikey({
-          id: new URL(`#multikey-${i}`, owner),
+          // FEP-ef61 requires the keys that gateways sign HTTP requests with
+          // to be listed in the portable actor's assertionMethod, where
+          // verifiers look them up by the keyId of the signature:
+          id: portableActor == null
+            ? new URL(`#multikey-${i}`, owner)
+            : keyPair.keyId,
           controller: owner,
           publicKey: keyPair.publicKey,
         }),
@@ -3781,8 +3822,28 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     return result;
   }
 
+  /**
+   * Resolves the portable actor that the actor with the given identifier is,
+   * through the portable actor ID mapper, along with the base of its gateway
+   * key IDs on this server.
+   * @param identifier The actor's identifier.
+   * @returns The portable actor's ID and key ID base, or `null` if the actor
+   *          is not portable.
+   * @throws {TypeError} If the mapper returns an invalid portable actor ID.
+   */
+  protected async getPortableActorKeyOwner(
+    identifier: string,
+  ): Promise<PortableActorKeyOwner | null> {
+    const mapper = this.federation.actorCallbacks?.portableActorIdMapper;
+    if (mapper == null) return null;
+    const id = await mapper(this, identifier);
+    if (id == null) return null;
+    return { id, keyBase: getGatewayKeyBase(id, this.canonicalOrigin) };
+  }
+
   protected async getKeyPairsFromIdentifier(
     identifier: string,
+    portableActor?: PortableActorKeyOwner | null,
   ): Promise<(CryptoKeyPair & { keyId: URL })[]> {
     const logger = getLogger(["fedify", "federation", "actor"]);
     if (this.federation.actorCallbacks?.keyPairsDispatcher == null) {
@@ -3798,6 +3859,12 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       }
       throw error;
     }
+    if (portableActor === undefined) {
+      portableActor = await this.getPortableActorKeyOwner(identifier);
+    }
+    // A portable actor's keys are this server's gateway keys for it, so they
+    // are identified under its compatible identifier on this server:
+    const keyBase = portableActor?.keyBase ?? actorUri;
     const keyPairs = await this.federation.actorCallbacks?.keyPairsDispatcher(
       new ContextImpl({
         ...this,
@@ -3816,7 +3883,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         keyId: new URL(
           // For backwards compatibility, the first key is always the #main-key:
           i == 0 ? `#main-key` : `#key-${i + 1}`,
-          actorUri,
+          keyBase,
         ),
       });
       i++;
