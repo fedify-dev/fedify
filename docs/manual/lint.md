@@ -604,7 +604,8 @@ Warns when an outbox listener body does not deliver the posted activity with
 
 **When this rule applies:**
 You've registered an outbox listener with `setOutboxListeners()`, but the
-listener body never calls either delivery method.
+listener body never calls either delivery method, directly or through a helper
+in the same file.
 
 **Why it matters:**
 Fedify does not federate client-to-server outbox posts automatically.  If your
@@ -613,7 +614,7 @@ explicit delivery path.
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederation } from "@fedify/fedify";
+import { createFederation, type OutboxContext } from "@fedify/fedify";
 import { Activity } from "@fedify/vocab";
 const federation = createFederation<void>({ kv: null as any });
 // ---cut-before---
@@ -644,7 +645,28 @@ federation
       "followers",
     );
   });
+// ✅ Good: Listener delegates delivery to a helper in the same file
+async function deliverToFollowers(ctx: OutboxContext<void>, activity: Activity) {
+  await ctx.sendActivity({ identifier: ctx.identifier }, "followers", activity);
+}
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await deliverToFollowers(ctx, activity);
+  });
 ~~~~
+
+The rule follows direct calls to functions, function bindings, and
+object-literal methods declared in the same file when the listener's context is
+passed as an argument.  Helpers may call other helpers; recursive calls do not
+cause the analysis to loop.  Declaring a module-level delivery helper without
+calling it does not satisfy the rule.
+
+This analysis does not follow imports or use type information.  A listener that
+only calls a helper imported from another file still receives a warning.
+Indirect calls through higher-order callbacks, class instances, and dynamically
+selected properties are not resolved.
 
 ### `actor-followers-property-required`
 

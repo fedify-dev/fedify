@@ -6,6 +6,7 @@
     ".": "./src/mod.ts"
   },
   "imports": {
+    "@fedify/fixture": "jsr:@fedify/fixture@^2.2.14",
     "eslint": "npm:eslint@^9.0.0",
     "estree": "npm:@types/estree@^1.0.8"
   },

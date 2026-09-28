@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test } from "@fedify/fixture";
 import { RULE_IDS } from "../lib/const.ts";
 import lintTest from "../lib/test.ts";
 import * as rule from "../rules/outbox-listener-delivery-required.ts";
@@ -420,6 +420,946 @@ federation
   .on(Activity, async () => {
     return \`ctx.sendActivity(\`;
   });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - module function`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+async function deliver(ctx, activity) { await ctx.sendActivity({ identifier: ctx.identifier }, "followers", activity); }
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await deliver(ctx, activity);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - module arrow with renamed context`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+const deliver = async (context, activity) => { await context.sendActivity({ identifier: context.identifier }, "followers", activity); };
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await deliver(ctx, activity);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - module function alias`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+async function send(ctx, activity) { await ctx.sendActivity({ identifier: ctx.identifier }, "followers", activity); }
+const deliver = send;
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await deliver(ctx, activity);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - exported helper`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+export async function deliver(ctx, activity) { await ctx.forwardActivity({ identifier: ctx.identifier }, "followers"); }
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await deliver(ctx, activity);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - module object method`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+const delivery = { async deliver(context, activity) { await context.sendActivity({ identifier: context.identifier }, "followers", activity); } };
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await delivery.deliver(ctx, activity);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - module object literal property`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+const delivery = { "deliver": async (context, activity) => { await context.sendActivity({ identifier: context.identifier }, "followers", activity); } };
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await delivery["deliver"](ctx, activity);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - context in second argument`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+const deliver = async (activity, context) => { await context.sendActivity({ identifier: context.identifier }, "followers", activity); };
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await deliver(activity, ctx);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - destructured helper context`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+async function deliver({ sendActivity: send }, activity) { await send({ identifier: "alice" }, "followers", activity); }
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await deliver(ctx, activity);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - multiple helper hops`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+async function deliver(context, activity) { await forward(activity, context); }
+async function forward(activity, outbox) { await outbox.forwardActivity({ identifier: outbox.identifier }, "followers"); }
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await deliver(ctx, activity);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - self recursion with delivery`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+async function deliver(context, activity) { if (activity) await deliver(context, null); await context.sendActivity({ identifier: context.identifier }, "followers", activity); }
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await deliver(ctx, activity);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - module alias resolves in declaration scope`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+async function send(context, activity) { await context.sendActivity({ identifier: context.identifier }, "followers", activity); }
+const deliver = send;
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const send = () => {}; await deliver(ctx, activity);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - unrelated local helper does not overwrite module helper`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+async function deliver(context, activity) { await context.sendActivity({ identifier: context.identifier }, "followers", activity); }
+function unrelated() { const deliver = () => {}; }
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await deliver(ctx, activity);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - context assertion`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+async function deliver(context, activity) { await context.sendActivity({ identifier: context.identifier }, "followers", activity); }
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await deliver(ctx as any, activity);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - uncalled module helper`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+async function deliver(ctx, activity) { await ctx.sendActivity({ identifier: ctx.identifier }, "followers", activity); }
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    console.log(activity);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - imported helper`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+import { deliver } from "./delivery.ts";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await deliver(ctx, activity);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - helper called with other object`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+async function deliver(context, activity) { await context.sendActivity({ identifier: context.identifier }, "followers", activity); }
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const other = { sendActivity() {} }; await deliver(other, activity);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - helper called without context`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+async function deliver(context, activity) { await context.sendActivity({ identifier: context.identifier }, "followers", activity); }
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await deliver();
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - local binding shadows module helper`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+async function deliver(context, activity) { await context.sendActivity({ identifier: context.identifier }, "followers", activity); }
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const deliver = () => {}; await deliver(ctx, activity);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - block binding shadows module helper`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+async function deliver(context, activity) { await context.sendActivity({ identifier: context.identifier }, "followers", activity); }
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    { const deliver = () => {}; await deliver(ctx, activity); }
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - helper parameter shadows module helper`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+async function send(context, activity) { await context.sendActivity({ identifier: context.identifier }, "followers", activity); }
+async function deliver(context, send) { await send(context); }
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await deliver(ctx, () => {});
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - destructured parameter shadows module helper`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+async function send(context, activity) { await context.sendActivity({ identifier: context.identifier }, "followers", activity); }
+async function deliver(context, { send }) { await send(context); }
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await deliver(ctx, { send() {} });
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - block binding shadows context`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+async function deliver(context, activity) { await context.sendActivity({ identifier: context.identifier }, "followers", activity); }
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    { const ctx = {}; await deliver(ctx, activity); }
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - uncalled nested function invokes module helper`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+async function deliver(context, activity) { await context.sendActivity({ identifier: context.identifier }, "followers", activity); }
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const unused = () => deliver(ctx, activity);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - mutual recursion without delivery`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+async function deliver(context, activity) { await again(context, activity); }
+async function again(context, activity) { await deliver(context, activity); }
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await deliver(ctx, activity);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - cyclic helper aliases`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+const deliver = again; const again = deliver;
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await deliver(ctx, activity);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - dynamic object key`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+const delivery = { deliver: async (context, activity) => { await context.sendActivity({ identifier: context.identifier }, "followers", activity); } };
+const key = "deliver";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await delivery[key](ctx, activity);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - helper declared after listener`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox").on(Activity, async (ctx, activity) => { await deliver(ctx, activity); });
+async function deliver(context, activity) { await context.sendActivity({ identifier: context.identifier }, "followers", activity); }
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - mutual recursion from both entry points`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+async function first(ctx, activity) { await second(ctx, activity); }
+async function second(ctx, activity) { await first(ctx, activity); await ctx.sendActivity({ identifier: ctx.identifier }, "followers", activity); }
+federation.setOutboxListeners("/users/{identifier}/outbox")
+.on(Activity, first).on(Activity, second);
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - named listener uses module helper`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+async function deliver(context, activity) { await context.sendActivity({ identifier: context.identifier }, "followers", activity); }
+async function listener(ctx, activity) { await deliver(ctx, activity); }
+function unrelated() { const listener = () => {}; }
+federation.setOutboxListeners("/users/{identifier}/outbox").on(Activity, listener);
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - revisit helper with a different context position`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+async function route(first, second, activity) { await deliver(second, activity); }
+async function deliver(ctx, activity) { await ctx.sendActivity({ identifier: ctx.identifier }, "followers", activity); }
+federation.setOutboxListeners("/users/{identifier}/outbox").on(Activity, async (ctx, activity) => { await route(ctx, {}, activity); await route({}, ctx, activity); });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - local helper with renamed context`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    async function deliver(context, activity) {
+      await context.sendActivity({ identifier: context.identifier }, "followers", activity);
+    }
+    await deliver(ctx, activity);
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - unrelated static block with const binding`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+function deliver(context) {}
+class Unrelated {
+  static {
+    const deliver = context => context.sendActivity();
+  }
+}
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx) => { await deliver(ctx); });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - unrelated static block with var binding`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+function deliver(context) {}
+class Unrelated {
+  static {
+    var deliver = context => context.sendActivity();
+  }
+}
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx) => { await deliver(ctx); });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - uninitialized var redeclaration keeps listener`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+var listener = (ctx) => { console.log(ctx); };
+var listener;
+federation.setOutboxListeners("/users/{identifier}/outbox").on(Activity, listener);
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - uninitialized var redeclaration keeps helper`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+var deliver = context => context.sendActivity();
+var deliver;
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx) => { await deliver(ctx); });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - function-body function and var share binding`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+function setup() {
+  function listener(ctx) { ctx.sendActivity(); }
+  var listener = ctx => {};
+  federation.setOutboxListeners("/users/{identifier}/outbox").on(Activity, listener);
+}
+setup();
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - namespace function does not overwrite module helper`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+function deliver(context) {}
+namespace Unrelated {
+  export function deliver(context) { context.sendActivity(); }
+}
+federation.setOutboxListeners("/users/{identifier}/outbox").on(Activity, ctx => deliver(ctx));
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - namespace var does not overwrite module helper`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+function deliver(context) {}
+namespace Unrelated {
+  export var deliver = context => context.sendActivity();
+}
+federation.setOutboxListeners("/users/{identifier}/outbox").on(Activity, ctx => deliver(ctx));
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - named class expression shadows context`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+function deliver(context) { context.sendActivity(); }
+federation.setOutboxListeners("/users/{identifier}/outbox").on(Activity, ctx => {
+  const C = class ctx { static sendActivity() {} static { deliver(ctx); } };
+});
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - uncalled instance field does not deliver`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+function deliver(context) { context.sendActivity(); }
+federation.setOutboxListeners("/users/{identifier}/outbox").on(Activity, ctx => {
+  class Unused { value = deliver(ctx); }
+});
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - var initializer overrides later function declaration`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+function setup() {
+  var listener = ctx => {};
+  function listener(ctx) { ctx.sendActivity(); }
+  federation.setOutboxListeners("/users/{identifier}/outbox").on(Activity, listener);
+}
+setup();
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - static-block function and var share binding`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+class Setup {
+  static {
+    function listener(ctx) { ctx.sendActivity(); }
+    var listener = ctx => {};
+    federation.setOutboxListeners("/users/{identifier}/outbox").on(Activity, listener);
+  }
+}
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - generator helper`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+function* deliver(context) { context.sendActivity(); }
+federation.setOutboxListeners("/users/{identifier}/outbox").on(Activity, ctx => deliver(ctx));
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - async generator helper`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+async function* deliver(context) { context.sendActivity(); }
+federation.setOutboxListeners("/users/{identifier}/outbox").on(Activity, ctx => deliver(ctx));
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - generator function binding`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+const deliver = function* (context) { context.sendActivity(); };
+federation.setOutboxListeners("/users/{identifier}/outbox").on(Activity, ctx => deliver(ctx));
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - computed instance-field key delivers during definition`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+function deliver(context) { context.sendActivity(); return "key"; }
+federation.setOutboxListeners("/users/{identifier}/outbox").on(Activity, ctx => {
+  class Example { [deliver(ctx)] = 0; }
+});
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - uncalled auto-accessor initializer does not deliver`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+function deliver(context) { context.sendActivity(); }
+federation.setOutboxListeners("/users/{identifier}/outbox").on(Activity, ctx => {
+  class Unused { accessor value = deliver(ctx); }
+});
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - class declaration shadows module helper`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+function deliver(context) { context.sendActivity(); }
+federation.setOutboxListeners("/users/{identifier}/outbox").on(Activity, ctx => {
+  class deliver {} deliver(ctx);
+});
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - catch parameter shadows context`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+function deliver(context) { context.sendActivity(); }
+federation.setOutboxListeners("/users/{identifier}/outbox").on(Activity, ctx => {
+  try {} catch (ctx) { deliver(ctx); }
+});
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - loop binding shadows context`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+function deliver(context) { context.sendActivity(); }
+federation.setOutboxListeners("/users/{identifier}/outbox").on(Activity, ctx => {
+  for (const ctx of items) deliver(ctx);
+});
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - spread makes context argument position unknown`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+function deliver(context) { context.sendActivity(); }
+federation.setOutboxListeners("/users/{identifier}/outbox").on(Activity, ctx => {
+  deliver(...rest, ctx);
+});
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - rest helper parameters are not context parameters`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+function deliver(...args) { args[0].sendActivity(); }
+federation.setOutboxListeners("/users/{identifier}/outbox").on(Activity, ctx => {
+  deliver(ctx);
+});
 `,
     rule,
     ruleName,
