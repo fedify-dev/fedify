@@ -224,7 +224,9 @@ export async function verifyPortableGatewayKeyDocument(
       return reject("The controller of the key is not the actor.");
     }
     publicKey = multikey.publicKey;
-    if (publicKeyNodes.length > 0) {
+    // A bare reference in publicKey names the node embedded in
+    // assertionMethod, so only an embedded entry can disagree with it:
+    if (publicKeyNodes.length > 0 && !isReference(publicKeyNodes[0])) {
       const embedded = await parseEmbeddedPublicKey(publicKeyNodes[0]);
       if (
         embedded == null ||

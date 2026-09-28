@@ -270,6 +270,21 @@ async function duplicatePublicKey(
   };
 }
 
+test("verifyRequest() accepts gateway keys referred to by URL in publicKey", async () => {
+  // The publicKey entry names the key embedded in assertionMethod:
+  const documentLoader = createLoader({
+    [compatibleId(gw1)]: await sign({
+      ...await actorJson({ publicKey: null }),
+      publicKey: keyId.href,
+    }),
+  });
+  const key = await verifyRequest(await signedRequest(), {
+    documentLoader,
+    contextLoader,
+  });
+  strictEqual(key?.id?.href, keyId.href);
+});
+
 test("verifyRequest() accepts gateway keys only in publicKey", async () => {
   // Some publishers, e.g., tootik, list their RSA keys only in publicKey;
   // the DID's proof covers them all the same:

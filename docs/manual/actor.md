@@ -1014,9 +1014,9 @@ actor document, and:
     implementations such as [tootik] publish, a compatible identifier,
  -  the document has a valid Object Integrity Proof made by the actor's DID,
  -  the document embeds the key in its `assertionMethod`, with the actor as
-    its `controller` (a `publicKey` entry with the same ID, if any, must have
-    the same key material), or, if no `assertionMethod` entry has the key ID,
-    in its `publicKey`, with the actor as its `owner`,
+    its `controller` (a `publicKey` entry that embeds a key with the same ID,
+    if any, must have the same key material), or, if no `assertionMethod` entry
+    has the key ID, in its `publicKey`, with the actor as its `owner`,
  -  no more than one entry of either property has the key ID, and
  -  the gateway that the key ID belongs to is listed in the actor's
     `gateways`.
