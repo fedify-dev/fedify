@@ -869,3 +869,166 @@ WebFinger response for it links back to the actor, since anyone can list any
 server in the `gateways` of their actor.
 
 [FEP-ef61]: https://w3id.org/fep/ef61
+
+
+Gateway keys of portable actors
+-------------------------------
+
+*This API is available since Fedify 2.4.0.*
+
+When a server delivers activities or makes signed requests on behalf of an
+[FEP-ef61] portable actor, it acts as one of the actor's gateways, and signs
+the requests with HTTP Signatures as usual.  FEP-ef61 asks each gateway to
+sign with its own keys, and to list their public keys in the actor's
+`assertionMethods` as [FEP-521a] describes.  Fedify calls them
+*gateway keys*.
+
+Gateway keys only sign HTTP requests.  A portable actor's activities and
+objects are authenticated by the Object Integrity Proofs made by the actor's
+DID, not by the gateway that sends them.  So Fedify never makes Object
+Integrity Proofs or Linked Data Signatures with gateway keys, and never takes
+a gateway's HTTP Signature in place of a proof.
+
+To have the [key pairs dispatcher](#public-keys-of-an-actor) dispatch gateway
+keys for a portable actor, tell Fedify the actor's portable ID through
+the `~ActorCallbackSetters.mapPortableActorId()` method:
+
+~~~~ typescript twoslash
+import { type Federation } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
+const federation = null as unknown as Federation<void>;
+interface User { username: string; did: string }
+async function findUser(_identifier: string): Promise<User | null> {
+  return null;
+}
+async function getGatewayKeyPairs(
+  _identifier: string,
+): Promise<CryptoKeyPair[]> {
+  return [];
+}
+// ---cut-before---
+federation
+  .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+    // Omitted for brevity; see the example below.
+    return null;
+  })
+  .setKeyPairsDispatcher(async (ctx, identifier) => {
+    // This server's own key pairs for the actor, not the DID's key pair:
+    return await getGatewayKeyPairs(identifier);
+  })
+  .mapPortableActorId(async (ctx, identifier) => {
+    const user = await findUser(identifier);
+    if (user == null) return null;  // Not a portable actor.
+    // ap+ef61://did:key:z6Mk.../actors/alice
+    return ctx.getPortableObjectUri(Person, { name: user.username }, user.did);
+  });
+~~~~
+
+For an actor the callback returns a portable ID for, the
+`~Context.getActorKeyPairs()` method derives the keys this way:
+
+ -  The key IDs are the actor's [compatible identifier] on this server,
+    i.e., the canonical origin of the federation, with `#main-key` for
+    the first key and `#key-2`, `#key-3`, and so on for the rest, e.g.,
+    `https://example.com/.well-known/apgateway/did:key:z6Mk.../actors/alice#main-key`.
+    Such key IDs can be dereferenced to the actor document that this server
+    serves through the
+    [object dispatcher](./object.md#serving-portable-objects), and tell which
+    gateway made the signature.
+ -  The `cryptographicKey` and the `multikey` of each key pair have the key ID
+    as their IDs, so that verifiers find the key with the signature's key ID
+    in both `publicKey` and `assertionMethod`.  Their owner and controller is
+    the portable actor ID that the callback returns.
+
+The RSA key among them signs the HTTP requests made on behalf of the actor,
+such as the ones made by `Context.sendActivity()`,
+`InboxContext.forwardActivity()`, and the document loader that
+`Context.getDocumentLoader()` returns for the actor.  If the callback is not
+registered, or it returns `null`, the keys are derived from
+`Context.getActorUri()` as usual.
+
+The actor document itself has to list the keys of all the actor's gateways,
+while the key pairs dispatcher knows only this server's keys.  Fedify does not
+store or exchange the keys of other gateways, so add their public keys to
+the actor's `assertionMethods` yourself, and sign the document with the DID's
+key as usual:
+
+~~~~ typescript twoslash
+import { type Context, signObject } from "@fedify/fedify";
+import { type Multikey, Person } from "@fedify/vocab";
+interface User { username: string; did: string; identifier: string }
+async function getPortableKey(
+  _did: string,
+): Promise<{ privateKey: CryptoKey; keyId: URL }> {
+  return null!;
+}
+async function getOtherGatewayKeys(_did: string): Promise<Multikey[]> {
+  return [];
+}
+// ---cut-before---
+async function getPortableActor(
+  ctx: Context<void>,
+  user: User,
+): Promise<Person> {
+  const { privateKey, keyId } = await getPortableKey(user.did);
+  // This server's gateway keys:
+  const keys = await ctx.getActorKeyPairs(user.identifier);
+  return await signObject(
+    new Person({
+      id: ctx.getPortableObjectUri(Person, { name: user.username }, user.did),
+      preferredUsername: user.username,
+      gateways: [new URL("https://example.com"), new URL("https://other.example")],
+      publicKeys: keys.map((key) => key.cryptographicKey),
+      assertionMethods: [
+        ...keys.map((key) => key.multikey),
+        // The public keys of the actor's other gateways:
+        ...await getOtherGatewayKeys(user.did),
+      ],
+    }),
+    privateKey,
+    keyId,  // e.g., did:key:z6Mk...#z6Mk...
+  );
+}
+~~~~
+
+> [!IMPORTANT]
+> This server has to be listed in the actor's `gateways`.  Receivers accept
+> a gateway key only from a gateway the actor lists.
+
+Since the DID's key pair is not dispatched by the key pairs dispatcher, sign
+a portable actor's activities with `signObject()` before sending them, or pass
+the DID's key to `Context.sendActivity()` as an explicit sender key.  An
+activity of a portable actor has to have a portable ID of the actor's DID, and
+`Context.sendActivity()` throws a `TypeError` if it does not, or if it has no
+proof and no key can make one.  See the [*Choosing the proof key*
+section](./send.md#choosing-the-proof-key) for details.
+
+On the receiving side, Fedify verifies an HTTP Signature made with a gateway
+key if the key ID is a compatible identifier that dereferences to a portable
+actor document, and:
+
+ -  the document is the actor that the key ID is a compatible identifier of,
+ -  the document has a valid Object Integrity Proof made by the actor's DID,
+ -  the document embeds the key in its `assertionMethod`, with the actor as
+    its `controller` (a `publicKey` entry with the same ID, if any, must have
+    the same key material), and
+ -  the gateway that the key ID belongs to is listed in the actor's
+    `gateways`.
+
+Otherwise the signature is not verified.  A verified gateway key belongs to
+the portable actor, so `RequestContext.getSignedKeyOwner()` returns the actor,
+e.g., to decide whether the actor may see a non-public portable object.
+Inboxes, however, still require a valid Object Integrity Proof on the
+activities of portable actors; see the [*Portable actors*
+section](./inbox.md#portable-actors) of the inbox guide.
+
+> [!NOTE]
+> Fedify does not resolve gateway keys whose IDs are `ap:` or `ap+ef61:`
+> URIs, as there is no gateway to dereference them through.  Actors whose
+> IDs are compatible identifiers themselves, instead of portable IDs, are
+> still verified as ordinary actors by their web origins.  Also, Fedify
+> does not cache gateway keys in the key cache, as their validity depends
+> on the actor's signed document rather than their origin.
+
+[FEP-521a]: https://w3id.org/fep/521a
+[compatible identifier]: https://w3id.org/fep/ef61#compatible-ids

@@ -36,6 +36,7 @@ import type {
   OutboxListener,
   OutboxListenerErrorHandler,
   OutboxPermanentFailureHandler,
+  PortableActorIdMapper,
   SharedInboxKeyDispatcher,
   UnverifiedActivityHandler,
   WebFingerLinksDispatcher,
@@ -1342,6 +1343,33 @@ export interface ActorCallbackSetters<TContextData> {
    */
   mapAlias(
     mapper: ActorAliasMapper<TContextData>,
+  ): ActorCallbackSetters<TContextData>;
+
+  /**
+   * Sets the callback function that maps an actor's identifier to the ID of
+   * the [FEP-ef61] portable actor it dispatches.  If the callback returns
+   * a portable ID for an identifier, the key pairs of that actor are treated
+   * as this server's *gateway keys* for the portable actor:
+   * {@link Context.getActorKeyPairs} derives their key IDs from the actor's
+   * compatible identifier on this server, e.g.,
+   * `https://example.com/.well-known/apgateway/did:key:z6Mk.../actors/alice#main-key`,
+   * and makes the portable actor their owner, so that requests this server
+   * makes on behalf of the actor, such as activity deliveries and signed
+   * fetches, are signed with them.  Gateway keys are only used for HTTP
+   * Signatures; they never make Object Integrity Proofs or Linked Data
+   * Signatures.
+   *
+   * If it's omitted, or it returns `null`, the actor's keys are derived from
+   * {@link Context.getActorUri} as usual.
+   *
+   * [FEP-ef61]: https://w3id.org/fep/ef61
+   * @param mapper A callback that maps an actor's identifier to its portable
+   *               ID, or `null` if the actor is not portable.
+   * @returns The setters object so that settings can be chained.
+   * @since 2.4.0
+   */
+  mapPortableActorId(
+    mapper: PortableActorIdMapper<TContextData>,
   ): ActorCallbackSetters<TContextData>;
 
   /**

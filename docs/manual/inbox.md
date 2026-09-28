@@ -57,6 +57,20 @@ not dispatch any part of those documents to application code.
 
 [FEP-ef61]: https://w3id.org/fep/ef61
 
+### Portable actors
+
+*This behavior is available since Fedify 2.4.0.*
+
+An activity whose actor is an [FEP-ef61] portable actor, i.e., has an `ap:` or
+`ap+ef61:` ID, is accepted only if its Object Integrity Proof made by the
+actor's DID is valid.  An HTTP Signature or a Linked Data Signature does not
+authenticate it, not even an HTTP Signature made with one of the actor's
+[gateway keys](./actor.md#gateway-keys-of-portable-actors), which only tells
+which gateway sent the request.  Such an activity without a valid proof is
+rejected with `401 Unauthorized`.  Conversely, an activity with a valid proof
+is accepted even if the gateway that sent it did not sign the request with
+a key the actor lists.
+
 ### `Accept-Signature` challenges
 
 *This API is available since Fedify 2.1.0.*

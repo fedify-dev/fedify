@@ -27,6 +27,11 @@ import {
   type KeyLookupResult,
   recordKeyLookup,
 } from "../federation/metrics.ts";
+import {
+  isCompatibleKeyId,
+  isPortableActorDocument,
+} from "./portable-key-id.ts";
+import type { PortableGatewayKeyResolution } from "./portable-key.ts";
 
 /**
  * Checks if the given key is valid and supported.  No-op if the key is valid,
@@ -227,6 +232,23 @@ export interface FetchKeyOptions {
    * @internal
    */
   keyIdBoundByCaller?: boolean;
+
+  /**
+   * Resolves a gateway key of an [FEP-ef61] portable actor, i.e., a key whose
+   * ID is a compatible identifier and dereferences to a portable actor's
+   * document.  Such a key is resolved only through this function, and is
+   * rejected if it is omitted, so that only HTTP Signature verification,
+   * which passes it, accepts gateway keys.  Object Integrity Proofs and
+   * Linked Data Signatures never do.
+   *
+   * [FEP-ef61]: https://w3id.org/fep/ef61
+   * @internal
+   */
+  portableGatewayKeyResolver?: (
+    document: unknown,
+    actor: Actor,
+    keyId: URL,
+  ) => Promise<PortableGatewayKeyResolution>;
 }
 
 /**
@@ -480,7 +502,15 @@ async function withFetchKeySpan<T extends { cached: boolean }>(
 /**
  * Fetches a {@link CryptographicKey} or {@link Multikey} from the given URL.
  * If the given URL contains an {@link Actor} object, it tries to find
- * the corresponding key in the `publicKey` or `assertionMethod` property.
+ * the corresponding key in the `publicKey` or `assertionMethod` property. *
+ * Gateway keys of [FEP-ef61] portable actors, i.e., keys whose IDs are
+ * compatible identifiers that dereference to portable actor documents, are
+ * not resolved by this function, as they only authenticate HTTP requests;
+ * use `verifyRequest()` or `getKeyOwner()` for them instead.  Keys
+ * whose IDs are compatible identifiers are never read from or written to
+ * the key cache.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
  * @template T The type of the key to fetch.  Either {@link CryptographicKey}
  *              or {@link Multikey}.
  * @param keyId The URL of the key.
@@ -506,7 +536,15 @@ export function fetchKey<T extends CryptographicKey | Multikey>(
 /**
  * Fetches a {@link CryptographicKey} or {@link Multikey} from the given URL,
  * preserving transport-level fetch failures for callers that need to inspect
- * why the key could not be loaded.
+ * why the key could not be loaded. *
+ * Gateway keys of [FEP-ef61] portable actors, i.e., keys whose IDs are
+ * compatible identifiers that dereference to portable actor documents, are
+ * not resolved by this function, as they only authenticate HTTP requests;
+ * use `verifyRequest()` or `getKeyOwner()` for them instead.  Keys
+ * whose IDs are compatible identifiers are never read from or written to
+ * the key cache.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
  *
  * @template T The type of the key to fetch.  Either {@link CryptographicKey}
  *              or {@link Multikey}.
@@ -735,6 +773,7 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
     keyCache,
     tracerProvider,
     keyIdBoundByCaller,
+    portableGatewayKeyResolver,
   }: FetchKeyOptions,
   logger: ReturnType<typeof getLogger>,
 ): Promise<FetchKeyResult<T>> {
@@ -765,6 +804,40 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
       }
       throw e;
     }
+  }
+  if (isCompatibleKeyId(cacheKey) && isPortableActorDocument(object)) {
+    // A compatible key ID that dereferences to a portable actor names a key
+    // that a gateway holds for the actor.  The host that served the document
+    // does not speak for the actor, only the actor's DID does, so there is
+    // no falling back to the checks below, which trust web origins.
+    if (
+      portableGatewayKeyResolver == null ||
+      cls !== (CryptographicKey as unknown as FetchableKeyClass<T>)
+    ) {
+      logger.debug(
+        "Failed to verify; key {keyId} is a gateway key of the portable " +
+          "actor {actorId}, which is only accepted for HTTP Signatures.",
+        { keyId, actorId: object.id?.href },
+      );
+      return { key: null, cached: false };
+    }
+    const resolution = await portableGatewayKeyResolver(
+      document,
+      object,
+      cacheKey,
+    );
+    if (resolution.type !== "verified") {
+      logger.debug(
+        "Failed to verify; the portable actor {actorId} does not vouch for " +
+          "its gateway key {keyId}.",
+        { keyId, actorId: object.id?.href },
+      );
+      return { key: null, cached: false };
+    }
+    return {
+      key: resolution.key as unknown as T & { publicKey: CryptoKey },
+      cached: false,
+    };
   }
   let key: T | null = null;
   // Set when the fetched document turned out to be the owner's own actor
@@ -950,6 +1023,12 @@ async function fetchKeyWithResult<
   try {
     const logger = getLogger(["fedify", "sig", "key"]);
     const keyId = cacheKey.href;
+    // Keys at compatible identifiers may be gateway keys of portable actors,
+    // which are accepted for some purposes but not for others.  Keeping them
+    // out of the shared cache means one purpose never reuses what another
+    // resolved, nor what another rejected.
+    const bypassCache = isCompatibleKeyId(cacheKey);
+    if (bypassCache) options = { ...options, keyCache: undefined };
     const keyCache = options.keyCache as FetchErrorMetadataCache | undefined;
     const didKey = await resolveDidKey(cacheKey, cls, keyCache, logger);
     if (didKey != null) {

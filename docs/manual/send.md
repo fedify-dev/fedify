@@ -1248,11 +1248,11 @@ most one proof:
  -  An activity that already carries a proof is sent as is.  Fedify does not
     add another proof to it, not even with the keys from the [actor key pairs
     dispatcher](./actor.md#public-keys-of-an-actor).
- -  With a single Ed25519 key, that key signs the activity.
- -  With several Ed25519 keys, a portable activity is signed only by the key
-    whose ID is a DID URL for the activity's own DID, such as
-    `did:key:z6Mk…#z6Mk…` for `ap://did:key:z6Mk…/activities/1`.  This is the
-    only proof [FEP-ef61] accepts for it.
+ -  A portable activity is signed only by the key whose ID is a DID URL for
+    the activity's own DID, such as `did:key:z6Mk…#z6Mk…` for
+    `ap://did:key:z6Mk…/activities/1`, even if it is the only Ed25519 key.
+    This is the only proof [FEP-ef61] accepts for it.
+ -  With a single Ed25519 key, a non-portable activity is signed by that key.
 
 When no key or more than one key qualifies, or when a non-portable activity
 embeds portable objects and several Ed25519 keys are available,
@@ -1287,11 +1287,19 @@ await ctx.sendActivity(
 );
 ~~~~
 
+Regardless of the activity, keys whose IDs are FEP-ef61 compatible
+identifiers, such as the [gateway keys of portable
+actors](./actor.md#gateway-keys-of-portable-actors), never make proofs or
+Linked Data Signatures; they only sign HTTP requests.  An activity whose actor
+is a portable actor never gets a Linked Data Signature either, and it has to
+have a portable ID of the actor's DID; otherwise `sendActivity()` rejects with
+a `TypeError`.
+
 The Multikey IDs Fedify derives for the actor key pairs dispatcher are
-fragments of the actor URI, such as `…/actor#multikey-1`, not DID URLs.  With
-several dispatched Ed25519 keys, an unsigned portable activity sent by actor
-identifier is therefore always rejected; send it with explicit sender keys or
-pre-sign it instead.
+fragments of the actor URI, such as `…/actor#multikey-1`, or, for portable
+actors, gateway key IDs, not DID URLs.  An unsigned portable activity sent by
+actor identifier is therefore always rejected; send it with explicit sender
+keys or pre-sign it instead.
 
 Fedify also refuses to send an activity with portable objects if any map in it
 already carries a proof set, which happens, for example, when `signObject()`

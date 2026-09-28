@@ -347,15 +347,17 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   setActorDispatcher(path: any, dispatcher: any): any {
     this.actorDispatchers.set(path, dispatcher);
     this.actorPath = path;
-    return {
+    const setters: any = {
       setKeyPairsDispatcher: (keyPairsDispatcher: any) => {
         this.actorKeyPairsDispatcher = keyPairsDispatcher;
         return this as any;
       },
       mapHandle: () => this as any,
       mapAlias: () => this as any,
+      mapPortableActorId: () => setters,
       authorize: () => this as any,
     };
+    return setters;
   }
 
   setObjectDispatcher(cls: any, path: string, dispatcher: any): any {
