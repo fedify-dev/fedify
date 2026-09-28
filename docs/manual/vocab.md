@@ -307,11 +307,11 @@ you tell them how to verify what the gateways return:
 import type { Create } from "@fedify/vocab";
 declare const create: Create;
 // ---cut-before---
-import { verifyPortableObjectProof } from "@fedify/fedify";
+import { verifyPortableObject } from "@fedify/fedify";
 
 const note = await create.getObject({
   gateways: ["https://server1.example", "https://server2.example"],
-  verifyPortableObject: verifyPortableObjectProof,
+  verifyPortableObject,
 });
 ~~~~
 
@@ -325,8 +325,12 @@ JSON-LD profile, and returns the first object that passes two checks:
     without an `@id` is left to `verifyPortableObject`, and
     `verifyPortableObjectProof()` rejects it.
  -  The `verifyPortableObject` function must accept it.
-    `verifyPortableObjectProof()` checks that the object has a valid [FEP-8b32]
-    Object Integrity Proof made by the DID of its portable ID.
+    `verifyPortableObject()` from `@fedify/fedify` checks that the object has
+    a valid [FEP-8b32] Object Integrity Proof made by the DID of its portable
+    ID, and applies the gateway trust policy to collections without proofs
+    (see [*Portable collections*](#portable-collections) below).
+    `verifyPortableObjectProof()` checks proofs only, so it rejects every
+    collection without a proof.
 
 A gateway that responds with `404 Not Found`, any other error, or an object
 that fails either check is skipped, and the next gateway is tried.  If one or
@@ -358,13 +362,13 @@ import type { Create } from "@fedify/vocab";
 declare const ctx: Context<void>;
 declare const create: Create;
 // ---cut-before---
-import { verifyPortableObjectProof } from "@fedify/fedify";
+import { verifyPortableObject } from "@fedify/fedify";
 
 const documentLoader = await ctx.getDocumentLoader({ identifier: "alice" });
 const note = await create.getObject({
   documentLoader,
   gateways: ["https://server.example"],
-  verifyPortableObject: verifyPortableObjectProof,
+  verifyPortableObject,
 });
 ~~~~
 
@@ -376,6 +380,87 @@ object.  As with other dereferenced objects, a verified object is cached in its
 parent object, and later calls return it without fetching it again.  Portable
 objects embedded in a document are not fetched or verified by accessors; see
 the [*Origin-based security model* section](#origin-based-security-model).
+
+[FEP-8b32]: https://w3id.org/fep/8b32
+
+### Portable collections
+
+[FEP-ef61] lets gateways serve portable collections, such as an actor's
+outbox, without Object Integrity Proofs.  Such an *unsecured* collection is
+trusted only if it comes from a gateway that its owner lists in the
+`gateways` property of its actor document.  `verifyPortableObject()` applies
+this policy when accessors fetch a portable collection or collection page
+without a proof, and accepts it only if all of the following hold:
+
+ -  The response's final URL is the compatible identifier of the same
+    collection under a gateway's */.well-known/apgateway/* path.  The
+    gateway is taken from this URL, not from the request or the collection's
+    `@id`, so a redirect to anywhere else is not trusted.
+ -  The owner is determined unambiguously.  It is the actor whose `inbox`,
+    `outbox`, `followers`, `following`, or `liked` property you dereferenced,
+    or else the single actor in the collection's `attributedTo`.  They must
+    agree if both are present, and the owner must have the same DID as the
+    collection.
+ -  The owner's actor document has a valid proof and lists the collection as
+    its `inbox`, `outbox`, `followers`, `following`, or `liked`.  If you
+    dereferenced the collection from an actor that was itself fetched and
+    verified through gateways, that actor document is used; otherwise the
+    owner is fetched through the same `gateways` option (or its location
+    hints).
+ -  The gateway that served the collection is one of the owner's `gateways`.
+
+A collection with a proof is verified by its proof instead, and a collection
+with an invalid proof is rejected rather than treated as unsecured.
+A collection that fails the policy is handled like any other portable object
+that fails verification: the accessor tries the next gateway, and returns
+`null` if none of them serves an acceptable one.
+
+~~~~ typescript twoslash
+import type { Person } from "@fedify/vocab";
+declare const person: Person;
+// ---cut-before---
+import { verifyPortableObject } from "@fedify/fedify";
+import { traverseCollection } from "@fedify/vocab";
+
+const options = {
+  gateways: ["https://server1.example", "https://server2.example"],
+  verifyPortableObject,
+};
+const outbox = await person.getOutbox(options);
+if (outbox != null) {
+  for await (const activity of traverseCollection(outbox, options)) {
+    console.log(activity.id?.href);
+  }
+}
+~~~~
+
+Collection pages are checked the same way, each against the gateway that
+served it.  A page inherits the owner of the collection that you reached it
+from through `first`, `last`, `current`, `next`, or `prev`, so the owner is
+not fetched again for every page, but a page that names another collection
+in its `partOf`, another owner in its `attributedTo`, or has another DID is
+rejected.  Pass the same options to `traverseCollection()` as to the
+accessor, since it fetches pages and items through accessors.
+
+Accepting an unsecured collection only means that its owner trusts the
+gateway; nothing in it is cryptographically verified.  Therefore, accessors
+do not trust objects embedded in it, even with the same DID and even with
+`crossOrigin: "trust"`: they fetch and verify each embedded object that has
+an `@id` on its own, and drop embedded objects without an `@id`.
+
+> [!NOTE]
+>
+> This policy has some limitations for now:
+>
+>  -  Only an actor's `inbox`, `outbox`, `followers`, `following`, and
+>     `liked` collections can be unsecured.  Other unsecured collections,
+>     such as the `replies` of a portable object, are rejected.
+>  -  The owner's `gateways` are taken from whichever validly signed actor
+>     document is retrieved, which might be older than the latest one.
+>  -  Compatible identifiers are not dereferenced as portable objects.
+>     To keep them from skipping the policy, accessors of portable objects
+>     reject references, redirects, and embedded objects whose IDs are
+>     compatible identifiers.
 
 Links and media/document objects expose `digestMultibase` for the integrity
 digest required when portable objects reference external resources.  Use
@@ -412,8 +497,6 @@ decoded digest or hashlink components are needed.  These helpers accept only
 SHA-256 digests and simple `hl:` URIs without metadata; malformed values,
 unsupported hash algorithms, metadata-bearing hashlinks, and legacy `?hl=`
 URLs cause a `TypeError`.
-
-[FEP-8b32]: https://w3id.org/fep/8b32
 
 
 Object IDs and remote objects

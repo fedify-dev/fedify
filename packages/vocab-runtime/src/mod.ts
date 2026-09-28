@@ -46,6 +46,8 @@ export {
 } from "./digest.ts";
 export { LanguageString } from "./langstr.ts";
 export type {
+  PortableObjectReferrer,
+  PortableObjectVerification,
   PortableObjectVerifier,
   PortableObjectVerifierOptions,
 } from "./portable.ts";

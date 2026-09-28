@@ -69,6 +69,20 @@ To be released.
     attribute, used for requests to the hashlink media endpoint.
     [[#288], [#838], [#1080]]
 
+ -  Added `verifyPortableObject()`, which applies the [FEP-ef61] trust policy
+    to portable objects fetched through gateways.  It verifies Object
+    Integrity Proofs like `verifyPortableObjectProof()`, and also accepts
+    a portable collection or collection page without a proof if it was
+    served by a gateway listed in the `gateways` of the actor that owns it.
+    The owner must be the actor whose `inbox`, `outbox`, `followers`,
+    `following`, or `liked` it is, as confirmed by the owner's signed actor
+    document.  Pass it as the `verifyPortableObject` option of property
+    accessors and `traverseCollection()` instead of
+    `verifyPortableObjectProof()` to read portable actors' collections, such
+    as their outboxes.  The new `VerifyPortableObjectOptions`,
+    `VerifyPortableObjectResult`, and `VerifyPortableObjectFailureReason`
+    types describe it.  [[#288], [#836], [#1084]]
+
  -  Changed `Context.sendActivity()` so that an activity containing
     [FEP-ef61] portable objects gets at most one Object Integrity Proof.
     Previously Fedify signed every outgoing activity once for each Ed25519
@@ -255,6 +269,7 @@ To be released.
 [#829]: https://github.com/fedify-dev/fedify/issues/829
 [#832]: https://github.com/fedify-dev/fedify/issues/832
 [#835]: https://github.com/fedify-dev/fedify/issues/835
+[#836]: https://github.com/fedify-dev/fedify/issues/836
 [#837]: https://github.com/fedify-dev/fedify/issues/837
 [#838]: https://github.com/fedify-dev/fedify/issues/838
 [#915]: https://github.com/fedify-dev/fedify/pull/915
@@ -276,6 +291,7 @@ To be released.
 [#1076]: https://github.com/fedify-dev/fedify/pull/1076
 [#1080]: https://github.com/fedify-dev/fedify/pull/1080
 [#1082]: https://github.com/fedify-dev/fedify/pull/1082
+[#1084]: https://github.com/fedify-dev/fedify/pull/1084
 
 ### @fedify/adonisjs
 
@@ -626,6 +642,21 @@ To be released.
     representation, because a clone may differ from the document the proof
     covers.  [[#288], [#1044], [#1051]]
 
+ -  Property accessors now tell the `verifyPortableObject` function where
+    a portable object was retrieved from and which objects led to it, so
+    that it can apply the [FEP-ef61] trust policy for portable collections
+    served without proofs.  Accessors of such an unsecured collection do not
+    trust the objects embedded in it, even with `crossOrigin: "trust"`;
+    they fetch and verify each of them on its own, and drop the ones without
+    an `@id`.  Accessors of portable objects also reject references,
+    redirects, and embedded objects whose IDs are FEP-ef61 compatible
+    identifiers, since those would bypass the portable object policy.
+    [[#288], [#836], [#1084]]
+
+ -  Added `crossOrigin`, `gateways`, and `verifyPortableObject` options to
+    `TraverseCollectionOptions`, so that `traverseCollection()` can traverse
+    [FEP-ef61] portable collections through gateways.  [[#288], [#836], [#1084]]
+
 [FEP-22cd]: https://w3id.org/fep/22cd
 [#810]: https://github.com/fedify-dev/fedify/issues/810
 [#826]: https://github.com/fedify-dev/fedify/issues/826
@@ -677,11 +708,15 @@ To be released.
     [[#912], [#913]]
  -  Added <https://w3id.org/fep/22cd> to preloaded JSON-LD contexts.
     [[#1037], [#1038]]
- -  Added the `PortableObjectVerifier` and `PortableObjectVerifierOptions`
-    types, which describe the `verifyPortableObject` option of property
-    accessors for [FEP-ef61] portable references.
-    `verifyPortableObjectProof()` from `@fedify/fedify` satisfies
-    `PortableObjectVerifier`.  [[#288], [#834], [#1077]]
+ -  Added the `PortableObjectVerifier`, `PortableObjectVerifierOptions`,
+    `PortableObjectVerification`, and `PortableObjectReferrer` types, which
+    describe the `verifyPortableObject` option of property accessors for
+    [FEP-ef61] portable references.  A verifier receives the fetched
+    document along with its final URL, the gateways used, and the chain of
+    objects that referred to it, and can accept a document without an
+    integrity proof as `unsecured`.  `verifyPortableObject()` and
+    `verifyPortableObjectProof()` from `@fedify/fedify` satisfy
+    `PortableObjectVerifier`.  [[#288], [#834], [#836], [#1077], [#1084]]
  -  Added `toCompatibleEf61Id()` and `fromCompatibleEf61Id()` for converting
     between [FEP-ef61] portable IDs and compatible identifiers, which are
     HTTP(S) URLs under a gateway's fixed `/.well-known/apgateway/` path that

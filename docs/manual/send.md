@@ -1137,6 +1137,12 @@ async function verifyPortableResponse(response: Response): Promise<void> {
 A portable collection that has proofs is verified in the same way.  A portable
 collection without a proof produces the `unsecuredCollection` result so the
 caller can apply the separate gateway trust policy allowed by [FEP-ef61].
+`verifyPortableObject()` combines both: it verifies proofs like
+`verifyPortableObjectProof()`, and applies the gateway trust policy to
+unsecured collections, given where the collection was retrieved from.
+Property accessors pass that information automatically when you use it as
+their `verifyPortableObject` option; see the [*Portable collections*
+section](./vocab.md#portable-collections) of the vocabulary manual.
 `verifyPortableObjectProof()` examines only the top-level JSON-LD node.  An
 embedded portable object needs its own verification; success for an outer
 activity does not authenticate portable objects nested inside it.

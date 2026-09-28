@@ -7,10 +7,15 @@ import {
 import preloadedContexts from "../contexts.ts";
 import type { DocumentLoader, RemoteDocument } from "../docloader.ts";
 import jsonld from "../jsonld.ts";
-import type { PortableObjectVerifier } from "../portable.ts";
+import type {
+  PortableObjectReferrer,
+  PortableObjectVerification,
+  PortableObjectVerifier,
+} from "../portable.ts";
 import {
   canonicalizePortableUri,
   formatIri,
+  fromCompatibleEf61Id,
   parseIri,
   toCompatibleEf61Id,
 } from "../url.ts";
@@ -37,6 +42,225 @@ const BASELINE_CONTEXT_URLS: ReadonlySet<string> = new Set([
   "https://w3id.org/security/v1",
   "https://w3id.org/security/data-integrity/v1",
 ]);
+
+/**
+ * The maximum number of links in a referrer chain passed to a
+ * {@link PortableObjectVerifier}.  Longer chains are cut off and marked as
+ * truncated.
+ */
+const MAX_REFERRER_CHAIN_LENGTH = 32;
+
+/**
+ * Where a vocabulary object came from, as far as portable objects are
+ * concerned.
+ */
+interface Provenance {
+  /**
+   * How the object was accepted by a portable object verifier, if it was
+   * returned by {@link dereferencePortableIri}.
+   */
+  readonly acceptance?: "verified" | "unsecured";
+
+  /**
+   * The opaque collection context that the verifier attached to the object.
+   */
+  readonly collectionContext?: unknown;
+
+  /**
+   * The object and property through which the object was obtained.
+   */
+  readonly referrer?: { readonly object: object; readonly property: string };
+}
+
+// Kept outside the objects so that they cannot be forged through vocabulary
+// constructors or JSON-LD, and so that they do not show up in serialization:
+const provenances = new WeakMap<object, Provenance>();
+
+/**
+ * A reference from a vocabulary object's property, which generated
+ * accessors pass to {@link dereferencePortableIri}.
+ *
+ * @internal
+ */
+export interface PortableReferrerLink {
+  readonly object: object;
+  readonly property: string;
+}
+
+function getObjectId(object: unknown): URL | null {
+  if (object == null || typeof object !== "object" || !("id" in object)) {
+    return null;
+  }
+  const id = object.id;
+  return id instanceof URL ? id : null;
+}
+
+/**
+ * Checks whether a vocabulary object is part of a chain of portable objects,
+ * i.e., whether it has a portable ID or was obtained from a portable object.
+ *
+ * @internal Technically exported for generated vocabulary classes, but not
+ * part of the public API contract.  This is not considered public API for
+ * Semantic Versioning decisions.
+ */
+export function isInPortableChain(object: object): boolean {
+  if (provenances.has(object)) return true;
+  const id = getObjectId(object);
+  return id != null && isPortableIri(id);
+}
+
+/**
+ * Checks whether a vocabulary object was accepted without an integrity
+ * proof, e.g., as an unsecured portable collection served by a trusted
+ * gateway.  Objects embedded in such an object must not be trusted because
+ * of their origin.
+ *
+ * @internal Technically exported for generated vocabulary classes, but not
+ * part of the public API contract.  This is not considered public API for
+ * Semantic Versioning decisions.
+ */
+export function isUnsecuredPortableObject(object: object): boolean {
+  return provenances.get(object)?.acceptance === "unsecured";
+}
+
+/**
+ * Checks whether a URL is an FEP-ef61 compatible identifier, i.e., an HTTP(S)
+ * URL under a gateway's `/.well-known/apgateway/` path that stands for
+ * a portable object.  Malformed compatible identifiers count as compatible
+ * identifiers too.
+ *
+ * @internal Technically exported for generated vocabulary classes, but not
+ * part of the public API contract.  This is not considered public API for
+ * Semantic Versioning decisions.
+ */
+export function isCompatibleEf61Iri(url: URL | string): boolean {
+  try {
+    return fromCompatibleEf61Id(url) != null;
+  } catch (error) {
+    if (error instanceof TypeError) return true;
+    throw error;
+  }
+}
+
+/**
+ * Records that a vocabulary object returned by a property accessor was
+ * obtained through the given property of a portable object, so that later
+ * dereferences from it can tell where it came from.  Nothing is recorded if
+ * the parent is not in a portable chain, or if the child already has its
+ * provenance.
+ *
+ * @internal Technically exported for generated vocabulary classes, but not
+ * part of the public API contract.  This is not considered public API for
+ * Semantic Versioning decisions.
+ */
+export function recordPortableReferrer(
+  parent: object,
+  child: unknown,
+  property: string,
+): void {
+  if (child == null || typeof child !== "object") return;
+  if (provenances.has(child) || !isInPortableChain(parent)) return;
+  provenances.set(child, { referrer: { object: parent, property } });
+}
+
+/**
+ * Copies the provenance of a vocabulary object to its clone.  The clone
+ * keeps where the original came from and the restriction on unsecured
+ * objects, but not a positive verification status nor a collection context,
+ * since the clone may have different property values.
+ *
+ * @internal Technically exported for generated vocabulary classes, but not
+ * part of the public API contract.  This is not considered public API for
+ * Semantic Versioning decisions.
+ */
+export function copyPortableProvenance(from: object, to: object): void {
+  const provenance = provenances.get(from);
+  if (provenance == null) return;
+  provenances.set(to, {
+    referrer: provenance.referrer,
+    ...(provenance.acceptance === "unsecured"
+      ? { acceptance: "unsecured" }
+      : {}),
+  });
+}
+
+/**
+ * Rejects a reference from a portable object that would be dereferenced as
+ * an ordinary HTTP(S) object although it stands for a portable object, i.e.,
+ * an FEP-ef61 compatible identifier, or a document whose final URL or `@id`
+ * is a compatible identifier or a portable IRI.  Such a document would skip
+ * the portable object policy, so it is rejected regardless of the
+ * `crossOrigin` option, except that `crossOrigin: "throw"` makes it throw.
+ *
+ * @param url The rejected URL, for the log message.
+ * @param crossOrigin The `crossOrigin` option of the accessor.
+ * @returns Always `null`.
+ * @throws {Error} If `crossOrigin` is `"throw"`.
+ * @internal Technically exported for generated vocabulary classes, but not
+ * part of the public API contract.  This is not considered public API for
+ * Semantic Versioning decisions.
+ */
+export function rejectPortableChainReference(
+  url: string,
+  crossOrigin: "ignore" | "throw" | "trust" | undefined,
+): null {
+  const message = "Refusing to dereference {url} from a portable object as " +
+    "an ordinary HTTP(S) object, because it stands for an FEP-ef61 portable " +
+    "object that is not verified this way.";
+  if (crossOrigin === "throw") {
+    throw new Error(message.replace("{url}", url));
+  }
+  logger.warn(message, { url });
+  return null;
+}
+
+/**
+ * Logs that an embedded object without `@id` in an object accepted without
+ * an integrity proof is dropped, because it cannot be dereferenced and
+ * verified on its own.
+ *
+ * @internal Technically exported for generated vocabulary classes, but not
+ * part of the public API contract.  This is not considered public API for
+ * Semantic Versioning decisions.
+ */
+export function warnUnverifiableEmbeddedObject(
+  parent: object,
+  property: string,
+): void {
+  logger.warn(
+    "Dropping an embedded object without @id in the {property} property of " +
+      "{parentId}, because the parent was accepted without an integrity " +
+      "proof and the embedded object cannot be verified on its own.",
+    { property, parentId: getObjectId(parent)?.href ?? null },
+  );
+}
+
+function buildReferrerChain(
+  link: PortableReferrerLink | undefined,
+  depth = 0,
+): PortableObjectReferrer | undefined {
+  if (link == null) return undefined;
+  const provenance = provenances.get(link.object);
+  const base = {
+    object: link.object,
+    id: getObjectId(link.object),
+    property: link.property,
+    ...(provenance?.acceptance == null
+      ? {}
+      : { acceptance: provenance.acceptance }),
+    ...(provenance?.collectionContext === undefined
+      ? {}
+      : { collectionContext: provenance.collectionContext }),
+  };
+  if (provenance?.referrer == null) return base;
+  if (depth + 1 >= MAX_REFERRER_CHAIN_LENGTH) {
+    return { ...base, truncated: true };
+  }
+  return {
+    ...base,
+    referrer: buildReferrerChain(provenance.referrer, depth + 1),
+  };
+}
 
 /**
  * Checks whether a URL is an FEP-ef61 portable ActivityPub IRI.
@@ -179,6 +403,7 @@ export interface DereferencePortableIriOptions<T> {
   tracerProvider: TracerProvider;
   gateways?: readonly (string | URL)[];
   verifyPortableObject?: PortableObjectVerifier;
+  referrer?: PortableReferrerLink;
   suppressError?: boolean;
   crossOrigin?: "ignore" | "throw" | "trust";
   /**
@@ -287,6 +512,11 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
   const contextLoader = snapshot.loader;
   const attempts: Attempt[] = [];
   const { signal } = options;
+  const explicitGateways = options.gateways == null ? undefined : gateways;
+  const gatewayHints = options.gateways == null && gateways.length > 0
+    ? gateways
+    : undefined;
+  const referrer = buildReferrerChain(options.referrer);
   try {
     for (const { url: requestUrl, gateway } of requestUrls) {
       signal?.throwIfAborted();
@@ -309,12 +539,22 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
       const { document } = remoteDocument;
       try {
         await checkPortableObjectId(document, expectedId, contextLoader);
-        let result: { readonly verified: boolean };
+        let documentUrl: URL | undefined;
+        try {
+          documentUrl = parseIri(remoteDocument.documentUrl);
+        } catch {
+          documentUrl = undefined;
+        }
+        let result: PortableObjectVerification;
         try {
           result = await verify(document, {
             documentLoader: options.documentLoader,
             contextLoader,
             tracerProvider: options.tracerProvider,
+            ...(documentUrl == null ? {} : { documentUrl }),
+            ...(explicitGateways == null ? {} : { gateways: explicitGateways }),
+            ...(gatewayHints == null ? {} : { gatewayHints }),
+            ...(referrer == null ? {} : { referrer }),
           });
         } catch (error) {
           throw new PortableObjectRejection(
@@ -333,6 +573,15 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
           baseUrl: url,
         });
         signal?.throwIfAborted();
+        if (object != null && typeof object === "object") {
+          provenances.set(object, {
+            acceptance: result.unsecured === true ? "unsecured" : "verified",
+            ...(result.collectionContext === undefined
+              ? {}
+              : { collectionContext: result.collectionContext }),
+            ...(options.referrer == null ? {} : { referrer: options.referrer }),
+          });
+        }
         if (gateway != null) {
           span?.setAttribute("activitypub.gateway", gateway.href);
         }

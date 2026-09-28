@@ -7,13 +7,23 @@ import {
   type DocumentLoader,
   FetchError,
   getDocumentLoader,
+  type PortableObjectVerification,
   type PortableObjectVerifier,
+  type PortableObjectVerifierOptions,
   type RemoteDocument,
 } from "@fedify/vocab-runtime";
 import fetchMock from "fetch-mock";
 import { deepStrictEqual, ok, rejects } from "node:assert/strict";
+import { traverseCollection } from "./lookup.ts";
 import { assertInstanceOf } from "./utils.ts";
-import { Create, Note } from "./vocab.ts";
+import {
+  Collection,
+  CollectionPage,
+  Create,
+  Note,
+  OrderedCollection,
+  Person,
+} from "./vocab.ts";
 
 const did = "did:key:z6Mkabc";
 const objectId = `ap+ef61://${did}/objects/1`;
@@ -869,4 +879,348 @@ test("getObject() sends the ActivityStreams Accept header to gateways", {
   } finally {
     fetchMock.hardReset();
   }
+});
+
+const AS = "https://www.w3.org/ns/activitystreams#";
+
+function gatewayUrl(gateway: string, path: string): string {
+  return `${gateway}/.well-known/apgateway/${did}${path}`;
+}
+
+function createRecordingVerifier(
+  decide: (
+    document: unknown,
+    options: PortableObjectVerifierOptions,
+  ) => PortableObjectVerification = () => ({ verified: true }),
+): PortableObjectVerifier & {
+  readonly calls: {
+    document: unknown;
+    options: PortableObjectVerifierOptions;
+  }[];
+} {
+  const calls: {
+    document: unknown;
+    options: PortableObjectVerifierOptions;
+  }[] = [];
+  // deno-lint-ignore require-await
+  const verifier = async (
+    document: unknown,
+    options: PortableObjectVerifierOptions,
+  ) => {
+    calls.push({ document, options });
+    return decide(document, options);
+  };
+  return Object.assign(verifier, { calls });
+}
+
+function portableCollection(
+  path: string,
+  extra: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id: `ap://${did}${path}`,
+    type: "OrderedCollection",
+    totalItems: 0,
+    ...extra,
+  };
+}
+
+test("getOutbox() passes the fetch source and referrer to the verifier", async () => {
+  const person = await Person.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id: `ap://${did}/actor`,
+    type: "Person",
+    inbox: `ap://${did}/actor/inbox`,
+    outbox: `ap://${did}/actor/outbox?@gateway=${
+      encodeURIComponent("https://hint.example")
+    }`,
+  }, { contextLoader: mockDocumentLoader });
+  const documentLoader = createLoader({
+    [gatewayUrl("https://hint.example", "/actor/outbox")]: portableCollection(
+      "/actor/outbox",
+    ),
+  });
+  const verifier = createRecordingVerifier();
+  const outbox = await person.getOutbox({
+    documentLoader,
+    contextLoader: mockDocumentLoader,
+    verifyPortableObject: verifier,
+  });
+  assertInstanceOf(outbox, Collection);
+  deepStrictEqual(verifier.calls.length, 1);
+  const { options } = verifier.calls[0];
+  deepStrictEqual(
+    options.documentUrl,
+    new URL(gatewayUrl("https://hint.example", "/actor/outbox")),
+  );
+  deepStrictEqual(options.gateways, undefined);
+  deepStrictEqual(options.gatewayHints, [new URL("https://hint.example")]);
+  ok(options.referrer?.object === person);
+  deepStrictEqual(options.referrer?.property, `${AS}outbox`);
+  deepStrictEqual(options.referrer?.acceptance, undefined);
+
+  // Explicit gateways are passed as such:
+  const person2 = await Person.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id: `ap://${did}/actor`,
+    type: "Person",
+    inbox: `ap://${did}/actor/inbox`,
+    outbox: `ap://${did}/actor/outbox`,
+  }, { contextLoader: mockDocumentLoader });
+  const verifier2 = createRecordingVerifier();
+  await person2.getOutbox({
+    documentLoader: createLoader({
+      [gatewayUrl("https://gw.example", "/actor/outbox")]: portableCollection(
+        "/actor/outbox",
+      ),
+    }),
+    contextLoader: mockDocumentLoader,
+    gateways: ["https://gw.example"],
+    verifyPortableObject: verifier2,
+  });
+  deepStrictEqual(verifier2.calls[0].options.gateways, [
+    new URL("https://gw.example"),
+  ]);
+  deepStrictEqual(verifier2.calls[0].options.gatewayHints, undefined);
+});
+
+test("getFirst() passes the referrer chain and collection context", async () => {
+  const context = Object.freeze({});
+  const documentLoader = createLoader({
+    [gatewayUrl("https://gw.example", "/actor")]: {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: `ap://${did}/actor`,
+      type: "Person",
+      inbox: `ap://${did}/actor/inbox`,
+      outbox: `ap://${did}/actor/outbox`,
+    },
+    [gatewayUrl("https://gw.example", "/actor/outbox")]: portableCollection(
+      "/actor/outbox",
+      {
+        first: {
+          id: `ap://${did}/actor/outbox?page=1`,
+          type: "OrderedCollectionPage",
+          next: `ap://${did}/actor/outbox?page=2`,
+        },
+      },
+    ),
+    [gatewayUrl("https://gw.example", "/actor/outbox?page=2")]: {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: `ap://${did}/actor/outbox?page=2`,
+      type: "OrderedCollectionPage",
+      orderedItems: [],
+    },
+  });
+  // The collection is signed in this scenario (verified without the
+  // unsecured flag), so its embedded first page is trusted by origin:
+  const verifier = createRecordingVerifier((document) =>
+    (document as Record<string, unknown>).type === "OrderedCollection"
+      ? { verified: true, collectionContext: context }
+      : { verified: true }
+  );
+  const options = {
+    documentLoader,
+    contextLoader: mockDocumentLoader,
+    gateways: ["https://gw.example"],
+    verifyPortableObject: verifier,
+  };
+  const create = await createActivity(`ap://${did}/actor`);
+  const actor = await create.getObject(options);
+  assertInstanceOf(actor, Person);
+  const outbox = await actor.getOutbox(options);
+  assertInstanceOf(outbox, Collection);
+  const first = await outbox.getFirst(options);
+  assertInstanceOf(first, CollectionPage);
+  const next = await first.getNext(options);
+  assertInstanceOf(next, CollectionPage);
+  const { referrer } = verifier.calls[verifier.calls.length - 1].options;
+  // next ← (embedded) first ← outbox ← actor ← create:
+  ok(referrer?.object === first);
+  deepStrictEqual(referrer?.property, `${AS}next`);
+  deepStrictEqual(referrer?.acceptance, undefined);
+  ok(referrer?.referrer?.object === outbox);
+  deepStrictEqual(referrer?.referrer?.property, `${AS}first`);
+  deepStrictEqual(referrer?.referrer?.acceptance, "verified");
+  ok(referrer?.referrer?.collectionContext === context);
+  ok(referrer?.referrer?.referrer?.object === actor);
+  deepStrictEqual(referrer?.referrer?.referrer?.property, `${AS}outbox`);
+  deepStrictEqual(referrer?.referrer?.referrer?.acceptance, "verified");
+  ok(referrer?.referrer?.referrer?.referrer?.object === create);
+});
+
+test("accessors do not trust objects embedded in unsecured collections", async () => {
+  const itemPath = "/objects/1";
+  const documentLoader = createLoader({
+    [gatewayUrl("https://gw.example", "/actor/outbox")]: portableCollection(
+      "/actor/outbox",
+      {
+        orderedItems: [
+          // A forged copy of a portable object:
+          { id: `ap://${did}${itemPath}`, type: "Note", content: "Forged" },
+          // An object that cannot be verified on its own:
+          { type: "Note", content: "Anonymous" },
+        ],
+      },
+    ),
+    [gatewayUrl("https://gw.example", itemPath)]: note(),
+  });
+  const verifier = createRecordingVerifier((document) =>
+    (document as Record<string, unknown>).type === "OrderedCollection"
+      ? { verified: true, unsecured: true }
+      : { verified: true }
+  );
+  const options = {
+    documentLoader,
+    contextLoader: mockDocumentLoader,
+    gateways: ["https://gw.example"],
+    verifyPortableObject: verifier,
+  };
+  const createPerson = () =>
+    Person.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: `ap://${did}/actor`,
+      type: "Person",
+      inbox: `ap://${did}/actor/inbox`,
+      outbox: `ap://${did}/actor/outbox`,
+    }, { contextLoader: mockDocumentLoader });
+  const outbox = await (await createPerson()).getOutbox(options);
+  assertInstanceOf(outbox, Collection);
+  const items = await Array.fromAsync(outbox.getItems(options));
+  deepStrictEqual(
+    items.map((item) => item instanceof Note ? item.content : null),
+    ["Portable note"],
+  );
+  // Even crossOrigin: "trust" does not make them trusted:
+  const outbox2 = await (await createPerson()).getOutbox(options);
+  assertInstanceOf(outbox2, Collection);
+  const items2 = await Array.fromAsync(
+    outbox2.getItems({ ...options, crossOrigin: "trust" }),
+  );
+  deepStrictEqual(items2.length, 1);
+
+  // A clone keeps the restriction, so its embedded objects are fetched
+  // again (and fail here, since nothing can be fetched):
+  const outbox3 = await (await createPerson()).getOutbox(options);
+  assertInstanceOf(outbox3, Collection);
+  const items3 = await Array.fromAsync(
+    outbox3.clone().getItems({
+      ...options,
+      documentLoader: createLoader({}),
+      suppressError: true,
+    }),
+  );
+  deepStrictEqual(items3, []);
+});
+
+test("accessors reject compatible identifiers from portable objects", async () => {
+  const compatibleId = gatewayUrl("https://evil.example", "/actor/outbox");
+  const collection = (id: string) => ({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id,
+    type: "OrderedCollection",
+    totalItems: 0,
+  });
+  const person = (outbox: unknown) =>
+    Person.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: `ap://${did}/actor`,
+      type: "Person",
+      inbox: `ap://${did}/actor/inbox`,
+      outbox,
+    }, { contextLoader: mockDocumentLoader });
+  const redirectingLoader: DocumentLoader = (url) =>
+    Promise.resolve({
+      contextUrl: null,
+      documentUrl: url === "https://example.com/outbox" ? compatibleId : url,
+      document: collection(
+        url === "https://example.com/outbox" ? compatibleId : url,
+      ),
+    });
+  for (const crossOrigin of [undefined, "trust"] as const) {
+    const options = {
+      documentLoader: redirectingLoader,
+      contextLoader: mockDocumentLoader,
+      verifyPortableObject: createRecordingVerifier(),
+      crossOrigin,
+    };
+    // A compatible identifier as the reference:
+    deepStrictEqual(
+      await (await person(compatibleId)).getOutbox(options),
+      null,
+    );
+    // A redirect to a compatible identifier:
+    deepStrictEqual(
+      await (await person("https://example.com/outbox")).getOutbox(options),
+      null,
+    );
+    // An embedded object with a compatible identifier:
+    deepStrictEqual(
+      await (await person(collection(compatibleId))).getOutbox(options),
+      null,
+    );
+  }
+  // A throwing crossOrigin option throws:
+  await rejects(
+    async () =>
+      await (await person(compatibleId)).getOutbox({
+        documentLoader: redirectingLoader,
+        contextLoader: mockDocumentLoader,
+        crossOrigin: "throw",
+      }),
+    /portable object/,
+  );
+  // Compatible identifiers from ordinary HTTP(S) objects are not affected:
+  const httpPerson = await Person.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id: "https://evil.example/actor",
+    type: "Person",
+    inbox: "https://evil.example/actor/inbox",
+    outbox: compatibleId,
+  }, { contextLoader: mockDocumentLoader });
+  assertInstanceOf(
+    await httpPerson.getOutbox({
+      documentLoader: redirectingLoader,
+      contextLoader: mockDocumentLoader,
+    }),
+    OrderedCollection,
+  );
+});
+
+test("singular accessors drop anonymous objects embedded in unsecured collections", async () => {
+  const documentLoader = createLoader({
+    [gatewayUrl("https://gw.example", "/actor/outbox")]: portableCollection(
+      "/actor/outbox",
+      {
+        // An anonymous page cannot be fetched and verified on its own:
+        first: {
+          type: "OrderedCollectionPage",
+          orderedItems: [{ type: "Note", content: "Anonymous" }],
+        },
+      },
+    ),
+  });
+  const options = {
+    documentLoader,
+    contextLoader: mockDocumentLoader,
+    gateways: ["https://gw.example"],
+    verifyPortableObject: createRecordingVerifier(() => ({
+      verified: true,
+      unsecured: true,
+    })),
+  };
+  const person = await Person.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id: `ap://${did}/actor`,
+    type: "Person",
+    inbox: `ap://${did}/actor/inbox`,
+    outbox: `ap://${did}/actor/outbox`,
+  }, { contextLoader: mockDocumentLoader });
+  const outbox = await person.getOutbox(options);
+  assertInstanceOf(outbox, OrderedCollection);
+  deepStrictEqual(await outbox.getFirst(options), null);
+  deepStrictEqual(
+    await Array.fromAsync(traverseCollection(outbox, options)),
+    [],
+  );
 });

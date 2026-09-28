@@ -97,6 +97,10 @@ async function* generateProperty(
               tracerProvider,
               gateways: options.gateways,
               verifyPortableObject: options.verifyPortableObject,
+              referrer: {
+                object: this,
+                property: ${JSON.stringify(property.uri)},
+              },
               suppressError: options.suppressError,
               crossOrigin: options.crossOrigin,
               span,
@@ -128,6 +132,11 @@ async function* generateProperty(
           }
         }
         const lookupUrl = formatIri(url);
+        const inPortableChain = isInPortableChain(this);
+        if (inPortableChain && isCompatibleEf61Iri(url)) {
+          span.end();
+          return rejectPortableChainReference(lookupUrl, options.crossOrigin);
+        }
         let fetchResult: RemoteDocument;
         try {
           fetchResult = await documentLoader(lookupUrl);
@@ -153,6 +162,17 @@ async function* generateProperty(
             document,
             { documentLoader, contextLoader, tracerProvider, baseUrl }
           );
+          if (
+            inPortableChain &&
+            (isCompatibleEf61Iri(documentUrl) ||
+              (obj.id != null &&
+                (isPortableIri(obj.id) || isCompatibleEf61Iri(obj.id))))
+          ) {
+            return rejectPortableChainReference(
+              documentUrl,
+              options.crossOrigin,
+            );
+          }
           if (obj?.id != null && !isTrustedIriOrigin(options, obj.id, baseUrl)) {
             if (options.crossOrigin === "throw") {
               throw new Error(
@@ -319,10 +339,21 @@ async function* generateProperty(
         if (this.${await getFieldName(property.uri)}.length < 1) return null;
         let v = this.${await getFieldName(property.uri)}[0];
         if (!(v instanceof URL) &&
-            v.id != null &&
-            !isTrustedIriOrigin(options, v.id, ${trustOwner}) &&
             !this.${await getFieldName(property.uri, "#_trust")}.has(0)) {
-          v = v.id;
+          if (v.id == null) {
+            if (isUnsecuredPortableObject(this)) {
+              warnUnverifiableEmbeddedObject(this, ${
+        JSON.stringify(property.uri)
+      });
+              return null;
+            }
+          } else if (
+            !isTrustedIriOrigin(options, v.id, ${trustOwner}) ||
+            isUnsecuredPortableObject(this) ||
+            (isInPortableChain(this) && isCompatibleEf61Iri(v.id))
+          ) {
+            v = v.id;
+          }
         }
         if (v instanceof URL) {
           const fetched =
@@ -331,6 +362,9 @@ async function* generateProperty(
           this.${await getFieldName(property.uri)}[0] = fetched;
           this.${await getFieldName(property.uri, "#_trust")}.add(0);
           this._cachedJsonLd = undefined;
+          recordPortableReferrer(this, fetched, ${
+        JSON.stringify(property.uri)
+      });
           return fetched;
         }
       `;
@@ -360,9 +394,11 @@ async function* generateProperty(
       }
       yield `
         if (v?.id != null &&
-            ${
+            ((${
         type.trustEmbeddedObjects === false ? "" : "this.id != null && "
-      }!isTrustedIriOrigin(options, v.id, ${trustOwner}) &&
+      }!isTrustedIriOrigin(options, v.id, ${trustOwner})) ||
+              isUnsecuredPortableObject(this) ||
+              (isInPortableChain(this) && isCompatibleEf61Iri(v.id))) &&
             !this.${await getFieldName(property.uri, "#_trust")}.has(0)) {
           if (options.crossOrigin === "throw") {
             throw new Error(
@@ -370,7 +406,7 @@ async function* generateProperty(
               "origin than the property owner's @id (" + ${
         type.trustEmbeddedObjects === false
           ? '"untrusted metadata"'
-          : "this.id.href"
+          : "(this.id?.href ?? null)"
       } + "); " +
               "refusing to return the object.  If you want to bypass this " +
               "check and are aware of the security implications, set the " +
@@ -386,11 +422,12 @@ async function* generateProperty(
             { objectId: v.id.href, parentObjectId: ${
         type.trustEmbeddedObjects === false
           ? '"untrusted metadata"'
-          : "this.id.href"
+          : "(this.id?.href ?? null)"
       } },
           );
           return null;
         }
+        recordPortableReferrer(this, v, ${JSON.stringify(property.uri)});
         return v;
       }
       `;
@@ -437,10 +474,21 @@ async function* generateProperty(
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
           if (!(v instanceof URL) &&
-              v.id != null &&
-              !isTrustedIriOrigin(options, v.id, ${trustOwner}) &&
               !this.${await getFieldName(property.uri, "#_trust")}.has(i)) {
-            v = v.id;
+            if (v.id == null) {
+              if (isUnsecuredPortableObject(this)) {
+                warnUnverifiableEmbeddedObject(this, ${
+        JSON.stringify(property.uri)
+      });
+                continue;
+              }
+            } else if (
+              !isTrustedIriOrigin(options, v.id, ${trustOwner}) ||
+              isUnsecuredPortableObject(this) ||
+              (isInPortableChain(this) && isCompatibleEf61Iri(v.id))
+            ) {
+              v = v.id;
+            }
           }
           if (v instanceof URL) {
             const fetched =
@@ -449,6 +497,9 @@ async function* generateProperty(
             vs[i] = fetched;
             this.${await getFieldName(property.uri, "#_trust")}.add(i);
             this._cachedJsonLd = undefined;
+            recordPortableReferrer(this, fetched, ${
+        JSON.stringify(property.uri)
+      });
             yield fetched;
             continue;
           }
@@ -479,9 +530,11 @@ async function* generateProperty(
       }
       yield `
           if (v?.id != null &&
-              ${
+              ((${
         type.trustEmbeddedObjects === false ? "" : "this.id != null && "
-      }!isTrustedIriOrigin(options, v.id, ${trustOwner}) &&
+      }!isTrustedIriOrigin(options, v.id, ${trustOwner})) ||
+                isUnsecuredPortableObject(this) ||
+                (isInPortableChain(this) && isCompatibleEf61Iri(v.id))) &&
               !this.${await getFieldName(property.uri, "#_trust")}.has(i)) {
             if (options.crossOrigin === "throw") {
               throw new Error(
@@ -489,7 +542,7 @@ async function* generateProperty(
                 "origin than the property owner's @id (" + ${
         type.trustEmbeddedObjects === false
           ? '"untrusted metadata"'
-          : "this.id.href"
+          : "(this.id?.href ?? null)"
       } + "); " +
                 "refusing to return the object.  If you want to bypass this " +
                 "check and are aware of the security implications, set the " +
@@ -505,11 +558,12 @@ async function* generateProperty(
               { objectId: v.id.href, parentObjectId: ${
         type.trustEmbeddedObjects === false
           ? '"untrusted metadata"'
-          : "this.id.href"
+          : "(this.id?.href ?? null)"
       } },
             );
             continue;
           }
+          recordPortableReferrer(this, v, ${JSON.stringify(property.uri)});
           yield v;
         }
       }
