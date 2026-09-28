@@ -40,12 +40,17 @@ why some activities are rejected, you can turn on [logging](./log.md) for
 ### Compound portable objects
 
 The inbox independently verifies every JSON map with an [FEP-ef61] portable
-`id` or `@id`, including embedded collections, with the
+`id` or `@id`, i.e., an `ap:` or `ap+ef61:` URI or a compatible identifier,
+including embedded collections, with the
 [map-local compound-proof profile](./send.md#compound-portable-objects).  A
 valid proof on the outer activity does not authenticate an unsigned or invalid
 portable object embedded within it.  The gateway trust allowance for an
 unsigned top-level portable collection does not apply inside a compound
 document; an embedded portable collection needs its own proof and `@context`.
+The only maps exempt from this are keys embedded in the `publicKey` or
+`assertionMethod` of a verified portable actor whose IDs are the actor's
+compatible identifiers plus fragments, such as its gateway keys, which the
+actor's proof covers.
 
 This check uses the received JSON after the normal outer authentication and
 actor ownership checks.  Since a Linked Data Signature is made after the
@@ -66,14 +71,34 @@ not dispatch any part of those documents to application code.
 *This behavior is available since Fedify 2.4.0.*
 
 An activity whose actor is an [FEP-ef61] portable actor, i.e., has an `ap:` or
-`ap+ef61:` ID, is accepted only if its Object Integrity Proof made by the
-actor's DID is valid.  An HTTP Signature or a Linked Data Signature does not
-authenticate it, not even an HTTP Signature made with one of the actor's
+`ap+ef61:` ID, or a [compatible identifier] such as
+`https://example.com/.well-known/apgateway/did:key:z6Mk.../actor`, is accepted
+only if its Object Integrity Proof made by the actor's DID is valid.  An HTTP
+Signature or a Linked Data Signature does not authenticate it, not even an HTTP
+Signature made with one of the actor's
 [gateway keys](./actor.md#gateway-keys-of-portable-actors), which only tells
 which gateway sent the request.  Such an activity without a valid proof is
 rejected with `401 Unauthorized`.  Conversely, an activity with a valid proof
 is accepted even if the gateway that sent it did not sign the request with
 a key the actor lists.
+
+The same goes for an activity whose own ID is portable: its Object Integrity
+Proof has to be made by the DID of its ID, so an activity whose ID names
+a DID other than the one that signed it is rejected, even if its actor is
+authenticated.  Compatible identifiers of the same portable object on
+different gateways are the same object, so the gateways in an activity's ID
+and its actor's ID may differ.
+
+A compatible identifier stands for the portable object it contains, whatever
+server serves it, so Fedify treats such an actor as a portable actor rather
+than as an ordinary actor of the gateway's origin.  An actor that publishes
+compatible identifiers without signing its activities, which FEP-ef61 does not
+allow, is therefore rejected; so are actors whose DIDs use key types that
+Fedify cannot verify, such as the ML-DSA-44 `did:key` DIDs that [tootik]
+optionally supports.
+
+[compatible identifier]: https://w3id.org/fep/ef61#compatible-ids
+[tootik]: https://github.com/dimkr/tootik
 
 ### `Accept-Signature` challenges
 

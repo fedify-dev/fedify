@@ -255,15 +255,85 @@ test("verifyPortableObject() uses the actual fetch source", async () => {
     "unknownCollectionSource",
   );
   // The gateway is judged by the final URL, not by the collection ID or
-  // the request:
+  // the request; a compatible identifier on another gateway is the same
+  // portable collection:
   const result = await verify(outbox({ id: gatewayUrl(evil, outboxId) }), {
     documentLoader,
     gateways,
     referrer,
     documentUrl: new URL(gatewayUrl(gw1, outboxId)),
   });
-  // An HTTP(S) ID is not a portable collection at all:
-  assertFailure(result, "notPortableObject");
+  ok(result.verified);
+  strictEqual(result.method, "gateway");
+  if (result.method !== "gateway") return;
+  deepStrictEqual(result.gateway, new URL(gw1));
+  // An HTTP(S) ID that is not a compatible identifier is not a portable
+  // collection at all:
+  assertFailure(
+    await verify(outbox({ id: `${evil}/outbox` }), {
+      documentLoader,
+      gateways,
+      referrer,
+      documentUrl: new URL(gatewayUrl(gw1, outboxId)),
+    }),
+    "notPortableObject",
+  );
+});
+
+test("verifyPortableObject() trusts unsecured collections of compatible-ID actors", async () => {
+  // As tootik does, the actor and its collections are identified by their
+  // compatible identifiers:
+  const compatibleActorId = gatewayUrl(gw1, actorId);
+  const compatibleOutboxId = gatewayUrl(gw1, outboxId);
+  const signed = await sign(actor({
+    id: compatibleActorId,
+    inbox: gatewayUrl(gw1, `ap://${did}/actor/inbox`),
+    outbox: compatibleOutboxId,
+    followers: gatewayUrl(gw1, `ap://${did}/actor/followers`),
+  }));
+  const collection = outbox({
+    id: compatibleOutboxId,
+    attributedTo: compatibleActorId,
+  });
+  const documentLoader = createLoader({ [compatibleActorId]: signed });
+  // Without a referrer, the owner is fetched through the gateway of its
+  // compatible identifier:
+  const result = await verify(collection, {
+    documentLoader,
+    documentUrl: new URL(compatibleOutboxId),
+  });
+  ok(result.verified, JSON.stringify(result));
+  strictEqual(result.method, "gateway");
+  if (result.method !== "gateway") return;
+  deepStrictEqual(result.gateway, new URL(gw1));
+  deepStrictEqual(documentLoader.fetched, [compatibleActorId]);
+  // Explicit gateways, even none, take precedence over that gateway:
+  const noGateways = createLoader({ [compatibleActorId]: signed });
+  assertFailure(
+    await verify(collection, {
+      documentLoader: noGateways,
+      documentUrl: new URL(compatibleOutboxId),
+      gateways: [],
+    }),
+    "collectionOwnerUnavailable",
+  );
+  deepStrictEqual(
+    noGateways.fetched.filter((url) => url === compatibleActorId),
+    [],
+  );
+  // An unsigned actor document at the gateway does not vouch for it:
+  assertFailure(
+    await verify(collection, {
+      documentLoader: createLoader({
+        [compatibleActorId]: actor({
+          id: compatibleActorId,
+          outbox: compatibleOutboxId,
+        }),
+      }),
+      documentUrl: new URL(compatibleOutboxId),
+    }),
+    "collectionOwnerUnavailable",
+  );
 });
 
 test("verifyPortableObject() requires an unambiguous owner", async () => {

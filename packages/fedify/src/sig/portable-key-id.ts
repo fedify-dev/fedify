@@ -3,8 +3,10 @@ import {
   canonicalizePortableUri,
   formatIri,
   fromCompatibleEf61Id,
+  getFe34Origin,
   toCompatibleEf61Id,
 } from "@fedify/vocab-runtime";
+import { isCompatibleEf61Iri } from "@fedify/vocab-runtime/internal/portable-dereference";
 
 const COMPATIBLE_KEY_ID_PATH_PATTERN =
   /^\/\.well-known\/apgateway\/did(?::|%3A)/i;
@@ -18,12 +20,48 @@ export function isPortableUri(url: URL): boolean {
 }
 
 /**
+ * Checks whether an ID identifies an [FEP-ef61] portable object, i.e., it is
+ * an `ap:` or `ap+ef61:` URI, or looks like a compatible identifier.
+ * A malformed compatible identifier counts too, so that it is rejected as
+ * a portable object that no proof can match, rather than trusted by its web
+ * origin.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
+ * @internal
+ */
+export function isPortableId(id: URL | string): boolean {
+  if (typeof id === "string") {
+    if (/^ap(?:\+ef61)?:\/\//i.test(id)) return true;
+  } else if (isPortableUri(id)) return true;
+  return isCompatibleEf61Iri(id);
+}
+
+/**
+ * Gets the DID, i.e., the FEP-fe34 cryptographic origin, of an `ap:` or
+ * `ap+ef61:` URI, a DID URL, or a compatible identifier.
+ * @returns The DID, or `null` if the ID is none of them, or is malformed.
+ * @internal
+ */
+export function getPortableDid(id: URL | string): string | null {
+  try {
+    const raw = typeof id === "string" ? id : id.href;
+    if (/^(?:did:|ap(?:\+ef61)?:\/\/)/i.test(raw)) return getFe34Origin(id);
+    const portable = fromCompatibleEf61Id(id);
+    return portable == null ? null : getFe34Origin(portable);
+  } catch (error) {
+    if (error instanceof TypeError) return null;
+    throw error;
+  }
+}
+
+/**
  * Checks whether an activity is performed by an FEP-ef61 portable actor,
- * i.e., any of its actors has an `ap:` or `ap+ef61:` ID.
+ * i.e., any of its actors has an `ap:` or `ap+ef61:` ID, or a compatible
+ * identifier.
  * @internal
  */
 export function hasPortableActor(activity: Activity): boolean {
-  return activity.actorIds.some(isPortableUri);
+  return activity.actorIds.some((id) => isPortableId(id));
 }
 
 /**
@@ -99,13 +137,15 @@ export function getGatewayKeyBase(actorId: URL, gateway: string): URL {
 }
 
 /**
- * Tells whether a parsed document at a compatible key ID is a portable actor,
- * which makes the key a gateway key that only
+ * Tells whether a parsed document is a portable actor, i.e., an actor whose
+ * ID is an `ap:` or `ap+ef61:` URI or a compatible identifier.  Such an actor
+ * is never authenticated by the web origin that served it; at a compatible
+ * key ID, it makes the key a gateway key that only
  * {@link verifyPortableGatewayKeyDocument} can vouch for.
  * @internal
  */
 export function isPortableActorDocument(object: unknown): object is Actor {
-  return isActor(object) && object.id != null && isPortableUri(object.id);
+  return isActor(object) && object.id != null && isPortableId(object.id);
 }
 
 /**

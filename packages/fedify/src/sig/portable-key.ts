@@ -66,13 +66,19 @@ export interface PortableGatewayKeyOptions {
  *
  * A gateway key is accepted only if:
  *
- *  -  the document is an actor whose portable ID is the one the key ID is
- *     the compatible identifier of;
+ *  -  the document is an actor whose portable ID, i.e., its `ap:` ID or
+ *     the canonical portable ID of its compatible identifier, is the one
+ *     the key ID is the compatible identifier of;
  *  -  the document has a valid [FEP-8b32] Object Integrity Proof made by
  *     the DID of its ID, i.e., it satisfies the [FEP-ef61] proof policy;
  *  -  the document embeds a `Multikey` with that ID in its `assertionMethod`,
- *     whose `controller` is the actor, as [FEP-521a] requires; a key
- *     embedded in its `publicKey` with the same ID must agree with it; and
+ *     whose `controller` is the actor, as [FEP-521a] requires, and a key
+ *     embedded in its `publicKey` with the same ID agrees with it; or, if
+ *     no `assertionMethod` entry has that ID, the document embeds
+ *     a `CryptographicKey` with that ID in its `publicKey`, whose `owner` is
+ *     the actor, as some publishers, e.g., tootik, list their RSA keys only
+ *     there;
+ *  -  no more than one entry of either property has that ID; and
  *  -  the key ID's origin is one of the actor's `gateways`.
  *
  * [FEP-8b32]: https://w3id.org/fep/8b32
@@ -140,6 +146,25 @@ export async function verifyPortableGatewayKeyDocument(
   // a key referred to by URL would be whatever its host serves.
   const refuse: DocumentLoader = (url) =>
     Promise.reject(new Error(`Refusing to fetch ${url}.`));
+  const parseEmbeddedPublicKey = async (
+    node: Record<string, unknown>,
+  ): Promise<(CryptographicKey & { publicKey: CryptoKey }) | null> => {
+    if (isReference(node)) return null;
+    let key: CryptographicKey;
+    try {
+      key = await CryptographicKey.fromJsonLd(node, {
+        documentLoader: refuse,
+        contextLoader: options.contextLoader,
+        tracerProvider: options.tracerProvider,
+      });
+    } catch (error) {
+      if (!(error instanceof TypeError)) throw error;
+      return null;
+    }
+    return key.publicKey == null
+      ? null
+      : key as CryptographicKey & { publicKey: CryptoKey };
+  };
   // The given actor was parsed with its own load of the document's contexts,
   // which a remote context can make differ from the expansion the proof
   // policy just checked.  Take everything from that verified expansion
@@ -166,56 +191,75 @@ export async function verifyPortableGatewayKeyDocument(
     );
   }
   actor = verifiedActor;
-  const multikeyNode = findEmbeddedNode(root[`${SEC}assertionMethod`], keyId);
-  if (multikeyNode == null) {
-    return reject(
-      "The actor document does not embed the key in its assertionMethod.",
-    );
+  const assertionNodes = findNodes(root[`${SEC}assertionMethod`], keyId);
+  const publicKeyNodes = findNodes(root[`${SEC}publicKey`], keyId);
+  if (assertionNodes.length > 1 || publicKeyNodes.length > 1) {
+    return reject("The actor document has more than one key with the ID.");
   }
-  let multikey: Multikey;
-  try {
-    multikey = await Multikey.fromJsonLd(multikeyNode, {
-      documentLoader: refuse,
-      contextLoader: options.contextLoader,
-      tracerProvider: options.tracerProvider,
-    });
-  } catch (error) {
-    if (!(error instanceof TypeError)) throw error;
-    return reject("The key in the assertionMethod is malformed.");
-  }
-  if (multikey.publicKey == null) {
-    return reject("The key in the assertionMethod has no public key.");
-  }
-  if (
-    multikey.controllerId == null ||
-    getCanonicalPortableId(multikey.controllerId) !== actorId
-  ) {
-    return reject("The controller of the key is not the actor.");
-  }
-  const publicKeyNode = findEmbeddedNode(root[`${SEC}publicKey`], keyId);
-  if (publicKeyNode != null) {
-    let publicKey: CryptographicKey;
+  let publicKey: CryptoKey;
+  if (assertionNodes.length > 0) {
+    if (isReference(assertionNodes[0])) {
+      return reject(
+        "The actor document does not embed the key in its assertionMethod.",
+      );
+    }
+    let multikey: Multikey;
     try {
-      publicKey = await CryptographicKey.fromJsonLd(publicKeyNode, {
+      multikey = await Multikey.fromJsonLd(assertionNodes[0], {
         documentLoader: refuse,
         contextLoader: options.contextLoader,
         tracerProvider: options.tracerProvider,
       });
     } catch (error) {
       if (!(error instanceof TypeError)) throw error;
-      return reject("The key in the publicKey is malformed.");
+      return reject("The key in the assertionMethod is malformed.");
+    }
+    if (multikey.publicKey == null) {
+      return reject("The key in the assertionMethod has no public key.");
     }
     if (
-      publicKey.publicKey == null ||
-      !await isSamePublicKey(publicKey.publicKey, multikey.publicKey) ||
-      publicKey.ownerId != null &&
-        getCanonicalPortableId(publicKey.ownerId) !== actorId
+      multikey.controllerId == null ||
+      getCanonicalPortableId(multikey.controllerId) !== actorId
     ) {
+      return reject("The controller of the key is not the actor.");
+    }
+    publicKey = multikey.publicKey;
+    if (publicKeyNodes.length > 0) {
+      const embedded = await parseEmbeddedPublicKey(publicKeyNodes[0]);
+      if (
+        embedded == null ||
+        !await isSamePublicKey(embedded.publicKey, publicKey) ||
+        embedded.ownerId != null &&
+          getCanonicalPortableId(embedded.ownerId) !== actorId
+      ) {
+        return reject(
+          "The key in the publicKey does not agree with the one in " +
+            "the assertionMethod.",
+        );
+      }
+    }
+  } else {
+    // FEP-ef61 asks publishers to put gateway keys in assertionMethod, but
+    // some, e.g., tootik, list their RSA keys only in publicKey.  The DID's
+    // proof covers the whole document, so an embedded publicKey entry that
+    // names the actor as its owner is vouched for just as well:
+    if (publicKeyNodes.length < 1) {
       return reject(
-        "The key in the publicKey does not agree with the one in " +
-          "the assertionMethod.",
+        "The actor document embeds the key in neither its assertionMethod " +
+          "nor its publicKey.",
       );
     }
+    const embedded = await parseEmbeddedPublicKey(publicKeyNodes[0]);
+    if (embedded == null) {
+      return reject("The key in the publicKey is not embedded or malformed.");
+    }
+    if (
+      embedded.ownerId == null ||
+      getCanonicalPortableId(embedded.ownerId) !== actorId
+    ) {
+      return reject("The owner of the key is not the actor.");
+    }
+    publicKey = embedded.publicKey;
   }
   const listed = actor.gateways.some((gateway) =>
     isGatewayUrl(gateway) && gateway.origin === keyId.origin
@@ -228,7 +272,7 @@ export async function verifyPortableGatewayKeyDocument(
   const key = new CryptographicKey({
     id: keyId,
     owner: actor.id,
-    publicKey: multikey.publicKey,
+    publicKey,
   }) as CryptographicKey & { publicKey: CryptoKey };
   return { type: "verified", actor, key };
 }
@@ -280,28 +324,22 @@ export async function fetchPortableGatewayKey(
   );
 }
 
-function findEmbeddedNode(
-  values: unknown,
-  id: URL,
-): Record<string, unknown> | null {
-  if (!Array.isArray(values)) return null;
+function findNodes(values: unknown, id: URL): Record<string, unknown>[] {
+  if (!Array.isArray(values)) return [];
+  const nodes: Record<string, unknown>[] = [];
   for (const value of values) {
     if (value == null || typeof value !== "object" || Array.isArray(value)) {
       continue;
     }
     const node = value as Record<string, unknown>;
     const nodeId = node["@id"];
-    if (typeof nodeId !== "string") continue;
-    let parsed: URL;
-    try {
-      parsed = new URL(nodeId);
-    } catch {
-      continue;
-    }
-    if (parsed.href !== id.href) continue;
-    // A node with nothing but an @id is a reference, not an embedded key:
-    if (Object.keys(node).every((key) => key === "@id")) continue;
-    return node;
+    if (typeof nodeId !== "string" || !URL.canParse(nodeId)) continue;
+    if (new URL(nodeId).href === id.href) nodes.push(node);
   }
-  return null;
+  return nodes;
+}
+
+/** A node with nothing but an `@id` is a reference, not an embedded key. */
+function isReference(node: Record<string, unknown>): boolean {
+  return Object.keys(node).every((key) => key === "@id");
 }

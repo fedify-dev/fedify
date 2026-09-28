@@ -143,6 +143,25 @@ test("lookupObject() with FEP-ef61 portable actors", {
       deepStrictEqual(documentLoader.fetched, [compatibleId, other]);
     });
 
+    await t.step("accepts a compatible identifier as the ID", async () => {
+      // Some publishers, e.g., tootik, identify their portable actors by
+      // compatible identifiers; the document is verified as the portable
+      // object, and keeps its own ID:
+      fetchMock.removeRoutes();
+      fetchMock.get(webFingerPrefix, selfLinks(compatibleId));
+      const document = person(compatibleId);
+      const documentLoader = createLoader({ [compatibleId]: document });
+      const verifyPortableObject = createVerifier();
+      const actor = await lookupObject("@alice@example.com", {
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        verifyPortableObject,
+      });
+      assertInstanceOf(actor, Person);
+      deepStrictEqual(actor.id, new URL(compatibleId));
+      deepStrictEqual(verifyPortableObject.documents, [document]);
+    });
+
     await t.step("rejects objects that fail the checks", async () => {
       fetchMock.removeRoutes();
       fetchMock.get(webFingerPrefix, selfLinks(compatibleId));
@@ -151,8 +170,13 @@ test("lookupObject() with FEP-ef61 portable actors", {
           [person(), false],
           // Same DID, but another object:
           [person(`ap://${did}/other`), true],
-          // A compatible identifier as the object ID is not portable:
-          [person(compatibleId), true],
+          // A compatible identifier of another object:
+          [
+            person(`https://example.com/.well-known/apgateway/${did}/other`),
+            true,
+          ],
+          // A compatible identifier of the object, but unverified:
+          [person(compatibleId), false],
         ] as const
       ) {
         const documentLoader = createLoader({ [compatibleId]: document });
@@ -539,17 +563,26 @@ test("lookupObject() verifies fetched documents that stand for portable objects"
   });
 
   await t.step("a compatible @id", async () => {
-    const documentLoader = redirectingLoader(plainUrl, person(compatibleId));
+    const document = person(compatibleId);
+    const documentLoader = redirectingLoader(plainUrl, document);
+    // The document stands for the portable object, and is verified as it:
     const verifyPortableObject = createVerifier();
+    const verified = await lookupObject(plainUrl, {
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      verifyPortableObject,
+    });
+    assertInstanceOf(verified, Person);
+    deepStrictEqual(verified.id, new URL(compatibleId));
+    deepStrictEqual(verifyPortableObject.documents, [document]);
     equal(
       await lookupObject(plainUrl, {
         documentLoader,
         contextLoader: mockDocumentLoader,
-        verifyPortableObject,
+        verifyPortableObject: createVerifier(false),
       }),
       null,
     );
-    deepStrictEqual(verifyPortableObject.documents, []);
     // Without verifyPortableObject, it is fetched as before:
     const actor = await lookupObject(plainUrl, {
       documentLoader,

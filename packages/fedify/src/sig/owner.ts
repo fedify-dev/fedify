@@ -19,6 +19,7 @@ import { fetchPortableGatewayKey } from "./portable-key.ts";
 import {
   getCanonicalPortableId,
   isCompatibleKeyId,
+  isPortableId,
   isSamePublicKey as isSameKeyMaterial,
 } from "./portable-key-id.ts";
 export { exportJwk, generateCryptoKeyPair, importJwk } from "./key.ts";
@@ -291,8 +292,12 @@ export async function getKeyOwner(
   if (!isActor(object)) return null;
   // The key id dereferenced to the owner's own document, so this single fetch
   // already proves the link—as long as the host that served the document is
-  // authoritative for the actor id it claims.
-  if (object.id == null || object.id.origin !== documentUrl.origin) {
+  // authoritative for the actor id it claims.  No host is for a portable
+  // actor; only its DID-signed document can tell its gateway keys, above:
+  if (
+    object.id == null || isPortableId(object.id) ||
+    object.id.origin !== documentUrl.origin
+  ) {
     logger.debug(
       "The document served at {documentUrl} claims to be the actor " +
         "{actorId}, which belongs to another origin; refusing to treat it " +

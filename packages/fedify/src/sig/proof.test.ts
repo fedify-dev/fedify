@@ -1727,14 +1727,76 @@ test("verifyPortableObjectProof()", async (t) => {
     );
   });
 
+  await t.step("treats compatible identifiers as portable IDs", async () => {
+    // As tootik does, a portable actor identified by its compatible
+    // identifier on a gateway:
+    const compatibleActorId =
+      `https://gateway.example/.well-known/apgateway/did:key:${portableDidMethod}/actor`;
+    const actor = {
+      "@context": portableContext,
+      id: compatibleActorId,
+      type: "Person",
+      inbox: `${compatibleActorId}/inbox`,
+      outbox: `${compatibleActorId}/outbox`,
+    };
+    const signed = await signPortableJsonLd(actor);
+    const result = await verifyPortableObjectProof(signed, options);
+    assert(result.verified);
+    assertEquals(result.keys[0].id, portableKeyId);
+    // The proof is verified over the document as is, not a rewritten one:
+    assertEquals(signed.id, compatibleActorId);
+    assertEquals(
+      await verifyPortableObjectProof(actor, options),
+      { verified: false, reason: { type: "missingProof" } },
+    );
+    // A compatible identifier naming another DID:
+    const otherDid = "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK";
+    const otherId =
+      `https://gateway.example/.well-known/apgateway/${otherDid}/activities/1`;
+    assertEquals(
+      await verifyPortableObjectProof(
+        await signPortableJsonLd({
+          "@context": portableContext,
+          id: otherId,
+          type: "Create",
+          actor: compatibleActorId,
+          object: "https://social.example/objects/1",
+        }),
+        options,
+      ),
+      {
+        verified: false,
+        reason: {
+          type: "verificationMethodMismatch",
+          proofIndex: 0,
+          objectId: new URL(otherId),
+          verificationMethod: portableKeyId,
+        },
+      },
+    );
+    // A malformed compatible identifier is not trusted by its web origin:
+    await assertRejects(
+      () =>
+        verifyPortableObjectProof(
+          {
+            ...actor,
+            id:
+              `https://user@gateway.example/.well-known/apgateway/did:key:${portableDidMethod}/actor`,
+          },
+          options,
+        ),
+      TypeError,
+    );
+  });
+
   await t.step("keeps non-portable documents outside the policy", async () => {
     for (
       const document of [
         { ...unsignedObject, id: "https://social.example/objects/1" },
         {
           ...unsignedObject,
-          id:
-            "https://gateway.example/.well-known/apgateway/did:key:z6MkAlice/objects/1",
+          // Other gateway routes are not compatible identifiers:
+          id: "https://gateway.example/.well-known/apgateway/hl:zQmdfTbBqBPQ",
         },
         {
           "@context": portableContext,
@@ -2753,6 +2815,128 @@ test("verifyObject() rejects did:key proofs from another portable attribution or
       },
       contextLoader: mockDocumentLoader,
     }),
+    null,
+  );
+});
+
+async function signCompatibleNote(
+  attribution: string,
+  keyId: URL,
+): Promise<unknown> {
+  const context = [
+    "https://www.w3.org/ns/activitystreams",
+    "https://w3id.org/security/data-integrity/v1",
+  ];
+  const signed = await signObject(
+    new Note({
+      id: new URL(`${attribution}/notes/1`),
+      attribution: new URL(attribution),
+      content: "Note of a compatible-ID actor",
+    }),
+    ed25519PrivateKey,
+    keyId,
+    { contextLoader: mockDocumentLoader, context },
+  );
+  return await signed.toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+    context,
+  });
+}
+
+test("verifyObject() authenticates compatible-ID attributions by DID proofs", async () => {
+  const did = await exportDidKey(ed25519PublicKey.publicKey);
+  const keyId = new URL(`${did}#${did.substring("did:key:".length)}`);
+  const options = {
+    documentLoader() {
+      throw new TypeError("did:key must not use the document loader");
+    },
+    contextLoader: mockDocumentLoader,
+  };
+  // Any gateway's compatible identifier of the DID's actor:
+  for (const gateway of ["https://gw1.example", "https://gw2.example"]) {
+    const attribution = `${gateway}/.well-known/apgateway/${did}/actor`;
+    assertInstanceOf(
+      await verifyObject(
+        Note,
+        await signCompatibleNote(attribution, keyId),
+        options,
+      ),
+      Note,
+    );
+  }
+  // Another DID's actor is not authenticated by this DID's proof:
+  assertEquals(
+    await verifyObject(
+      Note,
+      await signCompatibleNote(
+        "https://gw1.example/.well-known/apgateway/did:key:z6MkOther/actor",
+        keyId,
+      ),
+      options,
+    ),
+    null,
+  );
+});
+
+test("verifyObject() does not trust compatible-ID actors by web origin", async () => {
+  // An ordinary HTTPS key that names a compatible-ID actor as its controller,
+  // whose unsigned document at the attacker's gateway lists the key back:
+  const did = await exportDidKey(ed25519PublicKey.publicKey);
+  const attribution = `https://evil.example/.well-known/apgateway/${did}/actor`;
+  const keyId = new URL("https://evil.example/keys/1");
+  const documents: Record<string, unknown> = {
+    [keyId.href]: {
+      "@context": "https://w3id.org/security/multikey/v1",
+      id: keyId.href,
+      type: "Multikey",
+      controller: attribution,
+      publicKeyMultibase: await exportMultibaseKey(ed25519PublicKey.publicKey),
+    },
+    [attribution]: {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/multikey/v1",
+      ],
+      id: attribution,
+      type: "Person",
+      inbox: `${attribution}/inbox`,
+      assertionMethod: keyId.href,
+    },
+  };
+  const fetched: string[] = [];
+  assertEquals(
+    await verifyObject(
+      Note,
+      await signCompatibleNote(attribution, keyId),
+      {
+        documentLoader: (url) => {
+          fetched.push(url);
+          const document = documents[url];
+          if (document == null) throw new TypeError(`Unexpected: ${url}`);
+          return Promise.resolve({
+            contextUrl: null,
+            documentUrl: url,
+            document,
+          });
+        },
+        contextLoader: mockDocumentLoader,
+      },
+    ),
+    null,
+  );
+  // The actor document is not even asked for:
+  assertEquals(fetched, [keyId.href]);
+  // Nor is a malformed compatible identifier ever authenticated:
+  assertEquals(
+    await verifyObject(
+      Note,
+      await signCompatibleNote(
+        `https://user@gw.example/.well-known/apgateway/${did}/actor`,
+        new URL(`${did}#${did.substring("did:key:".length)}`),
+      ),
+      { contextLoader: mockDocumentLoader },
+    ),
     null,
   );
 });

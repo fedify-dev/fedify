@@ -1,5 +1,6 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
-import { encodeMultibase } from "@fedify/vocab-runtime";
+import { CryptographicKey, Multikey, Person } from "@fedify/vocab";
+import { encodeMultibase, exportDidKey, parseIri } from "@fedify/vocab-runtime";
 import { assert, assertEquals } from "@std/assert";
 import serialize from "json-canon";
 import vector from "../../test-vectors/fep-8b32/map-local-create-note.json" with {
@@ -9,7 +10,14 @@ import conflictVector from "../../test-vectors/fep-8b32/map-local-context-confli
   type: "json",
 };
 import {
+  ed25519PrivateKey,
+  ed25519PublicKey,
+  rsaPublicKey2,
+} from "../testing/keys.ts";
+import {
   type CompoundProofDiscoveryLimits,
+  containsCompoundPortableObject,
+  inspectCompoundPortableObjectApplicability,
   verifyCompoundPortableObjectProofs,
   verifyCompoundProofDocuments,
 } from "./compound-proof.ts";
@@ -652,4 +660,236 @@ test("verifyCompoundPortableObjectProofs() reports the policy-validated ID", asy
     result.portableObjects[0].id,
     vector.documents.innerUnsecuredDocument.id,
   );
+});
+
+// FEP-ef61 compatible identifiers
+
+const compatibleDid = await exportDidKey(ed25519PublicKey.publicKey);
+const compatibleVerificationMethod = `${compatibleDid}#${
+  compatibleDid.slice("did:key:".length)
+}`;
+const compatibleActorId =
+  `https://gw.example/.well-known/apgateway/${compatibleDid}/actor`;
+const compatibleContext = [
+  "https://www.w3.org/ns/activitystreams",
+  "https://w3id.org/security/data-integrity/v1",
+];
+
+async function signCompatible(
+  document: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  return await secureRawDocument(
+    document,
+    await crypto.subtle.exportKey("jwk", ed25519PrivateKey),
+    compatibleVerificationMethod,
+  );
+}
+
+async function compatibleActor(
+  id: string = compatibleActorId,
+  keyBase: string = compatibleActorId,
+): Promise<Record<string, unknown>> {
+  const actorId = parseIri(id);
+  const json = await new Person({
+    id: actorId,
+    inbox: new URL(`${keyBase}/inbox`),
+    outbox: new URL(`${keyBase}/outbox`),
+    gateways: [new URL("https://gw.example")],
+    publicKey: new CryptographicKey({
+      id: new URL(`${keyBase}#main-key`),
+      owner: actorId,
+      publicKey: rsaPublicKey2.publicKey,
+    }),
+    assertionMethods: [
+      new Multikey({
+        id: new URL(`${keyBase}#ed25519-key`),
+        controller: actorId,
+        publicKey: ed25519PublicKey.publicKey,
+      }),
+    ],
+  }).toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  return json;
+}
+
+test("verifyCompoundPortableObjectProofs() treats compatible-ID maps as portable", async () => {
+  const note = {
+    "@context": [...compatibleContext],
+    id: `${compatibleActorId}/notes/1`,
+    type: "Note",
+    attributedTo: compatibleActorId,
+    content: "Hello",
+  };
+  // An ordinary activity embedding an unsigned compatible-ID object:
+  const ordinary = {
+    "@context": [...compatibleContext],
+    id: "https://social.example/activities/1",
+    type: "Announce",
+    actor: "https://social.example/users/bob",
+    object: note,
+  };
+  assertEquals(
+    inspectCompoundPortableObjectApplicability(ordinary, limits),
+    "present",
+  );
+  assert(containsCompoundPortableObject(ordinary));
+  const result = await verifyCompoundPortableObjectProofs(
+    ordinary,
+    limits,
+    options,
+  );
+  assert(result.status === "ok");
+  assertEquals(result.verified, false);
+  assertEquals(
+    result.portableObjects.map((o) => [o.path, o.verified]),
+    [["/object", false]],
+  );
+  // The same object signed by its DID passes:
+  const signed = await verifyCompoundPortableObjectProofs(
+    { ...ordinary, object: await signCompatible(note) },
+    limits,
+    options,
+  );
+  assert(signed.status === "ok");
+  assert(signed.verified);
+});
+
+test("verifyCompoundPortableObjectProofs() checks compatible activity IDs", async () => {
+  const create = (did: string) => ({
+    "@context": [...compatibleContext],
+    id: `https://gw.example/.well-known/apgateway/${did}/activities/1`,
+    type: "Create",
+    actor: compatibleActorId,
+    object: "https://social.example/notes/1",
+  });
+  const own = await verifyCompoundPortableObjectProofs(
+    await signCompatible(create(compatibleDid)),
+    limits,
+    options,
+  );
+  assert(own.status === "ok");
+  assert(own.verified);
+  // An activity whose compatible ID names Bob's DID, signed by Alice:
+  const bob = "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK";
+  const forged = await verifyCompoundPortableObjectProofs(
+    await signCompatible(create(bob)),
+    limits,
+    options,
+  );
+  assert(forged.status === "ok");
+  assertEquals(forged.verified, false);
+  const [object] = forged.portableObjects;
+  assert(!object.verified);
+  assertEquals(object.reason.type, "verificationMethodMismatch");
+});
+
+test("verifyCompoundPortableObjectProofs() exempts keys embedded in portable actors", async () => {
+  // A compatible-ID actor, as tootik's are:
+  let result = await verifyCompoundPortableObjectProofs(
+    await signCompatible(await compatibleActor()),
+    limits,
+    options,
+  );
+  assert(result.status === "ok");
+  assert(result.verified);
+  assertEquals(result.portableObjects.map((o) => o.path), [""]);
+  // An ap: actor with gateway keys at compatible identifiers, as Fedify's
+  // own portable actors have:
+  result = await verifyCompoundPortableObjectProofs(
+    await signCompatible(
+      await compatibleActor(`ap://${compatibleDid}/actor`),
+    ),
+    limits,
+    options,
+  );
+  assert(result.status === "ok");
+  assert(result.verified);
+  // Embedded in a signed Update:
+  result = await verifyCompoundPortableObjectProofs(
+    {
+      "@context": [...compatibleContext],
+      id: "https://social.example/activities/2",
+      type: "Update",
+      actor: "https://social.example/users/bob",
+      object: await signCompatible(await compatibleActor()),
+    },
+    limits,
+    options,
+  );
+  assert(result.status === "ok");
+  assert(result.verified);
+});
+
+test("verifyCompoundPortableObjectProofs() exempts only keys of the parent itself", async () => {
+  const actor = await compatibleActor();
+  const otherActorId =
+    "https://gw.example/.well-known/apgateway/did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK/actor";
+  const publicKey = actor.publicKey as Record<string, unknown>;
+  const cases: Record<string, Record<string, unknown>> = {
+    "a key of another actor": {
+      ...actor,
+      publicKey: {
+        ...publicKey,
+        id: `${otherActorId}#main-key`,
+        owner: otherActorId,
+      },
+    },
+    "a key owned by another actor": {
+      ...actor,
+      publicKey: { ...publicKey, owner: otherActorId },
+    },
+    "a non-key object": {
+      ...actor,
+      publicKey: {
+        id: `${compatibleActorId}#note`,
+        type: "Note",
+        content: "Not a key",
+      },
+    },
+    "a key with extra content": {
+      ...actor,
+      publicKey: { ...publicKey, name: "Extra" },
+    },
+    "a key under another property": {
+      ...actor,
+      attachment: structuredClone(publicKey),
+    },
+    "a parent context with a keyword alias": {
+      ...actor,
+      "@context": [
+        ...actor["@context"] as unknown[],
+        { kind: "@type" },
+      ],
+    },
+    "a key with a scoped context": {
+      ...actor,
+      publicKey: {
+        ...publicKey,
+        "@context": {
+          CryptographicKey: {
+            "@id": "https://w3id.org/security#Key",
+            "@context": {},
+          },
+        },
+      },
+    },
+  };
+  for (const [name, document] of Object.entries(cases)) {
+    const result = await verifyCompoundPortableObjectProofs(
+      await signCompatible(document),
+      limits,
+      options,
+    );
+    assert(result.status === "ok", name);
+    assertEquals(result.verified, false, name);
+    // The actor itself is verified; it is the key that is not exempt:
+    const root = result.portableObjects.find((o) => o.path === "");
+    assert(root?.verified, name);
+    assert(
+      result.portableObjects.some((o) => o.path !== "" && !o.verified),
+      name,
+    );
+  }
 });
