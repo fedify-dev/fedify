@@ -42,6 +42,144 @@ test("PostgresMessageQueue", { ignore: dbUrl == null }, () => {
   );
 });
 
+// Control subscription cleanup without a database so the shutdown race is
+// deterministic, including aborts while LISTEN is still being established.
+for (const rejectCleanup of [false, true]) {
+  for (const abortDuringSubscribe of [false, true]) {
+    test(
+      `PostgresMessageQueue waits for ${
+        rejectCleanup ? "failed" : "successful"
+      } UNLISTEN (${abortDuringSubscribe ? "during" : "after"} subscription)`,
+      async () => {
+        const subscribed = Promise.withResolvers<void>();
+        const subscription = Promise.withResolvers<void>();
+        const cleanupStarted = Promise.withResolvers<void>();
+        const cleanup = Promise.withResolvers<void>();
+        const controller = new AbortController();
+        let unlistenCalls = 0;
+        const sql = Object.assign(() => Promise.resolve([]), {
+          listen: async () => {
+            subscribed.resolve();
+            await subscription.promise;
+            return {
+              unlisten: () => {
+                unlistenCalls++;
+                cleanupStarted.resolve();
+                return cleanup.promise;
+              },
+            };
+          },
+        }) as unknown as postgres.Sql;
+        class InitializedQueue extends PostgresMessageQueue {
+          override initialize(): Promise<void> {
+            return Promise.resolve();
+          }
+        }
+        const mq = new InitializedQueue(sql);
+        let settled = false;
+        const listening = mq.listen(() => {}, { signal: controller.signal });
+        // Observe settlement before releasing cleanup, and catch unexpected
+        // rejections until the final assertion awaits listen() directly.
+        const outcome = listening.then(
+          () => {
+            settled = true;
+          },
+          (error: unknown) => {
+            settled = true;
+            return error;
+          },
+        );
+        await subscribed.promise;
+        if (abortDuringSubscribe) controller.abort();
+        subscription.resolve();
+        // Allow listen() to register its abort handler in the normal case.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        if (!abortDuringSubscribe) controller.abort();
+        try {
+          await Promise.race([
+            cleanupStarted.promise,
+            new Promise<never>((_, reject) => {
+              const timer = setTimeout(
+                () => reject(new Error("UNLISTEN did not start")),
+                1000,
+              );
+              cleanupStarted.promise.then(() => clearTimeout(timer));
+            }),
+          ]);
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          deepStrictEqual(settled, false, "listen() must wait for UNLISTEN");
+        } finally {
+          if (rejectCleanup) cleanup.reject(new Error("UNLISTEN failed"));
+          else cleanup.resolve();
+          await outcome;
+        }
+        deepStrictEqual(unlistenCalls, 1);
+        // Cleanup failures must be handled without rejecting listen().
+        await listening;
+      },
+    );
+  }
+}
+
+test("PostgresMessageQueue skips LISTEN for an aborted signal", async () => {
+  const sql = Object.assign(() => Promise.resolve([]), {
+    listen: () => {
+      throw new Error("An aborted listener must not subscribe");
+    },
+  }) as unknown as postgres.Sql;
+  class InitializedQueue extends PostgresMessageQueue {
+    override initialize(): Promise<void> {
+      return Promise.resolve();
+    }
+  }
+  await new InitializedQueue(sql).listen(() => {}, {
+    signal: AbortSignal.abort(),
+  });
+});
+
+test("PostgresMessageQueue drains an active poll before UNLISTEN", async () => {
+  const pollStarted = Promise.withResolvers<void>();
+  const poll = Promise.withResolvers<never[]>();
+  let unlistenCalls = 0;
+  const sql = Object.assign(() => {
+    pollStarted.resolve();
+    return poll.promise;
+  }, {
+    listen: (
+      _channel: string,
+      _handler: (payload: string) => Promise<void>,
+      onSubscribe: () => Promise<void>,
+    ) => {
+      void onSubscribe();
+      return Promise.resolve({
+        unlisten: () => {
+          unlistenCalls++;
+          return Promise.resolve();
+        },
+      });
+    },
+  }) as unknown as postgres.Sql;
+  class InitializedQueue extends PostgresMessageQueue {
+    override initialize(): Promise<void> {
+      return Promise.resolve();
+    }
+  }
+  const controller = new AbortController();
+  const listening = new InitializedQueue(sql).listen(() => {}, {
+    signal: controller.signal,
+  });
+  await pollStarted.promise;
+  controller.abort();
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    deepStrictEqual(unlistenCalls, 0, "poll must finish before UNLISTEN");
+  } finally {
+    poll.resolve([]);
+    await listening;
+  }
+  deepStrictEqual(unlistenCalls, 1);
+});
+
 // Regression test for advisory lock not being fully released after processing
 // a message with an ordering key.  This test verifies that after processing
 // a message through PostgresMessageQueue.listen(), the advisory lock is fully
