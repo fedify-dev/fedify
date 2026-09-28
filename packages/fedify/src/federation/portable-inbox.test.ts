@@ -7,10 +7,16 @@ import {
   Person,
   Tombstone,
 } from "@fedify/vocab";
-import { exportDidKey, formatIri, parseIri } from "@fedify/vocab-runtime";
+import {
+  type DocumentLoader,
+  exportDidKey,
+  formatIri,
+  parseIri,
+  type RemoteDocument,
+} from "@fedify/vocab-runtime";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 import fetchMock from "fetch-mock";
-import { signRequest } from "../sig/http.ts";
+import { signRequest, verifyRequestDetailed } from "../sig/http.ts";
 import { signJsonLd } from "../sig/ld.ts";
 import { signObject } from "../sig/proof.ts";
 import {
@@ -28,9 +34,11 @@ import { createFederation } from "./middleware.ts";
 import type { MessageQueue } from "./mq.ts";
 import {
   forwardPortableInboxActivity,
+  type ForwardPortableInboxActivityParameters,
   resolvePortableInboxForwardingOptions,
 } from "./portable-inbox.ts";
 import type { Message, OutboxMessage } from "./queue.ts";
+import type { SenderKeyPair } from "./send.ts";
 
 const did = await exportDidKey(ed25519PublicKey.publicKey);
 const keyId = new URL(`${did}#${did.substring("did:key:".length)}`);
@@ -92,6 +100,9 @@ interface Setup {
   actor?: (ctx: Context<void>, identifier: string) => Person | Tombstone | null;
   listenerError?: boolean;
   keyPairs?: boolean;
+  /** Alice's key pairs, which are her gateway keys if she has a mapper. */
+  aliceKeyPairs?: CryptoKeyPair[];
+  mapPortableActorId?: (identifier: string) => URL | null;
   onSharedInboxKey?: () => void;
 }
 
@@ -104,6 +115,8 @@ function setup(
     actor,
     listenerError = false,
     keyPairs = true,
+    aliceKeyPairs = [],
+    mapPortableActorId,
     onSharedInboxKey,
   }: Setup = {},
 ) {
@@ -145,7 +158,14 @@ function setup(
     actorCallbacks.setKeyPairsDispatcher((_ctx, identifier) =>
       identifier === "ordinary"
         ? [{ privateKey: rsaPrivateKey2, publicKey: rsaPublicKey2.publicKey! }]
+        : identifier === "alice"
+        ? aliceKeyPairs
         : []
+    );
+  }
+  if (mapPortableActorId != null) {
+    actorCallbacks.mapPortableActorId((_ctx, identifier) =>
+      mapPortableActorId(identifier)
     );
   }
   const inboxListeners = federation
@@ -763,6 +783,7 @@ test("forwardPortableInboxActivity() does not wait for slow gateways", async () 
     const activityId = parseIri(`ap+ef61://${did}/follows/slow`);
     const parameters = {
       recipient: {
+        actorId: parseIri(`ap+ef61://${did}/users/alice`),
         inboxId: parseIri(`ap+ef61://${did}/users/alice/inbox`),
         canonicalInboxId: `ap://${did}/users/alice/inbox`,
         gateways: [new URL(LOCAL), new URL(GATEWAY2)],
@@ -791,6 +812,530 @@ test("forwardPortableInboxActivity() does not wait for slow gateways", async () 
     await new Promise((resolve) => setTimeout(resolve, 10));
     assertEquals(await forwardPortableInboxActivity(parameters), []);
     assertEquals(fetchMock.callHistory.calls().length, 1);
+  } finally {
+    fetchMock.hardReset();
+  }
+});
+
+// Gateway keys
+
+const aliceId = parseIri(`ap+ef61://${did}/users/alice`);
+const rsaGatewayKeyPair = await crypto.subtle.generateKey(
+  {
+    name: "RSASSA-PKCS1-v1_5",
+    modulusLength: 2048,
+    publicExponent: new Uint8Array([1, 0, 1]),
+    hash: "SHA-256",
+  },
+  true,
+  ["sign", "verify"],
+) as CryptoKeyPair;
+
+function compatibleAliceId(origin = LOCAL): string {
+  return `${origin}/.well-known/apgateway/${did}/users/alice`;
+}
+
+function mapAlice(identifier: string): URL | null {
+  return identifier === "alice" ? aliceId : null;
+}
+
+function signatureKeyId(headers: Headers): string | undefined {
+  // Either an RFC 9421 Signature-Input or a draft-cavage Signature header:
+  return headers.get("Signature-Input")?.match(/keyid="([^"]+)"/)?.[1] ??
+    headers.get("Signature")?.match(/keyId="([^"]+)"/)?.[1];
+}
+
+/**
+ * Makes a document loader that serves Alice's actor document as the gateway
+ * at {@link LOCAL} does: signed by her DID, and embedding the gateway keys in
+ * its `assertionMethod`.
+ */
+async function createGatewayLoader(
+  keyPairs: CryptoKeyPair[],
+): Promise<DocumentLoader> {
+  const { federation } = setup({
+    aliceKeyPairs: keyPairs,
+    mapPortableActorId: mapAlice,
+  });
+  const keys = await federation.createContext(new URL(LOCAL))
+    .getActorKeyPairs("alice");
+  const actor = await signObject(
+    new Person({
+      id: aliceId,
+      inbox: parseIri(`${aliceId.href}/inbox`),
+      gateways: [new URL(LOCAL), new URL(GATEWAY2), new URL(GATEWAY3)],
+      assertionMethods: keys.map((k) => k.multikey),
+    }),
+    ed25519PrivateKey,
+    keyId,
+    { contextLoader: mockDocumentLoader },
+  );
+  const document = await actor.toJsonLd({ contextLoader: mockDocumentLoader });
+  return (url: string): Promise<RemoteDocument> => {
+    if (url.replace(/#.*$/, "") !== compatibleAliceId()) {
+      return mockDocumentLoader(url);
+    }
+    return Promise.resolve({
+      contextUrl: null,
+      documentUrl: url,
+      document: structuredClone(document),
+    });
+  };
+}
+
+interface CapturedRequest {
+  readonly url: string;
+  readonly headers: Headers;
+  readonly body: string;
+}
+
+function toRequest({ url, headers, body }: CapturedRequest): Request {
+  return new Request(url, { method: "POST", headers, body });
+}
+
+async function assertSignedBy(
+  request: CapturedRequest,
+  expectedKeyId: string,
+  documentLoader: DocumentLoader,
+): Promise<void> {
+  assertEquals(signatureKeyId(request.headers), expectedKeyId);
+  const result = await verifyRequestDetailed(toRequest(request), {
+    documentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  assert(result.verified, JSON.stringify(result));
+  assertEquals(result.key.id?.href, expectedKeyId);
+}
+
+/** Records the requests made to the gateways other than {@link LOCAL}. */
+function captureGatewayRequests(
+  respond: (request: CapturedRequest) => Response = () =>
+    new Response(null, { status: 202 }),
+): CapturedRequest[] {
+  const requests: CapturedRequest[] = [];
+  fetchMock.spyGlobal();
+  for (const gateway of [GATEWAY2, GATEWAY3]) {
+    fetchMock.post(`begin:${gateway}/`, async (callLog) => {
+      const request = callLog.request!;
+      const captured = {
+        url: request.url,
+        headers: new Headers(request.headers),
+        body: await request.text(),
+      };
+      requests.push(captured);
+      return respond(captured);
+    });
+  }
+  return requests;
+}
+
+test("Federation.fetch() signs forwarded portable inbox deliveries with gateway keys", async (t) => {
+  const keyOrders: [string, CryptoKeyPair[], string][] = [
+    ["RSA key first", [rsaGatewayKeyPair, otherKeyPair], "#main-key"],
+    ["Ed25519 key first", [otherKeyPair, rsaGatewayKeyPair], "#key-2"],
+  ];
+  for (const [name, aliceKeyPairs, fragment] of keyOrders) {
+    await t.step(name, async () => {
+      const requests = captureGatewayRequests();
+      try {
+        const kv = new MemoryKvStore();
+        const { federation, received } = setup({
+          kv,
+          aliceKeyPairs,
+          mapPortableActorId: mapAlice,
+          // The mocked gateways are not resolved:
+          options: { allowPrivateAddress: true },
+        });
+        const json = await signedFollow();
+        const response = await federation.fetch(post(inboxUrl(), json), {
+          contextData: undefined,
+        });
+        assertEquals(response.status, 202);
+        assertEquals(received.length, 1);
+        assertEquals(requests.map((r) => r.url).sort(), [
+          inboxUrl(did, "/users/alice/inbox", GATEWAY3),
+          inboxUrl(did, "/users/alice/inbox", GATEWAY2),
+        ]);
+        const loader = await createGatewayLoader(aliceKeyPairs);
+        for (const request of requests) {
+          await assertSignedBy(request, compatibleAliceId() + fragment, loader);
+          assertEquals(JSON.parse(request.body), json);
+        }
+        // The negotiated spec is cached as for other deliveries:
+        assertEquals(
+          await kv.get(["_fedify", "httpMessageSignaturesSpec", GATEWAY2]),
+          "rfc9421",
+        );
+      } finally {
+        fetchMock.hardReset();
+      }
+    });
+  }
+});
+
+test("Federation.fetch() signs queued forwarded portable inbox deliveries with gateway keys", async () => {
+  const queue = new RecordingQueue();
+  const aliceKeyPairs = [otherKeyPair, rsaGatewayKeyPair];
+  const { federation } = setup({
+    queue,
+    aliceKeyPairs,
+    mapPortableActorId: mapAlice,
+    // The mocked gateways are not resolved:
+    options: { allowPrivateAddress: true },
+  });
+  const response = await federation.fetch(
+    post(inboxUrl(), await signedFollow()),
+    { contextData: undefined },
+  );
+  assertEquals(response.status, 202);
+  assertEquals(queue.outbox.length, 2);
+  const expectedKeyId = `${compatibleAliceId()}#key-2`;
+  for (const message of queue.outbox) {
+    // Only the RSA key, which signs the request, is queued:
+    assertEquals(message.keys.map((k) => k.keyId), [expectedKeyId]);
+    assertEquals(message.keys[0].privateKey.kty, "RSA");
+  }
+  const requests = captureGatewayRequests();
+  try {
+    for (const message of queue.outbox) {
+      await federation.processQueuedTask(undefined, message);
+    }
+  } finally {
+    fetchMock.hardReset();
+  }
+  assertEquals(requests.length, 2);
+  const loader = await createGatewayLoader(aliceKeyPairs);
+  for (const request of requests) {
+    await assertSignedBy(request, expectedKeyId, loader);
+  }
+});
+
+test("Federation.fetch() forwards portable inbox deliveries unsigned without gateway keys", async (t) => {
+  const otherActorId = parseIri(`ap+ef61://${otherDid}/users/alice`);
+  const cases: [string, Setup][] = [
+    ["without a mapper", { aliceKeyPairs: [rsaGatewayKeyPair] }],
+    ["the mapper returns null", {
+      aliceKeyPairs: [rsaGatewayKeyPair],
+      mapPortableActorId: () => null,
+    }],
+    ["the mapper returns another actor", {
+      aliceKeyPairs: [rsaGatewayKeyPair],
+      mapPortableActorId: () => otherActorId,
+    }],
+    ["the mapper returns another actor of the same DID", {
+      aliceKeyPairs: [rsaGatewayKeyPair],
+      mapPortableActorId: () => parseIri(`ap+ef61://${did}/users/bob`),
+    }],
+    ["without a key pairs dispatcher", {
+      keyPairs: false,
+      mapPortableActorId: mapAlice,
+    }],
+    ["without key pairs", { mapPortableActorId: mapAlice }],
+    ["without an RSA key", {
+      aliceKeyPairs: [otherKeyPair],
+      mapPortableActorId: mapAlice,
+    }],
+  ];
+  for (const [name, options] of cases) {
+    await t.step(name, async () => {
+      const queue = new RecordingQueue();
+      const { federation, received } = setup({ ...options, queue });
+      const response = await federation.fetch(
+        post(inboxUrl(), await signedFollow()),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 202);
+      assertEquals(received.length, 1);
+      assertEquals(queue.outbox.length, 2);
+      for (const message of queue.outbox) assertEquals(message.keys, []);
+    });
+  }
+});
+
+test("Federation.fetch() signs forwarded portable inbox deliveries if the mapper returns an equivalent ID", async (t) => {
+  const ids: [string, URL][] = [
+    ["ap: URI", parseIri(`ap://${did}/users/alice`)],
+    [
+      "percent-encoded DID",
+      parseIri(
+        `ap+ef61://${did.replaceAll(":", "%3A")}/users/alice`,
+      ),
+    ],
+    ["compatible identifier", new URL(compatibleAliceId(GATEWAY2))],
+  ];
+  for (const [name, id] of ids) {
+    await t.step(name, async () => {
+      const queue = new RecordingQueue();
+      const { federation } = setup({
+        queue,
+        aliceKeyPairs: [rsaGatewayKeyPair],
+        mapPortableActorId: (identifier) => identifier === "alice" ? id : null,
+      });
+      const response = await federation.fetch(
+        post(inboxUrl(), await signedFollow()),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 202);
+      assertEquals(queue.outbox.length, 2);
+      for (const message of queue.outbox) {
+        assertEquals(message.keys.map((k) => k.keyId), [
+          `${compatibleAliceId()}#main-key`,
+        ]);
+      }
+    });
+  }
+});
+
+test("Federation.fetch() signs forwarded portable inbox deliveries with the gateway keys of the canonical origin", async () => {
+  const queue = new RecordingQueue();
+  const { federation } = setup({
+    queue,
+    gateways: [GATEWAY2, LOCAL, GATEWAY3],
+    aliceKeyPairs: [rsaGatewayKeyPair],
+    mapPortableActorId: mapAlice,
+    options: { origin: GATEWAY2 },
+  });
+  // The request is made to example.com, but this server is example.org:
+  const response = await federation.fetch(
+    post(inboxUrl(), await signedFollow()),
+    { contextData: undefined },
+  );
+  assertEquals(response.status, 202);
+  assertEquals(queue.outbox.length, 1);
+  assertEquals(queue.outbox[0].keys.map((k) => k.keyId), [
+    `${compatibleAliceId(GATEWAY2)}#main-key`,
+  ]);
+});
+
+test("Federation.fetch() double-knocks forwarded portable inbox deliveries", async (t) => {
+  await t.step("firstKnock", async () => {
+    const requests = captureGatewayRequests();
+    try {
+      const { federation } = setup({
+        aliceKeyPairs: [rsaGatewayKeyPair],
+        mapPortableActorId: mapAlice,
+        options: {
+          allowPrivateAddress: true,
+          firstKnock: "draft-cavage-http-signatures-12",
+        },
+      });
+      const response = await federation.fetch(
+        post(inboxUrl(), await signedFollow()),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 202);
+      assertEquals(requests.length, 2);
+      for (const request of requests) {
+        assert(request.headers.has("Signature"));
+        assertFalse(request.headers.has("Signature-Input"));
+      }
+    } finally {
+      fetchMock.hardReset();
+    }
+  });
+
+  await t.step("falls back to the other spec", async () => {
+    // The gateways reject RFC 9421 signatures:
+    const requests = captureGatewayRequests((request) =>
+      new Response(null, {
+        status: request.headers.has("Signature-Input") ? 401 : 202,
+      })
+    );
+    try {
+      const kv = new MemoryKvStore();
+      const { federation } = setup({
+        kv,
+        aliceKeyPairs: [rsaGatewayKeyPair],
+        mapPortableActorId: mapAlice,
+        options: { allowPrivateAddress: true },
+      });
+      const response = await federation.fetch(
+        post(inboxUrl(), await signedFollow()),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 202);
+      assertEquals(requests.length, 4);
+      const loader = await createGatewayLoader([rsaGatewayKeyPair]);
+      for (const request of requests) {
+        if (request.headers.has("Signature-Input")) continue;
+        await assertSignedBy(
+          request,
+          `${compatibleAliceId()}#main-key`,
+          loader,
+        );
+      }
+      assertEquals(
+        await kv.get(["_fedify", "httpMessageSignaturesSpec", GATEWAY2]),
+        "draft-cavage-http-signatures-12",
+      );
+    } finally {
+      fetchMock.hardReset();
+    }
+  });
+});
+
+test("A Fedify gateway accepts signed forwarded portable inbox deliveries", async () => {
+  const requests = captureGatewayRequests();
+  let forwarded: CapturedRequest;
+  try {
+    const { federation } = setup({
+      aliceKeyPairs: [rsaGatewayKeyPair],
+      mapPortableActorId: mapAlice,
+      options: { allowPrivateAddress: true },
+    });
+    const response = await federation.fetch(
+      post(inboxUrl(), await signedFollow()),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 202);
+    forwarded = requests.find((r) => r.url.startsWith(`${GATEWAY2}/`))!;
+  } finally {
+    fetchMock.hardReset();
+  }
+  // The inbox does not check HTTP Signatures of activities authenticated by
+  // their proofs, so the signature is verified separately:
+  await assertSignedBy(
+    forwarded,
+    `${compatibleAliceId()}#main-key`,
+    await createGatewayLoader([rsaGatewayKeyPair]),
+  );
+  const queue = new RecordingQueue();
+  const { federation, received } = setup({
+    queue,
+    options: { origin: GATEWAY2 },
+  });
+  const response = await federation.fetch(toRequest(forwarded), {
+    contextData: undefined,
+  });
+  assertEquals(response.status, 202);
+  assertEquals(received.length, 1);
+  assertEquals(received[0].recipient, "alice");
+  // The gateway forwards it on, except back to itself:
+  assertEquals(queue.outbox.map((m) => m.inbox).sort(), [
+    inboxUrl(did, "/users/alice/inbox", LOCAL),
+    inboxUrl(did, "/users/alice/inbox", GATEWAY3),
+  ]);
+});
+
+function forwardingParameters(
+  overrides: Partial<ForwardPortableInboxActivityParameters> = {},
+): ForwardPortableInboxActivityParameters {
+  const activityId = parseIri(
+    `ap+ef61://${did}/follows/${++activityCounter}`,
+  );
+  return {
+    recipient: {
+      actorId: aliceId,
+      inboxId: parseIri(`ap+ef61://${did}/users/alice/inbox`),
+      canonicalInboxId: `ap://${did}/users/alice/inbox`,
+      gateways: [new URL(LOCAL), new URL(GATEWAY2)],
+    },
+    activity: { id: formatIri(activityId) },
+    activityId,
+    activityType: "https://www.w3.org/ns/activitystreams#Follow",
+    excludedOrigins: [LOCAL],
+    baseUrl: LOCAL,
+    kv: new MemoryKvStore(),
+    kvPrefix: ["_fedify", "portableInboxForwarding"],
+    // The mocked gateway is not resolved:
+    allowPrivateAddress: true,
+    ...overrides,
+  };
+}
+
+const gatewayKey = {
+  keyId: new URL(`${compatibleAliceId()}#main-key`),
+  privateKey: rsaGatewayKeyPair.privateKey,
+};
+
+test("forwardPortableInboxActivity() gets keys only when it forwards", async () => {
+  let calls = 0;
+  const parameters = forwardingParameters({
+    outboxQueue: new RecordingQueue(),
+    getKeys: () => {
+      calls++;
+      return Promise.resolve([gatewayKey]);
+    },
+  });
+  assertEquals((await forwardPortableInboxActivity(parameters)).length, 1);
+  assertEquals(calls, 1);
+  // Nothing is claimed for a duplicate, so no keys are needed:
+  assertEquals(await forwardPortableInboxActivity(parameters), []);
+  assertEquals(calls, 1);
+});
+
+test("forwardPortableInboxActivity() forwards unsigned if it cannot get keys", async (t) => {
+  const nonExtractable = await crypto.subtle.generateKey(
+    {
+      name: "RSASSA-PKCS1-v1_5",
+      modulusLength: 2048,
+      publicExponent: new Uint8Array([1, 0, 1]),
+      hash: "SHA-256",
+    },
+    false,
+    ["sign", "verify"],
+  ) as CryptoKeyPair;
+  const getKeysCases: [string, () => Promise<SenderKeyPair[]>][] = [
+    ["getKeys() rejects", () => Promise.reject(new Error("Unavailable."))],
+    ["the key is not extractable", () =>
+      Promise.resolve([{
+        keyId: gatewayKey.keyId,
+        privateKey: nonExtractable.privateKey,
+      }])],
+  ];
+  for (const [name, getKeys] of getKeysCases) {
+    await t.step(`${name} (queued)`, async () => {
+      const queue = new RecordingQueue();
+      const forwarded = await forwardPortableInboxActivity(
+        forwardingParameters({ outboxQueue: queue, getKeys }),
+      );
+      assertEquals(forwarded.length, 1);
+      assertEquals(queue.outbox.length, 1);
+      assertEquals(queue.outbox[0].keys, []);
+    });
+    await t.step(`${name} (immediate)`, async () => {
+      const requests = captureGatewayRequests();
+      try {
+        const forwarded = await forwardPortableInboxActivity(
+          forwardingParameters({ getKeys }),
+        );
+        assertEquals(forwarded.length, 1);
+      } finally {
+        fetchMock.hardReset();
+      }
+      assertEquals(requests.length, 1);
+      assertEquals(signatureKeyId(requests[0].headers), undefined);
+    });
+  }
+});
+
+test("forwardPortableInboxActivity() does not wait for slow keys", async () => {
+  let release: () => void = () => {};
+  const pending = new Promise<void>((resolve) => release = resolve);
+  const requests = captureGatewayRequests();
+  try {
+    const started = performance.now();
+    const forwarded = await forwardPortableInboxActivity(
+      forwardingParameters({
+        options: resolvePortableInboxForwardingOptions({
+          deadline: { milliseconds: 10 },
+        }),
+        getKeys: async () => {
+          await pending;
+          throw new Error("Unavailable.");
+        },
+      }),
+    );
+    assert(performance.now() - started < 5_000);
+    assertEquals(forwarded.length, 1);
+    assertEquals(requests.length, 0);
+    // The late failure is handled, and the activity is forwarded unsigned:
+    release();
+    for (let i = 0; i < 100 && requests.length < 1; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    assertEquals(requests.length, 1);
+    assertEquals(signatureKeyId(requests[0].headers), undefined);
   } finally {
     fetchMock.hardReset();
   }

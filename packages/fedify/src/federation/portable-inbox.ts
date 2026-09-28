@@ -13,12 +13,14 @@ import {
   propagation,
   type TracerProvider,
 } from "@opentelemetry/api";
+import type { HttpMessageSignaturesSpecDeterminer } from "../sig/http.ts";
+import { exportJwk, validateCryptoKey } from "../sig/key.ts";
 import type { PortableInboxForwardingOptions } from "./federation.ts";
 import type { KvKey, KvStore } from "./kv.ts";
 import { recordOutboxEnqueue } from "./metrics.ts";
 import type { MessageQueue } from "./mq.ts";
-import type { OutboxMessage } from "./queue.ts";
-import { sendActivity } from "./send.ts";
+import type { OutboxMessage, SenderKeyJwkPair } from "./queue.ts";
+import { sendActivity, type SenderKeyPair } from "./send.ts";
 
 /**
  * {@link PortableInboxForwardingOptions} with the defaults filled in.
@@ -74,6 +76,8 @@ export function resolvePortableInboxForwardingOptions(
  * this server.
  */
 export interface PortableInboxRecipient {
+  /** The ID of the portable actor. */
+  readonly actorId: URL;
   /** The ID of the portable inbox, e.g., `ap+ef61://did:key:.../inbox`. */
   readonly inboxId: URL;
   /** The canonical form of {@link inboxId}. */
@@ -135,7 +139,7 @@ export function resolvePortableInboxRecipient(
   }
   return {
     status: "accepted",
-    recipient: { inboxId, canonicalInboxId, gateways },
+    recipient: { actorId: id, inboxId, canonicalInboxId, gateways },
   };
 }
 
@@ -185,6 +189,15 @@ export interface ForwardPortableInboxActivityParameters {
   /** Starts the queue unless it is started manually. */
   readonly startQueue?: () => void;
   readonly allowPrivateAddress?: boolean;
+  /**
+   * Gets this server's gateway key pairs for the portable actor, which sign
+   * the forwarded requests with HTTP Signatures.  It is called only if the
+   * activity is forwarded to any gateway.  If omitted, or it returns no
+   * RSASSA-PKCS1-v1_5 key, the requests are not signed.
+   */
+  readonly getKeys?: () => Promise<readonly SenderKeyPair[]>;
+  /** The spec determiner for signing forwarded requests with double-knocking. */
+  readonly specDeterminer?: HttpMessageSignaturesSpecDeterminer;
   /** The forwarding options.  Defaults are used if omitted. */
   readonly options?: ResolvedPortableInboxForwardingOptions;
   readonly meterProvider?: MeterProvider;
@@ -202,8 +215,11 @@ export interface ForwardPortableInboxActivityParameters {
  * Forwarding is therefore best effort.  Without {@link KvStore.cas}, nothing is
  * forwarded.
  *
- * Forwarded requests are not signed with HTTP Signatures; the receiving
- * gateways authenticate the activity by its own proof.
+ * Forwarded requests are signed with HTTP Signatures by the RSA key among
+ * {@link ForwardPortableInboxActivityParameters.getKeys}, if any, so that
+ * servers requiring HTTP Signatures accept them, and are sent unsigned
+ * otherwise.  Either way, the receiving gateways authenticate the activity by
+ * its own proof.
  * @param parameters The parameters.
  * @returns The target inbox URLs that the activity was handed off to.
  */
@@ -294,42 +310,87 @@ function getForwardingTargets(
   return targets;
 }
 
+/**
+ * Resolves the key that signs forwarded requests: the first RSASSA-PKCS1-v1_5
+ * key, as {@link sendActivity} signs requests only with such a key.  Since
+ * the targets have already been claimed, the activity is forwarded unsigned
+ * rather than not at all if the key cannot be resolved or used.
+ */
+async function resolveForwardingKey(
+  { getKeys, activityId }: ForwardPortableInboxActivityParameters,
+): Promise<SenderKeyPair | null> {
+  if (getKeys == null) return null;
+  const logger = getLogger(["fedify", "federation", "inbox"]);
+  let key: SenderKeyPair | undefined;
+  try {
+    key = (await getKeys()).find((k) =>
+      k.privateKey.algorithm.name === "RSASSA-PKCS1-v1_5"
+    );
+  } catch (error) {
+    logger.error(
+      "Failed to get the gateway keys to sign forwarded requests with; " +
+        "forwarding activity {activityId} without HTTP Signatures:\n{error}",
+      { activityId: activityId.href, error },
+    );
+    return null;
+  }
+  if (key == null) return null;
+  try {
+    validateCryptoKey(key.privateKey, "private");
+  } catch (error) {
+    if (!(error instanceof TypeError)) throw error;
+    logger.warn(
+      "The gateway key {keyId} cannot sign forwarded requests; forwarding " +
+        "activity {activityId} without HTTP Signatures:\n{error}",
+      { keyId: key.keyId.href, activityId: activityId.href, error },
+    );
+    return null;
+  }
+  return key;
+}
+
 async function forwardImmediately(
-  {
+  parameters: ForwardPortableInboxActivityParameters,
+  inboxes: readonly URL[],
+): Promise<void> {
+  const {
     activity,
     activityId,
     activityType,
     allowPrivateAddress,
+    specDeterminer,
     options,
     meterProvider,
     tracerProvider,
-  }: ForwardPortableInboxActivityParameters,
-  inboxes: readonly URL[],
-): Promise<void> {
+  } = parameters;
   const logger = getLogger(["fedify", "federation", "inbox"]);
   const deadline = (options ?? resolvePortableInboxForwardingOptions())
     .deadline.total("millisecond");
-  const sends = inboxes.map((inbox) =>
-    sendActivity({
-      activity,
-      activityId: activityId.href,
-      activityType,
-      keys: [],
-      inbox,
-      allowPrivateAddress,
-      meterProvider,
-      tracerProvider,
-    }).catch((error) => {
-      logger.error(
-        "Failed to forward activity {activityId} to {inbox}; it will not " +
-          "be forwarded to the inbox again:\n{error}",
-        { activityId: activityId.href, inbox: inbox.href, error },
-      );
-    })
+  // The deadline also covers resolving the key, which may be slow:
+  const forwarding = resolveForwardingKey(parameters).then((key) =>
+    Promise.all(inboxes.map((inbox) =>
+      sendActivity({
+        activity,
+        activityId: activityId.href,
+        activityType,
+        keys: key == null ? [] : [key],
+        inbox,
+        allowPrivateAddress,
+        specDeterminer,
+        meterProvider,
+        tracerProvider,
+      }).catch((error) => {
+        logger.error(
+          "Failed to forward activity {activityId} to {inbox}; it will not " +
+            "be forwarded to the inbox again:\n{error}",
+          { activityId: activityId.href, inbox: inbox.href, error },
+        );
+      })
+    ))
   );
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timedOut = await Promise.race([
-    Promise.all(sends).then(() => false),
+    forwarding.then(() => false),
     new Promise<boolean>((resolve) => {
       timer = setTimeout(() => resolve(true), deadline);
     }),
@@ -345,18 +406,35 @@ async function forwardImmediately(
 }
 
 async function enqueueForwarding(
-  {
+  parameters: ForwardPortableInboxActivityParameters,
+  outboxQueue: MessageQueue,
+  inboxes: readonly URL[],
+): Promise<void> {
+  const {
     activity,
     activityId,
     activityType,
     baseUrl,
     startQueue,
     meterProvider,
-  }: ForwardPortableInboxActivityParameters,
-  outboxQueue: MessageQueue,
-  inboxes: readonly URL[],
-): Promise<void> {
+  } = parameters;
   const logger = getLogger(["fedify", "federation", "inbox"]);
+  const key = await resolveForwardingKey(parameters);
+  const keys: SenderKeyJwkPair[] = [];
+  if (key != null) {
+    try {
+      keys.push({
+        keyId: key.keyId.href,
+        privateKey: await exportJwk(key.privateKey),
+      });
+    } catch (error) {
+      logger.error(
+        "Failed to export the gateway key {keyId}; forwarding activity " +
+          "{activityId} without HTTP Signatures:\n{error}",
+        { keyId: key.keyId.href, activityId: activityId.href, error },
+      );
+    }
+  }
   startQueue?.();
   const started = new Date().toISOString();
   const traceContext: Record<string, string> = {};
@@ -366,7 +444,7 @@ async function enqueueForwarding(
       type: "outbox",
       id: crypto.randomUUID(),
       baseUrl,
-      keys: [],
+      keys,
       activity,
       activityId: activityId.href,
       activityType,

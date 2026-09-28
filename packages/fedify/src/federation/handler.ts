@@ -2236,8 +2236,9 @@ async function handleInboxInternal<TContextData>(
     // but such an activity has been rejected above unless its Object
     // Integrity Proof is verified:
     if (skipSignatureVerification || !(ldSigVerified || proofVerified)) {
-      // The other gateways could not authenticate the activity, as forwarded
-      // requests are not signed with HTTP Signatures, and with
+      // The other gateways could not authenticate the activity, as the HTTP
+      // Signatures of forwarded requests, if any, are made by this gateway,
+      // not by the activity's actor, and with
       // skipSignatureVerification, the FEP-ef61 proof policy has not been
       // applied to the portable objects in the activity:
       logger.debug(

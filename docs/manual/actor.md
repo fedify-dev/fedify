@@ -943,8 +943,10 @@ For an actor the callback returns a portable ID for, the
 The RSA key among them signs the HTTP requests made on behalf of the actor,
 such as the ones made by `Context.sendActivity()`,
 `InboxContext.forwardActivity()`, and the document loader that
-`Context.getDocumentLoader()` returns for the actor.  If the callback is not
-registered, or it returns `null`, the keys are derived from
+`Context.getDocumentLoader()` returns for the actor, as well as the activities
+that Fedify [forwards from the actor's portable
+inbox](./inbox.md#forwarding-to-other-gateways) to its other gateways.  If the
+callback is not registered, or it returns `null`, the keys are derived from
 `Context.getActorUri()` as usual.
 
 The actor document itself has to list the keys of all the actor's gateways,

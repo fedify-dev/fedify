@@ -79,6 +79,7 @@ import {
 } from "../sig/ld.ts";
 import { getKeyOwner, type GetKeyOwnerOptions } from "../sig/owner.ts";
 import {
+  getCanonicalPortableId,
   getGatewayKeyBase,
   hasPortableActor,
   isCompatibleKeyId,
@@ -175,6 +176,7 @@ import {
 } from "./portable.ts";
 import {
   forwardPortableInboxActivity,
+  type PortableInboxRecipient,
   type ResolvedPortableInboxForwardingOptions,
   resolvePortableInboxForwardingOptions,
   resolvePortableInboxRecipient,
@@ -3355,6 +3357,14 @@ export class FederationImpl<TContextData>
               ? undefined
               : () => this._startQueueInternal(contextData),
             allowPrivateAddress: this.allowPrivateAddress,
+            getKeys: () =>
+              this.#getPortableGatewayKeyPairs(context, identifier, recipient),
+            specDeterminer: new KvSpecDeterminer(
+              this.kv,
+              this.kvPrefixes.httpMessageSignaturesSpec,
+              this.firstKnock,
+              { specTtl: this.httpMessageSignaturesSpecTtl },
+            ),
             options: this.portableInboxForwarding,
             meterProvider: this.meterProvider,
             tracerProvider: this.tracerProvider,
@@ -3362,6 +3372,70 @@ export class FederationImpl<TContextData>
         },
       },
     });
+  }
+
+  /**
+   * Gets this server's gateway key pairs for the portable actor that owns
+   * a portable inbox, which sign the activities forwarded from the inbox.
+   * @param context The context.
+   * @param identifier The identifier of the portable actor.
+   * @param recipient The portable inbox.
+   * @returns The key pairs, or an empty array if the actor has no gateway
+   *          keys on this server.
+   */
+  async #getPortableGatewayKeyPairs(
+    context: Context<TContextData>,
+    identifier: string,
+    recipient: PortableInboxRecipient,
+  ): Promise<SenderKeyPair[]> {
+    const logger = getLogger(["fedify", "federation", "inbox"]);
+    if (
+      this.actorCallbacks?.keyPairsDispatcher == null ||
+      this.actorCallbacks.portableActorIdMapper == null
+    ) {
+      logger.debug(
+        "Forwarding activities from the portable inbox {inbox} without HTTP " +
+          "Signatures, as gateway keys need both a key pairs dispatcher " +
+          "and a portable actor ID mapper.",
+        { inbox: recipient.canonicalInboxId },
+      );
+      return [];
+    }
+    const actorId = getCanonicalPortableId(recipient.actorId);
+    if (actorId == null) return [];
+    const keyPairs = await context.getActorKeyPairs(identifier);
+    // Context.getActorKeyPairs() makes the portable actor that the mapper
+    // returns the owner of the key pairs; they are this server's gateway keys
+    // for the recipient only if the mapper returns the recipient:
+    for (const { cryptographicKey } of keyPairs) {
+      const owner = cryptographicKey.ownerId;
+      const canonicalOwner = owner == null
+        ? null
+        : getCanonicalPortableId(owner);
+      if (canonicalOwner === actorId) continue;
+      if (canonicalOwner == null) {
+        logger.debug(
+          "Forwarding activities from the portable inbox {inbox} without " +
+            "HTTP Signatures, as the key pairs of the actor {identifier} are " +
+            "not the gateway keys of a portable actor.",
+          { inbox: recipient.canonicalInboxId, identifier },
+        );
+      } else {
+        logger.warn(
+          "Forwarding activities from the portable inbox {inbox} without " +
+            "HTTP Signatures, as the key pairs of the actor {identifier} are " +
+            "the gateway keys of {owner}, not of the recipient {actorId}.",
+          {
+            inbox: recipient.canonicalInboxId,
+            identifier,
+            owner: canonicalOwner,
+            actorId,
+          },
+        );
+      }
+      return [];
+    }
+    return keyPairs.map(({ keyId, privateKey }) => ({ keyId, privateKey }));
   }
 
   async #fetchHashlinkMedia(
