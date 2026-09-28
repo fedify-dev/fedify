@@ -26,6 +26,10 @@ links:
         `ap:` URI or a compatible identifier is rejected unless its proof is
         made by the DID of that ID, and embedded maps with compatible
         identifiers need their own proofs as embedded portable objects do.
+        The exception is a key embedded in the `publicKey` or
+        `assertionMethod` of a verified portable actor, such as a gateway
+        key, whose ID is the actor's compatible identifier plus a fragment;
+        the actor's proof covers it.
         Activities of actors that publish compatible identifiers without
         signing them, or whose DIDs use key types Fedify does not support,
         are no longer accepted.
