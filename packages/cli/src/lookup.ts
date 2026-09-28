@@ -8,7 +8,6 @@ import {
   Collection,
   CryptographicKey,
   type Link,
-  lookupObject,
   Object as APObject,
   traverseCollection,
 } from "@fedify/vocab";
@@ -34,6 +33,7 @@ import {
   optionNames,
   or,
   string,
+  text,
   withDefault,
 } from "@optique/core";
 import { path, print, printError } from "@optique/run";
@@ -42,6 +42,11 @@ import process from "node:process";
 import ora from "ora";
 import { configContext } from "./config.ts";
 import { getContextLoader, getDocumentLoader } from "./docloader.ts";
+import {
+  createLookupDiagnostics,
+  describeLookupFailure,
+  lookupWithDiagnostics,
+} from "./diagnostics.ts";
 import { renderImages } from "./imagerenderer.ts";
 import { configureLogging } from "./log.ts";
 import {
@@ -322,9 +327,12 @@ function wrapDocumentLoaderWithTimeout(
 
   return (url: string, options?) => {
     const signal = createTimeoutSignal(timeoutSeconds);
-    return loader(url, { ...options, signal }).finally(() =>
-      clearTimeoutSignal(signal)
-    );
+    return loader(url, { ...options, signal }).catch((error) => {
+      // Some runtimes report a truncated JSON body instead of the abort reason.
+      // Preserve the actual timeout when it interrupted the document loader.
+      if (signal?.aborted) throw signal.reason;
+      throw error;
+    }).finally(() => clearTimeoutSignal(signal));
   };
 }
 
@@ -461,33 +469,25 @@ export async function runLookup(
         }/${command.urls.length}...`;
       }
 
-      let collection: APObject | null;
-      try {
-        collection = await lookupObject(url, {
-          documentLoader: authLoader ?? documentLoader,
-          contextLoader,
-          userAgent: command.userAgent,
-        });
-      } catch (error) {
-        if (error instanceof TimeoutError) {
+      const result = await lookupWithDiagnostics(url, {
+        documentLoader: authLoader ?? documentLoader,
+        contextLoader,
+        userAgent: command.userAgent,
+      });
+      const collection = result.object;
+      if (collection == null) {
+        if (
+          result.thrownError instanceof TimeoutError ||
+          result.failure?.error instanceof TimeoutError
+        ) {
           handleTimeoutError(spinner, command.timeout, url);
         } else {
           spinner.fail(`Failed to fetch object: ${colors.red(url)}.`);
-          if (authLoader == null) {
-            printError(
-              message`It may be a private object.  Try with -a/--authorized-fetch.`,
-            );
-          }
-        }
-        await server?.close();
-        process.exit(1);
-      }
-      if (collection == null) {
-        spinner.fail(`Failed to fetch object: ${colors.red(url)}.`);
-        if (authLoader == null) {
-          printError(
-            message`It may be a private object.  Try with -a/--authorized-fetch.`,
+          const diagnostic = describeLookupFailure(
+            result.failure,
+            authLoader != null,
           );
+          printError(message`${text(diagnostic.message)}`);
         }
         await server?.close();
         process.exit(1);
@@ -502,15 +502,22 @@ export async function runLookup(
       }
       spinner.succeed(`Fetched collection: ${colors.green(url)}.`);
 
+      const diagnostics = createLookupDiagnostics(
+        authLoader ?? documentLoader,
+        contextLoader,
+      );
+      let iterating = true;
       try {
         let collectionItems = 0;
+        diagnostics.clearFailures();
         for await (
           const item of traverseCollection(collection, {
-            documentLoader: authLoader ?? documentLoader,
-            contextLoader,
+            documentLoader: diagnostics.documentLoader,
+            contextLoader: diagnostics.contextLoader,
             suppressError: command.suppressErrors,
           })
         ) {
+          iterating = false;
           if (!command.output && (totalItems > 0 || collectionItems > 0)) {
             print(message`${command.separator}`);
           }
@@ -522,23 +529,35 @@ export async function runLookup(
           );
           collectionItems++;
           totalItems++;
+          diagnostics.clearFailures();
+          iterating = true;
         }
       } catch (error) {
         logger.error("Failed to complete the traversal for {url}: {error}", {
           url,
           error,
         });
-        if (error instanceof TimeoutError) {
+        const failure = iterating
+          ? diagnostics.getContextFailure() ?? diagnostics.getObjectFailure() ??
+            { error, source: "other" as const }
+          : { error, source: "other" as const };
+        if (
+          error instanceof TimeoutError || failure.error instanceof TimeoutError
+        ) {
           handleTimeoutError(spinner, command.timeout, url);
         } else {
           spinner.fail(
             `Failed to complete the traversal for: ${colors.red(url)}.`,
           );
-          if (authLoader == null) {
-            printError(
-              message`It may be a private object.  Try with -a/--authorized-fetch.`,
-            );
-          } else {
+          const diagnostic = describeLookupFailure(
+            failure,
+            authLoader != null,
+          );
+          printError(message`${text(diagnostic.message)}`);
+          if (
+            iterating && !diagnostic.suggestsAuthorizedFetch &&
+            !command.suppressErrors
+          ) {
             printError(
               message`Use the -S/--suppress-errors option to suppress partial errors.`,
             );
@@ -554,44 +573,37 @@ export async function runLookup(
     process.exit(0);
   }
 
-  const promises: Promise<APObject | null>[] = [];
-
-  for (const url of command.urls) {
-    promises.push(
-      lookupObject(url, {
+  const objects = await Promise.all(
+    command.urls.map((url) =>
+      lookupWithDiagnostics(url, {
         documentLoader: authLoader ?? documentLoader,
         contextLoader,
         userAgent: command.userAgent,
-      }).catch((error) => {
-        if (error instanceof TimeoutError) {
-          handleTimeoutError(spinner, command.timeout, url);
-        }
-        throw error;
-      }),
-    );
-  }
-
-  let objects: (APObject | null)[];
-  try {
-    objects = await Promise.all(promises);
-  } catch (_error) {
-    await server?.close();
-    process.exit(1);
-  }
+      })
+    ),
+  );
 
   spinner.stop();
   let success = true;
   let i = 0;
-  for (const obj of objects) {
+  for (const result of objects) {
+    const obj = result.object;
     const url = command.urls[i];
     if (i > 0) print(message`${command.separator}`);
     i++;
     if (obj == null) {
-      spinner.fail(`Failed to fetch ${colors.red(url)}`);
-      if (authLoader == null) {
-        printError(
-          message`It may be a private object.  Try with -a/--authorized-fetch.`,
+      if (
+        result.thrownError instanceof TimeoutError ||
+        result.failure?.error instanceof TimeoutError
+      ) {
+        handleTimeoutError(spinner, command.timeout, url);
+      } else {
+        spinner.fail(`Failed to fetch ${colors.red(url)}`);
+        const diagnostic = describeLookupFailure(
+          result.failure,
+          authLoader != null,
         );
+        printError(message`${text(diagnostic.message)}`);
       }
       success = false;
     } else {
