@@ -4,6 +4,7 @@ import {
   FetchError,
   parseIri,
   type PortableObjectVerifier,
+  type PortableObjectVerifierOptions,
   type RemoteDocument,
 } from "@fedify/vocab-runtime";
 import fetchMock from "fetch-mock";
@@ -454,4 +455,136 @@ test("getActorHandle() with FEP-ef61 portable actors", {
     fetchMock.removeRoutes();
     fetchMock.hardReset();
   }
+});
+
+test("lookupObject() reports inferred gateways as hints", async () => {
+  const calls: PortableObjectVerifierOptions[] = [];
+  // deno-lint-ignore require-await
+  const verifyPortableObject: PortableObjectVerifier = async (_, options) => {
+    calls.push(options);
+    return { verified: true };
+  };
+  const actor = await lookupObject(compatibleId, {
+    documentLoader: createLoader({ [compatibleId]: person() }),
+    contextLoader: mockDocumentLoader,
+    verifyPortableObject,
+  });
+  assertInstanceOf(actor, Person);
+  deepStrictEqual(calls.length, 1);
+  deepStrictEqual(calls[0].gateways, undefined);
+  deepStrictEqual(calls[0].gatewayHints, [new URL("https://example.com")]);
+});
+
+test("lookupObject() verifies fetched documents that stand for portable objects", async (t) => {
+  const plainUrl = "https://example.com/users/alice";
+  const redirectingLoader = (
+    documentUrl: string,
+    document: Record<string, unknown>,
+  ): DocumentLoader & { readonly fetched: string[] } => {
+    const fetched: string[] = [];
+    // deno-lint-ignore require-await
+    const loader = async (url: string): Promise<RemoteDocument> => {
+      fetched.push(url);
+      if (url !== plainUrl) {
+        throw new FetchError(
+          url,
+          "HTTP 404",
+          new globalThis.Response(null, { status: 404 }),
+        );
+      }
+      return { contextUrl: null, documentUrl, document };
+    };
+    return Object.assign(loader, { fetched });
+  };
+
+  await t.step("a redirect to a compatible identifier", async () => {
+    const calls: PortableObjectVerifierOptions[] = [];
+    const documentLoader = redirectingLoader(compatibleId, person());
+    const actor = await lookupObject(plainUrl, {
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      // deno-lint-ignore require-await
+      verifyPortableObject: async (_, options) => {
+        calls.push(options);
+        return { verified: true };
+      },
+    });
+    assertInstanceOf(actor, Person);
+    deepStrictEqual(actor.id, parseIri(actorId));
+    // Verified in place, without another request:
+    deepStrictEqual(documentLoader.fetched, [plainUrl]);
+    deepStrictEqual(calls.length, 1);
+    deepStrictEqual(calls[0].documentUrl, new URL(compatibleId));
+    deepStrictEqual(calls[0].gatewayHints, [new URL("https://example.com")]);
+    equal(
+      await lookupObject(plainUrl, {
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        verifyPortableObject: createVerifier(false),
+      }),
+      null,
+    );
+    // A document that claims another object:
+    equal(
+      await lookupObject(plainUrl, {
+        documentLoader: redirectingLoader(
+          compatibleId,
+          person(`ap://${did}/other`),
+        ),
+        contextLoader: mockDocumentLoader,
+        verifyPortableObject: createVerifier(),
+      }),
+      null,
+    );
+  });
+
+  await t.step("a compatible @id", async () => {
+    const documentLoader = redirectingLoader(plainUrl, person(compatibleId));
+    const verifyPortableObject = createVerifier();
+    equal(
+      await lookupObject(plainUrl, {
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        verifyPortableObject,
+      }),
+      null,
+    );
+    deepStrictEqual(verifyPortableObject.documents, []);
+    // Without verifyPortableObject, it is fetched as before:
+    const actor = await lookupObject(plainUrl, {
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+    });
+    assertInstanceOf(actor, Person);
+    deepStrictEqual(actor.id, new URL(compatibleId));
+  });
+
+  await t.step("a portable @id", async () => {
+    const documentLoader = redirectingLoader(plainUrl, person());
+    const actor = await lookupObject(plainUrl, {
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      verifyPortableObject: createVerifier(),
+    });
+    assertInstanceOf(actor, Person);
+    deepStrictEqual(actor.id, parseIri(actorId));
+    equal(
+      await lookupObject(plainUrl, {
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        verifyPortableObject: createVerifier(false),
+      }),
+      null,
+    );
+    await rejects(
+      () =>
+        lookupObject(plainUrl, {
+          documentLoader,
+          contextLoader: mockDocumentLoader,
+          verifyPortableObject: createVerifier(false),
+          crossOrigin: "throw",
+        }),
+      /No gateway returned a valid portable object/,
+    );
+  });
 });

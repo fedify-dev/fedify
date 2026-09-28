@@ -1,7 +1,9 @@
 import { deepStrictEqual, ok, throws } from "node:assert/strict";
 import { test } from "node:test";
+import type { DocumentLoader } from "../docloader.ts";
 import { parseIri } from "../url.ts";
 import {
+  createSnapshotContextLoader,
   getPortableGatewayCandidates,
   isPortableIri,
 } from "./portable-dereference.ts";
@@ -71,4 +73,34 @@ test("getPortableGatewayCandidates() reads @gateway hints", () => {
     )),
     [0, 1, 2, 3, 4].map((i) => `https://g${i}.example/`),
   );
+});
+
+test("createSnapshotContextLoader() does not nest released snapshots", async () => {
+  const calls: string[] = [];
+  const base: DocumentLoader = (url) => {
+    calls.push(url);
+    return Promise.resolve({
+      contextUrl: null,
+      documentUrl: url,
+      document: { "@context": {} },
+    });
+  };
+  let loader = base;
+  for (let i = 0; i < 10000; i++) {
+    const snapshot = createSnapshotContextLoader(loader);
+    snapshot.release();
+    loader = snapshot.loader;
+  }
+  // A deep chain of wrappers would overflow the stack here:
+  await loader("https://example.com/context");
+  deepStrictEqual(calls, ["https://example.com/context"]);
+
+  // Snapshots still in use are kept, so a nested snapshot sees their cache:
+  const outer = createSnapshotContextLoader(base);
+  await outer.loader("https://example.com/context");
+  const inner = createSnapshotContextLoader(outer.loader);
+  await inner.loader("https://example.com/context");
+  deepStrictEqual(calls.length, 2);
+  inner.release();
+  outer.release();
 });

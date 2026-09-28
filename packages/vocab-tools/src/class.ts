@@ -20,13 +20,19 @@ const INTERNAL_RUNTIME_IMPORTS = [
 ].join(",\n    ");
 const PORTABLE_DEREFERENCE_IMPORTS = [
   "copyPortableProvenance",
+  "createSnapshotContextLoader",
   "dereferencePortableIri",
-  "isCompatibleEf61Iri",
-  "isInPortableChain",
+  "getPortableResponseClaim",
   "isPortableIri",
+  "isPortableMode",
   "isUnsecuredPortableObject",
+  "isUnverifiedPortableClaim",
+  "markUnverifiedPortableClaim",
+  "mustDereferencePortableObject",
+  "parseCompatibleEf61Reference",
+  "type PortableResponseClaim",
   "recordPortableReferrer",
-  "rejectPortableChainReference",
+  "rejectMalformedCompatibleReference",
   "warnUnverifiableEmbeddedObject",
 ].join(",\n    ");
 const SIGNED_REPRESENTATION_IMPORTS = [

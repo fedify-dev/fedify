@@ -377,9 +377,49 @@ the accessor throws a `TypeError` (or returns `null` with
 `suppressError: true`) before sending any request.  The options apply to that
 call only, so pass them again when you dereference references in the returned
 object.  As with other dereferenced objects, a verified object is cached in its
-parent object, and later calls return it without fetching it again.  Portable
-objects embedded in a document are not fetched or verified by accessors; see
-the [*Origin-based security model* section](#origin-based-security-model).
+parent object, and later calls return it without fetching it again.  A portable
+object embedded in a portable object with the same DID is trusted as
+embedded, since the parent's proof covers it; other embedded portable objects
+are handled as described below.
+
+#### Compatible identifiers
+
+A reference can also be a compatible identifier (see above), e.g.,
+`https://server1.example/.well-known/apgateway/did:key:z6Mk.../objects/1`, which
+software without portable IRI support uses in place of a portable ID.  Its
+host does not vouch for the object, since anyone can serve a compatible
+identifier for any DID.  Therefore, when you pass `verifyPortableObject`, an
+accessor dereferences a compatible identifier as the portable object it stands
+for: it asks the gateway that the identifier names first, and then the
+gateways in the `gateways` option, if any, and applies the checks above to the
+object.  Even `gateways: []` does not keep it from asking the gateway that the
+identifier names.  A malformed compatible identifier, such as one with
+a `@gateway` location hint, is rejected without a request, like an object that
+fails the checks.
+
+In the same way, the portable object policy applies wherever a document turns
+out to stand for a portable object:
+
+ -  If a document fetched from an ordinary HTTP(S) URL is served from
+    a compatible identifier after redirects, or has a portable `@id`, it is
+    checked as the portable object it claims to be, instead of being trusted
+    because of its origin.  Its final URL decides which object it has to be,
+    so a document whose `@id` claims another object is rejected.  A document
+    whose `@id` is a compatible identifier rather than a portable ID is always
+    rejected.
+ -  An embedded object whose `@id` is a compatible identifier, or a portable
+    ID with a DID other than the parent's, is not trusted as embedded, even
+    with `crossOrigin: "trust"`.  The accessor dereferences and verifies it by
+    its `@id` instead.
+
+These rules also apply without `verifyPortableObject` to references from
+portable objects, i.e., objects that have portable IDs or that were obtained
+from portable objects.  Such an accessor throws a `TypeError` (or returns
+`null` with `suppressError: true`) just as for a portable ID.  Otherwise,
+without `verifyPortableObject`, compatible identifiers are fetched as ordinary
+HTTP(S) URLs as before, so the result is not verified as a portable object.
+Such a result is not cached in the parent object, so a later call with
+`verifyPortableObject` still verifies it.
 
 [FEP-8b32]: https://w3id.org/fep/8b32
 
@@ -457,10 +497,6 @@ an `@id` on its own, and drop embedded objects without an `@id`.
 >     such as the `replies` of a portable object, are rejected.
 >  -  The owner's `gateways` are taken from whichever validly signed actor
 >     document is retrieved, which might be older than the latest one.
->  -  Compatible identifiers are not dereferenced as portable objects.
->     To keep them from skipping the policy, accessors of portable objects
->     reject references, redirects, and embedded objects whose IDs are
->     compatible identifiers.
 
 Links and media/document objects expose `digestMultibase` for the integrity
 digest required when portable objects reference external resources.  Use
