@@ -9,9 +9,9 @@ import {
   type DocumentLoader,
   encodeMultibase,
   formatIri,
+  fromCompatibleEf61Id,
   getDocumentLoader,
   getFe34Origin,
-  haveSameFe34Origin,
   parseIri,
   type PortableObjectVerifier,
   type RemoteDocument,
@@ -47,6 +47,7 @@ import {
   validateCryptoKey,
 } from "./key.ts";
 import { getNormalizationContextLoader } from "./ld.ts";
+import { getPortableDid, isPortableId } from "./portable-key-id.ts";
 
 /**
  * Known Object Integrity Proof `cryptosuite` values, used to keep
@@ -506,7 +507,10 @@ export interface VerifyPortableObjectProofOptions extends VerifyProofOptions {
  */
 export type VerifyPortableObjectProofFailureReason =
   | {
-    /** The document does not have a portable `ap:` or `ap+ef61:` ID. */
+    /**
+     * The document has neither a portable `ap:` or `ap+ef61:` ID nor an
+     * FEP-ef61 compatible identifier.
+     */
     readonly type: "notPortableObject";
   }
   | {
@@ -1680,6 +1684,37 @@ type PreparePortableObjectProofResult =
     readonly objectType?: Fep2277CoreType;
   };
 
+/**
+ * Gets the DID of a portable object ID, which is either an `ap:` or
+ * `ap+ef61:` URI or an FEP-ef61 compatible identifier.
+ * @throws {TypeError} If the ID is malformed.
+ */
+function getObjectDid(id: string): string {
+  try {
+    parseIri(id);
+    if (PORTABLE_OBJECT_ID_PATTERN.test(id)) return getFe34Origin(id);
+    const portableId = fromCompatibleEf61Id(id);
+    if (portableId != null) return getFe34Origin(portableId);
+  } catch (error) {
+    if (!(error instanceof TypeError)) throw error;
+    throw new InvalidPortableObjectIdError(id, { cause: error });
+  }
+  throw new InvalidPortableObjectIdError(id);
+}
+
+/**
+ * The error thrown when a document's ID looks portable, i.e., it is an `ap:`
+ * or `ap+ef61:` URI or looks like an FEP-ef61 compatible identifier, but is
+ * malformed.
+ * @internal
+ */
+export class InvalidPortableObjectIdError extends TypeError {
+  constructor(id: string, options?: ErrorOptions) {
+    super(`Invalid portable object ID: ${id}`, options);
+    this.name = "InvalidPortableObjectIdError";
+  }
+}
+
 async function preparePortableObjectProof(
   jsonLd: unknown,
   options: VerifyPortableObjectProofOptions,
@@ -1687,7 +1722,7 @@ async function preparePortableObjectProof(
   if (
     isJsonLdNode(jsonLd) &&
     typeof jsonLd["@id"] === "string" &&
-    !PORTABLE_OBJECT_ID_PATTERN.test(jsonLd["@id"])
+    !isPortableId(jsonLd["@id"])
   ) {
     return {
       prepared: false,
@@ -1702,10 +1737,7 @@ async function preparePortableObjectProof(
     options.contextLoader,
   );
   const id = root["@id"];
-  if (
-    typeof id !== "string" ||
-    !PORTABLE_OBJECT_ID_PATTERN.test(id)
-  ) {
+  if (typeof id !== "string" || !isPortableId(id)) {
     return {
       prepared: false,
       result: {
@@ -1714,10 +1746,13 @@ async function preparePortableObjectProof(
       },
     };
   }
+  // This guarantees that the ID's authority, or the DID in a compatible
+  // identifier, is a valid cryptographic origin before any key work begins.
+  // The document itself is never rewritten: a compatible identifier stays its
+  // ID, and only the DID of its canonical portable ID is compared with
+  // the proofs:
+  const objectDid = getObjectDid(id);
   const objectId = parseIri(id);
-  // parseIri() validates the portable ID; this additionally guarantees that
-  // its authority is a valid cryptographic origin before any key work begins.
-  getFe34Origin(objectId);
 
   const objectType = classifyFep2277CoreType(root);
   if (
@@ -1838,7 +1873,7 @@ async function preparePortableObjectProof(
         },
       };
     }
-    if (!haveSameFe34Origin(objectId, verificationMethod)) {
+    if (getFe34Origin(verificationMethod) !== objectDid) {
       return {
         prepared: false,
         result: {
@@ -1927,15 +1962,24 @@ export async function verifyPortableObjectProofPolicy(
  * collection without a proof is reported separately so a caller can apply a
  * gateway trust policy.  Embedded portable objects are not traversed.
  *
+ * A portable object is a document whose ID is an `ap:` or `ap+ef61:` URI, or
+ * an [FEP-ef61] compatible identifier such as
+ * `https://gw.example/.well-known/apgateway/did:key:z6Mk…/actor`, which
+ * stands for the portable ID `ap+ef61://did:key:z6Mk…/actor`.
+ *
  * Every proof must use a DID URL whose DID matches the portable object's
- * authority, and every proof must pass {@link verifyProof}.
+ * authority, i.e., the DID of its canonical portable ID, and every proof must
+ * pass {@link verifyProof}.  The proofs are verified over the document as
+ * given; a compatible identifier is never rewritten into a portable ID.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
  *
  * @param jsonLd The JSON-LD document to verify.
  * @param options Additional options.  See also
  *                {@link VerifyPortableObjectProofOptions}.
  * @returns The detailed portable proof-policy result.
  * @throws {TypeError} If the input is not a single JSON-LD object or has a
- *                     malformed portable ID.
+ *                     malformed portable ID or compatible identifier.
  * @since 2.4.0
  */
 export async function verifyPortableObjectProof(
@@ -2133,7 +2177,7 @@ export async function verifyObject<T extends Object>(
     loaderOptions,
   ) => {
     const remoteDocument = await baseDocumentLoader(url, loaderOptions);
-    if (PORTABLE_OBJECT_ID_PATTERN.test(url)) loadedPortableProofs++;
+    if (isPortableId(url)) loadedPortableProofs++;
     const reference = normalizeDocumentUrl(url);
     const candidateIndex = rawProofCandidates.findIndex(
       (candidate, index) =>
@@ -2224,26 +2268,28 @@ function deleteAuthenticatedAttribution(
   controllerId: URL,
   verificationMethodId: URL,
 ): void {
-  const controllerHasCryptographicOrigin = hasCryptographicOrigin(
-    controllerId.href,
-  );
-  const verificationMethodMatchesController =
-    controllerHasCryptographicOrigin &&
-    hasCryptographicOrigin(verificationMethodId.href) &&
-    haveSameFe34Origin(controllerId, verificationMethodId);
+  // A compatible identifier stands for a portable object, so a controller
+  // at one is as cryptographic as an `ap:` URI:
   if (
-    !controllerHasCryptographicOrigin ||
-    verificationMethodMatchesController
+    !hasCryptographicOrigin(controllerId.href) && !isPortableId(controllerId)
   ) {
     attributions.delete(controllerId.href);
+    return;
   }
+  // Portable attributions, including compatible identifiers, are
+  // authenticated only by a proof whose verification method shares their
+  // DID; the web origin of a compatible identifier authenticates nothing:
+  const did = getPortableDid(controllerId);
   if (
-    !verificationMethodMatchesController
-  ) return;
+    did == null || !hasCryptographicOrigin(verificationMethodId.href) ||
+    getPortableDid(verificationMethodId) !== did
+  ) {
+    return;
+  }
   for (const attribution of [...attributions]) {
     if (
-      hasCryptographicOrigin(attribution) &&
-      haveSameFe34Origin(controllerId, attribution)
+      (hasCryptographicOrigin(attribution) || isPortableId(attribution)) &&
+      getPortableDid(attribution) === did
     ) {
       attributions.delete(attribution);
     }

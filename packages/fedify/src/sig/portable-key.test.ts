@@ -4,6 +4,7 @@ import {
   type DocumentLoader,
   encodeMultibase,
   exportDidKey,
+  exportSpki,
   FetchError,
   parseIri,
   preloadedContexts,
@@ -198,8 +199,19 @@ test("verifyRequest() rejects gateway keys that portable actors do not vouch for
       `${otherDid}#${otherDid.slice("did:key:".length)}`,
     ),
     "an unlisted gateway": await sign(await actorJson({ gateways: [gw2] })),
-    "a key missing from assertionMethod": await sign(
-      await actorJson({ assertionMethod: false }),
+    "a key missing from both assertionMethod and publicKey": await sign(
+      await actorJson({ assertionMethod: false, publicKey: null }),
+    ),
+    "a key referred to by URL in assertionMethod, embedded in publicKey":
+      await sign({
+        ...await actorJson({ assertionMethod: false }),
+        assertionMethod: [keyId.href],
+      }),
+    "a key only in publicKey without an owner": await sign(
+      withoutPublicKeyOwner(await actorJson({ assertionMethod: false })),
+    ),
+    "two keys with the same ID in publicKey": await sign(
+      await duplicatePublicKey(await actorJson({ assertionMethod: false })),
     ),
     "a key referred to by URL": await sign({
       ...await actorJson({ publicKey: null, assertionMethod: false }),
@@ -238,19 +250,241 @@ test("verifyRequest() rejects gateway keys that portable actors do not vouch for
   );
 });
 
-test("verifyRequest() keeps web-origin trust for compatible-ID actors", async () => {
-  // An actor whose own ID is a compatible identifier is not treated as
-  // a portable actor document yet, so its keys resolve as before:
-  const id = compatibleId(gw1);
+function withoutPublicKeyOwner(
+  json: Record<string, unknown>,
+): Record<string, unknown> {
+  const { owner: _, ...publicKey } = json.publicKey as Record<string, unknown>;
+  return { ...json, publicKey };
+}
+
+async function duplicatePublicKey(
+  json: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const publicKey = json.publicKey as Record<string, unknown>;
+  return {
+    ...json,
+    publicKey: [publicKey, {
+      ...publicKey,
+      publicKeyPem: await exportSpki(rsaPublicKey3.publicKey!),
+    }],
+  };
+}
+
+test("verifyRequest() accepts gateway keys referred to by URL in publicKey", async () => {
+  // The publicKey entry names the key embedded in assertionMethod:
   const documentLoader = createLoader({
-    [id]: await actorJson({ id, gateways: [gw1] }),
+    [compatibleId(gw1)]: await sign({
+      ...await actorJson({ publicKey: null }),
+      publicKey: keyId.href,
+    }),
   });
   const key = await verifyRequest(await signedRequest(), {
     documentLoader,
     contextLoader,
   });
   strictEqual(key?.id?.href, keyId.href);
+});
+
+test("verifyRequest() accepts gateway keys only in publicKey", async () => {
+  // Some publishers, e.g., tootik, list their RSA keys only in publicKey;
+  // the DID's proof covers them all the same:
+  const documentLoader = createLoader({
+    [compatibleId(gw1)]: await sign(
+      await actorJson({ assertionMethod: false }),
+    ),
+  });
+  const key = await verifyRequest(await signedRequest(), {
+    documentLoader,
+    contextLoader,
+  });
+  strictEqual(key?.id?.href, keyId.href);
+  strictEqual(key?.ownerId?.href, parseIri(actorId).href);
+});
+
+test("verifyRequest() resolves gateway keys of compatible-ID actors", async () => {
+  // An actor whose own ID is a compatible identifier, as tootik's are, is
+  // a portable actor:
+  const id = compatibleId(gw1);
+  const signed = await sign(await actorJson({ id, gateways: [gw1] }));
+  let key = await verifyRequest(await signedRequest(), {
+    documentLoader: createLoader({ [id]: signed }),
+    contextLoader,
+  });
+  strictEqual(key?.id?.href, keyId.href);
   strictEqual(key?.ownerId?.href, id);
+  // Also as tootik's, with the RSA key only in publicKey:
+  key = await verifyRequest(await signedRequest(), {
+    documentLoader: createLoader({
+      [id]: await sign(
+        await actorJson({ id, gateways: [gw1], assertionMethod: false }),
+      ),
+    }),
+    contextLoader,
+  });
+  strictEqual(key?.id?.href, keyId.href);
+  // Its document is signed by its DID; the gateway that serves it does not
+  // vouch for it, so an unsigned document, e.g., at an attacker's gateway,
+  // does not resolve to a key at all:
+  const evil = "https://evil.example";
+  const evilId = compatibleId(evil);
+  const evilKeyId = new URL(`${evilId}#main-key`);
+  const unsigned = await actorJson({
+    id: evilId,
+    gateways: [evil],
+    key: evilKeyId,
+  });
+  const documentLoader = createLoader({ [evilId]: unsigned });
+  strictEqual(
+    await verifyRequest(await signedRequest(undefined, evilKeyId), {
+      documentLoader,
+      contextLoader,
+    }),
+    null,
+  );
+  strictEqual(
+    await getKeyOwner(evilKeyId, { documentLoader, contextLoader }),
+    null,
+  );
+  // Nor does one signed by another DID:
+  strictEqual(
+    await verifyRequest(await signedRequest(), {
+      documentLoader: createLoader({
+        [id]: await sign(
+          await actorJson({ id, gateways: [gw1] }),
+          otherKeyPair.privateKey,
+          `${otherDid}#${otherDid.slice("did:key:".length)}`,
+        ),
+      }),
+      contextLoader,
+    }),
+    null,
+  );
+});
+
+test("keys at ordinary URLs cannot belong to portable actors", async () => {
+  // An ordinary key URL naming a compatible-ID actor as its owner, whose
+  // unsigned document at the same host lists the key back:
+  const evil = "https://evil.example";
+  const evilActorId = compatibleId(evil);
+  const evilKeyId = new URL(`${evil}/keys/1`);
+  const documentLoader = createLoader({
+    [evilKeyId.href]: {
+      "@context": "https://w3id.org/security/v1",
+      id: evilKeyId.href,
+      type: "Key",
+      owner: evilActorId,
+      publicKeyPem: await exportSpki(gatewayPublicKey),
+    },
+    [evilActorId]: await actorJson({
+      id: evilActorId,
+      gateways: [evil],
+      key: evilKeyId,
+      assertionMethod: false,
+    }),
+  });
+  const options = { documentLoader, contextLoader };
+  strictEqual(
+    await verifyRequest(await signedRequest(undefined, evilKeyId), options),
+    null,
+  );
+  strictEqual(
+    (await fetchKey(evilKeyId, CryptographicKey, options)).key,
+    null,
+  );
+  strictEqual(await getKeyOwner(evilKeyId, options), null);
+  const key = new CryptographicKey({
+    id: evilKeyId,
+    owner: new URL(evilActorId),
+    publicKey: gatewayPublicKey,
+  });
+  strictEqual(await getKeyOwner(key, options), null);
+  ok(
+    !await doesActorOwnKey(
+      new Create({
+        id: new URL(`${evil}/activities/1`),
+        actor: new URL(evilActorId),
+      }),
+      key,
+      options,
+    ),
+  );
+  // Nor does the document at an ordinary key URL speak for the portable
+  // actor it claims to be, even at the same origin:
+  const actorKeyId = new URL(`${evil}/users/alice#main-key`);
+  for (
+    const document of [
+      await actorJson({ id: evilActorId, gateways: [evil], key: actorKeyId }),
+      // A key without an owner would belong to the actor it is embedded in:
+      withoutPublicKeyOwner(
+        await actorJson({
+          id: evilActorId,
+          gateways: [evil],
+          key: actorKeyId,
+          assertionMethod: false,
+        }),
+      ),
+    ]
+  ) {
+    const actorOptions = {
+      documentLoader: createLoader({ [`${evil}/users/alice`]: document }),
+      contextLoader,
+    };
+    strictEqual(
+      await verifyRequest(
+        await signedRequest(undefined, actorKeyId),
+        actorOptions,
+      ),
+      null,
+    );
+    strictEqual(
+      (await fetchKey(actorKeyId, CryptographicKey, actorOptions)).key,
+      null,
+    );
+    strictEqual(await getKeyOwner(actorKeyId, actorOptions), null);
+  }
+  // Nor does an ordinary owner URL that serves a portable actor document:
+  const ownerKeyId = new URL(`${evil}/keys/2`);
+  const ownerOptions = {
+    documentLoader: createLoader({
+      [ownerKeyId.href]: {
+        "@context": "https://w3id.org/security/v1",
+        id: ownerKeyId.href,
+        type: "Key",
+        owner: `${evil}/users/bob`,
+        publicKeyPem: await exportSpki(gatewayPublicKey),
+      },
+      [`${evil}/users/bob`]: await actorJson({
+        id: evilActorId,
+        gateways: [evil],
+        key: ownerKeyId,
+        assertionMethod: false,
+      }),
+    }),
+    contextLoader,
+  };
+  strictEqual(await getKeyOwner(ownerKeyId, ownerOptions), null);
+  strictEqual(
+    await getKeyOwner(
+      new CryptographicKey({
+        id: ownerKeyId,
+        owner: new URL(`${evil}/users/bob`),
+        publicKey: gatewayPublicKey,
+      }),
+      ownerOptions,
+    ),
+    null,
+  );
+  // A key cached by an older version that trusted the web origin is not
+  // taken from the cache either:
+  const keyCache: KeyCache = {
+    get: () => Promise.resolve(key),
+    set: () => Promise.resolve(),
+  };
+  strictEqual(
+    (await fetchKey(evilKeyId, CryptographicKey, { ...options, keyCache }))
+      .key,
+    null,
+  );
 });
 
 test("gateway keys are neither cached nor accepted outside HTTP Signatures", async () => {

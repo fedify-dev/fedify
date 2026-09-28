@@ -257,6 +257,9 @@ interface CollectionNode {
 
 function canonicalize(id: string | URL): string | null {
   try {
+    // A compatible identifier stands for the portable ID it contains:
+    const portable = fromCompatibleEf61Id(id);
+    if (portable != null) return canonicalizePortableUri(formatIri(portable));
     return canonicalizePortableUri(typeof id === "string" ? id : formatIri(id));
   } catch (error) {
     if (error instanceof TypeError) return null;
@@ -497,13 +500,34 @@ async function fetchOwner(
     getDocumentLoader();
   const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
   const tracer = tracerProvider.getTracer(metadata.name, metadata.version);
+  // A compatible identifier is dereferenced as the portable ID it contains,
+  // asking the gateway it names first, as in property accessors:
+  let inferredGateways: URL[] | undefined;
+  try {
+    const portable = fromCompatibleEf61Id(candidate);
+    if (portable != null) {
+      inferredGateways = [new URL(candidate.origin)];
+      candidate = portable;
+    }
+  } catch (error) {
+    if (!(error instanceof TypeError)) throw error;
+    logger.debug(
+      "The owner {owner} of a portable collection is a malformed compatible " +
+        "identifier.",
+      { owner: candidate.href },
+    );
+    return null;
+  }
   // Explicit gateways (even an empty list) take precedence, as in property
-  // accessors; otherwise the owner's own location hints, and failing that,
-  // the hints that the collection was fetched with:
+  // accessors; otherwise the owner's own location hints or the gateway of its
+  // compatible identifier, and failing that, the hints that the collection
+  // was fetched with:
   const gateways = options.gateways ??
-    (getPortableGatewayCandidates(candidate).length > 0
+    (inferredGateways != null ||
+        getPortableGatewayCandidates(candidate).length > 0
       ? undefined
       : options.gatewayHints);
+  if (options.gateways != null) inferredGateways = undefined;
   const span = tracer.startSpan("activitypub.lookup_object");
   try {
     const object = await dereferencePortableIri(candidate, {
@@ -511,6 +535,7 @@ async function fetchOwner(
       contextLoader,
       tracerProvider,
       gateways,
+      ...(inferredGateways == null ? {} : { inferredGateways }),
       verifyPortableObject: (document, verifierOptions) =>
         verifyPortableObjectProof(document, {
           ...options,

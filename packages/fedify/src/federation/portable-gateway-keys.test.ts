@@ -381,13 +381,15 @@ test("Context.getDocumentLoader() signs requests with gateway keys for portable 
 
 async function actorDocument(
   gateways: readonly string[],
+  id: URL = actorId,
+  signed = true,
 ): Promise<Record<string, unknown>> {
-  const federation = createTestFederation(() => actorId);
+  const federation = createTestFederation(() => id);
   const keys = await federation.createContext(new URL(gateway))
     .getActorKeyPairs("alice");
   const json = await new Person({
-    id: actorId,
-    inbox: parseIri(`${actorId.href}/inbox`),
+    id,
+    inbox: parseIri(`${id.href}/inbox`),
     gateways: gateways.map((g) => new URL(g)),
     publicKey: keys[0].cryptographicKey,
     assertionMethods: keys.map((k) => k.multikey),
@@ -399,7 +401,7 @@ async function actorDocument(
     ...json["@context"] as unknown[],
     "https://w3id.org/security/data-integrity/v1",
   ];
-  return await sign(json);
+  return signed ? await sign(json) : json;
 }
 
 function createLoader(responses: Record<string, unknown>): DocumentLoader {
@@ -417,10 +419,18 @@ function createLoader(responses: Record<string, unknown>): DocumentLoader {
 async function deliver(
   body: Record<string, unknown>,
   gateways: readonly string[],
-  { kv = new MemoryKvStore(), httpSignature = true } = {},
+  {
+    kv = new MemoryKvStore(),
+    httpSignature = true,
+    actor,
+  }: {
+    kv?: MemoryKvStore;
+    httpSignature?: boolean;
+    actor?: Record<string, unknown>;
+  } = {},
 ): Promise<{ status: number; dispatched: number }> {
   const documentLoader = createLoader({
-    [compatibleActorId(gateway)]: await actorDocument(gateways),
+    [compatibleActorId(gateway)]: actor ?? await actorDocument(gateways),
   });
   const unsigned = new Request("https://local.example/inbox", {
     method: "POST",
@@ -542,10 +552,112 @@ test("handleInbox() does not take Linked Data Signatures for portable actors", a
     }),
     { status: 401, dispatched: 0 },
   );
-  // The Linked Data Signature was verified, but the activity was refused
-  // for lacking a proof:
+  // Only a gateway key can belong to a portable actor, so the stale cache
+  // entry is not taken, and the Linked Data Signature is not verified at all:
+  assertEquals(lastResponseText, "Failed to verify the request signature.");
+});
+
+// Compatible-ID actors and activities
+
+const otherKeyPair = await crypto.subtle.generateKey(
+  "Ed25519",
+  true,
+  ["sign", "verify"],
+) as CryptoKeyPair;
+const otherDid = await exportDidKey(otherKeyPair.publicKey);
+
+function compatibleCreateJson(
+  id: string,
+  activityDid: string = did,
+): Record<string, unknown> {
+  // As tootik's are, both the activity and the actor are identified by
+  // compatible identifiers:
+  return {
+    "@context": portableContext,
+    id: `${gateway}/.well-known/apgateway/${activityDid}/activities/${id}`,
+    type: "Create",
+    actor: compatibleActorId(gateway),
+    object: "https://example.com/notes/1",
+  };
+}
+
+test("handleInbox() does not trust compatible-ID actors by web origin", async () => {
+  // The actor document is itself identified by its compatible identifier, as
+  // tootik's are, and the request is signed with its key:
+  const id = new URL(compatibleActorId(gateway));
+  for (const signed of [true, false]) {
+    const actor = await actorDocument([gateway], id, signed);
+    assertEquals(
+      await deliver(compatibleCreateJson(`unsigned-${signed}`), [gateway], {
+        actor,
+      }),
+      { status: 401, dispatched: 0 },
+      `actor document signed: ${signed}`,
+    );
+  }
   assertEquals(
-    lastResponseText,
-    "Activities of portable actors must have valid Object Integrity Proofs.",
+    await deliver(await sign(compatibleCreateJson("signed")), [gateway], {
+      actor: await actorDocument([gateway], id),
+    }),
+    { status: 202, dispatched: 1 },
+  );
+});
+
+test("handleInbox() requires proofs of compatible-ID actors", async () => {
+  // The gateway's HTTP signature is valid, but it does not authenticate
+  // the activity of a compatible-ID actor either:
+  assertEquals(
+    await deliver(compatibleCreateJson("unsigned"), [gateway]),
+    { status: 401, dispatched: 0 },
+  );
+  // A valid proof by the actor's DID authenticates it, with or without
+  // HTTP signatures:
+  assertEquals(
+    await deliver(await sign(compatibleCreateJson("signed")), [gateway]),
+    { status: 202, dispatched: 1 },
+  );
+  assertEquals(
+    await deliver(await sign(compatibleCreateJson("unsigned-request")), [
+      gateway,
+    ], { httpSignature: false }),
+    { status: 202, dispatched: 1 },
+  );
+});
+
+test("handleInbox() checks the DIDs of compatible activity IDs", async () => {
+  // An activity whose compatible ID names another DID, signed by the DID of
+  // its actor, which the proof does authenticate:
+  for (const actor of [actorId.href, compatibleActorId(gateway)]) {
+    assertEquals(
+      await deliver(
+        await sign({ ...compatibleCreateJson("forged", otherDid), actor }),
+        [gateway],
+      ),
+      { status: 401, dispatched: 0 },
+      actor,
+    );
+  }
+  // An activity whose ID is an ap: URI of another DID:
+  assertEquals(
+    await deliver(
+      await sign({
+        ...compatibleCreateJson("forged-ap"),
+        id: `ap://${otherDid}/activities/forged-ap`,
+      }),
+      [gateway],
+    ),
+    { status: 401, dispatched: 0 },
+  );
+  // A malformed compatible activity ID:
+  assertEquals(
+    await deliver(
+      await sign({
+        ...compatibleCreateJson("malformed"),
+        id:
+          `https://user@example.com/.well-known/apgateway/${did}/activities/2`,
+      }),
+      [gateway],
+    ),
+    { status: 401, dispatched: 0 },
   );
 });

@@ -1165,13 +1165,17 @@ therefore invalidates an outer proof that covered the original secured child.
 Fedify requires a direct proof.  It does not treat proof aliases, sets, chains,
 or remote references as alternatives.
 
-Every embedded portable map needs one direct inline proof and its own explicit
-`@context`.  Fedify verifies each map against an immutable copy of the received
-JSON and applies the FEP-ef61 portable-ID and controlling-DID policy to that
-map. It does not copy a parent's context into a child, try several
-proof-removal rules, or fetch an unpinned context from the live network.
-Inputs that exceed the traversal limits are rejected.  Fedify does not return
-authentication results for only part of a compound document.
+Every embedded portable map, i.e., a map whose `id` or `@id` is an `ap:` or
+`ap+ef61:` URI or an FEP-ef61 compatible identifier, needs one direct inline
+proof and its own explicit `@context`.  The exception is a key embedded in
+the `publicKey` or `assertionMethod` of a portable actor, such as a gateway
+key, whose ID is the actor's compatible identifier plus a fragment; the
+actor's proof covers it.  Fedify verifies each map against an immutable copy of
+the received JSON and applies the FEP-ef61 portable-ID and controlling-DID
+policy to that map. It does not copy a parent's context into a child, try
+several proof-removal rules, or fetch an unpinned context from the live
+network. Inputs that exceed the traversal limits are rejected.  Fedify does not
+return authentication results for only part of a compound document.
 
 This profile authenticates JSON snapshots.  A child proof may be valid when
 verified in isolation even if the parent's active context causes the embedded
@@ -1242,8 +1246,8 @@ Outside the compound profile, `sendActivity()` signs an activity once for each
 Ed25519 key it is given, which yields a proof set when there are several keys.
 Fedify inboxes reject a proof set in a document that contains a portable
 object, so an activity whose JSON contains a map identified by an `ap:` or
-`ap+ef61:` URI, whether the activity itself or anything embedded in it, gets at
-most one proof:
+`ap+ef61:` URI or an FEP-ef61 compatible identifier, whether the activity
+itself or anything embedded in it, gets at most one proof:
 
  -  An activity that already carries a proof is sent as is.  Fedify does not
     add another proof to it, not even with the keys from the [actor key pairs

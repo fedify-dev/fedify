@@ -30,6 +30,7 @@ import {
 import {
   isCompatibleKeyId,
   isPortableActorDocument,
+  isPortableId,
 } from "./portable-key-id.ts";
 import type { PortableGatewayKeyResolution } from "./portable-key.ts";
 
@@ -293,6 +294,16 @@ export async function fetchActorDocument(
   options: VerifyKeyOwnershipOptions = {},
 ): Promise<Actor | null> {
   const logger = getLogger(["fedify", "sig", "key"]);
+  if (isPortableId(actorId)) {
+    // Only a proof by its DID speaks for a portable actor, whatever host
+    // serves a compatible identifier of it:
+    logger.debug(
+      "The actor {actorId} is a portable actor, which is not authenticated " +
+        "by the web origin that serves it.",
+      { actorId: actorId.href },
+    );
+    return null;
+  }
   const documentLoader = options.documentLoader ?? getDocumentLoader();
   const contextLoader = options.contextLoader ?? getDocumentLoader();
   const { tracerProvider } = options;
@@ -329,6 +340,15 @@ export async function fetchActorDocument(
     return null;
   }
   if (!isActor(object)) return null;
+  if (object.id != null && isPortableId(object.id)) {
+    logger.debug(
+      "The document served at {documentUrl} claims to be the portable actor " +
+        "{actorId}, which is not authenticated by the web origin that " +
+        "serves it.",
+      { documentUrl: documentUrl.href, actorId: object.id?.href },
+    );
+    return null;
+  }
   if (object.id == null || object.id.origin !== documentUrl.origin) {
     logger.debug(
       "The document served at {documentUrl} claims to be the actor " +
@@ -858,7 +878,12 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
     // A host may only speak for actor ids on its own origin.  Without this
     // check, anyone serving a key document could dress it up as somebody
     // else's actor document and have the key attributed to that actor.
-    if (object.id == null || object.id.origin !== documentUrl.origin) {
+    // A portable actor belongs to no web origin at all; only its DID speaks
+    // for it, through the gateway key path above:
+    if (
+      object.id == null || isPortableId(object.id) ||
+      object.id.origin !== documentUrl.origin
+    ) {
       logger.debug(
         "Failed to verify; the document served at {documentUrl} claims to be " +
           "the actor {actorId}, which belongs to another origin.",
@@ -952,6 +977,19 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
   const ownedByItsOwnKeyId = keyIdBoundByCaller && claimedOwnerId != null &&
     claimedOwnerId.href === stripFragment(cacheKey)?.href;
   if (!ownedByItsOwnKeyId) {
+    if (claimedOwnerId != null && isPortableId(claimedOwnerId)) {
+      // Only the gateway key path above binds a key to a portable actor,
+      // by the actor's DID-signed document; the claim of a key served
+      // elsewhere cannot be confirmed by any web origin:
+      logger.debug(
+        "Failed to verify; key {keyId} claims the portable actor " +
+          "{claimedOwnerId} as its owner, but is not its gateway key.",
+        { keyId, claimedOwnerId: claimedOwnerId.href },
+      );
+      await keyCache?.set(cacheKey, null);
+      await clearFetchErrorMetadata(cacheKey, keyCache);
+      return { key: null, cached: false };
+    }
     if (ownerDocument != null && claimedOwnerId == null) {
       // The key came out of an actor's own document and names no owner of its
       // own, so that one fetch settled the question.  Record the answer on the
@@ -993,6 +1031,18 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
     key: key as T & { publicKey: CryptoKey },
     cached: false,
   };
+}
+
+/**
+ * Tells whether a key claims a portable actor as its owner.  Such a key can
+ * only be a gateway key, which is never cached, so a cached one was cached
+ * by an older version that trusted web origins, and is fetched again.
+ */
+function claimsPortableOwner(key: CryptographicKey | Multikey | null): boolean {
+  const ownerId = key instanceof CryptographicKey
+    ? key.ownerId
+    : key?.controllerId;
+  return ownerId != null && isPortableId(ownerId);
 }
 
 async function fetchKeyWithResult<
@@ -1058,7 +1108,7 @@ async function fetchKeyWithResult<
       outcome = { result: "hit" };
       return cachedUnavailable;
     }
-    if (cached != null) {
+    if (cached != null && !claimsPortableOwner(cached.key)) {
       outcome = { result: "hit" };
       return cached as TResult;
     }

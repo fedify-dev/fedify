@@ -16,6 +16,7 @@ import {
   canonicalizePortableUri,
   type DocumentLoader,
   formatIri,
+  parseIri,
 } from "@fedify/vocab-runtime";
 import {
   BodyTooLargeError,
@@ -56,14 +57,17 @@ import {
 } from "../sig/ld.ts";
 import { doesActorOwnKey } from "../sig/owner.ts";
 import {
+  getCanonicalPortableId,
   hasPortableActor,
   isCompatibleKeyId,
-  isPortableUri,
+  isPortableId,
 } from "../sig/portable-key-id.ts";
 import {
+  InvalidPortableObjectIdError,
   verifyObject,
   verifyPortableObjectProof,
   type VerifyPortableObjectProofResult,
+  verifyPortableObjectProofWithRoot,
 } from "../sig/proof.ts";
 import type {
   ActorDispatcher,
@@ -1799,9 +1803,10 @@ async function handleInboxInternal<TContextData>(
       return await respondInvalidActivity(error);
     }
     activityVerified = true;
-    if (!skipSignatureVerification && hasPortableActor(activity)) {
+    if (!skipSignatureVerification && isPortableActivity(activity)) {
       // A Linked Data Signature never authenticates a portable actor's
-      // activity; only an Object Integrity Proof made by its DID does:
+      // activity, nor a portable activity; only an Object Integrity Proof
+      // made by its DID does:
       try {
         proofVerified = await verifyObject(Activity, jsonWithoutSig, {
           contextLoader: wrapContextLoaderForJsonLd(ctx.contextLoader),
@@ -2053,7 +2058,7 @@ async function handleInboxInternal<TContextData>(
 
   if (
     !skipSignatureVerification && !proofVerified &&
-    (hasPortableActor(activity) || isPortableGatewayKey(httpSigKey))
+    (isPortableActivity(activity) || isPortableGatewayKey(httpSigKey))
   ) {
     // HTTP Signatures made with a portable actor's gateway key only tell
     // which gateway sent the request.  FEP-ef61 authenticates portable
@@ -2086,6 +2091,52 @@ async function handleInboxInternal<TContextData>(
         headers: { "Content-Type": "text/plain; charset=utf-8" },
       },
     );
+  }
+  if (
+    !skipSignatureVerification && activity.id != null &&
+    isPortableId(activity.id)
+  ) {
+    // The proofs above authenticate the activity's actors, but not its own
+    // ID.  The ID of a portable activity, including a compatible identifier,
+    // has to belong to the DID that signed it, which the proof policy checks
+    // on the same document the proofs were verified for:
+    const rejection = await verifyPortableActivityId(
+      activity.id,
+      jsonWithoutSig,
+      {
+        contextLoader: wrapContextLoaderForJsonLd(ctx.contextLoader),
+        documentLoader: ctx.documentLoader,
+        keyCache,
+        meterProvider,
+        tracerProvider,
+      },
+    );
+    if (rejection != null) {
+      if (deferredLdSignatureError != null) throw deferredLdSignatureError;
+      logger.error(
+        "The portable activity {activityId} is not authenticated by an " +
+          "Object Integrity Proof of its own DID: {reason}",
+        {
+          activity: json,
+          recipient,
+          activityId: activity.id.href,
+          reason: rejection,
+        },
+      );
+      span.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: `The portable activity (${activity.id.href}) is not ` +
+          `authenticated by an Object Integrity Proof of its own DID.`,
+      });
+      return new Response(
+        "Portable activities must have valid Object Integrity Proofs made " +
+          "by their own DIDs.",
+        {
+          status: 401,
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        },
+      );
+    }
   }
   if (
     httpSigKey != null && !await doesActorOwnKey(activity, httpSigKey, ctx)
@@ -3384,5 +3435,56 @@ const MIN_COMPONENTS = [
  */
 function isPortableGatewayKey(key: CryptographicKey | null): boolean {
   return key?.id != null && isCompatibleKeyId(key.id) &&
-    key.ownerId != null && isPortableUri(key.ownerId);
+    key.ownerId != null && isPortableId(key.ownerId);
+}
+
+/**
+ * Checks whether an activity needs an Object Integrity Proof by its DID:
+ * either it is performed by an [FEP-ef61] portable actor, or its own ID is
+ * portable.  Both `ap:` URIs and compatible identifiers count as portable.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
+ */
+function isPortableActivity(activity: Activity): boolean {
+  return hasPortableActor(activity) ||
+    activity.id != null && isPortableId(activity.id);
+}
+
+/**
+ * Verifies that a portable activity's own ID belongs to the DID that signed
+ * it, on the JSON-LD document received.  The ID the proof policy checks has
+ * to be the parsed activity's ID, so that a remote context that changes
+ * between loads cannot make the two name different objects.
+ * @returns `null` if the ID is verified, or the reason why it is not.
+ */
+async function verifyPortableActivityId(
+  activityId: URL,
+  jsonLd: unknown,
+  options: Parameters<typeof verifyPortableObjectProofWithRoot>[1],
+): Promise<string | null> {
+  const expectedId = getCanonicalPortableId(activityId);
+  if (expectedId == null) return "malformed portable ID";
+  let verification: Awaited<
+    ReturnType<typeof verifyPortableObjectProofWithRoot>
+  >;
+  try {
+    verification = await verifyPortableObjectProofWithRoot(jsonLd, options);
+  } catch (error) {
+    if (error instanceof InvalidPortableObjectIdError) {
+      return "malformed portable ID";
+    }
+    if (!isPermanentActivityParseError(error)) throw error;
+    return "malformed document";
+  }
+  const { result, root } = verification;
+  if (!result.verified) return result.reason.type;
+  // The proof policy has already validated the ID of a verified document:
+  const rootId = root?.["@id"];
+  if (
+    typeof rootId !== "string" ||
+    getCanonicalPortableId(parseIri(rootId)) !== expectedId
+  ) {
+    return "the verified document has another ID";
+  }
+  return null;
 }

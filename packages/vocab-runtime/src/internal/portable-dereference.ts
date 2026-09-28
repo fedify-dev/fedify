@@ -918,10 +918,15 @@ async function checkPortableObjectId(
     throw new PortableObjectRejection("it has an invalid @id");
   }
   // Compare the raw @id rather than a parsed URL, because URL parsing
-  // normalizes opaque path segments (e.g., dot segments):
+  // normalizes opaque path segments (e.g., dot segments).  A document may
+  // also use a compatible identifier as its @id, e.g., one on the gateway it
+  // was served from, which stands for the portable ID it contains:
   let actualId: string | null;
   try {
-    actualId = canonicalizePortableUri(id);
+    const portable = fromCompatibleEf61Id(id);
+    actualId = canonicalizePortableUri(
+      portable == null ? id : formatIri(portable),
+    );
   } catch (error) {
     if (!(error instanceof TypeError)) throw error;
     actualId = null;

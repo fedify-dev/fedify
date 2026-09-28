@@ -1010,10 +1010,14 @@ key if the key ID is a compatible identifier that dereferences to a portable
 actor document, and:
 
  -  the document is the actor that the key ID is a compatible identifier of,
+    whether the document's own ID is a portable ID or, as some
+    implementations such as [tootik] publish, a compatible identifier,
  -  the document has a valid Object Integrity Proof made by the actor's DID,
  -  the document embeds the key in its `assertionMethod`, with the actor as
-    its `controller` (a `publicKey` entry with the same ID, if any, must have
-    the same key material), and
+    its `controller` (a `publicKey` entry that embeds a key with the same ID,
+    if any, must have the same key material), or, if no `assertionMethod` entry
+    has the key ID, in its `publicKey`, with the actor as its `owner`,
+ -  no more than one entry of either property has the key ID, and
  -  the gateway that the key ID belongs to is listed in the actor's
     `gateways`.
 
@@ -1024,13 +1028,23 @@ Inboxes, however, still require a valid Object Integrity Proof on the
 activities of portable actors; see the [*Portable actors*
 section](./inbox.md#portable-actors) of the inbox guide.
 
+Accepting a key listed only in `publicKey` is a tolerance for publishers that
+list their RSA keys there, such as [tootik]; list your own gateway keys in
+`assertionMethods` as FEP-ef61 requires.
+
+A portable actor, whether its ID is a portable ID or a compatible identifier,
+is never authenticated by the web origin that serves it.  If the document at
+a compatible key ID is a portable actor that does not vouch for the key, e.g.,
+an unsigned one on someone else's gateway, the key is rejected rather than
+resolved as an ordinary actor's.  Likewise, a key at an ordinary URL that
+names a portable actor as its owner or controller is never that actor's key.
+
 > [!NOTE]
 > Fedify does not resolve gateway keys whose IDs are `ap:` or `ap+ef61:`
-> URIs, as there is no gateway to dereference them through.  Actors whose
-> IDs are compatible identifiers themselves, instead of portable IDs, are
-> still verified as ordinary actors by their web origins.  Also, Fedify
+> URIs, as there is no gateway to dereference them through.  Also, Fedify
 > does not cache gateway keys in the key cache, as their validity depends
 > on the actor's signed document rather than their origin.
 
 [FEP-521a]: https://w3id.org/fep/521a
 [compatible identifier]: https://w3id.org/fep/ef61#compatible-ids
+[tootik]: https://github.com/dimkr/tootik

@@ -307,6 +307,48 @@ test("a non-portable activity embedding portable objects needs one key", async (
   );
 });
 
+test("a non-portable activity embedding compatible-ID objects needs one key", async () => {
+  // A portable object identified by its compatible identifier, e.g., one
+  // received from tootik, embedded in an ordinary actor's activity:
+  const owner = await didKey();
+  const compatibleId = (path: string) =>
+    new URL(`https://gw.example/.well-known/apgateway/${owner.did}${path}`);
+  const child = await signObject(
+    new Note({
+      id: compatibleId(`/objects/${crypto.randomUUID()}`),
+      attribution: compatibleId("/actor"),
+      content: "A portable note",
+    }),
+    owner.privateKey,
+    owner.keyId,
+    { ...options, context: childContext, created },
+  );
+  const federation = createTestFederation();
+  const ctx = federation.createContext(new URL("https://example.com/"));
+  const keys = [sender(await didKey()), sender(await didKey())];
+  const rejected = await capture(() =>
+    assertRejects(
+      () =>
+        ctx.sendActivity(
+          [rsaKey, ...keys],
+          recipient,
+          httpCreate(child),
+        ),
+      TypeError,
+      "exactly one Ed25519 key",
+    )
+  );
+  assertEquals(rejected.bodies.length, 0);
+
+  const key = { keyId: ed25519PublicKey.id!, privateKey: ed25519PrivateKey };
+  const accepted = await capture(() =>
+    ctx.sendActivity([rsaKey, key], recipient, httpCreate(child))
+  );
+  assertEquals(accepted.bodies.length, 1);
+  // What Fedify sends, a Fedify inbox accepts:
+  await assertCompoundVerifies(accepted.bodies[0]);
+});
+
 test("an activity without portable objects is still signed by every key", async () => {
   const federation = createTestFederation();
   const ctx = federation.createContext(new URL("https://example.com/"));

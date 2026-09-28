@@ -1,4 +1,9 @@
 import type { Multikey } from "@fedify/vocab";
+import { fromCompatibleEf61Id, parseIri } from "@fedify/vocab-runtime";
+import jsonld from "@fedify/vocab-runtime/jsonld";
+import { preloadedOnlyDocumentLoader } from "../compat/preloaded-context-loader.ts";
+import { getNormalizationContextLoader } from "./ld.ts";
+import { getCanonicalPortableId, isPortableId } from "./portable-key-id.ts";
 import {
   verifyMapLocalProof,
   type VerifyPortableObjectProofFailureReason,
@@ -137,7 +142,18 @@ export interface CompoundPortableObject {
   readonly id: string;
   readonly depth: number;
   readonly document: CompoundProofJsonObject;
+  /**
+   * Where the map sits if it may be a key embedded in a portable actor, i.e.,
+   * it is the value, or an element of the value, of a `publicKey` or
+   * `assertionMethod` member of another portable map.
+   */
+  readonly keyOf?: {
+    readonly path: string;
+    readonly member: KeyMember;
+  };
 }
+
+type KeyMember = "publicKey" | "assertionMethod";
 
 /** Why one portable map did not pass compound proof policy. */
 export type CompoundPortableObjectFailureReason =
@@ -202,7 +218,15 @@ interface DiscoveryStatistics {
 }
 
 const textEncoder = new TextEncoder();
-const PORTABLE_OBJECT_ID_PATTERN = /^ap(?:\+ef61)?:\/\//i;
+
+/**
+ * Checks whether a literal `id` or `@id` value makes a map a portable object:
+ * an `ap:` or `ap+ef61:` URI, or anything that looks like an FEP-ef61
+ * compatible identifier, even a malformed one, which then fails the policy.
+ */
+function isPortableIdValue(value: unknown): value is string {
+  return typeof value === "string" && isPortableId(value);
+}
 
 function isJsonMap(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value != null && !Array.isArray(value);
@@ -566,6 +590,7 @@ function collectPortableObjects(
     value: CompoundProofJsonValue;
     path: string;
     depth: number;
+    keyOf?: CompoundPortableObject["keyOf"];
   }> = [{ value: snapshot, path: "", depth: 0 }];
 
   while (pending.length > 0) {
@@ -576,21 +601,22 @@ function collectPortableObjects(
           value: current.value[index],
           path: childPath(current.path, String(index)),
           depth: current.depth + 1,
+          // Only direct elements of a key member's array may be keys:
+          keyOf: current.keyOf,
         });
       }
       continue;
     }
     if (!isCompoundProofJsonObject(current.value)) continue;
     const document = current.value;
-    const id = [document.id, document["@id"]].find((value) =>
-      typeof value === "string" && PORTABLE_OBJECT_ID_PATTERN.test(value)
-    );
+    const id = [document.id, document["@id"]].find(isPortableIdValue);
     if (typeof id === "string") {
       objects.push(Object.freeze({
         path: current.path,
         id,
         depth: current.depth,
         document,
+        ...(current.keyOf == null ? {} : { keyOf: current.keyOf }),
       }));
     }
     const entries = Object.entries(document).sort(([left], [right]) =>
@@ -603,6 +629,12 @@ function collectPortableObjects(
         value,
         path: childPath(current.path, key),
         depth: current.depth + 1,
+        ...(
+          typeof id === "string" &&
+            (key === "publicKey" || key === "assertionMethod")
+            ? { keyOf: { path: current.path, member: key } }
+            : {}
+        ),
       });
     }
   }
@@ -614,8 +646,9 @@ function collectPortableObjects(
 }
 
 /**
- * Determines whether a received JSON tree contains a portable object ID
- * outside a proof or context definition, without exceeding discovery limits.
+ * Determines whether a received JSON tree contains a portable object ID, i.e.,
+ * an `ap:` or `ap+ef61:` URI or an FEP-ef61 compatible identifier, outside
+ * a proof or context definition, without exceeding discovery limits.
  *
  * This is only an applicability check.  It does not authenticate the input;
  * callers must still use {@link verifyCompoundPortableObjectProofs} to obtain
@@ -668,9 +701,7 @@ export function inspectCompoundPortableObjectApplicability(
       mapCount++;
       if (mapCount > limits.maxMaps) return "indeterminate";
       if (
-        [value.id, value["@id"]].some((id) =>
-          typeof id === "string" && PORTABLE_OBJECT_ID_PATTERN.test(id)
-        )
+        [value.id, value["@id"]].some(isPortableIdValue)
       ) {
         return "present";
       }
@@ -739,7 +770,8 @@ function findInJsonMaps<T>(
 /**
  * Determines whether an outgoing JSON tree contains portable content that
  * requires producer-side proof-shape checks: a map, outside proof and context
- * values, whose direct `id` or `@id` is a portable ActivityPub URI.
+ * values, whose direct `id` or `@id` is a portable ActivityPub URI or an
+ * FEP-ef61 compatible identifier.
  *
  * This deliberately differs from
  * {@link inspectCompoundPortableObjectApplicability}: it applies no resource
@@ -754,12 +786,7 @@ function findInJsonMaps<T>(
 export function containsCompoundPortableObject(json: unknown): boolean {
   return findInJsonMaps(
     json,
-    (map) =>
-      [map.id, map["@id"]].some((id) =>
-          typeof id === "string" && PORTABLE_OBJECT_ID_PATTERN.test(id)
-        )
-        ? true
-        : undefined,
+    (map) => [map.id, map["@id"]].some(isPortableIdValue) ? true : undefined,
   ) ?? false;
 }
 
@@ -912,49 +939,96 @@ export async function verifyCompoundPortableObjectProofs(
 
   const proofs = await verifyDiscoveredProofDocuments(discovered, options);
   const proofByPath = new Map(proofs.map((proof) => [proof.path, proof]));
-  const portableObjects = await Promise.all(
-    collectPortableObjects(discovered.snapshot).map(async (object) => {
-      const metadata = {
-        path: object.path,
-        id: object.id,
-        depth: object.depth,
-      };
-      if (
-        object.depth > 0 && !Object.hasOwn(object.document, "@context")
-      ) {
-        return Object.freeze({
+  const verifyPortableObject = async (
+    object: CompoundPortableObject,
+  ): Promise<CompoundPortableObjectVerification> => {
+    const metadata = {
+      path: object.path,
+      id: object.id,
+      depth: object.depth,
+    };
+    if (
+      object.depth > 0 && !Object.hasOwn(object.document, "@context")
+    ) {
+      return Object.freeze({
+        ...metadata,
+        verified: false as const,
+        reason: { type: "missingContext" as const },
+      });
+    }
+    const proof = proofByPath.get(object.path);
+    const key = proof?.verified === true ? proof.key : null;
+    try {
+      const policy = await verifyPortableObjectProofPolicy(
+        object.document,
+        key,
+        options,
+      );
+      return policy.verified
+        ? Object.freeze({
+          ...metadata,
+          id: policy.objectId,
+          verified: true as const,
+          keys: policy.keys,
+        })
+        : Object.freeze({
           ...metadata,
           verified: false as const,
-          reason: { type: "missingContext" as const },
+          reason: policy.reason,
         });
-      }
-      const proof = proofByPath.get(object.path);
-      const key = proof?.verified === true ? proof.key : null;
-      try {
-        const policy = await verifyPortableObjectProofPolicy(
-          object.document,
-          key,
-          options,
-        );
-        return policy.verified
-          ? Object.freeze({
-            ...metadata,
-            id: policy.objectId,
-            verified: true as const,
-            keys: policy.keys,
-          })
-          : Object.freeze({
-            ...metadata,
-            verified: false as const,
-            reason: policy.reason,
-          });
-      } catch {
-        return Object.freeze({
-          ...metadata,
-          verified: false as const,
-          reason: { type: "invalidPortableObject" as const },
-        });
-      }
+    } catch {
+      return Object.freeze({
+        ...metadata,
+        verified: false as const,
+        reason: { type: "invalidPortableObject" as const },
+      });
+    }
+  };
+  const collected = collectPortableObjects(discovered.snapshot);
+  const objectByPath = new Map(
+    collected.map((object) => [object.path, object]),
+  );
+  // Unsigned maps under the publicKey or assertionMethod of a portable map
+  // may be the keys of a portable actor, e.g., its gateway keys, whose IDs
+  // are compatible identifiers.  They are decided after their parents:
+  const isKeyCandidate = (object: CompoundPortableObject) =>
+    object.keyOf != null && !Object.hasOwn(object.document, "proof");
+  const results = new Map<string, CompoundPortableObjectVerification>();
+  for (
+    const result of await Promise.all(
+      collected.filter((object) => !isKeyCandidate(object)).map(
+        verifyPortableObject,
+      ),
+    )
+  ) {
+    results.set(result.path, result);
+  }
+  let projections = 0;
+  for (const object of collected) {
+    if (!isKeyCandidate(object)) continue;
+    const { path, member } = object.keyOf!;
+    const parent = results.get(path);
+    const parentObject = objectByPath.get(path);
+    if (
+      parent?.verified === true && parentObject != null &&
+      projections++ < MAX_KEY_PROJECTIONS &&
+      await isEmbeddedPortableKey(
+        parentObject.document,
+        member,
+        object.document,
+        parent.id,
+      )
+    ) {
+      // The key is a part of its parent's document, which the parent's
+      // proof covers:
+      continue;
+    }
+    results.set(object.path, await verifyPortableObject(object));
+  }
+  const portableObjects = Object.freeze(
+    collected.flatMap((object) => {
+      const result = results.get(object.path);
+      return result == null ? [] : [result];
     }),
   );
   return {
@@ -964,7 +1038,218 @@ export async function verifyCompoundPortableObjectProofs(
       portableObjects.every((object) => object.verified),
     snapshot: discovered.snapshot,
     proofs,
-    portableObjects: Object.freeze(portableObjects),
+    portableObjects,
     statistics: discovered.statistics,
   };
+}
+
+/**
+ * The maximum number of embedded keys per compound document that are checked
+ * by {@link isEmbeddedPortableKey}, each of which expands a projection of its
+ * parent.  Keys beyond it have to carry their own proofs.
+ */
+const MAX_KEY_PROJECTIONS = 64;
+
+const SECURITY = "https://w3id.org/security#";
+const KEY_TYPES: ReadonlySet<string> = new Set([
+  `${SECURITY}Key`,
+  `${SECURITY}Multikey`,
+]);
+const KEY_PROPERTIES: ReadonlySet<string> = new Set([
+  "@id",
+  "@type",
+  `${SECURITY}owner`,
+  `${SECURITY}controller`,
+  `${SECURITY}publicKeyPem`,
+  `${SECURITY}publicKeyMultibase`,
+]);
+
+/**
+ * Tells whether an unsigned map embedded in a verified portable map is just
+ * a key of the portable object the parent is, e.g., a gateway key of
+ * a portable actor, which the parent's proof covers.
+ *
+ * The key's meaning depends on the contexts active where it sits, so it is
+ * decided on a projection of the parent that keeps only what those contexts
+ * depend on: the parent's `@context`, its types and ID, and the member that
+ * holds the key.  That holds only if nothing else in the parent can change
+ * them, so both documents may only use contexts that define no keyword
+ * aliases and no scoped contexts; Fedify's preloaded contexts, the only
+ * remote ones the compound policy loads, alias just `id` and `type`.
+ *
+ * The projection must expand to the parent's verified ID with the key as the
+ * single value of `publicKey` or `assertionMethod`, and the key must be
+ * nothing but a `CryptographicKey` or `Multikey` whose ID is a compatible
+ * identifier of the parent plus a fragment, and whose owner or controller,
+ * if any, is the parent.
+ */
+async function isEmbeddedPortableKey(
+  parent: CompoundProofJsonObject,
+  member: KeyMember,
+  key: CompoundProofJsonObject,
+  parentId: string,
+): Promise<boolean> {
+  const parentPortableId = getCanonicalPortableIdOf(parentId);
+  if (parentPortableId == null) return false;
+  if (
+    !isSimpleContext(parent["@context"]) ||
+    Object.hasOwn(key, "@context") && !isSimpleContext(key["@context"])
+  ) {
+    return false;
+  }
+  const literalIds = [key.id, key["@id"]].filter((id) => id !== undefined);
+  if (
+    literalIds.length < 1 ||
+    literalIds.some((id) => id !== literalIds[0]) ||
+    typeof literalIds[0] !== "string" ||
+    !isKeyIdOf(literalIds[0], parentPortableId)
+  ) {
+    return false;
+  }
+  const projection: Record<string, unknown> = {};
+  for (const property of ["@context", "type", "@type", "id", "@id"]) {
+    if (Object.hasOwn(parent, property)) {
+      projection[property] = parent[property];
+    }
+  }
+  projection[member] = key;
+  let expanded: unknown[];
+  try {
+    expanded = await jsonld.expand(structuredClone(projection), {
+      documentLoader: getNormalizationContextLoader(
+        preloadedOnlyDocumentLoader,
+      ),
+      keepFreeFloatingNodes: true,
+    });
+  } catch {
+    return false;
+  }
+  if (expanded.length !== 1 || hasGraphKeyword(expanded)) return false;
+  const node = expanded[0];
+  if (
+    !isJsonMap(node) || typeof node["@id"] !== "string" ||
+    getCanonicalPortableIdOf(node["@id"]) !== parentPortableId
+  ) {
+    return false;
+  }
+  const properties = Object.keys(node).filter((property) =>
+    property !== "@id" && property !== "@type"
+  );
+  if (
+    properties.length !== 1 || properties[0] !== `${SECURITY}${member}`
+  ) {
+    return false;
+  }
+  const values = node[properties[0]];
+  if (!Array.isArray(values) || values.length !== 1) return false;
+  const expandedKey = values[0];
+  if (
+    !isJsonMap(expandedKey) || expandedKey["@id"] !== literalIds[0] ||
+    Object.keys(expandedKey).some((property) => !KEY_PROPERTIES.has(property))
+  ) {
+    return false;
+  }
+  const types = expandedKey["@type"];
+  if (
+    types !== undefined &&
+    (!Array.isArray(types) ||
+      types.some((type) => typeof type !== "string" || !KEY_TYPES.has(type)))
+  ) {
+    return false;
+  }
+  const pem = expandedKey[`${SECURITY}publicKeyPem`];
+  const multibase = expandedKey[`${SECURITY}publicKeyMultibase`];
+  if (pem === undefined && multibase === undefined) return false;
+  if (pem !== undefined && !isSingleStringValue(pem)) return false;
+  if (
+    multibase !== undefined &&
+    !isSingleStringValue(multibase, `${SECURITY}multibase`)
+  ) {
+    return false;
+  }
+  for (const property of [`${SECURITY}owner`, `${SECURITY}controller`]) {
+    const owners = expandedKey[property];
+    if (owners === undefined) continue;
+    if (
+      !Array.isArray(owners) || owners.length !== 1 ||
+      !isJsonMap(owners[0]) || Object.keys(owners[0]).length !== 1 ||
+      typeof owners[0]["@id"] !== "string" ||
+      getCanonicalPortableIdOf(owners[0]["@id"]) !== parentPortableId
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function getCanonicalPortableIdOf(id: string): string | null {
+  try {
+    return getCanonicalPortableId(parseIri(id));
+  } catch (error) {
+    if (error instanceof TypeError) return null;
+    throw error;
+  }
+}
+
+/**
+ * Checks whether an ID is a compatible identifier of the given portable
+ * object plus a fragment.
+ */
+function isKeyIdOf(id: string, portableId: string): boolean {
+  let url: URL;
+  try {
+    if (fromCompatibleEf61Id(id) == null) return false;
+    url = new URL(id);
+  } catch (error) {
+    if (error instanceof TypeError) return false;
+    throw error;
+  }
+  if (url.hash.length < 2) return false;
+  url.hash = "";
+  return getCanonicalPortableId(url) === portableId;
+}
+
+/**
+ * Checks whether a `@context` value defines no keyword aliases and no scoped
+ * contexts: only references to contexts and term definitions that map terms
+ * to IRIs, optionally with an `@id` or `@vocab` type coercion or a datatype.
+ */
+function isSimpleContext(context: CompoundProofJsonValue | undefined): boolean {
+  if (typeof context === "string") return true;
+  if (Array.isArray(context)) return context.every(isSimpleContext);
+  if (context === undefined || !isCompoundProofJsonObject(context)) {
+    return false;
+  }
+  return Object.entries(context).every(([term, definition]) => {
+    if (term.startsWith("@")) return false;
+    if (typeof definition === "string") return !definition.startsWith("@");
+    if (!isCompoundProofJsonObject(definition)) return false;
+    const { "@id": id, "@type": type, ...rest } = definition;
+    return Object.keys(rest).length < 1 &&
+      typeof id === "string" && !id.startsWith("@") &&
+      (type === undefined || type === "@id" || type === "@vocab" ||
+        typeof type === "string" && !type.startsWith("@"));
+  });
+}
+
+function hasGraphKeyword(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasGraphKeyword);
+  if (!isJsonMap(value)) return false;
+  return Object.entries(value).some(([key, child]) =>
+    key === "@graph" || key === "@included" || key === "@reverse" ||
+    hasGraphKeyword(child)
+  );
+}
+
+/**
+ * Checks whether expanded values are a single plain string, optionally with
+ * the given datatype.
+ */
+function isSingleStringValue(values: unknown, datatype?: string): boolean {
+  if (!Array.isArray(values) || values.length !== 1) return false;
+  const value = values[0];
+  if (!isJsonMap(value) || typeof value["@value"] !== "string") return false;
+  const keys = Object.keys(value);
+  return keys.length === 1 ||
+    datatype != null && keys.length === 2 && value["@type"] === datatype;
 }

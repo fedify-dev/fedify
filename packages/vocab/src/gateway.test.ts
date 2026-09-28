@@ -262,7 +262,10 @@ test("getObject() rejects objects with a mismatching portable ID", async (t) => 
     "another path": `ap://${did}/objects/2`,
     "a dot segment": `ap://${did}/objects/x/../1`,
     "a fragment": `ap://${did}/objects/1#fragment`,
-    "a compatible identifier": `https://gw1.example${gatewayPath}`,
+    "a compatible identifier of another DID":
+      `https://gw1.example/.well-known/apgateway/did:key:z6Mkdef/objects/1`,
+    "a compatible identifier of another path":
+      `https://gw1.example/.well-known/apgateway/${did}/objects/2`,
     "an HTTP(S) ID": "https://gw1.example/objects/1",
   };
   for (const [name, id] of globalThis.Object.entries(mismatches)) {
@@ -1239,8 +1242,10 @@ test("accessors reject forged objects at compatible identifiers", async () => {
     content: "Forged",
   };
   for (const crossOrigin of [undefined, "ignore", "trust"] as const) {
-    // Its @id is not a portable ID, so it fails the identity check:
-    const verifier = createRecordingVerifier();
+    // Its @id, the compatible identifier itself, stands for the requested
+    // portable object, so the proof policy decides, which rejects it for
+    // lacking a proof:
+    const verifier = createRecordingVerifier(() => ({ verified: false }));
     deepStrictEqual(
       await (await createHttpActivity(forgedId)).getObject({
         documentLoader: createLoader({ [forgedId]: forged }),
@@ -1250,7 +1255,7 @@ test("accessors reject forged objects at compatible identifiers", async () => {
       }),
       null,
     );
-    deepStrictEqual(verifier.calls, []);
+    deepStrictEqual(verifier.calls.map((c) => c.document), [forged]);
     // With a portable ID, it fails the proof policy:
     deepStrictEqual(
       await (await createHttpActivity(forgedId)).getObject({
@@ -1335,7 +1340,7 @@ test("accessors keep fetching compatible identifiers as HTTP(S) URLs without ver
       await activity.getObject({
         documentLoader,
         contextLoader: mockDocumentLoader,
-        verifyPortableObject: createVerifier(),
+        verifyPortableObject: createVerifier(false),
       }),
       null,
     );
@@ -1357,7 +1362,7 @@ test("accessors keep fetching compatible identifiers as HTTP(S) URLs without ver
       await Array.fromAsync(activity.getObjects({
         documentLoader,
         contextLoader: mockDocumentLoader,
-        verifyPortableObject: createVerifier(),
+        verifyPortableObject: createVerifier(false),
       })),
       [],
     );
@@ -1540,7 +1545,7 @@ test("accessors verify fetched documents that stand for portable objects", async
     for (
       const id of [
         `ap://${did}/objects/2`,
-        compatibleNoteId,
+        gatewayUrl("https://gw.example", "/objects/2"),
         "https://gw.example/notes/1",
       ]
     ) {
@@ -1583,17 +1588,27 @@ test("accessors verify fetched documents that stand for portable objects", async
   });
 
   await t.step("a compatible @id", async () => {
+    // The compatible identifier stands for the portable object, so the
+    // document is verified as that object, keeping its own @id:
     const verifier = createRecordingVerifier();
     const url = "https://gw.example/notes/1";
+    const documentLoader = createLoader({ [url]: note(compatibleNoteId) });
+    const object = await (await createHttpActivity(url)).getObject({
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      verifyPortableObject: verifier,
+    });
+    assertInstanceOf(object, Note);
+    deepStrictEqual(object.id, new URL(compatibleNoteId));
+    deepStrictEqual(verifier.calls.length, 1);
     deepStrictEqual(
       await (await createHttpActivity(url)).getObject({
-        documentLoader: createLoader({ [url]: note(compatibleNoteId) }),
+        documentLoader,
         contextLoader: mockDocumentLoader,
-        verifyPortableObject: verifier,
+        verifyPortableObject: createVerifier(false),
       }),
       null,
     );
-    deepStrictEqual(verifier.calls, []);
   });
 
   await t.step("a portable final URL", async () => {
