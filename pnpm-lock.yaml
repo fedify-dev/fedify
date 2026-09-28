@@ -1368,6 +1368,9 @@ importers:
         specifier: ^8.0.0
         version: 8.41.0(eslint@9.32.0(jiti@2.6.1))(typescript@6.0.3)
     devDependencies:
+      '@fedify/fixture':
+        specifier: workspace:^
+        version: link:../fixture
       '@types/eslint':
         specifier: ^9.0.0
         version: 9.6.1
