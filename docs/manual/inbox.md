@@ -47,8 +47,12 @@ portable object embedded within it.  The gateway trust allowance for an
 unsigned top-level portable collection does not apply inside a compound
 document; an embedded portable collection needs its own proof and `@context`.
 
-This check uses the original received JSON after the normal outer
-authentication and actor ownership checks.  Fedify consumes a deferred
+This check uses the received JSON after the normal outer authentication and
+actor ownership checks.  Since a Linked Data Signature is made after the
+Object Integrity Proofs, the check excludes the top-level `signature` property,
+whatever its value, from every proof input, as the verification of the
+activity's own proof does.  A `signature` property of an embedded map stays
+part of the input of that map's proof.  Fedify consumes a deferred
 signature nonce only after the entire compound document passes verification.
 It also verifies the complete result before dispatching the activity through a
 queue, route, or listener.  Unsupported proof shapes and documents that exceed

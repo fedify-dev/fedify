@@ -10,9 +10,14 @@ import {
   createInboxContext,
   createRequestContext,
 } from "../testing/context.ts";
-import { rsaPrivateKey3, rsaPublicKey3 } from "../testing/keys.ts";
+import {
+  ed25519PrivateKey,
+  ed25519PublicKey,
+  rsaPrivateKey3,
+  rsaPublicKey3,
+} from "../testing/keys.ts";
 import { signRequest } from "../sig/http.ts";
-import { signJsonLd } from "../sig/ld.ts";
+import { compactJsonLd, signJsonLd, verifyCompactJsonLd } from "../sig/ld.ts";
 import { ActivityListenerSet } from "./activity-listener.ts";
 import type { InboxContext } from "./context.ts";
 import { createFederation } from "./middleware.ts";
@@ -148,12 +153,7 @@ test("handleInbox() enforces portable compound proofs atomically", async () => {
   assertEquals((await handle(validOuterWithInvalidInner)).status, 401);
 
   const changedAfterSigning = structuredClone(valid);
-  changedAfterSigning.signature = {
-    type: "RsaSignature2017",
-    creator: "https://example.com/keys/1",
-    created: "2023-02-24T23:36:38Z",
-    signatureValue: "not-a-signature",
-  };
+  changedAfterSigning.summary = "Added after signing";
   assertEquals((await handle(changedAfterSigning)).status, 401);
 });
 
@@ -242,4 +242,184 @@ test("handleInbox() preserves ordinary top-level proof behavior", async () => {
     vector.keys.outer.verificationMethod,
   );
   assertEquals((await handle(activity)).status, 202);
+});
+
+async function signLd(
+  document: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  return await signJsonLd(document, rsaPrivateKey3, rsaPublicKey3.id!, {
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+}
+
+async function isLdSignatureVerified(
+  document: Record<string, unknown>,
+): Promise<boolean> {
+  return await verifyCompactJsonLd(
+    await compactJsonLd(document, mockDocumentLoader),
+    {
+      contextLoader: mockDocumentLoader,
+      documentLoader: mockDocumentLoader,
+    },
+  );
+}
+
+async function handleDispatched(
+  body: Record<string, unknown>,
+): Promise<[number, string, number]> {
+  const dispatched = { count: 0 };
+  const response = await handle(body, dispatched);
+  return [response.status, await response.text(), dispatched.count];
+}
+
+const COMPOUND_FAILURE =
+  "Failed to verify compound portable Object Integrity Proofs.";
+
+test("handleInbox() ignores a portable activity's Linked Data Signature", async () => {
+  const signed = await signLd(
+    structuredClone(vector.documents.finalSecuredCompound),
+  );
+  // The key owner is not the portable actor, so only the DID proof
+  // authenticates the activity:
+  assertEquals(await isLdSignatureVerified(signed), false);
+  assertEquals(await handleDispatched(signed), [202, "", 1]);
+
+  const bogus = structuredClone(
+    vector.documents.finalSecuredCompound,
+  ) as Record<string, unknown>;
+  bogus.signature = {
+    type: "RsaSignature2017",
+    creator: "https://example.com/keys/1",
+    created: "2023-02-24T23:36:38Z",
+    signatureValue: "not-a-signature",
+  };
+  assertEquals(await handleDispatched(bogus), [202, "", 1]);
+
+  const tampered = structuredClone(
+    vector.documents.finalSecuredCompound,
+  ) as Record<string, unknown>;
+  tampered.object = {
+    ...tampered.object as Record<string, unknown>,
+    content: "Tampered",
+  };
+  assertEquals((await handleDispatched(await signLd(tampered)))[0], 401);
+
+  const invalidInner = structuredClone(
+    vector.documents.outerUnsecuredDocument,
+  ) as Record<string, unknown>;
+  (invalidInner.object as Record<string, unknown>).content = "Tampered";
+  assertEquals(
+    await handleDispatched(
+      await signLd(
+        await secureDocument(
+          invalidInner,
+          vector.keys.outer.testPrivateKeyJwk,
+          vector.keys.outer.verificationMethod,
+        ),
+      ),
+    ),
+    [401, COMPOUND_FAILURE, 0],
+  );
+});
+
+test("handleInbox() verifies compounds with verified Linked Data Signatures", async () => {
+  const createBody = (object: Record<string, unknown>) => ({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+    ],
+    id: "https://example.com/activities/compound-ld",
+    type: "Create",
+    actor: rsaPublicKey3.ownerId!.href,
+    object,
+  });
+  const privateJwk = await crypto.subtle.exportKey("jwk", ed25519PrivateKey);
+  const sign = async (object: Record<string, unknown>) =>
+    await signLd(
+      await secureDocument(
+        createBody(object),
+        privateJwk,
+        ed25519PublicKey.id!.href,
+      ),
+    );
+
+  const valid = await sign(structuredClone(vector.documents.securedInner));
+  assertEquals(await isLdSignatureVerified(valid), true);
+  assertEquals(await handleDispatched(valid), [202, "", 1]);
+
+  const invalidInner = structuredClone(
+    vector.documents.securedInner,
+  ) as Record<string, unknown>;
+  invalidInner.content = "Tampered";
+  const invalid = await sign(invalidInner);
+  assertEquals(await isLdSignatureVerified(invalid), true);
+  assertEquals(await handleDispatched(invalid), [401, COMPOUND_FAILURE, 0]);
+});
+
+test("handleInbox() keeps embedded signature properties in proof inputs", async () => {
+  const innerWithSignature = await secureDocument(
+    {
+      ...vector.documents.innerUnsecuredDocument,
+      "@context": [
+        "https://w3id.org/security/v1",
+        ...vector.documents.innerUnsecuredDocument["@context"],
+      ],
+      signature: {
+        type: "https://example.com/ns#ExampleSignature",
+        signatureValue: "covered by the inner proof",
+      },
+    },
+    vector.keys.inner.testPrivateKeyJwk,
+    vector.keys.inner.verificationMethod,
+  );
+  const sign = async (object: Record<string, unknown>) =>
+    await signLd(
+      await secureDocument(
+        { ...vector.documents.outerUnsecuredDocument, object },
+        vector.keys.outer.testPrivateKeyJwk,
+        vector.keys.outer.verificationMethod,
+      ),
+    );
+
+  assertEquals(
+    await handleDispatched(await sign(structuredClone(innerWithSignature))),
+    [202, "", 1],
+  );
+
+  const innerWithoutSignature = structuredClone(innerWithSignature);
+  delete innerWithoutSignature.signature;
+  assertEquals(
+    await handleDispatched(await sign(innerWithoutSignature)),
+    [401, COMPOUND_FAILURE, 0],
+  );
+});
+
+test("handleInbox() inspects compounds without the Linked Data Signature", async () => {
+  const activity = await secureDocument(
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/data-integrity/v1",
+      ],
+      id: "https://example.com/activities/ordinary-ld",
+      type: "Create",
+      actor: vector.keys.outer.controller,
+      object: {
+        id: "https://example.com/notes/ordinary-ld",
+        type: "Note",
+        attributedTo: vector.keys.outer.controller,
+        content: "An ordinary note",
+      },
+    },
+    vector.keys.outer.testPrivateKeyJwk,
+    vector.keys.outer.verificationMethod,
+  );
+  activity.signature = {
+    id: vector.documents.innerUnsecuredDocument.id,
+    type: "RsaSignature2017",
+    creator: "https://example.com/keys/1",
+    created: "2023-02-24T23:36:38Z",
+    signatureValue: "not-a-signature",
+  };
+  assertEquals(await handleDispatched(activity), [202, "", 1]);
 });
