@@ -87,6 +87,20 @@ To be released.
 [#1081]: https://github.com/fedify-dev/fedify/issues/1081
 [#1089]: https://github.com/fedify-dev/fedify/pull/1089
 
+### @fedify/vocab
+
+ -  Fixed parsing a `Note`, `Article`, `ChatMessage`, or `Question` throwing
+    `TypeError: Invalid URL` when the sender's JSON-LD context declared
+    `_misskey_quote`, `quoteUri`, or `quoteUrl` with `"@type": "@id"`, as
+    Misskey-compatible servers do.  Such terms expand to a node carrying `@id`
+    rather than `@value`, and only `@value` was read.  A quote URL that cannot
+    be parsed at all, such as an inlined quote object without an `id`, is now
+    ignored instead of failing the whole object, and ATProto `at://` quote
+    URLs are accepted.  [[#1015], [#1043] by Jang Hanarae\]
+
+[#1015]: https://github.com/fedify-dev/fedify/issues/1015
+[#1043]: https://github.com/fedify-dev/fedify/pull/1043
+
 ### @fedify/vocab-runtime
 
  -  Added `UrlError.reason` to distinguish DNS resolution failures (`"dns"`)
@@ -106,6 +120,14 @@ To be released.
 [FEP-7aa9]: https://w3id.org/fep/7aa9
 [#1078]: https://github.com/fedify-dev/fedify/issues/1078
 [#1079]: https://github.com/fedify-dev/fedify/pull/1079
+
+### @fedify/vocab-tools
+
+ -  Fixed generated decoders for properties whose range is `fedify:url`
+    reading only literal (`@value`) values, so an IRI-valued (`@id`) value
+    made them throw `TypeError: Invalid URL`.  They now read both forms,
+    accept ATProto `at://` URIs, and skip a value that cannot be parsed
+    instead of throwing.  [[#1015], [#1043] by Jang Hanarae\]
 
 ### @fedify/webfinger
 

@@ -21,6 +21,16 @@ import {
     isTemporalInstant,
 } from \\"@fedify/vocab-runtime/temporal\\";
 
+function canDecodeIri(iri: string): boolean {
+  return URL.canParse(iri) || iri.startsWith(\\"at://\\");
+}
+
+function decodeIri(iri: string): URL {
+  return !URL.canParse(iri) && iri.startsWith(\\"at://\\")
+    ? new URL(\\"at://\\" + encodeURIComponent(iri.substring(5)))
+    : new URL(iri);
+}
+
 function isValidLanguageTag(language: string): boolean {
   try {
     new Intl.Locale(language);
@@ -12234,9 +12244,18 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
       if (v == null) continue;
     
       const decoded =
-    new URL(v[\\"@value\\"])
+    typeof v === \\"object\\" &&
+      ((typeof v[\\"@id\\"] === \\"string\\" && canDecodeIri(v[\\"@id\\"])) ||
+       (typeof v[\\"@value\\"] === \\"string\\" && canDecodeIri(v[\\"@value\\"]))) ? decodeIri(
+        typeof v[\\"@id\\"] === \\"string\\" ? v[\\"@id\\"] : v[\\"@value\\"]
+      ) : undefined
       ;
     
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
+      
       if (!this._shouldCacheDecodedJsonLd(decoded)) {
         shouldCacheJsonLd = false;
       }
@@ -29344,9 +29363,18 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
       if (v == null) continue;
     
       const decoded =
-    new URL(v[\\"@value\\"])
+    typeof v === \\"object\\" &&
+      ((typeof v[\\"@id\\"] === \\"string\\" && canDecodeIri(v[\\"@id\\"])) ||
+       (typeof v[\\"@value\\"] === \\"string\\" && canDecodeIri(v[\\"@value\\"]))) ? decodeIri(
+        typeof v[\\"@id\\"] === \\"string\\" ? v[\\"@id\\"] : v[\\"@value\\"]
+      ) : undefined
       ;
     
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
+      
       if (!this._shouldCacheDecodedJsonLd(decoded)) {
         shouldCacheJsonLd = false;
       }
@@ -52517,9 +52545,18 @@ proofs?: (DataIntegrityProof | URL)[];quoteUrl?: URL | null;}
       if (v == null) continue;
     
       const decoded =
-    new URL(v[\\"@value\\"])
+    typeof v === \\"object\\" &&
+      ((typeof v[\\"@id\\"] === \\"string\\" && canDecodeIri(v[\\"@id\\"])) ||
+       (typeof v[\\"@value\\"] === \\"string\\" && canDecodeIri(v[\\"@value\\"]))) ? decodeIri(
+        typeof v[\\"@id\\"] === \\"string\\" ? v[\\"@id\\"] : v[\\"@value\\"]
+      ) : undefined
       ;
     
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
+      
       if (!this._shouldCacheDecodedJsonLd(decoded)) {
         shouldCacheJsonLd = false;
       }
@@ -71060,9 +71097,18 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
       if (v == null) continue;
     
       const decoded =
-    new URL(v[\\"@value\\"])
+    typeof v === \\"object\\" &&
+      ((typeof v[\\"@id\\"] === \\"string\\" && canDecodeIri(v[\\"@id\\"])) ||
+       (typeof v[\\"@value\\"] === \\"string\\" && canDecodeIri(v[\\"@value\\"]))) ? decodeIri(
+        typeof v[\\"@id\\"] === \\"string\\" ? v[\\"@id\\"] : v[\\"@value\\"]
+      ) : undefined
       ;
     
+      if (typeof decoded === \\"undefined\\") {
+        shouldCacheJsonLd = false;
+        continue;
+      }
+      
       if (!this._shouldCacheDecodedJsonLd(decoded)) {
         shouldCacheJsonLd = false;
       }

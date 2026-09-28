@@ -809,6 +809,105 @@ test("Note.quoteUrl", async () => {
   deepStrictEqual(loaded3.quoteUrl, new URL("https://example.com/object3"));
 });
 
+test("Note.quoteUrl (IRI-typed alias terms)", async () => {
+  const jsonLd: Record<string, unknown> = {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      {
+        fedibird: "http://fedibird.com/ns#",
+        misskey: "https://misskey-hub.net/ns#",
+        _misskey_quote: {
+          "@id": "misskey:_misskey_quote",
+          "@type": "@id",
+        },
+        quoteUri: {
+          "@id": "fedibird:quoteUri",
+          "@type": "@id",
+        },
+      },
+    ],
+    id: "https://example.com/notes/1",
+    type: "Note",
+    _misskey_quote: "https://example.com/notes/quoted",
+    quoteUri: "https://example.com/notes/quoted2",
+  };
+
+  const loaded = await Note.fromJsonLd(jsonLd);
+  deepStrictEqual(loaded.quoteUrl, new URL("https://example.com/notes/quoted"));
+
+  delete jsonLd._misskey_quote;
+  const loaded2 = await Note.fromJsonLd(jsonLd);
+  deepStrictEqual(
+    loaded2.quoteUrl,
+    new URL("https://example.com/notes/quoted2"),
+  );
+});
+
+test("Note.quoteUrl (IRI-typed primary term)", async () => {
+  const context = [
+    "https://www.w3.org/ns/activitystreams",
+    {
+      misskey: "https://misskey-hub.net/ns#",
+      quoteUrl: { "@id": "as:quoteUrl", "@type": "@id" },
+      _misskey_quote: "misskey:_misskey_quote",
+    },
+  ];
+
+  const loaded = await Note.fromJsonLd({
+    "@context": context,
+    type: "Note",
+    quoteUrl: "https://example.com/object",
+  });
+  deepStrictEqual(loaded.quoteUrl, new URL("https://example.com/object"));
+
+  // An IRI-valued quoteUrl still takes precedence over a plain-string alias:
+  const loaded2 = await Note.fromJsonLd({
+    "@context": context,
+    type: "Note",
+    quoteUrl: "https://example.com/object",
+    _misskey_quote: "https://example.com/object2",
+  });
+  deepStrictEqual(loaded2.quoteUrl, new URL("https://example.com/object"));
+});
+
+test("Note.quoteUrl (unparsable IRI-valued terms)", async () => {
+  const context = [
+    "https://www.w3.org/ns/activitystreams",
+    {
+      misskey: "https://misskey-hub.net/ns#",
+      _misskey_quote: { "@id": "misskey:_misskey_quote", "@type": "@id" },
+    },
+  ];
+  for (
+    const quote of [
+      { type: "Note", content: "An inlined quote without an id" },
+      "_:b0",
+      "",
+      "notes/relative",
+    ]
+  ) {
+    const loaded = await Note.fromJsonLd({
+      "@context": context,
+      id: "https://example.com/notes/1",
+      type: "Note",
+      content: "Hello",
+      _misskey_quote: quote,
+    });
+    deepStrictEqual(loaded.quoteUrl, null, JSON.stringify(quote));
+    deepStrictEqual(loaded.content, "Hello");
+  }
+
+  const atUri = await Note.fromJsonLd({
+    "@context": context,
+    type: "Note",
+    _misskey_quote: "at://did:plc:abc/app.bsky.feed.post/xyz",
+  });
+  deepStrictEqual(
+    atUri.quoteUrl,
+    new URL("at://" + encodeURIComponent("did:plc:abc/app.bsky.feed.post/xyz")),
+  );
+});
+
 test("Key.publicKey", async () => {
   const jwk = {
     kty: "RSA",
