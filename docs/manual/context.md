@@ -101,6 +101,7 @@ shows the methods:
  -  `~Context.getObjectUri()`
  -  `~Context.getPortableObjectUri()`
  -  `~Context.getInboxUri()`
+ -  `~Context.getPortableInboxUri()`
  -  `~Context.getOutboxUri()`
  -  `~Context.getMediaUploaderUri()`
  -  `~Context.getFollowingUri()`

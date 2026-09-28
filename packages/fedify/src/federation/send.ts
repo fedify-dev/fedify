@@ -117,7 +117,9 @@ export interface SendActivityParameters {
   readonly activityType?: string;
 
   /**
-   * The key pairs of the sender to sign the request.  It must not be empty.
+   * The key pairs of the sender to sign the request.  If it is empty,
+   * the request is sent without a signature, e.g., when the activity is
+   * authenticated by its own proof.
    * @since 0.10.0
    */
   readonly keys: readonly SenderKeyPair[];
@@ -316,7 +318,12 @@ async function sendActivityInternal(
       break;
     }
   }
-  if (rsaKey == null) {
+  if (rsaKey == null && keys.length < 1) {
+    logger.debug(
+      "Sending the activity {activityId} to {inbox} without a signature.",
+      { activityId, inbox: inbox.href },
+    );
+  } else if (rsaKey == null) {
     logger.warn(
       "No supported key found to sign the request to {inbox}.  " +
         "The request will be sent without a signature.  " +

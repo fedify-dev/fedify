@@ -1116,6 +1116,17 @@ class MockContext<TContextData> implements Context<TContextData> {
     return parseIri(`ap+ef61://${authority}${pathname}`);
   }
 
+  getPortableInboxUri(identifier: string, authority: string): URL {
+    if (!/^did:[a-z0-9]+:[^/?#]+$/i.test(authority)) {
+      throw new TypeError(
+        "The authority of a portable ID must be a DID without a path, " +
+          "query, or fragment.",
+      );
+    }
+    const { pathname } = this.getInboxUri(identifier);
+    return parseIri(`ap+ef61://${authority}${pathname}`);
+  }
+
   getOutboxUri(identifier: string): URL {
     if (
       this.federation instanceof MockFederation && this.federation.outboxPath

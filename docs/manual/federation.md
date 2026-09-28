@@ -94,7 +94,17 @@ that the `Federation` object uses:
     ([double-knocking] technique).
     `["_fedify", "httpMessageSignaturesSpec"]` by default.
 
+`~FederationKvPrefixes.portableInboxForwarding`
+:   *This API is available since Fedify 2.4.0.*
+
+    The key prefix used for remembering which activities received in
+    [FEP-ef61] portable inboxes have been forwarded to which gateways, so that
+    each activity is forwarded at most once (see the [*Portable inboxes*
+    section](./inbox.md#portable-inboxes)).
+    `["_fedify", "portableInboxForwarding"]` by default.
+
 [double-knocking]: https://swicg.github.io/activitypub-http-signature/#how-to-upgrade-supported-versions
+[FEP-ef61]: https://w3id.org/fep/ef61
 
 ### `publicKeyTtl`
 
@@ -138,6 +148,53 @@ const federation = createFederation<void>({
 > Both TTLs trade storage against remote requests.  See
 > [*Bounding how long cache entries live*](./kv.md#bounding-how-long-cache-entries-live)
 > for what shortening or lengthening them costs.
+
+### `portableInboxForwarding`
+
+*This API is available since Fedify 2.4.0.*
+
+The `~FederationOptions.portableInboxForwarding` property configures how
+activities received in [FEP-ef61] portable inboxes are forwarded to the other
+gateways of their actors (see the [*Forwarding to other gateways*
+section](./inbox.md#forwarding-to-other-gateways)).  It is an object with
+the following properties, all optional:
+
+`~PortableInboxForwardingOptions.maxTargets`
+:   The maximum number of other gateways that a single delivery is forwarded
+    to.  Gateways beyond it are skipped with a warning, and `0` turns off
+    forwarding.  It is 10 by default.
+
+`~PortableInboxForwardingOptions.ttl`
+:   How long Fedify remembers that it has forwarded an activity from
+    a portable inbox to a gateway, under
+    `~FederationKvPrefixes.portableInboxForwarding`.  Once it expires,
+    a redelivery of the activity may be forwarded again.  It is 30 days by
+    default.
+
+`~PortableInboxForwardingOptions.deadline`
+:   How long a delivery waits for forwarding requests made immediately, i.e.,
+    when no outbox queue is configured, before Fedify responds to it.
+    Requests still running afterwards continue in the background.  It is
+    10 seconds by default.
+
+~~~~ typescript twoslash
+import { createFederation, MemoryKvStore } from "@fedify/fedify";
+
+const federation = createFederation<void>({
+  kv: new MemoryKvStore(),
+  portableInboxForwarding: {  // [!code highlight]
+    maxTargets: 5,  // [!code highlight]
+    ttl: { days: 7 },  // [!code highlight]
+    deadline: { seconds: 5 },  // [!code highlight]
+  },  // [!code highlight]
+});
+~~~~
+
+The durations cannot have calendar units, i.e., weeks, months, or years, as
+their length depends on the date; use days instead, e.g., `{ days: 7 }`.  A
+negative or non-integer `maxTargets`, a `ttl` that is not positive, or a
+`deadline` that is negative or longer than 2,147,483,647 milliseconds (about
+24.8 days, the longest delay timers support) throws a `RangeError`.
 
 ### `queue`
 

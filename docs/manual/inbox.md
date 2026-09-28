@@ -755,6 +755,177 @@ ctx.getInboxUri()
 ~~~~
 
 
+Portable inboxes
+----------------
+
+*This API is available since Fedify 2.4.0.*
+
+An [FEP-ef61] portable actor, whose ID is an `ap+ef61:` URI with a [DID]
+instead of a host, has a portable inbox like
+`ap+ef61://did:key:z6Mk.../users/alice/inbox`, and lists the servers that
+store its data in its `gateways` property.  Every gateway of the actor has to
+accept deliveries to the inbox through its `/.well-known/apgateway` endpoint:
+
+~~~~ http
+POST /.well-known/apgateway/did:key:z6Mk.../users/alice/inbox HTTP/1.1
+Host: example.com
+Content-Type: application/activity+json
+~~~~
+
+Fedify handles such a request with the same inbox listeners as ordinary
+deliveries, so you do not need a separate API for portable inboxes.  The path
+after the DID has to match the inbox path you passed to
+`~Federatable.setInboxListeners()`, e.g., `/users/{identifier}/inbox`, and
+the `~Context.getPortableInboxUri()` method builds such a portable inbox ID
+for the actor dispatcher to use:
+
+~~~~ typescript twoslash
+import { type Federation, signObject } from "@fedify/fedify";
+import { Follow, Person } from "@fedify/vocab";
+import { parseIri } from "@fedify/vocab-runtime";
+const federation = null as unknown as Federation<void>;
+interface User { username: string; did: string }
+async function findUser(_username: string): Promise<User | null> {
+  return null;
+}
+async function getPortableKey(
+  _did: string,
+): Promise<{ privateKey: CryptoKey; keyId: URL }> {
+  return null!;
+}
+// ---cut-before---
+federation.setActorDispatcher(
+  "/users/{identifier}",
+  async (ctx, identifier) => {
+    const user = await findUser(identifier);
+    if (user == null) return null;
+    const { privateKey, keyId } = await getPortableKey(user.did);
+    return await signObject(
+      new Person({
+        // ap+ef61://did:key:z6Mk.../users/alice
+        id: parseIri(`ap+ef61://${user.did}/users/${identifier}`),
+        // ap+ef61://did:key:z6Mk.../users/alice/inbox
+        inbox: ctx.getPortableInboxUri(identifier, user.did),
+        gateways: [
+          new URL("https://example.com"),
+          new URL("https://other.example"),
+        ],
+      }),
+      privateKey,
+      keyId,  // e.g., did:key:z6Mk...#z6Mk...
+    );
+  },
+);
+
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  .on(Follow, async (ctx, follow) => {
+    // Called for deliveries to both /users/alice/inbox and
+    // /.well-known/apgateway/did:key:z6Mk.../users/alice/inbox:
+    console.log(ctx.recipient);  // "alice"
+  });
+~~~~
+
+Fedify accepts a delivery to a portable inbox only if the actor dispatcher,
+called with the identifier in the inbox path, returns an actor such that:
+
+ -  its ID is a portable ID with the same DID as the requested inbox;
+ -  its `inbox` is the requested portable inbox; and
+ -  its `gateways` include the origin of this server, i.e.,
+    `~Context.canonicalOrigin`.
+
+Otherwise, Fedify responds with `404 Not Found`, as FEP-ef61 requires of
+a server that does not accept deliveries on behalf of the actor, so
+applications that do not have portable actors are unaffected.  A malformed
+DID or path results in `400 Bad Request`.  Only personal inboxes are
+reachable through the gateway endpoint; the shared inbox is not.
+
+The actor is looked up by the identifier alone, as for ordinary deliveries,
+and the actor document is trusted as your application returns it.  So make
+sure that the identifier determines a single actor regardless of the DID in
+the request path, and that the actor's `gateways` list only servers you
+intend to deliver to.
+
+Once accepted, the delivery goes through the same pipeline as ordinary
+deliveries: signature verification, including the FEP-ef61 proof policy for
+portable activities and objects (see the [*Compound portable objects*
+section](#compound-portable-objects)), [activity
+idempotency](#activity-idempotency), queueing, and inbox listeners.
+Activities delivered to a portable inbox do not have to be portable; an
+ordinary activity signed with HTTP Signatures is accepted as well.
+
+> [!NOTE]
+> The listener idempotency described in the [*Activity idempotency*
+> section](#activity-idempotency) suppresses a duplicate delivery only after
+> an earlier delivery of the same activity has been processed successfully,
+> and only if their idempotency keys match, e.g., the activity ID, the
+> recipient, and the origin of the request with the default `"per-inbox"`
+> strategy.
+
+[DID]: https://www.w3.org/TR/did-core/
+
+### Forwarding to other gateways
+
+FEP-ef61 recommends that a gateway forward an activity received in a portable
+inbox to the inboxes of the same actor on its other gateways, so that every
+gateway stores the actor's data, but forbids forwarding an activity from
+an inbox more than once.  Fedify does so automatically for an accepted
+delivery, including a duplicate one and one that is queued or has no inbox
+listener for its type, but not when an inbox listener fails, in which case
+the sender retries it.  All of the following have to hold as well:
+
+ -  The activity is authenticated by its own [Object Integrity
+    Proof](./send.md#object-integrity-proofs) or Linked Data Signature, not
+    only by HTTP Signatures, since forwarded requests are not signed with
+    HTTP Signatures and the other gateways have to authenticate the activity
+    by itself.
+ -  The `~FederationOptions.skipSignatureVerification` option is not turned on.
+ -  The activity has an `id`.
+ -  The key–value store supports `~KvStore.cas()`.  Otherwise, Fedify logs
+    a warning and does not forward any activity, since it could not ensure
+    that each activity is forwarded at most once.
+
+The activity is sent as received to the compatible inbox URL on each gateway
+other than this server, e.g.,
+`https://other.example/.well-known/apgateway/did:key:z6Mk.../users/alice/inbox`,
+to at most 10 gateways per delivery by default.  With an outbox queue,
+forwarding is queued like other outgoing activities and retried on failures.
+Without one, the requests are made immediately, and Fedify waits for them for
+up to 10 seconds by default before responding to the delivery.
+
+Fedify remembers each gateway that it has forwarded an activity to for 30 days
+by default under the `~FederationKvPrefixes.portableInboxForwarding` key
+prefix, and
+never forwards the same activity from the same inbox to the same gateway
+again within that period, even if the forwarding failed.  So forwarding is
+best effort; configure an [outbox queue](./mq.md) to retry transient
+failures.  A gateway that the activity is forwarded back to drops it the same
+way, which ends the forwarding.
+
+The limits above can be changed with the
+[`portableInboxForwarding`](./federation.md#portableinboxforwarding) option,
+which can also turn off forwarding:
+
+~~~~ typescript twoslash
+import { createFederation, MemoryKvStore } from "@fedify/fedify";
+
+const federation = createFederation<void>({
+  kv: new MemoryKvStore(),
+  portableInboxForwarding: { maxTargets: 0 },  // Turns off forwarding
+});
+~~~~
+
+> [!WARNING]
+> Fedify tells which gateway it is by `~Context.canonicalOrigin`, which comes
+> from the `Host` of the request unless you configure the
+> [`origin`](./federation.md#explicitly-setting-the-canonical-origin) option.
+> If you run a gateway, configure the `origin` option, or make sure that your
+> server or reverse proxy validates the `Host` header.  Otherwise, a request
+> with a spoofed `Host` naming another gateway of the actor can make this
+> server skip forwarding to that gateway and forward the activity to itself
+> instead, in which case inbox listeners may process the activity twice.
+
+
 Manual routing
 --------------
 

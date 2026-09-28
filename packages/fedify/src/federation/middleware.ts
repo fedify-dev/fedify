@@ -139,6 +139,7 @@ import {
   handleOrderedCollection,
   handleOutbox,
   handlePortableObject,
+  type PortableInboxDelivery,
   rawInboxContextFactorySymbol,
 } from "./handler.ts";
 import { routeActivity } from "./inbox.ts";
@@ -172,6 +173,12 @@ import {
   parsePortableGatewayRequest,
   type PortableGatewayRequest,
 } from "./portable.ts";
+import {
+  forwardPortableInboxActivity,
+  type ResolvedPortableInboxForwardingOptions,
+  resolvePortableInboxForwardingOptions,
+  resolvePortableInboxRecipient,
+} from "./portable-inbox.ts";
 import {
   assertSupportedCompoundProofShape,
   signOutgoingActivity,
@@ -585,6 +592,17 @@ export interface FederationKvPrefixes {
    * @since 2.4.0
    */
   readonly taskDeduplication: KvKey;
+
+  /**
+   * The key prefix used for remembering which activities received in
+   * [FEP-ef61] portable inboxes have been forwarded to which gateways, so that
+   * each activity is forwarded at most once.
+   *
+   * [FEP-ef61]: https://w3id.org/fep/ef61
+   * @default `["_fedify", "portableInboxForwarding"]`
+   * @since 2.4.0
+   */
+  readonly portableInboxForwarding: KvKey;
 }
 
 /**
@@ -628,6 +646,7 @@ export class FederationImpl<TContextData>
   kvPrefixes: FederationKvPrefixes;
   publicKeyTtl: Temporal.Duration;
   httpMessageSignaturesSpecTtl: Temporal.Duration;
+  portableInboxForwarding: ResolvedPortableInboxForwardingOptions;
   inboxQueue?: MessageQueue;
   outboxQueue?: MessageQueue;
   fanoutQueue?: MessageQueue;
@@ -660,6 +679,7 @@ export class FederationImpl<TContextData>
   benchmarkMetricReader?: BenchmarkMetricReader;
   benchmarkTriggerOptions: BenchmarkTriggerOptions;
   #mediaUploaderNoAuthWarned = false;
+  #portableInboxForwardingWarned = false;
   readonly #queueDepthGaugeSourceId = `fedify-${
     (++nextQueueDepthGaugeSourceId).toString(36)
   }`;
@@ -713,6 +733,7 @@ export class FederationImpl<TContextData>
         acceptSignatureNonce: ["_fedify", "acceptSignatureNonce"],
         circuitBreaker: ["_fedify", "circuit"],
         taskDeduplication: ["_fedify", "taskDeduplication"],
+        portableInboxForwarding: ["_fedify", "portableInboxForwarding"],
       } satisfies FederationKvPrefixes),
       ...(options.kvPrefixes ?? {}),
     };
@@ -721,6 +742,9 @@ export class FederationImpl<TContextData>
     );
     this.httpMessageSignaturesSpecTtl = Temporal.Duration.from(
       options.httpMessageSignaturesSpecTtl ?? { days: 90 },
+    );
+    this.portableInboxForwarding = resolvePortableInboxForwardingOptions(
+      options.portableInboxForwarding,
     );
     if (options.queue == null) {
       this.inboxQueue = undefined;
@@ -1769,13 +1793,20 @@ export class FederationImpl<TContextData>
     const logger = getLogger(["fedify", "federation", "inbox"]);
     const baseUrl = new URL(message.baseUrl);
     let context = this.#createContext(baseUrl, ctxData);
-    if (message.identifier != null) {
+    // A portable actor does not necessarily have key pairs for authorized
+    // fetch, so fall back to the default document loader without them:
+    if (
+      message.identifier != null &&
+      this.actorCallbacks?.keyPairsDispatcher != null
+    ) {
       context = this.#createContext(baseUrl, ctxData, {
         documentLoader: await context.getDocumentLoader({
           identifier: message.identifier,
         }),
       });
-    } else if (this.sharedInboxKeyDispatcher != null) {
+    } else if (
+      message.identifier == null && this.sharedInboxKeyDispatcher != null
+    ) {
       const identity = await this.sharedInboxKeyDispatcher(context);
       if (identity != null) {
         context = this.#createContext(baseUrl, ctxData, {
@@ -2738,6 +2769,17 @@ export class FederationImpl<TContextData>
           metricState,
         });
       }
+      if (request.method === "POST") {
+        const portable = parsePortableGatewayRequest(url);
+        if (portable != null) {
+          return await this.#fetchPortableInbox(request, portable, {
+            onNotFound,
+            contextData,
+            span,
+            metricState,
+          });
+        }
+      }
       const portable = request.method === "GET" || request.method === "HEAD"
         ? parsePortableGatewayRequest(url)
         : null;
@@ -2953,33 +2995,11 @@ export class FederationImpl<TContextData>
             });
           }
         }
-        if (!this.manuallyStartQueue) this._startQueueInternal(contextData);
-        const inboxContextFactory = context.toInboxContext.bind(context) as
-          & typeof context.toInboxContext
-          & {
-            [rawInboxContextFactorySymbol]?: typeof context.toInboxContext;
-          };
-        inboxContextFactory[rawInboxContextFactorySymbol] = context
-          .toInboxContext.bind(context);
-        return await handleInbox(request, {
+        return await this.#handleInbox(request, {
           recipient: route.values.identifier ?? null,
           context,
-          inboxContextFactory,
-          kv: this.kv,
-          kvPrefixes: this.kvPrefixes,
-          publicKeyTtl: this.publicKeyTtl,
-          queue: this.inboxQueue,
-          actorDispatcher: this.actorCallbacks?.dispatcher,
-          inboxListeners: this.inboxListeners,
-          inboxErrorHandler: this.inboxErrorHandler,
-          unverifiedActivityHandler: this.unverifiedActivityHandler,
+          contextData,
           onNotFound,
-          signatureTimeWindow: this.signatureTimeWindow,
-          skipSignatureVerification: this.skipSignatureVerification,
-          inboxChallengePolicy: this.inboxChallengePolicy,
-          meterProvider: this.meterProvider,
-          tracerProvider: this.tracerProvider,
-          idempotencyStrategy: this.idempotencyStrategy,
         });
       }
       case "following":
@@ -3175,6 +3195,172 @@ export class FederationImpl<TContextData>
       canonicalId: portable.canonicalId,
       onUnauthorized,
       onNotFound,
+    });
+  }
+
+  async #handleInbox(
+    request: Request,
+    {
+      recipient,
+      context,
+      contextData,
+      onNotFound,
+      portableInbox,
+    }: {
+      recipient: string | null;
+      context: RequestContextImpl<TContextData>;
+      contextData: TContextData;
+      onNotFound: (request: Request) => Response | Promise<Response>;
+      portableInbox?: PortableInboxDelivery;
+    },
+  ): Promise<Response> {
+    if (!this.manuallyStartQueue) this._startQueueInternal(contextData);
+    const inboxContextFactory = context.toInboxContext.bind(context) as
+      & typeof context.toInboxContext
+      & {
+        [rawInboxContextFactorySymbol]?: typeof context.toInboxContext;
+      };
+    inboxContextFactory[rawInboxContextFactorySymbol] = context
+      .toInboxContext.bind(context);
+    return await handleInbox(request, {
+      recipient,
+      context,
+      inboxContextFactory,
+      kv: this.kv,
+      kvPrefixes: this.kvPrefixes,
+      publicKeyTtl: this.publicKeyTtl,
+      queue: this.inboxQueue,
+      actorDispatcher: this.actorCallbacks?.dispatcher,
+      inboxListeners: this.inboxListeners,
+      inboxErrorHandler: this.inboxErrorHandler,
+      unverifiedActivityHandler: this.unverifiedActivityHandler,
+      onNotFound,
+      signatureTimeWindow: this.signatureTimeWindow,
+      skipSignatureVerification: this.skipSignatureVerification,
+      inboxChallengePolicy: this.inboxChallengePolicy,
+      meterProvider: this.meterProvider,
+      tracerProvider: this.tracerProvider,
+      idempotencyStrategy: this.idempotencyStrategy,
+      portableInbox,
+    });
+  }
+
+  async #fetchPortableInbox(
+    request: Request,
+    portable: PortableGatewayRequest,
+    {
+      onNotFound,
+      contextData,
+      span,
+      metricState,
+    }:
+      & Required<Pick<FederationFetchOptions<TContextData>, "onNotFound">>
+      & {
+        contextData: TContextData;
+        span: Span;
+        metricState: HttpMetricState;
+      },
+  ): Promise<Response> {
+    const logger = getLogger(["fedify", "federation", "inbox"]);
+    if (portable.type === "malformed") {
+      metricState.endpoint = "not_found";
+      logger.debug(
+        "Malformed FEP-ef61 gateway inbox request {url}: {error}",
+        { url: request.url, error: portable.error },
+      );
+      return new Response("Malformed portable inbox ID.", {
+        status: 400,
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      });
+    }
+    // Only personal inboxes are reachable through the gateway endpoint:
+    const route = this.router.route(portable.path);
+    if (route == null || route.name !== "inbox") {
+      metricState.endpoint = "not_found";
+      return await onNotFound(request);
+    }
+    metricState.routeTemplate = PORTABLE_GATEWAY_ROUTE_PREFIX + route.template;
+    metricState.endpoint = "inbox";
+    span.updateName(`${request.method} ${metricState.routeTemplate}`);
+    const identifier = route.values.identifier;
+    let context = this.#createContext(request, contextData);
+    // The actor is looked up only by its identifier, as for ordinary inbox
+    // deliveries, so that the identifier alone determines the recipient,
+    // also for inbox listeners and queued deliveries:
+    const actor = this.actorCallbacks?.dispatcher == null
+      ? null
+      : await this.actorCallbacks.dispatcher(context, identifier);
+    const localOrigin = context.canonicalOrigin;
+    const resolution = resolvePortableInboxRecipient(
+      actor == null || actor instanceof Tombstone ? null : actor,
+      {
+        authority: portable.portableRequest.authority,
+        canonicalInboxId: portable.canonicalId,
+        localOrigin,
+      },
+    );
+    if (resolution.status === "rejected") {
+      logger.debug(
+        "Not accepting a delivery to the portable inbox {inbox} on behalf " +
+          "of the actor {identifier}: {reason}.",
+        {
+          inbox: portable.canonicalId,
+          identifier,
+          reason: resolution.reason,
+        },
+      );
+      return await onNotFound(request);
+    }
+    const { recipient } = resolution;
+    // A portable actor does not necessarily have key pairs for authorized
+    // fetch, so fall back to the default document loader without them:
+    if (this.actorCallbacks?.keyPairsDispatcher != null) {
+      context = this.#createContext(request, contextData, {
+        documentLoader: await context.getDocumentLoader({ identifier }),
+      });
+    }
+    const excludedOrigins = [localOrigin, new URL(request.url).origin];
+    return await this.#handleInbox(request, {
+      recipient: identifier,
+      context,
+      contextData,
+      onNotFound,
+      portableInbox: {
+        recipient,
+        forward: async (activity, activityId, activityType) => {
+          if (this.portableInboxForwarding.maxTargets < 1) return;
+          if (this.kv.cas == null) {
+            if (!this.#portableInboxForwardingWarned) {
+              this.#portableInboxForwardingWarned = true;
+              logger.warn(
+                "Activities delivered to FEP-ef61 portable inboxes are not " +
+                  "forwarded to the other gateways, as the key–value store " +
+                  "does not support compare-and-swap (KvStore.cas()), which " +
+                  "is needed to forward each activity at most once.",
+              );
+            }
+            return;
+          }
+          await forwardPortableInboxActivity({
+            recipient,
+            activity,
+            activityId,
+            activityType,
+            excludedOrigins,
+            baseUrl: context.origin,
+            kv: this.kv,
+            kvPrefix: this.kvPrefixes.portableInboxForwarding,
+            outboxQueue: this.outboxQueue,
+            startQueue: this.manuallyStartQueue
+              ? undefined
+              : () => this._startQueueInternal(contextData),
+            allowPrivateAddress: this.allowPrivateAddress,
+            options: this.portableInboxForwarding,
+            meterProvider: this.meterProvider,
+            tracerProvider: this.tracerProvider,
+          });
+        },
+      },
     });
   }
 
@@ -3605,6 +3791,20 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       throw new RouterError("No inbox path registered.");
     }
     return new URL(path, this.canonicalOrigin);
+  }
+
+  getPortableInboxUri(identifier: string, authority?: string): URL {
+    const path = this.federation.router.build("inbox", { identifier });
+    if (path == null) {
+      throw new RouterError("No inbox path registered.");
+    }
+    if (authority == null) {
+      throw new TypeError(
+        "The authority of a portable ID is required outside an FEP-ef61 " +
+          "gateway request.",
+      );
+    }
+    return buildPortableUri(authority, path);
   }
 
   getFollowingUri(identifier: string): URL {
@@ -4625,6 +4825,13 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
     return super.getPortableObjectUri(
       cls,
       values,
+      authority ?? this.portableRequest?.authority,
+    );
+  }
+
+  override getPortableInboxUri(identifier: string, authority?: string): URL {
+    return super.getPortableInboxUri(
+      identifier,
       authority ?? this.portableRequest?.authority,
     );
   }

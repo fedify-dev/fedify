@@ -168,6 +168,36 @@ export interface Context<TContextData> {
   ): URL;
 
   /**
+   * Builds the [FEP-ef61] portable ID of an actor's inbox with the given
+   * identifier under the given DID authority.
+   *
+   * The path is the same as the one {@link Context.getInboxUri} builds from
+   * the inbox path, but the result is an `ap+ef61:` URI whose authority is
+   * the DID, e.g., `ap+ef61://did:key:z6Mk.../users/alice/inbox`.  If
+   * a portable actor has it as its `inbox` and lists this server in its
+   * `gateways`, this server accepts deliveries to the inbox through
+   * the FEP-ef61 gateway endpoint, e.g.,
+   * `POST /.well-known/apgateway/did:key:z6Mk.../users/alice/inbox`, and
+   * dispatches them to the inbox listeners.
+   *
+   * The returned `URL` keeps the DID authority percent-encoded, because
+   * the `URL` class cannot represent the canonical form.  Use `formatIri()`
+   * from `@fedify/vocab-runtime` to get the canonical string.
+   *
+   * [FEP-ef61]: https://w3id.org/fep/ef61
+   *
+   * @param identifier The actor's identifier.
+   * @param authority The DID that controls the actor, e.g.,
+   *                  `did:key:z6Mk...`.  It must be a bare DID, without
+   *                  a path, query, or fragment.
+   * @returns The inbox's portable ID.
+   * @throws {RouterError} If no inbox path is registered.
+   * @throws {TypeError} If the authority is not a DID.
+   * @since 2.4.0
+   */
+  getPortableInboxUri(identifier: string, authority: string): URL;
+
+  /**
    * Builds the URI of an actor's outbox with the given identifier.
    * @param identifier The actor's identifier.
    * @returns The actor's outbox URI.
@@ -646,6 +676,30 @@ export interface RequestContext<TContextData> extends Context<TContextData> {
     values: Record<string, string>,
     authority?: string,
   ): URL;
+
+  /**
+   * Builds the [FEP-ef61] portable ID of an actor's inbox with the given
+   * identifier.  It works the same as {@link Context.getPortableInboxUri},
+   * except that the authority can be omitted while handling a portable object
+   * request, i.e., when {@link RequestContext.portableRequest} is set.  In
+   * that case, its DID is used.  Deliveries to portable inboxes do not set
+   * {@link RequestContext.portableRequest}, so pass the authority explicitly
+   * while handling them.
+   *
+   * [FEP-ef61]: https://w3id.org/fep/ef61
+   *
+   * @param identifier The actor's identifier.
+   * @param authority The DID that controls the actor, e.g.,
+   *                  `did:key:z6Mk...`.  It must be a bare DID, without
+   *                  a path, query, or fragment.  Defaults to the DID of
+   *                  the requested portable object, if any.
+   * @returns The inbox's portable ID.
+   * @throws {RouterError} If no inbox path is registered.
+   * @throws {TypeError} If the authority is not a DID, or the authority is
+   *                     omitted outside a portable gateway request.
+   * @since 2.4.0
+   */
+  getPortableInboxUri(identifier: string, authority?: string): URL;
 
   /**
    * Creates a new context with the same properties as this one,

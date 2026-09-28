@@ -913,6 +913,47 @@ export interface FederationBuilder<TContextData>
 }
 
 /**
+ * Options for forwarding activities received in [FEP-ef61] portable inboxes to
+ * the other gateways of their actors.  See
+ * {@link FederationOptions.portableInboxForwarding}.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
+ * @since 2.4.0
+ */
+export interface PortableInboxForwardingOptions {
+  /**
+   * The maximum number of other gateways that a single delivery is forwarded
+   * to.  Gateways beyond it are skipped with a warning.  `0` turns off
+   * forwarding.
+   * @default `10`
+   */
+  maxTargets?: number;
+
+  /**
+   * How long Fedify remembers that it has forwarded an activity from
+   * a portable inbox to a gateway, under
+   * {@link FederationKvPrefixes.portableInboxForwarding}.  Within it, the same
+   * activity is never forwarded to the same gateway again; once it expires,
+   * a redelivery of the activity may be forwarded again.  It cannot have
+   * calendar units, i.e., weeks, months, or years.
+   * @default `{ days: 30 }`
+   */
+  ttl?: Temporal.DurationLike;
+
+  /**
+   * How long a delivery waits for forwarding requests made immediately, i.e.,
+   * when no outbox queue is configured, before Fedify responds to it.
+   * Requests still running afterwards continue in the background.  It does
+   * not apply when forwarding is queued.  It cannot have calendar units,
+   * i.e., weeks, months, or years, and cannot be longer than
+   * 2,147,483,647 milliseconds (about 24.8 days), the longest delay timers
+   * support.
+   * @default `{ seconds: 10 }`
+   */
+  deadline?: Temporal.DurationLike;
+}
+
+/**
  * Policy for emitting `Accept-Signature` challenges on inbox `401`
  * responses, as defined in
  * [RFC 9421 §5](https://www.rfc-editor.org/rfc/rfc9421#section-5).
@@ -1015,6 +1056,15 @@ export interface FederationOptions<TContextData> {
    * @since 2.4.0
    */
   httpMessageSignaturesSpecTtl?: Temporal.DurationLike;
+
+  /**
+   * Options for forwarding activities received in [FEP-ef61] portable inboxes
+   * to the other gateways of their actors.
+   *
+   * [FEP-ef61]: https://w3id.org/fep/ef61
+   * @since 2.4.0
+   */
+  portableInboxForwarding?: PortableInboxForwardingOptions;
 
   /**
    * The message queue for sending and receiving activities.  If not provided,

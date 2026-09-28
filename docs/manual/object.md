@@ -204,10 +204,11 @@ in its audience, so check the signature in the predicate, e.g., with
 served to anyone.
 
 Note that only object dispatchers serve portable objects for now.  Actor
-dispatchers, collection dispatchers, and inboxes are not reachable through
-the gateway endpoint.  Also, a route of your own that matches
-the `/.well-known/apgateway/...` path, e.g., `/{+path}`, takes precedence over
-the gateway endpoint.
+dispatchers and collection dispatchers are not reachable through the gateway
+endpoint, whereas deliveries to portable inboxes are handled by inbox
+listeners (see the [*Portable inboxes* section](./inbox.md#portable-inboxes)).
+Also, a route of your own that matches the `/.well-known/apgateway/...` path,
+e.g., `/{+path}`, takes precedence over the gateway endpoint.
 
 [FEP-ef61]: https://w3id.org/fep/ef61
 [DID]: https://www.w3.org/TR/did-core/
