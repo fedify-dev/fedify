@@ -14,8 +14,8 @@ import type { Federation } from "@fedify/fedify/federation";
 import { createMiddleware } from "@solidjs/start/middleware";
 import {
   type ContextDataFactory,
-  createOnBeforeResponseHandler,
   createOnRequestHandler,
+  onBeforeResponse,
 } from "./handlers.ts";
 
 export type { ContextDataFactory } from "./handlers.ts";
@@ -47,6 +47,6 @@ export function fedifyMiddleware<TContextData>(
 ): ReturnType<typeof createMiddleware> {
   return createMiddleware({
     onRequest: createOnRequestHandler(federation, createContextData),
-    onBeforeResponse: createOnBeforeResponseHandler(),
+    onBeforeResponse,
   });
 }

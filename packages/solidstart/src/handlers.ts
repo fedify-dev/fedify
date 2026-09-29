@@ -62,14 +62,12 @@ export function createOnRequestHandler<TContextData>(
 }
 
 /**
- * Creates the `onBeforeResponse` handler wired into SolidStart by
- * `fedifyMiddleware()`.
+ * Handles the response before SolidStart sends it to the client.
  *
- * @returns The `onBeforeResponse` handler.
+ * @param event The SolidStart {@link FetchEvent} for the current request.
+ * @returns The stored 406 response if SolidStart could not handle the route.
  */
-export function createOnBeforeResponseHandler(): (
-  event: FetchEvent,
-) => Response | undefined {
+export function onBeforeResponse(event: FetchEvent): Response | undefined {
   // Similar to onRequest, but slightly more tricky one.
   // When the federation object finds a request not acceptable type-wise
   // (i.e., a user-agent does not want JSON-LD), onRequest stores the 406
@@ -77,12 +75,10 @@ export function createOnBeforeResponseHandler(): (
   // has no page for this route (404), we return the stored 406 instead.
   // This enables Fedify and SolidStart to share the same routes and do
   // content negotiation depending on the Accept header:
-  return (event: FetchEvent) => {
-    const stored = notAcceptableResponses.get(event.request);
-    if (stored != null) {
-      notAcceptableResponses.delete(event.request);
-      const status = event.response.status ?? 200;
-      if (status === 404) return stored;
-    }
-  };
+  const stored = notAcceptableResponses.get(event.request);
+  if (stored != null) {
+    notAcceptableResponses.delete(event.request);
+    const status = event.response.status ?? 200;
+    if (status === 404) return stored;
+  }
 }
