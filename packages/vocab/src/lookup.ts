@@ -737,10 +737,24 @@ export interface TraverseCollectionOptions {
   /**
    * The policy to apply to portable pages and items fetched through
    * gateways, typically `verifyPortableObject()` from `@fedify/fedify`.
-   * Portable pages and items are not fetched without it.
+   * Portable pages and items are not fetched without it.  Pages and items
+   * that are fetched use it as their default verifier, unless
+   * {@link TraverseCollectionOptions.inheritPortableObjectVerifier} is
+   * `false`.
    * @since 2.4.0
    */
   verifyPortableObject?: PortableObjectVerifier;
+
+  /**
+   * Whether pages and items that are newly fetched use
+   * {@link TraverseCollectionOptions.verifyPortableObject} as their default
+   * verifier for their property accessors.  Defaults to `true`.  If `false`,
+   * they use the default verifier of the object they are obtained from, if
+   * any, instead.  See the `inheritPortableObjectVerifier` option of property
+   * accessors such as `Collection.getItems()`.
+   * @since 2.4.0
+   */
+  inheritPortableObjectVerifier?: boolean;
 }
 
 /**

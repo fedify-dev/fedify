@@ -76,6 +76,7 @@ async function* generateProperty(
         crossOrigin?: "ignore" | "throw" | "trust";
         gateways?: readonly (string | URL)[];
         verifyPortableObject?: PortableObjectVerifier;
+        inheritPortableObjectVerifier?: boolean;
       } = {},
     ): Promise<${getTypeNames(property.range, types)} | null> {
       const documentLoader =
@@ -88,6 +89,12 @@ async function* generateProperty(
         ${JSON.stringify(metadata.name)},
         ${JSON.stringify(metadata.version)},
       );
+      // The fetched object uses the verifier given to this call (which falls
+      // back to the parent's own default) for its accessors by default,
+      // unless the call keeps its verifier to itself:
+      const childVerifier = options.inheritPortableObjectVerifier === false
+        ? this._verifyPortableObject
+        : options.verifyPortableObject;
       return await tracer.startActiveSpan("activitypub.lookup_object", async (span) => {
         const dereferencePortable = async (
           portableUrl: URL,
@@ -118,9 +125,7 @@ async function* generateProperty(
                   documentLoader,
                   contextLoader: parseOptions.contextLoader,
                   tracerProvider,
-                  // Only the parent's own default is inherited, never the
-                  // verifier given to this call:
-                  verifyPortableObject: this._verifyPortableObject,
+                  verifyPortableObject: childVerifier,
                   baseUrl: parseOptions.baseUrl,
                 }),
             });
@@ -200,7 +205,7 @@ async function* generateProperty(
                 documentLoader,
                 contextLoader: scopedContext.loader,
                 tracerProvider,
-                verifyPortableObject: this._verifyPortableObject,
+                verifyPortableObject: childVerifier,
                 baseUrl,
               }
             );
@@ -395,6 +400,19 @@ async function* generateProperty(
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
           verifyPortableObject?: PortableObjectVerifier;
+          /**
+           * Whether objects that this call newly fetches use the
+           * \`verifyPortableObject\` option of this call as their default
+           * verifier.  Defaults to \`true\`.  If \`false\`, the option
+           * applies to this call only, and fetched objects use this object's
+           * own default verifier, if any, as their default instead.  Pass
+           * \`false\` for a temporary verifier, e.g., one that accepts
+           * everything.  Objects that were already cached in this object or
+           * embedded in it keep their defaults either way, and this option
+           * itself is not passed on.
+           * @since 2.4.0
+           */
+          inheritPortableObjectVerifier?: boolean;
         } = {}
       ): Promise<${getTypeNames(property.range, types)} | null> {
         if (this._warning != null) {
@@ -463,6 +481,9 @@ async function* generateProperty(
         yield `
             v = await this.#${property.singularName}_fromJsonLd(doc, {
               ...options,
+              // Embedded objects get this object's own default, whether or
+              // not they carry their own @context, as when this object was
+              // parsed:
               verifyPortableObject: this._verifyPortableObject,
               baseUrl: ${cachedPropertyBaseUrl},
             });
@@ -544,6 +565,19 @@ async function* generateProperty(
           crossOrigin?: "ignore" | "throw" | "trust";
           gateways?: readonly (string | URL)[];
           verifyPortableObject?: PortableObjectVerifier;
+          /**
+           * Whether objects that this call newly fetches use the
+           * \`verifyPortableObject\` option of this call as their default
+           * verifier.  Defaults to \`true\`.  If \`false\`, the option
+           * applies to this call only, and fetched objects use this object's
+           * own default verifier, if any, as their default instead.  Pass
+           * \`false\` for a temporary verifier, e.g., one that accepts
+           * everything.  Objects that were already cached in this object or
+           * embedded in it keep their defaults either way, and this option
+           * itself is not passed on.
+           * @since 2.4.0
+           */
+          inheritPortableObjectVerifier?: boolean;
         } = {}
       ): AsyncIterable<${getTypeNames(property.range, types)}> {
         if (this._warning != null) {
@@ -617,6 +651,9 @@ async function* generateProperty(
         yield `
               v = await this.#${property.singularName}_fromJsonLd(obj, {
                 ...options,
+                // Embedded objects get this object's own default, whether or
+                // not they carry their own @context, as when this object was
+                // parsed:
                 verifyPortableObject: this._verifyPortableObject,
                 baseUrl: ${cachedPropertyBaseUrl},
               });

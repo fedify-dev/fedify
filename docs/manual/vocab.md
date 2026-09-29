@@ -375,12 +375,14 @@ const note = await create.getObject({
 Portable references cannot be dereferenced without `verifyPortableObject`:
 the accessor throws a `TypeError` (or returns `null` with
 `suppressError: true`) before sending any request.  The options apply to that
-call only, so pass them again when you dereference references in the returned
-object.  As with other dereferenced objects, a verified object is cached in its
-parent object, and later calls return it without fetching it again.  A portable
-object embedded in a portable object with the same DID is trusted as
-embedded, since the parent's proof covers it; other embedded portable objects
-are handled as described below.
+call only, except for `verifyPortableObject`, which the returned object uses by
+default if the accessor fetched it (see
+[*Default verifiers*](#default-verifiers) below).  So pass the other options
+again when you dereference references in the returned object.  As with other
+dereferenced objects, a verified object is cached in its parent object, and
+later calls return it without fetching it again.  A portable object embedded in
+a portable object with the same DID is trusted as embedded, since the parent's
+proof covers it; other embedded portable objects are handled as described below.
 
 #### Default verifiers
 
@@ -398,14 +400,45 @@ declare const create: Create;
 const note = await create.getObject(ctx);
 ~~~~
 
+An object that an accessor fetches uses the verifier of that call by default.
+So if `create` refers to its object by its ID, you do not need to pass the
+verifier again for the next hop:
+
+~~~~ typescript twoslash
+import type { Context } from "@fedify/fedify";
+import type { Create } from "@fedify/vocab";
+declare const ctx: Context<void>;
+declare const create: Create;
+// ---cut-before---
+const note = await create.getObject(ctx);
+// Uses ctx.verifyPortableObject by default:
+const author = await note?.getAttribution();
+~~~~
+
 An object can also remember a verifier to use by default.  Pass
 `verifyPortableObject` to its constructor or to its `fromJsonLd()` method
 (a `Context` works as the options here too), and its accessors use it when
-you do not give them one.  Objects that it fetches, and objects embedded in
-the JSON-LD document it was parsed from, get the same default, but a verifier
-given to a single accessor call is not passed on to the returned object.
-Objects that you pass to its constructor or to `clone()` as property values
-keep their own defaults, if any.  Objects that Fedify parses for you already
+you do not give them one.  A child object gets its default when it is parsed:
+
+ -  An object that an accessor fetches gets the verifier given to that call,
+    or the parent's default if the call gives none.
+ -  An object embedded in the JSON-LD document that its parent was parsed from
+    gets the parent's default, whichever verifier an accessor call gives.
+ -  Objects that you pass to a constructor or to `clone()` as property values
+    keep their own defaults, if any.
+ -  A fetched object is cached in its parent, and later calls return it as
+    is, with the default it got when it was fetched, even if they give
+    another verifier.
+
+A default verifier is only a policy for dereferencing references later; having
+one does not mean that the object itself was verified.
+
+If a verifier is meant for a single call only, e.g., one that accepts
+everything, pass `inheritPortableObjectVerifier: false` along with it.
+Objects that the call fetches then get the parent's own default, if any,
+instead.  The option applies to that call only; it is not passed on.
+
+Objects that Fedify parses for you already
 have `~Context.verifyPortableObject` as their default: activities that inboxes
 receive, including queued ones, objects that `~Context.lookupObject()` returns,
 and the activities passed to the `onOutboxError` callback. So

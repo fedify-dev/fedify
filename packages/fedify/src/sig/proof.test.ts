@@ -2554,6 +2554,62 @@ test("verifyObject() hydrates pending proof references", async () => {
   assertInstanceOf(verified, Note);
 });
 
+test("verifyObject() does not pass its proof verifier on to cached proofs", async () => {
+  const did = await exportDidKey(ed25519PublicKey.publicKey);
+  const method = did.substring("did:key:".length);
+  const keyId = new URL(`${did}#${method}`);
+  const proofUrl = `ap://did:key:${method}/proofs/1`;
+  const signed = await signPortableJsonLd({
+    "@context": portableContext,
+    id: `ap://did:key:${method}/objects/1`,
+    type: "Note",
+    attributedTo: `ap://did:key:${method}/actor`,
+    content: "Portable note with a referenced proof",
+  }, {
+    verificationMethod: keyId,
+    proofOptions: { id: proofUrl },
+  });
+  const rawProof = signed.proof as Record<string, unknown>;
+  const referencedJsonLd = { ...signed };
+  delete referencedJsonLd.proof;
+  referencedJsonLd["https://w3id.org/security#proof"] = [
+    { "@graph": [rawProof] },
+    { "@graph": [{ "@id": proofUrl }] },
+  ];
+
+  // deno-lint-ignore require-await
+  const rootVerifier = async () => ({ verified: false });
+  for (const verifyPortableObject of [undefined, rootVerifier]) {
+    let proofFetches = 0;
+    const verified = await verifyObject(Note, referencedJsonLd, {
+      documentLoader(url) {
+        proofFetches++;
+        return Promise.resolve({
+          contextUrl: null,
+          document: structuredClone(rawProof),
+          documentUrl: url,
+        });
+      },
+      contextLoader: mockDocumentLoader,
+      ...(verifyPortableObject == null ? {} : { verifyPortableObject }),
+    });
+    assertInstanceOf(verified, Note);
+    assertEquals(proofFetches, 1);
+    // The fetched proof is cached in the returned object, and uses the
+    // object's own default verifier, not the one that verifyObject() used to
+    // fetch it, which accepts everything:
+    const proofs = await Array.fromAsync(verified.getProofs());
+    assertEquals(proofs.length, 2);
+    assertEquals(proofFetches, 1);
+    for (const proof of proofs) {
+      assert(
+        (proof as unknown as { _verifyPortableObject?: unknown })
+          ._verifyPortableObject === verifyPortableObject,
+      );
+    }
+  }
+});
+
 test("verifyObject() hydrates portable proof references with gateway hints", async () => {
   const did = await exportDidKey(ed25519PublicKey.publicKey);
   const method = did.substring("did:key:".length);

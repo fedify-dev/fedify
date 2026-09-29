@@ -469,15 +469,33 @@ test("traverseCollection() with a Context verifies pages and items of portable c
   assertEquals(items.length, 1);
   assertInstanceOf(items[0], Note);
   assertEquals(items[0].content, "A portable note");
-  // The yielded items do not inherit the verifier given to the calls:
+  // The yielded items use the verifier given to the calls by default:
+  assertInstanceOf(
+    await items[0].getAttribution({ documentLoader: loader }),
+    Person,
+  );
+
+  // ...unless the calls keep it to themselves:
+  const outbox2 = await (await Person.fromJsonLd(actor(), {
+    contextLoader: mockDocumentLoader,
+  })).getOutbox({ ...ctx, inheritPortableObjectVerifier: false });
+  assertInstanceOf(outbox2, OrderedCollection);
+  const items2 = await Array.fromAsync(
+    traverseCollection(outbox2, {
+      ...ctx,
+      inheritPortableObjectVerifier: false,
+    }),
+  );
+  assertEquals(items2.length, 1);
+  assertInstanceOf(items2[0], Note);
   let error: unknown;
   try {
-    await items[0].getAttribution({ documentLoader: loader });
+    await items2[0].getAttribution({ documentLoader: loader });
   } catch (e) {
     error = e;
   }
   assertInstanceOf(error, TypeError);
-  assertInstanceOf(await items[0].getAttribution(ctx), Person);
+  assertInstanceOf(await items2[0].getAttribution(ctx), Person);
 });
 
 test("onOutboxError receives activities that verify portable objects by default", async () => {

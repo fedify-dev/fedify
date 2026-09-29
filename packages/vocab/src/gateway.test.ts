@@ -2113,48 +2113,34 @@ test("objects use the verifyPortableObject option they were parsed with by defau
     deepStrictEqual(verifier.calls.length, 2);
   });
 
-  await t.step("an explicit option applies to that call only", async () => {
-    const stored = createRecordingVerifier();
-    const given = createRecordingVerifier();
-    const activity = await createCompatibleActivity(
-      compatibleNoteId,
-      undefined,
-      { verifyPortableObject: stored },
-    );
-    const object = await activity.getObject({
-      documentLoader,
-      contextLoader: mockDocumentLoader,
-      verifyPortableObject: given,
-    });
-    assertInstanceOf(object, Note);
-    deepStrictEqual([stored.calls.length, given.calls.length], [0, 1]);
-    // The fetched object inherits the parent's default, not the verifier
-    // given to the call:
-    await object.getAttribution({
-      documentLoader,
-      contextLoader: mockDocumentLoader,
-      gateways: ["https://gw.example"],
-    });
-    deepStrictEqual([stored.calls.length, given.calls.length], [1, 1]);
-
-    // Without a default, the fetched object has none either:
-    const plain = await createCompatibleActivity(compatibleNoteId);
-    const object2 = await plain.getObject({
-      documentLoader,
-      contextLoader: mockDocumentLoader,
-      verifyPortableObject: given,
-    });
-    assertInstanceOf(object2, Note);
-    await rejects(
-      async () =>
-        await object2.getAttribution({
-          documentLoader,
-          contextLoader: mockDocumentLoader,
-          gateways: ["https://gw.example"],
-        }),
-      TypeError,
-    );
-  });
+  await t.step(
+    "an explicit option is passed on to fetched objects",
+    async () => {
+      const stored = createRecordingVerifier();
+      const given = createRecordingVerifier();
+      const activity = await createCompatibleActivity(
+        compatibleNoteId,
+        undefined,
+        { verifyPortableObject: stored },
+      );
+      const object = await activity.getObject({
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        verifyPortableObject: given,
+      });
+      assertInstanceOf(object, Note);
+      deepStrictEqual([stored.calls.length, given.calls.length], [0, 1]);
+      // The fetched object uses the verifier given to the call by default:
+      await object.getAttribution({
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        gateways: ["https://gw.example"],
+      });
+      deepStrictEqual([stored.calls.length, given.calls.length], [0, 2]);
+      // ...but the parent keeps its own default:
+      ok(getDefaultVerifier(activity) === stored);
+    },
+  );
 
   await t.step("lookupObject()", async () => {
     const verifier = createRecordingVerifier();
@@ -2186,9 +2172,430 @@ test("objects use the verifyPortableObject option they were parsed with by defau
     }, { contextLoader: mockDocumentLoader, verifyPortableObject: verifier });
     const icon = await person.getIcon({ documentLoader });
     assertInstanceOf(icon, Image);
-    ok(
-      (icon as unknown as { _verifyPortableObject: unknown })
-        ._verifyPortableObject === verifier,
+    ok(getDefaultVerifier(icon) === verifier);
+  });
+});
+
+function getDefaultVerifier(
+  object: object,
+): PortableObjectVerifier | undefined {
+  return (object as unknown as {
+    _verifyPortableObject?: PortableObjectVerifier;
+  })
+    ._verifyPortableObject;
+}
+
+test("accessors pass the verifier of a call on to the objects they fetch", async (t) => {
+  const actorId = `ap://${did}/actor`;
+  const attributedNote = (id: string) => ({
+    ...note(id),
+    attributedTo: actorId,
+  });
+  const actor = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id: actorId,
+    type: "Person",
+    inbox: `${actorId}/inbox`,
+  };
+  const actorUrl = gatewayUrl("https://gw.example", "/actor");
+  const plainNoteUrl = "https://example.com/notes/1";
+  const plainActivityUrl = "https://example.com/activities/1";
+  const documentLoader = createLoader({
+    [compatibleNoteId]: attributedNote(compatibleNoteId),
+    [actorUrl]: actor,
+    [plainNoteUrl]: { ...attributedNote(plainNoteUrl), id: plainNoteUrl },
+    [plainActivityUrl]: {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Create",
+      id: plainActivityUrl,
+      object: compatibleNoteId,
+    },
+  });
+  const options = { documentLoader, contextLoader: mockDocumentLoader };
+  const secondHop = { ...options, gateways: ["https://gw.example"] };
+
+  await t.step("from objects without a default", async () => {
+    const roots: [string, () => Promise<Create>][] = [
+      [
+        "constructed",
+        // deno-lint-ignore require-await
+        async () =>
+          new Create({
+            id: new URL(gatewayUrl("https://gw.example", "/activities/1")),
+            object: new URL(compatibleNoteId),
+          }, { contextLoader: mockDocumentLoader }),
+      ],
+      ["parsed", () => createCompatibleActivity(compatibleNoteId)],
+      [
+        "looked up",
+        async () => {
+          const found = await lookupObject(plainActivityUrl, options);
+          assertInstanceOf(found, Create);
+          return found;
+        },
+      ],
+    ];
+    for (const [name, createRoot] of roots) {
+      // Singular accessors:
+      const verifier = createRecordingVerifier();
+      const root = await createRoot();
+      ok(getDefaultVerifier(root) == null, name);
+      const object = await root.getObject({
+        ...options,
+        verifyPortableObject: verifier,
+      });
+      assertInstanceOf(object, Note);
+      deepStrictEqual(verifier.calls.length, 1, name);
+      assertInstanceOf(await object.getAttribution(secondHop), Person);
+      deepStrictEqual(verifier.calls.length, 2, name);
+      ok(getDefaultVerifier(root) == null, name);
+
+      // Plural accessors:
+      const verifier2 = createRecordingVerifier();
+      const objects = await Array.fromAsync((await createRoot()).getObjects({
+        ...options,
+        verifyPortableObject: verifier2,
+      }));
+      deepStrictEqual(objects.length, 1, name);
+      assertInstanceOf(objects[0], Note);
+      const authors = await Array.fromAsync(
+        (objects[0] as Note).getAttributions(secondHop),
+      );
+      deepStrictEqual(authors.length, 1, name);
+      assertInstanceOf(authors[0], Person);
+      deepStrictEqual(verifier2.calls.length, 2, name);
+    }
+  });
+
+  await t.step("precedence", async () => {
+    const stored = createRecordingVerifier();
+    const given = createRecordingVerifier();
+    const override = createRecordingVerifier();
+    const counts = () => [
+      stored.calls.length,
+      given.calls.length,
+      override.calls.length,
+    ];
+
+    // Without the option, the stored default applies to the call and is
+    // passed on:
+    const byDefault = await (await createCompatibleActivity(
+      compatibleNoteId,
+      undefined,
+      { verifyPortableObject: stored },
+    )).getObject({ ...options, inheritPortableObjectVerifier: false });
+    assertInstanceOf(byDefault, Note);
+    ok(getDefaultVerifier(byDefault) === stored);
+    deepStrictEqual(counts(), [1, 0, 0]);
+
+    // With the opt-out, the given verifier applies to the call only, and the
+    // fetched object gets the stored default:
+    const optedOut = await (await createCompatibleActivity(
+      compatibleNoteId,
+      undefined,
+      { verifyPortableObject: stored },
+    )).getObject({
+      ...options,
+      verifyPortableObject: given,
+      inheritPortableObjectVerifier: false,
+    });
+    assertInstanceOf(optedOut, Note);
+    deepStrictEqual(counts(), [1, 1, 0]);
+    ok(getDefaultVerifier(optedOut) === stored);
+    assertInstanceOf(await optedOut.getAttribution(secondHop), Person);
+    deepStrictEqual(counts(), [2, 1, 0]);
+
+    // Without a stored default, the fetched object gets none:
+    const noDefault = await (await createCompatibleActivity(compatibleNoteId))
+      .getObject({
+        ...options,
+        verifyPortableObject: given,
+        inheritPortableObjectVerifier: false,
+      });
+    assertInstanceOf(noDefault, Note);
+    deepStrictEqual(counts(), [2, 2, 0]);
+    ok(getDefaultVerifier(noDefault) == null);
+    await rejects(
+      async () => await noDefault.getAttribution(secondHop),
+      TypeError,
     );
+
+    // The opt-out itself is not passed on, and an explicit option given to
+    // the fetched object overrides its inherited default:
+    const inherited = await (await createCompatibleActivity(
+      compatibleNoteId,
+      undefined,
+      { verifyPortableObject: stored },
+    )).getObject({ ...options, verifyPortableObject: given });
+    assertInstanceOf(inherited, Note);
+    deepStrictEqual(counts(), [2, 3, 0]);
+    ok(getDefaultVerifier(inherited) === given);
+    assertInstanceOf(
+      await inherited.getAttribution({
+        ...secondHop,
+        verifyPortableObject: override,
+      }),
+      Person,
+    );
+    deepStrictEqual(counts(), [2, 3, 1]);
+
+    // The opt-out works for plural accessors too:
+    const optedOuts = await Array.fromAsync((await createCompatibleActivity(
+      [compatibleNoteId],
+      undefined,
+      { verifyPortableObject: stored },
+    )).getObjects({
+      ...options,
+      verifyPortableObject: given,
+      inheritPortableObjectVerifier: false,
+    }));
+    deepStrictEqual(optedOuts.length, 1);
+    ok(getDefaultVerifier(optedOuts[0]) === stored);
+  });
+
+  await t.step("ordinary HTTP(S) responses", async () => {
+    const given = createRecordingVerifier();
+    const stored = createRecordingVerifier();
+    const object = await (await createHttpActivity(plainNoteUrl)).getObject({
+      ...options,
+      verifyPortableObject: given,
+    });
+    assertInstanceOf(object, Note);
+    // Fetched as an ordinary object, so nothing is verified, but it uses the
+    // call's verifier for its own references:
+    deepStrictEqual(given.calls.length, 0);
+    ok(getDefaultVerifier(object) === given);
+    assertInstanceOf(await object.getAttribution(secondHop), Person);
+    deepStrictEqual(given.calls.length, 1);
+    // Having inherited a verifier does not mean it was verified:
+    const { referrer } = given.calls[0].options;
+    ok(referrer?.object === object);
+    deepStrictEqual(referrer?.acceptance, undefined);
+
+    const optedOut = await (await Create.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Create",
+      id: plainActivityUrl,
+      object: plainNoteUrl,
+    }, { contextLoader: mockDocumentLoader, verifyPortableObject: stored }))
+      .getObject({
+        ...options,
+        verifyPortableObject: given,
+        inheritPortableObjectVerifier: false,
+      });
+    assertInstanceOf(optedOut, Note);
+    ok(getDefaultVerifier(optedOut) === stored);
+  });
+
+  await t.step(
+    "HTTP(S) responses that stand for portable objects",
+    async () => {
+      const redirecting = createRedirectingLoader({
+        [plainNoteUrl]: {
+          documentUrl: compatibleNoteId,
+          document: attributedNote(compatibleNoteId),
+        },
+      });
+      const given = createRecordingVerifier();
+      const object = await (await createHttpActivity(plainNoteUrl)).getObject({
+        documentLoader: redirecting,
+        contextLoader: mockDocumentLoader,
+        verifyPortableObject: given,
+      });
+      assertInstanceOf(object, Note);
+      deepStrictEqual(given.calls.length, 1);
+      ok(getDefaultVerifier(object) === given);
+
+      const optedOut = await (await createHttpActivity(plainNoteUrl)).getObject(
+        {
+          documentLoader: redirecting,
+          contextLoader: mockDocumentLoader,
+          verifyPortableObject: given,
+          inheritPortableObjectVerifier: false,
+        },
+      );
+      assertInstanceOf(optedOut, Note);
+      deepStrictEqual(given.calls.length, 2);
+      ok(getDefaultVerifier(optedOut) == null);
+    },
+  );
+
+  await t.step("objects that were fetched without a verifier", async () => {
+    const activity = await createHttpActivity(compatibleNoteId);
+    const unverified = await activity.getObject(options);
+    assertInstanceOf(unverified, Note);
+    ok(getDefaultVerifier(unverified) == null);
+    // It is not cached, so a later call verifies it and passes its verifier
+    // on:
+    const verifier = createRecordingVerifier();
+    const verified = await activity.getObject({
+      ...options,
+      verifyPortableObject: verifier,
+    });
+    assertInstanceOf(verified, Note);
+    ok(verified !== unverified);
+    deepStrictEqual(verifier.calls.length, 1);
+    ok(getDefaultVerifier(verified) === verifier);
+  });
+
+  await t.step("property preprocessors", async () => {
+    const iconUrl = "https://example.com/icon";
+    const loader = createLoader({
+      [iconUrl]: {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Link",
+        href: "https://example.com/icon.png",
+      },
+    });
+    const createPerson = () =>
+      Person.fromJsonLd({
+        "@context": "https://www.w3.org/ns/activitystreams",
+        id: "https://example.com/person",
+        type: "Person",
+        icon: iconUrl,
+      }, { contextLoader: mockDocumentLoader });
+    const verifier = createVerifier();
+    const icon = await (await createPerson()).getIcon({
+      documentLoader: loader,
+      contextLoader: mockDocumentLoader,
+      verifyPortableObject: verifier,
+    });
+    assertInstanceOf(icon, Image);
+    ok(getDefaultVerifier(icon) === verifier);
+    const optedOut = await (await createPerson()).getIcon({
+      documentLoader: loader,
+      contextLoader: mockDocumentLoader,
+      verifyPortableObject: verifier,
+      inheritPortableObjectVerifier: false,
+    });
+    assertInstanceOf(optedOut, Image);
+    ok(getDefaultVerifier(optedOut) == null);
+  });
+
+  await t.step("embedded objects keep the parent's default", async () => {
+    const embedded = attributedNote(`ap://${did}/objects/2`);
+    const withoutContext: Record<string, unknown> = { ...embedded };
+    delete withoutContext["@context"];
+    for (
+      const [name, value] of [["with @context", embedded], [
+        "without @context",
+        withoutContext,
+      ]] as const
+    ) {
+      for (const stored of [undefined, createRecordingVerifier()]) {
+        const given = createRecordingVerifier();
+        const activity = await createCompatibleActivity(
+          value,
+          `ap://${did}/activities/1`,
+          stored == null ? {} : { verifyPortableObject: stored },
+        );
+        const object = await activity.getObject({
+          ...options,
+          verifyPortableObject: given,
+        });
+        assertInstanceOf(object, Note);
+        // However the object is represented, it keeps the default that it
+        // was parsed with along with its parent:
+        ok(getDefaultVerifier(object) === stored, name);
+        deepStrictEqual(given.calls.length, 0, name);
+      }
+    }
+  });
+
+  await t.step("cached objects", async () => {
+    const weak = createRecordingVerifier();
+    const strict = createRecordingVerifier();
+    for (const [first, second] of [[weak, strict], [strict, weak]]) {
+      const activity = await createCompatibleActivity(compatibleNoteId);
+      const object = await activity.getObject({
+        ...options,
+        verifyPortableObject: first,
+      });
+      assertInstanceOf(object, Note);
+      const before = second.calls.length;
+      // A cached object is returned as is, with the default it got when it
+      // was fetched:
+      const cached = await activity.getObject({
+        ...options,
+        verifyPortableObject: second,
+      });
+      ok(cached === object);
+      ok(getDefaultVerifier(cached) === first);
+      deepStrictEqual(second.calls.length, before);
+    }
+  });
+
+  await t.step("traverseCollection()", async () => {
+    const collectionUrl = "https://example.com/collection";
+    const pageUrl = "https://example.com/collection?page=1";
+    const loader = createLoader({
+      ...Object.fromEntries(
+        [compatibleNoteId, actorUrl, plainNoteUrl].map((url) => [
+          url,
+          url === plainNoteUrl
+            ? { ...attributedNote(plainNoteUrl), id: plainNoteUrl }
+            : url === actorUrl
+            ? actor
+            : attributedNote(compatibleNoteId),
+        ]),
+      ),
+      [pageUrl]: {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        id: pageUrl,
+        type: "OrderedCollectionPage",
+        orderedItems: [
+          {
+            id: "https://example.com/notes/2",
+            type: "Note",
+            attributedTo: actorId,
+          },
+          plainNoteUrl,
+          compatibleNoteId,
+        ],
+      },
+    });
+    const createCollection = () =>
+      OrderedCollection.fromJsonLd({
+        "@context": "https://www.w3.org/ns/activitystreams",
+        id: collectionUrl,
+        type: "OrderedCollection",
+        first: pageUrl,
+      }, { contextLoader: mockDocumentLoader });
+    const verifier = createRecordingVerifier();
+    const items = await Array.fromAsync(
+      traverseCollection(await createCollection(), {
+        documentLoader: loader,
+        contextLoader: mockDocumentLoader,
+        verifyPortableObject: verifier,
+      }),
+    );
+    deepStrictEqual(items.length, 3);
+    // Only the item at the compatible identifier is verified:
+    deepStrictEqual(verifier.calls.length, 1);
+    for (const item of items) {
+      assertInstanceOf(item, Note);
+      // Embedded in a fetched page, or fetched themselves:
+      ok(getDefaultVerifier(item) === verifier);
+      assertInstanceOf(
+        await item.getAttribution({
+          documentLoader: loader,
+          contextLoader: mockDocumentLoader,
+          gateways: ["https://gw.example"],
+        }),
+        Person,
+      );
+    }
+    deepStrictEqual(verifier.calls.length, 4);
+
+    const optedOut = await Array.fromAsync(
+      traverseCollection(await createCollection(), {
+        documentLoader: loader,
+        contextLoader: mockDocumentLoader,
+        verifyPortableObject: verifier,
+        inheritPortableObjectVerifier: false,
+      }),
+    );
+    deepStrictEqual(optedOut.length, 3);
+    for (const item of optedOut) ok(getDefaultVerifier(item) == null);
   });
 });
