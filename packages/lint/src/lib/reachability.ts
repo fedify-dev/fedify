@@ -103,7 +103,10 @@ function collectBindingExpressions(
       for (const decl of node.declarations) {
         const names: string[] = [];
         collectBoundNames(decl.id, names);
-        for (const name of names) bindings?.declaredHere.add(name);
+        // A let/const loop binding lives only inside that loop.
+        if (node.kind === "var") {
+          for (const name of names) bindings?.declaredHere.add(name);
+        }
         collectBindingExpressions(
           decl.id as Node,
           out,
@@ -511,6 +514,7 @@ function collectFunctionsByName(
   assignmentDefaults: Map<string, FunctionLikeNode[]>,
   assignmentPatterns: ReadonlySet<Node>,
   declaredHere: Set<string>,
+  scopeDeclarations: ReadonlySet<Node>,
 ): void {
   if (node == null || typeof node !== "object") return;
   if (Array.isArray(node)) {
@@ -521,6 +525,7 @@ function collectFunctionsByName(
         assignmentDefaults,
         assignmentPatterns,
         declaredHere,
+        scopeDeclarations,
       );
     }
     return;
@@ -550,13 +555,32 @@ function collectFunctionsByName(
     return;
   }
   if (isFunctionLikeNode(n)) return;
+  if (n.type === "VariableDeclaration") {
+    // Only var and declarations directly in this function body establish
+    // shadowing for the whole scope; flattened block declarations do not.
+    if (n.kind === "var" || scopeDeclarations.has(n)) {
+      for (const decl of n.declarations) {
+        const names: string[] = [];
+        collectBoundNames(decl.id, names);
+        for (const name of names) declaredHere.add(name);
+      }
+    }
+    for (const decl of n.declarations) {
+      collectFunctionsByName(
+        decl,
+        out,
+        assignmentDefaults,
+        assignmentPatterns,
+        declaredHere,
+        scopeDeclarations,
+      );
+    }
+    return;
+  }
   if (n.type === "VariableDeclarator") {
     const decl = n as VariableDeclarator;
     const names: string[] = [];
     collectBoundNames(decl.id, names);
-    // Keep declarations separate: flattened block locals must not hide outer
-    // helpers unless we need to resolve an assignment-form default.
-    for (const name of names) declaredHere.add(name);
     if (decl.init != null) {
       bindTo(names, decl.init);
       collectFunctionsByName(
@@ -565,6 +589,7 @@ function collectFunctionsByName(
         assignmentDefaults,
         assignmentPatterns,
         declaredHere,
+        scopeDeclarations,
       );
     }
     return;
@@ -591,6 +616,7 @@ function collectFunctionsByName(
       assignmentDefaults,
       assignmentPatterns,
       declaredHere,
+      scopeDeclarations,
     );
     return;
   }
@@ -603,6 +629,7 @@ function collectFunctionsByName(
       assignmentDefaults,
       assignmentPatterns,
       declaredHere,
+      scopeDeclarations,
     );
     return;
   }
@@ -616,6 +643,7 @@ function collectFunctionsByName(
       assignmentDefaults,
       assignmentPatterns,
       declaredHere,
+      scopeDeclarations,
     );
   }
 }
@@ -708,6 +736,9 @@ export function walkUsedScopes(
       collectBoundNames(param, names);
       for (const name of names) functionsHere.set(name, []);
     }
+    const scopeDeclarations = new Set<Node>(
+      scopeRoot.type === "BlockStatement" ? scopeRoot.body as Node[] : [],
+    );
     for (const statement of statements) {
       collectFunctionsByName(
         statement,
@@ -715,6 +746,7 @@ export function walkUsedScopes(
         assignmentDefaultsHere,
         assignmentPatterns,
         declaredHere,
+        scopeDeclarations,
       );
     }
     const functionsByName = new Map(outerFunctionsByName);

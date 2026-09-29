@@ -2778,3 +2778,44 @@ federation
     );
   }
 }
+
+for (
+  const [kind, declaration] of [
+    ["block let", "{ let deliver; }"],
+    ["block const", "{ const deliver = 0; }"],
+    ["for initializer", "for (let deliver = 0; deliver < 1; deliver++) {}"],
+    ["for binding", "for (const deliver of [0]) {}"],
+  ] as const
+) {
+  for (const dropped of [false, true]) {
+    test(
+      `${ruleName}: assignment default preserves outer ${
+        dropped ? "dropped" : "awaited"
+      } delivery after an unrelated ${kind}`,
+      lintTest({
+        code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    let deliver = async () => {
+      ${dropped ? "" : "await "}ctx.sendActivity(
+        { identifier: ctx.identifier }, "followers", activity,
+      );
+    };
+    const run = async () => {
+      ${declaration}
+      for ({ deliver = async () => {} } of [{ deliver }]) {}
+      await deliver();
+    };
+    await run();
+  });
+`,
+        rule,
+        ruleName,
+        expectedError: undefined,
+      }),
+    );
+  }
+}

@@ -12,5 +12,6 @@ links:
     promises inside loop binding patterns.
     Loop default functions are checked only when the bound value or target
     object is referenced.  Delivery helpers used after an assignment-form
-    loop default remain recognized.
+    loop default remain recognized, including when unrelated blocks reuse
+    their names.
     [[#1071], [#1088] by @ArchieTansaria]
