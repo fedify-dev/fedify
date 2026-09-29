@@ -1346,7 +1346,7 @@ export async function verifyServedPortableObjects(
   json = JSON.parse(JSON.stringify(json));
   const collected = collectServedPortableMaps(json);
   if (!("maps" in collected)) return collected;
-  const { maps, opaquePaths } = collected;
+  const maps = collected.maps;
   // The maps are found by their literal members, which a context can make
   // mean something else, e.g., by aliasing @id or redefining proof.  Since
   // expansion turns each map into exactly one node, the document may not
@@ -1360,13 +1360,10 @@ export async function verifyServedPortableObjects(
   for (const id of ids) discovered.set(id, (discovered.get(id) ?? 0) + 1);
   let hidden: string | undefined;
   try {
-    // Subtrees whose contexts cannot be checked, and which cannot describe
-    // portable objects, are left out, as they may use contexts that are not
-    // preloaded:
-    const expandable = JSON.parse(JSON.stringify(json));
-    for (const path of opaquePaths) removeJsonPointer(expandable, path);
+    // Subtrees whose contexts cannot be checked map by map are not searched
+    // for portable maps, so any portable object they describe is found here:
     hidden = findHiddenPortableObject(
-      await jsonld.expand(expandable, {
+      await jsonld.expand(json, {
         documentLoader: preloadedOnlyDocumentLoader,
       }),
       discovered,
@@ -1429,12 +1426,6 @@ function findHiddenPortableObject(
 }
 
 /**
- * Strings that may make or be a portable ID or a compatible identifier.
- */
-const PORTABLE_ID_LIKE_PATTERN =
-  /\bap(?:\+ef61)?:\/\/|\/\.well-known\/apgateway\/|\bdid:[a-z0-9]+:/i;
-
-/**
  * Checks whether a context uses only preloaded remote contexts and simple
  * term definitions, so that the context in effect for a map can be told from
  * the contexts of its ancestors.
@@ -1463,32 +1454,26 @@ function hasOnlyPreloadedRemoteContexts(context: unknown): boolean {
 }
 
 /**
- * Replaces the value at an RFC 6901 JSON Pointer with `null`, which JSON-LD
- * expansion drops.
+ * Checks whether a map or any map below it, outside proof and context values,
+ * has a portable `id` or `@id` and other members.
  */
-function removeJsonPointer(json: unknown, path: string): void {
-  const segments = path.split("/").slice(1).map((segment) =>
-    segment.replace(/~1/g, "/").replace(/~0/g, "~")
-  );
-  const last = segments.pop();
-  if (last == null) return;
-  let parent: unknown = json;
-  for (const segment of segments) {
-    if (typeof parent !== "object" || parent == null) return;
-    parent = (parent as Record<string, unknown>)[segment];
-  }
-  if (typeof parent === "object" && parent != null) {
-    (parent as Record<string, unknown>)[last] = null;
-  }
+function hasLiteralPortableObject(json: unknown): boolean {
+  return findInJsonMaps(
+    json,
+    (map) =>
+      [map.id, map["@id"]].some(isPortableIdValue) &&
+        Object.keys(map).some((key) => key !== "id" && key !== "@id")
+        ? true
+        : undefined,
+  ) ?? false;
 }
 
 function collectServedPortableMaps(
   json: unknown,
 ):
-  | { maps: ServedPortableMap[]; opaquePaths: string[] }
+  | { maps: ServedPortableMap[] }
   | Extract<ServedPortableObjectsResult, { verified: false }> {
   const maps: ServedPortableMap[] = [];
-  const opaquePaths: string[] = [];
   const seen = new Set<object>();
   const pending: Array<{
     value: unknown;
@@ -1516,18 +1501,18 @@ function collectServedPortableMaps(
     const map = value as Record<string, unknown>;
     const hasContext = Object.hasOwn(map, "@context");
     if (hasContext && !isCheckableContext(map["@context"])) {
-      // A context that is not preloaded, or aliases keywords, e.g., @id,
-      // could hide a portable ID from the literal id and @id members that
-      // portable maps are found by.  Such a map, e.g., a remote object that
-      // an item embeds as it was received, is left alone as long as nothing
-      // in it or in its contexts looks like a portable ID, which can only be
-      // told if the definitions of its contexts are all known:
+      // A context that aliases keywords, e.g., @id, or defines scoped
+      // contexts can make the maps below mean something other than their
+      // literal members say.  Such a map, e.g., a remote object that an item
+      // embeds as it was received, is not searched for portable maps; any
+      // portable object that it describes is found by expanding the whole
+      // document, which needs all of its remote contexts to be preloaded.
+      // A literal portable object in it, which software reading the JSON as
+      // is would see, is not allowed either:
       if (
         hasOnlyPreloadedRemoteContexts(map["@context"]) &&
-        !PORTABLE_ID_LIKE_PATTERN.test(JSON.stringify(map)) &&
-        !PORTABLE_ID_LIKE_PATTERN.test(JSON.stringify(contexts))
+        !hasLiteralPortableObject(map)
       ) {
-        opaquePaths.push(path);
         continue;
       }
       const id = [map.id, map["@id"]].find((v) => typeof v === "string");
@@ -1559,7 +1544,7 @@ function collectServedPortableMaps(
     }
   }
   maps.sort((left, right) => comparePaths(left.path, right.path));
-  return { maps, opaquePaths };
+  return { maps };
 }
 
 async function checkServedPortableMap(

@@ -1782,10 +1782,10 @@ exempt.  If any of them does not, Fedify refuses to serve the collection with
 `500 Internal Server Error`, and logs why.  Items given as URLs are not
 checked, nor are embedded non-portable objects, such as remote objects kept
 as they were received, even if their contexts define terms in ways that
-Fedify does not check, as long as nothing in them looks like a portable ID.
-An embedded object whose context refers to a remote context that Fedify does
-not preload, however, may hide a portable ID in that context, so it makes
-Fedify refuse the collection.
+Fedify does not check map by map; Fedify expands the whole collection to find
+any portable object they describe.  An embedded object whose context refers to
+a remote context that Fedify does not preload, however, cannot be expanded, so
+it makes Fedify refuse the collection.
 
 A custom collection is not served through the gateway endpoint unless you
 tell Fedify which actor owns it with

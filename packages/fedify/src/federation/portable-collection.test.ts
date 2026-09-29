@@ -1038,9 +1038,9 @@ test("verifyServedPortableObjects() verifies embedded maps as they are served", 
     ),
     {
       verified: false,
-      path: "/orderedItems/0",
-      id: "",
-      reason: "unsupportedContext",
+      path: "",
+      id: portableId("/notes/aliased"),
+      reason: "hiddenPortableObject",
     },
   );
 });
@@ -1134,7 +1134,10 @@ test("verifyServedPortableObjects() leaves non-portable remote objects alone", a
         ],
         id: "https://mastodon.example/users/bob/statuses/1",
         type: "Note",
-        content: "<p>AP: Storm hits coast</p>",
+        // Free text that mentions portable IDs does not matter:
+        content: `<p>AP: see ${gatewayUrl("/users/alice")}, ` +
+          `ap://${did}/users/alice, and did:plc:abcdefghijklmnop</p>`,
+        url: gatewayUrl("/users/alice"),
       }),
     ),
     { verified: true },
@@ -1157,7 +1160,8 @@ test("verifyServedPortableObjects() leaves non-portable remote objects alone", a
       reason: "unsupportedContext",
     },
   );
-  // Inline definitions are known, so a portable prefix defined there counts:
+  // Inline definitions are known, so a portable object formed by a prefix
+  // defined there is found by expansion:
   assertEquals(
     await verifyServedPortableObjects(
       collection({
@@ -1172,8 +1176,33 @@ test("verifyServedPortableObjects() leaves non-portable remote objects alone", a
     ),
     {
       verified: false,
+      path: "",
+      id: portableId("/notes/1"),
+      reason: "hiddenPortableObject",
+    },
+  );
+  // A literal portable object in such a map is refused as well, as software
+  // that reads the JSON as is would take it for one:
+  assertEquals(
+    await verifyServedPortableObjects(
+      collection({
+        "@context": [
+          AS,
+          {
+            toot: "http://joinmastodon.org/ns#",
+            id: "toot:notId",
+            focalPoint: { "@container": "@list", "@id": "toot:focalPoint" },
+          },
+        ],
+        id: "https://example.com/objects/3",
+        type: "Note",
+        tag: { id: portableId("/notes/3"), type: "Note" },
+      }),
+    ),
+    {
+      verified: false,
       path: "/orderedItems/0",
-      id: "https://example.com/objects/2",
+      id: "https://example.com/objects/3",
       reason: "unsupportedContext",
     },
   );
