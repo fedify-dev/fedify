@@ -49,6 +49,10 @@ To be released.
 
 ### @fedify/cli
 
+ -  Fixed `fedify lookup` suggesting authorized fetch when a DNS URL validation
+    error reaches its error handler.  The hint now suggests checking the
+    hostname and network connectivity, and distinguishes DNS failures from
+    private-address rejections. [[#1064]]
  -  The `fedify lookup` command now reports HTTP, DNS, and parsing failures
     instead of suggesting authorized fetch for every failure.  It only suggests
     `-a`/`--authorized-fetch` for unsigned object requests that return HTTP 401,
@@ -57,6 +61,7 @@ To be released.
     [[#1063], [#1116]]
 
 [#1063]: https://github.com/fedify-dev/fedify/issues/1063
+[#1064]: https://github.com/fedify-dev/fedify/issues/1064
 [#1116]: https://github.com/fedify-dev/fedify/pull/1116
 
 ### @fedify/express

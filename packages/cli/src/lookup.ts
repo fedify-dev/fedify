@@ -540,7 +540,7 @@ function isPrivateAddressError(error: unknown): boolean {
   const errorMessage = error instanceof Error ? error.message : String(error);
   const lowerMessage = errorMessage.toLowerCase();
   if (error instanceof UrlError) {
-    return (
+    return error.reason === "disallowed" && (
       lowerMessage.includes("invalid or private address") ||
       lowerMessage.includes("localhost is not allowed")
     );
@@ -556,7 +556,12 @@ function isPrivateAddressError(error: unknown): boolean {
 export function getLookupFailureHint(
   error: unknown,
   options: { recursive?: boolean } = {},
-): "private-address" | "recursive-private-address" | "authorized-fetch" {
+):
+  | "dns"
+  | "private-address"
+  | "recursive-private-address"
+  | "authorized-fetch" {
+  if (error instanceof UrlError && error.reason === "dns") return "dns";
   if (isPrivateAddressError(error)) {
     return options.recursive ? "recursive-private-address" : "private-address";
   }
@@ -585,6 +590,11 @@ function printLookupFailureHint(
   const hint = getLookupFailureHint(error, options);
   if (!shouldPrintLookupFailureHint(authLoader, hint)) return;
   switch (hint) {
+    case "dns":
+      printError(
+        message`DNS lookup failed.  Check the hostname and network connectivity.`,
+      );
+      return;
     case "private-address":
       printError(
         message`The URL appears to be private or localhost.  Try with -p/--allow-private-address.`,
