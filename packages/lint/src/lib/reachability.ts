@@ -88,7 +88,7 @@ function alwaysExits(node: Node): boolean {
 }
 
 interface LoopBindings {
-  assignmentPatterns: Set<Node>;
+  declarationPatterns: Set<Node>;
   declaredHere: Set<string>;
 }
 
@@ -154,7 +154,7 @@ function collectBindingExpressions(
     case "AssignmentPattern":
       // This is the default value, e.g. { id = ctx.sendActivity(...) }
       out.push(node);
-      if (!declares) bindings?.assignmentPatterns.add(node);
+      if (declares) bindings?.declarationPatterns.add(node);
       collectBindingExpressions(
         node.left as Node,
         out,
@@ -512,7 +512,7 @@ function collectFunctionsByName(
   node: unknown,
   out: Map<string, FunctionLikeNode[]>,
   assignmentDefaults: Map<string, FunctionLikeNode[]>,
-  assignmentPatterns: ReadonlySet<Node>,
+  declarationPatterns: ReadonlySet<Node>,
   declaredHere: Set<string>,
   scopeDeclarations: ReadonlySet<Node>,
 ): void {
@@ -523,7 +523,7 @@ function collectFunctionsByName(
         item,
         out,
         assignmentDefaults,
-        assignmentPatterns,
+        declarationPatterns,
         declaredHere,
         scopeDeclarations,
       );
@@ -562,7 +562,7 @@ function collectFunctionsByName(
       n.body,
       out,
       assignmentDefaults,
-      assignmentPatterns,
+      declarationPatterns,
       new Set<string>(),
       scopeDeclarations,
     );
@@ -583,7 +583,7 @@ function collectFunctionsByName(
         decl,
         out,
         assignmentDefaults,
-        assignmentPatterns,
+        declarationPatterns,
         declaredHere,
         scopeDeclarations,
       );
@@ -600,7 +600,7 @@ function collectFunctionsByName(
         decl.init,
         out,
         assignmentDefaults,
-        assignmentPatterns,
+        declarationPatterns,
         declaredHere,
         scopeDeclarations,
       );
@@ -615,11 +615,12 @@ function collectFunctionsByName(
     } else {
       collectBoundNames(n.left, names);
     }
-    // A default assignment is not a declaration of a new local binding.
+    // Only a confirmed declaration shadows the enclosing binding. Patterns
+    // outside the extracted loop heads conservatively extend its candidates.
     bindTo(
       names,
       n.right,
-      n.left.type === "MemberExpression" || assignmentPatterns.has(n)
+      n.left.type === "MemberExpression" || !declarationPatterns.has(n)
         ? assignmentDefaults
         : out,
     );
@@ -627,7 +628,7 @@ function collectFunctionsByName(
       n.right,
       out,
       assignmentDefaults,
-      assignmentPatterns,
+      declarationPatterns,
       declaredHere,
       scopeDeclarations,
     );
@@ -640,7 +641,7 @@ function collectFunctionsByName(
       n.right,
       out,
       assignmentDefaults,
-      assignmentPatterns,
+      declarationPatterns,
       declaredHere,
       scopeDeclarations,
     );
@@ -654,7 +655,7 @@ function collectFunctionsByName(
       record[key],
       out,
       assignmentDefaults,
-      assignmentPatterns,
+      declarationPatterns,
       declaredHere,
       scopeDeclarations,
     );
@@ -734,10 +735,10 @@ export function walkUsedScopes(
     const statements: Node[] = [];
     // Extracting a default expression otherwise loses whether its loop binds
     // a new local name or assigns an existing one.
-    const assignmentPatterns = new Set<Node>();
+    const declarationPatterns = new Set<Node>();
     const declaredHere = new Set<string>();
     collectReachableStatements(scopeRoot, statements, {
-      assignmentPatterns,
+      declarationPatterns,
       declaredHere,
     });
 
@@ -757,7 +758,7 @@ export function walkUsedScopes(
         statement,
         functionsHere,
         assignmentDefaultsHere,
-        assignmentPatterns,
+        declarationPatterns,
         declaredHere,
         scopeDeclarations,
       );

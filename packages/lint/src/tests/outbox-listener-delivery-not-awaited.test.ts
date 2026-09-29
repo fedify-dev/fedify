@@ -3275,6 +3275,10 @@ for (
     ["for initializer", "for (let deliver = 0; deliver < 1; deliver++) {}"],
     ["for binding", "for (const deliver of [0]) {}"],
     ["class static block", "const C = class { static { var deliver; } };"],
+    [
+      "class static block assignment default",
+      "const C = class { static { for ({ deliver = async () => {} } of [{ deliver }]); } };",
+    ],
   ] as const
 ) {
   for (const dropped of [false, true]) {
