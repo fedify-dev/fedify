@@ -252,6 +252,48 @@ test("getAuthenticatedDocumentLoader() bounds JSON after redirects", async () =>
   }
 });
 
+test("authenticated document loader suppresses HTTP failure logs", async () => {
+  const records: LogRecord[] = [];
+  const url = "https://example.com/missing-authenticated-document";
+  const loader = getAuthenticatedDocumentLoader({
+    keyId: new URL("https://example.com/key2"),
+    privateKey: rsaPrivateKey2,
+  }, { allowPrivateAddress: true });
+  await reset();
+  await configure({
+    sinks: { capture: (record) => records.push(record) },
+    loggers: [{
+      category: ["fedify"],
+      lowestLevel: "debug",
+      sinks: ["capture"],
+    }],
+  });
+  fetchMock.mockGlobal();
+  fetchMock.get(url, { status: 404 });
+  try {
+    for (const suppressError of [true, false, undefined]) {
+      records.length = 0;
+      const error = await assertRejects(
+        () => loader(url, { suppressError }),
+        FetchError,
+      );
+      assertEquals(error.response?.status, 404);
+      const failures = records.filter((record) =>
+        record.rawMessage ===
+          "Failed to fetch document: {status} {url} {headers}"
+      );
+      assertEquals(failures.length, 1);
+      assertEquals(failures[0].level, suppressError ? "warning" : "error");
+      if (suppressError) {
+        assertEquals(records.filter((record) => record.level === "error"), []);
+      }
+    }
+  } finally {
+    fetchMock.hardReset();
+    await reset();
+  }
+});
+
 test("authenticated document loader suppresses private URL logs", async () => {
   const records: LogRecord[] = [];
   const loader = getAuthenticatedDocumentLoader({
