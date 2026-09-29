@@ -218,6 +218,15 @@ test("exportDidKey() and importDidKey()", async () => {
     () => exportDidKey(rsaKey),
     TypeError,
   );
+  const { privateKey } = await crypto.subtle.generateKey(
+    "Ed25519",
+    true,
+    ["sign", "verify"],
+  ) as CryptoKeyPair;
+  await rejects(
+    () => exportDidKey(privateKey),
+    new TypeError("The key must be a public key."),
+  );
   await rejects(
     () => importDidKey(`did:key:${rsaMultibase}`),
     new TypeError("Unsupported did:key type: 0x1205"),

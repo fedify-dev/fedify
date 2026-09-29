@@ -10,8 +10,10 @@ import {
   Note,
   Person,
 } from "@fedify/vocab";
+import { exportDidKey, formatIri } from "@fedify/vocab-runtime";
 import { assertEquals, assertRejects, assertThrows } from "@std/assert";
 import {
+  ed25519PublicKey,
   rsaPrivateKey3,
   rsaPublicKey3,
 } from "../../fedify/src/testing/keys.ts";
@@ -1851,4 +1853,49 @@ test("MockFederation.setHashlinkMediaDispatcher()", () => {
     TypeError,
     "Hashlink media dispatcher already set.",
   );
+});
+
+test("MockContext builds portable IDs", async (t) => {
+  const did = await exportDidKey(ed25519PublicKey.publicKey);
+  const mockFederation = createFederation<void>();
+  mockFederation.setActorDispatcher("/users/{identifier}", () => null);
+  mockFederation.setObjectDispatcher(Note, "/notes/{id}", () => null);
+  mockFederation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
+  const context = mockFederation.createContext(
+    new URL("https://example.com"),
+    undefined,
+  );
+  const helpers: Record<string, [(authority: string) => URL, string]> = {
+    getPortableActorUri: [
+      (authority) => context.getPortableActorUri("alice", authority),
+      "/users/alice",
+    ],
+    getPortableObjectUri: [
+      (authority) => context.getPortableObjectUri(Note, { id: "1" }, authority),
+      "/notes/1",
+    ],
+    getPortableInboxUri: [
+      (authority) => context.getPortableInboxUri("alice", authority),
+      "/users/alice/inbox",
+    ],
+  };
+  for (const [name, [helper, path]] of Object.entries(helpers)) {
+    await t.step(name, () => {
+      assertEquals(formatIri(helper(did)), `ap+ef61://${did}${path}`);
+      assertEquals(
+        formatIri(helper(did.replace("did:key:", "DID:KEY:"))),
+        `ap+ef61://${did}${path}`,
+      );
+      for (
+        const authority of [
+          `${did}/extra`,
+          "https://example.com",
+          `did:key:u${did.slice("did:key:z".length)}`,
+          "did:key:z",
+        ]
+      ) {
+        assertThrows(() => helper(authority), TypeError, undefined, authority);
+      }
+    });
+  }
 });

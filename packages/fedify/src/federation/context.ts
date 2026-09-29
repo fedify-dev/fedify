@@ -120,6 +120,38 @@ export interface Context<TContextData> {
   getActorUri(identifier: string): URL;
 
   /**
+   * Builds the [FEP-ef61] portable ID of an actor with the given identifier
+   * under the given DID authority.
+   *
+   * The path is the same as the one {@link Context.getActorUri} builds, but
+   * the result is an `ap+ef61:` URI whose authority is the DID, e.g.,
+   * `ap+ef61://did:key:z6Mk.../users/alice`.  Such an actor can be served
+   * through the FEP-ef61 gateway endpoint,
+   * `/.well-known/apgateway/did:key:z6Mk.../users/alice`, by the same actor
+   * dispatcher.
+   *
+   * The returned `URL` keeps the DID authority percent-encoded, because
+   * the `URL` class cannot represent the canonical form.  Use `formatIri()`
+   * from `@fedify/vocab-runtime` to get the canonical string, e.g.,
+   * `ap+ef61://did:key:z6Mk.../users/alice`.
+   *
+   * [FEP-ef61]: https://w3id.org/fep/ef61
+   *
+   * @param identifier The actor's identifier.
+   * @param authority The DID that controls the actor, e.g.,
+   *                  `did:key:z6Mk...`.  It must be a bare DID, without
+   *                  a path, query, or fragment.  A `did:key` DID must be
+   *                  encoded in base58-btc, as FEP-ef61 requires; see
+   *                  `exportDidKey()` from `@fedify/vocab-runtime`.
+   * @returns The actor's portable ID.
+   * @throws {RouterError} If no actor dispatcher is available.
+   * @throws {TypeError} If the authority is not a DID, or it is a `did:key`
+   *                     DID that is not encoded in base58-btc.
+   * @since 2.4.0
+   */
+  getPortableActorUri(identifier: string, authority: string): URL;
+
+  /**
    * Builds the URI of an object with the given class and values.
    * @param cls The class of the object.
    * @param values The values to pass to the object dispatcher.
@@ -158,7 +190,9 @@ export interface Context<TContextData> {
    *                  a path, query, or fragment.
    * @returns The object's portable ID.
    * @throws {RouterError} If no object dispatcher is available for the class.
-   * @throws {TypeError} If values are invalid or the authority is not a DID.
+   * @throws {TypeError} If values are invalid, or the authority is not a DID
+   *                     or is a `did:key` DID that is not encoded in
+   *                     base58-btc.
    * @since 2.4.0
    */
   getPortableObjectUri<TObject extends Object>(
@@ -192,7 +226,8 @@ export interface Context<TContextData> {
    *                  a path, query, or fragment.
    * @returns The inbox's portable ID.
    * @throws {RouterError} If no inbox path is registered.
-   * @throws {TypeError} If the authority is not a DID.
+   * @throws {TypeError} If the authority is not a DID, or it is a `did:key`
+   *                     DID that is not encoded in base58-btc.
    * @since 2.4.0
    */
   getPortableInboxUri(identifier: string, authority: string): URL;
@@ -634,12 +669,13 @@ export interface RequestContext<TContextData> extends Context<TContextData> {
   /**
    * Information about the [FEP-ef61] portable object requested through
    * the gateway endpoint, e.g.,
-   * `GET /.well-known/apgateway/did:key:z6Mk.../notes/123`.  It is
-   * `undefined` for ordinary requests.
+   * `GET /.well-known/apgateway/did:key:z6Mk.../notes/123`, which is served
+   * by an object dispatcher or the actor dispatcher.  It is `undefined` for
+   * ordinary requests.
    *
    * The authority comes from the request path, so it is not evidence that
-   * this server hosts objects for the DID.  An object dispatcher has to check
-   * that by itself.
+   * this server hosts objects for the DID.  An object dispatcher or the actor
+   * dispatcher has to check that by itself.
    *
    * It describes the incoming request, so it stays the same in contexts
    * derived from this one, e.g., by {@link RequestContext.getObject}.
@@ -648,6 +684,32 @@ export interface RequestContext<TContextData> extends Context<TContextData> {
    * @since 2.4.0
    */
   readonly portableRequest?: PortableRequest;
+
+  /**
+   * Builds the [FEP-ef61] portable ID of an actor with the given identifier.
+   * It works the same as {@link Context.getPortableActorUri}, except that
+   * the authority can be omitted while handling a portable gateway request.
+   * In that case, the DID in {@link RequestContext.portableRequest} is used.
+   *
+   * The DID in the request comes from the request path, so the default is
+   * only a convenience for building IDs; it is not evidence that this server
+   * hosts the actor for the DID.
+   *
+   * [FEP-ef61]: https://w3id.org/fep/ef61
+   *
+   * @param identifier The actor's identifier.
+   * @param authority The DID that controls the actor, e.g.,
+   *                  `did:key:z6Mk...`.  It must be a bare DID, without
+   *                  a path, query, or fragment.  Defaults to the DID of
+   *                  the requested portable object.
+   * @returns The actor's portable ID.
+   * @throws {RouterError} If no actor dispatcher is available.
+   * @throws {TypeError} If the authority is not a DID, it is a `did:key` DID
+   *                     that is not encoded in base58-btc, or the authority
+   *                     is omitted outside a portable gateway request.
+   * @since 2.4.0
+   */
+  getPortableActorUri(identifier: string, authority?: string): URL;
 
   /**
    * Builds the [FEP-ef61] portable ID of an object with the given class and
@@ -666,9 +728,10 @@ export interface RequestContext<TContextData> extends Context<TContextData> {
    *                  the requested portable object.
    * @returns The object's portable ID.
    * @throws {RouterError} If no object dispatcher is available for the class.
-   * @throws {TypeError} If values are invalid, the authority is not a DID, or
-   *                     the authority is omitted outside a portable gateway
-   *                     request.
+   * @throws {TypeError} If values are invalid, the authority is not a DID,
+   *                     it is a `did:key` DID that is not encoded in
+   *                     base58-btc, or the authority is omitted outside
+   *                     a portable gateway request.
    * @since 2.4.0
    */
   getPortableObjectUri<TObject extends Object>(
@@ -695,8 +758,9 @@ export interface RequestContext<TContextData> extends Context<TContextData> {
    *                  the requested portable object, if any.
    * @returns The inbox's portable ID.
    * @throws {RouterError} If no inbox path is registered.
-   * @throws {TypeError} If the authority is not a DID, or the authority is
-   *                     omitted outside a portable gateway request.
+   * @throws {TypeError} If the authority is not a DID, it is a `did:key` DID
+   *                     that is not encoded in base58-btc, or the authority
+   *                     is omitted outside a portable gateway request.
    * @since 2.4.0
    */
   getPortableInboxUri(identifier: string, authority?: string): URL;

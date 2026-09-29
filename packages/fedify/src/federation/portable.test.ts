@@ -232,7 +232,7 @@ test("Federation.fetch() serves portable objects through object dispatchers", as
         }),
         // No object dispatcher matches:
         gatewayRequest("/users/alice/posts/123"),
-        // Actor routes are not served through the gateway:
+        // The actor dispatcher returns an actor with an HTTPS ID:
         gatewayRequest("/actors/alice"),
       ]
     ) {

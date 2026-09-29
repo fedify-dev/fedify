@@ -330,8 +330,9 @@ export interface PortableObjectHandlerParameters<TContextData>
 
 /**
  * Handles an FEP-ef61 gateway request for a portable object through an object
- * dispatcher.  The object is served only if its ID canonically matches the
- * requested portable ID and it satisfies the FEP-ef61 proof policy.
+ * dispatcher, or the actor dispatcher adapted to one.  The object is served
+ * only if its ID canonically matches the requested portable ID and it
+ * satisfies the FEP-ef61 proof policy.
  * @template TContextData The context data to pass to the context.
  * @param request The HTTP request.
  * @param parameters The parameters for handling the portable object.
