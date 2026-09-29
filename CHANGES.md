@@ -361,7 +361,8 @@ To be released.
     `outbox-listener-delivery-not-awaited` now correctly catches dropped
     promises inside loop binding patterns.
     Loop default functions are checked only when the bound value or target
-    object is referenced.
+    object is referenced.  Delivery helpers used after an assignment-form
+    loop default remain recognized.
     [[#1071], [#1088] by @ArchieTansaria\]
 
 [#895]: https://github.com/fedify-dev/fedify/issues/895

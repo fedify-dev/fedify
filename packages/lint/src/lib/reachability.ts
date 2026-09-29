@@ -87,11 +87,29 @@ function alwaysExits(node: Node): boolean {
   }
 }
 
-function collectBindingExpressions(node: Node, out: Node[]): void {
+interface LoopBindings {
+  assignmentPatterns: Set<Node>;
+  declaredHere: Set<string>;
+}
+
+function collectBindingExpressions(
+  node: Node,
+  out: Node[],
+  bindings?: LoopBindings,
+  declares = false,
+): void {
   switch (node.type) {
     case "VariableDeclaration":
       for (const decl of node.declarations) {
-        collectBindingExpressions(decl.id as Node, out);
+        const names: string[] = [];
+        collectBoundNames(decl.id, names);
+        for (const name of names) bindings?.declaredHere.add(name);
+        collectBindingExpressions(
+          decl.id as Node,
+          out,
+          bindings,
+          true,
+        );
       }
       break;
     case "ObjectPattern":
@@ -102,26 +120,52 @@ function collectBindingExpressions(node: Node, out: Node[]): void {
           if (prop.computed) {
             out.push(prop.key as Node);
           }
-          collectBindingExpressions(prop.value as Node, out);
+          collectBindingExpressions(
+            prop.value as Node,
+            out,
+            bindings,
+            declares,
+          );
         } else if (prop.type === "RestElement") {
-          collectBindingExpressions(prop.argument as Node, out);
+          collectBindingExpressions(
+            prop.argument as Node,
+            out,
+            bindings,
+            declares,
+          );
         }
       }
       break;
     case "ArrayPattern":
       for (const elem of node.elements) {
         if (elem != null) {
-          collectBindingExpressions(elem as Node, out);
+          collectBindingExpressions(
+            elem as Node,
+            out,
+            bindings,
+            declares,
+          );
         }
       }
       break;
     case "AssignmentPattern":
       // This is the default value, e.g. { id = ctx.sendActivity(...) }
       out.push(node);
-      collectBindingExpressions(node.left as Node, out);
+      if (!declares) bindings?.assignmentPatterns.add(node);
+      collectBindingExpressions(
+        node.left as Node,
+        out,
+        bindings,
+        declares,
+      );
       break;
     case "RestElement":
-      collectBindingExpressions(node.argument as Node, out);
+      collectBindingExpressions(
+        node.argument as Node,
+        out,
+        bindings,
+        declares,
+      );
       break;
     case "MemberExpression": {
       const object = node.object as Node;
@@ -132,11 +176,15 @@ function collectBindingExpressions(node: Node, out: Node[]): void {
   }
 }
 
-export function collectReachableStatements(node: Node, out: Node[]): void {
+export function collectReachableStatements(
+  node: Node,
+  out: Node[],
+  bindings?: LoopBindings,
+): void {
   switch (node.type) {
     case "BlockStatement":
       for (const [index, statement] of node.body.entries()) {
-        collectReachableStatements(statement as Node, out);
+        collectReachableStatements(statement as Node, out, bindings);
         if (alwaysExits(statement as Node)) {
           // Function declarations hoist: one written below an exit is still
           // callable from the code above it.
@@ -154,21 +202,37 @@ export function collectReachableStatements(node: Node, out: Node[]): void {
       const test = node.test as Expression;
       out.push(test);
       if (!isStaticallyFalsy(test)) {
-        collectReachableStatements(node.consequent as Node, out);
+        collectReachableStatements(
+          node.consequent as Node,
+          out,
+          bindings,
+        );
       }
       if (node.alternate != null && !isStaticallyTruthy(test)) {
-        collectReachableStatements(node.alternate as Node, out);
+        collectReachableStatements(
+          node.alternate as Node,
+          out,
+          bindings,
+        );
       }
       return;
     }
 
     case "TryStatement":
-      collectReachableStatements(node.block as Node, out);
+      collectReachableStatements(node.block as Node, out, bindings);
       if (node.handler != null) {
-        collectReachableStatements(node.handler.body as Node, out);
+        collectReachableStatements(
+          node.handler.body as Node,
+          out,
+          bindings,
+        );
       }
       if (node.finalizer != null) {
-        collectReachableStatements(node.finalizer as Node, out);
+        collectReachableStatements(
+          node.finalizer as Node,
+          out,
+          bindings,
+        );
       }
       return;
 
@@ -177,7 +241,11 @@ export function collectReachableStatements(node: Node, out: Node[]): void {
       for (const switchCase of node.cases) {
         if (switchCase.test != null) out.push(switchCase.test as Node);
         for (const statement of switchCase.consequent) {
-          collectReachableStatements(statement as Node, out);
+          collectReachableStatements(
+            statement as Node,
+            out,
+            bindings,
+          );
           if (alwaysExits(statement as Node)) break;
         }
       }
@@ -186,13 +254,13 @@ export function collectReachableStatements(node: Node, out: Node[]): void {
     case "WhileStatement":
       out.push(node.test as Node);
       if (!isStaticallyFalsy(node.test)) {
-        collectReachableStatements(node.body as Node, out);
+        collectReachableStatements(node.body as Node, out, bindings);
       }
       return;
 
     case "DoWhileStatement":
       out.push(node.test as Node);
-      collectReachableStatements(node.body as Node, out);
+      collectReachableStatements(node.body as Node, out, bindings);
       return;
 
     case "ForStatement":
@@ -201,7 +269,7 @@ export function collectReachableStatements(node: Node, out: Node[]): void {
 
       if (node.test == null || !isStaticallyFalsy(node.test)) {
         if (node.update != null) out.push(node.update as Node);
-        collectReachableStatements(node.body as Node, out);
+        collectReachableStatements(node.body as Node, out, bindings);
       }
       return;
 
@@ -209,18 +277,18 @@ export function collectReachableStatements(node: Node, out: Node[]): void {
     case "ForOfStatement":
       // Only `right` is evaluated as a value; `left` declares or assigns the
       // loop variable.
-      collectBindingExpressions(node.left as Node, out);
+      collectBindingExpressions(node.left as Node, out, bindings);
       out.push(node.right as Node);
-      collectReachableStatements(node.body as Node, out);
+      collectReachableStatements(node.body as Node, out, bindings);
       return;
 
     case "LabeledStatement":
-      collectReachableStatements(node.body as Node, out);
+      collectReachableStatements(node.body as Node, out, bindings);
       return;
 
     case "WithStatement":
       out.push(node.object as Node);
-      collectReachableStatements(node.body as Node, out);
+      collectReachableStatements(node.body as Node, out, bindings);
       return;
 
     default:
@@ -440,11 +508,21 @@ function collectHeldFunctions(node: unknown, out: FunctionLikeNode[]): void {
 function collectFunctionsByName(
   node: unknown,
   out: Map<string, FunctionLikeNode[]>,
-  memberDefaults: Map<string, FunctionLikeNode[]>,
+  assignmentDefaults: Map<string, FunctionLikeNode[]>,
+  assignmentPatterns: ReadonlySet<Node>,
+  declaredHere: Set<string>,
 ): void {
   if (node == null || typeof node !== "object") return;
   if (Array.isArray(node)) {
-    for (const item of node) collectFunctionsByName(item, out, memberDefaults);
+    for (const item of node) {
+      collectFunctionsByName(
+        item,
+        out,
+        assignmentDefaults,
+        assignmentPatterns,
+        declaredHere,
+      );
+    }
     return;
   }
   if (!isNode(node)) return;
@@ -474,38 +552,71 @@ function collectFunctionsByName(
   if (isFunctionLikeNode(n)) return;
   if (n.type === "VariableDeclarator") {
     const decl = n as VariableDeclarator;
+    const names: string[] = [];
+    collectBoundNames(decl.id, names);
+    // Keep declarations separate: flattened block locals must not hide outer
+    // helpers unless we need to resolve an assignment-form default.
+    for (const name of names) declaredHere.add(name);
     if (decl.init != null) {
-      const names: string[] = [];
-      collectBoundNames(decl.id, names);
       bindTo(names, decl.init);
-      collectFunctionsByName(decl.init, out, memberDefaults);
+      collectFunctionsByName(
+        decl.init,
+        out,
+        assignmentDefaults,
+        assignmentPatterns,
+        declaredHere,
+      );
     }
     return;
   }
   if (n.type === "AssignmentPattern") {
+    const names: string[] = [];
     if (n.left.type === "MemberExpression") {
       const name = getAssignmentTargetName(n.left);
-      // A property write augments the object; it does not shadow its binding.
-      if (name != null) bindTo([name], n.right, memberDefaults);
+      if (name != null) names.push(name);
     } else {
-      const names: string[] = [];
       collectBoundNames(n.left, names);
-      bindTo(names, n.right);
     }
-    collectFunctionsByName(n.right, out, memberDefaults);
+    // A default assignment is not a declaration of a new local binding.
+    bindTo(
+      names,
+      n.right,
+      n.left.type === "MemberExpression" || assignmentPatterns.has(n)
+        ? assignmentDefaults
+        : out,
+    );
+    collectFunctionsByName(
+      n.right,
+      out,
+      assignmentDefaults,
+      assignmentPatterns,
+      declaredHere,
+    );
     return;
   }
   if (n.type === "AssignmentExpression") {
     const name = getAssignmentTargetName(n.left as Node);
     if (name != null) bindTo([name], n.right);
-    collectFunctionsByName(n.right, out, memberDefaults);
+    collectFunctionsByName(
+      n.right,
+      out,
+      assignmentDefaults,
+      assignmentPatterns,
+      declaredHere,
+    );
     return;
   }
 
   const record = n as unknown as Record<string, unknown>;
   for (const key in record) {
     if (key === "parent") continue;
-    collectFunctionsByName(record[key], out, memberDefaults);
+    collectFunctionsByName(
+      record[key],
+      out,
+      assignmentDefaults,
+      assignmentPatterns,
+      declaredHere,
+    );
   }
 }
 
@@ -580,22 +691,41 @@ export function walkUsedScopes(
     visited.add(scopeRoot);
 
     const statements: Node[] = [];
-    collectReachableStatements(scopeRoot, statements);
+    // Extracting a default expression otherwise loses whether its loop binds
+    // a new local name or assigns an existing one.
+    const assignmentPatterns = new Set<Node>();
+    const declaredHere = new Set<string>();
+    collectReachableStatements(scopeRoot, statements, {
+      assignmentPatterns,
+      declaredHere,
+    });
 
     const functionsHere = new Map<string, FunctionLikeNode[]>();
-    const memberDefaultsHere = new Map<string, FunctionLikeNode[]>();
+    const assignmentDefaultsHere = new Map<string, FunctionLikeNode[]>();
+    // Parameters are local bindings too, including destructured parameters.
+    for (const param of scopeFn?.params ?? []) {
+      const names: string[] = [];
+      collectBoundNames(param, names);
+      for (const name of names) functionsHere.set(name, []);
+    }
     for (const statement of statements) {
-      collectFunctionsByName(statement, functionsHere, memberDefaultsHere);
+      collectFunctionsByName(
+        statement,
+        functionsHere,
+        assignmentDefaultsHere,
+        assignmentPatterns,
+        declaredHere,
+      );
     }
     const functionsByName = new Map(outerFunctionsByName);
     for (const [name, functions] of functionsHere) {
       functionsByName.set(name, functions);
     }
-    for (const [name, functions] of memberDefaultsHere) {
-      functionsByName.set(name, [
-        ...(functionsByName.get(name) ?? []),
-        ...functions,
-      ]);
+    for (const [name, functions] of assignmentDefaultsHere) {
+      const base = declaredHere.has(name)
+        ? functionsHere.get(name) ?? []
+        : functionsByName.get(name) ?? [];
+      functionsByName.set(name, [...base, ...functions]);
     }
     visit({ fn: scopeFn, statements, functionsByName });
 
@@ -630,7 +760,7 @@ export function walkUsedScopes(
     // not check whether the result is awaited: a delivery call that is
     // never awaited is left alone too. Leave this as is.
     const held = new Set<FunctionLikeNode>();
-    for (const bindings of [functionsHere, memberDefaultsHere]) {
+    for (const bindings of [functionsHere, assignmentDefaultsHere]) {
       for (const functions of bindings.values()) {
         for (const fn of functions) held.add(fn);
       }
