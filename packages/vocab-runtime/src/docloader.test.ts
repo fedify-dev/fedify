@@ -1,5 +1,7 @@
+import { configure, type LogRecord, reset } from "@logtape/logtape";
 import fetchMock from "fetch-mock";
 import { deepStrictEqual, ok, rejects } from "node:assert";
+import dns from "node:dns/promises";
 import { test } from "node:test";
 import { createServer } from "node:http";
 import { gzipSync } from "node:zlib";
@@ -336,6 +338,43 @@ test("getDocumentLoader()", async (t) => {
     });
   });
 
+  // A Codeberg Pages outage must not prevent loading the FEP-7aa9 context.
+  // See: https://github.com/fedify-dev/fedify/issues/1078
+  fetchMock.get("https://w3id.org/fep/7aa9", { status: 502 });
+  await t.test("preloaded FEP-7aa9 context", async () => {
+    const url = "https://w3id.org/fep/7aa9";
+    deepStrictEqual(await fetchDocumentLoader(url), {
+      contextUrl: null,
+      documentUrl: url,
+      document: {
+        "@context": {
+          "FeaturedCollection": "https://w3id.org/fep/7aa9#FeaturedCollection",
+          "FeaturedItem": "https://w3id.org/fep/7aa9#FeaturedItem",
+          "FeatureRequest": "https://w3id.org/fep/7aa9#FeatureRequest",
+          "FeatureAuthorization":
+            "https://w3id.org/fep/7aa9#FeatureAuthorization",
+          "topic": {
+            "@id": "https://w3id.org/fep/7aa9#topic",
+            "@type": "@id",
+          },
+          "featuredObject": {
+            "@id": "https://w3id.org/fep/7aa9#featuredObject",
+            "@type": "@id",
+          },
+          "canFeature": {
+            "@id": "https://w3id.org/fep/7aa9#canFeature",
+            "@type": "@id",
+          },
+          "featureAuthorization": {
+            "@id": "https://w3id.org/fep/7aa9#featureAuthorization",
+            "@type": "@id",
+          },
+        },
+      },
+    });
+    deepStrictEqual(fetchMock.callHistory.calls(url).length, 0);
+  });
+
   await t.test("deny non-HTTP/HTTPS", async () => {
     await rejects(
       () => fetchDocumentLoader("ftp://localhost"),
@@ -640,4 +679,272 @@ test("getRemoteDocument() bounds JSON by default", async () => {
   );
   deepStrictEqual(canceled, true);
   deepStrictEqual(pulls, 257);
+});
+
+test("getDocumentLoader() logs DNS failures as such", async (t) => {
+  // The validator skips DNS when Deno has no network permission.  Checked
+  // here rather than with top-level await, which the CommonJS build rejects.
+  if (
+    "Deno" in globalThis &&
+    (await Deno.permissions.query({ name: "net" })).state !== "granted"
+  ) {
+    t.skip("requires the net permission");
+    return;
+  }
+  const loader = getDocumentLoader();
+  for (const result of ["throws", "empty", "private"] as const) {
+    await t.test(result, async () => {
+      // Stubbing works only because url.ts uses the default node:dns/promises
+      // import; see the FIXME there.
+      const originalLookup = dns.lookup;
+      dns.lookup = (() =>
+        result === "throws"
+          ? Promise.reject(new Error("Resolver unavailable"))
+          : Promise.resolve(
+            result === "empty" ? [] : [{ address: "127.0.0.1", family: 4 }],
+          )) as typeof dns.lookup;
+      const records: LogRecord[] = [];
+      await configure({
+        sinks: {
+          buffer: (record) =>
+            records.push(record),
+        },
+        loggers: [
+          { category: "fedify", sinks: ["buffer"], lowestLevel: "debug" },
+          { category: ["logtape", "meta"], sinks: [] },
+        ],
+        reset: true,
+      });
+      try {
+        const url = "https://dns-failure.invalid/object";
+        let error: unknown;
+        await rejects(() => loader(url), (e) => {
+          error = e;
+          return true;
+        });
+        ok(error instanceof UrlError);
+        deepStrictEqual(
+          error.reason,
+          result === "private" ? "disallowed" : "dns",
+        );
+        deepStrictEqual(
+          records.map((r) => [r.level, r.rawMessage, r.properties.url]),
+          [
+            result === "private"
+              ? ["error", "Disallowed private URL: {url}", url]
+              : ["debug", "DNS lookup failed for {url}", url],
+          ],
+        );
+        ok(records[0].properties.error === error);
+      } finally {
+        await reset();
+        dns.lookup = originalLookup;
+      }
+    });
+  }
+});
+
+test("getDocumentLoader() bounds alternate document chains", async (t) => {
+  const base = "https://example.com/alternate-chain/";
+  const loader = getDocumentLoader({ allowPrivateAddress: true });
+  for (const mode of ["header", "html", "mixed"] as const) {
+    for (const hops of [20, 21]) {
+      await t.test(`${mode}: ${hops} hops`, async () => {
+        fetchMock.mockGlobal();
+        let requests = 0;
+        fetchMock.get(`begin:${base}`, ({ url }) => {
+          requests++;
+          const index = Number(new URL(url).pathname.split("/").at(-1));
+          // Keep the unpatched regression bounded too.
+          if (index === hops || requests > 30) {
+            return Response.json({ done: true });
+          }
+          const next = `${base}${index + 1}`;
+          if (mode === "mixed" && index % 2 === 1) {
+            return Response.redirect(next, 302);
+          }
+          return alternate(next, mode === "html");
+        });
+        try {
+          if (hops === 20) {
+            deepStrictEqual((await loader(`${base}0`)).document, {
+              done: true,
+            });
+          } else {
+            await rejects(loader(`${base}0`), (error: unknown) => {
+              ok(error instanceof FetchError);
+              ok(error.message.includes("Too many redirections (21)"));
+              return true;
+            });
+          }
+          deepStrictEqual(requests, 21);
+        } finally {
+          fetchMock.hardReset();
+        }
+      });
+    }
+  }
+
+  for (
+    const mode of [
+      "header",
+      "html",
+      "alternate-redirect",
+      "redirect-alternate",
+      "redirect-intermediate",
+    ]
+  ) {
+    await t.test(`${mode}: cycle`, async () => {
+      fetchMock.mockGlobal();
+      let requests = 0;
+      fetchMock.get(`begin:${base}`, ({ url }) => {
+        requests++;
+        if (requests > 30) return Response.json({ stopped: true });
+        const index = Number(new URL(url).pathname.split("/").at(-1));
+        const next = `${base}${
+          mode === "redirect-intermediate"
+            ? (index === 0 ? 1 : index === 1 ? 2 : 1)
+            : 1 - index
+        }`;
+        if (
+          (mode === "alternate-redirect" && index === 1) ||
+          ((mode === "redirect-alternate" ||
+            mode === "redirect-intermediate") && index === 0)
+        ) {
+          return Response.redirect(next, 302);
+        }
+        return alternate(next, mode === "html");
+      });
+      try {
+        await rejects(loader(`${base}0`), (error: unknown) => {
+          ok(error instanceof FetchError);
+          ok(error.message.includes("Redirect loop detected:"));
+          return true;
+        });
+        deepStrictEqual(requests, mode === "redirect-intermediate" ? 3 : 2);
+      } finally {
+        fetchMock.hardReset();
+      }
+    });
+  }
+
+  await t.test("alternate followed by 20 redirects shares the limit", async () => {
+    fetchMock.mockGlobal();
+    let requests = 0;
+    fetchMock.get(`begin:${base}`, ({ url }) => {
+      requests++;
+      const index = Number(new URL(url).pathname.split("/").at(-1));
+      if (index === 21) return Response.json({ done: true });
+      return index === 0
+        ? alternate(`${base}1`, false)
+        : Response.redirect(`${base}${index + 1}`, 302);
+    });
+    try {
+      await rejects(loader(`${base}0`), (error: unknown) => {
+        ok(error instanceof FetchError);
+        ok(error.message.includes("Too many redirections (21)"));
+        return true;
+      });
+      deepStrictEqual(requests, 21);
+    } finally {
+      fetchMock.hardReset();
+    }
+  });
+
+  await t.test("relative alternate after redirect and isolated calls", async () => {
+    fetchMock.mockGlobal();
+    fetchMock.get(`${base}start`, Response.redirect(`${base}html`, 302));
+    fetchMock.get(`${base}html`, alternate("./document", true));
+    fetchMock.get(`${base}document`, Response.json({ done: true }));
+    try {
+      for (let i = 0; i < 2; i++) {
+        const results = await Promise.all([
+          loader(`${base}start`),
+          loader(`${base}start`),
+        ]);
+        for (const result of results) {
+          deepStrictEqual(result.document, { done: true });
+          deepStrictEqual(result.documentUrl, `${base}document`);
+        }
+      }
+    } finally {
+      fetchMock.hardReset();
+    }
+  });
+
+  function alternate(next: string, html: boolean): Response {
+    return html
+      ? new Response(
+        `<link rel="alternate" type="application/activity+json" href="${next}">`,
+        {
+          headers: { "Content-Type": "text/html" },
+        },
+      )
+      : new Response("not JSON", {
+        headers: {
+          "Content-Type": "text/plain",
+          Link: `<${next}>; rel="alternate"; type="application/activity+json"`,
+        },
+      });
+  }
+});
+
+test("getDocumentLoader() preserves cancellation across alternates", async (t) => {
+  const base = "https://example.com/alternate-abort/";
+  const loader = getDocumentLoader({ allowPrivateAddress: true });
+  for (const html of [false, true]) {
+    await t.test(html ? "HTML" : "Link header", async () => {
+      fetchMock.mockGlobal();
+      const controller = new AbortController();
+      let requests = 0;
+      fetchMock.get(`begin:${base}`, ({ url }) => {
+        requests++;
+        const index = Number(new URL(url).pathname.split("/").at(-1));
+        if (index === 2) return Response.json({ done: true });
+        if (index === 1) controller.abort();
+        const next = `${base}${index + 1}`;
+        return new Response(
+          html
+            ? `<link rel="alternate" type="application/activity+json" href="${next}">`
+            : "not JSON",
+          {
+            headers: html ? { "Content-Type": "text/html" } : {
+              "Content-Type": "text/plain",
+              Link:
+                `<${next}>; rel="alternate"; type="application/activity+json"`,
+            },
+          },
+        );
+      });
+      try {
+        await rejects(loader(`${base}0`, { signal: controller.signal }), {
+          name: "AbortError",
+        });
+        deepStrictEqual(requests, 2);
+      } finally {
+        fetchMock.hardReset();
+      }
+    });
+  }
+});
+
+test("getDocumentLoader() rejects cancellation before fetching", async () => {
+  fetchMock.mockGlobal();
+  let requests = 0;
+  const url = "https://example.com/pre-aborted-alternate";
+  fetchMock.get(url, () => {
+    requests++;
+    return Response.json({ done: true });
+  });
+  try {
+    const loader = getDocumentLoader({ allowPrivateAddress: true });
+    const controller = new AbortController();
+    controller.abort();
+    await rejects(loader(url, { signal: controller.signal }), {
+      name: "AbortError",
+    });
+    deepStrictEqual(requests, 0);
+  } finally {
+    fetchMock.hardReset();
+  }
 });

@@ -36,6 +36,11 @@ import {
 } from "./ld.ts";
 
 test("isInvalidUrlTypeError()", () => {
+  assert(isInvalidUrlTypeError(new TypeError("Invalid URL string.")));
+  assertFalse(isInvalidUrlTypeError(new Error("Invalid URL string.")));
+  assertFalse(
+    isInvalidUrlTypeError(new TypeError("Invalid URL string. Other error")),
+  );
   assert(isInvalidUrlTypeError(new TypeError("Invalid URL: http://[")));
   assert(
     isInvalidUrlTypeError(

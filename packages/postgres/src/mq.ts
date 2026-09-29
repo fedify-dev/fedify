@@ -259,6 +259,7 @@ export class PostgresMessageQueue implements MessageQueue {
   ): Promise<void> {
     await this.initialize();
     const { signal } = options;
+    if (signal?.aborted) return;
     const poll = async () => {
       while (!signal?.aborted) {
         let processed = false;
@@ -411,6 +412,7 @@ export class PostgresMessageQueue implements MessageQueue {
     const listen = await this.#sql.listen(
       this.#channelName,
       async (delay) => {
+        if (signal?.aborted) return;
         try {
           const duration = Temporal.Duration.from(delay);
           const durationMs = duration.total("millisecond");
@@ -437,31 +439,40 @@ export class PostgresMessageQueue implements MessageQueue {
       timeouts.clear();
     };
     signal?.addEventListener("abort", clearTimeouts, { once: true });
-    let unlistenError: unknown;
     try {
       while (!signal?.aborted) {
-        let timeout: ReturnType<typeof setTimeout> | undefined;
-        await new Promise<unknown>((resolve) => {
-          signal?.addEventListener("abort", resolve, { once: true });
-          timeout = setTimeout(() => {
-            signal?.removeEventListener("abort", resolve);
-            resolve(0);
+        await new Promise<void>((resolve) => {
+          const onAbort = () => {
+            clearTimeout(timeout);
+            signal?.removeEventListener("abort", onAbort);
+            resolve();
+          };
+          const timeout = setTimeout(() => {
+            signal?.removeEventListener("abort", onAbort);
+            resolve();
           }, this.#pollIntervalMs);
-          timeouts.add(timeout);
+          signal?.addEventListener("abort", onAbort, { once: true });
         });
-        if (timeout != null) timeouts.delete(timeout);
         await safeSerializedPoll("interval");
       }
     } finally {
       signal?.removeEventListener("abort", clearTimeouts);
       clearTimeouts();
+      // Drain any notification-triggered poll before callers close the client.
+      await pollLock;
+      // Await cleanup here rather than leaving a floating Promise in an abort
+      // handler.  The MessageQueue contract requires listen() not to reject.
       try {
         await listen.unlisten();
       } catch (error) {
-        if (!isConnectionDestroyedError(error)) unlistenError = error;
+        if (!isConnectionDestroyedError(error)) {
+          logger.error(
+            "Error while unlistening from channel {channelName}: {error}",
+            { channelName: this.#channelName, error },
+          );
+        }
       }
     }
-    if (unlistenError != null) throw unlistenError;
   }
 
   /**

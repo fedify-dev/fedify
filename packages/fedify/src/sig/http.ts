@@ -1399,6 +1399,8 @@ async function verifyRequestRfc9421(
     failure = result;
     failureAlgorithm = algorithm;
   };
+  let body: ArrayBuffer | null = null;
+  let digestValid: boolean | null = null;
 
   for (const sigName of signatureNames) {
     // Skip if we don't have the signature bytes
@@ -1476,8 +1478,9 @@ async function verifyRequestRfc9421(
         continue;
       }
 
-      const body = await request.arrayBuffer();
-      const digestValid = await verifyRfc9421ContentDigest(
+      // Every signature covers the same body and Content-Digest header.
+      body ??= await request.arrayBuffer();
+      digestValid ??= await verifyRfc9421ContentDigest(
         contentDigestHeader,
         body,
       );

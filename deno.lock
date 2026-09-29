@@ -9689,6 +9689,7 @@
       },
       "packages/lint": {
         "dependencies": [
+          "jsr:@fedify/fixture@^2.2.14",
           "npm:@types/estree@^1.0.8",
           "npm:eslint@9",
           "npm:oxlint@^1.66.0"

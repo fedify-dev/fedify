@@ -292,6 +292,12 @@ async function sendActivityInternal(
       try {
         await validatePublicUrl(url);
       } catch (error) {
+        if (error instanceof UrlError && error.reason === "dns") {
+          logger.error("DNS resolution failed for URL: {url}", { url, error });
+          const failure = new FetchError(url, error.message);
+          failure.cause = error;
+          throw failure;
+        }
         if (error instanceof UrlError) {
           logger.error("Disallowed private URL: {url}", { url, error });
         }
@@ -300,6 +306,10 @@ async function sendActivityInternal(
     }
   }
 
+  // TODO: When forwarding to 2.3+, include initial DNS failures in delivery
+  // metrics without changing disallowed-URL handling. Test metrics and
+  // circuit-breaker accounting for both direct and redirected destinations.
+  // https://github.com/fedify-dev/fedify/issues/1055
   await validateUrl(inbox.href);
   headers = new Headers(headers);
   headers.set("Content-Type", "application/activity+json");

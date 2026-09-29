@@ -322,10 +322,17 @@ async function lookupWebFingerInternal(
         await validatePublicUrl(url.href);
       } catch (e) {
         if (e instanceof UrlError) {
-          logger.error(
-            "Invalid URL for WebFinger resource descriptor: {error}",
-            { error: e },
-          );
+          if (e.reason === "dns") {
+            logger.debug("DNS lookup failed for {url}", {
+              url: url.href,
+              error: e,
+            });
+          } else {
+            logger.error(
+              "Invalid URL for WebFinger resource descriptor: {error}",
+              { error: e },
+            );
+          }
           return { resource: null, result: "network_error", remoteHost };
         }
         throw e;

@@ -80,7 +80,8 @@ test("lookupObject()", {
     );
   });
 
-  fetchMock.removeRoutes();
+  // Workers load fixtures through fetch(), so keep the spy fallback between steps.
+  fetchMock.removeRoutes({ includeFallback: false });
   fetchMock.get("begin:https://example.com/.well-known/webfinger", {
     subject: "acct:janedoe@example.com",
     links: [
@@ -100,7 +101,7 @@ test("lookupObject()", {
     );
   });
 
-  fetchMock.removeRoutes();
+  fetchMock.removeRoutes({ includeFallback: false });
   fetchMock.get(
     "begin:https://example.com/.well-known/webfinger",
     () =>
@@ -131,7 +132,7 @@ test("lookupObject()", {
     deepStrictEqual(await promise, null);
   });
 
-  fetchMock.removeRoutes();
+  fetchMock.removeRoutes({ includeFallback: false });
   fetchMock.get(
     "begin:https://example.com/.well-known/webfinger",
     {
@@ -156,7 +157,7 @@ test("lookupObject()", {
     deepStrictEqual(person.id, new URL("https://example.com/person"));
   });
 
-  fetchMock.removeRoutes();
+  fetchMock.removeRoutes({ includeFallback: false });
   fetchMock.get(
     "begin:https://example.com/.well-known/webfinger",
     () =>
@@ -187,7 +188,7 @@ test("lookupObject()", {
     deepStrictEqual(result, null);
   });
 
-  fetchMock.removeRoutes();
+  fetchMock.removeRoutes({ includeFallback: false });
   fetchMock.get(
     "https://example.com/slow-object",
     () =>

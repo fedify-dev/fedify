@@ -755,16 +755,21 @@ test("getRecursiveTargetId - returns null for unknown recurse property", () => {
 
 test("getLookupFailureHint - suggests private-address for UrlError", () => {
   assert.equal(
-    getLookupFailureHint(new UrlError("Localhost is not allowed")),
+    getLookupFailureHint(
+      new UrlError("Localhost is not allowed", { reason: "disallowed" }),
+    ),
     "private-address",
   );
 });
 
 test("getLookupFailureHint - suggests recursive-private-address in recurse mode", () => {
   assert.equal(
-    getLookupFailureHint(new UrlError("Invalid or private address"), {
-      recursive: true,
-    }),
+    getLookupFailureHint(
+      new UrlError("Invalid or private address", { reason: "disallowed" }),
+      {
+        recursive: true,
+      },
+    ),
     "recursive-private-address",
   );
 });
@@ -797,9 +802,30 @@ test("getPrivateUrlCandidate - detects obvious private hosts without DNS", () =>
 
 test("getLookupFailureHint - does not treat all UrlError values as private", () => {
   assert.equal(
-    getLookupFailureHint(new UrlError("Unsupported protocol: ftp:")),
+    getLookupFailureHint(
+      new UrlError("Unsupported protocol: ftp:", { reason: "disallowed" }),
+    ),
     "authorized-fetch",
   );
+});
+
+test("getLookupFailureHint - distinguishes DNS failures from private addresses", () => {
+  for (const recursive of [false, true]) {
+    for (
+      const message of [
+        "DNS lookup failed",
+        "Invalid or private address",
+        "Localhost is not allowed",
+      ]
+    ) {
+      assert.equal(
+        getLookupFailureHint(new UrlError(message, { reason: "dns" }), {
+          recursive,
+        }),
+        "dns",
+      );
+    }
+  }
 });
 
 test("shouldPrintLookupFailureHint - suppresses only authorized-fetch hint", () => {
@@ -811,6 +837,10 @@ test("shouldPrintLookupFailureHint - suppresses only authorized-fetch hint", () 
   assert.equal(
     shouldPrintLookupFailureHint(loader, "authorized-fetch"),
     false,
+  );
+  assert.equal(
+    shouldPrintLookupFailureHint(loader, "dns"),
+    true,
   );
   assert.equal(
     shouldPrintLookupFailureHint(loader, "private-address"),
@@ -831,6 +861,10 @@ test("shouldSuggestSuppressErrorsForLookupFailure - only for authorized-fetch wi
   assert.equal(
     shouldSuggestSuppressErrorsForLookupFailure(loader, "authorized-fetch"),
     true,
+  );
+  assert.equal(
+    shouldSuggestSuppressErrorsForLookupFailure(loader, "dns"),
+    false,
   );
   assert.equal(
     shouldSuggestSuppressErrorsForLookupFailure(loader, "private-address"),
@@ -1108,6 +1142,80 @@ async function captureStderr<T>(
     process.stderr.write = originalWrite;
   }
 }
+
+test("runLookup - prints DNS guidance for a thrown recursive lookup failure", async () => {
+  const testDir = "./test_output_runlookup_recursive_dns";
+  await mkdir(testDir, { recursive: true });
+  let stderr = "";
+  const originalWrite = process.stderr.write;
+  process.stderr.write = (chunk: string | Uint8Array): boolean => {
+    stderr += typeof chunk === "string" ? chunk : Buffer.from(chunk).toString();
+    return true;
+  };
+  try {
+    const rootUrl = "https://lookup.test/root";
+    const root = new Note({
+      id: new URL(rootUrl),
+      replyTarget: new URL("https://lookup.test/parent"),
+    });
+    const exitCode = await runLookupAndCaptureExitCode(
+      createLookupRunCommand({
+        urls: [rootUrl],
+        recurse: "replyTarget",
+        recurseDepth: 20,
+        output: `${testDir}/out.jsonl`,
+      }),
+      {
+        lookupObject: (url) => {
+          if ((typeof url === "string" ? url : url.href) === rootUrl) {
+            return Promise.resolve(root);
+          }
+          throw new UrlError("DNS lookup failed", { reason: "dns" });
+        },
+      },
+    );
+    assert.equal(exitCode, 1);
+    assert.match(stderr, /Check the hostname and network connectivity/);
+    assert.doesNotMatch(
+      stderr,
+      /--authorized-fetch|--allow-private-address|--suppress-errors/,
+    );
+  } finally {
+    process.stderr.write = originalWrite;
+    await rm(testDir, { recursive: true });
+  }
+});
+
+test("runLookup - does not treat a DNS UrlError with a private-address message as private during traversal", async () => {
+  let stderr = "";
+  const originalWrite = process.stderr.write;
+  process.stderr.write = (chunk: string | Uint8Array): boolean => {
+    stderr += typeof chunk === "string" ? chunk : Buffer.from(chunk).toString();
+    return true;
+  };
+  try {
+    const exitCode = await runLookupAndCaptureExitCode(
+      createLookupRunCommand({
+        urls: ["https://lookup.test/collection"],
+        traverse: true,
+      }),
+      {
+        lookupObject: () =>
+          Promise.resolve(
+            new Collection({ id: new URL("https://lookup.test/collection") }),
+          ),
+        traverseCollection: () => {
+          throw new UrlError("Invalid or private address", { reason: "dns" });
+        },
+      },
+    );
+    assert.equal(exitCode, 1);
+    assert.match(stderr, /Could not resolve the host/);
+    assert.doesNotMatch(stderr, /--allow-private-address|--authorized-fetch/);
+  } finally {
+    process.stderr.write = originalWrite;
+  }
+});
 
 function extractIdsFromRawOutput(content: string): string[] {
   return [...content.matchAll(/"id"\s*:\s*"([^"]+)"/g)].map((match) =>

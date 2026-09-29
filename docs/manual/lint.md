@@ -76,29 +76,39 @@ Add the plugin to your _deno.json_ configuration file:
 }
 ~~~~
 
-By default, this enables all recommended rules.
+Listing the plugin enables every rule it provides, and Deno Lint reports all of
+them as errors.  Plugin rules have no recommended subset and no severity
+levels: those concepts exist for Deno's own built-in rules, not for rules that
+come from a plugin.
 
-### Custom configuration
+### Turning rules off
 
-You can customize which rules to enable and their severity levels:
+Rule IDs in *deno.json* are prefixed with the plugin's name, `fedify-lint`,
+which is what `deno lint` prints in its diagnostics.  This differs from the
+ESLint and Oxlint plugins, where the prefix is the package name,
+`@fedify/lint`.
+
+`rules.exclude` is the only setting that applies to plugin rules.  List the
+rules you do not want, one ID at a time:
 
 ~~~~ json
 {
   "lint": {
     "plugins": ["jsr:@fedify/lint"],
     "rules": {
-      "tags": ["recommended"],
-      "include": [
-        "@fedify/lint/actor-id-required",
-        "@fedify/lint/actor-id-mismatch"
-      ],
       "exclude": [
-        "@fedify/lint/actor-featured-property-required"
+        "fedify-lint/actor-featured-property-required",
+        "fedify-lint/actor-liked-property-required"
       ]
     }
   }
 }
 ~~~~
+
+`rules.tags` and `rules.include` select among Deno's built-in rules and leave
+plugin rules untouched, so neither can be used to enable a subset of this
+plugin.  Excluding the plugin's name on its own does not work either; each rule
+has to be named.
 
 ### Running Deno Lint
 
@@ -714,7 +724,8 @@ Warns when an outbox listener body does not deliver the posted activity with
 
 **When this rule applies:**
 You've registered an outbox listener with `setOutboxListeners()`, but the
-listener body never calls either delivery method.
+listener body never calls either delivery method, directly or through a helper
+in the same file.
 
 **Why it matters:**
 Fedify does not federate client-to-server outbox posts automatically.  If your
@@ -723,7 +734,7 @@ explicit delivery path.
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederation } from "@fedify/fedify";
+import { createFederation, type OutboxContext } from "@fedify/fedify";
 import { Activity } from "@fedify/vocab";
 const federation = createFederation<void>({ kv: null as any });
 // ---cut-before---
@@ -754,7 +765,28 @@ federation
       "followers",
     );
   });
+// ✅ Good: Listener delegates delivery to a helper in the same file
+async function deliverToFollowers(ctx: OutboxContext<void>, activity: Activity) {
+  await ctx.sendActivity({ identifier: ctx.identifier }, "followers", activity);
+}
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await deliverToFollowers(ctx, activity);
+  });
 ~~~~
+
+The rule follows direct calls to functions, function bindings, and
+object-literal methods declared in the same file when the listener's context is
+passed as an argument.  Helpers may call other helpers; recursive calls do not
+cause the analysis to loop.  Declaring a module-level delivery helper without
+calling it does not satisfy the rule.
+
+This analysis does not follow imports or use type information.  A listener that
+only calls a helper imported from another file still receives a warning.
+Indirect calls through higher-order callbacks, class instances, and dynamically
+selected properties are not resolved.
 
 ### `actor-followers-property-required`
 
