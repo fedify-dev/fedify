@@ -274,6 +274,8 @@ export interface GetDocumentLoaderOptions extends DocumentLoaderFactoryOptions {
 
 /**
  * Creates a JSON-LD document loader that utilizes the browser's `fetch` API.
+ * At most 20 HTTP redirects and alternate document links are followed in total
+ * per call.  Revisiting a URL within that chain throws a {@link FetchError}.
  *
  * The created loader preloads the below frequently used contexts by default
  * (unless `options.skipPreloadedContexts` is set to `true`):
@@ -285,6 +287,7 @@ export interface GetDocumentLoaderOptions extends DocumentLoaderFactoryOptions {
  * - <https://www.w3.org/ns/cid/v1>
  * - <https://w3id.org/security/multikey/v1>
  * - <https://w3id.org/fep/ef61>
+ * - <https://w3id.org/fep/7aa9>
  * - <https://purl.archive.org/socialweb/webfinger>
  * - <http://schema.org/>
  * @param options Options for the document loader.
@@ -320,10 +323,17 @@ export function getDocumentLoader(
         await validatePublicUrl(currentUrl);
       } catch (error) {
         if (error instanceof UrlError) {
-          logger.error("Disallowed private URL: {url}", {
-            url: currentUrl,
-            error,
-          });
+          if (error.reason === "dns") {
+            logger.debug("DNS lookup failed for {url}", {
+              url: currentUrl,
+              error,
+            });
+          } else {
+            logger.error("Disallowed private URL: {url}", {
+              url: currentUrl,
+              error,
+            });
+          }
         }
         throw error;
       }
@@ -385,7 +395,26 @@ export function getDocumentLoader(
             return await load(redirectUrl, options, redirected + 1, visited);
           }
 
-          const result = await getRemoteDocument(currentUrl, response, load);
+          const result = await getRemoteDocument(
+            currentUrl,
+            response,
+            async (alternateUrl) => {
+              options?.signal?.throwIfAborted();
+              if (redirected >= DEFAULT_MAX_REDIRECTION) {
+                throw new FetchError(
+                  currentUrl,
+                  `Too many redirections (${redirected + 1})`,
+                );
+              }
+              if (visited.has(alternateUrl)) {
+                throw new FetchError(
+                  currentUrl,
+                  `Redirect loop detected: ${alternateUrl}`,
+                );
+              }
+              return await load(alternateUrl, options, redirected + 1, visited);
+            },
+          );
           span.setAttribute("docloader.document_url", result.documentUrl);
           if (result.contextUrl != null) {
             span.setAttribute("docloader.context_url", result.contextUrl);
@@ -404,5 +433,5 @@ export function getDocumentLoader(
       },
     );
   }
-  return load;
+  return (url, options) => load(url, options);
 }

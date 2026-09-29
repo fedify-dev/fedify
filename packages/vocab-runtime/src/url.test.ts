@@ -1,4 +1,4 @@
-import { deepStrictEqual, ok, rejects, throws } from "node:assert";
+import { deepStrictEqual, ok, rejects, strictEqual, throws } from "node:assert";
 import { test } from "node:test";
 import {
   expandIPv6Address,
@@ -8,6 +8,28 @@ import {
   validateLookupAddresses,
   validatePublicUrl,
 } from "./url.ts";
+
+test("UrlError reason is independent of its cause", () => {
+  const cause = new Error("Underlying failure");
+  strictEqual(new UrlError("Rejected URL").reason, "disallowed");
+  const disallowedError = new UrlError("Rejected URL", { cause });
+  strictEqual(disallowedError.reason, "disallowed");
+  strictEqual(disallowedError.cause, cause);
+  const dnsError = new UrlError("Lookup failed", { reason: "dns", cause });
+  strictEqual(dnsError.reason, "dns");
+  strictEqual(dnsError.cause, cause);
+});
+
+test("validatePublicUrl() classifies disallowed URLs", async () => {
+  for (
+    const url of ["ftp://example.com", "https://localhost", "https://127.0.0.1"]
+  ) {
+    await rejects(() => validatePublicUrl(url), {
+      name: "UrlError",
+      reason: "disallowed",
+    });
+  }
+});
 
 test("validatePublicUrl()", async () => {
   await rejects(() => validatePublicUrl("ftp://localhost"), UrlError);
@@ -81,15 +103,19 @@ test("validateLookupAddresses() rejects unsafe or CNAME-only Cloudflare Workers 
         { address: "private-host.example.net.", family: 4 },
         { address: "127.0.0.1", family: 4 },
       ]),
-    UrlError,
+    { name: "UrlError", reason: "disallowed" },
   );
   throws(
     () =>
       validateLookupAddresses([
         { address: "app-host.example.net.", family: 4 },
       ]),
-    UrlError,
+    { name: "UrlError", reason: "dns" },
   );
+  throws(() => validateLookupAddresses([]), {
+    name: "UrlError",
+    reason: "dns",
+  });
 });
 
 test("isValidPublicIPv4Address()", () => {

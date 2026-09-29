@@ -27,6 +27,16 @@ import {
     isTemporalInstant,
 } from "@fedify/vocab-runtime/temporal";
 
+function canDecodeIri(iri: string): boolean {
+  return URL.canParse(iri) || iri.startsWith("at://");
+}
+
+function decodeIri(iri: string): URL {
+  return !URL.canParse(iri) && iri.startsWith("at://")
+    ? new URL("at://" + encodeURIComponent(iri.substring(5)))
+    : new URL(iri);
+}
+
 function isValidLanguageTag(language: string): boolean {
   try {
     new Intl.Locale(language);
@@ -2359,7 +2369,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               "attachment"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#attachment_fromJsonLd(obj, options);
+              try {
+                v = await this.#attachment_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#attachment", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -2613,7 +2632,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "attributedTo"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#attribution_fromJsonLd(doc, options);
+            try {
+              v = await this.#attribution_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#attributedTo", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -2709,7 +2737,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               "attributedTo"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#attribution_fromJsonLd(obj, options);
+              try {
+                v = await this.#attribution_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#attributedTo", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -2926,7 +2963,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "audience"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#audience_fromJsonLd(doc, options);
+            try {
+              v = await this.#audience_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#audience", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -3021,7 +3067,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               "audience"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#audience_fromJsonLd(obj, options);
+              try {
+                v = await this.#audience_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#audience", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -3282,7 +3337,16 @@ get contents(): ((string | LanguageString))[] {
               "context"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#context_fromJsonLd(obj, options);
+              try {
+                v = await this.#context_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#context", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -3550,7 +3614,16 @@ get names(): ((string | LanguageString))[] {
               "generator"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#generator_fromJsonLd(obj, options);
+              try {
+                v = await this.#generator_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#generator", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -3768,7 +3841,16 @@ get names(): ((string | LanguageString))[] {
             "icon"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#icon_fromJsonLd(doc, options);
+            try {
+              v = await this.#icon_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#icon", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -3864,7 +3946,16 @@ get names(): ((string | LanguageString))[] {
               "icon"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#icon_fromJsonLd(obj, options);
+              try {
+                v = await this.#icon_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#icon", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -4082,7 +4173,16 @@ get names(): ((string | LanguageString))[] {
             "image"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#image_fromJsonLd(doc, options);
+            try {
+              v = await this.#image_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#image", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -4178,7 +4278,16 @@ get names(): ((string | LanguageString))[] {
               "image"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#image_fromJsonLd(obj, options);
+              try {
+                v = await this.#image_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#image", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -4404,7 +4513,16 @@ get names(): ((string | LanguageString))[] {
             "inReplyTo"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#replyTarget_fromJsonLd(doc, options);
+            try {
+              v = await this.#replyTarget_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#inReplyTo", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -4499,7 +4617,16 @@ get names(): ((string | LanguageString))[] {
               "inReplyTo"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#replyTarget_fromJsonLd(obj, options);
+              try {
+                v = await this.#replyTarget_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#inReplyTo", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -4725,7 +4852,16 @@ get names(): ((string | LanguageString))[] {
             "location"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#location_fromJsonLd(doc, options);
+            try {
+              v = await this.#location_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#location", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -4820,7 +4956,16 @@ get names(): ((string | LanguageString))[] {
               "location"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#location_fromJsonLd(obj, options);
+              try {
+                v = await this.#location_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#location", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -5045,7 +5190,16 @@ get names(): ((string | LanguageString))[] {
             "preview"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#preview_fromJsonLd(doc, options);
+            try {
+              v = await this.#preview_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#preview", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -5139,7 +5293,16 @@ get names(): ((string | LanguageString))[] {
               "preview"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#preview_fromJsonLd(obj, options);
+              try {
+                v = await this.#preview_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#preview", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -5369,7 +5532,16 @@ get names(): ((string | LanguageString))[] {
             "replies"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#replies_fromJsonLd(doc, options);
+            try {
+              v = await this.#replies_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#replies", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -5591,7 +5763,16 @@ get names(): ((string | LanguageString))[] {
             "shares"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#shares_fromJsonLd(doc, options);
+            try {
+              v = await this.#shares_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#shares", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -5813,7 +5994,16 @@ get names(): ((string | LanguageString))[] {
             "likes"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#likes_fromJsonLd(doc, options);
+            try {
+              v = await this.#likes_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#likes", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -6029,7 +6219,16 @@ get names(): ((string | LanguageString))[] {
             "emojiReactions"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#emojiReactions_fromJsonLd(doc, options);
+            try {
+              v = await this.#emojiReactions_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "http://fedibird.com/ns#emojiReactions", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -6297,7 +6496,16 @@ get summaries(): ((string | LanguageString))[] {
               "tag"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#tag_fromJsonLd(obj, options);
+              try {
+                v = await this.#tag_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#tag", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -6548,7 +6756,16 @@ get urls(): ((URL | Link))[] {
             "to"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#to_fromJsonLd(doc, options);
+            try {
+              v = await this.#to_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#to", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -6643,7 +6860,16 @@ get urls(): ((URL | Link))[] {
               "to"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#to_fromJsonLd(obj, options);
+              try {
+                v = await this.#to_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#to", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -6860,7 +7086,16 @@ get urls(): ((URL | Link))[] {
             "bto"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#bto_fromJsonLd(doc, options);
+            try {
+              v = await this.#bto_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#bto", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -6955,7 +7190,16 @@ get urls(): ((URL | Link))[] {
               "bto"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#bto_fromJsonLd(obj, options);
+              try {
+                v = await this.#bto_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#bto", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -7172,7 +7416,16 @@ get urls(): ((URL | Link))[] {
             "cc"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#cc_fromJsonLd(doc, options);
+            try {
+              v = await this.#cc_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#cc", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -7267,7 +7520,16 @@ get urls(): ((URL | Link))[] {
               "cc"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#cc_fromJsonLd(obj, options);
+              try {
+                v = await this.#cc_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#cc", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -7484,7 +7746,16 @@ get urls(): ((URL | Link))[] {
             "bcc"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#bcc_fromJsonLd(doc, options);
+            try {
+              v = await this.#bcc_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#bcc", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -7579,7 +7850,16 @@ get urls(): ((URL | Link))[] {
               "bcc"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#bcc_fromJsonLd(obj, options);
+              try {
+                v = await this.#bcc_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#bcc", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -7859,7 +8139,16 @@ get urls(): ((URL | Link))[] {
             "proof"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#proof_fromJsonLd(doc, options);
+            try {
+              v = await this.#proof_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/security#proof", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -7953,7 +8242,16 @@ get urls(): ((URL | Link))[] {
               "proof"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#proof_fromJsonLd(obj, options);
+              try {
+                v = await this.#proof_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://w3id.org/security#proof", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -8209,7 +8507,16 @@ get urls(): ((URL | Link))[] {
             "likeAuthorization"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#likeAuthorization_fromJsonLd(doc, options);
+            try {
+              v = await this.#likeAuthorization_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://gotosocial.org/ns#likeAuthorization", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -8425,7 +8732,16 @@ get urls(): ((URL | Link))[] {
             "replyAuthorization"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#replyAuthorization_fromJsonLd(doc, options);
+            try {
+              v = await this.#replyAuthorization_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://gotosocial.org/ns#replyAuthorization", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -8641,7 +8957,16 @@ get urls(): ((URL | Link))[] {
             "announceAuthorization"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#announceAuthorization_fromJsonLd(doc, options);
+            try {
+              v = await this.#announceAuthorization_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://gotosocial.org/ns#announceAuthorization", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -13640,7 +13965,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "quote"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#quote_fromJsonLd(doc, options);
+            try {
+              v = await this.#quote_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/fep/044f#quote", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -13879,7 +14213,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "quoteAuthorization"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#quoteAuthorization_fromJsonLd(doc, options);
+            try {
+              v = await this.#quoteAuthorization_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/fep/044f#quoteAuthorization", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -14293,7 +14636,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (v == null) continue;
     
       const decoded =
-    new URL(v["@value"])
+    typeof v === "object" &&
+      ((typeof v["@id"] === "string" && canDecodeIri(v["@id"])) ||
+       (typeof v["@value"] === "string" && canDecodeIri(v["@value"]))) ? decodeIri(
+        typeof v["@id"] === "string" ? v["@id"] : v["@value"]
+      ) : undefined
       ;
     
       if (typeof decoded === "undefined") {
@@ -15296,7 +15643,16 @@ instruments?: (Object | URL)[];}
             "actor"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#actor_fromJsonLd(doc, options);
+            try {
+              v = await this.#actor_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#actor", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -15392,7 +15748,16 @@ instruments?: (Object | URL)[];}
               "actor"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#actor_fromJsonLd(obj, options);
+              try {
+                v = await this.#actor_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#actor", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -15610,7 +15975,16 @@ instruments?: (Object | URL)[];}
             "object"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#object_fromJsonLd(doc, options);
+            try {
+              v = await this.#object_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#object", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -15706,7 +16080,16 @@ instruments?: (Object | URL)[];}
               "object"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#object_fromJsonLd(obj, options);
+              try {
+                v = await this.#object_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#object", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -15927,7 +16310,16 @@ instruments?: (Object | URL)[];}
             "target"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#target_fromJsonLd(doc, options);
+            try {
+              v = await this.#target_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#target", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -16026,7 +16418,16 @@ instruments?: (Object | URL)[];}
               "target"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#target_fromJsonLd(obj, options);
+              try {
+                v = await this.#target_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#target", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -16244,7 +16645,16 @@ instruments?: (Object | URL)[];}
             "result"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#result_fromJsonLd(doc, options);
+            try {
+              v = await this.#result_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#result", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -16340,7 +16750,16 @@ instruments?: (Object | URL)[];}
               "result"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#result_fromJsonLd(obj, options);
+              try {
+                v = await this.#result_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#result", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -16559,7 +16978,16 @@ instruments?: (Object | URL)[];}
             "origin"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#origin_fromJsonLd(doc, options);
+            try {
+              v = await this.#origin_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#origin", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -16656,7 +17084,16 @@ instruments?: (Object | URL)[];}
               "origin"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#origin_fromJsonLd(obj, options);
+              try {
+                v = await this.#origin_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#origin", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -16873,7 +17310,16 @@ instruments?: (Object | URL)[];}
             "instrument"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#instrument_fromJsonLd(doc, options);
+            try {
+              v = await this.#instrument_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#instrument", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -16968,7 +17414,16 @@ instruments?: (Object | URL)[];}
               "instrument"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#instrument_fromJsonLd(obj, options);
+              try {
+                v = await this.#instrument_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#instrument", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -19837,7 +20292,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "interactingObject"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#interactingObject_fromJsonLd(doc, options);
+            try {
+              v = await this.#interactingObject_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://gotosocial.org/ns#interactingObject", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -20052,7 +20516,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "interactionTarget"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#interactionTarget_fromJsonLd(doc, options);
+            try {
+              v = await this.#interactionTarget_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://gotosocial.org/ns#interactionTarget", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -22799,7 +23272,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "interactingObject"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#interactingObject_fromJsonLd(doc, options);
+            try {
+              v = await this.#interactingObject_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://gotosocial.org/ns#interactingObject", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -23014,7 +23496,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "interactionTarget"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#interactionTarget_fromJsonLd(doc, options);
+            try {
+              v = await this.#interactionTarget_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://gotosocial.org/ns#interactionTarget", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -24185,7 +24676,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "interactingObject"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#interactingObject_fromJsonLd(doc, options);
+            try {
+              v = await this.#interactingObject_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://gotosocial.org/ns#interactingObject", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -24400,7 +24900,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "interactionTarget"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#interactionTarget_fromJsonLd(doc, options);
+            try {
+              v = await this.#interactionTarget_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://gotosocial.org/ns#interactionTarget", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -25570,7 +26079,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "interactingObject"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#interactingObject_fromJsonLd(doc, options);
+            try {
+              v = await this.#interactingObject_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://gotosocial.org/ns#interactingObject", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -25785,7 +26303,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "interactionTarget"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#interactionTarget_fromJsonLd(doc, options);
+            try {
+              v = await this.#interactionTarget_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://gotosocial.org/ns#interactionTarget", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -28979,7 +29506,16 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
             "owner"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#owner_fromJsonLd(doc, options);
+            try {
+              v = await this.#owner_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/security#owner", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -29890,7 +30426,16 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
             "controller"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#controller_fromJsonLd(doc, options);
+            try {
+              v = await this.#controller_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/security#controller", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -34492,7 +35037,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "publicKey"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#publicKey_fromJsonLd(doc, options);
+            try {
+              v = await this.#publicKey_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/security#publicKey", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -34585,7 +35139,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
               "publicKey"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#publicKey_fromJsonLd(obj, options);
+              try {
+                v = await this.#publicKey_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://w3id.org/security#publicKey", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -34804,7 +35367,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "assertionMethod"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#assertionMethod_fromJsonLd(doc, options);
+            try {
+              v = await this.#assertionMethod_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/security#assertionMethod", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -34901,7 +35473,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
               "assertionMethod"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#assertionMethod_fromJsonLd(obj, options);
+              try {
+                v = await this.#assertionMethod_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://w3id.org/security#assertionMethod", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -35157,7 +35738,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "inbox"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#inbox_fromJsonLd(doc, options);
+            try {
+              v = await this.#inbox_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "http://www.w3.org/ns/ldp#inbox", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -35390,7 +35980,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "outbox"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#outbox_fromJsonLd(doc, options);
+            try {
+              v = await this.#outbox_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#outbox", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -35609,7 +36208,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "following"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#following_fromJsonLd(doc, options);
+            try {
+              v = await this.#following_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#following", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -35831,7 +36439,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "followers"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#followers_fromJsonLd(doc, options);
+            try {
+              v = await this.#followers_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#followers", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -36051,7 +36668,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "liked"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#liked_fromJsonLd(doc, options);
+            try {
+              v = await this.#liked_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#liked", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -36269,7 +36895,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "featured"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#featured_fromJsonLd(doc, options);
+            try {
+              v = await this.#featured_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "http://joinmastodon.org/ns#featured", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -36487,7 +37122,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "featuredTags"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#featuredTags_fromJsonLd(doc, options);
+            try {
+              v = await this.#featuredTags_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "http://joinmastodon.org/ns#featuredTags", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -36703,7 +37347,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
               "streams"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#stream_fromJsonLd(obj, options);
+              try {
+                v = await this.#stream_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#streams", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -37029,7 +37682,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "movedTo"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#successor_fromJsonLd(doc, options);
+            try {
+              v = await this.#successor_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#movedTo", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -37283,7 +37945,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "alsoKnownAs"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#alias_fromJsonLd(doc, options);
+            try {
+              v = await this.#alias_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#alsoKnownAs", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -37380,7 +38051,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
               "alsoKnownAs"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#alias_fromJsonLd(obj, options);
+              try {
+                v = await this.#alias_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#alsoKnownAs", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -37599,7 +38279,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "service"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#service_fromJsonLd(doc, options);
+            try {
+              v = await this.#service_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/did#service", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -37696,7 +38385,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
               "service"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#service_fromJsonLd(obj, options);
+              try {
+                v = await this.#service_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/did#service", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -41217,7 +41915,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "quote"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#quote_fromJsonLd(doc, options);
+            try {
+              v = await this.#quote_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/fep/044f#quote", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -41456,7 +42163,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "quoteAuthorization"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#quoteAuthorization_fromJsonLd(doc, options);
+            try {
+              v = await this.#quoteAuthorization_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/fep/044f#quoteAuthorization", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -41870,7 +42586,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (v == null) continue;
     
       const decoded =
-    new URL(v["@value"])
+    typeof v === "object" &&
+      ((typeof v["@id"] === "string" && canDecodeIri(v["@id"])) ||
+       (typeof v["@value"] === "string" && canDecodeIri(v["@value"]))) ? decodeIri(
+        typeof v["@id"] === "string" ? v["@id"] : v["@value"]
+      ) : undefined
       ;
     
       if (typeof decoded === "undefined") {
@@ -44362,7 +45082,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "current"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#current_fromJsonLd(doc, options);
+            try {
+              v = await this.#current_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#current", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -44578,7 +45307,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "first"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#first_fromJsonLd(doc, options);
+            try {
+              v = await this.#first_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#first", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -44794,7 +45532,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "last"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#last_fromJsonLd(doc, options);
+            try {
+              v = await this.#last_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#last", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -45020,7 +45767,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               "items"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#item_fromJsonLd(obj, options);
+              try {
+                v = await this.#item_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#items", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -45236,7 +45992,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "likesOf"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#likesOf_fromJsonLd(doc, options);
+            try {
+              v = await this.#likesOf_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/fep/5711#likesOf", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -45451,7 +46216,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "sharesOf"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#sharesOf_fromJsonLd(doc, options);
+            try {
+              v = await this.#sharesOf_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/fep/5711#sharesOf", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -45666,7 +46440,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "repliesOf"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#repliesOf_fromJsonLd(doc, options);
+            try {
+              v = await this.#repliesOf_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/fep/5711#repliesOf", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -45881,7 +46664,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "inboxOf"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#inboxOf_fromJsonLd(doc, options);
+            try {
+              v = await this.#inboxOf_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/fep/5711#inboxOf", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -46096,7 +46888,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "outboxOf"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#outboxOf_fromJsonLd(doc, options);
+            try {
+              v = await this.#outboxOf_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/fep/5711#outboxOf", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -46311,7 +47112,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "followersOf"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#followersOf_fromJsonLd(doc, options);
+            try {
+              v = await this.#followersOf_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/fep/5711#followersOf", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -46526,7 +47336,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "followingOf"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#followingOf_fromJsonLd(doc, options);
+            try {
+              v = await this.#followingOf_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/fep/5711#followingOf", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -46741,7 +47560,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "likedOf"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#likedOf_fromJsonLd(doc, options);
+            try {
+              v = await this.#likedOf_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/fep/5711#likedOf", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -48686,7 +49514,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "partOf"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#partOf_fromJsonLd(doc, options);
+            try {
+              v = await this.#partOf_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#partOf", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -48900,7 +49737,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "next"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#next_fromJsonLd(doc, options);
+            try {
+              v = await this.#next_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#next", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -49115,7 +49961,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "prev"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#prev_fromJsonLd(doc, options);
+            try {
+              v = await this.#prev_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#prev", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -54156,7 +55011,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "publicKey"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#publicKey_fromJsonLd(doc, options);
+            try {
+              v = await this.#publicKey_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/security#publicKey", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -54249,7 +55113,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
               "publicKey"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#publicKey_fromJsonLd(obj, options);
+              try {
+                v = await this.#publicKey_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://w3id.org/security#publicKey", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -54468,7 +55341,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "assertionMethod"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#assertionMethod_fromJsonLd(doc, options);
+            try {
+              v = await this.#assertionMethod_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/security#assertionMethod", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -54565,7 +55447,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
               "assertionMethod"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#assertionMethod_fromJsonLd(obj, options);
+              try {
+                v = await this.#assertionMethod_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://w3id.org/security#assertionMethod", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -54821,7 +55712,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "inbox"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#inbox_fromJsonLd(doc, options);
+            try {
+              v = await this.#inbox_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "http://www.w3.org/ns/ldp#inbox", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -55054,7 +55954,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "outbox"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#outbox_fromJsonLd(doc, options);
+            try {
+              v = await this.#outbox_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#outbox", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -55273,7 +56182,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "following"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#following_fromJsonLd(doc, options);
+            try {
+              v = await this.#following_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#following", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -55495,7 +56413,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "followers"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#followers_fromJsonLd(doc, options);
+            try {
+              v = await this.#followers_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#followers", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -55715,7 +56642,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "liked"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#liked_fromJsonLd(doc, options);
+            try {
+              v = await this.#liked_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#liked", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -55933,7 +56869,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "featured"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#featured_fromJsonLd(doc, options);
+            try {
+              v = await this.#featured_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "http://joinmastodon.org/ns#featured", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -56151,7 +57096,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "featuredTags"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#featuredTags_fromJsonLd(doc, options);
+            try {
+              v = await this.#featuredTags_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "http://joinmastodon.org/ns#featuredTags", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -56367,7 +57321,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
               "streams"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#stream_fromJsonLd(obj, options);
+              try {
+                v = await this.#stream_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#streams", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -56693,7 +57656,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "movedTo"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#successor_fromJsonLd(doc, options);
+            try {
+              v = await this.#successor_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#movedTo", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -56947,7 +57919,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "alsoKnownAs"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#alias_fromJsonLd(doc, options);
+            try {
+              v = await this.#alias_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#alsoKnownAs", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -57044,7 +58025,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
               "alsoKnownAs"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#alias_fromJsonLd(obj, options);
+              try {
+                v = await this.#alias_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#alsoKnownAs", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -57263,7 +58253,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "service"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#service_fromJsonLd(doc, options);
+            try {
+              v = await this.#service_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/did#service", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -57360,7 +58359,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
               "service"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#service_fromJsonLd(obj, options);
+              try {
+                v = await this.#service_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/did#service", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -60617,7 +61625,16 @@ get names(): ((string | LanguageString))[] {
               "preview"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#preview_fromJsonLd(obj, options);
+              try {
+                v = await this.#preview_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#preview", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -65314,7 +66331,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "quote"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#quote_fromJsonLd(doc, options);
+            try {
+              v = await this.#quote_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/fep/044f#quote", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -65553,7 +66579,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "quoteAuthorization"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#quoteAuthorization_fromJsonLd(doc, options);
+            try {
+              v = await this.#quoteAuthorization_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/fep/044f#quoteAuthorization", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -65967,7 +67002,11 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
       if (v == null) continue;
     
       const decoded =
-    new URL(v["@value"])
+    typeof v === "object" &&
+      ((typeof v["@id"] === "string" && canDecodeIri(v["@id"])) ||
+       (typeof v["@value"] === "string" && canDecodeIri(v["@value"]))) ? decodeIri(
+        typeof v["@id"] === "string" ? v["@id"] : v["@value"]
+      ) : undefined
       ;
     
       if (typeof decoded === "undefined") {
@@ -66466,7 +67505,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               "orderedItems"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#item_fromJsonLd(obj, options);
+              try {
+                v = await this.#item_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#items", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -67217,7 +68265,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
               "orderedItems"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#item_fromJsonLd(obj, options);
+              try {
+                v = await this.#item_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#items", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -68914,7 +69971,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "publicKey"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#publicKey_fromJsonLd(doc, options);
+            try {
+              v = await this.#publicKey_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/security#publicKey", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -69007,7 +70073,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
               "publicKey"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#publicKey_fromJsonLd(obj, options);
+              try {
+                v = await this.#publicKey_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://w3id.org/security#publicKey", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -69226,7 +70301,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "assertionMethod"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#assertionMethod_fromJsonLd(doc, options);
+            try {
+              v = await this.#assertionMethod_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/security#assertionMethod", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -69323,7 +70407,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
               "assertionMethod"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#assertionMethod_fromJsonLd(obj, options);
+              try {
+                v = await this.#assertionMethod_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://w3id.org/security#assertionMethod", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -69579,7 +70672,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "inbox"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#inbox_fromJsonLd(doc, options);
+            try {
+              v = await this.#inbox_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "http://www.w3.org/ns/ldp#inbox", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -69812,7 +70914,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "outbox"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#outbox_fromJsonLd(doc, options);
+            try {
+              v = await this.#outbox_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#outbox", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -70031,7 +71142,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "following"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#following_fromJsonLd(doc, options);
+            try {
+              v = await this.#following_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#following", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -70253,7 +71373,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "followers"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#followers_fromJsonLd(doc, options);
+            try {
+              v = await this.#followers_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#followers", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -70473,7 +71602,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "liked"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#liked_fromJsonLd(doc, options);
+            try {
+              v = await this.#liked_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#liked", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -70691,7 +71829,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "featured"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#featured_fromJsonLd(doc, options);
+            try {
+              v = await this.#featured_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "http://joinmastodon.org/ns#featured", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -70909,7 +72056,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "featuredTags"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#featuredTags_fromJsonLd(doc, options);
+            try {
+              v = await this.#featuredTags_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "http://joinmastodon.org/ns#featuredTags", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -71125,7 +72281,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
               "streams"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#stream_fromJsonLd(obj, options);
+              try {
+                v = await this.#stream_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#streams", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -71451,7 +72616,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "movedTo"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#successor_fromJsonLd(doc, options);
+            try {
+              v = await this.#successor_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#movedTo", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -71705,7 +72879,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "alsoKnownAs"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#alias_fromJsonLd(doc, options);
+            try {
+              v = await this.#alias_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#alsoKnownAs", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -71802,7 +72985,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
               "alsoKnownAs"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#alias_fromJsonLd(obj, options);
+              try {
+                v = await this.#alias_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#alsoKnownAs", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -72021,7 +73213,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "service"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#service_fromJsonLd(doc, options);
+            try {
+              v = await this.#service_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/did#service", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -72118,7 +73319,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
               "service"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#service_fromJsonLd(obj, options);
+              try {
+                v = await this.#service_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/did#service", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -76132,7 +77342,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "publicKey"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#publicKey_fromJsonLd(doc, options);
+            try {
+              v = await this.#publicKey_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/security#publicKey", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -76225,7 +77444,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
               "publicKey"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#publicKey_fromJsonLd(obj, options);
+              try {
+                v = await this.#publicKey_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://w3id.org/security#publicKey", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -76444,7 +77672,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "assertionMethod"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#assertionMethod_fromJsonLd(doc, options);
+            try {
+              v = await this.#assertionMethod_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/security#assertionMethod", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -76541,7 +77778,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
               "assertionMethod"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#assertionMethod_fromJsonLd(obj, options);
+              try {
+                v = await this.#assertionMethod_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://w3id.org/security#assertionMethod", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -76797,7 +78043,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "inbox"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#inbox_fromJsonLd(doc, options);
+            try {
+              v = await this.#inbox_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "http://www.w3.org/ns/ldp#inbox", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -77030,7 +78285,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "outbox"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#outbox_fromJsonLd(doc, options);
+            try {
+              v = await this.#outbox_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#outbox", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -77249,7 +78513,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "following"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#following_fromJsonLd(doc, options);
+            try {
+              v = await this.#following_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#following", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -77471,7 +78744,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "followers"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#followers_fromJsonLd(doc, options);
+            try {
+              v = await this.#followers_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#followers", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -77691,7 +78973,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "liked"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#liked_fromJsonLd(doc, options);
+            try {
+              v = await this.#liked_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#liked", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -77909,7 +79200,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "featured"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#featured_fromJsonLd(doc, options);
+            try {
+              v = await this.#featured_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "http://joinmastodon.org/ns#featured", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -78127,7 +79427,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "featuredTags"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#featuredTags_fromJsonLd(doc, options);
+            try {
+              v = await this.#featuredTags_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "http://joinmastodon.org/ns#featuredTags", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -78343,7 +79652,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
               "streams"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#stream_fromJsonLd(obj, options);
+              try {
+                v = await this.#stream_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#streams", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -78669,7 +79987,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "movedTo"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#successor_fromJsonLd(doc, options);
+            try {
+              v = await this.#successor_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#movedTo", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -78923,7 +80250,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "alsoKnownAs"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#alias_fromJsonLd(doc, options);
+            try {
+              v = await this.#alias_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#alsoKnownAs", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -79020,7 +80356,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
               "alsoKnownAs"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#alias_fromJsonLd(obj, options);
+              try {
+                v = await this.#alias_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#alsoKnownAs", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -79239,7 +80584,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "service"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#service_fromJsonLd(doc, options);
+            try {
+              v = await this.#service_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/did#service", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -79336,7 +80690,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
               "service"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#service_fromJsonLd(obj, options);
+              try {
+                v = await this.#service_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/did#service", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -83222,7 +84585,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             "describes"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#describes_fromJsonLd(doc, options);
+            try {
+              v = await this.#describes_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#describes", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -84125,7 +85497,16 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
               "oneOf"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#exclusiveOption_fromJsonLd(obj, options);
+              try {
+                v = await this.#exclusiveOption_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#oneOf", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -84344,7 +85725,16 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
               "anyOf"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#inclusiveOption_fromJsonLd(obj, options);
+              try {
+                v = await this.#inclusiveOption_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#anyOf", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -84592,7 +85982,16 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
             "quote"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#quote_fromJsonLd(doc, options);
+            try {
+              v = await this.#quote_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/fep/044f#quote", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -84831,7 +86230,16 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
             "quoteAuthorization"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#quoteAuthorization_fromJsonLd(doc, options);
+            try {
+              v = await this.#quoteAuthorization_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/fep/044f#quoteAuthorization", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -85384,7 +86792,11 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
       if (v == null) continue;
     
       const decoded =
-    new URL(v["@value"])
+    typeof v === "object" &&
+      ((typeof v["@id"] === "string" && canDecodeIri(v["@id"])) ||
+       (typeof v["@value"] === "string" && canDecodeIri(v["@value"]))) ? decodeIri(
+        typeof v["@id"] === "string" ? v["@id"] : v["@value"]
+      ) : undefined
       ;
     
       if (typeof decoded === "undefined") {
@@ -86806,7 +88218,16 @@ relationships?: (Object | URL)[];}
             "subject"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#subject_fromJsonLd(doc, options);
+            try {
+              v = await this.#subject_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#subject", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -87021,7 +88442,16 @@ relationships?: (Object | URL)[];}
             "object"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#object_fromJsonLd(doc, options);
+            try {
+              v = await this.#object_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#object", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -87115,7 +88545,16 @@ relationships?: (Object | URL)[];}
               "object"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#object_fromJsonLd(obj, options);
+              try {
+                v = await this.#object_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#object", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -87333,7 +88772,16 @@ relationships?: (Object | URL)[];}
             "relationship"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#relationship_fromJsonLd(doc, options);
+            try {
+              v = await this.#relationship_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#relationship", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -87429,7 +88877,16 @@ relationships?: (Object | URL)[];}
               "relationship"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#relationship_fromJsonLd(obj, options);
+              try {
+                v = await this.#relationship_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#relationship", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -89568,7 +91025,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "publicKey"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#publicKey_fromJsonLd(doc, options);
+            try {
+              v = await this.#publicKey_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/security#publicKey", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -89661,7 +91127,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
               "publicKey"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#publicKey_fromJsonLd(obj, options);
+              try {
+                v = await this.#publicKey_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://w3id.org/security#publicKey", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -89880,7 +91355,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "assertionMethod"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#assertionMethod_fromJsonLd(doc, options);
+            try {
+              v = await this.#assertionMethod_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://w3id.org/security#assertionMethod", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -89977,7 +91461,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
               "assertionMethod"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#assertionMethod_fromJsonLd(obj, options);
+              try {
+                v = await this.#assertionMethod_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://w3id.org/security#assertionMethod", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -90233,7 +91726,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "inbox"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#inbox_fromJsonLd(doc, options);
+            try {
+              v = await this.#inbox_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "http://www.w3.org/ns/ldp#inbox", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -90466,7 +91968,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "outbox"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#outbox_fromJsonLd(doc, options);
+            try {
+              v = await this.#outbox_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#outbox", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -90685,7 +92196,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "following"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#following_fromJsonLd(doc, options);
+            try {
+              v = await this.#following_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#following", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -90907,7 +92427,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "followers"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#followers_fromJsonLd(doc, options);
+            try {
+              v = await this.#followers_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#followers", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -91127,7 +92656,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "liked"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#liked_fromJsonLd(doc, options);
+            try {
+              v = await this.#liked_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#liked", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -91345,7 +92883,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "featured"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#featured_fromJsonLd(doc, options);
+            try {
+              v = await this.#featured_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "http://joinmastodon.org/ns#featured", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -91563,7 +93110,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "featuredTags"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#featuredTags_fromJsonLd(doc, options);
+            try {
+              v = await this.#featuredTags_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "http://joinmastodon.org/ns#featuredTags", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -91779,7 +93335,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
               "streams"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#stream_fromJsonLd(obj, options);
+              try {
+                v = await this.#stream_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#streams", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -92105,7 +93670,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "movedTo"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#successor_fromJsonLd(doc, options);
+            try {
+              v = await this.#successor_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#movedTo", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -92359,7 +93933,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "alsoKnownAs"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#alias_fromJsonLd(doc, options);
+            try {
+              v = await this.#alias_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/activitystreams#alsoKnownAs", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -92456,7 +94039,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
               "alsoKnownAs"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#alias_fromJsonLd(obj, options);
+              try {
+                v = await this.#alias_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/activitystreams#alsoKnownAs", index: i, error },
+                );
+                continue;
+              }
             }
           }
         
@@ -92675,7 +94267,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             "service"];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#service_fromJsonLd(doc, options);
+            try {
+              v = await this.#service_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: "https://www.w3.org/ns/did#service", error },
+              );
+              return null;
+            }
           }
         }
         
@@ -92772,7 +94373,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
               "service"];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#service_fromJsonLd(obj, options);
+              try {
+                v = await this.#service_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: "https://www.w3.org/ns/did#service", index: i, error },
+                );
+                continue;
+              }
             }
           }
         

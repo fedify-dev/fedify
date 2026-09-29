@@ -95,11 +95,16 @@ export class PostgresKvStore implements KvStore {
   ): Promise<void> {
     await this.initialize();
     const ttl = options?.ttl == null ? null : options.ttl.toString();
+    // When merging into main, apply this special case to cas() too:
+    // #json(null) can produce SQL NULL.
+    const jsonValue = value === null
+      ? this.#sql`'null'::jsonb`
+      : this.#json(value);
     await this.#sql`
       INSERT INTO ${this.#sql(this.#tableName)} (key, value, ttl)
       VALUES (
         ${key},
-        ${this.#json(value)},
+        ${jsonValue},
         ${ttl}
       )
       ON CONFLICT (key)

@@ -395,6 +395,7 @@ export function isInvalidUrlTypeError(error: unknown): error is TypeError {
   const code = (error as { code?: unknown }).code;
   return error instanceof TypeError &&
     (code === "ERR_INVALID_URL" ||
+      error.message === "Invalid URL string." ||
       /^Invalid URL(?::|$)/.test(error.message) ||
       / cannot be parsed as a URL\.?$/.test(error.message));
 }
