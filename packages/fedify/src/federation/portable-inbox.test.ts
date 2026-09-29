@@ -1848,22 +1848,32 @@ test("forwardPortableInboxActivity() skips the gateway that forwarded the activi
     canonicalInboxId: `ap://${did}/users/alice/inbox`,
     gateways: [new URL(LOCAL), new URL(GATEWAY3), new URL(GATEWAY2)],
   };
-  await t.step("identified", async () => {
-    const queue = new RecordingQueue();
-    const forwarded = await forwardPortableInboxActivity(
-      forwardingParameters({
-        recipient,
-        outboxQueue: queue,
-        signatures: [
-          gatewaySignature(
-            gateway2KeyId,
-            () => Promise.resolve(gatewayKeyOf(gateway2KeyId)),
-          ),
-        ],
-      }),
-    );
-    assertEquals(forwarded.map((u) => u.origin), [GATEWAY3]);
-  });
+  const owners: [string, URL][] = [
+    ["identified", aliceId],
+    // A DID-signed actor document may use a compatible identifier as its ID:
+    [
+      "identified by a key of a compatible identifier",
+      new URL(compatibleAliceId()),
+    ],
+  ];
+  for (const [name, owner] of owners) {
+    await t.step(name, async () => {
+      const queue = new RecordingQueue();
+      const forwarded = await forwardPortableInboxActivity(
+        forwardingParameters({
+          recipient,
+          outboxQueue: queue,
+          signatures: [
+            gatewaySignature(
+              gateway2KeyId,
+              () => Promise.resolve(gatewayKeyOf(gateway2KeyId, owner)),
+            ),
+          ],
+        }),
+      );
+      assertEquals(forwarded.map((u) => u.origin), [GATEWAY3]);
+    });
+  }
   const notIdentified: [string, PortableInboxSignature[]][] = [
     ["verify() rejects", [
       gatewaySignature(
@@ -1884,7 +1894,7 @@ test("forwardPortableInboxActivity() skips the gateway that forwarded the activi
         gateway2KeyId,
         () =>
           Promise.resolve(
-            gatewayKeyOf(gateway2KeyId, new URL(compatibleAliceId(GATEWAY2))),
+            gatewayKeyOf(gateway2KeyId, new URL(`${GATEWAY2}/users/alice`)),
           ),
       ),
     ]],

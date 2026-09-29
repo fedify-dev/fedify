@@ -485,7 +485,7 @@ async function identifySendingGateway(
   if (
     key.id == null || key.id.href !== keyId.href ||
     !isGatewayKeyOfRecipient(key.id) || key.ownerId == null ||
-    !isPortableUri(key.ownerId) ||
+    !isPortableId(key.ownerId) ||
     getCanonicalPortableId(key.ownerId) !== actorId
   ) {
     logger.debug(
