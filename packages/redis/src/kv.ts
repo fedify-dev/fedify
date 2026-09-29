@@ -36,6 +36,23 @@ function expirySeconds(ttl: Temporal.Duration): number {
   return Math.max(1, Math.ceil(ttl.total("second")));
 }
 
+const casScript = `
+local current = redis.call('GET', KEYS[1])
+if ARGV[1] == '1' then
+  if current then return 0 end
+elseif not current or current ~= ARGV[2] then
+  return 0
+end
+if ARGV[3] == '1' then
+  redis.call('DEL', KEYS[1])
+elseif ARGV[5] ~= '0' then
+  redis.call('SETEX', KEYS[1], ARGV[5], ARGV[4])
+else
+  redis.call('SET', KEYS[1], ARGV[4])
+end
+return 1
+`;
+
 /**
  * Options for {@link RedisKvStore} class.
  */
@@ -49,6 +66,7 @@ export interface RedisKvStoreOptions {
   /**
    * The codec to use for encoding and decoding values in the key–value store.
    * Defaults to {@link JsonCodec}.
+   * For {@link RedisKvStore.cas}, equal values must encode to identical bytes.
    */
   readonly codec?: Codec;
 }
@@ -149,6 +167,36 @@ export class RedisKvStore implements KvStore {
   async delete(key: KvKey): Promise<void> {
     const serializedKey = this.#serializeKey(key);
     await this.#redis.del(serializedKey);
+  }
+
+  /**
+   * {@inheritDoc KvStore.cas}
+   *
+   * Values are compared as encoded bytes.  A custom {@link Codec} must encode
+   * equal values identically; with {@link JsonCodec}, object property order
+   * affects the comparison.  The `ttl` option follows {@link set}: a
+   * fractional second is rounded up and a non-positive duration uses one
+   * second.
+   * @since 2.4.0
+   */
+  async cas(
+    key: KvKey,
+    expectedValue: unknown,
+    newValue: unknown,
+    options?: KvStoreSetOptions,
+  ): Promise<boolean> {
+    const absent = Buffer.alloc(0);
+    const result = await this.#redis.eval(
+      casScript,
+      1,
+      this.#serializeKey(key),
+      expectedValue === undefined ? "1" : "0",
+      expectedValue === undefined ? absent : this.#codec.encode(expectedValue),
+      newValue === undefined ? "1" : "0",
+      newValue === undefined ? absent : this.#codec.encode(newValue),
+      options?.ttl == null ? 0 : expirySeconds(options.ttl),
+    );
+    return result === 1;
   }
 
   #deserializeKey(redisKey: string): KvKey {

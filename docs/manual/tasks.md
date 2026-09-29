@@ -312,9 +312,9 @@ How the key is resolved depends on the queue and the key–value store:
     });
     ~~~~
 
-Among the first-party adapters, the in-memory, Deno KV, SQLite, MySQL, and
-PostgreSQL key–value stores implement `~KvStore.cas`; Redis and Cloudflare
-Workers KV do not yet, so those deployments take the
+Among the first-party adapters, the in-memory, Deno KV, SQLite, MySQL,
+PostgreSQL, and Redis key–value stores implement `~KvStore.cas`; Cloudflare
+Workers KV does not, so those deployments take the
 `taskDeduplicationFallback` branch until per-adapter follow-ups add it.
 
 For `~Context.enqueueTaskMany()`, a single `deduplicationKey` applies to the

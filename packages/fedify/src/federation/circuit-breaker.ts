@@ -275,7 +275,7 @@ export class CircuitBreaker {
     let lastConflictingState: "open" | "half-open" | undefined;
 
     for (let attempt = 0; attempt < 10; attempt++) {
-      const oldState = await this.#get(remoteHost);
+      const { state: oldState, raw: oldValue } = await this.#get(remoteHost);
       if (oldState == null || oldState.state === "closed") {
         return { type: "send", probe: false };
       }
@@ -308,7 +308,7 @@ export class CircuitBreaker {
           state: "half-open",
           halfOpened: now.toString(),
         } satisfies CircuitBreakerKvState;
-        if (await this.#replace(remoteHost, oldState, newState)) {
+        if (await this.#replace(remoteHost, oldValue, newState)) {
           return { type: "send", probe: true };
         }
         lastConflictingState = "half-open";
@@ -334,7 +334,7 @@ export class CircuitBreaker {
         state: "half-open",
         halfOpened: now.toString(),
       } satisfies CircuitBreakerKvState;
-      if (await this.#replace(remoteHost, oldState, newState)) {
+      if (await this.#replace(remoteHost, oldValue, newState)) {
         await this.#notifyStateChange(remoteHost, "open", "half-open");
         return {
           type: "send",
@@ -365,9 +365,9 @@ export class CircuitBreaker {
   ): Promise<CircuitBreakerStateChange | undefined> {
     this.#sweepLegacyStates();
     for (let attempt = 0; attempt < 10; attempt++) {
-      const oldState = await this.#get(remoteHost);
+      const { state: oldState, raw: oldValue } = await this.#get(remoteHost);
       if (oldState == null) return undefined;
-      if (await this.#replace(remoteHost, oldState, undefined)) {
+      if (await this.#replace(remoteHost, oldValue, undefined)) {
         if (oldState.state !== "closed") {
           await this.#notifyStateChange(remoteHost, oldState.state, "closed");
           return {
@@ -393,7 +393,7 @@ export class CircuitBreaker {
     this.#sweepLegacyStates();
     const now = this.#now();
     for (let attempt = 0; attempt < 10; attempt++) {
-      const oldState = await this.#get(remoteHost);
+      const { state: oldState, raw: oldValue } = await this.#get(remoteHost);
       if (oldState?.state === "open") return undefined;
       const oldFailures = oldState?.failures.map(Temporal.Instant.from) ?? [];
       const failures = this.#options.pruneFailures(
@@ -417,7 +417,7 @@ export class CircuitBreaker {
           failures: failures.map((t) => t.toString()),
         };
       }
-      if (await this.#replace(remoteHost, oldState, newState)) {
+      if (await this.#replace(remoteHost, oldValue, newState)) {
         if (transition != null) {
           await this.#notifyStateChange(
             remoteHost,
@@ -454,7 +454,7 @@ export class CircuitBreaker {
     remoteHost: string,
   ): Promise<CircuitBreakerKvState | undefined> {
     this.#sweepLegacyStates();
-    return stripStoredCircuitBreakerState(await this.#get(remoteHost));
+    return stripStoredCircuitBreakerState((await this.#get(remoteHost)).state);
   }
 
   /**
@@ -652,15 +652,17 @@ export class CircuitBreaker {
 
   async #get(
     remoteHost: string,
-  ): Promise<StoredCircuitBreakerKvState | undefined> {
-    return parseStoredCircuitBreakerKvState(
-      await this.#kv.get(this.#key(remoteHost)),
-    );
+  ): Promise<{ state: StoredCircuitBreakerKvState | undefined; raw: unknown }> {
+    const value = await this.#kv.get(this.#key(remoteHost));
+    const state = parseStoredCircuitBreakerKvState(value);
+    // An unparseable value may be the legacy sweep's deletion marker.  Treat
+    // it as absent for CAS so a concurrent sweep cannot delete a new state.
+    return { state, raw: state == null ? undefined : value };
   }
 
   async #replace(
     remoteHost: string,
-    oldState: StoredCircuitBreakerKvState | undefined,
+    oldValue: unknown,
     newState: CircuitBreakerKvState | undefined,
   ): Promise<boolean> {
     const key = this.#key(remoteHost);
@@ -677,7 +679,7 @@ export class CircuitBreaker {
     }
     return await this.#kv.cas(
       key,
-      oldState,
+      oldValue,
       storedState,
       storedState == null ? undefined : this.#setOptions(),
     );

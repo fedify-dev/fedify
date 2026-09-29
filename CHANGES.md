@@ -486,6 +486,10 @@ To be released.
         the new *Clearing legacy cache entries* section of the
         [key–value store guide] to clear them proactively instead of waiting.
 
+ -  Fixed outbound delivery circuit breaker transitions when a key–value
+    store compares encoded values.  Existing half-open states can now recover
+    after switching to a CAS-capable store.  [[#1163], [#1167]]
+
  -  Fixed `signObject()` so that a signed object keeps verifying after it is
     assigned to a typed parent and the parent is serialized.  `signObject()`
     now captures the secured JSON document its proof covers, and nested
@@ -700,8 +704,10 @@ To be released.
 [#1142]: https://github.com/fedify-dev/fedify/pull/1142
 [#1143]: https://github.com/fedify-dev/fedify/issues/1143
 [#1145]: https://github.com/fedify-dev/fedify/pull/1145
+[#1163]: https://github.com/fedify-dev/fedify/issues/1163
 [#1164]: https://github.com/fedify-dev/fedify/pull/1164
 [#1165]: https://github.com/fedify-dev/fedify/pull/1165
+[#1167]: https://github.com/fedify-dev/fedify/pull/1167
 
 ### @fedify/adonisjs
 
@@ -936,6 +942,12 @@ To be released.
 
 ### @fedify/redis
 
+ -  Added atomic `RedisKvStore.cas()` for standalone Redis and Redis Cluster.
+    Redis-backed deployments can now use portable inbox forwarding and other
+    features that need compare-and-swap.  Custom codecs must encode equal
+    values identically, and Redis must permit `EVAL`; deployments that deny
+    scripting can no longer rely on the previous non-CAS fallback.
+    [[#1163], [#1167]]
  -  Fixed the CommonJS Redis adapter build so it no longer requires
     `@js-temporal/polyfill` at runtime.  The build now bundles
     `temporal-polyfill`, while type declarations rely on the standard
