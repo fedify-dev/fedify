@@ -83,7 +83,7 @@ import {
   getCanonicalPortableId,
   getGatewayKeyBase,
   hasPortableActor,
-  isCompatibleKeyId,
+  isPortableKeyId,
 } from "../sig/portable-key-id.ts";
 import { verifyPortableObject } from "../sig/portable-collection.ts";
 import { hasProofLike, verifyObject } from "../sig/proof.ts";
@@ -2415,7 +2415,7 @@ export class FederationImpl<TContextData>
       if (
         ldSignable && rsaKey == null &&
         privateKey.algorithm.name === "RSASSA-PKCS1-v1_5" &&
-        !isCompatibleKeyId(keyId)
+        !isPortableKeyId(keyId)
       ) {
         rsaKey = { keyId, privateKey };
       }

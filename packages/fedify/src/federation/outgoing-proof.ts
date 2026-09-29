@@ -9,8 +9,8 @@ import {
 } from "../sig/compound-proof.ts";
 import {
   getPortableDid,
-  isCompatibleKeyId,
   isPortableId,
+  isPortableKeyId,
 } from "../sig/portable-key-id.ts";
 import { signObject } from "../sig/proof.ts";
 
@@ -163,9 +163,10 @@ export async function signOutgoingActivity(
   }
   const keys = candidates.filter((c) =>
     c.privateKey.algorithm.name === "Ed25519" &&
-    // Gateway keys only sign HTTP requests; a proof made with one would
-    // claim that the gateway authored the activity:
-    !isCompatibleKeyId(c.verificationMethod)
+    // Gateway keys and keys at ap: URIs only sign HTTP requests; a proof
+    // made with a gateway key would claim that the gateway authored
+    // the activity, and a portable activity's proof is made by its DID:
+    !isPortableKeyId(c.verificationMethod)
   );
   if (!hasProof && activity.id != null && isPortableId(activity.id)) {
     // The single-key shortcut below does not apply: FEP-ef61 accepts only

@@ -1175,6 +1175,15 @@ actor document, and:
  -  the gateway that the key ID belongs to is listed in the actor's
     `gateways`.
 
+An entry has the key ID if its ID is the key ID itself or the `ap:` URI with
+the same canonical ID, e.g., `ap://did:key:z6Mk.../actors/alice#main-key` for
+the key ID
+`https://example.com/.well-known/apgateway/did:key:z6Mk.../actors/alice#main-key`.
+Some implementations, such as [Mitra], list the keys of portable actors under
+`ap:` URIs, but sign requests with compatible key IDs on their own gateways. An
+entry under a compatible identifier on another gateway is that gateway's key,
+not this one's, even if its fragment is the same.
+
 Otherwise the signature is not verified.  A verified gateway key belongs to
 the portable actor, so `RequestContext.getSignedKeyOwner()` returns the actor,
 e.g., to decide whether the actor may see a non-public portable object.
@@ -1193,20 +1202,54 @@ an unsigned one on someone else's gateway, the key is rejected rather than
 resolved as an ordinary actor's.  Likewise, a key at an ordinary URL that
 names a portable actor as its owner or controller is never that actor's key.
 
-> [!NOTE]
-> Fedify does not resolve gateway keys whose IDs are `ap:` or `ap+ef61:`
-> URIs, as there is no gateway to dereference them through.
+Fedify also verifies an HTTP Signature whose key ID is an `ap:` or
+`ap+ef61:` URI, such as
+`ap://did:key:z6Mk.../actors/alice?@gateway=https%3A%2F%2Fexample.com#main-key`.
+Such a key ID names no gateway, so the key is taken as a key of the actor
+itself rather than of a gateway.  Fedify fetches the actor's document, i.e.,
+the key ID without its fragment, from the gateways in its `@gateway` location
+hints, up to five of them one after another, and accepts the key if one of the
+documents vouches for it by the rules above, except that:
+
+ -  the key is listed under the `ap:` URI with the same canonical ID as the key
+    ID, never under a compatible identifier, which would be a gateway's key,
+ -  the key ID has to have a fragment, and
+ -  instead of listing a particular gateway, the actor only has to have a valid
+    gateway in its `gateways`.
+
+Without location hints, Fedify asks the document loader for the `ap:` URI
+itself, which only a custom document loader can resolve.  The hints are chosen
+by whoever made the signature, but only a document with a valid proof by the
+key ID's DID vouches for the key, wherever it is fetched from.
+
+If no gateway serves such a document, the signature is not verified.  If
+a gateway could not serve the document at all, the reason that
+`~InboxListenerSetters.onUnverifiedActivity()` receives is a failure to fetch
+the key (`keyFetchError`), whose HTTP status is reported only if every gateway
+responded with the same status, e.g., `410 Gone`.
+
+Fedify itself never signs requests with such key IDs; its own keys for
+portable actors are gateway keys.
+
+> [!WARNING]
+> The actor's document that vouches for a key at an `ap:` key ID can come
+> from anywhere, so a key that the actor has removed from its document is
+> still accepted by anyone who is shown an older document that lists it,
+> as long as the older document's proof is valid and has not expired.  Set
+> `expires` on the proofs of portable actor documents to limit this.
 
 Whether a key at a compatible identifier is valid depends on what it is used
 for, so Fedify caches such keys apart for each purpose: a gateway key cached
 for verifying HTTP Signatures is never used for Object Integrity Proofs or
-Linked Data Signatures.  Since the key's validity depends on the actor's
-signed document rather than its origin, and the actor can drop the gateway
-from its document at any time, Fedify looks up a cached gateway key again
-after an hour at most, or once the proof on the actor's document expires,
-whichever comes first.  A failure to fetch a key at a compatible identifier,
-by contrast, fails every purpose alike, so it is cached like that of any
-other key.
+Linked Data Signatures.  A key at an `ap:` or `ap+ef61:` key ID is only ever
+used for HTTP Signatures, and is cached the same way.  Since the key's validity
+depends on the actor's signed document rather than its origin, and the actor
+can drop the gateway from its document at any time, Fedify looks up a cached
+gateway key again after an hour at most, or once the proof on the actor's
+document expires, whichever comes first.  A failure to fetch a key at a
+compatible identifier, by contrast, fails every purpose alike, so it is cached
+like that of any other key.
 
 [FEP-521a]: https://w3id.org/fep/521a
 [compatible identifier]: https://w3id.org/fep/ef61#compatible-ids
+[Mitra]: https://codeberg.org/silverpill/mitra

@@ -1,8 +1,10 @@
 ---
 links:
   '#1095': https://github.com/fedify-dev/fedify/issues/1095
+  '#1096': https://github.com/fedify-dev/fedify/issues/1096
   '#1099': https://github.com/fedify-dev/fedify/pull/1099
   '#1119': https://github.com/fedify-dev/fedify/pull/1119
+  '#1134': https://github.com/fedify-dev/fedify/pull/1134
   '#288': https://github.com/fedify-dev/fedify/issues/288
   '#840': https://github.com/fedify-dev/fedify/issues/840
 ---
@@ -26,8 +28,23 @@ links:
     `assertionMethod`, and lists the gateway in its `gateways`.  Such a key is
     owned by the portable actor, so `RequestContext.getSignedKeyOwner()`,
     `getKeyOwner()`, and `doesActorOwnKey()` return or match the portable
-    actor.  Previously, no gateway key of a portable actor could be verified.
-    [[#288], [#840], [#1099]]
+    actor.  The document may list the key under the key ID itself or under
+    the `ap:` URI with the same canonical ID, as Mitra does, but not under
+    both, nor under a compatible identifier on another gateway.  Previously,
+    no gateway key of a portable actor could be verified.
+    [[#288], [#840], [#1096], [#1099], [#1134]]
+
+ -  Changed HTTP Signature verification to accept a key of a portable actor
+    itself whose ID is an `ap:` or `ap+ef61:` URI, e.g.,
+    `ap://did:key:z6Mk.../actor?@gateway=https%3A%2F%2Fexample.com#main-key`.
+    Fedify fetches the actor's document from the gateways in the key ID's
+    `@gateway` location hints, or, without them, asks the document loader for
+    the `ap:` URI itself, and accepts the key if the document has a valid
+    Object Integrity Proof made by the actor's DID, embeds the key under
+    the `ap:` URI, and has a valid gateway.  Such a key is used only for HTTP
+    Signatures, and is owned by the portable actor like a gateway key.  Keys
+    at `ap:` URIs are never used to make Object Integrity Proofs or Linked
+    Data Signatures either.  [[#288], [#1096], [#1134]]
 
  -  Changed inboxes to reject activities of portable actors that do not have
     a valid Object Integrity Proof made by the actor's DID with

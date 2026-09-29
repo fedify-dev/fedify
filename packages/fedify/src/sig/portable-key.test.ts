@@ -992,3 +992,671 @@ test("verifyRequest() binds gateway keys to the actor whose document is signed",
     null,
   );
 });
+
+test("verifyRequest() matches gateway keys listed under ap: URIs", async () => {
+  // Mitra lists the keys of portable actors under ap: URIs, but signs
+  // requests with compatible key IDs on its own gateway:
+  const portableKeyId = parseIri(`${actorId}#main-key`);
+  const cases: Record<string, Record<string, unknown>> = {
+    "both properties": await actorJson({ key: portableKeyId }),
+    "assertionMethod only": await actorJson({
+      key: portableKeyId,
+      publicKey: null,
+    }),
+    "publicKey only": await actorJson({
+      key: portableKeyId,
+      assertionMethod: false,
+    }),
+  };
+  for (const [name, document] of Object.entries(cases)) {
+    const documentLoader = createLoader({
+      [compatibleId(gw1)]: await sign(document),
+    });
+    for (const spec of specs) {
+      const key = await verifyRequest(await signedRequest(spec), {
+        documentLoader,
+        contextLoader,
+        spec,
+      });
+      strictEqual(key?.id?.href, keyId.href, `${name}, ${spec}`);
+      strictEqual(key?.ownerId?.href, parseIri(actorId).href, name);
+    }
+  }
+});
+
+test("verifyRequest() rejects ambiguous or foreign aliases of gateway keys", async () => {
+  const portableKeyId = `${actorId}#main-key`;
+  const base = await actorJson();
+  const assertionMethod = base.assertionMethod as Record<string, unknown>;
+  const publicKey = base.publicKey as Record<string, unknown>;
+  const cases: Record<string, Record<string, unknown>> = {
+    // The key ID and its ap: alias both in assertionMethod, even if one is
+    // just a reference:
+    "an exact entry and an ap: alias in assertionMethod": {
+      ...base,
+      assertionMethod: [assertionMethod, {
+        ...assertionMethod,
+        id: portableKeyId,
+      }],
+    },
+    "a reference and an embedded ap: alias in assertionMethod": {
+      ...base,
+      assertionMethod: [keyId.href, { ...assertionMethod, id: portableKeyId }],
+    },
+    "an exact entry and an ap: alias in publicKey": {
+      ...base,
+      publicKey: [publicKey, { ...publicKey, id: portableKeyId }],
+    },
+    // Another gateway's key with the same fragment is not this gateway's:
+    "a key of another gateway": await actorJson({
+      key: new URL(`${compatibleId(gw2)}#main-key`),
+    }),
+    // URL parsing would resolve the dot segments into the key ID:
+    "an ap: key ID with dot segments": {
+      ...base,
+      assertionMethod: {
+        ...assertionMethod,
+        id: portableKeyId.replace("/actor#", "/x/../actor#"),
+      },
+      publicKey: {
+        ...publicKey,
+        id: portableKeyId.replace("/actor#", "/x/../actor#"),
+      },
+    },
+    "a compatible key ID with dot segments": {
+      ...base,
+      assertionMethod: {
+        ...assertionMethod,
+        id: keyId.href.replace("/actor#", "/x/../actor#"),
+      },
+      publicKey: {
+        ...publicKey,
+        id: keyId.href.replace("/actor#", "/x/../actor#"),
+      },
+    },
+  };
+  for (const [name, document] of Object.entries(cases)) {
+    const documentLoader = createLoader({
+      [compatibleId(gw1)]: await sign(document),
+    });
+    strictEqual(
+      await verifyRequest(await signedRequest(), {
+        documentLoader,
+        contextLoader,
+      }),
+      null,
+      name,
+    );
+  }
+});
+
+test("verifyRequest() refuses key IDs whose identity URL parsing changes", async () => {
+  const documentLoader = createLoader({
+    [compatibleId(gw1)]: await sign(await actorJson()),
+  });
+  // Draft-cavage signatures do not sign the keyId parameter, so it can be
+  // replaced as it is written:
+  const request = await signedRequest("draft-cavage-http-signatures-12");
+  const dotted = keyId.href.replace("/actor#", "/x/../actor#");
+  const headers = new Headers(request.headers);
+  headers.set(
+    "Signature",
+    headers.get("Signature")!.replace(keyId.href, dotted),
+  );
+  strictEqual(
+    await verifyRequest(new Request(request, { headers }), {
+      documentLoader,
+      contextLoader,
+    }),
+    null,
+  );
+  strictEqual(documentLoader.fetched.length, 0);
+  // Nor can it be looked up as a string, however it is spelled:
+  const dottedPortable = `${actorId.replace("/actor", "/x/../actor")}#main-key`;
+  for (
+    const id of [
+      dotted,
+      dottedPortable,
+      // URL parsing strips leading spaces, and tabs anywhere:
+      ` ${dotted}`,
+      ` ${dottedPortable}`,
+      ` ${parseIri(dottedPortable).href}`,
+      dottedPortable.replace("ap+ef61:", "ap+\tef61:"),
+      dotted.replace("did:key:", "did:ke\ty:"),
+      // Dot segments can leave the gateway path altogether:
+      `${gw1}/.well-known/apgateway/${did}/../../../users/alice#main-key`,
+      ` ap://not-a-did/actor#main-key`,
+    ]
+  ) {
+    let error: unknown;
+    try {
+      await fetchKey(id, CryptographicKey, { documentLoader, contextLoader });
+    } catch (e) {
+      error = e;
+    }
+    ok(error instanceof TypeError, id);
+  }
+});
+
+// Keys of portable actors at ap: key IDs.  The actor's document lists them
+// under ap: URIs, and the key ID names the gateways to fetch it from as
+// @gateway location hints:
+const apKeyId = parseIri(`${actorId}#main-key`);
+
+function hinted(...gateways: string[]): URL {
+  const query = gateways.map((g) => `@gateway=${encodeURIComponent(g)}`)
+    .join("&");
+  return parseIri(`${actorId}${query === "" ? "" : `?${query}`}#main-key`);
+}
+
+async function apActorJson(
+  options: ActorOptions = {},
+): Promise<Record<string, unknown>> {
+  return await actorJson({ key: apKeyId, ...options });
+}
+
+test("verifyRequest() accepts keys of portable actors at ap: key IDs", async () => {
+  const documentLoader = createLoader({
+    [compatibleId(gw1)]: await sign(await apActorJson()),
+  });
+  const hintedKeyId = hinted(gw1);
+  for (const spec of specs) {
+    const key = await verifyRequest(await signedRequest(spec, hintedKeyId), {
+      documentLoader,
+      contextLoader,
+      spec,
+    });
+    ok(key != null, spec);
+    strictEqual(key.id?.href, hintedKeyId.href, spec);
+    strictEqual(key.ownerId?.href, parseIri(actorId).href, spec);
+  }
+  // Whatever the scheme or the encoding of the DID in the key ID:
+  const raw = `ap://${did}/actor?@gateway=${encodeURIComponent(gw1)}#main-key`;
+  for (const written of [raw, raw.replace(/^ap:/, "ap+ef61:")]) {
+    const request = await signedRequest(
+      "draft-cavage-http-signatures-12",
+      hintedKeyId,
+    );
+    const headers = new Headers(request.headers);
+    headers.set(
+      "Signature",
+      headers.get("Signature")!.replace(hintedKeyId.href, written),
+    );
+    const key = await verifyRequest(new Request(request, { headers }), {
+      documentLoader,
+      contextLoader,
+    });
+    strictEqual(key?.ownerId?.href, parseIri(actorId).href, written);
+  }
+  // Only the gateways in the location hints were asked:
+  deepStrictEqual(
+    [...new Set(documentLoader.fetched)],
+    [compatibleId(gw1)],
+  );
+});
+
+test("verifyRequest() asks the document loader for ap: key IDs without hints", async () => {
+  const documentLoader = createLoader({
+    [actorId]: await sign(await apActorJson()),
+  });
+  const key = await verifyRequest(await signedRequest(undefined, apKeyId), {
+    documentLoader,
+    contextLoader,
+  });
+  strictEqual(key?.ownerId?.href, parseIri(actorId).href);
+  deepStrictEqual(documentLoader.fetched, [actorId]);
+  // A document loader that cannot resolve ap: URIs finds no key:
+  const result = await verifyRequestDetailed(
+    await signedRequest(undefined, apKeyId),
+    { documentLoader: createLoader({}), contextLoader },
+  );
+  ok(!result.verified);
+  strictEqual(result.reason.type, "keyFetchError");
+});
+
+test("verifyRequest() rejects keys at ap: key IDs that portable actors do not vouch for", async () => {
+  const unsigned = await apActorJson();
+  const ordinaryActorId = "https://gw1.example/users/alice";
+  const cases: Record<string, Record<string, unknown>> = {
+    "an unsigned actor document": unsigned,
+    "an actor document signed by another DID": await sign(
+      unsigned,
+      otherKeyPair.privateKey,
+      `${otherDid}#${otherDid.slice("did:key:".length)}`,
+    ),
+    "a key missing from both assertionMethod and publicKey": await sign(
+      await apActorJson({ assertionMethod: false, publicKey: null }),
+    ),
+    "a key referred to by URL": await sign({
+      ...await apActorJson({ publicKey: null, assertionMethod: false }),
+      assertionMethod: [apKeyId.href],
+    }),
+    "a key only in publicKey without an owner": await sign(
+      withoutPublicKeyOwner(await apActorJson({ assertionMethod: false })),
+    ),
+    "a publicKey entry with other key material": await sign(
+      await apActorJson({ publicKey: rsaPublicKey3.publicKey! }),
+    ),
+    // A key at a compatible identifier is a gateway's, not the actor's own:
+    "a key only at a compatible identifier": await sign(await actorJson()),
+    "an actor without gateways": await sign(
+      await apActorJson({ gateways: [] }),
+    ),
+    "the document of another actor": await sign(
+      await apActorJson({ id: `${actorId}/other` }),
+    ),
+    // An ordinary actor listing the key does not speak for a portable one:
+    "an ordinary actor": await actorJson({
+      id: ordinaryActorId,
+      key: apKeyId,
+    }),
+    "a standalone key": {
+      "@context": "https://w3id.org/security/v1",
+      id: apKeyId.href,
+      type: "Key",
+      owner: actorId,
+      publicKeyPem: await exportSpki(gatewayPublicKey),
+    },
+  };
+  for (const [name, document] of Object.entries(cases)) {
+    const documentLoader = createLoader({ [compatibleId(gw1)]: document });
+    const key = await verifyRequest(
+      await signedRequest(undefined, hinted(gw1)),
+      {
+        documentLoader,
+        contextLoader,
+      },
+    );
+    strictEqual(key, null, name);
+  }
+  // A key ID without a fragment would be the actor itself:
+  const documentLoader = createLoader({
+    [compatibleId(gw1)]: await sign(await apActorJson()),
+  });
+  const actorKeyId = parseIri(`${actorId}?@gateway=${encodeURIComponent(gw1)}`);
+  strictEqual(
+    await verifyRequest(await signedRequest(undefined, actorKeyId), {
+      documentLoader,
+      contextLoader,
+    }),
+    null,
+  );
+  strictEqual(documentLoader.fetched.length, 0);
+});
+
+test("verifyRequest() tries the gateways of ap: key IDs in order", async () => {
+  const signed = await sign(await apActorJson());
+  const cases: Record<string, Record<string, unknown>> = {
+    "an invalid document at the first gateway": {
+      [compatibleId(gw1)]: await apActorJson(),
+      [compatibleId(gw2)]: signed,
+    },
+    "an unreachable first gateway": { [compatibleId(gw2)]: signed },
+  };
+  for (const [name, responses] of Object.entries(cases)) {
+    const documentLoader = createLoader(responses);
+    const key = await verifyRequest(
+      await signedRequest(undefined, hinted(gw1, gw2)),
+      { documentLoader, contextLoader },
+    );
+    strictEqual(key?.ownerId?.href, parseIri(actorId).href, name);
+    deepStrictEqual(
+      documentLoader.fetched,
+      [compatibleId(gw1), compatibleId(gw2)],
+      name,
+    );
+  }
+  // It stops at the first gateway that vouches for the key:
+  const documentLoader = createLoader({
+    [compatibleId(gw1)]: signed,
+    [compatibleId(gw2)]: signed,
+  });
+  ok(
+    await verifyRequest(await signedRequest(undefined, hinted(gw1, gw2)), {
+      documentLoader,
+      contextLoader,
+    }) != null,
+  );
+  deepStrictEqual(documentLoader.fetched, [compatibleId(gw1)]);
+  // At most five hints are followed:
+  const gateways = Array.from(
+    { length: 7 },
+    (_, i) => `https://gw${i + 10}.example`,
+  );
+  const many = createLoader({});
+  ok(
+    !(await verifyRequestDetailed(
+      await signedRequest(undefined, hinted(...gateways)),
+      { documentLoader: many, contextLoader },
+    )).verified,
+  );
+  deepStrictEqual(
+    many.fetched,
+    gateways.slice(0, 5).map((g) => compatibleId(g)),
+  );
+});
+
+function failingLoader(
+  responses: Record<string, unknown | number>,
+): DocumentLoader & { readonly fetched: string[] } {
+  // Unlike createLoader(), a number responds with that HTTP status, and
+  // the responses are looked up when requested, so that they can change:
+  const fetched: string[] = [];
+  const loader = (url: string): Promise<RemoteDocument> => {
+    fetched.push(url);
+    const response = responses[url.replace(/#.*$/, "")] ?? 404;
+    if (typeof response === "number") {
+      return Promise.reject(
+        new FetchError(
+          url,
+          `HTTP ${response}`,
+          new Response(null, { status: response }),
+        ),
+      );
+    }
+    return Promise.resolve({
+      contextUrl: null,
+      documentUrl: url,
+      document: structuredClone(response),
+    });
+  };
+  return Object.assign(loader, { fetched });
+}
+
+test("verifyRequest() reports why keys at ap: key IDs could not be looked up", async () => {
+  const hintedKeyId = hinted(gw1, gw2);
+  const invalid = await apActorJson();
+  const cases: {
+    name: string;
+    responses: Record<string, unknown | number>;
+    reason: "invalidSignature" | "keyFetchError";
+    status?: number;
+    cached: boolean;
+  }[] = [
+    {
+      name: "every gateway serves an invalid document",
+      responses: { [compatibleId(gw1)]: invalid, [compatibleId(gw2)]: invalid },
+      reason: "invalidSignature",
+      cached: true,
+    },
+    {
+      name: "every gateway responds with 410 Gone",
+      responses: { [compatibleId(gw1)]: 410, [compatibleId(gw2)]: 410 },
+      reason: "keyFetchError",
+      status: 410,
+      cached: true,
+    },
+    {
+      name: "the gateways respond with different statuses",
+      responses: { [compatibleId(gw1)]: 404, [compatibleId(gw2)]: 503 },
+      reason: "keyFetchError",
+      cached: true,
+    },
+    // Nothing tells what the unreachable gateway would have served:
+    {
+      name: "one gateway serves an invalid document, the other is gone",
+      responses: { [compatibleId(gw1)]: invalid, [compatibleId(gw2)]: 410 },
+      reason: "keyFetchError",
+      cached: false,
+    },
+  ];
+  for (const { name, responses, reason, status, cached } of cases) {
+    for (const spec of specs) {
+      const documentLoader = failingLoader(responses);
+      const keyCache = new KvKeyCache(new MemoryKvStore(), ["pk"]);
+      const options = { documentLoader, contextLoader, keyCache, spec };
+      for (let i = 0; i < 2; i++) {
+        const result = await verifyRequestDetailed(
+          await signedRequest(spec, hintedKeyId),
+          options,
+        );
+        ok(!result.verified, `${name}, ${spec}`);
+        strictEqual(result.reason.type, reason, `${name}, ${spec}`);
+        if (result.reason.type === "keyFetchError") {
+          strictEqual(
+            "status" in result.reason.result
+              ? result.reason.result.status
+              : undefined,
+            status,
+            `${name}, ${spec}`,
+          );
+        }
+      }
+      strictEqual(
+        documentLoader.fetched.length,
+        cached ? 2 : 4,
+        `${name}, ${spec}`,
+      );
+    }
+  }
+});
+
+test("verifyRequest() accepts keys at ap: key IDs only for HTTP Signatures", async () => {
+  const documentLoader = createLoader({
+    [compatibleId(gw1)]: await sign(await apActorJson()),
+  });
+  const hintedKeyId = hinted(gw1);
+  const keyCache = new KvKeyCache(new MemoryKvStore(), ["pk"]);
+  const options = { documentLoader, contextLoader, keyCache };
+  // Other purposes never even fetch the key:
+  for (const cls of [CryptographicKey, Multikey]) {
+    const result = cls === CryptographicKey
+      ? await fetchKey(hintedKeyId, CryptographicKey, options)
+      : await fetchKey(hintedKeyId, Multikey, options);
+    strictEqual(result.key, null);
+  }
+  strictEqual(documentLoader.fetched.length, 0);
+  for (let i = 0; i < 3; i++) {
+    const key = await verifyRequest(
+      await signedRequest(undefined, hintedKeyId),
+      options,
+    );
+    strictEqual(key?.id?.href, hintedKeyId.href);
+    strictEqual(key?.ownerId?.href, parseIri(actorId).href);
+  }
+  strictEqual(documentLoader.fetched.length, 1);
+  // The cached key is not accepted for other purposes either:
+  for (const cls of [CryptographicKey, Multikey]) {
+    const result = cls === CryptographicKey
+      ? await fetchKey(hintedKeyId, CryptographicKey, options)
+      : await fetchKey(hintedKeyId, Multikey, options);
+    strictEqual(result.key, null);
+  }
+  const document = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Create",
+    id: "https://gw1.example/activities/1",
+    actor: compatibleId(gw1),
+  };
+  const { signature } = await signJsonLd(
+    document,
+    rsaPrivateKey2,
+    hintedKeyId,
+    { contextLoader },
+  );
+  ok(!await verifyJsonLd({ ...document, signature }, options));
+  strictEqual(documentLoader.fetched.length, 1);
+  // Nor is a key that an older version cached under the key ID:
+  const legacyCache: KeyCache = {
+    get: () =>
+      Promise.resolve(
+        new CryptographicKey({
+          id: hintedKeyId,
+          owner: parseIri(actorId),
+          publicKey: gatewayPublicKey,
+        }),
+      ),
+    set: () => Promise.resolve(),
+  };
+  const empty = createLoader({});
+  strictEqual(
+    await verifyRequest(await signedRequest(undefined, hintedKeyId), {
+      documentLoader: empty,
+      contextLoader,
+      keyCache: legacyCache,
+    }),
+    null,
+  );
+  strictEqual(empty.fetched.length, 1);
+});
+
+test("verifyRequest() refreshes a cached key at an ap: key ID that fails to verify", async () => {
+  for (const spec of specs) {
+    const responses: Record<string, unknown | number> = {
+      [compatibleId(gw1)]: await sign(await apActorJson()),
+    };
+    const documentLoader = failingLoader(responses);
+    const hintedKeyId = hinted(gw1, gw2);
+    const keyCache = new KvKeyCache(new MemoryKvStore(), ["pk"]);
+    const options = { documentLoader, contextLoader, keyCache, spec };
+    ok(
+      await verifyRequest(await signedRequest(spec, hintedKeyId), options) !=
+        null,
+    );
+    strictEqual(documentLoader.fetched.length, 1, spec);
+    // The actor's document changes so that nothing is determined anymore:
+    responses[compatibleId(gw1)] = await apActorJson();
+    responses[compatibleId(gw2)] = 503;
+    const forged = await signRequest(
+      new Request("https://recipient.example/inbox", {
+        method: "POST",
+        body: "{}",
+        headers: { "Content-Type": "application/activity+json" },
+      }),
+      rsaPrivateKey3,
+      hintedKeyId,
+      { spec },
+    );
+    const result = await verifyRequestDetailed(forged, options);
+    ok(!result.verified, spec);
+    strictEqual(documentLoader.fetched.length, 3, spec);
+    // The stale key is not used anymore, and nothing was cached:
+    const next = await verifyRequestDetailed(
+      await signedRequest(spec, hintedKeyId),
+      options,
+    );
+    ok(!next.verified, spec);
+    strictEqual(next.reason.type, "keyFetchError", spec);
+    strictEqual(documentLoader.fetched.length, 5, spec);
+  }
+});
+
+test("doesActorOwnKey() and getKeyOwner() resolve keys at ap: key IDs to portable actors", async () => {
+  const documentLoader = createLoader({
+    [compatibleId(gw1)]: await sign(await apActorJson()),
+  });
+  const options = { documentLoader, contextLoader };
+  const hintedKeyId = hinted(gw1);
+  const key = new CryptographicKey({
+    id: hintedKeyId,
+    owner: parseIri(actorId),
+    publicKey: gatewayPublicKey,
+  });
+  const activity = new Create({
+    id: parseIri(`${actorId.replace("/actor", "")}/activities/1`),
+    actor: parseIri(`ap://${did}/actor`),
+  });
+  ok(await doesActorOwnKey(activity, key, options));
+  strictEqual(
+    (await getKeyOwner(hintedKeyId, options))?.id?.href,
+    parseIri(actorId).href,
+  );
+  strictEqual(
+    (await getKeyOwner(key, options))?.id?.href,
+    parseIri(actorId).href,
+  );
+  // Not for another actor, nor with other key material:
+  ok(
+    !await doesActorOwnKey(
+      new Create({
+        id: parseIri(`ap+ef61://${otherDid}/activities/1`),
+        actor: parseIri(`ap+ef61://${otherDid}/actor`),
+      }),
+      key,
+      options,
+    ),
+  );
+  const other = key.clone({ publicKey: rsaPublicKey3.publicKey! });
+  ok(!await doesActorOwnKey(activity, other, options));
+  strictEqual(await getKeyOwner(other, options), null);
+  // Nor if the actor's document does not vouch for the key, without falling
+  // back to anything else:
+  const unsigned = {
+    documentLoader: createLoader({ [compatibleId(gw1)]: await apActorJson() }),
+    contextLoader,
+  };
+  ok(!await doesActorOwnKey(activity, key, unsigned));
+  strictEqual(await getKeyOwner(hintedKeyId, unsigned), null);
+});
+
+test("verifyRequest() does not trust a cached key at an ap: key ID for longer than its proof", async () => {
+  let now = Temporal.Now.instant();
+  const keyCache = new KvKeyCache(new MemoryKvStore(), ["pk"], {
+    now: () => now,
+  });
+  const expires = now.add({ minutes: 30 });
+  const documentLoader = createLoader({
+    [compatibleId(gw1)]: await sign(
+      await apActorJson(),
+      ed25519PrivateKey,
+      didKeyId,
+      { expires: expires.toString() },
+    ),
+  });
+  const options = { documentLoader, contextLoader, keyCache };
+  const hintedKeyId = hinted(gw1);
+  ok(
+    await verifyRequest(await signedRequest(undefined, hintedKeyId), options) !=
+      null,
+  );
+  now = expires.subtract({ seconds: 1 });
+  ok(
+    await verifyRequest(await signedRequest(undefined, hintedKeyId), options) !=
+      null,
+  );
+  strictEqual(documentLoader.fetched.length, 1);
+  now = expires;
+  ok(
+    await verifyRequest(await signedRequest(undefined, hintedKeyId), options) !=
+      null,
+  );
+  strictEqual(documentLoader.fetched.length, 2);
+});
+
+test("verifyRequest() does not cache keys at ap: key IDs it could not process", async () => {
+  // A context that fails to load once, e.g., because of a network error, does
+  // not tell whether the actor's document vouches for the key:
+  let failures = 1;
+  const flakyContextLoader: DocumentLoader = (url, options) => {
+    if (failures > 0) {
+      failures--;
+      return Promise.reject(new Error(`Temporarily failed to load ${url}`));
+    }
+    return contextLoader(url, options);
+  };
+  const documentLoader = createLoader({
+    [compatibleId(gw1)]: await sign(await apActorJson()),
+  });
+  const keyCache = new KvKeyCache(new MemoryKvStore(), ["pk"]);
+  const options = {
+    documentLoader,
+    contextLoader: flakyContextLoader,
+    keyCache,
+  };
+  const hintedKeyId = hinted(gw1);
+  const result = await verifyRequestDetailed(
+    await signedRequest(undefined, hintedKeyId),
+    options,
+  );
+  ok(!result.verified);
+  strictEqual(result.reason.type, "keyFetchError");
+  if (result.reason.type === "keyFetchError") {
+    ok(!("status" in result.reason.result));
+  }
+  const key = await verifyRequest(
+    await signedRequest(undefined, hintedKeyId),
+    options,
+  );
+  strictEqual(key?.ownerId?.href, parseIri(actorId).href);
+  strictEqual(documentLoader.fetched.length, 2);
+});

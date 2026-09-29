@@ -31,8 +31,13 @@ import {
   isCompatibleKeyId,
   isPortableActorDocument,
   isPortableId,
+  isPortableUri,
+  parseKeyIdString,
 } from "./portable-key-id.ts";
-import type { PortableGatewayKeyResolution } from "./portable-key.ts";
+import type {
+  PortableActorKeyResolution,
+  PortableGatewayKeyResolution,
+} from "./portable-key.ts";
 
 /**
  * Checks if the given key is valid and supported.  No-op if the key is valid,
@@ -235,21 +240,40 @@ export interface FetchKeyOptions {
   keyIdBoundByCaller?: boolean;
 
   /**
-   * Resolves a gateway key of an [FEP-ef61] portable actor, i.e., a key whose
-   * ID is a compatible identifier and dereferences to a portable actor's
-   * document.  Such a key is resolved only through this function, and is
-   * rejected if it is omitted, so that only HTTP Signature verification,
-   * which passes it, accepts gateway keys.  Object Integrity Proofs and
-   * Linked Data Signatures never do.
+   * Resolves keys of [FEP-ef61] portable actors, which only HTTP Signature
+   * verification passes, so that only it accepts them.  Object Integrity
+   * Proofs and Linked Data Signatures never do: such a key is rejected if
+   * this is omitted.
    *
    * [FEP-ef61]: https://w3id.org/fep/ef61
    * @internal
    */
-  portableGatewayKeyResolver?: (
+  portableKeyResolvers?: PortableKeyResolvers;
+}
+
+/**
+ * Resolves keys of [FEP-ef61] portable actors for HTTP Signature
+ * verification.  See {@link FetchKeyOptions.portableKeyResolvers}.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
+ * @internal
+ */
+export interface PortableKeyResolvers {
+  /**
+   * Resolves a gateway key, i.e., a key whose ID is a compatible identifier
+   * and dereferences to a portable actor's document.
+   */
+  gatewayKey(
     document: unknown,
     actor: Actor,
     keyId: URL,
-  ) => Promise<PortableGatewayKeyResolution>;
+  ): Promise<PortableGatewayKeyResolution>;
+
+  /**
+   * Resolves a key of a portable actor itself, i.e., a key whose ID is an
+   * `ap:` or `ap+ef61:` URI.
+   */
+  actorKey(keyId: URL): Promise<PortableActorKeyResolution>;
 }
 
 /**
@@ -581,6 +605,18 @@ type FetchableKeyClass<T extends CryptographicKey | Multikey> =
     ): Promise<T>;
   };
 
+/**
+ * Parses a key ID given as a string.  Unlike `new URL()`, it accepts `ap:`
+ * and `ap+ef61:` URIs, and refuses a portable or compatible key ID whose
+ * identity URL parsing would change, e.g., by resolving dot segments.
+ * @throws {TypeError} If the key ID is invalid.
+ */
+function parseKeyIdOrThrow(keyId: string): URL {
+  const parsed = parseKeyIdString(keyId);
+  if (parsed == null) throw new TypeError(`Invalid key ID: ${keyId}`);
+  return parsed;
+}
+
 async function withFetchKeySpan<T extends { cached: boolean }>(
   keyId: URL,
   tracerProvider: TracerProvider | undefined,
@@ -624,9 +660,11 @@ async function withFetchKeySpan<T extends { cached: boolean }>(
  * Gateway keys of [FEP-ef61] portable actors, i.e., keys whose IDs are
  * compatible identifiers that dereference to portable actor documents, are
  * not resolved by this function, as they only authenticate HTTP requests;
- * use `verifyRequest()` or `getKeyOwner()` for them instead.  Keys whose IDs
- * are compatible identifiers are never read from or written to the key
- * cache under their IDs, except for failures to fetch them.
+ * use `verifyRequest()` or `getKeyOwner()` for them instead.  Nor are keys
+ * of portable actors whose IDs are `ap:` or `ap+ef61:` URIs, for the same
+ * reason.  Keys whose IDs are compatible identifiers or `ap:` or `ap+ef61:`
+ * URIs are never read from or written to the key cache under their IDs,
+ * except for failures to fetch them.
  *
  * [FEP-ef61]: https://w3id.org/fep/ef61
  * @template T The type of the key to fetch.  Either {@link CryptographicKey}
@@ -643,7 +681,7 @@ export function fetchKey<T extends CryptographicKey | Multikey>(
   cls: FetchableKeyClass<T>,
   options: FetchKeyOptions = {},
 ): Promise<FetchKeyResult<T>> {
-  keyId = typeof keyId === "string" ? new URL(keyId) : keyId;
+  keyId = typeof keyId === "string" ? parseKeyIdOrThrow(keyId) : keyId;
   return withFetchKeySpan(
     keyId,
     options.tracerProvider,
@@ -658,9 +696,11 @@ export function fetchKey<T extends CryptographicKey | Multikey>(
  * Gateway keys of [FEP-ef61] portable actors, i.e., keys whose IDs are
  * compatible identifiers that dereference to portable actor documents, are
  * not resolved by this function, as they only authenticate HTTP requests;
- * use `verifyRequest()` or `getKeyOwner()` for them instead.  Keys whose IDs
- * are compatible identifiers are never read from or written to the key
- * cache under their IDs, except for failures to fetch them.
+ * use `verifyRequest()` or `getKeyOwner()` for them instead.  Nor are keys
+ * of portable actors whose IDs are `ap:` or `ap+ef61:` URIs, for the same
+ * reason.  Keys whose IDs are compatible identifiers or `ap:` or `ap+ef61:`
+ * URIs are never read from or written to the key cache under their IDs,
+ * except for failures to fetch them.
  *
  * [FEP-ef61]: https://w3id.org/fep/ef61
  *
@@ -678,7 +718,7 @@ export async function fetchKeyDetailed<T extends CryptographicKey | Multikey>(
   cls: FetchableKeyClass<T>,
   options: FetchKeyOptions = {},
 ): Promise<FetchKeyDetailedResult<T>> {
-  const cacheKey = typeof keyId === "string" ? new URL(keyId) : keyId;
+  const cacheKey = typeof keyId === "string" ? parseKeyIdOrThrow(keyId) : keyId;
   return await withFetchKeySpan(
     cacheKey,
     options.tracerProvider,
@@ -891,7 +931,7 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
     keyCache,
     tracerProvider,
     keyIdBoundByCaller,
-    portableGatewayKeyResolver,
+    portableKeyResolvers,
   }: FetchKeyOptions,
   logger: ReturnType<typeof getLogger>,
 ): Promise<FetchKeyResult<T>> {
@@ -933,7 +973,7 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
     // another purpose:
     const scopedCache = keyCache as CompatibleKeyCache | undefined;
     if (
-      portableGatewayKeyResolver == null ||
+      portableKeyResolvers == null ||
       cls !== (CryptographicKey as unknown as FetchableKeyClass<T>)
     ) {
       logger.debug(
@@ -944,7 +984,7 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
       await scopedCache?.set(cacheKey, null);
       return { key: null, cached: false };
     }
-    const resolution = await portableGatewayKeyResolver(
+    const resolution = await portableKeyResolvers.gatewayKey(
       document,
       object,
       cacheKey,
@@ -1184,6 +1224,18 @@ async function fetchKeyWithResult<
     const logger = getLogger(["fedify", "sig", "key"]);
     const keyId = cacheKey.href;
     const keyCache = options.keyCache as FetchErrorMetadataCache | undefined;
+    if (isPortableUri(cacheKey)) {
+      const result = await fetchPortableActorKey(
+        cacheKey,
+        cls,
+        options,
+        onCachedUnavailable,
+        onFetchError,
+        logger,
+      );
+      outcome = result.outcome;
+      return result.result;
+    }
     if (isCompatibleKeyId(cacheKey)) {
       const result = await fetchCompatibleKey(
         cacheKey,
@@ -1282,7 +1334,7 @@ function getCompatibleKeyScope<T extends CryptographicKey | Multikey>(
   if (cls !== (CryptographicKey as unknown as FetchableKeyClass<T>)) {
     return "multikey";
   }
-  return options.portableGatewayKeyResolver == null
+  return options.portableKeyResolvers == null
     ? "cryptographicKey"
     : "httpSignature";
 }
@@ -1394,12 +1446,131 @@ async function fetchCompatibleKey<
   };
 }
 
+/**
+ * Looks up a key of an [FEP-ef61] portable actor at an `ap:` or `ap+ef61:`
+ * key ID.  Such a key is accepted only for HTTP Signatures, and is rejected
+ * for any other purpose without being fetched.  Like keys at compatible
+ * identifiers, what it resolves to is cached in the namespace of the lookup's
+ * purpose, and a failure to fetch the actor's document from every gateway is
+ * cached in the shared namespace.  A failure that is neither, e.g., one
+ * gateway being unreachable while another served an invalid document, is not
+ * cached at all.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
+ */
+async function fetchPortableActorKey<
+  T extends CryptographicKey | Multikey,
+  TResult extends FetchKeyResult<T>,
+>(
+  cacheKey: URL,
+  cls: FetchableKeyClass<T>,
+  options: FetchKeyOptions,
+  onCachedUnavailable: (
+    cacheKey: URL,
+    keyId: string,
+    keyCache: FetchErrorMetadataCache | undefined,
+    logger: ReturnType<typeof getLogger>,
+  ) => Promise<TResult> | TResult,
+  onFetchError: (
+    error: unknown,
+    cacheKey: URL,
+    keyId: string,
+    keyCache: FetchErrorMetadataCache | undefined,
+    logger: ReturnType<typeof getLogger>,
+  ) => Promise<TResult> | TResult,
+  logger: ReturnType<typeof getLogger>,
+): Promise<{
+  result: TResult;
+  outcome: { result: KeyLookupResult; statusCode?: number };
+}> {
+  const keyId = cacheKey.href;
+  const resolvers = options.portableKeyResolvers;
+  if (
+    resolvers == null ||
+    cls !== (CryptographicKey as unknown as FetchableKeyClass<T>)
+  ) {
+    logger.debug(
+      "Failed to verify; key {keyId} is a key of a portable actor, which is " +
+        "only accepted for HTTP Signatures.",
+      { keyId },
+    );
+    return {
+      result: { key: null, cached: false } as TResult,
+      outcome: { result: "invalid" },
+    };
+  }
+  const sharedCache = options.keyCache as FetchErrorMetadataCache | undefined;
+  const scopedCache = sharedCache?.compatibleKeyScope?.("httpSignature");
+  // What HTTP Signatures resolved takes precedence over the shared namespace:
+  const cached = await getCachedFetchKey(
+    cacheKey,
+    keyId,
+    cls,
+    scopedCache,
+    logger,
+  );
+  if (cached != null) {
+    return { result: cached as TResult, outcome: { result: "hit" } };
+  }
+  // The shared namespace only has fetch failures of portable key IDs.  A key
+  // found there was not cached by this function, and is resolved again:
+  if (await sharedCache?.get(cacheKey) === null) {
+    logger.debug(
+      "Entry {keyId} found in cache, but it could not be fetched.",
+      { keyId },
+    );
+    return {
+      result: await onCachedUnavailable(cacheKey, keyId, sharedCache, logger),
+      outcome: { result: "hit" },
+    };
+  }
+  logger.debug("Resolving key {keyId} to verify signature...", { keyId });
+  const resolution = await resolvers.actorKey(cacheKey);
+  if (resolution.type === "verified") {
+    // The key is only as good as the proof of the document that vouches for
+    // it, so it must not outlive the proof:
+    await scopedCache?.set(cacheKey, resolution.key, {
+      expires: resolution.expires,
+    });
+    return {
+      result: {
+        key: resolution.key as unknown as T & { publicKey: CryptoKey },
+        cached: false,
+      } as TResult,
+      outcome: { result: "fetched" },
+    };
+  }
+  if (resolution.type === "rejected") {
+    await scopedCache?.set(cacheKey, null);
+    return {
+      result: { key: null, cached: false } as TResult,
+      outcome: { result: "invalid" },
+    };
+  }
+  // A key resolved before is not fresh anymore, e.g., when it has just
+  // failed to verify a signature and is being resolved again:
+  await scopedCache?.delete(cacheKey);
+  const result = await onFetchError(
+    resolution.error,
+    cacheKey,
+    keyId,
+    resolution.cacheable ? sharedCache : undefined,
+    logger,
+  );
+  return {
+    result,
+    outcome: resolution.cacheable
+      ? classifyFetchError(resolution.error)
+      : { result: "error" },
+  };
+}
+
 async function fetchKeyInternal<T extends CryptographicKey | Multikey>(
   keyId: URL | string,
   cls: FetchableKeyClass<T>,
   options: FetchKeyOptions = {},
 ): Promise<FetchKeyResult<T>> {
-  const cacheKey = typeof keyId === "string" ? new URL(keyId) : keyId;
+  const cacheKey = typeof keyId === "string" ? parseKeyIdOrThrow(keyId) : keyId;
   return await fetchKeyWithResult<T, FetchKeyResult<T>>(
     cacheKey,
     cls,
