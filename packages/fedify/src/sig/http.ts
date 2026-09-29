@@ -45,6 +45,7 @@ import {
   type PortableKeyResolvers,
   validateCryptoKey,
 } from "./key.ts";
+import { promoteKeyOwnerEvidence } from "./key-owner-evidence.ts";
 import {
   type PortableGatewayKeyOptions,
   resolvePortableActorKey,
@@ -1004,7 +1005,11 @@ export async function verifyRequestDetailed(
         }
 
         recordVerificationResult(span, result);
-        if (!result.verified) {
+        if (result.verified) {
+          // Only now that the key has verified the signature may the owner
+          // checks reuse what its portable actor's document told about it:
+          promoteKeyOwnerEvidence(result.key);
+        } else {
           span.setStatus({ code: SpanStatusCode.ERROR });
         }
         return result;

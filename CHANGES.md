@@ -185,11 +185,13 @@ To be released.
     `assertionMethod`, and lists the gateway in its `gateways`.  Such a key is
     owned by the portable actor, so `RequestContext.getSignedKeyOwner()`,
     `getKeyOwner()`, and `doesActorOwnKey()` return or match the portable
-    actor.  The document may list the key under the key ID itself or under
-    the `ap:` URI with the same canonical ID, as Mitra does, but not under
-    both, nor under a compatible identifier on another gateway.  Previously,
-    no gateway key of a portable actor could be verified.
-    [[#288], [#840], [#1096], [#1099], [#1134]]
+    actor.  Given the very key that HTTP Signature verification returned,
+    they take the actor from the document it verified rather than fetching
+    and verifying the document again.  The document may list the key under
+    the key ID itself or under the `ap:` URI with the same canonical ID, as
+    Mitra does, but not under both, nor under a compatible identifier on
+    another gateway.  Previously, no gateway key of a portable actor could be
+    verified.  [[#288], [#840], [#1096], [#1099], [#1123], [#1134], [#1164]]
 
  -  Changed HTTP Signature verification to accept a key of a portable actor
     itself whose ID is an `ap:` or `ap+ef61:` URI, e.g.,
@@ -686,6 +688,7 @@ To be released.
 [#1117]: https://github.com/fedify-dev/fedify/pull/1117
 [#1119]: https://github.com/fedify-dev/fedify/pull/1119
 [#1120]: https://github.com/fedify-dev/fedify/pull/1120
+[#1123]: https://github.com/fedify-dev/fedify/issues/1123
 [#1124]: https://github.com/fedify-dev/fedify/pull/1124
 [#1133]: https://github.com/fedify-dev/fedify/issues/1133
 [#1134]: https://github.com/fedify-dev/fedify/pull/1134
@@ -693,6 +696,7 @@ To be released.
 [#1142]: https://github.com/fedify-dev/fedify/pull/1142
 [#1143]: https://github.com/fedify-dev/fedify/issues/1143
 [#1145]: https://github.com/fedify-dev/fedify/pull/1145
+[#1164]: https://github.com/fedify-dev/fedify/pull/1164
 
 ### @fedify/adonisjs
 

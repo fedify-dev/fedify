@@ -19,15 +19,23 @@ import {
   ed25519PrivateKey,
   ed25519PublicKey,
   rsaPrivateKey2,
+  rsaPrivateKey3,
   rsaPublicKey2,
 } from "../testing/keys.ts";
-import { signRequest } from "../sig/http.ts";
+import {
+  signRequest,
+  verifyRequest,
+  verifyRequestDetailed,
+} from "../sig/http.ts";
+import type { CompatibleKeyCache, CompatibleKeyScope } from "../sig/key.ts";
+import { getVerifiedKeyOwnerEvidence } from "../sig/key-owner-evidence.ts";
+import { doesActorOwnKey, getKeyOwner } from "../sig/owner.ts";
 import { signJsonLd } from "../sig/ld.ts";
 import { ActivityListenerSet } from "./activity-listener.ts";
 import type { InboxContext } from "./context.ts";
 import { handleInbox } from "./handler.ts";
 import { KvKeyCache } from "./keycache.ts";
-import { MemoryKvStore } from "./kv.ts";
+import { type KvKey, MemoryKvStore } from "./kv.ts";
 import { createFederation, FederationImpl } from "./middleware.ts";
 import type { SenderKeyPair } from "./send.ts";
 
@@ -789,4 +797,253 @@ test("handleInbox() checks the DIDs of compatible activity IDs", async () => {
     ),
     { status: 401, dispatched: 0 },
   );
+});
+
+// Reusing the actors that verified gateway keys and keys at ap: key IDs
+
+function countingLoader(
+  responses: Record<string, unknown>,
+): { documentLoader: DocumentLoader; fetched: () => number } {
+  const inner = createLoader(responses);
+  let count = 0;
+  return {
+    documentLoader(url, options) {
+      if (url.replace(/#.*$/, "") === compatibleActorId(gateway)) count++;
+      return inner(url, options);
+    },
+    fetched: () => count,
+  };
+}
+
+async function signedRequest(
+  keyId: URL = gatewayKeyId,
+  privateKey: CryptoKey = rsaPrivateKey2,
+  spec?: "rfc9421",
+): Promise<Request> {
+  return await signRequest(
+    new Request("https://local.example/notes/1", {
+      headers: { Accept: "application/activity+json" },
+    }),
+    privateKey,
+    keyId,
+    spec == null ? {} : { spec },
+  );
+}
+
+test("handleInbox() fetches the actor of a gateway key once", async () => {
+  // The inbox only verifies HTTP Signatures when no proof authenticates
+  // the activity, which a portable actor's activity cannot do without, so it
+  // is rejected, but only after its gateway key is resolved:
+  for (
+    const [keyId, actor] of [
+      [gatewayKeyId, await actorDocument([gateway])],
+      [apKeyId, await apActorDocument()],
+    ] as const
+  ) {
+    const { documentLoader, fetched } = countingLoader({
+      [compatibleActorId(gateway)]: actor,
+    });
+    const kv = new MemoryKvStore();
+    for (let i = 0; i < 2; i++) {
+      assertEquals(
+        await deliver(await createJson(`once-${i}`), [gateway], {
+          kv,
+          documentLoader,
+          keyId,
+        }),
+        { status: 401, dispatched: 0 },
+      );
+      // The second delivery finds the key in the cache:
+      assertEquals(fetched(), 1);
+    }
+  }
+});
+
+test("RequestContext.getSignedKeyOwner() does not fetch the actor of a gateway key again", async () => {
+  for (
+    const [keyId, actor, gateways] of [
+      [
+        gatewayKeyId,
+        await actorDocument([gateway, otherGateway]),
+        [`${gateway}/`, `${otherGateway}/`],
+      ],
+      [apKeyId, await apActorDocument(), [`${gateway}/`]],
+    ] as const
+  ) {
+    const { documentLoader, fetched } = countingLoader({
+      [compatibleActorId(gateway)]: actor,
+    });
+    const federation = new FederationImpl<void>({
+      kv: new MemoryKvStore(),
+      contextLoaderFactory: () => mockDocumentLoader,
+      documentLoaderFactory: () => documentLoader,
+    });
+    const ctx = federation.createContext(await signedRequest(keyId), undefined);
+    assertEquals((await ctx.getSignedKey())?.id?.href, keyId.href);
+    assertEquals(fetched(), 1);
+    const owner = await ctx.getSignedKeyOwner();
+    assertEquals(owner?.id?.href, actorId.href);
+    assertEquals(owner?.gateways.map((g) => g.href), [...gateways]);
+    assertEquals(fetched(), 1);
+  }
+});
+
+test("getKeyOwner() reuses the actor of a cached gateway key", async () => {
+  for (const spec of [undefined, "rfc9421"] as const) {
+    const { documentLoader, fetched } = countingLoader({
+      [compatibleActorId(gateway)]: await actorDocument([gateway]),
+    });
+    const keyCache = new KvKeyCache(new MemoryKvStore(), ["pk"]);
+    const options = {
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      keyCache,
+    };
+    const fresh = await verifyRequest(
+      await signedRequest(gatewayKeyId, rsaPrivateKey2, spec),
+      options,
+    );
+    const cached = await verifyRequest(
+      await signedRequest(gatewayKeyId, rsaPrivateKey2, spec),
+      options,
+    );
+    assertEquals(fetched(), 1);
+    for (const key of [fresh, cached]) {
+      const owner = await getKeyOwner(key!, options);
+      assertEquals(owner?.id?.href, actorId.href);
+    }
+    assertEquals(fetched(), 1);
+  }
+});
+
+test("doesActorOwnKey() checks the actor of a verified gateway key without fetching", async () => {
+  const { documentLoader, fetched } = countingLoader({
+    [compatibleActorId(gateway)]: await actorDocument([gateway]),
+  });
+  const options = { documentLoader, contextLoader: mockDocumentLoader };
+  const key = await verifyRequest(await signedRequest(), options);
+  assertEquals(fetched(), 1);
+  assertEquals(await doesActorOwnKey(portableCreate(), key!, options), true);
+  const otherActorCreate = new Create({
+    id: parseIri(`ap+ef61://${otherDid}/activities/1`),
+    actor: parseIri(`ap+ef61://${otherDid}/actors/alice`),
+  });
+  assertEquals(
+    await doesActorOwnKey(otherActorCreate, key!, options),
+    false,
+  );
+  assertEquals(fetched(), 1);
+});
+
+test("doesActorOwnKey() and getKeyOwner() fully check other gateway keys", async () => {
+  const { documentLoader, fetched } = countingLoader({
+    [compatibleActorId(gateway)]: await actorDocument([gateway]),
+  });
+  const options = { documentLoader, contextLoader: mockDocumentLoader };
+  const verified = await verifyRequest(await signedRequest(), options);
+  assertEquals(fetched(), 1);
+  // Neither a key built by hand with the same ID, owner, and key material,
+  // nor a clone of the verified key, is the key that was verified:
+  const others = [
+    new CryptographicKey({
+      id: gatewayKeyId,
+      owner: actorId,
+      publicKey: rsaPublicKey2.publicKey!,
+    }),
+    verified!.clone({}),
+  ];
+  let expected = 1;
+  for (const key of others) {
+    assertEquals(await doesActorOwnKey(portableCreate(), key, options), true);
+    assertEquals(fetched(), ++expected);
+    assertEquals((await getKeyOwner(key, options))?.id?.href, actorId.href);
+    assertEquals(fetched(), ++expected);
+  }
+  // A verified key whose owner has been changed since is not trusted either:
+  const mutated = await verifyRequest(await signedRequest(), options);
+  mutated!.ownerId!.href = parseIri(`ap+ef61://${otherDid}/actors/alice`).href;
+  assertEquals(getVerifiedKeyOwnerEvidence(mutated!), undefined);
+});
+
+test("verifyRequest() does not vouch for the owners of keys that fail to verify signatures", async () => {
+  const documentLoader = createLoader({
+    [compatibleActorId(gateway)]: await actorDocument([gateway]),
+  });
+  const cachedKeys: CryptographicKey[] = [];
+  const keyCache = new class extends KvKeyCache {
+    override compatibleKeyScope(
+      scope: CompatibleKeyScope,
+    ): Required<CompatibleKeyCache> {
+      const scoped = super.compatibleKeyScope(scope);
+      return {
+        ...scoped,
+        set(keyId, key, options) {
+          if (key instanceof CryptographicKey) cachedKeys.push(key);
+          return scoped.set(keyId, key, options);
+        },
+      };
+    }
+  }(new MemoryKvStore(), ["pk"]);
+  // Signed with another key than the gateway's:
+  const result = await verifyRequestDetailed(
+    await signedRequest(gatewayKeyId, rsaPrivateKey3),
+    { documentLoader, contextLoader: mockDocumentLoader, keyCache },
+  );
+  assertEquals(result.verified, false);
+  assertEquals(cachedKeys.length, 1);
+  assertEquals(getVerifiedKeyOwnerEvidence(cachedKeys[0]), undefined);
+});
+
+test("doesActorOwnKey() fully checks cached gateway keys cached without their actors", async () => {
+  const { documentLoader, fetched } = countingLoader({
+    [compatibleActorId(gateway)]: await actorDocument([gateway]),
+  });
+  const kv = new MemoryKvStore();
+  const keyCache = new KvKeyCache(kv, ["pk"]);
+  const options = {
+    documentLoader,
+    contextLoader: mockDocumentLoader,
+    keyCache,
+  };
+  await verifyRequest(await signedRequest(), options);
+  assertEquals(fetched(), 1);
+  // Drop the actor from the cache entry:
+  const entryKey: KvKey = [
+    "pk",
+    "__compatible",
+    "httpSignature",
+    gatewayKeyId.href,
+  ];
+  const { owner: _, ...entry } = await kv.get<Record<string, unknown>>(
+    entryKey,
+  ) ?? {};
+  await kv.set(entryKey, entry);
+  const key = await verifyRequest(await signedRequest(), options);
+  assertEquals(fetched(), 1);
+  assertEquals(getVerifiedKeyOwnerEvidence(key!), undefined);
+  assertEquals(await doesActorOwnKey(portableCreate(), key!, options), true);
+  assertEquals(fetched(), 2);
+});
+
+test("Owners of verified gateway keys expire with their cache entries", async () => {
+  const documentLoader = createLoader({
+    [compatibleActorId(gateway)]: await actorDocument([gateway]),
+  });
+  const now = Temporal.Now.instant();
+  const keyCache = new KvKeyCache(new MemoryKvStore(), ["pk"], {
+    keyTtl: Temporal.Duration.from({ minutes: 5 }),
+    now: () => now,
+  });
+  const key = await verifyRequest(await signedRequest(), {
+    documentLoader,
+    contextLoader: mockDocumentLoader,
+    keyCache,
+  });
+  const deadline = now.add({ minutes: 5 });
+  assertEquals(
+    getVerifiedKeyOwnerEvidence(key!, deadline.subtract({ seconds: 1 }))
+      ?.expires,
+    deadline,
+  );
+  assertEquals(getVerifiedKeyOwnerEvidence(key!, deadline), undefined);
 });

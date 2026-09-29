@@ -3,10 +3,12 @@ import type { DocumentLoader } from "@fedify/vocab-runtime";
 import type { TracerProvider } from "@opentelemetry/api";
 import type {
   CompatibleKeyCache,
+  CompatibleKeyCacheEntry,
   CompatibleKeyScope,
   FetchErrorMetadataCache,
   FetchKeyErrorResult,
 } from "../sig/key.ts";
+import { MAX_PORTABLE_KEY_TTL } from "../sig/key-owner-evidence.ts";
 import type { KvKey, KvStore } from "./kv.ts";
 
 // Cached keys carry the owner that was verified when they were fetched, so
@@ -21,20 +23,27 @@ const KEY_CACHE_GENERATION = "2";
 // under this segment; see KvKeyCache.compatibleKeyScope().
 const COMPATIBLE_KEY_SEGMENT = "__compatible";
 
-// A key at a compatible identifier may be a gateway key, which the portable
-// actor's signed document vouches for.  The actor can drop the gateway or
-// the key from its document at any time, so the key is looked up again at
-// least this often, however long other keys are cached:
-const MAX_COMPATIBLE_KEY_TTL = Temporal.Duration.from({ hours: 1 });
+// The actor document stored along with a key is as large as its remote
+// actor makes it, and some stores, e.g., Deno KV, refuse values larger than
+// 64 KiB.  A larger document is not stored, which only costs the key its
+// owner, i.e., the owner is fetched again when it is asked for:
+const MAX_OWNER_BYTES = 32 * 1024;
 
 interface CompatibleKeyEntry {
   readonly key: unknown;
   readonly expires: number;
+  // The expanded root node of the verified document of the portable actor
+  // that owns the key, if any:
+  readonly owner?: unknown;
 }
 
 function isCompatibleKeyEntry(value: unknown): value is CompatibleKeyEntry {
   return value != null && typeof value === "object" && "key" in value &&
     "expires" in value && typeof value.expires === "number";
+}
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return value != null && typeof value === "object" && !Array.isArray(value);
 }
 
 export interface KvKeyCacheOptions {
@@ -151,7 +160,7 @@ export class KvKeyCache implements FetchErrorMetadataCache {
    * @returns The namespace.
    * @internal
    */
-  compatibleKeyScope(scope: CompatibleKeyScope): CompatibleKeyCache {
+  compatibleKeyScope(scope: CompatibleKeyScope): Required<CompatibleKeyCache> {
     const now = this.options.now ?? (() => Temporal.Now.instant());
     const entryKey = (keyId: URL): KvKey => [
       ...this.prefix,
@@ -161,34 +170,61 @@ export class KvKeyCache implements FetchErrorMetadataCache {
     ];
     const isExpired = (entry: CompatibleKeyEntry): boolean =>
       entry.expires <= now().epochMilliseconds;
+    // A key at a compatible identifier may be a gateway key, which the
+    // portable actor's signed document vouches for.  The actor can drop
+    // the gateway or the key from its document at any time, so the key is
+    // looked up again at least this often, however long other keys are
+    // cached:
     const keyTtl = Math.min(
       this.keyTtl.total("millisecond"),
-      MAX_COMPATIBLE_KEY_TTL.total("millisecond"),
+      MAX_PORTABLE_KEY_TTL.total("millisecond"),
     );
     const unavailableKeyTtl = this.unavailableKeyTtl.total("millisecond");
-    return {
-      get: async (keyId) => {
-        const entry = await this.kv.get(entryKey(keyId));
-        if (entry === undefined) return undefined;
-        if (!isCompatibleKeyEntry(entry) || isExpired(entry)) {
+    const getEntry = async (
+      keyId: URL,
+    ): Promise<CompatibleKeyCacheEntry | null | undefined> => {
+      const entry = await this.kv.get(entryKey(keyId));
+      if (entry === undefined) return undefined;
+      if (!isCompatibleKeyEntry(entry) || isExpired(entry)) {
+        await this.kv.delete(entryKey(keyId));
+        return undefined;
+      }
+      if (entry.key === null) return null;
+      let expires: Temporal.Instant;
+      try {
+        expires = Temporal.Instant.fromEpochMilliseconds(entry.expires);
+      } catch (error) {
+        // E.g., NaN or a time Temporal cannot represent:
+        if (!(error instanceof RangeError)) throw error;
+        await this.kv.delete(entryKey(keyId));
+        return undefined;
+      }
+      let key: CryptographicKey | Multikey;
+      try {
+        key = await CryptographicKey.fromJsonLd(entry.key, this.options);
+      } catch {
+        try {
+          key = await Multikey.fromJsonLd(entry.key, this.options);
+        } catch {
           await this.kv.delete(entryKey(keyId));
           return undefined;
         }
-        if (entry.key === null) return null;
-        let key: CryptographicKey | Multikey;
-        try {
-          key = await CryptographicKey.fromJsonLd(entry.key, this.options);
-        } catch {
-          try {
-            key = await Multikey.fromJsonLd(entry.key, this.options);
-          } catch {
-            await this.kv.delete(entryKey(keyId));
-            return undefined;
-          }
-        }
-        // Parsing the key may have taken long enough for it to expire:
-        return isExpired(entry) ? undefined : key;
+      }
+      // Parsing the key may have taken long enough for it to expire:
+      if (isExpired(entry)) return undefined;
+      return {
+        key,
+        // A malformed owner only costs the key its owner, not the key itself:
+        ...(isJsonObject(entry.owner) ? { owner: entry.owner } : {}),
+        expires,
+      };
+    };
+    return {
+      get: async (keyId) => {
+        const entry = await getEntry(keyId);
+        return entry == null ? entry : entry.key;
       },
+      getEntry,
       set: async (keyId, key, options) => {
         const serialized = key == null
           ? null
@@ -203,13 +239,25 @@ export class KvKeyCache implements FetchErrorMetadataCache {
         if (ttl <= 0) {
           // Whatever was cached before is not valid any longer either:
           await this.kv.delete(entryKey(keyId));
-          return;
+          return undefined;
         }
+        const owner = key == null || options?.owner == null ||
+            new TextEncoder().encode(JSON.stringify(options.owner)).length >
+              MAX_OWNER_BYTES
+          ? undefined
+          : options.owner;
         await this.kv.set(
           entryKey(keyId),
-          { key: serialized, expires } satisfies CompatibleKeyEntry,
+          {
+            key: serialized,
+            expires,
+            ...(owner == null ? {} : { owner }),
+          } satisfies CompatibleKeyEntry,
           { ttl: Temporal.Duration.from({ milliseconds: ttl }) },
         );
+        return key == null
+          ? undefined
+          : Temporal.Instant.fromEpochMilliseconds(expires);
       },
       delete: async (keyId) => {
         await this.kv.delete(entryKey(keyId));

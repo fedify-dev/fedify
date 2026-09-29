@@ -1250,6 +1250,16 @@ document expires, whichever comes first.  A failure to fetch a key at a
 compatible identifier, by contrast, fails every purpose alike, so it is cached
 like that of any other key.
 
+The key that HTTP Signature verification returns, e.g., from
+`RequestContext.getSignedKey()` or `verifyRequest()`, remembers the portable
+actor whose document vouched for it, and the cache keeps the verified document
+along with the key unless the document is larger than 32 KiB.  Given that very
+key object, `getKeyOwner()`, `doesActorOwnKey()`, and thus
+`RequestContext.getSignedKeyOwner()` take the actor from that document instead
+of fetching and verifying it again, for as long as the key would stay cached.
+Any other key object, even one with the same ID, owner, and key material, is
+checked from scratch, and so is a key whose document was not cached.
+
 [FEP-521a]: https://w3id.org/fep/521a
 [compatible identifier]: https://w3id.org/fep/ef61#compatible-ids
 [Mitra]: https://codeberg.org/silverpill/mitra
