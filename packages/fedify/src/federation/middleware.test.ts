@@ -71,7 +71,7 @@ import {
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 import { handleBenchmarkTrigger } from "./bench.ts";
 import { CircuitBreaker } from "./circuit-breaker.ts";
-import type { Context, GetActorOptions } from "./context.ts";
+import type { Context, GetActorOptions, GetObjectOptions } from "./context.ts";
 import {
   type KvKey,
   type KvStore,
@@ -12023,4 +12023,327 @@ test("Federation.fetch() bounds inbox bodies before dispatch", async () => {
   );
   assertEquals(accepted.status, 202);
   assert(dispatched);
+});
+
+function getRawMessage(record: LogRecord): string {
+  return typeof record.rawMessage === "string"
+    ? record.rawMessage
+    : record.rawMessage.join("");
+}
+
+test("Federation.fetch() serves tombstones of objects", async (t) => {
+  const deleted = Temporal.Instant.from("2024-01-15T00:00:00Z");
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    documentLoaderFactory: () => mockDocumentLoader,
+    contextLoaderFactory: () => mockDocumentLoader,
+  });
+  federation.setObjectDispatcher(
+    vocab.Note,
+    "/users/{identifier}/notes/{id}",
+    (ctx, values) => {
+      if (values.id === "missing") return null;
+      if (values.id === "deleted") {
+        return new vocab.Tombstone({
+          id: ctx.getObjectUri(vocab.Note, values),
+          formerType: vocab.Note,
+          deleted,
+        });
+      }
+      return new vocab.Note({
+        id: ctx.getObjectUri(vocab.Note, values),
+        content: "Hello",
+      });
+    },
+  );
+  federation.setObjectDispatcher(
+    vocab.Tombstone,
+    "/tombstones/{id}",
+    (ctx, values) =>
+      new vocab.Tombstone({ id: ctx.getObjectUri(vocab.Tombstone, values) }),
+  );
+  federation.setObjectDispatcher(
+    vocab.Object,
+    "/objects/{id}",
+    (ctx, values) =>
+      values.id === "deleted"
+        ? new vocab.Tombstone({ id: ctx.getObjectUri(vocab.Object, values) })
+        : new vocab.Note({ id: ctx.getObjectUri(vocab.Object, values) }),
+  );
+
+  function fetch(path: string, method = "GET"): Promise<Response> {
+    return federation.fetch(
+      new Request(`https://example.com${path}`, {
+        method,
+        headers: { Accept: "application/activity+json" },
+      }),
+      { contextData: undefined },
+    );
+  }
+
+  await t.step("GET responds with 410 Gone and the tombstone", async () => {
+    const response = await fetch("/users/john/notes/deleted");
+    assertEquals(response.status, 410);
+    assertEquals(
+      response.headers.get("Content-Type"),
+      "application/activity+json",
+    );
+    const body = await response.json() as Record<string, unknown>;
+    assertEquals(body.id, "https://example.com/users/john/notes/deleted");
+    assertEquals(body.type, "Tombstone");
+    assertEquals(body.formerType, "as:Note");
+    assertEquals(body.deleted, "2024-01-15T00:00:00Z");
+  });
+
+  await t.step("HEAD responds with 410 Gone without a body", async () => {
+    const response = await fetch("/users/john/notes/deleted", "HEAD");
+    assertEquals(response.status, 410);
+    assertEquals(response.body, null);
+  });
+
+  await t.step("objects and null are served as before", async () => {
+    const response = await fetch("/users/john/notes/123");
+    assertEquals(response.status, 200);
+    const body = await response.json() as Record<string, unknown>;
+    assertEquals(body.type, "Note");
+    const notFound = await fetch("/users/john/notes/missing");
+    assertEquals(notFound.status, 404);
+  });
+
+  await t.step(
+    "Tombstone and Object dispatchers respond with 410",
+    async () => {
+      assertEquals((await fetch("/tombstones/1")).status, 410);
+      assertEquals((await fetch("/objects/deleted")).status, 410);
+      assertEquals((await fetch("/objects/live")).status, 200);
+    },
+  );
+
+  await t.step("RequestContext.getObject()", async () => {
+    const ctx = federation.createContext(
+      new Request("https://example.com/"),
+      undefined,
+    );
+    const values = { identifier: "john", id: "deleted" };
+
+    const defaultPromise = ctx.getObject(vocab.Note, values);
+    type DefaultType = Assert<
+      IsEqual<Awaited<typeof defaultPromise>, vocab.Note | null>
+    >;
+    const defaultTypeCheck: DefaultType = true;
+    void defaultTypeCheck;
+    assertEquals(await defaultPromise, null);
+
+    const suppressPromise = ctx.getObject(vocab.Note, values, {
+      tombstone: "suppress",
+    });
+    type SuppressType = Assert<
+      IsEqual<Awaited<typeof suppressPromise>, vocab.Note | null>
+    >;
+    const suppressTypeCheck: SuppressType = true;
+    void suppressTypeCheck;
+    assertEquals(await suppressPromise, null);
+
+    const emptyOptionsPromise = ctx.getObject(vocab.Note, values, {});
+    type EmptyOptionsType = Assert<
+      IsEqual<Awaited<typeof emptyOptionsPromise>, vocab.Note | null>
+    >;
+    const emptyOptionsTypeCheck: EmptyOptionsType = true;
+    void emptyOptionsTypeCheck;
+    assertEquals(await emptyOptionsPromise, null);
+
+    const passthroughPromise = ctx.getObject(vocab.Note, values, {
+      tombstone: "passthrough",
+    });
+    type PassthroughType = Assert<
+      IsEqual<
+        Awaited<typeof passthroughPromise>,
+        vocab.Note | vocab.Tombstone | null
+      >
+    >;
+    const passthroughTypeCheck: PassthroughType = true;
+    void passthroughTypeCheck;
+    const tombstone = await passthroughPromise;
+    assertInstanceOf(tombstone, vocab.Tombstone);
+    assertEquals(
+      tombstone.id,
+      new URL("https://example.com/users/john/notes/deleted"),
+    );
+    assertEquals(tombstone.deleted, deleted);
+
+    const broadOptions: GetObjectOptions = { tombstone: "passthrough" };
+    const broadPromise = ctx.getObject(vocab.Note, values, broadOptions);
+    type BroadType = Assert<
+      IsEqual<
+        Awaited<typeof broadPromise>,
+        vocab.Note | vocab.Tombstone | null
+      >
+    >;
+    const broadTypeCheck: BroadType = true;
+    void broadTypeCheck;
+    assertInstanceOf(await broadPromise, vocab.Tombstone);
+
+    assertInstanceOf(
+      await ctx.getObject(vocab.Note, { identifier: "john", id: "123" }),
+      vocab.Note,
+    );
+    assertEquals(
+      await ctx.getObject(vocab.Note, { identifier: "john", id: "missing" }, {
+        tombstone: "passthrough",
+      }),
+      null,
+    );
+
+    // A tombstone is not suppressed if it is an instance of the requested
+    // class:
+    assertInstanceOf(
+      await ctx.getObject(vocab.Tombstone, { id: "1" }),
+      vocab.Tombstone,
+    );
+    assertInstanceOf(
+      await ctx.getObject(vocab.Object, { id: "deleted" }, {
+        tombstone: "suppress",
+      }),
+      vocab.Tombstone,
+    );
+  });
+
+  await t.step(
+    "authorization predicates can get the tombstone",
+    async () => {
+      await withLogtapeLock(async () => {
+        const records: LogRecord[] = [];
+        await reset();
+        try {
+          await configure({
+            sinks: {
+              buffer(record: LogRecord): void {
+                records.push(record);
+              },
+            },
+            filters: {},
+            loggers: [
+              { category: ["fedify", "federation"], sinks: ["buffer"] },
+              { category: ["logtape", "meta"], sinks: [] },
+            ],
+          });
+          const federation = createFederation<void>({
+            kv: new MemoryKvStore(),
+            documentLoaderFactory: () => mockDocumentLoader,
+            contextLoaderFactory: () => mockDocumentLoader,
+          });
+          let dispatched = 0;
+          federation.setObjectDispatcher(
+            vocab.Note,
+            "/notes/{id}",
+            (ctx, values) => {
+              dispatched++;
+              return new vocab.Tombstone({
+                id: ctx.getObjectUri(vocab.Note, values),
+              });
+            },
+          ).authorize(async (ctx, values) => {
+            const object = await ctx.getObject(vocab.Note, values, {
+              tombstone: "passthrough",
+            });
+            return object instanceof vocab.Tombstone;
+          });
+          const response = await federation.fetch(
+            new Request("https://example.com/notes/1", {
+              headers: { Accept: "application/activity+json" },
+            }),
+            { contextData: undefined },
+          );
+          assertEquals(response.status, 410);
+          assertEquals(dispatched, 2);
+          assert(
+            records.some((record) =>
+              getRawMessage(record).startsWith("RequestContext.getObject(") &&
+              getRawMessage(record).includes("may cause an infinite loop")
+            ),
+          );
+        } finally {
+          await reset();
+        }
+      });
+    },
+  );
+
+  await t.step("warns about the id of a tombstone", async () => {
+    await withLogtapeLock(async () => {
+      const records: LogRecord[] = [];
+      await reset();
+      try {
+        await configure({
+          sinks: {
+            buffer(record: LogRecord): void {
+              records.push(record);
+            },
+          },
+          filters: {},
+          loggers: [
+            {
+              category: ["fedify", "federation", "object"],
+              sinks: ["buffer"],
+            },
+            { category: ["logtape", "meta"], sinks: [] },
+          ],
+        });
+        const federation = createFederation<void>({
+          kv: new MemoryKvStore(),
+          documentLoaderFactory: () => mockDocumentLoader,
+          contextLoaderFactory: () => mockDocumentLoader,
+        });
+        const ids: Record<string, URL | null> = {
+          "matching": new URL("https://example.com/notes/matching"),
+          "missing": null,
+          "mismatched": new URL("https://example.com/other/mismatched"),
+          "ap": new URL("ap://did%3Akey%3Az6MkTest/notes/ap"),
+          "ap-ef61": new URL("ap+ef61://did%3Akey%3Az6MkTest/notes/ap-ef61"),
+        };
+        federation.setObjectDispatcher(
+          vocab.Note,
+          "/notes/{id}",
+          (_ctx, { id }) =>
+            id === "live"
+              ? new vocab.Note({
+                id: new URL("https://example.com/other/live"),
+              })
+              : new vocab.Tombstone({ id: ids[id] }),
+        );
+        const warnings = async (id: string) => {
+          records.length = 0;
+          const response = await federation.fetch(
+            new Request(`https://example.com/notes/${id}`, {
+              headers: { Accept: "application/activity+json" },
+            }),
+            { contextData: undefined },
+          );
+          assertEquals(response.status, id === "live" ? 200 : 410);
+          return records.filter((r) => r.level === "warning");
+        };
+        assertEquals(await warnings("matching"), []);
+        const missing = await warnings("missing");
+        assertEquals(missing.length, 1);
+        assert(getRawMessage(missing[0]).includes("without an id property"));
+        const mismatched = await warnings("mismatched");
+        assertEquals(mismatched.length, 1);
+        assert(getRawMessage(mismatched[0]).includes("does not match"));
+        assertEquals(
+          mismatched[0].properties.tombstoneId,
+          "https://example.com/other/mismatched",
+        );
+        assertEquals(
+          mismatched[0].properties.objectUri,
+          "https://example.com/notes/mismatched",
+        );
+        assertEquals(await warnings("ap"), []);
+        assertEquals(await warnings("ap-ef61"), []);
+        // Live objects are not checked, as before:
+        assertEquals(await warnings("live"), []);
+      } finally {
+        await reset();
+      }
+    });
+  });
 });

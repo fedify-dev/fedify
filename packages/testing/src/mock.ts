@@ -5,13 +5,14 @@ import type {
   Federation,
   FederationFetchOptions,
   FederationStartQueueOptions,
+  GetObjectOptions,
   Message,
   ParseUriResult,
   RequestContext,
   RouteActivityOptions,
 } from "@fedify/fedify/federation";
 import { hasProofLike, hasSignatureLike } from "@fedify/fedify/sig";
-import { Activity, CryptographicKey, Multikey } from "@fedify/vocab";
+import { Activity, CryptographicKey, Multikey, Tombstone } from "@fedify/vocab";
 import type {
   Collection,
   LookupObjectOptions,
@@ -1007,16 +1008,45 @@ class MockContext<TContextData> implements Context<TContextData> {
     return null;
   }
 
+  getObject<TObject extends Object>(
+    cls: (new (...args: any[]) => TObject) & { typeId: URL },
+    values: Record<string, string>,
+  ): Promise<TObject | null>;
+  getObject<TObject extends Object>(
+    cls: (new (...args: any[]) => TObject) & { typeId: URL },
+    values: Record<string, string>,
+    options: GetObjectOptions & { readonly tombstone: "passthrough" },
+  ): Promise<TObject | Tombstone | null>;
+  getObject<TObject extends Object>(
+    cls: (new (...args: any[]) => TObject) & { typeId: URL },
+    values: Record<string, string>,
+    options: GetObjectOptions & { readonly tombstone?: "suppress" | undefined },
+  ): Promise<TObject | null>;
+  getObject<TObject extends Object>(
+    cls: (new (...args: any[]) => TObject) & { typeId: URL },
+    values: Record<string, string>,
+    options: GetObjectOptions,
+  ): Promise<TObject | Tombstone | null>;
   async getObject<TObject extends Object>(
     cls: (new (...args: any[]) => TObject) & { typeId: URL },
     values: Record<string, string>,
-  ): Promise<TObject | null> {
+    options?: GetObjectOptions,
+  ): Promise<TObject | Tombstone | null> {
     if (this.federation instanceof MockFederation) {
       const path = this.federation.objectPaths.get(cls.typeId.href);
       if (path) {
         const dispatcher = this.federation.objectDispatchers.get(path);
         if (dispatcher) {
-          return await dispatcher(this, values);
+          const object = await dispatcher(this, values);
+          // Same as RequestContext.getObject(), a tombstone that is not
+          // an instance of the requested class is suppressed by default:
+          if (
+            object instanceof Tombstone && !(object instanceof cls) &&
+            options?.tombstone !== "passthrough"
+          ) {
+            return null;
+          }
+          return object;
         }
       }
     }

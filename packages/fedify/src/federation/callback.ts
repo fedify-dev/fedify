@@ -116,7 +116,11 @@ export type ActorAliasMapper<TContextData> = (
   | Promise<{ identifier: string } | { username: string } | null>;
 
 /**
- * A callback that dispatches an object.
+ * A callback that dispatches an object or a {@link Tombstone}.
+ *
+ * Return a {@link Tombstone} if the object has been deleted; Fedify then
+ * responds with `410 Gone` and the serialized tombstone.  Return `null` if
+ * the object is not found.
  *
  * @template TContextData The context data to pass to the {@link Context}.
  * @template TObject The type of object to dispatch.
@@ -130,7 +134,7 @@ export type ObjectDispatcher<
 > = (
   context: RequestContext<TContextData>,
   values: Record<TParam, string>,
-) => TObject | null | Promise<TObject | null>;
+) => TObject | Tombstone | null | Promise<TObject | Tombstone | null>;
 
 /**
  * A callback that dispatches a collection.

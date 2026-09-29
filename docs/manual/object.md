@@ -93,6 +93,74 @@ ctx.getObjectUri(Note, {
 > if the arguments are valid before calling the method.
 
 
+Deleted objects
+---------------
+
+*This API is available since Fedify 2.4.0.*
+
+When an object has been deleted, e.g., a post that its author deleted, its URI
+should not look as if it never existed.  [ActivityPub] recommends responding
+with `410 Gone` and a `Tombstone` in place of the deleted object.  To do so,
+return a `Tombstone` from the object dispatcher:
+
+~~~~ typescript twoslash
+import { type Federation } from "@fedify/fedify";
+import { Note, Tombstone } from "@fedify/vocab";
+const federation = null as unknown as Federation<void>;
+interface Post {
+  content: string;
+  deletedAt: Temporal.Instant | null;
+}
+async function getPost(
+  _userId: string,
+  _noteId: string,
+): Promise<Post | null> {
+  return null;
+}
+// ---cut-before---
+federation.setObjectDispatcher(
+  Note,
+  "/users/{userId}/notes/{noteId}",
+  async (ctx, values) => {
+    const post = await getPost(values.userId, values.noteId);
+    if (post == null) return null;
+    if (post.deletedAt != null) {
+      return new Tombstone({
+        id: ctx.getObjectUri(Note, values),
+        formerType: Note,
+        deleted: post.deletedAt,
+      });
+    }
+    return new Note({
+      id: ctx.getObjectUri(Note, values),
+      content: post.content,
+    });
+  },
+);
+~~~~
+
+When an object dispatcher returns a `Tombstone`, Fedify responds with
+`410 Gone` and the serialized tombstone body.  The [authorization
+predicate](./access-control.md), if any, is applied before that, as for other
+objects.  The tombstone's `id` should be the URI of the deleted object; Fedify
+logs a warning if it does not match `~Context.getObjectUri()`, but responds
+with `410 Gone` anyway.
+
+Use `null` only when the object is not found at all, so that the request
+falls through to the next middleware or the `onNotFound` handler.
+
+> [!NOTE]
+> This also applies to object dispatchers registered for `Tombstone` or
+> `Object` itself.  Before Fedify 2.4.0, the tombstones they returned were
+> served with `200 OK`.
+>
+> A tombstone returned for a portable object request through the gateway
+> endpoint is not served with `410 Gone`; it is subject to the same rules as
+> other portable objects (see the [next section](#serving-portable-objects)).
+
+[ActivityPub]: https://www.w3.org/TR/activitypub/#delete-activity-outbox
+
+
 Serving portable objects
 ------------------------
 

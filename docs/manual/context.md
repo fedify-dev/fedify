@@ -350,6 +350,35 @@ const ctx = federation.createContext(request, undefined);
 const note = await ctx.getObject(Note, { identifier, id });  // [!code highlight]
 ~~~~
 
+Like `RequestContext.getActor()`, `RequestContext.getObject()` returns `null`
+for an object that the object dispatcher represents as deleted by returning
+a `Tombstone`.  If you need to distinguish a deleted object from a missing one,
+pass `{ tombstone: "passthrough" }`:
+
+~~~~ typescript twoslash
+import { type Federation } from "@fedify/fedify";
+import { Note, Tombstone } from "@fedify/vocab";
+const federation = null as unknown as Federation<void>;
+const request = new Request("");
+const identifier: string = "";
+const id: string = "";
+// ---cut-before---
+const ctx = federation.createContext(request, undefined);
+const note = await ctx.getObject(Note, { identifier, id }, {
+  tombstone: "passthrough",
+});
+if (note instanceof Tombstone) {
+  console.log(`The note was deleted at ${note.deleted}`);
+}
+~~~~
+
+A tombstone is returned even without the option if it is an instance of
+the requested class, i.e., if you get an object of the `Object` or `Tombstone`
+class itself, since it is a valid object of that class.  For example, if the
+object dispatcher for `Object` returns either notes or tombstones,
+`ctx.getObject(Object, values)` returns tombstones as well; check the result
+with `instanceof Tombstone` in that case.
+
 
 Getting a `DocumentLoader`
 --------------------------

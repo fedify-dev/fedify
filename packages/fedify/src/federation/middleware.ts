@@ -112,6 +112,7 @@ import type {
   Context,
   ForwardActivityOptions,
   GetActorOptions,
+  GetObjectOptions,
   GetSignedKeyOptions,
   InboxContext,
   OutboxContext,
@@ -5012,10 +5013,30 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
     return actor;
   }
 
+  getObject<TObject extends Object>(
+    cls: ConstructorWithTypeId<TObject>,
+    values: Record<string, string>,
+  ): Promise<TObject | null>;
+  getObject<TObject extends Object>(
+    cls: ConstructorWithTypeId<TObject>,
+    values: Record<string, string>,
+    options: GetObjectOptions & { readonly tombstone: "passthrough" },
+  ): Promise<TObject | Tombstone | null>;
+  getObject<TObject extends Object>(
+    cls: ConstructorWithTypeId<TObject>,
+    values: Record<string, string>,
+    options: GetObjectOptions & { readonly tombstone?: "suppress" | undefined },
+  ): Promise<TObject | null>;
+  getObject<TObject extends Object>(
+    cls: ConstructorWithTypeId<TObject>,
+    values: Record<string, string>,
+    options: GetObjectOptions,
+  ): Promise<TObject | Tombstone | null>;
   async getObject<TObject extends Object>(
     cls: ConstructorWithTypeId<TObject>,
     values: Record<string, string>,
-  ): Promise<TObject | null> {
+    options?: GetObjectOptions,
+  ): Promise<TObject | Tombstone | null> {
     const callbacks = this.federation.objectCallbacks[cls.typeId.href];
     if (callbacks == null) {
       throw new Error("No object dispatcher registered.");
@@ -5039,14 +5060,22 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
         },
       );
     }
-    return await callbacks.dispatcher(
+    const object = await callbacks.dispatcher(
       new RequestContextImpl({
         ...this,
         invokedFromObjectDispatcher: { cls, values },
       }),
       values,
-      // deno-lint-ignore no-explicit-any
-    ) as any;
+    );
+    // A tombstone that is an instance of the requested class, e.g., Object or
+    // Tombstone itself, is an object of that class, so it is not suppressed:
+    if (
+      object instanceof Tombstone && !(object instanceof cls) &&
+      options?.tombstone !== "passthrough"
+    ) {
+      return null;
+    }
+    return object as TObject | Tombstone | null;
   }
 
   #signedKey: CryptographicKey | null | undefined = undefined;

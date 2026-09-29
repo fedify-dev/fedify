@@ -8,10 +8,17 @@ import {
   Create,
   IntransitiveActivity,
   Note,
+  Object as ASObject,
   Person,
+  Tombstone,
 } from "@fedify/vocab";
 import { exportDidKey, formatIri } from "@fedify/vocab-runtime";
-import { assertEquals, assertRejects, assertThrows } from "@std/assert";
+import {
+  assertEquals,
+  assertInstanceOf,
+  assertRejects,
+  assertThrows,
+} from "@std/assert";
 import {
   ed25519PublicKey,
   rsaPrivateKey3,
@@ -1898,4 +1905,40 @@ test("MockContext builds portable IDs", async (t) => {
       }
     });
   }
+});
+
+test("MockContext.getObject() suppresses tombstones unless passed through", async () => {
+  const federation = createFederation<void>();
+  federation.setObjectDispatcher(
+    Note,
+    "/notes/{id}",
+    (_ctx: unknown, values: Record<string, string>) =>
+      values.id === "deleted"
+        ? new Tombstone({ id: new URL("https://example.com/notes/deleted") })
+        : new Note({ id: new URL(`https://example.com/notes/${values.id}`) }),
+  );
+  federation.setObjectDispatcher(
+    ASObject,
+    "/objects/{id}",
+    () => new Tombstone({ id: new URL("https://example.com/objects/1") }),
+  );
+  const ctx = federation.createContext(
+    new URL("https://example.com/"),
+    undefined,
+  );
+
+  const defaultPromise = ctx.getObject(Note, { id: "deleted" });
+  const defaultResult: Note | null = await defaultPromise;
+  assertEquals(defaultResult, null);
+  const suppressed: Note | null = await ctx.getObject(Note, {
+    id: "deleted",
+  }, { tombstone: "suppress" });
+  assertEquals(suppressed, null);
+  assertInstanceOf(
+    await ctx.getObject(Note, { id: "deleted" }, { tombstone: "passthrough" }),
+    Tombstone,
+  );
+  assertInstanceOf(await ctx.getObject(Note, { id: "1" }), Note);
+  // A tombstone that is an instance of the requested class is returned:
+  assertInstanceOf(await ctx.getObject(ASObject, { id: "1" }), Tombstone);
 });

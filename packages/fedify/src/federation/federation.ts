@@ -143,7 +143,9 @@ export interface Federatable<TContextData> extends TaskRegistry<TContextData> {
    *             based on URI Template
    *             ([RFC 6570](https://tools.ietf.org/html/rfc6570)).  The path
    *             must have one or more variables.
-   * @param dispatcher An object dispatcher callback to register.
+   * @param dispatcher An object dispatcher callback to register.  It may
+   *                   return an object, a `Tombstone` if the object has been
+   *                   deleted, or `null` if the object is not found.
    */
   setObjectDispatcher<TObject extends Object, TParam extends string>(
     cls: ConstructorWithTypeId<TObject>,
@@ -163,7 +165,9 @@ export interface Federatable<TContextData> extends TaskRegistry<TContextData> {
    *             based on URI Template
    *             ([RFC 6570](https://tools.ietf.org/html/rfc6570)).  The path
    *             must have one or more variables.
-   * @param dispatcher An object dispatcher callback to register.
+   * @param dispatcher An object dispatcher callback to register.  It may
+   *                   return an object, a `Tombstone` if the object has been
+   *                   deleted, or `null` if the object is not found.
    */
   setObjectDispatcher<TObject extends Object, TParam extends string>(
     cls: ConstructorWithTypeId<TObject>,
@@ -183,7 +187,9 @@ export interface Federatable<TContextData> extends TaskRegistry<TContextData> {
    *             based on URI Template
    *             ([RFC 6570](https://tools.ietf.org/html/rfc6570)).  The path
    *             must have one or more variables.
-   * @param dispatcher An object dispatcher callback to register.
+   * @param dispatcher An object dispatcher callback to register.  It may
+   *                   return an object, a `Tombstone` if the object has been
+   *                   deleted, or `null` if the object is not found.
    */
   setObjectDispatcher<TObject extends Object, TParam extends string>(
     cls: ConstructorWithTypeId<TObject>,
@@ -203,7 +209,9 @@ export interface Federatable<TContextData> extends TaskRegistry<TContextData> {
    *             based on URI Template
    *             ([RFC 6570](https://tools.ietf.org/html/rfc6570)).  The path
    *             must have one or more variables.
-   * @param dispatcher An object dispatcher callback to register.
+   * @param dispatcher An object dispatcher callback to register.  It may
+   *                   return an object, a `Tombstone` if the object has been
+   *                   deleted, or `null` if the object is not found.
    */
   setObjectDispatcher<TObject extends Object, TParam extends string>(
     cls: ConstructorWithTypeId<TObject>,
@@ -224,7 +232,9 @@ export interface Federatable<TContextData> extends TaskRegistry<TContextData> {
    *             based on URI Template
    *             ([RFC 6570](https://tools.ietf.org/html/rfc6570)).  The path
    *             must have one or more variables.
-   * @param dispatcher An object dispatcher callback to register.
+   * @param dispatcher An object dispatcher callback to register.  It may
+   *                   return an object, a `Tombstone` if the object has been
+   *                   deleted, or `null` if the object is not found.
    */
   setObjectDispatcher<TObject extends Object, TParam extends string>(
     cls: ConstructorWithTypeId<TObject>,
@@ -245,7 +255,9 @@ export interface Federatable<TContextData> extends TaskRegistry<TContextData> {
    *             based on URI Template
    *             ([RFC 6570](https://tools.ietf.org/html/rfc6570)).  The path
    *             must have one or more variables.
-   * @param dispatcher An object dispatcher callback to register.
+   * @param dispatcher An object dispatcher callback to register.  It may
+   *                   return an object, a `Tombstone` if the object has been
+   *                   deleted, or `null` if the object is not found.
    */
   setObjectDispatcher<TObject extends Object, TParam extends string>(
     cls: ConstructorWithTypeId<TObject>,
