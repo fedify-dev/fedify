@@ -6,12 +6,14 @@ import {
   areAllScalarTypes,
   emitOverride,
   getAllProperties,
+  getDataCheck,
   getDecoder,
   getDecoders,
   getEncoders,
   getSubtypes,
   getTypeNames,
   isCompactableType,
+  skipsUnparsable,
 } from "./type.ts";
 
 function* generatePreprocessorBlock(
@@ -591,7 +593,13 @@ export async function* generateDecoder(
     yield `
       const decoded =
     `;
+    const lenient = property.range.length == 1 &&
+      skipsUnparsable(property.range[0]);
     if (property.range.length == 1) {
+      if (lenient) {
+        yield getDataCheck(property.range[0], types, "v");
+        yield " ? ";
+      }
       yield getDecoder(
         property.range[0],
         types,
@@ -599,6 +607,7 @@ export async function* generateDecoder(
         "options",
         propertyBaseUrl,
       );
+      if (lenient) yield " : undefined";
     } else {
       const decoders = getDecoders(
         property.range,

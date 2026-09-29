@@ -37,6 +37,8 @@
     "src/cfworkers/imports.ts",
     "src/cfworkers/README.md",
     "src/cfworkers/server.ts",
+    "src/cfworkers/runner.ts",
+    "src/cfworkers/selftest.ts",
     "src/cfworkers/server.js",
     "src/cfworkers/server.js.map"
   ],
@@ -104,7 +106,7 @@
       ]
     },
     "test:cfworkers": {
-      "command": "pnpm exec wrangler deploy --dry-run --outdir src/cfworkers && node --import=tsx src/cfworkers/client.ts",
+      "command": "pnpm exec wrangler deploy --dry-run --outdir src/cfworkers && node --import=tsx scripts/check_cfworkers.ts && node --import=tsx src/cfworkers/client.ts",
       "dependencies": [
         "pnpm:build"
       ]

@@ -5,7 +5,7 @@ import type {
   KvStoreSetOptions,
 } from "@fedify/fedify";
 import { getLogger } from "@logtape/logtape";
-import type { JSONValue, Parameter, Sql } from "postgres";
+import type { JSONValue, Sql } from "postgres";
 import { driverSerializesJson } from "./utils.ts";
 
 const logger = getLogger(["fedify", "postgres", "kv"]);
@@ -148,7 +148,9 @@ export class PostgresKvStore implements KvStore {
     options?: KvStoreSetOptions,
   ): Promise<boolean> {
     await this.initialize();
-    const ttl = options?.ttl == null ? null : options.ttl.toString();
+    const ttl = options?.ttl == null
+      ? null
+      : Temporal.Duration.from(options.ttl).toString();
 
     if (expectedValue === undefined && newValue === undefined) {
       return await this.get(key) === undefined;
@@ -300,7 +302,9 @@ export class PostgresKvStore implements KvStore {
     await this.#sql`DROP TABLE IF EXISTS ${this.#sql(this.#tableName)};`;
   }
 
-  #json(value: unknown): Parameter {
+  #json(value: unknown) {
+    // postgres.js can encode sql.json(null) as SQL NULL. Store JSON null.
+    if (value === null) return this.#sql`'null'::jsonb`;
     if (this.#driverSerializesJson) return this.#sql.json(value as JSONValue);
     return this.#sql.json(JSON.stringify(value));
   }

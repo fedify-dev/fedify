@@ -93,6 +93,13 @@ jobs:
         pr_number: ${{ inputs.pr_number }}
         head_sha: ${{ needs.get-pr-info.outputs.head_sha }}
     - run: sudo npm install -g npm@latest && npm --version
+    # Forward merges: keep this packing command identical on every branch.
+    # enable-pre-post-scripts=false does not skip pack lifecycle hooks.
+    # prepack rebuilds workspace dependencies that share dist directories,
+    # so those builds must remain serialized with --workspace-concurrency=1.
+    # Keep lifecycle scripts enabled: on 2.3-maintenance/main, Fedify's
+    # prepack/postpack prepare skills/fedify/SKILL.md for the npm tarball.
+    # See https://github.com/fedify-dev/fedify/issues/973
     - run: |
         pnpm pack --recursive --workspace-concurrency=1 --filter='!./examples/**' --config.enable-pre-post-scripts=true
         # Remove private packages and CLI package

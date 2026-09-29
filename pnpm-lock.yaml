@@ -1243,6 +1243,9 @@ importers:
         specifier: ^2.9.0
         version: 2.9.0
     devDependencies:
+      '@fedify/fixture':
+        specifier: workspace:*
+        version: link:../fixture
       '@types/bun':
         specifier: 'catalog:'
         version: 1.3.3

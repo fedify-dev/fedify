@@ -76,29 +76,39 @@ Add the plugin to your _deno.json_ configuration file:
 }
 ~~~~
 
-By default, this enables all recommended rules.
+Listing the plugin enables every rule it provides, and Deno Lint reports all of
+them as errors.  Plugin rules have no recommended subset and no severity
+levels: those concepts exist for Deno's own built-in rules, not for rules that
+come from a plugin.
 
-### Custom configuration
+### Turning rules off
 
-You can customize which rules to enable and their severity levels:
+Rule IDs in *deno.json* are prefixed with the plugin's name, `fedify-lint`,
+which is what `deno lint` prints in its diagnostics.  This differs from the
+ESLint and Oxlint plugins, where the prefix is the package name,
+`@fedify/lint`.
+
+`rules.exclude` is the only setting that applies to plugin rules.  List the
+rules you do not want, one ID at a time:
 
 ~~~~ json
 {
   "lint": {
     "plugins": ["jsr:@fedify/lint"],
     "rules": {
-      "tags": ["recommended"],
-      "include": [
-        "@fedify/lint/actor-id-required",
-        "@fedify/lint/actor-id-mismatch"
-      ],
       "exclude": [
-        "@fedify/lint/actor-featured-property-required"
+        "fedify-lint/actor-featured-property-required",
+        "fedify-lint/actor-liked-property-required"
       ]
     }
   }
 }
 ~~~~
+
+`rules.tags` and `rules.include` select among Deno's built-in rules and leave
+plugin rules untouched, so neither can be used to enable a subset of this
+plugin.  Excluding the plugin's name on its own does not work either; each rule
+has to be named.
 
 ### Running Deno Lint
 
@@ -771,8 +781,9 @@ not.  In practice:
     called, is not reported.
  -  An inline callback counts wherever it is passed, since the rule cannot show
     that the receiving call never runs it.
- -  The rule reads only the listener body.  A delivery call in a helper that
-    is declared outside the listener, or in another module, is not seen.
+ -  The rule also follows calls to helpers declared in the same file when
+    the listener passes its context to them.  Helpers in another module
+    are not followed.
  -  A function assigned to an enclosing object inside a local setup helper is
     not followed back to the caller.  Even if `setup()` installs
     `target.deliver` before `await target.deliver()`, the rule may still report
@@ -792,7 +803,7 @@ rule checks for that.
 
 ~~~~ typescript twoslash
 // @noErrors: 2345
-import { createFederation } from "@fedify/fedify";
+import { createFederation, type OutboxContext } from "@fedify/fedify";
 import { Activity } from "@fedify/vocab";
 const federation = createFederation<void>({ kv: null as any });
 // ---cut-before---
@@ -862,7 +873,27 @@ federation
     const { deliver } = handlers;
     await deliver();
   });
+
+// ✅ Good: A called helper in the same file also counts
+async function deliverToFollowers(ctx: OutboxContext<void>, activity: Activity) {
+  await ctx.sendActivity({ identifier: ctx.identifier }, "followers", activity);
+}
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await deliverToFollowers(ctx, activity);
+  });
 ~~~~
+
+The rule follows direct calls to functions, function bindings, and
+object-literal methods declared in the same file when the listener's context is
+passed as an argument.  Helpers may call other helpers; recursive calls do not
+cause the analysis to loop.  Declaring a module-level delivery helper without
+calling it does not satisfy the rule.
+
+This analysis does not follow imports or use type information.  A listener that
+only calls a helper imported from another file still receives a warning.
+Indirect calls through higher-order callbacks, class instances, and dynamically
+selected properties are not resolved.
 
 ### `outbox-listener-delivery-not-awaited`
 

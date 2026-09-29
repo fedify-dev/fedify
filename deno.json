@@ -130,7 +130,8 @@
   },
   "test": {
     "include": [
-      "./packages"
+      "./packages",
+      "./scripts"
     ],
     "exclude": [
       "./packages/adonisjs/**",

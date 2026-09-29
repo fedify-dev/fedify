@@ -2007,6 +2007,104 @@ test({
   },
 });
 
+// The alias is inherited during initial expansion, but is unavailable when
+// an embedded value is reparsed standalone from the cached JSON-LD.
+function embeddedPropertyDocument(property: "attachment" | "object") {
+  const context = "https://www.w3.org/ns/activitystreams";
+  return {
+    "@context": [context, { CustomImage: `${context}#Image` }],
+    type: property === "attachment" ? "Note" : "Create",
+    [property]: [
+      {
+        "@context": [context, { "@vocab": "https://example.com/" }],
+        type: "CustomImage",
+        name: "Malformed when reparsed",
+      },
+      { "@context": context, type: "Image", name: "Cached image" },
+      { type: "Image", name: "Decoded image" },
+    ],
+  };
+}
+
+for (const suppressError of [undefined, false, true]) {
+  test(
+    `Note.getAttachments() cached parse failure (suppressError: ${suppressError})`,
+    async () => {
+      const jsonLd = embeddedPropertyDocument("attachment");
+      const note = await Note.fromJsonLd(jsonLd);
+      if (suppressError) {
+        for (let i = 0; i < 2; i++) {
+          const attachments: (Object | Link | PropertyValue)[] = await Array
+            .fromAsync(
+              note.getAttachments({ suppressError }),
+            );
+          deepStrictEqual(
+            attachments.map((attachment) => attachment.name),
+            ["Cached image", "Decoded image"],
+          );
+        }
+        // Suppression must not remove or replace the cached malformed value.
+        await rejects(() => Array.fromAsync(note.getAttachments()), TypeError);
+      } else {
+        await rejects(
+          () => Array.fromAsync(note.getAttachments({ suppressError })),
+          TypeError,
+        );
+      }
+      deepStrictEqual(await note.toJsonLd(), jsonLd);
+    },
+  );
+
+  test(
+    `Activity.getObject() cached parse failure (suppressError: ${suppressError})`,
+    async () => {
+      const jsonLd = embeddedPropertyDocument("object");
+      const activity = await Activity.fromJsonLd(jsonLd);
+      if (suppressError) {
+        deepStrictEqual(await activity.getObject({ suppressError }), null);
+        deepStrictEqual(await activity.getObject({ suppressError }), null);
+        await rejects(() => activity.getObject(), TypeError);
+      } else {
+        await rejects(() => activity.getObject({ suppressError }), TypeError);
+      }
+      deepStrictEqual(await activity.toJsonLd(), jsonLd);
+    },
+  );
+}
+
+test("Note.getAttachments() suppresses cached context loader failures", async () => {
+  const note = await Note.fromJsonLd(embeddedPropertyDocument("attachment"));
+  const contextLoader = () =>
+    Promise.reject(new Error("Context loader failed"));
+  await rejects(
+    () => Array.fromAsync(note.getAttachments({ contextLoader })),
+    (error: unknown) => error instanceof Error && !(error instanceof TypeError),
+  );
+  // Both cached values need the failing loader; the decoded value remains usable.
+  const attachments: (Object | Link | PropertyValue)[] = await Array.fromAsync(
+    note.getAttachments({ contextLoader, suppressError: true }),
+  );
+  deepStrictEqual(attachments.map((attachment) => attachment.name), [
+    "Decoded image",
+  ]);
+});
+
+test("Activity.getObject() suppresses cached context loader failures", async () => {
+  const activity = await Activity.fromJsonLd(
+    embeddedPropertyDocument("object"),
+  );
+  const contextLoader = () =>
+    Promise.reject(new Error("Context loader failed"));
+  await rejects(
+    () => activity.getObject({ contextLoader }),
+    (error: unknown) => error instanceof Error && !(error instanceof TypeError),
+  );
+  deepStrictEqual(
+    await activity.getObject({ contextLoader, suppressError: true }),
+    null,
+  );
+});
+
 test("Activity.clone()", async () => {
   const activity = new Activity({
     actor: new Person({
@@ -3351,6 +3449,105 @@ test("Delete.toJsonLd() compacts embedded QuoteRequest", async () => {
       },
       type: "Delete",
     },
+  );
+});
+
+test("Note.quoteUrl (IRI-typed alias terms)", async () => {
+  const jsonLd: Record<string, unknown> = {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      {
+        fedibird: "http://fedibird.com/ns#",
+        misskey: "https://misskey-hub.net/ns#",
+        _misskey_quote: {
+          "@id": "misskey:_misskey_quote",
+          "@type": "@id",
+        },
+        quoteUri: {
+          "@id": "fedibird:quoteUri",
+          "@type": "@id",
+        },
+      },
+    ],
+    id: "https://example.com/notes/1",
+    type: "Note",
+    _misskey_quote: "https://example.com/notes/quoted",
+    quoteUri: "https://example.com/notes/quoted2",
+  };
+
+  const loaded = await Note.fromJsonLd(jsonLd);
+  deepStrictEqual(loaded.quoteUrl, new URL("https://example.com/notes/quoted"));
+
+  delete jsonLd._misskey_quote;
+  const loaded2 = await Note.fromJsonLd(jsonLd);
+  deepStrictEqual(
+    loaded2.quoteUrl,
+    new URL("https://example.com/notes/quoted2"),
+  );
+});
+
+test("Note.quoteUrl (IRI-typed primary term)", async () => {
+  const context = [
+    "https://www.w3.org/ns/activitystreams",
+    {
+      misskey: "https://misskey-hub.net/ns#",
+      quoteUrl: { "@id": "as:quoteUrl", "@type": "@id" },
+      _misskey_quote: "misskey:_misskey_quote",
+    },
+  ];
+
+  const loaded = await Note.fromJsonLd({
+    "@context": context,
+    type: "Note",
+    quoteUrl: "https://example.com/object",
+  });
+  deepStrictEqual(loaded.quoteUrl, new URL("https://example.com/object"));
+
+  // An IRI-valued quoteUrl still takes precedence over a plain-string alias:
+  const loaded2 = await Note.fromJsonLd({
+    "@context": context,
+    type: "Note",
+    quoteUrl: "https://example.com/object",
+    _misskey_quote: "https://example.com/object2",
+  });
+  deepStrictEqual(loaded2.quoteUrl, new URL("https://example.com/object"));
+});
+
+test("Note.quoteUrl (unparsable IRI-valued terms)", async () => {
+  const context = [
+    "https://www.w3.org/ns/activitystreams",
+    {
+      misskey: "https://misskey-hub.net/ns#",
+      _misskey_quote: { "@id": "misskey:_misskey_quote", "@type": "@id" },
+    },
+  ];
+  for (
+    const quote of [
+      { type: "Note", content: "An inlined quote without an id" },
+      "_:b0",
+      "",
+      "notes/relative",
+    ]
+  ) {
+    const loaded = await Note.fromJsonLd({
+      "@context": context,
+      id: "https://example.com/notes/1",
+      type: "Note",
+      content: "Hello",
+      _misskey_quote: quote,
+    });
+    deepStrictEqual(loaded.quoteUrl, null, JSON.stringify(quote));
+    deepStrictEqual(loaded.content, "Hello");
+  }
+
+  const atUri = await Note.fromJsonLd({
+    "@context": context,
+    type: "Note",
+    _misskey_quote: "at://did:plc:abc/app.bsky.feed.post/xyz",
+  });
+  deepStrictEqual(
+    atUri.quoteUrl,
+    new URL("at://" + encodeURIComponent("did:plc:abc/app.bsky.feed.post/xyz")),
   );
 });
 

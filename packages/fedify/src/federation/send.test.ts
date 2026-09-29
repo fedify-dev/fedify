@@ -4,7 +4,7 @@ import {
   mockDocumentLoader,
   test,
 } from "@fedify/fixture";
-import { UrlError } from "@fedify/vocab-runtime";
+import { FetchError, UrlError } from "@fedify/vocab-runtime";
 import type { Actor } from "@fedify/vocab";
 import {
   Activity,
@@ -14,7 +14,6 @@ import {
   Person,
   Service,
 } from "@fedify/vocab";
-import { FetchError } from "@fedify/vocab-runtime";
 import {
   assert,
   assertEquals,
@@ -31,6 +30,7 @@ import {
   PeriodicExportingMetricReader,
 } from "@opentelemetry/sdk-metrics";
 import fetchMock from "fetch-mock";
+import dns from "node:dns/promises";
 import { verifyRequest } from "../sig/http.ts";
 import { doesActorOwnKey } from "../sig/owner.ts";
 import {
@@ -879,5 +879,109 @@ for (const signed of [false, true]) {
         }
       },
     );
+  });
+}
+
+for (const signed of [false, true]) {
+  test({
+    name: `sendActivity() classifies DNS failures (signed: ${signed})`,
+    // The validator skips DNS when Deno has no network permission.
+    ignore: "Deno" in globalThis &&
+      (await Deno.permissions.query({ name: "net" })).state !== "granted",
+    async fn(t) {
+      const activity = { type: "Create", id: "https://example.com/activity" };
+      const destination = "https://delivery.invalid/inbox";
+      const publicInbox = "https://8.8.8.8/inbox";
+      const keys = signed
+        ? [{ privateKey: rsaPrivateKey2, keyId: rsaPublicKey2.id! }]
+        : [];
+      for (const result of ["throws", "empty", "cname", "private"] as const) {
+        for (const redirected of [false, true]) {
+          await t.step(`${result}, redirected: ${redirected}`, async () => {
+            const [meterProvider, recorder] = createTestMeterProvider();
+            const originalLookup = dns.lookup;
+            const resolverError = new Error("Resolver unavailable");
+            const lookups: string[] = [];
+            dns.lookup = ((hostname: string, options: unknown) => {
+              lookups.push(hostname);
+              assertEquals(hostname, "delivery.invalid");
+              assertEquals(options, { all: true });
+              if (result === "throws") return Promise.reject(resolverError);
+              return Promise.resolve(
+                result === "empty" ? [] : [{
+                  address: result === "private"
+                    ? "127.0.0.1"
+                    : "alias.invalid.",
+                  family: 4,
+                }],
+              );
+            }) as typeof dns.lookup;
+            try {
+              fetchMock.mockGlobal().catch(202);
+              if (redirected) {
+                fetchMock.route(publicInbox, {
+                  status: 307,
+                  headers: { Location: destination },
+                });
+              }
+              const send = () =>
+                sendActivity({
+                  activity,
+                  activityType: "https://www.w3.org/ns/activitystreams#Create",
+                  meterProvider,
+                  keys,
+                  inbox: new URL(redirected ? publicInbox : destination),
+                });
+              if (result === "private") {
+                const error = await assertRejects(send, UrlError);
+                assertEquals(error.reason, "disallowed");
+              } else {
+                const error = await assertRejects(send, FetchError);
+                assertEquals(error.url.href, destination);
+                assertInstanceOf(error.cause, UrlError);
+                assertEquals(error.cause.reason, "dns");
+                assertEquals(
+                  error.cause.cause,
+                  result === "throws" ? resolverError : undefined,
+                );
+              }
+              // Initial policy rejections remain outside delivery accounting;
+              // redirect policy rejections retain their existing failed metric.
+              const expectedCount = result === "private" && !redirected ? 0 : 1;
+              const sent = recorder.getMeasurements(
+                "activitypub.delivery.sent",
+              );
+              const durations = recorder.getMeasurements(
+                "activitypub.delivery.duration",
+              );
+              assertEquals(sent.length, expectedCount);
+              assertEquals(durations.length, expectedCount);
+              if (expectedCount === 1) {
+                assertEquals(sent[0].value, 1);
+                assertEquals(sent[0].attributes, {
+                  "activitypub.remote.host": redirected
+                    ? "8.8.8.8"
+                    : "delivery.invalid",
+                  "activitypub.activity.type":
+                    "https://www.w3.org/ns/activitystreams#Create",
+                  "activitypub.delivery.success": false,
+                });
+                assertEquals(durations[0].attributes, sent[0].attributes);
+                assertGreaterOrEqual(durations[0].value, 0);
+              }
+              assertEquals(lookups, ["delivery.invalid"]);
+              assertEquals(fetchMock.callHistory.calls(destination).length, 0);
+              assertEquals(
+                fetchMock.callHistory.calls().length,
+                redirected ? 1 : 0,
+              );
+            } finally {
+              dns.lookup = originalLookup;
+              fetchMock.hardReset();
+            }
+          });
+        }
+      }
+    },
   });
 }

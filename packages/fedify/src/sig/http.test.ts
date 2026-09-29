@@ -1112,6 +1112,73 @@ test("verifyRequest() [rfc9421] successful GET verification", async () => {
   );
 });
 
+for (
+  const failure of [
+    "missing key",
+    "invalid signature",
+    "digest mismatch",
+    "empty body",
+    "cached key",
+  ]
+) {
+  test(`verifyRequest() [rfc9421] multiple POST signatures: ${failure}`, async () => {
+    const body = failure === "empty body" ? "" : "Hello, world!";
+    const currentTime = Temporal.Instant.from("2024-03-05T08:09:44Z");
+    const signed = await signRequest(
+      new Request("https://example.com/inbox", { method: "POST", body }),
+      rsaPrivateKey2,
+      new URL("https://example.com/key2"),
+      { spec: "rfc9421", currentTime },
+    );
+    const input = signed.headers.get("Signature-Input")!;
+    const signature = signed.headers.get("Signature")!;
+    const firstInput = failure === "missing key"
+      ? input.replace(
+        "https://example.com/key2",
+        "https://example.com/missing-key",
+      )
+      : input;
+    signed.headers.set(
+      "Signature-Input",
+      `${firstInput}, ${input.replace(/^sig1=/, "sig2=")}`,
+    );
+    signed.headers.set(
+      "Signature",
+      `sig1=:AAAAAA==:, ${signature.replace(/^sig1=/, "sig2=")}`,
+    );
+    const request = failure === "digest mismatch"
+      ? new Request(signed, { body: "Tampered body" })
+      : signed;
+    const loaded: string[] = [];
+    const key = await verifyRequest(request, {
+      keyCache: failure === "cached key"
+        ? { get: () => Promise.resolve(rsaPublicKey1), set: async () => {} }
+        : undefined,
+      spec: "rfc9421",
+      currentTime,
+      contextLoader: mockDocumentLoader,
+      documentLoader: (url, options) => {
+        loaded.push(url);
+        return mockDocumentLoader(url, options);
+      },
+    });
+    assertEquals(key, failure === "digest mismatch" ? null : rsaPublicKey2);
+    assertEquals(
+      loaded,
+      failure === "digest mismatch"
+        ? []
+        : failure === "missing key"
+        ? ["https://example.com/missing-key", "https://example.com/key2"]
+        : ["https://example.com/key2", "https://example.com/key2"],
+    );
+    assertFalse(request.bodyUsed);
+    assertEquals(
+      await request.text(),
+      failure === "digest mismatch" ? "Tampered body" : body,
+    );
+  });
+}
+
 test("verifyRequest() [rfc9421] manual POST verification", async () => {
   // We can't easily test full POST verification due to body consumption issues,
   // so let's manually verify the signature instead, which is more reliable

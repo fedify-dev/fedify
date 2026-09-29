@@ -4,6 +4,9 @@ import type {
 } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
 
+// Fixture requests must bypass fetch mocks installed by individual tests.
+const fixtureFetch = globalThis.fetch.bind(globalThis);
+
 const logger = getLogger(["fixture", "docloader"]);
 
 /**
@@ -24,7 +27,7 @@ export async function mockDocumentLoader(
   ) {
     const testUrl = new URL(url);
     testUrl.hostname += ".test";
-    const resp = await fetch(testUrl);
+    const resp = await fixtureFetch(testUrl);
     if (resp.ok) {
       const document = await resp.json();
       logger.debug(

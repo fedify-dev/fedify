@@ -258,6 +258,45 @@ test(
   },
 );
 
+test(
+  "PostgresKvStore.set() stores JSON null",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return; // Bun does not support skip option
+
+    const { sql, tableName, store } = getStore();
+    const key = ["publicKey", "unavailable"] as const;
+    try {
+      await store.set(key, "available");
+      await store.set(key, null, {
+        ttl: Temporal.Duration.from({ minutes: 10 }),
+      });
+
+      assert.strictEqual(await store.get(key), null);
+      const [row] = await sql`
+      SELECT value IS NOT NULL AS present, jsonb_typeof(value) AS json_type, ttl
+      FROM ${sql(tableName)}
+      WHERE key = ${key};
+    `;
+      assert.strictEqual(row.present, true);
+      assert.strictEqual(row.json_type, "null");
+      assert.notStrictEqual(row.ttl, null);
+
+      const entries = [];
+      for await (const entry of store.list(["publicKey"])) {
+        entries.push(entry);
+      }
+      assert.deepStrictEqual(entries, [{ key, value: null }]);
+
+      await store.set(key, "available again");
+      assert.strictEqual(await store.get(key), "available again");
+    } finally {
+      await store.drop();
+      await sql.end();
+    }
+  },
+);
+
 test("PostgresKvStore.delete()", { skip: dbUrl == null }, async () => {
   if (dbUrl == null) return; // Bun does not support skip option
 
@@ -310,6 +349,28 @@ test("PostgresKvStore.cas()", { skip: dbUrl == null }, async () => {
     await sql.end();
   }
 });
+
+test(
+  "PostgresKvStore.cas() preserves JSON null",
+  { skip: dbUrl == null },
+  async () => {
+    if (dbUrl == null) return;
+    const { sql, store } = getStore();
+    const key = ["cas", "null"] as const;
+    try {
+      assert.strictEqual(await store.cas(key, undefined, null), true);
+      assert.strictEqual(await store.get(key), null);
+      assert.strictEqual(await store.cas(key, null, "updated"), true);
+      assert.strictEqual(await store.cas(key, "updated", null), true);
+      assert.strictEqual(await store.get(key), null);
+      assert.strictEqual(await store.cas(key, null, undefined), true);
+      assert.strictEqual(await store.get(key), undefined);
+    } finally {
+      await store.drop();
+      await sql.end();
+    }
+  },
+);
 
 test(
   "PostgresKvStore.cas() honors TTL and token-safe release",

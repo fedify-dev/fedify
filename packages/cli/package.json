@@ -113,6 +113,7 @@
     "yaml": "^2.9.0"
   },
   "devDependencies": {
+    "@fedify/fixture": "workspace:*",
     "@types/bun": "catalog:",
     "@types/node": "catalog:",
     "@types/pngjs": "^6.0.5",

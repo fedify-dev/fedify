@@ -36,6 +36,7 @@ import {
 import fetchMock from "fetch-mock";
 import serialize from "json-canon";
 import { deepStrictEqual, ok, rejects, strictEqual } from "node:assert/strict";
+import dns from "node:dns/promises";
 import createFixture from "../../../fixture/src/fixtures/example.com/create.json" with {
   type: "json",
 };
@@ -1726,6 +1727,60 @@ test({
 
     fetchMock.hardReset();
   },
+});
+
+test("Federation.fetch() [rfc9421] multiple POST signatures", async (t) => {
+  for (const validSecond of [true, false]) {
+    await t.step(
+      validSecond ? "valid second signature" : "both signatures invalid",
+      async () => {
+        const inbox: string[] = [];
+        const federation = createFederation<void>({
+          kv: new MemoryKvStore(),
+          documentLoaderFactory: () => mockDocumentLoader,
+          contextLoaderFactory: () => mockDocumentLoader,
+        });
+        federation.setActorDispatcher(
+          "/users/{identifier}",
+          (ctx, identifier) =>
+            new vocab.Person({ id: ctx.getActorUri(identifier) }),
+        );
+        federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+          .on(vocab.Create, (_ctx, activity) => {
+            inbox.push(activity.id!.href);
+          });
+        const signed = await signRequest(
+          new Request("https://example.com/inbox", {
+            method: "POST",
+            headers: { "Content-Type": "application/activity+json" },
+            body: JSON.stringify(createFixture),
+          }),
+          rsaPrivateKey2,
+          rsaPublicKey2.id!,
+          { spec: "rfc9421" },
+        );
+        const input = signed.headers.get("Signature-Input")!;
+        const signature = signed.headers.get("Signature")!;
+        signed.headers.set(
+          "Signature-Input",
+          `${input}, ${input.replace(/^sig1=/, "sig2=")}`,
+        );
+        signed.headers.set(
+          "Signature",
+          `sig1=:AAAAAA==:, ${
+            validSecond
+              ? signature.replace(/^sig1=/, "sig2=")
+              : "sig2=:AAAAAA==:"
+          }`,
+        );
+        const response = await federation.fetch(signed, {
+          contextData: undefined,
+        });
+        assertEquals(response.status, validSecond ? 202 : 401);
+        assertEquals(inbox, validSecond ? [createFixture.id] : []);
+      },
+    );
+  }
 });
 
 test("Federation.fetch()", async (t) => {
@@ -7658,6 +7713,188 @@ test("FederationImpl.processQueuedTask()", async (t) => {
       assertEquals(queuedMessages, []);
     },
   );
+});
+
+test({
+  name:
+    "FederationImpl.processQueuedTask() accounts for destination validation failures",
+  // The validator skips DNS when Deno has no network permission.
+  ignore: "Deno" in globalThis &&
+    (await Deno.permissions.query({ name: "net" })).state !== "granted",
+  async fn(t) {
+    for (const result of ["throws", "empty", "private"] as const) {
+      for (const failureThreshold of [1, 5]) {
+        for (const redirected of [false, true]) {
+          await t.step(
+            `${result}, threshold: ${failureThreshold}, redirected: ${redirected}`,
+            async () => {
+              const destination = "https://delivery.invalid/inbox";
+              const publicInbox = "https://8.8.8.8/inbox";
+              const queuedMessages: Message[] = [];
+              const delays: (Temporal.Duration | undefined)[] = [];
+              const errors: Error[] = [];
+              const activities: (vocab.Activity | null)[] = [];
+              const attempts: number[] = [];
+              const delay = Temporal.Duration.from({ seconds: 5 });
+              const kv = new MemoryKvStore();
+              await markCircuitBreakerLegacySweepDone(kv);
+              const [meterProvider, recorder] = createTestMeterProvider();
+              const recoveryDelay = Temporal.Duration.from({ minutes: 30 });
+              const federation = new FederationImpl<void>({
+                kv,
+                meterProvider,
+                circuitBreaker: { failureThreshold, recoveryDelay },
+                queue: {
+                  enqueue(message, options) {
+                    queuedMessages.push(message);
+                    delays.push(options?.delay);
+                    return Promise.resolve();
+                  },
+                  listen() {
+                    return Promise.resolve();
+                  },
+                },
+                documentLoaderFactory: () => mockDocumentLoader,
+                contextLoaderFactory: () => mockDocumentLoader,
+                onOutboxError(error, activity) {
+                  errors.push(error);
+                  activities.push(activity);
+                },
+                outboxRetryPolicy(options) {
+                  attempts.push(options.attempts);
+                  return delay;
+                },
+              });
+              const message: OutboxMessage = {
+                type: "outbox",
+                id: crypto.randomUUID(),
+                baseUrl: "https://example.com",
+                keys: [],
+                activity: {
+                  "@context": "https://www.w3.org/ns/activitystreams",
+                  type: "Create",
+                  id: "https://example.com/activities/dns-failure",
+                  actor: "https://example.com/users/alice",
+                  object: { type: "Note", content: "test" },
+                },
+                activityType: "https://www.w3.org/ns/activitystreams#Create",
+                inbox: redirected ? publicInbox : destination,
+                sharedInbox: false,
+                started: new Date().toISOString(),
+                attempt: 0,
+                headers: {},
+                traceContext: {},
+              };
+              const originalLookup = dns.lookup;
+              const resolverError = new Error("Resolver unavailable");
+              const lookups: string[] = [];
+              dns.lookup = ((hostname: string) => {
+                lookups.push(hostname);
+                assertEquals(hostname, "delivery.invalid");
+                if (result === "throws") return Promise.reject(resolverError);
+                return Promise.resolve(
+                  result === "empty"
+                    ? []
+                    : [{ address: "127.0.0.1", family: 4 }],
+                );
+              }) as typeof dns.lookup;
+              try {
+                fetchMock.mockGlobal().catch(202);
+                if (redirected) {
+                  fetchMock.route(publicInbox, {
+                    status: 307,
+                    headers: { Location: destination },
+                  });
+                }
+                await federation.processQueuedTask(undefined, message);
+                assertEquals(errors.length, 1);
+                const error = errors[0];
+                if (result === "private") {
+                  assertInstanceOf(error, UrlError);
+                  assertEquals(error.reason, "disallowed");
+                } else {
+                  assertInstanceOf(error, FetchError);
+                  assertEquals(error.url.href, destination);
+                  assertInstanceOf(error.cause, UrlError);
+                  assertEquals(error.cause.reason, "dns");
+                  assertStrictEquals(
+                    error.cause.cause,
+                    result === "throws" ? resolverError : undefined,
+                  );
+                }
+                assertEquals(activities.length, 1);
+                assertInstanceOf(activities[0], Create);
+                assertEquals(
+                  activities[0].id?.href,
+                  "https://example.com/activities/dns-failure",
+                );
+                assertEquals(attempts, [0]);
+                const host = new URL(message.inbox).host;
+                const state = await kv.get<
+                  { state: string; failures: string[] }
+                >([
+                  "_fedify",
+                  "circuit",
+                  host,
+                ]);
+                if (result === "private") {
+                  assertEquals(state, undefined);
+                } else {
+                  assertExists(state);
+                  assertEquals(state.failures.length, 1);
+                  assertEquals(
+                    state.state,
+                    failureThreshold === 1 ? "open" : "closed",
+                  );
+                }
+                if (result !== "private" && failureThreshold === 1) {
+                  assertEquals(queuedMessages.length, 1);
+                  const held = queuedMessages[0] as OutboxMessage;
+                  assertEquals(held.attempt, 0);
+                  assertEquals(held.circuitHeld, true);
+                  assertExists(held.circuitHeldSince);
+                  assertEquals(delays, [recoveryDelay]);
+                } else {
+                  assertEquals(queuedMessages, [{ ...message, attempt: 1 }]);
+                  assertEquals(delays, [delay]);
+                }
+                const expectedCount = result === "private" && !redirected
+                  ? 0
+                  : 1;
+                const sent = recorder.getMeasurements(
+                  "activitypub.delivery.sent",
+                );
+                assertEquals(sent.length, expectedCount);
+                if (expectedCount === 1) {
+                  assertEquals(sent[0].value, 1);
+                  assertEquals(
+                    sent[0].attributes["activitypub.delivery.success"],
+                    false,
+                  );
+                  assertEquals(
+                    sent[0].attributes["activitypub.remote.host"],
+                    host,
+                  );
+                }
+                assertEquals(lookups, ["delivery.invalid"]);
+                assertEquals(
+                  fetchMock.callHistory.calls(destination).length,
+                  0,
+                );
+                assertEquals(
+                  fetchMock.callHistory.calls().length,
+                  redirected ? 1 : 0,
+                );
+              } finally {
+                dns.lookup = originalLookup;
+                fetchMock.hardReset();
+              }
+            },
+          );
+        }
+      }
+    }
+  },
 });
 
 test("FederationImpl.processQueuedTask() permanent failure", async (t) => {

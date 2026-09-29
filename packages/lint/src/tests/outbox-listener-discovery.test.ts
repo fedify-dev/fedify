@@ -212,7 +212,7 @@ federation
 );
 
 test(
-  `${ruleName}: ✅ Good listener held in a computed property`,
+  `${ruleName}: ❌ Bad listener held in a computed property that does not deliver`,
   lintTest({
     code: `
 import { Activity } from "@fedify/vocab";
@@ -224,6 +224,23 @@ const handlers = {
 };
 federation
   .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, handlers["deliver"]);
+`,
+    rule,
+    ruleName,
+    expectedError: "Outbox listeners should deliver posted activities",
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good delivery listener held in a computed property`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+const handlers = { deliver: async (ctx, activity) => {
+  await ctx.sendActivity({ identifier: ctx.identifier }, "followers", activity);
+} };
+federation.setOutboxListeners("/users/{identifier}/outbox")
   .on(Activity, handlers["deliver"]);
 `,
     rule,

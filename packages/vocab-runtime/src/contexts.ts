@@ -41,7 +41,6 @@ const preloadedContexts: Record<string, unknown> = {
   "https://gotosocial.org/ns": gotosocial,
   "https://w3id.org/fep/22cd": fep22cd,
   "https://w3id.org/fep/5711": fep5711,
-  "https://w3id.org/fep/7aa9": fep7aa9,
 
   // Controlled Identifiers v1.0 requires JSON-LD processors to treat this
   // context URL as already resolved.  We ship the official W3C context so that
@@ -59,6 +58,13 @@ const preloadedContexts: Record<string, unknown> = {
   // See: https://w3id.org/fep/ef61
   //      https://github.com/fedify-dev/fedify/issues/982
   "https://w3id.org/fep/ef61": fepEf61,
+
+  // The FEP-7aa9 context is hosted on Codeberg Pages, whose outages can
+  // prevent actor documents from being parsed.  Resolve it locally so that
+  // parsing does not depend on the remote context server's availability.
+  // See: https://w3id.org/fep/7aa9
+  //      https://github.com/fedify-dev/fedify/issues/1078
+  "https://w3id.org/fep/7aa9": fep7aa9,
 
   // Lemmy's context document is served as application/json without the JSON-LD
   // context Link header.  The default document loader treats that as a regular

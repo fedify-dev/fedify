@@ -17,6 +17,7 @@ import {
   assertEquals,
   assertInstanceOf,
   assertRejects,
+  assertStrictEquals,
   assertThrows,
 } from "@std/assert";
 import {
@@ -25,6 +26,90 @@ import {
   rsaPublicKey3,
 } from "../../fedify/src/testing/keys.ts";
 import { createFederation, createOutboxContext } from "./mock.ts";
+
+test("MockFederation actor setters support chaining in any order", () => {
+  const federation = createFederation<void>();
+  const setters = federation.setActorDispatcher(
+    "/users/{identifier}",
+    () => null,
+  );
+  const configure = [
+    () => setters.setKeyPairsDispatcher(() => []),
+    () => setters.mapHandle((_ctx, handle) => handle),
+    () => setters.mapAlias(() => null),
+    () => setters.authorize(() => true),
+  ];
+  for (const first of configure) {
+    assertStrictEquals(first(), setters);
+    for (const second of configure) {
+      assertStrictEquals(second(), setters);
+    }
+  }
+  assertStrictEquals(
+    setters.setKeyPairsDispatcher(() => [])
+      .mapHandle((_ctx, handle) => handle)
+      .mapAlias(() => null)
+      .authorize(() => true)
+      .setKeyPairsDispatcher(() => []),
+    setters,
+  );
+});
+
+test("MockFederation object setters support chaining authorize", () => {
+  const federation = createFederation<void>();
+  const setters = federation.setObjectDispatcher(
+    Note,
+    "/notes/{id}",
+    () => null,
+  );
+  assertStrictEquals(setters.authorize(() => true), setters);
+  assertStrictEquals(
+    setters.authorize(() => true).authorize(() => false),
+    setters,
+  );
+});
+
+for (
+  const method of [
+    "setInboxDispatcher",
+    "setOutboxDispatcher",
+    "setFollowingDispatcher",
+    "setFollowersDispatcher",
+    "setLikedDispatcher",
+    "setFeaturedDispatcher",
+    "setFeaturedTagsDispatcher",
+    "setCollectionDispatcher",
+    "setOrderedCollectionDispatcher",
+  ] as const
+) {
+  test(`MockFederation.${method} setters support chaining in any order`, () => {
+    const federation = createFederation<void>();
+    const setters = method === "setCollectionDispatcher" ||
+        method === "setOrderedCollectionDispatcher"
+      ? federation[method]("notes", Note, "/notes/{identifier}", () => null)
+      : federation[method]("/users/{identifier}/collection", () => null);
+    assertStrictEquals(setters.setCounter(() => 0), setters);
+    assertStrictEquals(setters.setFirstCursor(() => null), setters);
+    assertStrictEquals(setters.setLastCursor(() => null), setters);
+    assertStrictEquals(setters.authorize(() => true), setters);
+    assertStrictEquals(
+      setters.authorize(() => true)
+        .setCounter(() => 0)
+        .setFirstCursor(() => null)
+        .setLastCursor(() => null)
+        .authorize(() => false),
+      setters,
+    );
+    assertStrictEquals(
+      setters.setLastCursor(() => null)
+        .setFirstCursor(() => null)
+        .setCounter(() => 0)
+        .authorize(() => true)
+        .setLastCursor(() => null),
+      setters,
+    );
+  });
+}
 
 test("getSentActivities returns sent activities", async () => {
   const mockFederation = createFederation<void>();
@@ -1582,6 +1667,8 @@ test("MockContext.getActor() calls registered actor dispatcher", async () => {
         name: `Test User ${identifier}`,
       });
     },
+  ).mapHandle((_ctx, handle) => handle).mapAlias(() => null).authorize(() =>
+    true
   );
 
   const context = mockFederation.createContext(
@@ -1610,7 +1697,7 @@ test("MockContext.getObject() calls registered object dispatcher", async () => {
         content: `Post ${values.postId} by ${values.identifier}`,
       });
     },
-  );
+  ).authorize(() => true).authorize(() => true);
 
   const context = mockFederation.createContext(
     new URL("https://example.com"),
@@ -1683,7 +1770,10 @@ test("MockContext.getActorKeyPairs() calls registered key pairs dispatcher", asy
           publicKey: keyPair.publicKey,
         },
       ];
-    });
+    })
+    .mapHandle((_ctx, handle) => handle)
+    .mapAlias(() => null)
+    .authorize(() => true);
 
   const context = mockFederation.createContext(
     new URL("https://example.com"),

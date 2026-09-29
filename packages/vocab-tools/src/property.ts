@@ -477,18 +477,21 @@ async function* generateProperty(
             ${JSON.stringify(property.compactName)}];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-      `;
-        yield `
-            v = await this.#${property.singularName}_fromJsonLd(doc, {
-              ...options,
-              // Embedded objects get this object's own default, whether or
-              // not they carry their own @context, as when this object was
-              // parsed:
-              verifyPortableObject: this._verifyPortableObject,
-              baseUrl: ${cachedPropertyBaseUrl},
-            });
-      `;
-        yield `
+            try {
+              v = await this.#${property.singularName}_fromJsonLd(doc, {
+                ...options,
+                // Keep the parent default for embedded objects.
+                verifyPortableObject: this._verifyPortableObject,
+                baseUrl: ${cachedPropertyBaseUrl},
+              });
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: ${JSON.stringify(property.uri)}, error },
+              );
+              return null;
+            }
           }
         }
         `;
@@ -647,18 +650,23 @@ async function* generateProperty(
               ${JSON.stringify(property.compactName)}];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-      `;
-        yield `
-              v = await this.#${property.singularName}_fromJsonLd(obj, {
-                ...options,
-                // Embedded objects get this object's own default, whether or
-                // not they carry their own @context, as when this object was
-                // parsed:
+              try {
+                v = await this.#${property.singularName}_fromJsonLd(obj, {
+                  ...options,
+                // Keep the parent default for embedded objects.
                 verifyPortableObject: this._verifyPortableObject,
-                baseUrl: ${cachedPropertyBaseUrl},
-              });
-      `;
-        yield `
+                  baseUrl: ${cachedPropertyBaseUrl},
+                });
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: ${
+          JSON.stringify(property.uri)
+        }, index: i, error },
+                );
+                continue;
+              }
             }
           }
         `;

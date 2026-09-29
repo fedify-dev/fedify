@@ -294,6 +294,12 @@ async function sendActivityInternal(
       try {
         await validatePublicUrl(url);
       } catch (error) {
+        if (error instanceof UrlError && error.reason === "dns") {
+          logger.error("DNS resolution failed for URL: {url}", { url, error });
+          const failure = new FetchError(url, error.message);
+          failure.cause = error;
+          throw failure;
+        }
         if (error instanceof UrlError) {
           logger.error("Disallowed private URL: {url}", { url, error });
         }
@@ -302,7 +308,21 @@ async function sendActivityInternal(
     }
   }
 
-  await validateUrl(inbox.href);
+  try {
+    await validateUrl(inbox.href);
+  } catch (error) {
+    // DNS validation failures are transport failures. Initial policy
+    // rejections still exit before delivery accounting or request creation.
+    if (error instanceof FetchError) {
+      federationMetrics.recordDelivery(
+        inbox,
+        getDurationMs(started),
+        false,
+        activityType,
+      );
+    }
+    throw error;
+  }
   headers = new Headers(headers);
   headers.set("Content-Type", "application/activity+json");
   const request = new Request(inbox, {

@@ -1,131 +1,18 @@
-import type { Request as ERequest, Response as EResponse } from "express";
-import { describe, test } from "node:test";
-
-interface MockFederation {
-  fetch(request: Request, options: unknown): Promise<Response>;
-}
-
-function createMockRequest(): ERequest {
-  return {
-    protocol: "http",
-    host: "localhost",
-    url: "/",
-    method: "GET",
-    headers: {},
-  } as unknown as ERequest;
-}
-
-function createMockResponse(): {
-  response: EResponse;
-  ended: Promise<void>;
-  getBody(): string;
-} {
-  let body = "";
-  let resolveEnded: () => void;
-  const ended = new Promise<void>((resolve) => {
-    resolveEnded = resolve;
-  });
-  const response = {
-    statusCode: 200,
-    status(code: number) {
-      response.statusCode = code;
-      return response;
-    },
-    setHeader() {
-      return response;
-    },
-    write(chunk: Buffer | string) {
-      body += chunk.toString();
-      return true;
-    },
-    end() {
-      resolveEnded();
-      return response;
-    },
-  };
-  return {
-    response: response as unknown as EResponse,
-    ended,
-    getBody: () => body,
-  };
-}
-
-describe("integrateFederation()", () => {
-  test("waits for an async contextDataFactory and passes the resolved value to federation.fetch()", async () => {
-    let resolveContextData!: (value: string) => void;
-    let fetchCalled = false;
-
-    const mockFederation: MockFederation = {
-      fetch(_request, options) {
-        fetchCalled = true;
-        const { contextData } = options as { contextData: unknown };
-        return Promise.resolve(new Response(String(contextData)));
-      },
-    };
-
-    const contextDataFactory = () =>
-      new Promise<string>((resolve) => {
-        resolveContextData = resolve;
-      });
-
-    const middleware = integrateFederation(
-      mockFederation as never,
-      contextDataFactory,
-    );
-
-    const req = createMockRequest();
-    const { response, ended, getBody } = createMockResponse();
-    let nextCalled = false;
-
-    middleware(req, response, () => {
-      nextCalled = true;
-    });
-
-    await Promise.resolve();
-    assert.strictEqual(fetchCalled, false);
-
-    resolveContextData("Hello World");
-    await ended;
-
-    assert.strictEqual(nextCalled, false);
-    assert.strictEqual(getBody(), "Hello World");
-  });
-
-  test("responds with 406 when onNotAcceptable is used and no route matches", async () => {
-    const mockFederation: MockFederation = {
-      fetch(_request, options) {
-        const { onNotAcceptable } = options as {
-          onNotAcceptable: () => Response;
-        };
-        return Promise.resolve(onNotAcceptable());
-      },
-    };
-
-    const middleware = integrateFederation(
-      mockFederation as never,
-      () => undefined,
-    );
-
-    const req = createMockRequest();
-    const { response, ended } = createMockResponse();
-
-    middleware(req, response, () => {});
-    await ended;
-    assert.strictEqual(response.statusCode, 406);
-  });
-});
 import { createFederation, MemoryKvStore } from "@fedify/fedify";
-import express from "express";
+import Koa from "koa";
 import { strict as assert } from "node:assert";
+import { Buffer } from "node:buffer";
+import type { IncomingMessage } from "node:http";
 import type { AddressInfo } from "node:net";
-import { integrateFederation } from "./index.ts";
+import { test } from "node:test";
+import { createMiddleware } from "./index.ts";
 
 // Large enough to fill the stream buffers that used to stall; see
 // <https://github.com/fedify-dev/fedify/issues/1059>.
 const LARGE_BODY_SIZE = 512 * 1024;
 
 async function withServer(
-  app: express.Express,
+  app: Koa,
   callback: (origin: string) => Promise<void>,
 ): Promise<void> {
   const server = app.listen(0, "127.0.0.1");
@@ -136,6 +23,15 @@ async function withServer(
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
+}
+
+function readBody(message: IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: Uint8Array[] = [];
+    message.on("data", (chunk: Uint8Array) => chunks.push(chunk));
+    message.on("end", () => resolve(Buffer.concat(chunks).toString()));
+    message.on("error", reject);
+  });
 }
 
 // Sends the body only after a delay, so that the request reaches Fedify
@@ -151,14 +47,13 @@ function delayedBody(body: string): ReadableStream<Uint8Array> {
   });
 }
 
-test("integrateFederation() leaves request bodies it declines intact", async () => {
+test("createMiddleware() leaves request bodies it declines intact", async () => {
   const federation = createFederation<void>({ kv: new MemoryKvStore() });
   federation.setActorDispatcher("/users/{identifier}", () => null);
-  const app = express();
-  app.use(integrateFederation(federation, () => undefined));
-  app.use(express.text({ type: "*/*", limit: "1mb" }));
-  app.post("/api/articles", (req: express.Request, res: express.Response) => {
-    res.send(String(req.body.length));
+  const app = new Koa();
+  app.use(createMiddleware(federation, () => undefined));
+  app.use(async (ctx: Koa.Context) => {
+    ctx.body = String((await readBody(ctx.req)).length);
   });
 
   await withServer(app, async (origin) => {
@@ -175,15 +70,15 @@ test("integrateFederation() leaves request bodies it declines intact", async () 
   });
 });
 
-test("integrateFederation() passes request bodies to Fedify", async () => {
+test("createMiddleware() passes request bodies to Fedify", async () => {
   const federation = createFederation<void>({
     kv: new MemoryKvStore(),
     skipSignatureVerification: true,
   });
   federation.setActorDispatcher("/users/{identifier}", () => null);
   federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
-  const app = express();
-  app.use(integrateFederation(federation, () => undefined));
+  const app = new Koa();
+  app.use(createMiddleware(federation, () => undefined));
 
   await withServer(app, async (origin) => {
     // Fedify rejects a truncated body as invalid JSON, so an accepted
@@ -209,7 +104,7 @@ test("integrateFederation() passes request bodies to Fedify", async () => {
   });
 });
 
-test("integrateFederation() restores request bodies Fedify read before declining", async () => {
+test("createMiddleware() restores request bodies Fedify read before declining", async () => {
   // A dispatcher may clone the request, e.g., through ctx.getSignedKey(), and
   // then return null; the clone tees the body, which starts reading it.
   for (const readClone of [false, true]) {
@@ -219,15 +114,11 @@ test("integrateFederation() restores request bodies Fedify read before declining
       if (readClone) await clone.arrayBuffer();
       return null;
     });
-    const app = express();
-    app.use(integrateFederation(federation, () => undefined));
-    app.use(express.text({ type: "*/*", limit: "1mb" }));
-    app.post(
-      "/users/:identifier",
-      (req: express.Request, res: express.Response) => {
-        res.send(req.body);
-      },
-    );
+    const app = new Koa();
+    app.use(createMiddleware(federation, () => undefined));
+    app.use(async (ctx: Koa.Context) => {
+      ctx.body = await readBody(ctx.req);
+    });
 
     await withServer(app, async (origin) => {
       for (const size of [1024, LARGE_BODY_SIZE]) {
