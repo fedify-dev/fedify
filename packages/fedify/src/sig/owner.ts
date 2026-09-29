@@ -15,11 +15,15 @@ import {
 } from "@opentelemetry/api";
 import metadata from "../../deno.json" with { type: "json" };
 import { exportJwk, fetchActorDocument, verifyKeyOwnership } from "./key.ts";
-import { fetchPortableGatewayKey } from "./portable-key.ts";
+import {
+  fetchPortableGatewayKey,
+  resolvePortableActorKey,
+} from "./portable-key.ts";
 import {
   getCanonicalPortableId,
   isCompatibleKeyId,
   isPortableId,
+  isPortableUri,
   isSamePublicKey as isSameKeyMaterial,
 } from "./portable-key-id.ts";
 export { exportJwk, generateCryptoKeyPair, importJwk } from "./key.ts";
@@ -86,6 +90,23 @@ export async function doesActorOwnKey(
           span.setAttribute("activitypub.key_ownership.verified", false);
           span.setAttribute("activitypub.key_ownership.method", "none");
           return false;
+        }
+        if (key.id != null && isPortableUri(key.id)) {
+          // A key of a portable actor at an ap: key ID, whose owner only
+          // the actor's signed document can tell; there is no falling back
+          // to the checks below, which trust web origins:
+          const owner = await getPortableActorKeyOwner(key, options);
+          const ownerId = owner?.id == null
+            ? null
+            : getCanonicalPortableId(owner.id);
+          const verified = ownerId != null &&
+            ownerId === getCanonicalPortableId(actorId);
+          span.setAttribute("activitypub.key_ownership.verified", verified);
+          span.setAttribute(
+            "activitypub.key_ownership.method",
+            "portable_actor_key",
+          );
+          return verified;
         }
         if (key.id != null && isCompatibleKeyId(key.id)) {
           const owner = await getPortableGatewayKeyOwner(key, options);
@@ -248,6 +269,9 @@ export async function getKeyOwner(
   const contextLoader = options.contextLoader ?? getDocumentLoader();
   const fetchOptions = { documentLoader, contextLoader, tracerProvider };
   const id = keyId instanceof CryptographicKey ? keyId.id : keyId;
+  if (id != null && isPortableUri(id)) {
+    return await getPortableActorKeyOwner(keyId, fetchOptions);
+  }
   if (id != null && isCompatibleKeyId(id)) {
     const owner = await getPortableGatewayKeyOwner(keyId, fetchOptions);
     if (owner !== undefined) return owner;
@@ -346,6 +370,41 @@ async function getPortableGatewayKeyOwner(
       logger.debug(
         "The key {keyId} does not have the same key material as the gateway " +
           "key its portable actor vouches for.",
+        { keyId: keyId.href },
+      );
+      return null;
+    }
+  }
+  return resolution.actor;
+}
+
+/**
+ * Resolves the owner of a key of an [FEP-ef61] portable actor at an `ap:` or
+ * `ap+ef61:` key ID.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
+ * @param key The key, or its ID, which must be an `ap:` or `ap+ef61:` URI.
+ * @param options Options for fetching the key.
+ * @returns The portable actor if its signed document vouches for the key,
+ *          and the given key, if any, has the same key material, or `null`
+ *          if not.
+ */
+async function getPortableActorKeyOwner(
+  key: URL | CryptographicKey,
+  options: GetKeyOwnerOptions,
+): Promise<Actor | null> {
+  const keyId = key instanceof CryptographicKey ? key.id : key;
+  if (keyId == null) return null;
+  const resolution = await resolvePortableActorKey(keyId, options);
+  if (resolution.type !== "verified") return null;
+  if (key instanceof CryptographicKey) {
+    if (
+      key.publicKey == null ||
+      !await isSameKeyMaterial(key.publicKey, resolution.key.publicKey)
+    ) {
+      logger.debug(
+        "The key {keyId} does not have the same key material as the key its " +
+          "portable actor vouches for.",
         { keyId: keyId.href },
       );
       return null;

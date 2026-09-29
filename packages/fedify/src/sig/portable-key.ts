@@ -6,16 +6,23 @@ import {
 } from "@fedify/vocab";
 import {
   type DocumentLoader,
+  FetchError,
+  formatIri,
   getDocumentLoader,
   isGatewayUrl,
+  parseIri,
   type RemoteDocument,
+  toCompatibleEf61Id,
 } from "@fedify/vocab-runtime";
+import { getPortableGatewayCandidates } from "@fedify/vocab-runtime/internal/portable-dereference";
 import { getLogger } from "@logtape/logtape";
 import type { MeterProvider, TracerProvider } from "@opentelemetry/api";
 import type { KeyCache } from "./key.ts";
 import {
   getCanonicalPortableId,
+  getRawCanonicalPortableId,
   isPortableActorDocument,
+  isPortableUri,
   isSamePublicKey,
 } from "./portable-key-id.ts";
 import { verifyPortableObjectProofWithRoot } from "./proof.ts";
@@ -86,6 +93,14 @@ export interface PortableGatewayKeyOptions {
  *  -  no more than one entry of either property has that ID; and
  *  -  the key ID's origin is one of the actor's `gateways`.
  *
+ * An entry has the key's ID if its ID is the key ID, or any compatible
+ * identifier on the same gateway, or the `ap:` or `ap+ef61:` URI, with the
+ * same canonical portable ID.  Some publishers, e.g., Mitra, list the keys
+ * of portable actors under `ap:` URIs, but sign requests with compatible key
+ * IDs on their own gateways.  IDs are compared as they are written in
+ * the signed document, so an ID that URL parsing would turn into another,
+ * e.g., by resolving dot segments, has no match.
+ *
  * [FEP-8b32]: https://w3id.org/fep/8b32
  * [FEP-ef61]: https://w3id.org/fep/ef61
  * [FEP-521a]: https://w3id.org/fep/521a
@@ -97,25 +112,45 @@ export interface PortableGatewayKeyOptions {
  * @returns The verification result, which is never `legacy`.
  * @internal
  */
-export async function verifyPortableGatewayKeyDocument(
+export function verifyPortableGatewayKeyDocument(
   document: unknown,
   actor: Actor,
   keyId: URL,
   options: PortableGatewayKeyOptions = {},
 ): Promise<PortableGatewayKeyResolution> {
+  return verifyPortableKeyDocument(document, actor, keyId, true, options);
+}
+
+/**
+ * Verifies that the signed document of a portable actor vouches for the key
+ * with the given ID, either a gateway key at a compatible key ID, or a key of
+ * the actor itself at an `ap:` or `ap+ef61:` key ID.  See
+ * {@link verifyPortableGatewayKeyDocument} for the rules; a key of the actor
+ * itself names no gateway, so instead of the key ID's origin being one of
+ * the actor's `gateways`, the actor only has to have a valid gateway, as
+ * FEP-ef61 requires of every portable actor.
+ */
+async function verifyPortableKeyDocument(
+  document: unknown,
+  actor: Actor,
+  keyId: URL,
+  isGatewayKey: boolean,
+  options: PortableGatewayKeyOptions,
+): Promise<PortableGatewayKeyResolution> {
   const reject = (reason: string): PortableGatewayKeyResolution => {
     logger.debug(
-      "Failed to verify gateway key {keyId} of the portable actor " +
-        "{actorId}: {reason}",
-      { keyId: keyId.href, actorId: actor.id?.href, reason },
+      "Failed to verify key {keyId} of the portable actor {actorId}: " +
+        "{reason}",
+      { keyId: formatIri(keyId), actorId: actor.id?.href, reason },
     );
     return { type: "rejected", reason };
   };
   const keyBase = new URL(keyId.href);
   keyBase.hash = "";
   const claimedActorId = getCanonicalPortableId(keyBase);
+  const claimedKeyId = getCanonicalPortableId(keyId);
   const actorId = actor.id == null ? null : getCanonicalPortableId(actor.id);
-  if (claimedActorId == null || actorId == null) {
+  if (claimedActorId == null || claimedKeyId == null || actorId == null) {
     return reject("The key ID or the actor ID is not a valid portable ID.");
   }
   if (claimedActorId !== actorId) {
@@ -186,9 +221,14 @@ export async function verifyPortableGatewayKeyDocument(
     if (!(error instanceof TypeError)) throw error;
     return reject("The verified actor document is malformed.");
   }
+  // Parsing the ID into a URL may have resolved dot segments in its path,
+  // so the ID as it is written in the signed document has to match as well:
+  const rootId = root["@id"];
   if (
     !isPortableActorDocument(verifiedActor) ||
-    getCanonicalPortableId(verifiedActor.id!) !== claimedActorId
+    getCanonicalPortableId(verifiedActor.id!) !== claimedActorId ||
+    typeof rootId !== "string" ||
+    getRawCanonicalPortableId(rootId) !== claimedActorId
   ) {
     return reject(
       "The key ID is not a compatible identifier of the actor whose " +
@@ -196,8 +236,10 @@ export async function verifyPortableGatewayKeyDocument(
     );
   }
   actor = verifiedActor;
-  const assertionNodes = findNodes(root[`${SEC}assertionMethod`], keyId);
-  const publicKeyNodes = findNodes(root[`${SEC}publicKey`], keyId);
+  const findKeyNodes = (values: unknown) =>
+    findNodes(values, claimedKeyId, isGatewayKey ? keyId.origin : null);
+  const assertionNodes = findKeyNodes(root[`${SEC}assertionMethod`]);
+  const publicKeyNodes = findKeyNodes(root[`${SEC}publicKey`]);
   if (assertionNodes.length > 1 || publicKeyNodes.length > 1) {
     return reject("The actor document has more than one key with the ID.");
   }
@@ -268,13 +310,17 @@ export async function verifyPortableGatewayKeyDocument(
     }
     publicKey = embedded.publicKey;
   }
-  const listed = actor.gateways.some((gateway) =>
-    isGatewayUrl(gateway) && gateway.origin === keyId.origin
-  );
-  if (!listed) {
-    return reject(
-      `The gateway ${keyId.origin} is not listed in the actor's gateways.`,
+  if (isGatewayKey) {
+    const listed = actor.gateways.some((gateway) =>
+      isGatewayUrl(gateway) && gateway.origin === keyId.origin
     );
+    if (!listed) {
+      return reject(
+        `The gateway ${keyId.origin} is not listed in the actor's gateways.`,
+      );
+    }
+  } else if (!actor.gateways.some(isGatewayUrl)) {
+    return reject("The actor has no valid gateways.");
   }
   const key = new CryptographicKey({
     id: keyId,
@@ -336,7 +382,219 @@ export async function fetchPortableGatewayKey(
   );
 }
 
-function findNodes(values: unknown, id: URL): Record<string, unknown>[] {
+/**
+ * The result of resolving a key of a portable actor at an `ap:` or
+ * `ap+ef61:` key ID.
+ * @internal
+ */
+export type PortableActorKeyResolution =
+  | Exclude<PortableGatewayKeyResolution, { readonly type: "legacy" }>
+  | {
+    /**
+     * Whether the actor's document vouches for the key could not be
+     * determined, e.g., because no gateway could be reached.
+     */
+    readonly type: "unavailable";
+    readonly error: unknown;
+    /**
+     * Whether the failure can be cached as a failure to fetch the key, i.e.,
+     * every gateway failed to serve the actor's document at all.  A failure
+     * that is not cacheable comes with an error that has no HTTP status,
+     * since none of the statuses describes the lookup as a whole.
+     */
+    readonly cacheable: boolean;
+  };
+
+type PortableActorKeyAttempt =
+  | { readonly type: "rejected"; readonly reason: string }
+  | { readonly type: "retrievalFailed"; readonly error: unknown }
+  | { readonly type: "indeterminate"; readonly error: unknown };
+
+/**
+ * Resolves a key of a portable actor at an `ap:` or `ap+ef61:` key ID, e.g.,
+ * `ap://did:key:z6Mk…/actor#main-key`.  Such a key ID names no gateway, so
+ * the actor's document, i.e., the key ID without its fragment, is fetched
+ * through the gateways in its `@gateway` location hints, one after another,
+ * until one of them serves a document that vouches for the key.  Without
+ * location hints, the document loader is asked for the `ap:` URI itself,
+ * which only a custom document loader can resolve.  The hints are chosen by
+ * whoever made the signature, but that does not matter: only a document with
+ * a valid proof by the DID of the key ID vouches for the key.
+ *
+ * The key is taken as a key of the actor itself, not of a gateway, so it is
+ * accepted by the rules of {@link verifyPortableGatewayKeyDocument}, except
+ * that it is listed under the `ap:` or `ap+ef61:` URI with the same canonical
+ * ID as the key ID, and that the actor only has to have a valid gateway.
+ * The key ID must have a fragment; a key served as a standalone document is
+ * not supported.
+ *
+ * If no gateway serves a document that vouches for the key, the result is
+ * `rejected` only if every gateway served a document that definitely does not
+ * vouch for it.  If every gateway failed to serve a document at all, the
+ * result is a cacheable `unavailable`, with the error of the first gateway if
+ * every gateway responded with the same HTTP status, so that the status
+ * describes the whole lookup.  Otherwise, e.g., if one gateway was
+ * unreachable and another served an invalid document, nothing tells what the
+ * unreachable gateway would have served, so the result is an `unavailable`
+ * that is not cacheable.
+ *
+ * @param keyId The key ID, which must be an `ap:` or `ap+ef61:` URI.
+ * @param options Loaders and telemetry providers.
+ * @returns The resolution, which is never `legacy`.
+ * @internal
+ */
+export async function resolvePortableActorKey(
+  keyId: URL,
+  options: PortableGatewayKeyOptions = {},
+): Promise<PortableActorKeyResolution> {
+  const documentLoader = options.documentLoader ?? getDocumentLoader();
+  const contextLoader = options.contextLoader ?? getDocumentLoader();
+  let formattedKeyId = keyId.href;
+  const reject = (reason: string): PortableActorKeyResolution => {
+    logger.debug(
+      "Failed to verify key {keyId} of a portable actor: {reason}",
+      { keyId: formattedKeyId, reason },
+    );
+    return { type: "rejected", reason };
+  };
+  if (!isPortableUri(keyId) || getCanonicalPortableId(keyId) == null) {
+    return reject("The key ID is not a valid ap: or ap+ef61: URI.");
+  }
+  formattedKeyId = formatIri(keyId);
+  if (keyId.hash === "" || keyId.hash === "#") {
+    return reject(
+      "The key ID has no fragment; only keys embedded in actor documents " +
+        "are supported.",
+    );
+  }
+  const actorUrl = new URL(keyId.href);
+  actorUrl.hash = "";
+  const requestUrls: string[] = [];
+  for (const gateway of getPortableGatewayCandidates(actorUrl)) {
+    try {
+      requestUrls.push(toCompatibleEf61Id(actorUrl, gateway).href);
+    } catch (error) {
+      if (!(error instanceof TypeError)) throw error;
+      return reject(`The key ID cannot be fetched from gateways: ${error}`);
+    }
+  }
+  // No gateway to ask; custom document loaders may still know how to
+  // retrieve the ap: URI itself:
+  if (requestUrls.length < 1) requestUrls.push(formatIri(actorUrl));
+  const attempts: PortableActorKeyAttempt[] = [];
+  for (const url of requestUrls) {
+    let remoteDocument: RemoteDocument;
+    try {
+      remoteDocument = await documentLoader(url);
+    } catch (error) {
+      logger.debug(
+        "Failed to fetch the actor of key {keyId} from {url}: {error}",
+        { keyId: formattedKeyId, url, error },
+      );
+      attempts.push({ type: "retrievalFailed", error });
+      continue;
+    }
+    let resolution: PortableGatewayKeyResolution;
+    try {
+      const object = await ASObject.fromJsonLd(remoteDocument.document, {
+        documentLoader,
+        contextLoader,
+        tracerProvider: options.tracerProvider,
+      });
+      resolution = isPortableActorDocument(object)
+        ? await verifyPortableKeyDocument(
+          remoteDocument.document,
+          object,
+          keyId,
+          false,
+          { ...options, documentLoader, contextLoader },
+        )
+        : {
+          type: "rejected",
+          reason: "The document is not a portable actor.",
+        };
+    } catch (error) {
+      if (error instanceof TypeError) {
+        resolution = {
+          type: "rejected",
+          reason: `The document is malformed: ${error.message}`,
+        };
+      } else {
+        logger.debug(
+          "Failed to process the actor of key {keyId} served from {url}: " +
+            "{error}",
+          { keyId: formattedKeyId, url, error },
+        );
+        attempts.push({ type: "indeterminate", error });
+        continue;
+      }
+    }
+    if (resolution.type === "verified") return resolution;
+    const reason = resolution.type === "rejected"
+      ? resolution.reason
+      : "The document is not a portable actor.";
+    logger.debug(
+      "The actor document served from {url} does not vouch for key {keyId}: " +
+        "{reason}",
+      { keyId: formattedKeyId, url, reason },
+    );
+    attempts.push({ type: "rejected", reason });
+  }
+  const rejections = attempts.flatMap((a) =>
+    a.type === "rejected" ? [a.reason] : []
+  );
+  if (rejections.length === attempts.length) {
+    return reject(rejections.join(" "));
+  }
+  const errors = attempts.flatMap((a) =>
+    a.type === "rejected" ? [] : [a.error]
+  );
+  const aggregate = errors.length === 1 ? errors[0] : new AggregateError(
+    errors,
+    `Failed to fetch the actor of key ${formattedKeyId} from any of its ` +
+      `gateways: ${requestUrls.join(", ")}`,
+  );
+  if (attempts.every((a) => a.type === "retrievalFailed")) {
+    const statuses = errors.map((error) =>
+      error instanceof FetchError ? error.response?.status : undefined
+    );
+    const homogeneous = statuses[0] != null &&
+      statuses.every((status) => status === statuses[0]);
+    return {
+      type: "unavailable",
+      error: homogeneous ? errors[0] : aggregate,
+      cacheable: true,
+    };
+  }
+  return {
+    type: "unavailable",
+    error: new Error(
+      `Could not determine whether the actor of key ${formattedKeyId} ` +
+        "vouches for it.",
+      { cause: aggregate },
+    ),
+    cacheable: false,
+  };
+}
+
+/**
+ * Finds the nodes that stand for the key with the given canonical portable
+ * ID.  A node whose ID is an `ap:` or `ap+ef61:` URI stands for the key
+ * itself, e.g., Mitra lists the keys of portable actors that way while
+ * signing requests with compatible key IDs.  A node whose ID is a compatible
+ * identifier stands for a gateway's key, so it matches only a compatible key
+ * ID on the same gateway; a key ID that names no gateway never selects
+ * a gateway's key, even with the same fragment.
+ * @param values The expanded values of a key property.
+ * @param canonicalKeyId The canonical portable ID of the key ID.
+ * @param gateway The origin of the gateway whose key the key ID names, or
+ *                `null` if the key ID names no gateway.
+ */
+function findNodes(
+  values: unknown,
+  canonicalKeyId: string,
+  gateway: string | null,
+): Record<string, unknown>[] {
   if (!Array.isArray(values)) return [];
   const nodes: Record<string, unknown>[] = [];
   for (const value of values) {
@@ -345,8 +603,10 @@ function findNodes(values: unknown, id: URL): Record<string, unknown>[] {
     }
     const node = value as Record<string, unknown>;
     const nodeId = node["@id"];
-    if (typeof nodeId !== "string" || !URL.canParse(nodeId)) continue;
-    if (new URL(nodeId).href === id.href) nodes.push(node);
+    if (typeof nodeId !== "string") continue;
+    if (getRawCanonicalPortableId(nodeId) !== canonicalKeyId) continue;
+    const parsed = parseIri(nodeId);
+    if (isPortableUri(parsed) || parsed.origin === gateway) nodes.push(node);
   }
   return nodes;
 }

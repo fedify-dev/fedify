@@ -358,6 +358,28 @@ test("Context.sendActivity() never signs documents with gateway keys", async () 
   assertEquals(bodies[0].signature, undefined);
 });
 
+test("Context.sendActivity() never signs documents with keys at ap: URIs", async () => {
+  const federation = createTestFederation();
+  const ctx = federation.createContext(new URL(gateway));
+  const keys: SenderKeyPair[] = [
+    { keyId: parseIri(`${actorId.href}#main-key`), privateKey: rsaPrivateKey2 },
+    {
+      keyId: parseIri(`${actorId.href}#key-2`),
+      privateKey: ed25519GatewayKeyPair.privateKey,
+    },
+  ];
+  const activity = new Create({
+    id: new URL("https://example.com/activities/1"),
+    actor: new URL("https://example.com/users/bob"),
+    object: new URL("https://example.com/notes/1"),
+  });
+  const { bodies } = await capture(() =>
+    ctx.sendActivity(keys, recipient, activity)
+  );
+  assertEquals(bodies[0].proof, undefined);
+  assertEquals(bodies[0].signature, undefined);
+});
+
 test("Context.getDocumentLoader() signs requests with gateway keys for portable actors", async () => {
   const federation = createTestFederation(() => actorId);
   const ctx = federation.createContext(new URL(gateway));
@@ -425,11 +447,13 @@ async function deliver(
     httpSignature = true,
     actor,
     documentLoader,
+    keyId = gatewayKeyId,
   }: {
     kv?: MemoryKvStore;
     httpSignature?: boolean;
     actor?: Record<string, unknown>;
     documentLoader?: DocumentLoader;
+    keyId?: URL;
   } = {},
 ): Promise<{ status: number; dispatched: number }> {
   documentLoader ??= createLoader({
@@ -441,7 +465,7 @@ async function deliver(
     headers: { "Content-Type": "application/activity+json" },
   });
   const request = httpSignature
-    ? await signRequest(unsigned, rsaPrivateKey2, gatewayKeyId)
+    ? await signRequest(unsigned, rsaPrivateKey2, keyId)
     : unsigned;
   const federation = createFederation<void>({ kv: new MemoryKvStore() });
   const context = createRequestContext({
@@ -517,6 +541,86 @@ test("handleInbox() requires proofs of portable actors despite gateway signature
       dispatched: 1,
     },
   );
+});
+
+// The actor lists its own key under an ap: URI, and the key ID names
+// the gateway to fetch the actor's document from:
+const apKeyId = parseIri(
+  `${actorId.href}?@gateway=${encodeURIComponent(gateway)}#main-key`,
+);
+
+async function apActorDocument(): Promise<Record<string, unknown>> {
+  const json = await new Person({
+    id: actorId,
+    inbox: parseIri(`${actorId.href}/inbox`),
+    gateways: [new URL(gateway)],
+    publicKey: new CryptographicKey({
+      id: parseIri(`${actorId.href}#main-key`),
+      owner: actorId,
+      publicKey: rsaPublicKey2.publicKey!,
+    }),
+  }).toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  json["@context"] = [
+    ...json["@context"] as unknown[],
+    "https://w3id.org/security/data-integrity/v1",
+  ];
+  return await sign(json);
+}
+
+test("handleInbox() requires proofs of portable actors despite signatures with keys at ap: key IDs", async () => {
+  const fetched: string[] = [];
+  const inner = createLoader({
+    [compatibleActorId(gateway)]: await apActorDocument(),
+  });
+  const documentLoader: DocumentLoader = (url, options) => {
+    fetched.push(url);
+    return inner(url, options);
+  };
+  // The HTTP Signature is verified with the actor's key, but it does not
+  // authenticate the activity:
+  assertEquals(
+    await deliver(await createJson("unsigned"), [gateway], {
+      documentLoader,
+      keyId: apKeyId,
+    }),
+    { status: 401, dispatched: 0 },
+  );
+  assertEquals(
+    fetched.some((url) => url.startsWith(compatibleActorId(gateway))),
+    true,
+  );
+  // A valid proof authenticates the activity:
+  assertEquals(
+    await deliver(await sign(await createJson("signed")), [gateway], {
+      documentLoader,
+      keyId: apKeyId,
+    }),
+    { status: 202, dispatched: 1 },
+  );
+});
+
+test("RequestContext.getSignedKeyOwner() resolves keys at ap: key IDs", async () => {
+  const documentLoader = createLoader({
+    [compatibleActorId(gateway)]: await apActorDocument(),
+  });
+  const federation = new FederationImpl<void>({
+    kv: new MemoryKvStore(),
+    contextLoaderFactory: () => mockDocumentLoader,
+    documentLoaderFactory: () => documentLoader,
+  });
+  const request = await signRequest(
+    new Request("https://local.example/notes/1", {
+      headers: { Accept: "application/activity+json" },
+    }),
+    rsaPrivateKey2,
+    apKeyId,
+  );
+  const ctx = federation.createContext(request, undefined);
+  assertEquals((await ctx.getSignedKey())?.id?.href, apKeyId.href);
+  assertEquals((await ctx.getSignedKeyOwner())?.id?.href, actorId.href);
 });
 
 test("handleInbox() fetches an unreachable gateway key once", async () => {

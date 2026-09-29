@@ -42,9 +42,15 @@ import {
   fetchKeyDetailed,
   type FetchKeyErrorResult,
   type KeyCache,
+  type PortableKeyResolvers,
   validateCryptoKey,
 } from "./key.ts";
-import { verifyPortableGatewayKeyDocument } from "./portable-key.ts";
+import {
+  type PortableGatewayKeyOptions,
+  resolvePortableActorKey,
+  verifyPortableGatewayKeyDocument,
+} from "./portable-key.ts";
+import { parseKeyIdString } from "./portable-key-id.ts";
 
 const DEFAULT_MAX_REDIRECTION = 20;
 const DOUBLE_KNOCK_TRANSPORT_RETRY_DELAY_MS = 100;
@@ -841,13 +847,22 @@ function keyFetchErrorResult(
   };
 }
 
+/**
+ * Creates the resolvers of keys of FEP-ef61 portable actors, which HTTP
+ * Signature verification alone passes to key lookups.
+ */
+function createPortableKeyResolvers(
+  options: PortableGatewayKeyOptions,
+): PortableKeyResolvers {
+  return {
+    gatewayKey: (document, actor, keyId) =>
+      verifyPortableGatewayKeyDocument(document, actor, keyId, options),
+    actorKey: (keyId) => resolvePortableActorKey(keyId, options),
+  };
+}
+
 function parseKeyId(value: string | undefined): URL | null {
-  if (value == null) return null;
-  try {
-    return new URL(value);
-  } catch {
-    return null;
-  }
+  return value == null ? null : parseKeyIdString(value);
 }
 
 function getKeyFetchErrorName(error: Error): string {
@@ -1258,14 +1273,13 @@ async function verifyRequestDraft(
         keyCache,
         tracerProvider,
         meterProvider,
-        portableGatewayKeyResolver: (document, actor, keyId) =>
-          verifyPortableGatewayKeyDocument(document, actor, keyId, {
-            documentLoader,
-            contextLoader,
-            keyCache,
-            tracerProvider,
-            meterProvider,
-          }),
+        portableKeyResolvers: createPortableKeyResolvers({
+          documentLoader,
+          contextLoader,
+          keyCache,
+          tracerProvider,
+          meterProvider,
+        }),
       }),
   );
   const { key, cached, fetchError } = fetchResult;
@@ -1615,14 +1629,13 @@ async function verifyRequestRfc9421(
           keyCache,
           tracerProvider,
           meterProvider,
-          portableGatewayKeyResolver: (document, actor, gatewayKeyId) =>
-            verifyPortableGatewayKeyDocument(document, actor, gatewayKeyId, {
-              documentLoader,
-              contextLoader,
-              keyCache,
-              tracerProvider,
-              meterProvider,
-            }),
+          portableKeyResolvers: createPortableKeyResolvers({
+            documentLoader,
+            contextLoader,
+            keyCache,
+            tracerProvider,
+            meterProvider,
+          }),
         }),
     );
     const { key, cached, fetchError } = rfcFetchResult;

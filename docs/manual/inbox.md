@@ -77,7 +77,8 @@ only if its Object Integrity Proof made by the actor's DID is valid.  An HTTP
 Signature or a Linked Data Signature does not authenticate it, not even an HTTP
 Signature made with one of the actor's
 [gateway keys](./actor.md#gateway-keys-of-portable-actors), which only tells
-which gateway sent the request.  Such an activity without a valid proof is
+which gateway sent the request, or with a key of the actor itself at an `ap:`
+key ID.  Such an activity without a valid proof is
 rejected with `401 Unauthorized`.  Conversely, an activity with a valid proof
 is accepted even if the gateway that sent it did not sign the request with
 a key the actor lists.

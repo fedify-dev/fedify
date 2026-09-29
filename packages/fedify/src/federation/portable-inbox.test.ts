@@ -1638,6 +1638,17 @@ test("Federation.fetch() forwards portable inbox deliveries whose sending gatewa
     },
     { name: "key of another actor", sign: { keyId: bobKeyId }, fetches: false },
     {
+      // A key at an ap: key ID is the actor's own, and names no gateway:
+      name: "key at an ap: key ID",
+      sign: {
+        keyId: parseIri(
+          `ap+ef61://${did}/users/alice?@gateway=` +
+            `${encodeURIComponent(GATEWAY2)}#main-key`,
+        ),
+      },
+      fetches: false,
+    },
+    {
       name: "content-digest not covered",
       sign: { spec: "rfc9421", components: ["@method", "@target-uri"] },
       fetches: false,

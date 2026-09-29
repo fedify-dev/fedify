@@ -240,7 +240,9 @@ test("a portable activity without exactly one DID-matching key is rejected", asy
       "none of its 2 Ed25519 keys",
     ],
     [
-      // A portable URL shares the DID origin but is not a DID URL.
+      // A portable URL shares the DID origin but is not a DID URL.  Such
+      // a key ID only names a key for HTTP Signatures, so it is not even
+      // a candidate:
       "a same-origin key ID is not a DID URL",
       [
         {
@@ -249,7 +251,7 @@ test("a portable activity without exactly one DID-matching key is rejected", asy
         },
         sender(await didKey()),
       ],
-      "none of its 2 Ed25519 keys",
+      "none of its 1 Ed25519 keys",
     ],
     [
       "several keys match",

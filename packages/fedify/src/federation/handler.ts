@@ -60,8 +60,8 @@ import { doesActorOwnKey } from "../sig/owner.ts";
 import {
   getCanonicalPortableId,
   hasPortableActor,
-  isCompatibleKeyId,
   isPortableId,
+  isPortableKeyId,
 } from "../sig/portable-key-id.ts";
 import {
   InvalidPortableObjectIdError,
@@ -2105,11 +2105,12 @@ async function handleInboxInternal<TContextData>(
 
   if (
     !skipSignatureVerification && !proofVerified &&
-    (isPortableActivity(activity) || isPortableGatewayKey(httpSigKey))
+    (isPortableActivity(activity) || isPortableActorKey(httpSigKey))
   ) {
-    // HTTP Signatures made with a portable actor's gateway key only tell
-    // which gateway sent the request.  FEP-ef61 authenticates portable
-    // actors' activities by the Object Integrity Proofs of their DIDs alone.
+    // HTTP Signatures made with a portable actor's key only tell that one of
+    // its gateways or clients sent the request.  FEP-ef61 authenticates
+    // portable actors' activities by the Object Integrity Proofs of their
+    // DIDs alone.
     // This comes before the key ownership check, which cannot change the
     // outcome, so that such a request costs no further fetches:
     if (deferredLdSignatureError != null) throw deferredLdSignatureError;
@@ -3493,13 +3494,13 @@ const MIN_COMPONENTS = [
 ];
 
 /**
- * Checks whether an HTTP Signature key is a gateway key of an FEP-ef61
- * portable actor, i.e., its ID is a compatible identifier and it is owned by
- * a portable actor, which only the portable actor's signed document can
- * establish.
+ * Checks whether an HTTP Signature key is a key of an FEP-ef61 portable
+ * actor, i.e., its ID is a compatible identifier or an `ap:` or `ap+ef61:`
+ * URI, and it is owned by a portable actor, which only the portable actor's
+ * signed document can establish.
  */
-function isPortableGatewayKey(key: CryptographicKey | null): boolean {
-  return key?.id != null && isCompatibleKeyId(key.id) &&
+function isPortableActorKey(key: CryptographicKey | null): boolean {
+  return key?.id != null && isPortableKeyId(key.id) &&
     key.ownerId != null && isPortableId(key.ownerId);
 }
 
