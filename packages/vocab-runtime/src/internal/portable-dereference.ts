@@ -7,6 +7,7 @@ import {
 import preloadedContexts from "../contexts.ts";
 import type { DocumentLoader, RemoteDocument } from "../docloader.ts";
 import jsonld from "../jsonld.ts";
+import { createScopedContextLoader } from "./jsonld-cache.ts";
 import type {
   PortableObjectReferrer,
   PortableObjectVerification,
@@ -776,6 +777,10 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
     options.suppressError,
   );
   const contextLoader = snapshot.loader;
+  const scopedDocument = createScopedContextLoader(
+    options.documentLoader,
+    options.suppressError,
+  );
   const attempts: Attempt[] = [];
   const { signal } = options;
   const gatewayHints = explicitGateways == null && inferredGateways.length > 0
@@ -813,7 +818,7 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
         let result: PortableObjectVerification;
         try {
           result = await verify(document, {
-            documentLoader: options.documentLoader,
+            documentLoader: scopedDocument.loader,
             contextLoader,
             tracerProvider: options.tracerProvider,
             ...(documentUrl == null ? {} : { documentUrl }),
@@ -871,6 +876,7 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
       }
     }
   } finally {
+    scopedDocument.release();
     snapshot.release();
   }
   const rejected = attempts.filter((a) => a.type === "rejected");

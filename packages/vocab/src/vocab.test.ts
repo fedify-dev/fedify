@@ -3,6 +3,7 @@ import {
   decodeMultibase,
   type DocumentLoader,
   FetchError,
+  getDocumentLoader,
   LanguageString,
   parseDecimal,
   type RemoteDocument,
@@ -5870,6 +5871,99 @@ test("portable accessors suppress document and context failure logs", async () =
             await rejects(() => announce.getObject(options));
             ok(records.some((r) => r.level === "error"));
           }
+        }
+      } finally {
+        fetchMock.hardReset();
+      }
+    }
+  } finally {
+    await reset();
+  }
+});
+
+test("portable verifiers suppress document logs only during dereferencing", async () => {
+  const records: LogRecord[] = [];
+  const id = new URL("ap+ef61://did%3Akey%3Az6Mkabc/objects/1");
+  const verificationUrl = "https://example.com/verification-document";
+  const missingUrl = "https://example.com/missing-verification-document";
+  const signal = new AbortController().signal;
+  await reset();
+  await configure({
+    sinks: { capture: (record) => records.push(record) },
+    loggers: [{
+      category: ["fedify"],
+      lowestLevel: "debug",
+      sinks: ["capture"],
+    }],
+  });
+  try {
+    for (const failVerification of [false, true]) {
+      fetchMock.spyGlobal();
+      fetchMock.get("begin:https://example.com/.well-known/", {
+        headers: { "Content-Type": "application/activity+json" },
+        body: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          id: "ap://did:key:z6Mkabc/objects/1",
+          type: "Note",
+        },
+      });
+      fetchMock.get(verificationUrl, {
+        status: failVerification ? 404 : 200,
+        headers: { "Content-Type": "application/ld+json" },
+        body: {},
+      });
+      fetchMock.get(missingUrl, { status: 404 });
+      try {
+        for (const suppressError of [true, false, undefined]) {
+          records.length = 0;
+          const baseLoader = getDocumentLoader();
+          const calls: Parameters<DocumentLoader>[1][] = [];
+          const documentLoader: DocumentLoader = (url, options) => {
+            calls.push(options);
+            return baseLoader(url, options);
+          };
+          let retainedLoader: DocumentLoader | undefined;
+          const loaderOptions = { signal };
+          const announce = new Announce({ object: id });
+          const object = await announce.getObject({
+            suppressError,
+            documentLoader,
+            gateways: ["https://example.com/"],
+            verifyPortableObject: async (_document, options) => {
+              retainedLoader = options.documentLoader;
+              ok(options.documentLoader);
+              await options.documentLoader(verificationUrl, loaderOptions);
+              return { verified: true };
+            },
+          });
+          if (failVerification) {
+            deepStrictEqual(object, null);
+            deepStrictEqual(
+              records.some((record) => record.level === "error"),
+              !suppressError,
+            );
+            ok(records.some((record) => record.level === "warning"));
+          } else {
+            assertInstanceOf(object, Note);
+          }
+          deepStrictEqual(calls.at(-1)?.signal, signal);
+          deepStrictEqual(
+            calls.at(-1)?.suppressError,
+            suppressError ? true : undefined,
+          );
+          deepStrictEqual(loaderOptions, { signal });
+
+          // A verifier may retain the loader after success or rejection.
+          // Suppression must end when the accessor returns in either case.
+          records.length = 0;
+          const releasedLoader = retainedLoader;
+          ok(releasedLoader);
+          await rejects(
+            () => releasedLoader(missingUrl, loaderOptions),
+            FetchError,
+          );
+          deepStrictEqual(calls.at(-1), loaderOptions);
+          ok(records.some((record) => record.level === "error"));
         }
       } finally {
         fetchMock.hardReset();
