@@ -49,7 +49,9 @@
     "build:self": "tsdown",
     "build": "pnpm --filter @fedify/solidstart... run build:self",
     "prepack": "pnpm build",
-    "prepublish": "pnpm build"
+    "prepublish": "pnpm build",
+    "test": "node --experimental-transform-types --test",
+    "test:bun": "bun test"
   },
   "peerDependencies": {
     "@fedify/fedify": "workspace:^",
