@@ -186,8 +186,8 @@ export interface LookupObjectOptions {
   signal?: AbortSignal;
 
   /**
-   * The [FEP-ef61] proof policy to apply to portable objects, typically
-   * `verifyPortableObjectProof()` from `@fedify/fedify`, which
+   * The [FEP-ef61] policy to apply to portable objects, typically
+   * `verifyPortableObject()` from `@fedify/fedify`, which
    * `Context.lookupObject()` uses by default.
    *
    * When it is given, portable `ap:`/`ap+ef61:` identifiers and compatible
@@ -205,6 +205,9 @@ export interface LookupObjectOptions {
    * identifiers are fetched as ordinary HTTP(S) URLs, whose objects with
    * a portable `@id` are refused as cross-origin objects, even with
    * `crossOrigin: "trust"`.
+   *
+   * The returned object also uses it by default for dereferencing its
+   * properties, as if it were passed to its property accessors.
    *
    * [FEP-ef61]: https://w3id.org/fep/ef61
    * @since 2.4.0
@@ -456,6 +459,7 @@ async function lookupObjectInternal(
         documentLoader,
         contextLoader: snapshot?.loader ?? options.contextLoader,
         tracerProvider: options.tracerProvider,
+        verifyPortableObject: options.verifyPortableObject,
         baseUrl: documentUrl,
       });
     } catch (error) {
@@ -670,6 +674,7 @@ async function dereference(
           documentLoader,
           contextLoader,
           tracerProvider,
+          verifyPortableObject: options.verifyPortableObject,
           baseUrl,
         }),
     });

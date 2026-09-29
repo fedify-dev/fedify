@@ -77,6 +77,7 @@ function createContext<TContextData>(
     data,
     documentLoader,
     contextLoader,
+    verifyPortableObject,
     meterProvider,
     tracerProvider,
     clone,
@@ -119,6 +120,7 @@ function createContext<TContextData>(
     hostname: url.hostname,
     documentLoader: documentLoader ?? mockDocumentLoader,
     contextLoader: contextLoader ?? mockDocumentLoader,
+    ...(verifyPortableObject == null ? {} : { verifyPortableObject }),
     meterProvider: meterProvider ?? noopMeterProvider,
     tracerProvider: tracerProvider ?? noopTracerProvider,
     clone: clone ?? ((data) => createContext({ ...values, data })),
@@ -150,6 +152,8 @@ function createContext<TContextData>(
           mockDocumentLoader,
         contextLoader: options.contextLoader ?? contextLoader ??
           mockDocumentLoader,
+        verifyPortableObject: options.verifyPortableObject ??
+          verifyPortableObject,
       });
     }),
     traverseCollection: traverseCollection ?? ((collection, options = {}) => {
@@ -158,6 +162,8 @@ function createContext<TContextData>(
           mockDocumentLoader,
         contextLoader: options.contextLoader ?? contextLoader ??
           mockDocumentLoader,
+        verifyPortableObject: options.verifyPortableObject ??
+          verifyPortableObject,
       });
     }),
     lookupNodeInfo: lookupNodeInfo ?? ((_params) => {

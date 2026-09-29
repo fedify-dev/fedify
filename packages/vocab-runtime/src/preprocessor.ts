@@ -1,5 +1,6 @@
 import type { DocumentLoader } from "./docloader.ts";
 import type { TracerProvider } from "@opentelemetry/api";
+import type { PortableObjectVerifier } from "./portable.ts";
 
 /**
  * JSON value shape passed to property preprocessors.
@@ -24,6 +25,12 @@ export interface PropertyPreprocessorContext {
   contextLoader?: DocumentLoader;
   /** OpenTelemetry tracer provider for instrumentation. */
   tracerProvider?: TracerProvider;
+  /**
+   * The default FEP-ef61 portable object verifier that objects returned by
+   * the preprocessor should use for their property accessors.
+   * @since 2.4.0
+   */
+  verifyPortableObject?: PortableObjectVerifier;
   /** Base URL for resolving relative references. */
   baseUrl?: URL;
 }

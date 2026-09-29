@@ -43,6 +43,7 @@ function* generatePreprocessorBlock(
             documentLoader: options.documentLoader,
             contextLoader: options.contextLoader,
             tracerProvider: options.tracerProvider,
+            verifyPortableObject: options.verifyPortableObject,
             baseUrl: ${baseUrlExpr},
           });
           if (_result instanceof Error) throw _result;
@@ -376,6 +377,10 @@ export async function* generateDecoder(
    *                - \`contextLoader\`: The loader for remote JSON-LD contexts.
    *                - \`tracerProvider\`: The OpenTelemetry tracer provider to use.
    *                  If omitted, the global tracer provider is used.
+   *                - \`verifyPortableObject\`: The default FEP-ef61 portable
+   *                  object verifier for the property accessors of the
+   *                  returned object and the objects obtained from it.  It
+   *                  does not verify the given \`json\` itself.
    * @returns The object of this type.
    * @throws {TypeError} If the given \`json\` is invalid.
    */
@@ -385,6 +390,7 @@ export async function* generateDecoder(
       documentLoader?: DocumentLoader,
       contextLoader?: DocumentLoader,
       tracerProvider?: TracerProvider,
+      verifyPortableObject?: PortableObjectVerifier,
       baseUrl?: URL,
     } = {},
   ): Promise<${type.name}> {
@@ -423,6 +429,7 @@ export async function* generateDecoder(
       documentLoader?: DocumentLoader,
       contextLoader?: DocumentLoader,
       tracerProvider?: TracerProvider,
+      verifyPortableObject?: PortableObjectVerifier,
       baseUrl?: URL,
     } = {},
   ): Promise<${type.name}> {

@@ -382,6 +382,37 @@ object embedded in a portable object with the same DID is trusted as
 embedded, since the parent's proof covers it; other embedded portable objects
 are handled as described below.
 
+#### Default verifiers
+
+A `Context` has a `~Context.verifyPortableObject` property, which is
+`verifyPortableObject()` with the context's document loader and context
+loader.  Since it has the same name as the option, passing a `Context` as the
+options of an accessor applies the policy:
+
+~~~~ typescript twoslash
+import type { Context } from "@fedify/fedify";
+import type { Create } from "@fedify/vocab";
+declare const ctx: Context<void>;
+declare const create: Create;
+// ---cut-before---
+const note = await create.getObject(ctx);
+~~~~
+
+An object can also remember a verifier to use by default.  Pass
+`verifyPortableObject` to its constructor or to its `fromJsonLd()` method
+(a `Context` works as the options here too), and its accessors use it when
+you do not give them one.  Objects that it fetches, and objects embedded in
+the JSON-LD document it was parsed from, get the same default, but a verifier
+given to a single accessor call is not passed on to the returned object.
+Objects that you pass to its constructor or to `clone()` as property values
+keep their own defaults, if any.  Objects that Fedify parses for you already
+have `~Context.verifyPortableObject` as their default: activities that inboxes
+receive, including queued ones, objects that `~Context.lookupObject()` returns,
+and the activities passed to the `onOutboxError` callback. So
+`create.getObject()` in an inbox listener verifies portable objects even
+without options.  A clone does not inherit the default; pass
+`verifyPortableObject` to `clone()` if you need it.
+
 #### Compatible identifiers
 
 A reference can also be a compatible identifier (see above), e.g.,
@@ -404,22 +435,37 @@ out to stand for a portable object:
     a compatible identifier after redirects, or has a portable `@id`, it is
     checked as the portable object it claims to be, instead of being trusted
     because of its origin.  Its final URL decides which object it has to be,
-    so a document whose `@id` claims another object is rejected.  A document
-    whose `@id` is a compatible identifier rather than a portable ID is always
-    rejected.
+    so a document whose `@id` claims another object is rejected.
  -  An embedded object whose `@id` is a compatible identifier, or a portable
     ID with a DID other than the parent's, is not trusted as embedded, even
     with `crossOrigin: "trust"`.  The accessor dereferences and verifies it by
     its `@id` instead.
 
 These rules also apply without `verifyPortableObject` to references from
-portable objects, i.e., objects that have portable IDs or that were obtained
-from portable objects.  Such an accessor throws a `TypeError` (or returns
-`null` with `suppressError: true`) just as for a portable ID.  Otherwise,
-without `verifyPortableObject`, compatible identifiers are fetched as ordinary
-HTTP(S) URLs as before, so the result is not verified as a portable object.
-Such a result is not cached in the parent object, so a later call with
+portable objects, i.e., objects whose IDs are portable IDs or compatible
+identifiers, and objects that were obtained from portable objects.  An object
+whose ID is a malformed compatible identifier counts as a portable object too,
+so that its references are not trusted by their origin.  Such an accessor
+throws a `TypeError` (or returns `null` with `suppressError: true`) for
+a portable reference or a compatible identifier, just as for a portable ID,
+while it still fetches ordinary HTTP(S) references, verifying them only if
+they turn out to be portable objects.  Otherwise, without
+`verifyPortableObject`, compatible identifiers are fetched as ordinary HTTP(S)
+URLs as before, so the result is not verified as a portable object.  Such
+a result is not cached in the parent object, so a later call with
 `verifyPortableObject` still verifies it.
+
+> [!NOTE]
+>
+> Having a portable ID or a compatible identifier does not make an object
+> verified; it only changes how its accessors dereference its references.
+> An object parsed from arbitrary JSON-LD, e.g., with `fromJsonLd()`, is not
+> verified just because of its ID.  Accessors verify only what they
+> dereference, not objects that are already embedded or cached in the parent
+> object, and giving them a stricter verifier later does not verify those
+> objects again.  Likewise, `verifyPortableObject()` may accept an unsigned
+> collection because a gateway that its owner lists serves it, which
+> authenticates nothing in the collection.
 
 [FEP-8b32]: https://w3id.org/fep/8b32
 

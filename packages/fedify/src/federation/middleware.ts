@@ -23,6 +23,7 @@ import type {
   DocumentLoaderFactory,
   DocumentLoaderFactoryOptions,
   GetUserAgentOptions,
+  PortableObjectVerifier,
 } from "@fedify/vocab-runtime";
 import { FetchError, getDocumentLoader } from "@fedify/vocab-runtime";
 import type {
@@ -84,11 +85,8 @@ import {
   hasPortableActor,
   isCompatibleKeyId,
 } from "../sig/portable-key-id.ts";
-import {
-  hasProofLike,
-  verifyObject,
-  verifyPortableObjectProof,
-} from "../sig/proof.ts";
+import { verifyPortableObject } from "../sig/portable-collection.ts";
+import { hasProofLike, verifyObject } from "../sig/proof.ts";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 import { kvCache } from "../utils/kv-cache.ts";
 import {
@@ -1349,14 +1347,22 @@ export class FederationImpl<TContextData>
       });
       return parsedActorIds;
     };
-    const parseActivity = () =>
-      Activity.fromJsonLd(message.activity, {
-        contextLoader: this.contextLoaderFactory(loaderOptions),
-        documentLoader: rsaKeyPair == null
-          ? this.documentLoaderFactory(loaderOptions)
-          : this.authenticatedDocumentLoaderFactory(rsaKeyPair, loaderOptions),
+    const parseActivity = () => {
+      const contextLoader = this.contextLoaderFactory(loaderOptions);
+      const documentLoader = rsaKeyPair == null
+        ? this.documentLoaderFactory(loaderOptions)
+        : this.authenticatedDocumentLoaderFactory(rsaKeyPair, loaderOptions);
+      return Activity.fromJsonLd(message.activity, {
+        contextLoader,
+        documentLoader,
         tracerProvider: this.tracerProvider,
+        verifyPortableObject: createPortableObjectVerifier(
+          documentLoader,
+          contextLoader,
+          this,
+        ),
       });
+    };
     const enqueueHeldOutboxMessage = async (
       delay: Temporal.Duration,
       heldSince: Temporal.Instant,
@@ -3668,12 +3674,36 @@ interface PortableActorKeyOwner {
   readonly keyBase: URL;
 }
 
+/**
+ * Creates the FEP-ef61 portable object verifier that a context applies to
+ * portable objects it dereferences: `verifyPortableObject()` with the given
+ * loaders and the federation's tracer provider as defaults.  Other options,
+ * such as the document URL, gateways, and referrer, are passed through as
+ * they are.
+ */
+function createPortableObjectVerifier(
+  documentLoader: DocumentLoader,
+  contextLoader: DocumentLoader,
+  federation: { readonly tracerProvider: TracerProvider },
+): PortableObjectVerifier {
+  return (document, options = {}) =>
+    verifyPortableObject(document, {
+      ...options,
+      documentLoader: options.documentLoader ?? documentLoader,
+      contextLoader: options.contextLoader ?? contextLoader,
+      tracerProvider: options.tracerProvider ?? federation.tracerProvider,
+    });
+}
+
 export class ContextImpl<TContextData> implements Context<TContextData> {
   readonly url: URL;
   readonly federation: FederationImpl<TContextData>;
   readonly data: TContextData;
   readonly documentLoader: DocumentLoader;
   readonly contextLoader: DocumentLoader;
+  // An own property rather than a method, so that it survives spreading the
+  // context into options, e.g., { ...ctx, contextLoader }:
+  readonly verifyPortableObject: PortableObjectVerifier;
   readonly invokedFromActorKeyPairsDispatcher?: { identifier: string };
   #codec?: TaskCodec;
 
@@ -3692,6 +3722,11 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     this.data = data;
     this.documentLoader = documentLoader;
     this.contextLoader = contextLoader;
+    this.verifyPortableObject = createPortableObjectVerifier(
+      documentLoader,
+      contextLoader,
+      federation,
+    );
     this.invokedFromActorKeyPairsDispatcher =
       invokedFromActorKeyPairsDispatcher;
   }
@@ -4285,7 +4320,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       tracerProvider: options.tracerProvider ?? this.tracerProvider,
       meterProvider: options.meterProvider ?? this.meterProvider,
       verifyPortableObject: options.verifyPortableObject ??
-        verifyPortableObjectProof,
+        this.verifyPortableObject,
       // @ts-ignore: `allowPrivateAddress` is not in the type definition.
       allowPrivateAddress: this.federation.allowPrivateAddress,
     });
@@ -4299,6 +4334,8 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       ...options,
       documentLoader: options.documentLoader ?? this.documentLoader,
       contextLoader: options.contextLoader ?? this.contextLoader,
+      verifyPortableObject: options.verifyPortableObject ??
+        this.verifyPortableObject,
     });
   }
 

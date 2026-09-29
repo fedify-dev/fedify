@@ -118,6 +118,9 @@ async function* generateProperty(
                   documentLoader,
                   contextLoader: parseOptions.contextLoader,
                   tracerProvider,
+                  // Only the parent's own default is inherited, never the
+                  // verifier given to this call:
+                  verifyPortableObject: this._verifyPortableObject,
                   baseUrl: parseOptions.baseUrl,
                 }),
             });
@@ -191,6 +194,7 @@ async function* generateProperty(
                 documentLoader,
                 contextLoader: snapshot?.loader ?? contextLoader,
                 tracerProvider,
+                verifyPortableObject: this._verifyPortableObject,
                 baseUrl,
               }
             );
@@ -270,6 +274,7 @@ async function* generateProperty(
         documentLoader?: DocumentLoader,
         contextLoader?: DocumentLoader,
         tracerProvider?: TracerProvider,
+        verifyPortableObject?: PortableObjectVerifier,
         baseUrl?: URL
       }
     ): Promise<${getTypeNames(property.range, types)}> {
@@ -280,6 +285,7 @@ async function* generateProperty(
       const tracerProvider = options.tracerProvider ??
         this._tracerProvider ?? trace.getTracerProvider();
       const baseUrl = options.baseUrl;
+      const verifyPortableObject = options.verifyPortableObject;
     `;
     if (
       property.preprocessors != null &&
@@ -310,6 +316,7 @@ async function* generateProperty(
                 documentLoader,
                 contextLoader,
                 tracerProvider,
+                verifyPortableObject,
                 baseUrl,
               });
               if (_result instanceof Error) throw _result;
@@ -331,7 +338,13 @@ async function* generateProperty(
         try {
           return await ${rangeType.name}.fromJsonLd(
             jsonLd,
-            { documentLoader, contextLoader, tracerProvider, baseUrl },
+            {
+              documentLoader,
+              contextLoader,
+              tracerProvider,
+              verifyPortableObject,
+              baseUrl,
+            },
           );
         } catch (e) {
           if (!(e instanceof TypeError)) throw e;
@@ -384,6 +397,15 @@ async function* generateProperty(
           );
         }
         if (this.${await getFieldName(property.uri)}.length < 1) return null;
+        if (
+          options.verifyPortableObject == null &&
+          this._verifyPortableObject != null
+        ) {
+          options = {
+            ...options,
+            verifyPortableObject: this._verifyPortableObject,
+          };
+        }
         let v = this.${await getFieldName(property.uri)}[0];
         if (!(v instanceof URL) &&
             !this.${await getFieldName(property.uri, "#_trust")}.has(0)) {
@@ -434,6 +456,7 @@ async function* generateProperty(
         yield `
             v = await this.#${property.singularName}_fromJsonLd(doc, {
               ...options,
+              verifyPortableObject: this._verifyPortableObject,
               baseUrl: ${cachedPropertyBaseUrl},
             });
       `;
@@ -522,6 +545,15 @@ async function* generateProperty(
             this._warning.values
           );
         }
+        if (
+          options.verifyPortableObject == null &&
+          this._verifyPortableObject != null
+        ) {
+          options = {
+            ...options,
+            verifyPortableObject: this._verifyPortableObject,
+          };
+        }
         const vs = this.${await getFieldName(property.uri)};
         for (let i = 0; i < vs.length; i++) {
           let v = vs[i];
@@ -578,6 +610,7 @@ async function* generateProperty(
         yield `
               v = await this.#${property.singularName}_fromJsonLd(obj, {
                 ...options,
+                verifyPortableObject: this._verifyPortableObject,
                 baseUrl: ${cachedPropertyBaseUrl},
               });
       `;

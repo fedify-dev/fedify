@@ -647,8 +647,14 @@ In every case, the fetched object is returned only if its `@id` identifies the
 requested portable object and it has a valid [Object Integrity
 Proof](./send.md#object-integrity-proofs) made by the DID in its ID, since
 a portable object belongs to its DID, not to the server that serves it.
-`Context.lookupObject()` checks the proof with `verifyPortableObjectProof()` by
-default; pass the `verifyPortableObject` option to use another policy.  If
+`Context.lookupObject()` applies `~Context.verifyPortableObject`, i.e.,
+`verifyPortableObject()`, by default, which also accepts a collection without
+a proof if a gateway that its owner lists serves it (see [*Portable
+collections*](./vocab.md#portable-collections)); pass the
+`verifyPortableObject` option to use another policy, e.g.,
+`verifyPortableObjectProof()` to accept only objects with proofs.  The returned
+object uses the same policy by default when its accessors dereference its
+properties (see [*Default verifiers*](./vocab.md#default-verifiers)).  If
 a gateway returns an object that fails these checks, the next candidate is
 tried; `crossOrigin: "throw"` makes the method throw an error instead, and
 `crossOrigin: "trust"` does not skip the checks.  To limit the number of
@@ -659,14 +665,10 @@ turns out to be a portable object: if it is served from a compatible
 identifier after redirects, or its `@id` is a portable ID, it is returned only
 if it passes them, instead of being trusted because of where it came from.
 
-Note that a document served at a compatible identifier whose `@id` is the
-compatible identifier itself, rather than a portable ID, is not accepted as
-a portable object.
-
 > [!NOTE]
 > The `lookupObject()` function from `@fedify/vocab` does not look up portable
 > objects unless you pass the `verifyPortableObject` option, e.g.,
-> `verifyPortableObjectProof` from `@fedify/fedify`.  Without it, compatible
+> `verifyPortableObject` from `@fedify/fedify`.  Without it, compatible
 > identifiers are fetched as ordinary HTTP(S) URLs, and an object with
 > a portable ID served there is refused as a cross-origin object, even with
 > `crossOrigin: "trust"`.

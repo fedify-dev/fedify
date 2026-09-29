@@ -11,7 +11,10 @@ import type {
   Tombstone,
   TraverseCollectionOptions,
 } from "@fedify/vocab";
-import type { DocumentLoader } from "@fedify/vocab-runtime";
+import type {
+  DocumentLoader,
+  PortableObjectVerifier,
+} from "@fedify/vocab-runtime";
 import type {
   LookupWebFingerOptions,
   ResourceDescriptor,
@@ -86,6 +89,28 @@ export interface Context<TContextData> {
    * The context loader for loading remote JSON-LD contexts.
    */
   readonly contextLoader: DocumentLoader;
+
+  /**
+   * The [FEP-ef61] portable object policy that this context applies to
+   * portable objects it dereferences.  It is `verifyPortableObject()` with
+   * this context's document loader, context loader, and tracer provider as
+   * defaults, which the options passed to it override.
+   *
+   * Since its name is the same as the `verifyPortableObject` option of
+   * property accessors, `lookupObject()`, and `traverseCollection()`, passing
+   * a context as their options applies the policy, e.g.,
+   * `await create.getObject(ctx)`.  Objects parsed with a context as options,
+   * such as activities that inboxes receive, also use it by default for
+   * their property accessors.  It never verifies an object by itself being
+   * there: it only applies to objects that are dereferenced.
+   *
+   * It is optional only so that custom implementations of this interface
+   * keep working; contexts that Fedify creates always have it.
+   *
+   * [FEP-ef61]: https://w3id.org/fep/ef61
+   * @since 2.4.0
+   */
+  readonly verifyPortableObject?: PortableObjectVerifier;
 
   /**
    * The federation object that this context belongs to.
@@ -391,10 +416,13 @@ export interface Context<TContextData> {
    *
    * It's almost the same as the {@link lookupObject} function, but it uses
    * the context's document loader and context loader by default.  It also
-   * uses `verifyPortableObjectProof()` as the `verifyPortableObject`
+   * uses {@link Context.verifyPortableObject} as the `verifyPortableObject`
    * option by default (since 2.4.0), so [FEP-ef61] portable objects,
    * including portable actors found through WebFinger, are looked up through
-   * their gateways and returned only if they have valid proofs.
+   * their gateways and returned only if they have valid proofs, or, for
+   * collections without proofs, if they are served by gateways that their
+   * owners list.  The returned object uses the same policy by default for
+   * its property accessors.
    *
    * [FEP-ef61]: https://w3id.org/fep/ef61
    *
@@ -424,7 +452,9 @@ export interface Context<TContextData> {
    * ```
    *
    * It's almost the same as the {@link traverseCollection} function, but it
-   * uses the context's document loader and context loader by default.
+   * uses the context's document loader and context loader by default.  It
+   * also uses {@link Context.verifyPortableObject} as the
+   * `verifyPortableObject` option by default (since 2.4.0).
    * @param collection The collection to traverse.
    * @param options Options for traversing the collection.
    * @returns An async iterable of each item in the collection.

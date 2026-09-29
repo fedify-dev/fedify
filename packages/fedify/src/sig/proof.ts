@@ -2131,6 +2131,16 @@ async function verifyPreparedPortableObjectProof(
  * @since 0.10.0
  */
 export interface VerifyObjectOptions extends VerifyProofOptions {
+  /**
+   * The default [FEP-ef61] portable object verifier for the property
+   * accessors of the returned object and the objects obtained from it, e.g.,
+   * `Context.verifyPortableObject`.  It is not used to verify the given
+   * object itself.
+   *
+   * [FEP-ef61]: https://w3id.org/fep/ef61
+   * @since 2.4.0
+   */
+  verifyPortableObject?: PortableObjectVerifier;
 }
 
 /**

@@ -109,6 +109,7 @@ async function* generateClass(
     readonly #documentLoader?: DocumentLoader;
     readonly #contextLoader?: DocumentLoader;
     readonly #tracerProvider?: TracerProvider;
+    readonly #verifyPortableObject?: PortableObjectVerifier;
     readonly #warning?: {
       category: string[];
       message: string;
@@ -129,6 +130,10 @@ async function* generateClass(
 
     protected get _tracerProvider(): TracerProvider | undefined {
         return this.#tracerProvider;
+    }
+
+    protected get _verifyPortableObject(): PortableObjectVerifier | undefined {
+      return this.#verifyPortableObject;
     }
 
     protected get _warning(): {
