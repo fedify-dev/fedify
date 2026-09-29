@@ -22,6 +22,11 @@ To be released.
     logged as “DNS lookup failed for {url}”: at the debug level by
     `getAuthenticatedDocumentLoader()`, and at the error level by
     `getNodeInfo()`, as with its other network failures.  [[#1062], [#1065]]
+ -  Fixed `getAuthenticatedDocumentLoader()` following unbounded chains of
+    alternate document links, which could exhaust resources during remote key
+    and document resolution.  Alternate links now share the 20-hop limit and
+    loop detection with HTTP redirects, and preserve the caller's cancellation
+    signal.  \[[GHSA-97w4-f4rq-mgqm] by Adel Zaitri\]
  -  Fixed malformed activity URLs causing an unhandled error on Cloudflare
     Workers instead of a `400 Bad Request` response.  [[#1115], [#1121]]
  -  Fixed outbound delivery raising `UrlError` instead of `FetchError` when
@@ -30,6 +35,7 @@ To be released.
     disallowed destinations; the original error is preserved in `cause`.
     [[#1055], [#1060] by Jiwon Kwon\]
 
+[GHSA-97w4-f4rq-mgqm]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-97w4-f4rq-mgqm
 [#1055]: https://github.com/fedify-dev/fedify/issues/1055
 [#1060]: https://github.com/fedify-dev/fedify/pull/1060
 [#1062]: https://github.com/fedify-dev/fedify/issues/1062
@@ -149,6 +155,11 @@ To be released.
     document loader now resolves <https://w3id.org/fep/7aa9> locally, so
     transient Codeberg Pages outages no longer prevent otherwise valid inbound
     documents from being parsed or verified.  [[#1078], [#1079]]
+ -  Fixed `getDocumentLoader()` following unbounded chains of alternate document
+    links, which could exhaust resources during remote key and document
+    resolution.  Alternate links now share the 20-hop limit and loop detection
+    with HTTP redirects, and preserve the caller's cancellation signal.
+    [[GHSA-97w4-f4rq-mgqm] by Adel Zaitri\]
  -  Fixed `getDocumentLoader()` logging hostnames that fail to resolve as
     “Disallowed private URL” errors, as if they had been blocked for pointing
     at a private address.  These failures are now logged as “DNS lookup

@@ -3,6 +3,7 @@ import {
   type DocumentLoader,
   type DocumentLoaderFactoryOptions,
   type DocumentLoaderOptions,
+  FetchError,
   getRemoteDocument,
   logRequest,
   type RemoteDocument,
@@ -19,6 +20,7 @@ import {
 import { validateCryptoKey } from "../sig/key.ts";
 
 const logger = getLogger(["fedify", "utils", "docloader"]);
+const DEFAULT_MAX_REDIRECTION = 20;
 
 /**
  * Options for {@link getAuthenticatedDocumentLoader}.
@@ -48,6 +50,8 @@ export interface GetAuthenticatedDocumentLoaderOptions
  * Gets an authenticated {@link DocumentLoader} for the given identity.
  * Note that an authenticated document loader intentionally does not cache
  * the fetched documents.
+ * At most 20 HTTP redirects and alternate document links are followed in total
+ * per call.  Revisiting a URL within that chain throws a {@link FetchError}.
  * @param identity The identity to get the document loader for.
  *                 The actor's key pair.
  * @param options The options for the document loader.
@@ -64,9 +68,30 @@ export function getAuthenticatedDocumentLoader(
   async function load(
     url: string,
     options?: DocumentLoaderOptions,
+    redirected = 0,
+    visited = new Set<string>(),
   ): Promise<RemoteDocument> {
-    await validateUrl(url);
-    const originalRequest = createActivityPubRequest(url, { userAgent });
+    options?.signal?.throwIfAborted();
+    let currentUrl = new URL(url).href;
+    await validateUrl(currentUrl);
+    visited.add(currentUrl);
+    const originalRequest = createActivityPubRequest(currentUrl, { userAgent });
+    function follow(nextUrl: string): void {
+      options?.signal?.throwIfAborted();
+      if (redirected >= DEFAULT_MAX_REDIRECTION) {
+        throw new FetchError(
+          currentUrl,
+          `Too many redirections (${redirected + 1})`,
+        );
+      }
+      if (visited.has(nextUrl)) {
+        throw new FetchError(
+          currentUrl,
+          `Redirect loop detected: ${nextUrl}`,
+        );
+      }
+      redirected++;
+    }
     const response = await doubleKnock(
       originalRequest,
       identity,
@@ -75,10 +100,18 @@ export function getAuthenticatedDocumentLoader(
         log: curry(logRequest)(logger),
         tracerProvider,
         signal: options?.signal,
-        validateRedirect: validateUrl,
+        validateRedirect: async (nextUrl) => {
+          follow(nextUrl);
+          await validateUrl(nextUrl);
+          visited.add(nextUrl);
+          currentUrl = nextUrl;
+        },
       },
     );
-    return getRemoteDocument(url, response, load);
+    return getRemoteDocument(currentUrl, response, (alternateUrl) => {
+      follow(alternateUrl);
+      return load(alternateUrl, options, redirected, visited);
+    });
   }
 
   async function validateUrl(url: string): Promise<void> {
@@ -97,5 +130,5 @@ export function getAuthenticatedDocumentLoader(
       }
     }
   }
-  return load;
+  return (url, options) => load(url, options);
 }
