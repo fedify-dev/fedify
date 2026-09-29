@@ -820,12 +820,14 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     _dispatcher: any,
   ): any {
     // Mock implementation - just return a mock callback setters object
-    return {
+    const setters = {
       setCounter: () => this as any,
       setFirstCursor: () => this as any,
       setLastCursor: () => this as any,
       authorize: () => this as any,
+      mapPortableOwner: () => setters,
     };
+    return setters;
   }
 
   setOrderedCollectionDispatcher<
@@ -838,12 +840,14 @@ class MockFederation<TContextData> implements Federation<TContextData> {
     _dispatcher: any,
   ): any {
     // Mock implementation - just return a mock callback setters object
-    return {
+    const setters = {
       setCounter: () => this as any,
       setFirstCursor: () => this as any,
       setLastCursor: () => this as any,
       authorize: () => this as any,
+      mapPortableOwner: () => setters,
     };
+    return setters;
   }
 }
 
@@ -1178,6 +1182,45 @@ class MockContext<TContextData> implements Context<TContextData> {
 
   getPortableInboxUri(identifier: string, authority: string): URL {
     const { pathname } = this.getInboxUri(identifier);
+    return buildPortableUri(authority, pathname);
+  }
+
+  getPortableOutboxUri(identifier: string, authority: string): URL {
+    const { pathname } = this.getOutboxUri(identifier);
+    return buildPortableUri(authority, pathname);
+  }
+
+  getPortableFollowingUri(identifier: string, authority: string): URL {
+    const { pathname } = this.getFollowingUri(identifier);
+    return buildPortableUri(authority, pathname);
+  }
+
+  getPortableFollowersUri(identifier: string, authority: string): URL {
+    const { pathname } = this.getFollowersUri(identifier);
+    return buildPortableUri(authority, pathname);
+  }
+
+  getPortableLikedUri(identifier: string, authority: string): URL {
+    const { pathname } = this.getLikedUri(identifier);
+    return buildPortableUri(authority, pathname);
+  }
+
+  getPortableFeaturedUri(identifier: string, authority: string): URL {
+    const { pathname } = this.getFeaturedUri(identifier);
+    return buildPortableUri(authority, pathname);
+  }
+
+  getPortableFeaturedTagsUri(identifier: string, authority: string): URL {
+    const { pathname } = this.getFeaturedTagsUri(identifier);
+    return buildPortableUri(authority, pathname);
+  }
+
+  getPortableCollectionUri<TParam extends Record<string, string>>(
+    name: string | symbol,
+    values: TParam,
+    authority: string,
+  ): URL {
+    const { pathname } = this.getCollectionUri(name, values);
     return buildPortableUri(authority, pathname);
   }
 

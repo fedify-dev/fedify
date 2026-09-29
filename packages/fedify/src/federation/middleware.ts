@@ -130,6 +130,7 @@ import type {
   InboxChallengePolicy,
 } from "./federation.ts";
 import {
+  type CollectionCallbacks,
   handleActor,
   handleCollection,
   handleCustomCollection,
@@ -173,6 +174,10 @@ import {
   parsePortableGatewayRequest,
   type PortableGatewayRequest,
 } from "./portable.ts";
+import {
+  buildPortableCollectionView,
+  resolvePortableCollectionOwner,
+} from "./portable-collection.ts";
 import {
   forwardPortableInboxActivity,
   type PortableInboxRecipient,
@@ -3024,15 +3029,7 @@ export class FederationImpl<TContextData>
           onNotFound,
         });
       case "followers": {
-        let baseUrl = url.searchParams.get("base-url");
-        if (baseUrl != null) {
-          try {
-            baseUrl = `${new URL(baseUrl).origin}/`;
-          } catch {
-            // If base-url is invalid, set to null to behave as if it wasn't provided
-            baseUrl = null;
-          }
-        }
+        const baseUrl = getFollowersBaseUrl(url);
         return await handleCollection(request, {
           name: "followers",
           identifier: route.values.identifier,
@@ -3046,10 +3043,7 @@ export class FederationImpl<TContextData>
           context,
           filter: baseUrl != null ? new URL(baseUrl) : undefined,
           filterPredicate: baseUrl != null
-            ? ((i) =>
-              (i instanceof URL ? i.href : i.id?.href ?? "").startsWith(
-                baseUrl!,
-              ))
+            ? getFollowersFilterPredicate(baseUrl)
             : undefined,
           collectionCallbacks: this.followersCallbacks,
           tracerProvider: this.tracerProvider,
@@ -3180,16 +3174,39 @@ export class FederationImpl<TContextData>
     const route = this.router.route(portable.path);
     const isActor = route != null &&
       (route.name === "actor" || route.name.startsWith(ACTOR_ALIAS_PREFIX));
-    if (route == null || (!isActor && !route.name.startsWith("object:"))) {
+    const collectionRoute = route == null
+      ? undefined
+      : getCollectionMetricRoute(route.name.replace(/:.*$/, ""));
+    if (
+      route == null ||
+      (!isActor && !route.name.startsWith("object:") &&
+        collectionRoute == null)
+    ) {
       metricState.endpoint = "not_found";
       return await onNotFound(request);
     }
     metricState.routeTemplate = PORTABLE_GATEWAY_ROUTE_PREFIX + route.template;
-    metricState.endpoint = isActor ? "actor" : "object";
+    metricState.endpoint = getEndpointCategory(route.name);
     span.updateName(`${request.method} ${metricState.routeTemplate}`);
     if (!acceptsJsonLd(request)) {
       metricState.endpoint = "not_acceptable";
-      return await onNotAcceptable(request);
+      const response = await onNotAcceptable(request);
+      if (collectionRoute != null) {
+        recordCollectionRequest(this._meterProvider, {
+          ...collectionRoute,
+          page: new URL(request.url).searchParams.get("cursor") != null,
+          result: "not_acceptable",
+          statusCode: response.status,
+        });
+      }
+      return response;
+    }
+    if (collectionRoute != null) {
+      return await this.#fetchPortableCollection(request, portable, route, {
+        onNotFound,
+        onUnauthorized,
+        contextData,
+      });
     }
     if (isActor) {
       const identifier = route.name.startsWith(ACTOR_ALIAS_PREFIX)
@@ -3231,6 +3248,172 @@ export class FederationImpl<TContextData>
       onUnauthorized,
       onNotFound,
     });
+  }
+
+  async #fetchPortableCollection(
+    request: Request,
+    portable: Extract<PortableGatewayRequest, { type: "object" }>,
+    route: { name: string; values: Record<string, string> },
+    {
+      onNotFound,
+      onUnauthorized,
+      contextData,
+    }:
+      & Required<
+        Pick<
+          FederationFetchOptions<TContextData>,
+          "onNotFound" | "onUnauthorized"
+        >
+      >
+      & { contextData: TContextData },
+  ): Promise<Response> {
+    const logger = getLogger(["fedify", "federation", "collection"]);
+    const url = new URL(request.url);
+    const { authority } = portable.portableRequest;
+    // The owner is looked up with a context without the portable request, so
+    // that its ID comes from the application's data rather than from
+    // the authority of the request, which the portable ID helpers would
+    // otherwise default to:
+    const ownerContext = this.#createContext(request, contextData);
+    const context = this.#createContext(request, contextData, {
+      portableRequest: portable.portableRequest,
+    });
+    const reject = async (reason: string, identifier?: string) => {
+      logger.debug(
+        "Not serving the portable collection {collection} of the actor " +
+          "{identifier}: {reason}.",
+        { collection: portable.canonicalId, identifier, reason },
+      );
+      return await onNotFound(request);
+    };
+    const routeName = route.name.replace(/:.*$/, "");
+    if (routeName === "collection" || routeName === "orderedCollection") {
+      const name = route.name.replace(/^(?:ordered)?[cC]ollection:/, "");
+      const callbacks = this.collectionCallbacks[name];
+      if (callbacks == null) return await onNotFound(request);
+      const mapper = callbacks.portableOwnerMapper;
+      if (mapper == null) return await reject("noPortableOwnerMapper");
+      const identifier = await mapper(ownerContext, route.values);
+      if (identifier == null) return await reject("notPortable");
+      const resolution = resolvePortableCollectionOwner(
+        await this.actorCallbacks?.dispatcher?.(ownerContext, identifier),
+        { authority, portableId: portable.portableRequest.id },
+      );
+      if (resolution.status === "rejected") {
+        return await reject(resolution.reason, identifier);
+      }
+      const view = buildPortableCollectionView(resolution.collectionId, url);
+      const handle = routeName === "collection"
+        ? handleCustomCollection
+        : handleOrderedCollection;
+      return await handle<
+        URL | Object | Link | Recipient,
+        string,
+        RequestContext<TContextData>,
+        TContextData
+      >(request, {
+        name,
+        context,
+        values: route.values,
+        collectionCallbacks: callbacks,
+        portable: { id: view, view, attribution: resolution.ownerId },
+        tracerProvider: this.tracerProvider,
+        meterProvider: this._meterProvider,
+        onUnauthorized,
+        onNotFound,
+      });
+    }
+    const identifier = route.values.identifier;
+    const serve = async <
+      TItem extends URL | Object | Link | Recipient,
+      TFilter,
+    >(
+      name: string,
+      callbacks:
+        | CollectionCallbacks<
+          TItem,
+          RequestContext<TContextData>,
+          TContextData,
+          TFilter
+        >
+        | undefined,
+      property: (actor: Actor) => URL | null,
+      filter?: {
+        value: TFilter;
+        predicate: (item: TItem) => boolean;
+        /** The query parameter that the collection's ID gets. */
+        parameter: readonly [string, string];
+      },
+    ): Promise<Response> => {
+      if (callbacks == null) return await onNotFound(request);
+      const resolution = resolvePortableCollectionOwner(
+        await this.actorCallbacks?.dispatcher?.(ownerContext, identifier),
+        { authority, canonicalId: portable.canonicalId, property },
+      );
+      if (resolution.status === "rejected") {
+        return await reject(resolution.reason, identifier);
+      }
+      const id = new URL(resolution.collectionId);
+      if (filter != null) id.searchParams.set(...filter.parameter);
+      return await handleCollection(request, {
+        name,
+        identifier,
+        uriGetter: () => id,
+        context,
+        filter: filter?.value,
+        filterPredicate: filter?.predicate,
+        collectionCallbacks: callbacks,
+        portable: {
+          id,
+          view: buildPortableCollectionView(resolution.collectionId, url),
+          attribution: resolution.ownerId,
+        },
+        tracerProvider: this.tracerProvider,
+        meterProvider: this._meterProvider,
+        onUnauthorized,
+        onNotFound,
+      });
+    };
+    switch (routeName) {
+      case "outbox":
+        return await serve("outbox", this.outboxCallbacks, (a) => a.outboxId);
+      case "inbox":
+        return await serve("inbox", this.inboxCallbacks, (a) => a.inboxId);
+      case "following":
+        return await serve(
+          "following",
+          this.followingCallbacks,
+          (a) => a.followingId,
+        );
+      case "followers": {
+        const baseUrl = getFollowersBaseUrl(url);
+        return await serve(
+          "followers",
+          this.followersCallbacks,
+          (a) => a.followersId,
+          baseUrl == null ? undefined : {
+            value: new URL(baseUrl),
+            predicate: getFollowersFilterPredicate(baseUrl),
+            parameter: ["base-url", baseUrl],
+          },
+        );
+      }
+      case "liked":
+        return await serve("liked", this.likedCallbacks, (a) => a.likedId);
+      case "featured":
+        return await serve(
+          "featured",
+          this.featuredCallbacks,
+          (a) => a.featuredId,
+        );
+      case "featuredTags":
+        return await serve(
+          "featured tags",
+          this.featuredTagsCallbacks,
+          (a) => a.featuredTagsId,
+        );
+    }
+    return await onNotFound(request);
   }
 
   async #handleInbox(
@@ -3526,6 +3709,54 @@ export class FederationImpl<TContextData>
 }
 
 const PORTABLE_GATEWAY_ROUTE_PREFIX = "/.well-known/apgateway/{did}";
+
+/**
+ * Gets the origin that a followers collection request filters followers by,
+ * i.e., its normalized `base-url` query parameter (FEP-8fcf).
+ * @returns The origin with a trailing slash, or `null` if the parameter is
+ *          missing or invalid.
+ */
+function getFollowersBaseUrl(url: URL): string | null {
+  const baseUrl = url.searchParams.get("base-url");
+  if (baseUrl == null) return null;
+  try {
+    return `${new URL(baseUrl).origin}/`;
+  } catch {
+    // If base-url is invalid, behave as if it wasn't provided:
+    return null;
+  }
+}
+
+function getFollowersFilterPredicate(
+  baseUrl: string,
+): (item: Recipient) => boolean {
+  return (i) =>
+    (i instanceof URL ? i.href : i.id?.href ?? "").startsWith(baseUrl);
+}
+
+const ACTOR_COLLECTION_ROUTE_ERRORS = {
+  outbox: "No outbox dispatcher registered.",
+  following: "No following collection path registered.",
+  followers: "No followers collection path registered.",
+  liked: "No liked collection path registered.",
+  featured: "No featured collection path registered.",
+  featuredTags: "No featured tags collection path registered.",
+} as const;
+
+/**
+ * Checks that the authority of a portable ID to build is given, either
+ * explicitly or by the FEP-ef61 gateway request being handled.
+ * @throws {TypeError} If the authority is missing.
+ */
+function requirePortableAuthority(authority: string | undefined): string {
+  if (authority == null) {
+    throw new TypeError(
+      "The authority of a portable ID is required outside an FEP-ef61 " +
+        "gateway request.",
+    );
+  }
+  return authority;
+}
 
 /**
  * Removes the body of a response to a `HEAD` request.
@@ -3835,13 +4066,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
 
   getPortableActorUri(identifier: string, authority?: string): URL {
     const path = this.#getActorPath(identifier);
-    if (authority == null) {
-      throw new TypeError(
-        "The authority of a portable ID is required outside an FEP-ef61 " +
-          "gateway request.",
-      );
-    }
-    return buildPortableUri(authority, path);
+    return buildPortableUri(requirePortableAuthority(authority), path);
   }
 
   #getActorPath(identifier: string): string {
@@ -3871,13 +4096,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     authority?: string,
   ): URL {
     const path = this.#getObjectPath(cls, values);
-    if (authority == null) {
-      throw new TypeError(
-        "The authority of a portable ID is required outside an FEP-ef61 " +
-          "gateway request.",
-      );
-    }
-    return buildPortableUri(authority, path);
+    return buildPortableUri(requirePortableAuthority(authority), path);
   }
 
   #getObjectPath<TObject extends Object>(
@@ -3903,15 +4122,27 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     return path;
   }
 
-  getOutboxUri(identifier: string): URL {
-    const path = this.federation.router.build(
-      "outbox",
-      { identifier },
-    );
+  #getActorCollectionPath(
+    route: keyof typeof ACTOR_COLLECTION_ROUTE_ERRORS,
+    identifier: string,
+  ): string {
+    const path = this.federation.router.build(route, { identifier });
     if (path == null) {
-      throw new RouterError("No outbox dispatcher registered.");
+      throw new RouterError(ACTOR_COLLECTION_ROUTE_ERRORS[route]);
     }
-    return new URL(path, this.canonicalOrigin);
+    return path;
+  }
+
+  getOutboxUri(identifier: string): URL {
+    return new URL(
+      this.#getActorCollectionPath("outbox", identifier),
+      this.canonicalOrigin,
+    );
+  }
+
+  getPortableOutboxUri(identifier: string, authority?: string): URL {
+    const path = this.#getActorCollectionPath("outbox", identifier);
+    return buildPortableUri(requirePortableAuthority(authority), path);
   }
 
   getMediaUploaderUri(identifier: string): URL {
@@ -3950,68 +4181,67 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     if (path == null) {
       throw new RouterError("No inbox path registered.");
     }
-    if (authority == null) {
-      throw new TypeError(
-        "The authority of a portable ID is required outside an FEP-ef61 " +
-          "gateway request.",
-      );
-    }
-    return buildPortableUri(authority, path);
+    return buildPortableUri(requirePortableAuthority(authority), path);
   }
 
   getFollowingUri(identifier: string): URL {
-    const path = this.federation.router.build(
-      "following",
-      { identifier },
+    return new URL(
+      this.#getActorCollectionPath("following", identifier),
+      this.canonicalOrigin,
     );
-    if (path == null) {
-      throw new RouterError("No following collection path registered.");
-    }
-    return new URL(path, this.canonicalOrigin);
+  }
+
+  getPortableFollowingUri(identifier: string, authority?: string): URL {
+    const path = this.#getActorCollectionPath("following", identifier);
+    return buildPortableUri(requirePortableAuthority(authority), path);
   }
 
   getFollowersUri(identifier: string): URL {
-    const path = this.federation.router.build(
-      "followers",
-      { identifier },
+    return new URL(
+      this.#getActorCollectionPath("followers", identifier),
+      this.canonicalOrigin,
     );
-    if (path == null) {
-      throw new RouterError("No followers collection path registered.");
-    }
-    return new URL(path, this.canonicalOrigin);
+  }
+
+  getPortableFollowersUri(identifier: string, authority?: string): URL {
+    const path = this.#getActorCollectionPath("followers", identifier);
+    return buildPortableUri(requirePortableAuthority(authority), path);
   }
 
   getLikedUri(identifier: string): URL {
-    const path = this.federation.router.build(
-      "liked",
-      { identifier },
+    return new URL(
+      this.#getActorCollectionPath("liked", identifier),
+      this.canonicalOrigin,
     );
-    if (path == null) {
-      throw new RouterError("No liked collection path registered.");
-    }
-    return new URL(path, this.canonicalOrigin);
+  }
+
+  getPortableLikedUri(identifier: string, authority?: string): URL {
+    const path = this.#getActorCollectionPath("liked", identifier);
+    return buildPortableUri(requirePortableAuthority(authority), path);
   }
 
   getFeaturedUri(identifier: string): URL {
-    const path = this.federation.router.build(
-      "featured",
-      { identifier },
+    return new URL(
+      this.#getActorCollectionPath("featured", identifier),
+      this.canonicalOrigin,
     );
-    if (path == null) {
-      throw new RouterError("No featured collection path registered.");
-    }
-    return new URL(path, this.canonicalOrigin);
+  }
+
+  getPortableFeaturedUri(identifier: string, authority?: string): URL {
+    const path = this.#getActorCollectionPath("featured", identifier);
+    return buildPortableUri(requirePortableAuthority(authority), path);
   }
 
   getFeaturedTagsUri(identifier: string): URL {
-    const path = this.federation.router.build(
-      "featuredTags",
-      { identifier },
+    return new URL(
+      this.#getActorCollectionPath("featuredTags", identifier),
+      this.canonicalOrigin,
     );
-    if (path == null) {
-      throw new RouterError("No featured tags collection path registered.");
-    }
-    return new URL(path, this.canonicalOrigin);
+  }
+
+  getPortableFeaturedTagsUri(identifier: string, authority?: string): URL {
+    const path = this.#getActorCollectionPath("featuredTags", identifier);
+    return buildPortableUri(requirePortableAuthority(authority), path);
   }
 
   getCollectionUri<TParam extends Record<string, string>>(
@@ -4029,6 +4259,20 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     }
     // Return a URL for the collection path.
     return new URL(path, this.canonicalOrigin);
+  }
+
+  getPortableCollectionUri<TParam extends Record<string, string>>(
+    name: string | symbol,
+    values: TParam,
+    authority?: string,
+  ): URL {
+    const path = this.federation.getCollectionPath(name, values);
+    if (path === null) {
+      throw new RouterError(
+        `No collection dispatcher registered for "${String(name)}".`,
+      );
+    }
+    return buildPortableUri(requirePortableAuthority(authority), path);
   }
 
   parseUri(uri: URL | null): ParseUriResult | null {
@@ -4993,6 +5237,69 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
   override getPortableInboxUri(identifier: string, authority?: string): URL {
     return super.getPortableInboxUri(
       identifier,
+      authority ?? this.portableRequest?.authority,
+    );
+  }
+
+  override getPortableOutboxUri(identifier: string, authority?: string): URL {
+    return super.getPortableOutboxUri(
+      identifier,
+      authority ?? this.portableRequest?.authority,
+    );
+  }
+
+  override getPortableFollowingUri(
+    identifier: string,
+    authority?: string,
+  ): URL {
+    return super.getPortableFollowingUri(
+      identifier,
+      authority ?? this.portableRequest?.authority,
+    );
+  }
+
+  override getPortableFollowersUri(
+    identifier: string,
+    authority?: string,
+  ): URL {
+    return super.getPortableFollowersUri(
+      identifier,
+      authority ?? this.portableRequest?.authority,
+    );
+  }
+
+  override getPortableLikedUri(identifier: string, authority?: string): URL {
+    return super.getPortableLikedUri(
+      identifier,
+      authority ?? this.portableRequest?.authority,
+    );
+  }
+
+  override getPortableFeaturedUri(identifier: string, authority?: string): URL {
+    return super.getPortableFeaturedUri(
+      identifier,
+      authority ?? this.portableRequest?.authority,
+    );
+  }
+
+  override getPortableFeaturedTagsUri(
+    identifier: string,
+    authority?: string,
+  ): URL {
+    return super.getPortableFeaturedTagsUri(
+      identifier,
+      authority ?? this.portableRequest?.authority,
+    );
+  }
+
+  override getPortableCollectionUri<TParam extends Record<string, string>>(
+    name: string | symbol,
+    values: TParam,
+    authority?: string,
+  ): URL {
+    return super.getPortableCollectionUri(
+      name,
+      values,
       authority ?? this.portableRequest?.authority,
     );
   }

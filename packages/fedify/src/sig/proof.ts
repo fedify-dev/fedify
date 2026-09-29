@@ -1618,7 +1618,12 @@ function hasValidPortableProofShape(proofValue: unknown): boolean {
     });
 }
 
-function classifyFep2277CoreType(
+/**
+ * Classifies an expanded JSON-LD node into an FEP-2277 core type by the
+ * properties it has.
+ * @internal
+ */
+export function classifyFep2277CoreType(
   node: Record<string, unknown>,
 ): Fep2277CoreType {
   if (FEP_2277_ACTOR_PROPERTIES.every((property) => property in node)) {

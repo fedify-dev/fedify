@@ -529,6 +529,35 @@ export type CustomCollectionDispatcher<
 ) => PageItems<TItem> | null | Promise<PageItems<TItem> | null>;
 
 /**
+ * A callback that maps a custom collection to the identifier of the actor
+ * that owns it, so that the collection can be served as an [FEP-ef61]
+ * portable collection through the gateway endpoint, e.g.,
+ * `GET /.well-known/apgateway/did:key:z6Mk.../users/alice/bookmarks`.
+ *
+ * Fedify serves such a request only if the returned actor is a portable actor
+ * whose ID is under the requested DID.  The owner has to come from
+ * the application's data, not from the request, since the DID in the request
+ * path is not evidence that this server hosts collections for it.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
+ *
+ * @template TContextData The context data to pass to the {@link Context}.
+ * @template TParam The parameter names of the requested URL.
+ * @param context The context.
+ * @param values The parameters of the requested URL.
+ * @returns The internal identifier of the actor that owns the collection, or
+ *          `null` if the collection is not a portable collection.
+ * @since 2.4.0
+ */
+export type PortableCollectionOwnerMapper<
+  TContextData,
+  TParam extends string,
+> = (
+  context: Context<TContextData>,
+  values: Record<TParam, string>,
+) => string | null | Promise<string | null>;
+
+/**
  * A callback that counts the number of items in a custom collection.
  *
  * @template TParams The parameter names of the requested URL.

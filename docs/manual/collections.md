@@ -1712,3 +1712,113 @@ federation
     return await canAccessBookmarks(viewerId, values.identifier);
   });
 ~~~~
+
+
+Portable collections
+--------------------
+
+*This API is available since Fedify 2.4.0.*
+
+An [FEP-ef61] portable actor has portable collections, e.g., an outbox whose
+ID is `ap+ef61://did:key:z6Mk.../users/alice/outbox`.  Such a collection is
+retrieved through the FEP-ef61 gateway endpoint of the actor's gateways, e.g.,
+`GET /.well-known/apgateway/did:key:z6Mk.../users/alice/outbox`, and Fedify
+serves it there by the same collection dispatcher as the ordinary one, if its
+path matches the dispatcher's path.  Give the portable actor portable
+collections built by the following methods, which take the actor's DID as
+their last argument (see the [*Portable IDs*
+section](./context.md#portable-ids)):
+
+ -  `~Context.getPortableOutboxUri()`
+ -  `~Context.getPortableFollowingUri()`
+ -  `~Context.getPortableFollowersUri()`
+ -  `~Context.getPortableLikedUri()`
+ -  `~Context.getPortableFeaturedUri()`
+ -  `~Context.getPortableFeaturedTagsUri()`
+ -  `~Context.getPortableInboxUri()`
+
+Collection dispatchers return items, not documents with IDs, so Fedify ties
+a portable collection to its owner by itself.  It dispatches the actor with
+the identifier in the collection's path, and serves the collection only if
+all of the following hold:
+
+ -  The actor is a portable actor, i.e., its ID is a portable ID or
+    a compatible identifier.
+ -  The DID of the actor's ID is the DID in the request path.
+ -  The actor's corresponding property, e.g., `outbox`, refers to
+    the requested collection.
+
+Otherwise, Fedify responds with `404 Not Found`, as for a collection that this
+server does not store.  The actor dispatcher is called without
+`~RequestContext.portableRequest` for this, so the actor's DID has to come
+from your data, not from the request.  The actor's inbox collection is served
+only if an inbox dispatcher is set with `~Federatable.setInboxDispatcher()`;
+deliveries to the portable inbox are not affected (see the [*Portable inboxes*
+section](./inbox.md#portable-inboxes)).
+
+The served collection has the same ID as the actor's property, whether it is
+a portable ID or a compatible identifier, and its `attributedTo` is the actor.
+Its pages are identified by the collection's ID with the `cursor` query
+parameter, e.g., `ap+ef61://did:key:z6Mk.../users/alice/outbox?cursor=abc`,
+and their `first`, `last`, `prev`, `next`, and `partOf` stay under the same
+DID.  Other query parameters of the request, e.g., filters, are kept in them,
+except for the `@gateway` location hints.  Note that FEP-ef61 drops the query
+when it compares portable IDs, so a page is canonically the same as its
+collection; software that consumes it has to tell pages apart by their full
+URIs rather than by their canonical IDs.
+
+The collection's `~CollectionCallbackSetters.authorize()` predicate, if any,
+is called before the collection is dispatched, with
+`~RequestContext.portableRequest` set.  It decides whether to serve
+the collection at all, so the dispatcher still has to return only the items
+that the requester may see.
+
+The collection itself is served without an Object Integrity Proof, as FEP-ef61
+allows.  The portable actors, activities, and objects embedded in it,
+however, have to satisfy the FEP-ef61 proof policy: each of them needs its own
+`@context` and a proof made with a key of the DID in its ID, as it would need
+if served on its own; embedded unsigned collections, links, and keys are
+exempt.  If any of them does not, Fedify refuses to serve the collection with
+`500 Internal Server Error`, and logs why.  Items given as URLs are not
+checked, nor are embedded non-portable objects, such as remote objects kept
+as they were received, even if their contexts define terms in ways that
+Fedify does not check, as long as nothing in them looks like a portable ID.
+An embedded object whose context refers to a remote context that Fedify does
+not preload, however, may hide a portable ID in that context, so it makes
+Fedify refuse the collection.
+
+A custom collection is not served through the gateway endpoint unless you
+tell Fedify which actor owns it with
+`~CustomCollectionCallbackSetters.mapPortableOwner()`.  The owner has to be
+a portable actor under the DID in the request path, and the collection gets
+an ID of the same kind as the owner's ID: a portable ID, or a compatible
+identifier on the owner's first gateway.  Build its portable ID with
+`~Context.getPortableCollectionUri()`:
+
+~~~~ typescript twoslash
+import type { Federation } from "@fedify/fedify";
+import { Note } from "@fedify/vocab";
+const federation = null as unknown as Federation<void>;
+async function getBookmarks(_identifier: string): Promise<Note[]> {
+  return [];
+}
+// ---cut-before---
+federation
+  .setOrderedCollectionDispatcher(
+    "bookmarks",
+    Note,
+    "/users/{identifier}/bookmarks",
+    async (ctx, values) => ({ items: await getBookmarks(values.identifier) }),
+  )
+  // The bookmarks of alice belong to the actor whose identifier is alice:
+  .mapPortableOwner((ctx, values) => values.identifier);
+~~~~
+
+> [!NOTE]
+> Fedify, as a consumer, trusts an unsigned portable collection only if its
+> owner lists it as its `inbox`, `outbox`, `followers`, `following`, or
+> `liked`, and the gateway that served it is one of the owner's `gateways`.
+> Other software may do the same, so unsigned featured, featured tags, and
+> custom portable collections may not be usable by others yet.
+
+[FEP-ef61]: https://w3id.org/fep/ef61

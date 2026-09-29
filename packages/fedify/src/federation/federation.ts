@@ -37,6 +37,7 @@ import type {
   OutboxListenerErrorHandler,
   OutboxPermanentFailureHandler,
   PortableActorIdMapper,
+  PortableCollectionOwnerMapper,
   SharedInboxKeyDispatcher,
   UnverifiedActivityHandler,
   WebFingerLinksDispatcher,
@@ -1847,6 +1848,28 @@ export interface CustomCollectionCallbackSetters<
    */
   authorize(
     predicate: ObjectAuthorizePredicate<TContextData, string>,
+  ): CustomCollectionCallbackSetters<
+    TParam,
+    TContext,
+    TContextData
+  >;
+
+  /**
+   * Maps the custom collection to the actor that owns it, so that it is also
+   * served as an [FEP-ef61] portable collection through the gateway endpoint,
+   * e.g., `GET /.well-known/apgateway/did:key:z6Mk.../users/alice/bookmarks`,
+   * if the owner is a portable actor under the requested DID.  Without it,
+   * the custom collection is not served through the gateway endpoint.
+   *
+   * [FEP-ef61]: https://w3id.org/fep/ef61
+   * @param mapper A callback that returns the identifier of the actor that
+   *               owns the collection, or `null` if the collection is not
+   *               portable.
+   * @returns The setters object so that settings can be chained.
+   * @since 2.4.0
+   */
+  mapPortableOwner(
+    mapper: PortableCollectionOwnerMapper<TContextData, TParam>,
   ): CustomCollectionCallbackSetters<
     TParam,
     TContext,

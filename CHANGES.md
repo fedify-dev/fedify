@@ -79,6 +79,48 @@ To be released.
     prefix for remembering forwarded activities, which defaults to
     `["_fedify", "portableInboxForwarding"]`.  [[#288], [#839], [#1092]]
 
+ -  Added serving of [FEP-ef61] portable collections through the gateway
+    endpoint, e.g.,
+    `GET /.well-known/apgateway/did:key:z6Mk.../users/alice/outbox`, by the
+    existing collection dispatchers, including the inbox collection, so that a
+    portable actor's outbox and other collections are no longer tied to a
+    single server.  Fedify serves such a collection only if the actor whose
+    identifier is in its path is a portable actor under the requested DID whose
+    corresponding property, e.g., `outbox`, refers to the collection; otherwise
+    it responds with `404 Not Found`.  The collection and its pages keep the
+    actor's form of the ID, a portable ID or a compatible identifier, identify
+    pages with the `cursor` query parameter, and have `attributedTo` set to the
+    actor.  The collection's `authorize()` predicate is applied before anything
+    is dispatched.  The collection itself is served without an Object Integrity
+    Proof, as FEP-ef61 allows, but it is refused with
+    `500 Internal Server Error` if it embeds a portable actor, activity, or
+    object without a valid proof made with a key of the DID in its ID.
+    Applications without portable actors are unaffected, except that their
+    actor dispatchers may be called for such requests.
+    [[#288], [#1111], [#1142]]
+
+ -  Added the `Context.getPortableOutboxUri()`,
+    `Context.getPortableFollowingUri()`, `Context.getPortableFollowersUri()`,
+    `Context.getPortableLikedUri()`, `Context.getPortableFeaturedUri()`,
+    `Context.getPortableFeaturedTagsUri()`, and
+    `Context.getPortableCollectionUri()` methods, which build the portable IDs
+    of an actor's collections and of custom collections from the same paths
+    as their non-portable counterparts and a DID.  On a `RequestContext`, the
+    DID defaults to the one in the gateway request.  Custom implementations of
+    the `Context` interface need to implement the new methods.
+    [[#288], [#1111], [#1142]]
+
+ -  Added the `CustomCollectionCallbackSetters.mapPortableOwner()` method and
+    the `PortableCollectionOwnerMapper` type.  A custom collection is served
+    through the FEP-ef61 gateway endpoint only if this callback maps it to
+    a portable actor under the requested DID.  [[#288], [#1111], [#1142]]
+
+ -  Changed the actor dispatcher to warn when a portable actor's collection
+    property is a portable ID or a compatible identifier that does not match
+    the one that the corresponding `Context.getPortable*Uri()` method builds,
+    as the gateway endpoint would not serve the collection.
+    [[#288], [#1111], [#1142]]
+
  -  Added serving of [FEP-ef61] portable objects through the gateway endpoint,
     e.g., `GET /.well-known/apgateway/did:key:z6Mk.../notes/123`.  Existing
     object dispatchers serve such a request with the path after the DID, so
@@ -624,6 +666,7 @@ To be released.
 [#1107]: https://github.com/fedify-dev/fedify/issues/1107
 [#1109]: https://github.com/fedify-dev/fedify/pull/1109
 [#1110]: https://github.com/fedify-dev/fedify/pull/1110
+[#1111]: https://github.com/fedify-dev/fedify/issues/1111
 [#1112]: https://github.com/fedify-dev/fedify/issues/1112
 [#1113]: https://github.com/fedify-dev/fedify/issues/1113
 [#1114]: https://github.com/fedify-dev/fedify/pull/1114
@@ -634,6 +677,7 @@ To be released.
 [#1133]: https://github.com/fedify-dev/fedify/issues/1133
 [#1134]: https://github.com/fedify-dev/fedify/pull/1134
 [#1138]: https://github.com/fedify-dev/fedify/pull/1138
+[#1142]: https://github.com/fedify-dev/fedify/pull/1142
 
 ### @fedify/adonisjs
 
@@ -901,6 +945,12 @@ To be released.
     `createInboxContext()`, and `createOutboxContext()` create, following
     the new `Context.getPortableInboxUri()` method of `@fedify/fedify`.
     [[#288], [#839], [#1092]]
+ -  Added the `getPortableOutboxUri()`, `getPortableFollowingUri()`,
+    `getPortableFollowersUri()`, `getPortableLikedUri()`,
+    `getPortableFeaturedUri()`, `getPortableFeaturedTagsUri()`, and
+    `getPortableCollectionUri()` methods to the mock contexts, and
+    the `mapPortableOwner()` method to the mock custom collection setters,
+    following the new APIs of `@fedify/fedify`.  [[#288], [#1111], [#1142]]
  -  Added the `mapPortableActorId()` method to the setters that
     `MockFederation.setActorDispatcher()` returns, which `ActorCallbackSetters`
     gained for [FEP-ef61] portable actors.  [[#288], [#840], [#1099]]
