@@ -74,29 +74,39 @@ Add the plugin to your _deno.json_ configuration file:
 }
 ~~~~
 
-By default, this enables all recommended rules.
+Listing the plugin enables every rule it provides, and Deno Lint reports all of
+them as errors.  Plugin rules have no recommended subset and no severity
+levels: those concepts exist for Deno's own built-in rules, not for rules that
+come from a plugin.
 
-### Custom configuration
+### Turning rules off
 
-You can customize which rules to enable and their severity levels:
+Rule IDs in *deno.json* are prefixed with the plugin's name, `fedify-lint`,
+which is what `deno lint` prints in its diagnostics.  This differs from the
+ESLint and Oxlint plugins, where the prefix is the package name,
+`@fedify/lint`.
+
+`rules.exclude` is the only setting that applies to plugin rules.  List the
+rules you do not want, one ID at a time:
 
 ~~~~ json
 {
   "lint": {
     "plugins": ["jsr:@fedify/lint"],
     "rules": {
-      "tags": ["recommended"],
-      "include": [
-        "@fedify/lint/actor-id-required",
-        "@fedify/lint/actor-id-mismatch"
-      ],
       "exclude": [
-        "@fedify/lint/actor-featured-property-required"
+        "fedify-lint/actor-featured-property-required",
+        "fedify-lint/actor-liked-property-required"
       ]
     }
   }
 }
 ~~~~
+
+`rules.tags` and `rules.include` select among Deno's built-in rules and leave
+plugin rules untouched, so neither can be used to enable a subset of this
+plugin.  Excluding the plugin's name on its own does not work either; each rule
+has to be named.
 
 ### Running Deno Lint
 

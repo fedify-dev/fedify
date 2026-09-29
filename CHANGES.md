@@ -8,6 +8,200 @@ Version 2.1.25
 
 To be released.
 
+### @fedify/fedify
+
+ -  Fixed an unhandled error when a POST request has multiple RFC 9421
+    signatures covering `Content-Digest` and an earlier signature fails.
+    Verification now reads the body once, allowing later valid signatures
+    to be accepted and invalid requests to receive `401 Unauthorized`.
+    [[#1108], [#1128]]
+ -  Fixed `getAuthenticatedDocumentLoader()` and `getNodeInfo()` logging
+    hostnames that fail to resolve as if they had been blocked for pointing
+    at a private address, which could send operators looking for an SSRF
+    attempt when a remote instance was simply gone.  These failures are now
+    logged as “DNS lookup failed for {url}”: at the debug level by
+    `getAuthenticatedDocumentLoader()`, and at the error level by
+    `getNodeInfo()`, as with its other network failures.
+    [[#1062], [#1065]]
+ -  Fixed `getAuthenticatedDocumentLoader()` following unbounded chains of
+    alternate document links, which could exhaust resources during remote key
+    and document resolution.  Alternate links now share the 20-hop limit and
+    loop detection with HTTP redirects, and preserve the caller's cancellation
+    signal.  \[[GHSA-97w4-f4rq-mgqm] by Adel Zaitri\]
+ -  Fixed malformed activity URLs causing an unhandled error on Cloudflare
+    Workers instead of a `400 Bad Request` response.
+    [[#1115], [#1121]]
+ -  Fixed outbound delivery raising `UrlError` instead of `FetchError` when
+    resolving an inbox or redirect hostname fails or returns no usable IP
+    addresses.  Applications can now distinguish these network failures from
+    disallowed destinations; the original error is preserved in `cause`.
+    [[#1055], [#1060] by Jiwon Kwon\]
+
+[GHSA-97w4-f4rq-mgqm]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-97w4-f4rq-mgqm
+[#1055]: https://github.com/fedify-dev/fedify/issues/1055
+[#1060]: https://github.com/fedify-dev/fedify/pull/1060
+[#1062]: https://github.com/fedify-dev/fedify/issues/1062
+[#1065]: https://github.com/fedify-dev/fedify/pull/1065
+[#1108]: https://github.com/fedify-dev/fedify/issues/1108
+[#1115]: https://github.com/fedify-dev/fedify/issues/1115
+[#1121]: https://github.com/fedify-dev/fedify/pull/1121
+[#1128]: https://github.com/fedify-dev/fedify/pull/1128
+
+### @fedify/cli
+
+ -  The `fedify lookup` command now reports HTTP, DNS, and parsing failures
+    instead of suggesting authorized fetch for every failure.  It only suggests
+    `-a`/`--authorized-fetch` for unsigned object requests that return HTTP 401,
+    403, or 404.  Failed lookups retain successful results from other URLs, and
+    request timeouts report the `-T`/`--timeout` guidance.
+    [[#1063], [#1116]]
+
+[#1063]: https://github.com/fedify-dev/fedify/issues/1063
+[#1116]: https://github.com/fedify-dev/fedify/pull/1116
+
+### @fedify/express
+
+ -  Fixed `integrateFederation()` breaking the request bodies of routes that
+    Fedify does not handle.  The middleware started reading the body of every
+    non-`GET` request before Fedify decided whether the route was its own, so
+    a body parser mounted after it could receive a truncated body or wait
+    forever.  Small bodies usually got through, which is why the problem
+    tended to show up only with large ones, such as long posts submitted to
+    an application's own API.  The middleware now reads the body only when
+    Fedify handles the request.  If you limited the middleware to federation
+    paths to work around this, you can remove that workaround.
+    [[#1059], [#1061], [#1068]]
+
+[#1059]: https://github.com/fedify-dev/fedify/issues/1059
+[#1061]: https://github.com/fedify-dev/fedify/pull/1061
+[#1068]: https://github.com/fedify-dev/fedify/pull/1068
+
+### @fedify/fastify
+
+ -  Fixed the plugin failing every request with a body on Node.js.  Building
+    the `Request` for Fedify threw
+    `RequestInit: duplex option is required when sending a body.`, so every
+    `POST` or `PUT` got a 500 response, including activities delivered to the
+    inbox.
+    [[#1059], [#1061]]
+ -  Fixed the plugin breaking the request bodies of routes that Fedify does
+    not handle.  The plugin started reading the body of every non-`GET`
+    request in its `onRequest` hook, before Fedify decided whether the route
+    was its own.  On Deno, which does not require the `duplex` option,
+    Fastify's own parsing of a large body could then hang.  The plugin now
+    reads the body only when Fedify handles the request.
+    [[#1059], [#1061], [#1068]]
+
+### @fedify/koa
+
+ -  Fixed `createMiddleware()` breaking the request bodies of routes that
+    Fedify does not handle.  The middleware started reading the body of every
+    non-`GET` request before Fedify decided whether the route was its own, so
+    a body parser mounted after it could receive a truncated body or wait
+    forever.  Small bodies usually got through, which is why the problem
+    tended to show up only with large ones, such as long posts submitted to
+    an application's own API.  The middleware now reads the body only when
+    Fedify handles the request.  If you limited the middleware to federation
+    paths to work around this, you can remove that workaround.
+    [[#1059], [#1061], [#1068]]
+
+### @fedify/postgres
+
+ -  Fixed `PostgresKvStore` rejecting `null` values with a PostgreSQL constraint
+    error.  Callers can now store JSON `null`.
+    [[#1042], [#1056]]
+ -  Fixed `PostgresMessageQueue.listen()` returning before `UNLISTEN` finished
+    after aborting.  Awaiting the listener now waits for subscription cleanup
+    before the SQL client can be closed.  Cleanup errors are logged instead of
+    becoming unhandled rejections.
+    [[#1081], [#1089]]
+
+[#1042]: https://github.com/fedify-dev/fedify/issues/1042
+[#1056]: https://github.com/fedify-dev/fedify/pull/1056
+[#1081]: https://github.com/fedify-dev/fedify/issues/1081
+[#1089]: https://github.com/fedify-dev/fedify/pull/1089
+
+### @fedify/testing
+
+ -  Fixed mock actor, object, and collection dispatcher setters returning the
+    federation instead of the setters object, which caused chained settings
+    to fail with a `TypeError`.  Settings can now be chained as with a real
+    federation.
+    [[#1098], [#1127]]
+
+[#1098]: https://github.com/fedify-dev/fedify/issues/1098
+[#1127]: https://github.com/fedify-dev/fedify/pull/1127
+
+### @fedify/vocab
+
+ -  Fixed parsing a `Note`, `Article`, `ChatMessage`, or `Question` throwing
+    `TypeError: Invalid URL` when the sender's JSON-LD context declared
+    `_misskey_quote`, `quoteUri`, or `quoteUrl` with `"@type": "@id"`, as
+    Misskey-compatible servers do.  Such terms expand to a node carrying `@id`
+    rather than `@value`, and only `@value` was read.  A quote URL that cannot
+    be parsed at all, such as an inlined quote object without an `id`, is now
+    ignored instead of failing the whole object, and ATProto `at://` quote
+    URLs are accepted.
+    [[#1015], [#1043] by Jang Hanarae\]
+ -  Fixed `suppressError: true` being ignored when vocabulary accessors parsed
+    embedded JSON-LD values.  Malformed values are now skipped by iterators or
+    returned as `null` by singular accessors; calls without suppression continue
+    to throw.
+    [[#937], [#1136]]
+
+[#937]: https://github.com/fedify-dev/fedify/issues/937
+[#1015]: https://github.com/fedify-dev/fedify/issues/1015
+[#1043]: https://github.com/fedify-dev/fedify/pull/1043
+[#1136]: https://github.com/fedify-dev/fedify/pull/1136
+
+### @fedify/vocab-runtime
+
+ -  Added `UrlError.reason` to distinguish DNS resolution failures (`"dns"`)
+    from disallowed URLs (`"disallowed"`) without inspecting error messages
+    or `cause`.  Existing constructor calls default to `"disallowed"`.
+    [[#1055], [#1060] by Jiwon Kwon\]
+ -  Added the [FEP-7aa9] context to the preloaded JSON-LD contexts.  The default
+    document loader now resolves <https://w3id.org/fep/7aa9> locally, so
+    transient Codeberg Pages outages no longer prevent otherwise valid inbound
+    documents from being parsed or verified.
+    [[#1078], [#1079]]
+ -  Fixed `getDocumentLoader()` following unbounded chains of alternate document
+    links, which could exhaust resources during remote key and document
+    resolution.  Alternate links now share the 20-hop limit and loop detection
+    with HTTP redirects, and preserve the caller's cancellation signal.
+    [[GHSA-97w4-f4rq-mgqm] by Adel Zaitri\]
+ -  Fixed `getDocumentLoader()` logging hostnames that fail to resolve as
+    “Disallowed private URL” errors, as if they had been blocked for pointing
+    at a private address.  These failures are now logged as “DNS lookup
+    failed for {url}” at the debug level, and the thrown `UrlError` is
+    unchanged.  [[#1062]]
+
+[FEP-7aa9]: https://w3id.org/fep/7aa9
+[#1078]: https://github.com/fedify-dev/fedify/issues/1078
+[#1079]: https://github.com/fedify-dev/fedify/pull/1079
+
+### @fedify/vocab-tools
+
+ -  Fixed generated decoders for properties whose range is `fedify:url`
+    reading only literal (`@value`) values, so an IRI-valued (`@id`) value
+    made them throw `TypeError: Invalid URL`.  They now read both forms,
+    accept ATProto `at://` URIs, and skip a value that cannot be parsed
+    instead of throwing.
+    [[#1015], [#1043] by Jang Hanarae\]
+ -  Fixed generated vocabulary accessors ignoring `suppressError: true` when
+    parsing embedded JSON-LD values.  Generated iterators now skip malformed
+    values, and singular accessors return `null`; calls without suppression
+    continue to throw.
+    [[#937], [#1136]]
+
+### @fedify/webfinger
+
+ -  Fixed `lookupWebFinger()` logging hostnames that fail to resolve as
+    “Invalid URL for WebFinger resource descriptor” errors.  These failures
+    are now logged as “DNS lookup failed for {url}” at the debug level.
+    `lookupWebFinger()` still returns `null` in this case.
+    [[#1062]]
+
 
 Version 2.1.24
 --------------
@@ -918,6 +1112,159 @@ Released on March 24, 2026.
 [#586]: https://github.com/fedify-dev/fedify/issues/586
 [#597]: https://github.com/fedify-dev/fedify/pull/597
 [#599]: https://github.com/fedify-dev/fedify/pull/599
+
+
+Version 2.0.29
+--------------
+
+Released on September 29, 2026.
+
+### @fedify/fedify
+
+ -  Fixed an unhandled error when a POST request has multiple RFC 9421
+    signatures covering `Content-Digest` and an earlier signature fails.
+    Verification now reads the body once, allowing later valid signatures
+    to be accepted and invalid requests to receive `401 Unauthorized`.
+    [[#1108], [#1128]]
+ -  Fixed `getAuthenticatedDocumentLoader()` and `getNodeInfo()` logging
+    hostnames that fail to resolve as if they had been blocked for pointing
+    at a private address, which could send operators looking for an SSRF
+    attempt when a remote instance was simply gone.  These failures are now
+    logged as “DNS lookup failed for {url}”: at the debug level by
+    `getAuthenticatedDocumentLoader()`, and at the error level by
+    `getNodeInfo()`, as with its other network failures.  [[#1062], [#1065]]
+ -  Fixed `getAuthenticatedDocumentLoader()` following unbounded chains of
+    alternate document links, which could exhaust resources during remote key
+    and document resolution.  Alternate links now share the 20-hop limit and
+    loop detection with HTTP redirects, and preserve the caller's cancellation
+    signal.  \[[GHSA-97w4-f4rq-mgqm] by Adel Zaitri\]
+ -  Fixed malformed activity URLs causing an unhandled error on Cloudflare
+    Workers instead of a `400 Bad Request` response.  [[#1115], [#1121]]
+ -  Fixed outbound delivery raising `UrlError` instead of `FetchError` when
+    resolving an inbox or redirect hostname fails or returns no usable IP
+    addresses.  Applications can now distinguish these network failures from
+    disallowed destinations; the original error is preserved in `cause`.
+    [[#1055], [#1060] by Jiwon Kwon\]
+
+### @fedify/cli
+
+ -  The `fedify lookup` command now reports HTTP, DNS, and parsing failures
+    instead of suggesting authorized fetch for every failure.  It only suggests
+    `-a`/`--authorized-fetch` for unsigned object requests that return HTTP 401,
+    403, or 404.  Failed lookups retain successful results from other URLs, and
+    request timeouts report the `-T`/`--timeout` guidance.  [[#1063], [#1116]]
+
+### @fedify/express
+
+ -  Fixed `integrateFederation()` breaking the request bodies of routes that
+    Fedify does not handle.  The middleware started reading the body of every
+    non-`GET` request before Fedify decided whether the route was its own, so
+    a body parser mounted after it could receive a truncated body or wait
+    forever.  Small bodies usually got through, which is why the problem
+    tended to show up only with large ones, such as long posts submitted to
+    an application's own API.  The middleware now reads the body only when
+    Fedify handles the request.  If you limited the middleware to federation
+    paths to work around this, you can remove that workaround.
+    [[#1059], [#1061], [#1068]]
+
+### @fedify/fastify
+
+ -  Fixed the plugin failing every request with a body on Node.js.  Building
+    the `Request` for Fedify threw
+    `RequestInit: duplex option is required when sending a body.`, so every
+    `POST` or `PUT` got a 500 response, including activities delivered to the
+    inbox.  [[#1059], [#1061]]
+ -  Fixed the plugin breaking the request bodies of routes that Fedify does
+    not handle.  The plugin started reading the body of every non-`GET`
+    request in its `onRequest` hook, before Fedify decided whether the route
+    was its own.  On Deno, which does not require the `duplex` option,
+    Fastify's own parsing of a large body could then hang.  The plugin now
+    reads the body only when Fedify handles the request.
+    [[#1059], [#1061], [#1068]]
+
+### @fedify/koa
+
+ -  Fixed `createMiddleware()` breaking the request bodies of routes that
+    Fedify does not handle.  The middleware started reading the body of every
+    non-`GET` request before Fedify decided whether the route was its own, so
+    a body parser mounted after it could receive a truncated body or wait
+    forever.  Small bodies usually got through, which is why the problem
+    tended to show up only with large ones, such as long posts submitted to
+    an application's own API.  The middleware now reads the body only when
+    Fedify handles the request.  If you limited the middleware to federation
+    paths to work around this, you can remove that workaround.
+    [[#1059], [#1061], [#1068]]
+
+### @fedify/postgres
+
+ -  Fixed `PostgresKvStore` rejecting `null` values with a PostgreSQL constraint
+    error.  Callers can now store JSON `null`.  [[#1042], [#1056]]
+ -  Fixed `PostgresMessageQueue.listen()` returning before `UNLISTEN` finished
+    after aborting.  Awaiting the listener now waits for subscription cleanup
+    before the SQL client can be closed.  Cleanup errors are logged instead of
+    becoming unhandled rejections.  [[#1081], [#1089]]
+
+### @fedify/testing
+
+ -  Fixed mock actor, object, and collection dispatcher setters returning the
+    federation instead of the setters object, which caused chained settings
+    to fail with a `TypeError`.  Settings can now be chained as with a real
+    federation.  [[#1098], [#1127]]
+
+### @fedify/vocab
+
+ -  Fixed parsing a `Note`, `Article`, `ChatMessage`, or `Question` throwing
+    `TypeError: Invalid URL` when the sender's JSON-LD context declared
+    `_misskey_quote`, `quoteUri`, or `quoteUrl` with `"@type": "@id"`, as
+    Misskey-compatible servers do.  Such terms expand to a node carrying `@id`
+    rather than `@value`, and only `@value` was read.  A quote URL that cannot
+    be parsed at all, such as an inlined quote object without an `id`, is now
+    ignored instead of failing the whole object, and ATProto `at://` quote
+    URLs are accepted.  [[#1015], [#1043] by Jang Hanarae\]
+ -  Fixed `suppressError: true` being ignored when vocabulary accessors parsed
+    embedded JSON-LD values.  Malformed values are now skipped by iterators or
+    returned as `null` by singular accessors; calls without suppression continue
+    to throw.  [[#937], [#1136]]
+
+### @fedify/vocab-runtime
+
+ -  Added `UrlError.reason` to distinguish DNS resolution failures (`"dns"`)
+    from disallowed URLs (`"disallowed"`) without inspecting error messages
+    or `cause`.  Existing constructor calls default to `"disallowed"`.
+    [[#1055], [#1060] by Jiwon Kwon\]
+ -  Added the [FEP-7aa9] context to the preloaded JSON-LD contexts.  The default
+    document loader now resolves <https://w3id.org/fep/7aa9> locally, so
+    transient Codeberg Pages outages no longer prevent otherwise valid inbound
+    documents from being parsed or verified.  [[#1078], [#1079]]
+ -  Fixed `getDocumentLoader()` following unbounded chains of alternate document
+    links, which could exhaust resources during remote key and document
+    resolution.  Alternate links now share the 20-hop limit and loop detection
+    with HTTP redirects, and preserve the caller's cancellation signal.
+    [[GHSA-97w4-f4rq-mgqm] by Adel Zaitri\]
+ -  Fixed `getDocumentLoader()` logging hostnames that fail to resolve as
+    “Disallowed private URL” errors, as if they had been blocked for pointing
+    at a private address.  These failures are now logged as “DNS lookup
+    failed for {url}” at the debug level, and the thrown `UrlError` is
+    unchanged.  [[#1062]]
+
+### @fedify/vocab-tools
+
+ -  Fixed generated decoders for properties whose range is `fedify:url`
+    reading only literal (`@value`) values, so an IRI-valued (`@id`) value
+    made them throw `TypeError: Invalid URL`.  They now read both forms,
+    accept ATProto `at://` URIs, and skip a value that cannot be parsed
+    instead of throwing.  [[#1015], [#1043] by Jang Hanarae\]
+ -  Fixed generated vocabulary accessors ignoring `suppressError: true` when
+    parsing embedded JSON-LD values.  Generated iterators now skip malformed
+    values, and singular accessors return `null`; calls without suppression
+    continue to throw.  [[#937], [#1136]]
+
+### @fedify/webfinger
+
+ -  Fixed `lookupWebFinger()` logging hostnames that fail to resolve as
+    “Invalid URL for WebFinger resource descriptor” errors.  These failures
+    are now logged as “DNS lookup failed for {url}” at the debug level.
+    `lookupWebFinger()` still returns `null` in this case.  [[#1062]]
 
 
 Version 2.0.28

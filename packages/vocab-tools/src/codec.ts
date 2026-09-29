@@ -6,11 +6,13 @@ import {
   areAllScalarTypes,
   emitOverride,
   getAllProperties,
+  getDataCheck,
   getDecoder,
   getDecoders,
   getEncoders,
   getSubtypes,
   isCompactableType,
+  skipsUnparsable,
 } from "./type.ts";
 
 export async function* generateEncoder(
@@ -445,7 +447,13 @@ export async function* generateDecoder(
     yield `
       const decoded =
     `;
+    const lenient = property.range.length == 1 &&
+      skipsUnparsable(property.range[0]);
     if (property.range.length == 1) {
+      if (lenient) {
+        yield getDataCheck(property.range[0], types, "v");
+        yield " ? ";
+      }
       yield getDecoder(
         property.range[0],
         types,
@@ -453,6 +461,7 @@ export async function* generateDecoder(
         "options",
         `(values["@id"] == null ? options.baseUrl : new URL(values["@id"]))`,
       );
+      if (lenient) yield " : undefined";
     } else {
       const decoders = getDecoders(
         property.range,
@@ -466,7 +475,7 @@ export async function* generateDecoder(
     yield `
       ;
     `;
-    if (property.range.length > 1) {
+    if (property.range.length > 1 || lenient) {
       yield `
       if (typeof decoded === "undefined") {
         shouldCacheJsonLd = false;

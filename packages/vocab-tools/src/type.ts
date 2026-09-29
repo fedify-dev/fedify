@@ -17,6 +17,12 @@ interface ScalarType {
   compactEncoder?: (variable: string) => string;
   dataCheck(variable: string): string;
   decoder(variable: string, baseUrlVar: string): string;
+  /**
+   * Whether a value that fails `dataCheck()` should be skipped instead of
+   * being handed to `decoder()`.  Set this for types decoded from untrusted
+   * remote input, where one malformed value must not fail the whole object.
+   */
+  skipUnparsable?: boolean;
 }
 
 const scalarTypes: Record<string, ScalarType> = {
@@ -332,13 +338,16 @@ const scalarTypes: Record<string, ScalarType> = {
       return `${v}.href`;
     },
     dataCheck(v) {
-      return `typeof ${v} === "object" && "@value" in ${v}
-        && typeof ${v}["@value"] === "string"
-        && ${v}["@value"] !== "" && ${v}["@value"] !== "/"`;
+      return `typeof ${v} === "object" &&
+      ((typeof ${v}["@id"] === "string" && canDecodeIri(${v}["@id"])) ||
+       (typeof ${v}["@value"] === "string" && canDecodeIri(${v}["@value"])))`;
     },
     decoder(v) {
-      return `new URL(${v}["@value"])`;
+      return `decodeIri(
+        typeof ${v}["@id"] === "string" ? ${v}["@id"] : ${v}["@value"]
+      )`;
     },
+    skipUnparsable: true,
   },
   "fedify:publicKey": {
     name: "CryptoKey",
@@ -617,6 +626,10 @@ export function getDecoder(
     )`;
   }
   throw new Error(`Unknown type: ${typeUri}`);
+}
+
+export function skipsUnparsable(typeUri: string): boolean {
+  return scalarTypes[typeUri]?.skipUnparsable ?? false;
 }
 
 export function getDataCheck(

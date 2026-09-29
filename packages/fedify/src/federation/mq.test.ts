@@ -3,7 +3,6 @@ import {
   assert,
   assertEquals,
   assertFalse,
-  assertGreater,
   assertGreaterOrEqual,
 } from "@std/assert";
 import { delay } from "es-toolkit";
@@ -26,82 +25,145 @@ test("InProcessMessageQueue", async (t) => {
     messages.push(message);
   }, controller);
 
-  await t.step("enqueue()", async () => {
-    await mq.enqueue("Hello, world!");
-  });
+  try {
+    await t.step("enqueue()", async () => {
+      await mq.enqueue("Hello, world!");
+    });
 
-  await waitFor(() => messages.length > 0, 15_000);
+    await waitFor(() => messages.length > 0, 15_000);
 
-  await t.step("listen()", () => {
-    assertEquals(messages, ["Hello, world!"]);
-  });
+    await t.step("listen()", () => {
+      assertEquals(messages, ["Hello, world!"]);
+    });
 
-  let started = 0;
-  await t.step("enqueue() with delay", async () => {
-    started = Date.now();
-    await mq.enqueue(
-      "Delayed message",
-      { delay: Temporal.Duration.from({ seconds: 3 }) },
-    );
-    assertEquals(messages, ["Hello, world!"]);
-  });
+    await t.step("enqueue() with delay", async () => {
+      const { timers, enqueued } = captureTimers(() =>
+        mq.enqueue(
+          "Delayed message",
+          { delay: Temporal.Duration.from({ seconds: 3 }) },
+        )
+      );
+      await enqueued;
+      assertEquals(timers.length, 1);
+      assertEquals(timers[0].delay, 3_000);
+      await mq.enqueue("Single delay marker");
+      await waitFor(() => messages.includes("Single delay marker"), 15_000);
+      assertEquals(messages, ["Hello, world!", "Single delay marker"]);
+      timers[0].callback();
+    });
 
-  await waitFor(() => messages.length > 1, 15_000);
+    await waitFor(() => messages.length >= 3, 15_000);
 
-  await t.step("listen() with delay", () => {
-    assertEquals(messages, ["Hello, world!", "Delayed message"]);
-    assertGreater(Date.now() - started, 3_000);
-  });
+    await t.step("listen() with delay", () => {
+      assertEquals(messages, [
+        "Hello, world!",
+        "Single delay marker",
+        "Delayed message",
+      ]);
+    });
 
-  // Clear messages array
-  while (messages.length > 0) messages.pop();
+    // Clear messages array
+    while (messages.length > 0) messages.pop();
 
-  await t.step("enqueueMany()", async () => {
-    const testMessages = Array.from(
-      { length: 5 },
-      (_, i) => `Batch message ${i}!`,
-    );
-    await mq.enqueueMany(testMessages);
-  });
+    await t.step("enqueueMany()", async () => {
+      const testMessages = Array.from(
+        { length: 5 },
+        (_, i) => `Batch message ${i}!`,
+      );
+      await mq.enqueueMany(testMessages);
+    });
 
-  await waitFor(() => messages.length >= 5, 15_000);
+    await waitFor(() => messages.length >= 5, 15_000);
 
-  await t.step("listen() [multiple]", () => {
-    assertEquals(messages.length, 5);
-    for (let i = 0; i < 5; i++) {
-      assertEquals(messages[i], `Batch message ${i}!`);
-    }
-  });
+    await t.step("listen() [multiple]", () => {
+      assertEquals(messages.length, 5);
+      for (let i = 0; i < 5; i++) {
+        assertEquals(messages[i], `Batch message ${i}!`);
+      }
+    });
 
-  // Clear messages array
-  while (messages.length > 0) messages.pop();
+    // Clear messages array
+    while (messages.length > 0) messages.pop();
 
-  started = 0;
-  await t.step("enqueueMany() with delay", async () => {
-    started = Date.now();
-    const testMessages = Array.from(
-      { length: 3 },
-      (_, i) => `Delayed batch ${i}!`,
-    );
-    await mq.enqueueMany(
-      testMessages,
-      { delay: Temporal.Duration.from({ seconds: 2 }) },
-    );
-    assertEquals(messages.length, 0);
-  });
+    await t.step("enqueueMany() with delay", async () => {
+      const testMessages = Array.from(
+        { length: 3 },
+        (_, i) => `Delayed batch ${i}!`,
+      );
+      const { timers, enqueued } = captureTimers(() =>
+        mq.enqueueMany(
+          testMessages,
+          { delay: Temporal.Duration.from({ seconds: 2 }) },
+        )
+      );
+      await enqueued;
+      assertEquals(timers.length, 1);
+      assertEquals(timers[0].delay, 2_000);
+      await mq.enqueue("Batch delay marker");
+      await waitFor(() => messages.includes("Batch delay marker"), 15_000);
+      assertEquals(messages, ["Batch delay marker"]);
+      timers[0].callback();
+    });
 
-  await waitFor(() => messages.length >= 3, 15_000);
+    await waitFor(() => messages.length >= 4, 15_000);
 
-  await t.step("listen() [delayed multiple]", () => {
-    assertEquals(messages.length, 3);
-    assertGreater(Date.now() - started, 2_000);
-    for (let i = 0; i < 3; i++) {
-      assertEquals(messages[i], `Delayed batch ${i}!`);
-    }
-  });
+    await t.step("listen() [delayed multiple]", () => {
+      assertEquals(messages.length, 4);
+      assertEquals(messages[0], "Batch delay marker");
+      for (let i = 0; i < 3; i++) {
+        assertEquals(messages[i + 1], `Delayed batch ${i}!`);
+      }
+    });
+  } finally {
+    controller.abort();
+    await listening;
+  }
+});
 
-  controller.abort();
-  await listening;
+// Capture only synchronous enqueue calls so listener and test timers stay real.
+function captureTimers(enqueue: () => Promise<void>): {
+  timers: { callback: () => void; delay: number | undefined }[];
+  enqueued: Promise<void>;
+} {
+  const timers: { callback: () => void; delay: number | undefined }[] = [];
+  const original = globalThis.setTimeout;
+  globalThis.setTimeout = ((callback: () => void, delay?: number) => {
+    timers.push({ callback, delay });
+    return 0;
+  }) as typeof globalThis.setTimeout;
+  try {
+    return { timers, enqueued: enqueue() };
+  } finally {
+    globalThis.setTimeout = original;
+  }
+}
+
+test("InProcessMessageQueue real delay", async (t) => {
+  for (const batch of [false, true]) {
+    await t.step(batch ? "enqueueMany()" : "enqueue()", async () => {
+      const mq = new InProcessMessageQueue();
+      const messages: string[] = [];
+      const controller = new AbortController();
+      const listening = mq.listen((message: string) => {
+        messages.push(message);
+      }, controller);
+      try {
+        const delayed = batch ? ["Delayed 1", "Delayed 2"] : ["Delayed"];
+        const options = {
+          delay: Temporal.Duration.from({ milliseconds: 100 }),
+        };
+        if (batch) await mq.enqueueMany(delayed, options);
+        else await mq.enqueue(delayed[0], options);
+        await mq.enqueue("Immediate");
+
+        await waitFor(() => messages.length >= delayed.length + 1, 15_000);
+        assertEquals(messages, ["Immediate", ...delayed]);
+      } finally {
+        controller.abort();
+        await listening;
+      }
+    });
+  }
 });
 
 test("InProcessMessageQueue orderingKey", async (t) => {
