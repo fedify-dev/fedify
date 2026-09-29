@@ -2695,3 +2695,621 @@ federation
     ruleName,
   }),
 );
+
+test(
+  `${ruleName}: ✅ Good - statically false while loop avoids unawaited delivery`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    while (false) {
+      ctx.sendActivity(
+        { identifier: ctx.identifier },
+        new URL("https://example.com/inbox"),
+        activity,
+      );
+    }
+    
+    await ctx.sendActivity(
+        { identifier: ctx.identifier },
+        new URL("https://example.com/inbox"),
+        activity,
+    );
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - statically false for loop avoids unawaited delivery`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    for (; false;) {
+      ctx.sendActivity(
+        { identifier: ctx.identifier },
+        new URL("https://example.com/inbox"),
+        activity,
+      );
+    }
+    
+    await ctx.sendActivity(
+        { identifier: ctx.identifier },
+        new URL("https://example.com/inbox"),
+        activity,
+    );
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - unawaited delivery in do while loop`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    do {
+      ctx.sendActivity(
+        { identifier: ctx.identifier },
+        new URL("https://example.com/inbox"),
+        activity,
+      );
+    } while (false);
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - unawaited delivery in loop binding pattern`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    for (const { id = ctx.sendActivity(
+      { identifier: ctx.identifier },
+      new URL("https://example.com/inbox"),
+      activity,
+    ) } of [{}]) {}
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - unawaited delivery in loop binding computed key`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    for (const { [ctx.sendActivity(
+      { identifier: ctx.identifier },
+      new URL("https://example.com/inbox"),
+      activity,
+    ) as unknown as string]: id } of [{}]) {}
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - unawaited delivery in loop binding computed member key`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    let target: Record<string, unknown> = {};
+    for ({ id: target[ctx.sendActivity(
+      { identifier: ctx.identifier },
+      new URL("https://example.com/inbox"),
+      activity,
+    ) as unknown as string] } of [{}]) {}
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - unawaited delivery in for-in loop binding computed member key`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    let target: Record<string, unknown> = {};
+    for (target[ctx.sendActivity(
+      { identifier: ctx.identifier },
+      new URL("https://example.com/inbox"),
+      activity,
+    ) as unknown as string] in { a: 1 }) {}
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - delivery promise as the left operand of &&`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    await (ctx.sendActivity(
+      { identifier: ctx.identifier },
+      new URL("https://example.com/inbox"),
+      activity,
+    ) && Promise.resolve());
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - unused id in assignment-form destructuring`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    let id;
+    for ({ id = ctx.sendActivity(
+      { identifier: ctx.identifier },
+      new URL("https://example.com/inbox"),
+      activity,
+    ) } of [{}]) {}
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - id awaited in the loop body`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    let id;
+    for ({ id = ctx.sendActivity(
+      { identifier: ctx.identifier },
+      new URL("https://example.com/inbox"),
+      activity,
+    ) } of [{}]) {
+      await id;
+    }
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - unused default function in assignment-form destructuring`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    for (const { deliver = () => { ctx.sendActivity(ctx.identifier, new URL("https://example.com"), activity); } } of [{}]) {}
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - used default function in assignment-form destructuring`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    for (const { deliver = () => { ctx.sendActivity(ctx.identifier, new URL("https://example.com"), activity); } } of [{}]) {
+      deliver();
+    }
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - immediately invoked function in default expression`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    for (const { deliver = (() => { ctx.sendActivity(ctx.identifier, new URL("https://example.com"), activity); })() } of [{}]) {}
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: "Delivery is not awaited",
+  }),
+);
+
+for (
+  const [kind, pattern, member, readsTarget] of [
+    [
+      "object",
+      "{ deliver: target.deliver = DEFAULT }",
+      "target.deliver",
+      false,
+    ],
+    ["array", "[target.deliver = DEFAULT]", "target.deliver", false],
+    [
+      "computed object",
+      '{ deliver: target["deliver"] = DEFAULT }',
+      'target["deliver"]',
+      false,
+    ],
+    [
+      "nested object",
+      "{ deliver: target.nested.deliver = DEFAULT }",
+      "target.nested.deliver",
+      // Accessing the intermediate object conservatively reaches its functions.
+      true,
+    ],
+  ] as const
+) {
+  for (const used of [false, true]) {
+    test(
+      `${ruleName}: ${
+        used ? "used" : "unused"
+      } ${kind} member-target default function`,
+      lintTest({
+        code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const target = { deliver: () => {}, nested: { deliver: () => {} } };
+    for (${
+          pattern.replace(
+            "DEFAULT",
+            `() => {
+      ctx.sendActivity(
+        { identifier: ctx.identifier },
+        new URL("https://example.com/inbox"),
+        activity,
+      );
+    }`,
+          )
+        } of [${kind === "array" ? "[]" : "{}"}]) {
+      ${used ? `${member}();` : ""}
+    }
+  });
+`,
+        rule,
+        ruleName,
+        expectedError: used || readsTarget
+          ? "Delivery is not awaited"
+          : undefined,
+      }),
+    );
+  }
+}
+
+for (const shadowed of [false, true]) {
+  test(
+    `${ruleName}: member-target default preserves ${
+      shadowed ? "local" : "inherited"
+    } object functions`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const target = {
+      deliver: async () => {
+        ctx.sendActivity(
+          { identifier: ctx.identifier },
+          new URL("https://example.com/inbox"),
+          activity,
+        );
+      },
+    };
+    const run = async () => {
+      ${
+        shadowed
+          ? "const target = { deliver: async () => {}, fallback: () => {} };"
+          : ""
+      }
+      for ({ fallback: target.fallback = () => {} } of [{}]) {}
+      await target.deliver();
+    };
+    await run();
+  });
+`,
+      rule,
+      ruleName,
+      expectedError: shadowed ? undefined : "Delivery is not awaited",
+    }),
+  );
+}
+
+for (
+  const [kind, pattern, existingValues] of [
+    ["object", "{ deliver = DEFAULT }", "[{ deliver }]"],
+    ["array", "[deliver = DEFAULT]", "[[deliver]]"],
+    [
+      "nested object",
+      "{ handler: { deliver } = { deliver: DEFAULT } }",
+      "[{ handler: { deliver } }]",
+    ],
+    ["nested array", "[[deliver] = [DEFAULT]]", "[[[deliver]]]"],
+  ] as const
+) {
+  for (const dropped of [false, true]) {
+    test(
+      `${ruleName}: ${kind} assignment default preserves enclosing ${
+        dropped ? "dropped" : "awaited"
+      } delivery`,
+      lintTest({
+        code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    let deliver = async () => {
+      ${dropped ? "" : "await "}ctx.sendActivity(
+        { identifier: ctx.identifier }, "followers", activity,
+      );
+    };
+    const run = async () => {
+      for (${
+          pattern.replace("DEFAULT", "async () => {}")
+        } of ${existingValues}) {}
+      await deliver();
+    };
+    await run();
+  });
+`,
+        rule,
+        ruleName,
+        expectedError: dropped ? "Delivery is not awaited" : undefined,
+      }),
+    );
+  }
+}
+
+for (
+  const [kind, pattern, missingValues] of [
+    ["object", "{ deliver = DEFAULT }", "[{}]"],
+    ["array", "[deliver = DEFAULT]", "[[]]"],
+  ] as const
+) {
+  for (
+    const [declaration, prefix, setup, parameter] of [
+      ["const", "const ", "", ""],
+      ["let", "let ", "", ""],
+      ["var", "var ", "", ""],
+      ["local assignment", "", "let deliver = async () => {};", ""],
+      ["uninitialized let", "", "let deliver;", ""],
+      ["uninitialized var", "", "var deliver;", ""],
+      ["var loop binding", "", "for (var deliver of [undefined]) {}", ""],
+      ["non-function let", "", "let deliver = undefined;", ""],
+      ["parameter", "", "", "deliver"],
+      ["object parameter", "", "", "{ deliver } = {}"],
+      ["array parameter", "", "", "[deliver] = []"],
+    ] as const
+  ) {
+    test(
+      `${ruleName}: ${kind} default respects ${declaration} shadowing`,
+      lintTest({
+        code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const deliver = async () => {
+      ctx.sendActivity({ identifier: ctx.identifier }, "followers", activity);
+    };
+    const run = async (${parameter}) => {
+      ${setup}
+      for (${prefix}${
+          pattern.replace("DEFAULT", "async () => {}")
+        } of ${missingValues}) {
+        await deliver();
+      }
+    };
+    await run();
+  });
+`,
+        rule,
+        ruleName,
+        expectedError: undefined,
+      }),
+    );
+  }
+
+  for (const used of [false, true]) {
+    test(
+      `${ruleName}: ${
+        used ? "used" : "unused"
+      } ${kind} assignment fallback in a nested helper`,
+      lintTest({
+        code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    let deliver;
+    const run = async () => {
+      for (${
+          pattern.replace(
+            "DEFAULT",
+            `async () => {
+        ctx.sendActivity({ identifier: ctx.identifier }, "followers", activity);
+      }`,
+          )
+        } of ${missingValues}) {}
+      ${used ? "await deliver();" : ""}
+    };
+    await run();
+  });
+`,
+        rule,
+        ruleName,
+        expectedError: used ? "Delivery is not awaited" : undefined,
+      }),
+    );
+  }
+}
+
+for (
+  const [kind, block] of [
+    [
+      "nested block",
+      'if (dryRun) { const deliver = "skipped"; console.log(deliver); }',
+    ],
+    ["for initializer", "for (let deliver = 0; deliver < 1; deliver++) {}"],
+  ] as const
+) {
+  for (const dropped of [false, true]) {
+    test(
+      `${ruleName}: non-function ${kind} declaration preserves an outer ${
+        dropped ? "dropped" : "awaited"
+      } delivery`,
+      lintTest({
+        code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const deliver = async () => {
+      ${dropped ? "" : "await "}ctx.sendActivity(
+        { identifier: ctx.identifier }, "followers", activity,
+      );
+    };
+    const run = async () => {
+      ${block}
+      await deliver();
+    };
+    await run();
+  });
+`,
+        rule,
+        ruleName,
+        expectedError: dropped ? "Delivery is not awaited" : undefined,
+      }),
+    );
+  }
+}
+
+for (
+  const [kind, declaration] of [
+    ["block let", "{ let deliver; }"],
+    ["block const", "{ const deliver = 0; }"],
+    ["for initializer", "for (let deliver = 0; deliver < 1; deliver++) {}"],
+    ["for binding", "for (const deliver of [0]) {}"],
+    ["class static block", "const C = class { static { var deliver; } };"],
+    [
+      "class static block assignment default",
+      "const C = class { static { for ({ deliver = async () => {} } of [{ deliver }]); } };",
+    ],
+  ] as const
+) {
+  for (const dropped of [false, true]) {
+    test(
+      `${ruleName}: assignment default preserves outer ${
+        dropped ? "dropped" : "awaited"
+      } delivery after an unrelated ${kind}`,
+      lintTest({
+        code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    let deliver = async () => {
+      ${dropped ? "" : "await "}ctx.sendActivity(
+        { identifier: ctx.identifier }, "followers", activity,
+      );
+    };
+    const run = async () => {
+      ${declaration}
+      for ({ deliver = async () => {} } of [{ deliver }]) {}
+      await deliver();
+    };
+    await run();
+  });
+`,
+        rule,
+        ruleName,
+        expectedError: dropped ? "Delivery is not awaited" : undefined,
+      }),
+    );
+  }
+}

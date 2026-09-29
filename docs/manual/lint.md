@@ -773,6 +773,11 @@ not.  In practice:
     that the receiving call never runs it.
  -  The rule reads only the listener body.  A delivery call in a helper that
     is declared outside the listener, or in another module, is not seen.
+ -  A function assigned to an enclosing object inside a local setup helper is
+    not followed back to the caller.  Even if `setup()` installs
+    `target.deliver` before `await target.deliver()`, the rule may still report
+    missing delivery.  Define and call the delivery helper directly in the
+    listener body to avoid this false report.
 
 **Why it matters:**
 Fedify does not federate client-to-server outbox posts automatically.  If your
@@ -922,6 +927,11 @@ When it cannot tell where a promise goes, the rule stays quiet.  In practice:
  -  As in `outbox-listener-delivery-required`, the rule reads only the listener
     body.  A delivery call in a helper that is declared outside the listener,
     or in another module, is not seen.
+ -  A function assigned to an enclosing object inside a local setup helper is
+    not followed back to the caller.  A dropped delivery promise inside that
+    function may go unreported, even if the caller awaits the installed
+    function.  Define and call the delivery helper directly in the listener
+    body so that the rule can check it.
 
 **Why it matters:**
 `ctx.sendActivity()` returns a promise.  A listener that calls it without
