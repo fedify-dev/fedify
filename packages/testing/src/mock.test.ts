@@ -1868,6 +1868,24 @@ test("MockContext builds portable IDs", async (t) => {
   mockFederation.setActorDispatcher("/users/{identifier}", () => null);
   mockFederation.setObjectDispatcher(Note, "/notes/{id}", () => null);
   mockFederation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
+  mockFederation.setOutboxDispatcher("/users/{identifier}/outbox", () => null);
+  mockFederation.setFollowingDispatcher(
+    "/users/{identifier}/following",
+    () => null,
+  );
+  mockFederation.setFollowersDispatcher(
+    "/users/{identifier}/followers",
+    () => null,
+  );
+  mockFederation.setLikedDispatcher("/users/{identifier}/liked", () => null);
+  mockFederation.setFeaturedDispatcher(
+    "/users/{identifier}/featured",
+    () => null,
+  );
+  mockFederation.setFeaturedTagsDispatcher(
+    "/users/{identifier}/tags",
+    () => null,
+  );
   const context = mockFederation.createContext(
     new URL("https://example.com"),
     undefined,
@@ -1884,6 +1902,35 @@ test("MockContext builds portable IDs", async (t) => {
     getPortableInboxUri: [
       (authority) => context.getPortableInboxUri("alice", authority),
       "/users/alice/inbox",
+    ],
+    getPortableOutboxUri: [
+      (authority) => context.getPortableOutboxUri("alice", authority),
+      "/users/alice/outbox",
+    ],
+    getPortableFollowingUri: [
+      (authority) => context.getPortableFollowingUri("alice", authority),
+      "/users/alice/following",
+    ],
+    getPortableFollowersUri: [
+      (authority) => context.getPortableFollowersUri("alice", authority),
+      "/users/alice/followers",
+    ],
+    getPortableLikedUri: [
+      (authority) => context.getPortableLikedUri("alice", authority),
+      "/users/alice/liked",
+    ],
+    getPortableFeaturedUri: [
+      (authority) => context.getPortableFeaturedUri("alice", authority),
+      "/users/alice/featured",
+    ],
+    getPortableFeaturedTagsUri: [
+      (authority) => context.getPortableFeaturedTagsUri("alice", authority),
+      "/users/alice/tags",
+    ],
+    getPortableCollectionUri: [
+      (authority) =>
+        context.getPortableCollectionUri("bookmarks", { id: "1" }, authority),
+      "/collections/bookmarks/id/1",
     ],
   };
   for (const [name, [helper, path]] of Object.entries(helpers)) {
@@ -1941,4 +1988,33 @@ test("MockContext.getObject() suppresses tombstones unless passed through", asyn
   assertInstanceOf(await ctx.getObject(Note, { id: "1" }), Note);
   // A tombstone that is an instance of the requested class is returned:
   assertInstanceOf(await ctx.getObject(ASObject, { id: "1" }), Tombstone);
+});
+
+test("MockFederation custom collection setters chain mapPortableOwner()", () => {
+  const federation = createFederation<void>();
+  const setters = federation.setCollectionDispatcher(
+    "bookmarks",
+    Note,
+    "/users/{identifier}/bookmarks",
+    () => ({ items: [] }),
+  );
+  assertEquals(setters.mapPortableOwner(() => null), setters);
+  const ordered = federation.setOrderedCollectionDispatcher(
+    "pins",
+    Note,
+    "/users/{identifier}/pins",
+    () => ({ items: [] }),
+  );
+  assertEquals(ordered.mapPortableOwner(() => null), ordered);
+  // The other setters return the same setters, so that they chain in any
+  // order:
+  assertEquals(
+    ordered
+      .setFirstCursor(() => "0")
+      .setLastCursor(() => "1")
+      .setCounter(() => 0)
+      .authorize(() => true)
+      .mapPortableOwner(() => null),
+    ordered,
+  );
 });

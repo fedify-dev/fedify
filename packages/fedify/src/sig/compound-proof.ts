@@ -1,5 +1,5 @@
 import type { Multikey } from "@fedify/vocab";
-import { parseIri } from "@fedify/vocab-runtime";
+import { parseIri, preloadedContexts } from "@fedify/vocab-runtime";
 import jsonld from "@fedify/vocab-runtime/jsonld";
 import { preloadedOnlyDocumentLoader } from "../compat/preloaded-context-loader.ts";
 import { getNormalizationContextLoader } from "./ld.ts";
@@ -9,8 +9,10 @@ import {
   isPortableId,
 } from "./portable-key-id.ts";
 import {
+  classifyFep2277CoreType,
   verifyMapLocalProof,
   type VerifyPortableObjectProofFailureReason,
+  type VerifyPortableObjectProofOptions,
   verifyPortableObjectProofPolicy,
   type VerifyProofOptions,
 } from "./proof.ts";
@@ -1253,4 +1255,340 @@ function isSingleStringValue(values: unknown, datatype?: string): boolean {
   const keys = Object.keys(value);
   return keys.length === 1 ||
     datatype != null && keys.length === 2 && value["@type"] === datatype;
+}
+
+/**
+ * The reason why {@link verifyServedPortableObjects} refused a document.
+ * @internal
+ */
+export type ServedPortableObjectFailureReason =
+  | VerifyPortableObjectProofFailureReason["type"]
+  | "unsupportedProofShape"
+  | "missingContext"
+  | "unsupportedContext"
+  | "hiddenPortableObject"
+  | "invalidPortableObject";
+
+/**
+ * The result of {@link verifyServedPortableObjects}.
+ * @internal
+ */
+export type ServedPortableObjectsResult =
+  | { readonly verified: true }
+  | {
+    readonly verified: false;
+    /** RFC 6901 JSON Pointer to the refused map. */
+    readonly path: string;
+    /** The portable ID of the refused map. */
+    readonly id: string;
+    readonly reason: ServedPortableObjectFailureReason;
+  };
+
+/**
+ * FEP-2277 core types that FEP-ef61 does not require to carry proofs.
+ */
+const UNSECURED_CORE_TYPES: ReadonlySet<string> = new Set([
+  "collection",
+  "link",
+  "verificationMethod",
+  "publicKey",
+]);
+
+interface ServedPortableMap {
+  readonly path: string;
+  readonly id: string;
+  readonly map: Record<string, unknown>;
+  /** The `@context` values of the map and its ancestors, outermost first. */
+  readonly contexts: readonly unknown[];
+}
+
+/**
+ * Applies the FEP-ef61 proof policy, under the map-local compound-proof
+ * profile, to every portable object embedded in a document that a gateway is
+ * about to serve, e.g., the items of a portable collection page.  The root
+ * map itself is not checked, as the caller built it.
+ *
+ * Each map below the root whose direct `id` or `@id` is a portable ID or
+ * a compatible identifier is checked independently of the others:
+ *
+ *  -  A map with a direct `proof` is a separately secured document: the proof
+ *     has to be a single map, the map has to carry its own `@context`, and
+ *     the proof has to verify over the map exactly as it is served, with only
+ *     its own proof removed, and be made with a key of the DID in the map's
+ *     ID, as the map-local compound-proof profile requires.
+ *  -  A map without a proof has to be a collection, a link, or a key, which
+ *     FEP-ef61 does not require to be secured.  It is classified under its
+ *     effective context, i.e., the `@context` values of its ancestors and
+ *     itself, which therefore may only use the simple, preloaded contexts
+ *     that the compound-proof policy accepts.
+ *
+ * Maps that merely refer to a portable object, i.e., have no member other
+ * than `id` or `@id`, and maps with non-portable IDs, are neither checked nor
+ * verified.  Every `@context` in the document, however, has to be simple, and
+ * every portable object that the expanded document describes has to be
+ * a map found this way, so that no context can hide a portable object from
+ * this check, e.g., by aliasing `@id` or redefining `proof`.  The input must be a finite, already-materialized JSON tree, such
+ * as the compact JSON-LD document that is about to be served.
+ *
+ * @param json The document to check.
+ * @param options The options for verifying the proofs.  Proofs whose
+ *                verification methods are not `did:key` DID URLs may make
+ *                the document loader fetch DID documents.
+ * @returns The result, which names the first refused map, if any.
+ * @internal
+ */
+export async function verifyServedPortableObjects(
+  json: unknown,
+  options: VerifyPortableObjectProofOptions = {},
+): Promise<ServedPortableObjectsResult> {
+  // Checks exactly what is served, as a tree without shared references, so
+  // that every map is counted as many times as it occurs:
+  json = JSON.parse(JSON.stringify(json));
+  const collected = collectServedPortableMaps(json);
+  if (!("maps" in collected)) return collected;
+  const maps = collected.maps;
+  // The maps are found by their literal members, which a context can make
+  // mean something else, e.g., by aliasing @id or redefining proof.  Since
+  // expansion turns each map into exactly one node, the document may not
+  // describe any portable object more times than the maps found for its ID:
+  const discovered = new Map<string, number>();
+  const ids = maps.map((candidate) => candidate.id);
+  const rootId = isJsonMap(json)
+    ? [json.id, json["@id"]].find(isPortableIdValue)
+    : undefined;
+  if (rootId != null) ids.push(rootId);
+  for (const id of ids) discovered.set(id, (discovered.get(id) ?? 0) + 1);
+  let hidden: string | undefined;
+  try {
+    // Subtrees whose contexts cannot be checked map by map are not searched
+    // for portable maps, so any portable object they describe is found here:
+    hidden = findHiddenPortableObject(
+      await jsonld.expand(json, {
+        documentLoader: preloadedOnlyDocumentLoader,
+      }),
+      discovered,
+    );
+  } catch {
+    return { verified: false, path: "", id: "", reason: "unsupportedContext" };
+  }
+  if (hidden != null) {
+    return {
+      verified: false,
+      path: "",
+      id: hidden,
+      reason: "hiddenPortableObject",
+    };
+  }
+  for (const candidate of maps) {
+    const reason = await checkServedPortableMap(candidate, options);
+    if (reason != null) {
+      return {
+        verified: false,
+        path: candidate.path,
+        id: candidate.id,
+        reason,
+      };
+    }
+  }
+  return { verified: true };
+}
+
+/**
+ * Finds a portable object that an expanded JSON-LD document describes, i.e.,
+ * a node with a portable `@id` and other members, more times than the given
+ * numbers of maps found for its ID.
+ */
+function findHiddenPortableObject(
+  expanded: unknown,
+  discovered: ReadonlyMap<string, number>,
+): string | undefined {
+  const remaining = new Map(discovered);
+  const pending: unknown[] = [expanded];
+  while (pending.length > 0) {
+    const value = pending.pop();
+    if (Array.isArray(value)) {
+      pending.push(...value);
+      continue;
+    }
+    if (!isJsonMap(value)) continue;
+    const id = value["@id"];
+    if (
+      isPortableIdValue(id) &&
+      Object.keys(value).some((key) => key !== "@id")
+    ) {
+      const count = remaining.get(id) ?? 0;
+      if (count < 1) return id;
+      remaining.set(id, count - 1);
+    }
+    pending.push(...Object.values(value));
+  }
+  return undefined;
+}
+
+/**
+ * Checks whether a context uses only preloaded remote contexts and simple
+ * term definitions, so that the context in effect for a map can be told from
+ * the contexts of its ancestors.
+ */
+function isCheckableContext(context: unknown): boolean {
+  const values = Array.isArray(context) ? context : [context];
+  return values.every((value) =>
+    typeof value === "string"
+      ? Object.hasOwn(preloadedContexts, value)
+      : !Array.isArray(value) &&
+        isSimpleContext(value as CompoundProofJsonValue)
+  );
+}
+
+/**
+ * Checks whether every remote context that a context refers to is preloaded,
+ * so that all of its definitions are known.
+ */
+function hasOnlyPreloadedRemoteContexts(context: unknown): boolean {
+  const values = Array.isArray(context) ? context : [context];
+  return values.every((value) =>
+    typeof value === "string"
+      ? Object.hasOwn(preloadedContexts, value)
+      : !Array.isArray(value)
+  );
+}
+
+/**
+ * Checks whether a map or any map below it, outside proof and context values,
+ * has a portable `id` or `@id` and other members.
+ */
+function hasLiteralPortableObject(json: unknown): boolean {
+  return findInJsonMaps(
+    json,
+    (map) =>
+      [map.id, map["@id"]].some(isPortableIdValue) &&
+        Object.keys(map).some((key) => key !== "id" && key !== "@id")
+        ? true
+        : undefined,
+  ) ?? false;
+}
+
+function collectServedPortableMaps(
+  json: unknown,
+):
+  | { maps: ServedPortableMap[] }
+  | Extract<ServedPortableObjectsResult, { verified: false }> {
+  const maps: ServedPortableMap[] = [];
+  const seen = new Set<object>();
+  const pending: Array<{
+    value: unknown;
+    path: string;
+    depth: number;
+    contexts: readonly unknown[];
+  }> = [{ value: json, path: "", depth: 0, contexts: [] }];
+  while (pending.length > 0) {
+    const { value, path, depth, contexts } = pending.pop()!;
+    if (typeof value !== "object" || value == null || seen.has(value)) {
+      continue;
+    }
+    seen.add(value);
+    if (Array.isArray(value)) {
+      for (let index = value.length - 1; index >= 0; index--) {
+        pending.push({
+          value: value[index],
+          path: childPath(path, String(index)),
+          depth: depth + 1,
+          contexts,
+        });
+      }
+      continue;
+    }
+    const map = value as Record<string, unknown>;
+    const hasContext = Object.hasOwn(map, "@context");
+    if (hasContext && !isCheckableContext(map["@context"])) {
+      // A context that aliases keywords, e.g., @id, or defines scoped
+      // contexts can make the maps below mean something other than their
+      // literal members say.  Such a map, e.g., a remote object that an item
+      // embeds as it was received, is not searched for portable maps; any
+      // portable object that it describes is found by expanding the whole
+      // document, which needs all of its remote contexts to be preloaded.
+      // A literal portable object in it, which software reading the JSON as
+      // is would see, is not allowed either:
+      if (
+        hasOnlyPreloadedRemoteContexts(map["@context"]) &&
+        !hasLiteralPortableObject(map)
+      ) {
+        continue;
+      }
+      const id = [map.id, map["@id"]].find((v) => typeof v === "string");
+      return {
+        verified: false,
+        path,
+        id: typeof id === "string" ? id : "",
+        reason: "unsupportedContext",
+      };
+    }
+    const mapContexts = hasContext ? [...contexts, map["@context"]] : contexts;
+    const id = [map.id, map["@id"]].find(isPortableIdValue);
+    if (
+      depth > 0 && id != null &&
+      Object.keys(map).some((key) => key !== "id" && key !== "@id")
+    ) {
+      maps.push({ path, id, map, contexts: mapContexts });
+    }
+    const keys = Object.keys(map);
+    for (let index = keys.length - 1; index >= 0; index--) {
+      const key = keys[index];
+      if (key === "proof" || key === "@context") continue;
+      pending.push({
+        value: map[key],
+        path: childPath(path, key),
+        depth: depth + 1,
+        contexts: mapContexts,
+      });
+    }
+  }
+  maps.sort((left, right) => comparePaths(left.path, right.path));
+  return { maps };
+}
+
+async function checkServedPortableMap(
+  { map, contexts }: ServedPortableMap,
+  options: VerifyPortableObjectProofOptions,
+): Promise<ServedPortableObjectFailureReason | null> {
+  if (Object.hasOwn(map, "proof")) {
+    if (!isJsonMap(map.proof)) return "unsupportedProofShape";
+    if (!Object.hasOwn(map, "@context")) return "missingContext";
+    try {
+      // The map-local verifier hashes the map exactly as it is served, only
+      // without its own proof, so that its context cannot be swapped:
+      const key = await verifyMapLocalProof(map, options);
+      const policy = await verifyPortableObjectProofPolicy(map, key, options);
+      return policy.verified ? null : policy.reason.type;
+    } catch (error) {
+      if (error instanceof TypeError) return "invalidPortableObject";
+      throw error;
+    }
+  }
+  // Only the map's own members are classified, under the context in effect
+  // where it sits, which is exactly the chain of the enclosing contexts as
+  // long as none of them defines keyword aliases or scoped contexts:
+  const flattened = contexts.flatMap((context) =>
+    Array.isArray(context) ? context : [context]
+  );
+  if (
+    flattened.length < 1 ||
+    !isSimpleContext(flattened as CompoundProofJsonValue[])
+  ) {
+    return "unsupportedContext";
+  }
+  let expanded: unknown[];
+  try {
+    expanded = await jsonld.expand(
+      { ...map, "@context": flattened },
+      { documentLoader: preloadedOnlyDocumentLoader },
+    );
+  } catch {
+    return "unsupportedContext";
+  }
+  if (expanded.length !== 1 || !isJsonMap(expanded[0])) {
+    return "invalidPortableObject";
+  }
+  const type = classifyFep2277CoreType(expanded[0]);
+  return UNSECURED_CORE_TYPES.has(type) ? null : "missingProof";
 }

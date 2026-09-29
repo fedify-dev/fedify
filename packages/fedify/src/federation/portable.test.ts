@@ -1247,7 +1247,10 @@ test("Federation.fetch() serves compatible-ID actors", async (t) => {
         id,
         preferredUsername: name,
         inbox: new URL(`${id.href}/inbox`),
-        followers: new URL(`${id.href}/followers`),
+        followers: toCompatibleEf61Id(
+          ctx.getPortableFollowersUri(name, did),
+          "https://example.com",
+        ),
         gateways: gateways.map((g) => new URL(g)),
       }),
     );

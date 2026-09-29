@@ -38,6 +38,7 @@ import { formatAcceptSignature } from "../sig/accept.ts";
 import {
   inspectCompoundPortableObjectApplicability,
   verifyCompoundPortableObjectProofs,
+  verifyServedPortableObjects,
 } from "../sig/compound-proof.ts";
 import {
   listRequestSignatures,
@@ -84,6 +85,7 @@ import type {
   ObjectAuthorizePredicate,
   ObjectDispatcher,
   OutboxListenerErrorHandler,
+  PortableCollectionOwnerMapper,
   UnverifiedActivityHandler,
 } from "./callback.ts";
 import type { PageItems } from "./collection.ts";
@@ -512,6 +514,64 @@ function portableObjectInternalServerError(request: Request): Response {
 }
 
 /**
+ * Checks the portable objects embedded in a portable collection or its page
+ * that is about to be served against the FEP-ef61 proof policy.  See
+ * `verifyServedPortableObjects()`.
+ * @returns `true` if the collection can be served.
+ */
+async function verifyPortableCollection<TContextData>(
+  jsonLd: unknown,
+  context: RequestContext<TContextData>,
+  portable: PortableCollectionRepresentation,
+): Promise<boolean> {
+  const logger = getLogger(["fedify", "federation", "collection"]);
+  try {
+    const result = await verifyServedPortableObjects(jsonLd, {
+      contextLoader: context.contextLoader,
+      documentLoader: context.documentLoader,
+      tracerProvider: context.tracerProvider,
+      meterProvider: context.meterProvider,
+    });
+    if (result.verified) return true;
+    logger.error(
+      "Refusing to serve the portable collection {collectionId}, as the " +
+        "portable object {objectId} it embeds at {path} does not satisfy the " +
+        "FEP-ef61 proof policy: {reason}.  Embedded portable actors, " +
+        "activities, and objects need an Object Integrity Proof made with " +
+        "a key of the DID in their ID, and their own @context.",
+      {
+        collectionId: portable.id.href,
+        objectId: result.id,
+        path: result.path,
+        reason: result.reason,
+      },
+    );
+  } catch (error) {
+    logger.error(
+      "Failed to verify the portable objects embedded in the portable " +
+        "collection {collectionId}:\n{error}",
+      { collectionId: portable.id.href, error },
+    );
+  }
+  return false;
+}
+
+function respondWithPortableCollection(
+  request: Request,
+  jsonLd: unknown,
+): Response {
+  return new Response(
+    request.method === "HEAD" ? null : JSON.stringify(jsonLd),
+    {
+      headers: {
+        "Content-Type": PORTABLE_OBJECT_CONTENT_TYPE,
+        Vary: "Accept",
+      },
+    },
+  );
+}
+
+/**
  * Callbacks for handling a collection.
  * @template TItem The type of items in the collection.
  * @template TContext The type of the context. {@link Context} or {@link RequestContext}.
@@ -551,6 +611,24 @@ export interface CollectionCallbacks<
 }
 
 /**
+ * How an FEP-ef61 portable collection is represented when it is served
+ * through the gateway endpoint.
+ * @since 2.4.0
+ */
+export interface PortableCollectionRepresentation {
+  /** The ID of the collection. */
+  readonly id: URL;
+  /**
+   * The URI that the collection's pages are relative to: the collection's ID
+   * with the query parameters of the requested view, but without `cursor`.
+   * A page's ID is this URI with the page's `cursor`.
+   */
+  readonly view: URL;
+  /** The ID of the actor that owns the collection. */
+  readonly attribution: URL;
+}
+
+/**
  * Parameters for handling a collection request.
  * @template TItem The type of items in the collection.
  * @template TContext The type of the context, extending {@link RequestContext}.
@@ -575,6 +653,13 @@ export interface CollectionHandlerParameters<
     TContextData,
     TFilter
   >;
+  /**
+   * How to represent the collection when it is served as an FEP-ef61
+   * portable collection through the gateway endpoint.  If it is present,
+   * `uriGetter` is not used.
+   * @since 2.4.0
+   */
+  portable?: PortableCollectionRepresentation;
   tracerProvider?: TracerProvider;
   /**
    * The meter provider for recording collection metrics.
@@ -675,6 +760,7 @@ export async function handleCollection<
     filterPredicate,
     context,
     collectionCallbacks,
+    portable,
     tracerProvider,
     meterProvider,
     onUnauthorized,
@@ -710,8 +796,17 @@ export async function handleCollection<
     if (collectionCallbacks == null) {
       return finish(await onNotFound(request), "not_found");
     }
+    // A portable collection's owner is already resolved, so the request is
+    // authorized before anything is dispatched:
+    if (portable != null && collectionCallbacks.authorizePredicate != null) {
+      if (!await collectionCallbacks.authorizePredicate(context, identifier)) {
+        return finish(await onUnauthorized(request), "unauthorized");
+      }
+    }
     let collection: OrderedCollection | OrderedCollectionPage;
-    const baseUri = uriGetter(identifier);
+    const baseUri = portable?.id ?? uriGetter(identifier);
+    const pageBase = portable?.view ?? context.url;
+    const attribution = portable?.attribution ?? null;
     if (cursor == null) {
       const firstCursor = await collectionCallbacks.firstCursor?.(
         context,
@@ -778,6 +873,7 @@ export async function handleCollection<
         }
         collection = new OrderedCollection({
           id: baseUri,
+          attribution,
           totalItems: totalItemCount ?? null,
           items: itemsOrResponse,
         });
@@ -786,22 +882,23 @@ export async function handleCollection<
           context,
           identifier,
         );
-        const first = new URL(context.url);
+        const first = new URL(pageBase);
         first.searchParams.set("cursor", firstCursor);
         let last = null;
         if (lastCursor != null) {
-          last = new URL(context.url);
+          last = new URL(pageBase);
           last.searchParams.set("cursor", lastCursor);
         }
         collection = new OrderedCollection({
           id: baseUri,
+          attribution,
           totalItems: totalItemCount ?? null,
           first,
           last,
         });
       }
     } else {
-      const uri = new URL(baseUri);
+      const uri = new URL(portable == null ? baseUri : pageBase);
       uri.searchParams.set("cursor", cursor);
       const pageOrResponse = await tracer.startActiveSpan(
         `activitypub.dispatch_collection_page ${name}`,
@@ -855,25 +952,26 @@ export async function handleCollection<
       const { items, prevCursor, nextCursor } = pageOrResponse;
       let prev = null;
       if (prevCursor != null) {
-        prev = new URL(context.url);
+        prev = new URL(pageBase);
         prev.searchParams.set("cursor", prevCursor);
       }
       let next = null;
       if (nextCursor != null) {
-        next = new URL(context.url);
+        next = new URL(pageBase);
         next.searchParams.set("cursor", nextCursor);
       }
-      const partOf = new URL(context.url);
+      const partOf = new URL(pageBase);
       partOf.searchParams.delete("cursor");
       collection = new OrderedCollectionPage({
         id: uri,
+        attribution,
         prev,
         next,
         items,
         partOf,
       });
     }
-    if (collectionCallbacks.authorizePredicate != null) {
+    if (portable == null && collectionCallbacks.authorizePredicate != null) {
       if (
         !await collectionCallbacks.authorizePredicate(context, identifier)
       ) {
@@ -881,6 +979,11 @@ export async function handleCollection<
       }
     }
     const jsonLd = await collection.toJsonLd(context);
+    if (portable != null) {
+      return await verifyPortableCollection(jsonLd, context, portable)
+        ? finish(respondWithPortableCollection(request, jsonLd), "served")
+        : finish(portableObjectInternalServerError(request), "error");
+    }
     return finish(
       new Response(JSON.stringify(jsonLd), {
         headers: {
@@ -2479,6 +2582,13 @@ export interface CustomCollectionCallbacks<
     TContextData,
     TParam
   >;
+
+  /**
+   * A callback that maps the custom collection to the identifier of the actor
+   * that owns it, for serving it as an FEP-ef61 portable collection.
+   * @since 2.4.0
+   */
+  portableOwnerMapper?: PortableCollectionOwnerMapper<TContextData, TParam>;
 }
 
 /**
@@ -2505,6 +2615,12 @@ export interface CustomCollectionHandlerParameters<
     TContext,
     TContextData
   >;
+  /**
+   * How to represent the collection when it is served as an FEP-ef61
+   * portable collection through the gateway endpoint.
+   * @since 2.4.0
+   */
+  portable?: PortableCollectionRepresentation;
   tracerProvider?: TracerProvider;
   /**
    * The meter provider for recording collection metrics.
@@ -2601,6 +2717,7 @@ async function _handleCustomCollection<
     meterProvider,
     collectionCallbacks: callbacks,
     filterPredicate,
+    portable,
   }: CustomCollectionHandlerParameters<
     TItem,
     TParam,
@@ -2621,21 +2738,9 @@ async function _handleCustomCollection<
     Collection,
     CollectionPage,
     filterPredicate,
+    portable,
   ).fetchCollection(cursor);
-  try {
-    const response = await handler.toJsonLd().then(respondAsActivity);
-    handler.recordPendingCollectionMetrics("served", response);
-    return response;
-  } catch (e) {
-    if (
-      !deferPendingCollectionMetrics(
-        e,
-        (result, response) =>
-          handler.recordPendingCollectionMetrics(result, response),
-      )
-    ) handler.recordPendingCollectionMetrics("error");
-    throw e;
-  }
+  return await respondWithCustomCollection(request, handler, context, portable);
 }
 
 /**
@@ -2678,6 +2783,7 @@ async function _handleOrderedCollection<
     meterProvider,
     collectionCallbacks: callbacks,
     filterPredicate,
+    portable,
   }: CustomCollectionHandlerParameters<
     TItem,
     TParam,
@@ -2698,9 +2804,25 @@ async function _handleOrderedCollection<
     OrderedCollection,
     OrderedCollectionPage,
     filterPredicate,
+    portable,
   ).fetchCollection(cursor);
+  return await respondWithCustomCollection(request, handler, context, portable);
+}
+
+async function respondWithCustomCollection<TContextData>(
+  request: Request,
+  // deno-lint-ignore no-explicit-any
+  handler: CustomCollectionHandler<any, any, TContextData, any, any, any>,
+  context: RequestContext<TContextData>,
+  portable: PortableCollectionRepresentation | undefined,
+): Promise<Response> {
   try {
-    const response = await handler.toJsonLd().then(respondAsActivity);
+    const jsonLd = await handler.toJsonLd();
+    let response: Response;
+    if (portable == null) response = respondAsActivity(jsonLd);
+    else if (await verifyPortableCollection(jsonLd, context, portable)) {
+      response = respondWithPortableCollection(request, jsonLd);
+    } else throw new PortableCollectionRefusedError();
     handler.recordPendingCollectionMetrics("served", response);
     return response;
   } catch (e) {
@@ -2792,13 +2914,22 @@ class CustomCollectionHandler<
     private readonly Collection: ConstructorWithTypeId<TCollection>,
     private readonly CollectionPage: ConstructorWithTypeId<TCollectionPage>,
     private readonly filterPredicate?: (item: TItem) => boolean,
+    private readonly portable?: PortableCollectionRepresentation,
   ) {
     this.name = this.name.trim().replace(/\s+/g, "_");
     this.#tracer = this.tracerProvider.getTracer(
       metadata.name,
       metadata.version,
     );
-    this.#id = new URL(this.context.url);
+    if (portable == null) this.#id = new URL(this.context.url);
+    else {
+      // The ID of a portable collection or its page is built from the view,
+      // not from the gateway request URL:
+      const cursor = this.context.url.searchParams.get("cursor");
+      this.#id = cursor == null
+        ? new URL(portable.view)
+        : appendCursorIfExists(portable.view, cursor);
+    }
     this.#dispatcher = callbacks.dispatcher.bind(callbacks);
   }
 
@@ -2857,6 +2988,7 @@ class CustomCollectionHandler<
     this.recordPendingCollectionItemCount(true, items.length);
     return {
       id,
+      attribution: this.portable?.attribution ?? null,
       partOf,
       items,
       prev: this.appendToUrl(prevCursor),
@@ -2884,6 +3016,7 @@ class CustomCollectionHandler<
     }
     return {
       id: this.#id,
+      attribution: this.portable?.attribution ?? null,
       first: this.appendToUrl(firstCursor),
       last: this.appendToUrl(lastCursor),
       totalItems,
@@ -2901,6 +3034,7 @@ class CustomCollectionHandler<
     this.recordPendingCollectionItemCount(false, items.length);
     return {
       id: this.#id,
+      attribution: this.portable?.attribution ?? null,
       totalItems,
       items,
     };
@@ -3070,7 +3204,10 @@ class CustomCollectionHandler<
   appendToUrl<Cursor extends string | null | undefined>(
     cursor: Cursor,
   ): Cursor extends string ? URL : null {
-    return appendCursorIfExists(this.context.url, cursor);
+    return appendCursorIfExists(
+      this.portable?.view ?? this.context.url,
+      cursor,
+    );
   }
 
   /**
@@ -3172,6 +3309,15 @@ function exceptWrapper<TParams extends ErrorHandlers>(
           recordCollectionRequest(
             meterProvider,
             collectionAttributes(metricBase, "not_found", response),
+          );
+          return response;
+        }
+        case PortableCollectionRefusedError: {
+          const response = portableObjectInternalServerError(request);
+          recordDeferredPendingCollectionMetrics(error, "error", response);
+          recordCollectionRequest(
+            meterProvider,
+            collectionAttributes(metricBase, "error", response),
           );
           return response;
         }
@@ -3321,6 +3467,17 @@ class ItemsNotFoundError extends HandlerError {
 class UnauthorizedError extends HandlerError {
   constructor() {
     super("Unauthorized access to the collection.");
+  }
+}
+
+/**
+ * Error thrown when a portable collection is not served because it embeds
+ * portable objects that do not satisfy the FEP-ef61 proof policy.
+ * @since 2.4.0
+ */
+class PortableCollectionRefusedError extends HandlerError {
+  constructor() {
+    super("The portable collection embeds unverifiable portable objects.");
   }
 }
 

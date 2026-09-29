@@ -158,6 +158,34 @@ from the same paths as their counterparts above:
 :   The portable ID of an actor's inbox, with the path of
     `~Context.getInboxUri()`.
 
+`~Context.getPortableOutboxUri()`
+:   The portable ID of an actor's outbox, with the path of
+    `~Context.getOutboxUri()`.
+
+`~Context.getPortableFollowingUri()`
+:   The portable ID of an actor's following collection, with the path of
+    `~Context.getFollowingUri()`.
+
+`~Context.getPortableFollowersUri()`
+:   The portable ID of an actor's followers collection, with the path of
+    `~Context.getFollowersUri()`.
+
+`~Context.getPortableLikedUri()`
+:   The portable ID of an actor's liked collection, with the path of
+    `~Context.getLikedUri()`.
+
+`~Context.getPortableFeaturedUri()`
+:   The portable ID of an actor's featured collection, with the path of
+    `~Context.getFeaturedUri()`.
+
+`~Context.getPortableFeaturedTagsUri()`
+:   The portable ID of an actor's featured tags collection, with the path of
+    `~Context.getFeaturedTagsUri()`.
+
+`~Context.getPortableCollectionUri()`
+:   The portable ID of a custom collection, with the path of
+    `~Context.getCollectionUri()`.
+
 They take the DID that controls the actor or object as their last argument.
 Portable objects are authenticated by Object Integrity Proofs, so the DID is
 usually a `did:key` DID made from the Ed25519 public key that signs them.
@@ -185,6 +213,8 @@ const actor = await signObject(
   new Person({
     id,
     inbox: ctx.getPortableInboxUri("alice", did),
+    outbox: ctx.getPortableOutboxUri("alice", did),
+    followers: ctx.getPortableFollowersUri("alice", did),
     gateways: [new URL("https://example.com")],
   }),
   privateKey,
@@ -202,8 +232,9 @@ A few things to note about them:
     a `did:key` DID in another encoding.  Other DID
     methods are only checked for their syntax, which does not mean that
     Fedify can verify proofs made by them.
- -  While an actor dispatcher or an object dispatcher is handling a request
-    through the FEP-ef61 gateway endpoint, i.e.,
+ -  While an actor dispatcher, an object dispatcher, or a collection
+    dispatcher is handling a request through the FEP-ef61 gateway endpoint,
+    i.e.,
     `~RequestContext.portableRequest` is set, the DID can be omitted, and
     the one in the request path is used.  It is anyone's to choose, though,
     so it is not evidence that this server hosts anything for the DID.
@@ -221,8 +252,9 @@ A few things to note about them:
 Portable actors and objects with such IDs can be served by the same
 dispatchers through the gateway endpoint; see the [*Portable actors and
 WebFinger* section](./actor.md#portable-actors-and-webfinger), the [*Serving
-portable objects* section](./object.md#serving-portable-objects), and the
-[*Portable inboxes* section](./inbox.md#portable-inboxes).
+portable objects* section](./object.md#serving-portable-objects), the
+[*Portable collections* section](./collections.md#portable-collections), and
+the [*Portable inboxes* section](./inbox.md#portable-inboxes).
 
 [FEP-ef61]: https://w3id.org/fep/ef61
 [DID]: https://www.w3.org/TR/did-core/

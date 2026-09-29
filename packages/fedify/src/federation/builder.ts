@@ -19,7 +19,11 @@ import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
 import metadata from "../../deno.json" with { type: "json" };
 import { fromCompatibleEf61Id, isGatewayUrl } from "@fedify/vocab-runtime";
 import { isCompatibleEf61Iri } from "@fedify/vocab-runtime/internal/portable-dereference";
-import { isPortableId } from "../sig/portable-key-id.ts";
+import {
+  getCanonicalPortableId,
+  getPortableDid,
+  isPortableId,
+} from "../sig/portable-key-id.ts";
 import { ActivityListenerSet } from "./activity-listener.ts";
 import type {
   ActorAliasMapper,
@@ -44,6 +48,7 @@ import type {
   OutboxListenerErrorHandler,
   OutboxPermanentFailureHandler,
   PortableActorIdMapper,
+  PortableCollectionOwnerMapper,
   SharedInboxKeyDispatcher,
   UnverifiedActivityHandler,
   WebFingerLinksDispatcher,
@@ -359,6 +364,9 @@ export class FederationBuilderImpl<TContextData>
         if (actor instanceof Tombstone) return actor;
         if (actor.id != null && isCompatibleEf61Iri(actor.id)) {
           warnCompatibleActorId(actor.id, actor.gateway);
+        }
+        if (portable) {
+          this.#warnPortableCollectionIds(context, identifier, actor);
         }
         if (
           this.followingCallbacks != null &&
@@ -1512,6 +1520,12 @@ export class FederationBuilderImpl<TContextData>
         callbacks.authorizePredicate = predicate;
         return setters;
       },
+      mapPortableOwner(
+        mapper: PortableCollectionOwnerMapper<TContextData, TParam>,
+      ) {
+        callbacks.portableOwnerMapper = mapper;
+        return setters;
+      },
     };
     return setters;
   }
@@ -1540,6 +1554,105 @@ export class FederationBuilderImpl<TContextData>
     handler: OutboxPermanentFailureHandler<TContextData>,
   ): void {
     this.outboxPermanentFailureHandler = handler;
+  }
+
+  /**
+   * Warns if a portable actor's collection properties that are portable IDs
+   * or compatible identifiers do not refer to the collections that
+   * the registered collection dispatchers serve through the FEP-ef61 gateway
+   * endpoint for the actor's DID.  Properties with ordinary HTTP(S) URLs are
+   * not compared, since a portable actor may keep ordinary collections.
+   */
+  #warnPortableCollectionIds(
+    context: Context<TContextData>,
+    identifier: string,
+    actor: Actor,
+  ): void {
+    const did = actor.id == null ? null : getPortableDid(actor.id);
+    if (did == null) return;
+    const logger = getLogger(["fedify", "federation", "actor"]);
+    const check = (
+      registered: boolean,
+      property: string,
+      value: URL | null,
+      helper: string,
+      build: () => URL,
+    ) => {
+      if (!registered || value == null || !isPortableId(value)) return;
+      const actual = getCanonicalPortableId(value);
+      if (actual == null) {
+        logger.warn(
+          "The actor's {property} property, {value}, is a malformed FEP-ef61 " +
+            "portable ID or compatible identifier.",
+          { property, value: value.href },
+        );
+        return;
+      }
+      let expected: URL;
+      try {
+        expected = build();
+      } catch (error) {
+        if (error instanceof TypeError || error instanceof RouterError) return;
+        throw error;
+      }
+      if (actual === getCanonicalPortableId(expected)) return;
+      logger.warn(
+        "The portable actor's {property} property, {value}, does not match " +
+          "the portable ID of the collection that the gateway endpoint " +
+          "serves, {expected}.  Set the property with " +
+          "Context.{helper}(identifier, did).",
+        { property, value: value.href, expected: expected.href, helper },
+      );
+    };
+    check(
+      this.outboxCallbacks?.dispatcher != null,
+      "outbox",
+      actor.outboxId,
+      "getPortableOutboxUri",
+      () => context.getPortableOutboxUri(identifier, did),
+    );
+    check(
+      this.inboxCallbacks?.dispatcher != null || this.router.has("inbox"),
+      "inbox",
+      actor.inboxId,
+      "getPortableInboxUri",
+      () => context.getPortableInboxUri(identifier, did),
+    );
+    check(
+      this.followingCallbacks?.dispatcher != null,
+      "following",
+      actor.followingId,
+      "getPortableFollowingUri",
+      () => context.getPortableFollowingUri(identifier, did),
+    );
+    check(
+      this.followersCallbacks?.dispatcher != null,
+      "followers",
+      actor.followersId,
+      "getPortableFollowersUri",
+      () => context.getPortableFollowersUri(identifier, did),
+    );
+    check(
+      this.likedCallbacks?.dispatcher != null,
+      "liked",
+      actor.likedId,
+      "getPortableLikedUri",
+      () => context.getPortableLikedUri(identifier, did),
+    );
+    check(
+      this.featuredCallbacks?.dispatcher != null,
+      "featured",
+      actor.featuredId,
+      "getPortableFeaturedUri",
+      () => context.getPortableFeaturedUri(identifier, did),
+    );
+    check(
+      this.featuredTagsCallbacks?.dispatcher != null,
+      "featuredTags",
+      actor.featuredTagsId,
+      "getPortableFeaturedTagsUri",
+      () => context.getPortableFeaturedTagsUri(identifier, did),
+    );
   }
 
   /**
