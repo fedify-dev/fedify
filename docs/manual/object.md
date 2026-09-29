@@ -153,8 +153,7 @@ falls through to the next middleware or the `onNotFound` handler.
 > This also applies to object dispatchers registered for `Tombstone` or
 > `Object` itself.  Before Fedify 2.4.0, the tombstones they returned were
 > served with `200 OK`.
-
-> [!NOTE]
+>
 > A tombstone returned for a portable object request through the gateway
 > endpoint is not served with `410 Gone`; it is subject to the same rules as
 > other portable objects (see the [next section](#serving-portable-objects)).
