@@ -3,7 +3,8 @@ import { createRequire } from "node:module";
 import { test } from "@fedify/fixture";
 
 test("CommonJS vocab entry exports Object", {
-  ignore: "Deno" in globalThis,
+  ignore: "Deno" in globalThis ||
+    ("navigator" in globalThis && navigator.userAgent === "Cloudflare-Workers"),
 }, () => {
   const require = createRequire(import.meta.url);
   const vocab = require("./mod.cjs");
