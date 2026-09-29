@@ -10,6 +10,11 @@ To be released.
 
 ### @fedify/fedify
 
+ -  Fixed an unhandled error when a POST request has multiple RFC 9421
+    signatures covering `Content-Digest` and an earlier signature fails.
+    Verification now reads the body once, allowing later valid signatures
+    to be accepted and invalid requests to receive `401 Unauthorized`.
+    [[#1108], [#1128]]
  -  Fixed `getAuthenticatedDocumentLoader()` and `getNodeInfo()` logging
     hostnames that fail to resolve as if they had been blocked for pointing
     at a private address, which could send operators looking for an SSRF
@@ -29,8 +34,10 @@ To be released.
 [#1060]: https://github.com/fedify-dev/fedify/pull/1060
 [#1062]: https://github.com/fedify-dev/fedify/issues/1062
 [#1065]: https://github.com/fedify-dev/fedify/pull/1065
+[#1108]: https://github.com/fedify-dev/fedify/issues/1108
 [#1115]: https://github.com/fedify-dev/fedify/issues/1115
 [#1121]: https://github.com/fedify-dev/fedify/pull/1121
+[#1128]: https://github.com/fedify-dev/fedify/pull/1128
 
 ### @fedify/cli
 

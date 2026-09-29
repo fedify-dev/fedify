@@ -972,6 +972,60 @@ test({
   },
 });
 
+test("Federation.fetch() [rfc9421] multiple POST signatures", async (t) => {
+  for (const validSecond of [true, false]) {
+    await t.step(
+      validSecond ? "valid second signature" : "both signatures invalid",
+      async () => {
+        const inbox: string[] = [];
+        const federation = createFederation<void>({
+          kv: new MemoryKvStore(),
+          documentLoaderFactory: () => mockDocumentLoader,
+          contextLoaderFactory: () => mockDocumentLoader,
+        });
+        federation.setActorDispatcher(
+          "/users/{identifier}",
+          (ctx, identifier) =>
+            new vocab.Person({ id: ctx.getActorUri(identifier) }),
+        );
+        federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+          .on(vocab.Create, (_ctx, activity) => {
+            inbox.push(activity.id!.href);
+          });
+        const signed = await signRequest(
+          new Request("https://example.com/inbox", {
+            method: "POST",
+            headers: { "Content-Type": "application/activity+json" },
+            body: JSON.stringify(createFixture),
+          }),
+          rsaPrivateKey2,
+          rsaPublicKey2.id!,
+          { spec: "rfc9421" },
+        );
+        const input = signed.headers.get("Signature-Input")!;
+        const signature = signed.headers.get("Signature")!;
+        signed.headers.set(
+          "Signature-Input",
+          `${input}, ${input.replace(/^sig1=/, "sig2=")}`,
+        );
+        signed.headers.set(
+          "Signature",
+          `sig1=:AAAAAA==:, ${
+            validSecond
+              ? signature.replace(/^sig1=/, "sig2=")
+              : "sig2=:AAAAAA==:"
+          }`,
+        );
+        const response = await federation.fetch(signed, {
+          contextData: undefined,
+        });
+        assertEquals(response.status, validSecond ? 202 : 401);
+        assertEquals(inbox, validSecond ? [createFixture.id] : []);
+      },
+    );
+  }
+});
+
 test("Federation.fetch()", async (t) => {
   fetchMock.spyGlobal();
 
