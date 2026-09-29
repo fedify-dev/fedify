@@ -848,9 +848,13 @@ section](./object.md#serving-portable-objects)): the actor is served only if
 its ID canonically equals the requested portable ID and it has an Object
 Integrity Proof made with a key of the DID, and
 the `~ActorCallbackSetters.authorize()` predicate, if any, is applied.
-Otherwise, including when the dispatcher returns a `Tombstone`, Fedify
-responds with `404 Not Found`, or with `500 Internal Server Error` if the
-proof is missing or invalid.  Ordinary requests for the actor, WebFinger, and
+Otherwise, Fedify responds with `404 Not Found`, or with
+`500 Internal Server Error` if the proof is missing or invalid.  A `Tombstone`
+returned for a deleted portable actor is served with `410 Gone` if it has
+a proof made with a key of the DID, and with `404 Not Found` if it has no
+proof (see the [*Deleted portable objects*
+section](./object.md#deleted-portable-objects)).  Ordinary requests for the
+actor, WebFinger, and
 [portable inbox](./inbox.md#portable-inboxes) deliveries do not set
 `~RequestContext.portableRequest`, so the dispatcher returns the actor for
 them as usual.

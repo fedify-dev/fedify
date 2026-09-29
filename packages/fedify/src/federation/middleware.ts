@@ -3198,12 +3198,9 @@ export class FederationImpl<TContextData>
       return await handlePortableObject(request, {
         values: { identifier },
         context,
-        objectDispatcher: actorDispatcher == null ? undefined : async (ctx) => {
-          const actor = await actorDispatcher(ctx, identifier);
-          // A tombstone would need its own proof to be served as
-          // a portable object, so it is treated as not stored here:
-          return actor instanceof Tombstone ? null : actor;
-        },
+        objectDispatcher: actorDispatcher == null
+          ? undefined
+          : (ctx) => actorDispatcher(ctx, identifier),
         authorizePredicate: authorizePredicate == null
           ? undefined
           : (ctx) => authorizePredicate(ctx, identifier),

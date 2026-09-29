@@ -22,7 +22,3 @@ links:
      -  Changed object dispatchers registered for `Tombstone` or `Object`
         that return tombstones to be served with `410 Gone` instead of
         `200 OK`.
-     -  Tombstones of [FEP-ef61] portable objects requested through
-        the gateway endpoint are still served as other portable objects.
-
-[FEP-ef61]: https://w3id.org/fep/ef61

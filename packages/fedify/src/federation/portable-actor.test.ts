@@ -63,7 +63,7 @@ function gatewayRequest(
   });
 }
 
-async function sign<T extends Person | Note>(
+async function sign<T extends Person | Note | Tombstone>(
   object: T,
   privateKey: CryptoKey = ed25519PrivateKey,
   key: URL = keyId,
@@ -85,6 +85,8 @@ const users: Record<string, string> = {
   tampered: did,
   https: did,
   tombstone: did,
+  "signed-tombstone": did,
+  "wrong-key-tombstone": did,
   "mutated-id": did,
   compatible: did,
   "a b/ç": did,
@@ -146,6 +148,22 @@ function createTestFederation(
             return new Tombstone({
               id: ctx.getPortableActorUri(identifier, userDid),
             });
+          case "signed-tombstone":
+            return await sign(
+              new Tombstone({
+                id: ctx.getPortableActorUri(identifier, userDid),
+                formerType: Person,
+                deleted: Temporal.Instant.from("2026-01-01T00:00:00Z"),
+              }),
+            );
+          case "wrong-key-tombstone":
+            return await sign(
+              new Tombstone({
+                id: ctx.getPortableActorUri(identifier, userDid),
+              }),
+              otherKeyPair.privateKey,
+              otherKeyId,
+            );
           case "unsigned":
             return await portableActor(ctx, identifier, userDid);
           case "wrong-key":
@@ -479,8 +497,9 @@ test("Federation.fetch() serves portable actors through the actor dispatcher", a
         gatewayRequest("/users/missing"),
         // The dispatcher returns an actor with an HTTPS ID:
         gatewayRequest("/users/https"),
-        // The dispatcher returns a tombstone:
+        // The dispatcher returns an unsigned tombstone:
         gatewayRequest("/users/tombstone"),
+        gatewayRequest("/users/tombstone", { method: "HEAD" }),
         // This server does not host the actor for the other DID:
         gatewayRequest("/users/alice", { authority: otherDid }),
         // The serialized actor has another ID:
@@ -501,7 +520,14 @@ test("Federation.fetch() serves portable actors through the actor dispatcher", a
   });
 
   await t.step("refuses actors that violate the proof policy", async () => {
-    for (const identifier of ["unsigned", "wrong-key", "tampered"]) {
+    for (
+      const identifier of [
+        "unsigned",
+        "wrong-key",
+        "tampered",
+        "wrong-key-tombstone",
+      ]
+    ) {
       const response = await federation.fetch(
         gatewayRequest(`/users/${identifier}`),
         { contextData: undefined },
@@ -509,6 +535,54 @@ test("Federation.fetch() serves portable actors through the actor dispatcher", a
       assertEquals(response.status, 500, identifier);
       assertEquals(await response.text(), "Internal server error.");
     }
+  });
+
+  await t.step("serves a signed tombstone with 410 Gone", async () => {
+    const response = await federation.fetch(
+      gatewayRequest("/users/signed-tombstone"),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 410);
+    assertEquals(
+      response.headers.get("Content-Type"),
+      PORTABLE_OBJECT_CONTENT_TYPE,
+    );
+    assertEquals(response.headers.get("Vary"), "Accept");
+    const json = await response.json() as Record<string, unknown>;
+    assertEquals(json.type, "Tombstone");
+    assertEquals(json.id, `ap+ef61://${did}/users/signed-tombstone`);
+    assertEquals(json.deleted, "2026-01-01T00:00:00Z");
+    const verified = await verifyPortableObjectProof(json, {
+      contextLoader: mockDocumentLoader,
+    });
+    assertEquals(verified.verified, true);
+  });
+
+  await t.step("responds to HEAD for a tombstone without a body", async () => {
+    const response = await federation.fetch(
+      gatewayRequest("/users/signed-tombstone", { method: "HEAD" }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 410);
+    assertEquals(
+      response.headers.get("Content-Type"),
+      PORTABLE_OBJECT_CONTENT_TYPE,
+    );
+    assertEquals(response.body, null);
+  });
+
+  await t.step("keeps ordinary tombstone requests unchanged", async () => {
+    const response = await federation.fetch(
+      new Request(`${ORIGIN}/users/signed-tombstone`, {
+        headers: { Accept: ACCEPT },
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 410);
+    assertEquals(
+      response.headers.get("Content-Type"),
+      "application/activity+json",
+    );
   });
 
   await t.step("keeps ordinary actor requests unchanged", async () => {
@@ -574,6 +648,26 @@ test("Federation.fetch() authorizes portable actor requests", async (t) => {
     });
     assertEquals(response.status, 401);
     assertEquals(unauthorized, true);
+  });
+
+  await t.step("authorizes before serving a tombstone", async () => {
+    for (const identifier of ["signed-tombstone", "tombstone"]) {
+      identifiers.length = 0;
+      let unauthorized = false;
+      const response = await federation.fetch(
+        gatewayRequest(`/users/${identifier}`),
+        {
+          contextData: undefined,
+          onUnauthorized() {
+            unauthorized = true;
+            return new Response("Unauthorized", { status: 401 });
+          },
+        },
+      );
+      assertEquals(response.status, 401, identifier);
+      assertEquals(unauthorized, true, identifier);
+      assertEquals(identifiers, [identifier]);
+    }
   });
 
   await t.step("denies a request whose target was tampered with", async () => {

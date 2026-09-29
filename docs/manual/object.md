@@ -155,8 +155,8 @@ falls through to the next middleware or the `onNotFound` handler.
 > served with `200 OK`.
 >
 > A tombstone returned for a portable object request through the gateway
-> endpoint is not served with `410 Gone`; it is subject to the same rules as
-> other portable objects (see the [next section](#serving-portable-objects)).
+> endpoint needs an Object Integrity Proof to be served with `410 Gone` (see
+> the [*Deleted portable objects* section](#deleted-portable-objects)).
 
 [ActivityPub]: https://www.w3.org/TR/activitypub/#delete-activity-outbox
 
@@ -282,6 +282,93 @@ in its audience, so check the signature in the predicate, e.g., with
 `~RequestContext.getSignedKeyOwner()`.  Without a predicate, the object is
 served to anyone.
 
+[FEP-ef61]: https://w3id.org/fep/ef61
+[DID]: https://www.w3.org/TR/did-core/
+
+### Deleted portable objects
+
+A portable object that has been deleted can be represented by a `Tombstone`
+as well, but the tombstone is itself a portable object: its ID is the portable
+ID of the deleted object, and it needs an Object Integrity Proof made with
+a key of the DID, as anyone could otherwise claim that the DID's objects have
+been deleted.  So sign the tombstone as you would sign the object:
+
+~~~~ typescript twoslash
+import { signObject } from "@fedify/fedify";
+import { type Federation } from "@fedify/fedify";
+import { Note, Tombstone } from "@fedify/vocab";
+const federation = null as unknown as Federation<void>;
+interface Note_ { content: string; deletedAt: Temporal.Instant | null }
+async function findPortableNote(
+  _did: string,
+  _userId: string,
+  _noteId: string,
+): Promise<Note_ | null> {
+  return null;
+}
+async function getPortableKey(
+  _did: string,
+): Promise<{ privateKey: CryptoKey; keyId: URL }> {
+  return null!;
+}
+// ---cut-before---
+federation.setObjectDispatcher(
+  Note,
+  "/users/{userId}/notes/{noteId}",
+  async (ctx, values) => {
+    if (ctx.portableRequest == null) return null;  // Omitted for brevity.
+    const { authority } = ctx.portableRequest;
+    const note = await findPortableNote(authority, values.userId, values.noteId);
+    if (note == null) return null;
+    const { privateKey, keyId } = await getPortableKey(authority);
+    if (note.deletedAt != null) {
+      return await signObject(
+        new Tombstone({
+          id: ctx.getPortableObjectUri(Note, values),
+          formerType: Note,
+          deleted: note.deletedAt,
+        }),
+        privateKey,
+        keyId,
+      );
+    }
+    return await signObject(
+      new Note({
+        id: ctx.getPortableObjectUri(Note, values),
+        content: note.content,
+      }),
+      privateKey,
+      keyId,
+    );
+  },
+);
+~~~~
+
+Fedify serves such a tombstone with `410 Gone` and the same media type as
+other portable objects, under the same conditions: its ID canonically equals
+the requested portable ID, the authorization predicate allows the request,
+and its proof is made with a key of the DID.  If the tombstone has no proof,
+e.g., because the key of a deleted actor is no longer available, Fedify
+responds with `404 Not Found` instead, as if this server did not store
+the object.  A tombstone with an invalid proof, or one made by another DID,
+results in `500 Internal Server Error` as for other portable objects.  So is
+a tombstone without a proof that has properties of another kind of object,
+e.g., `totalItems`, as the exemptions for unsigned portable collections do
+not apply to tombstones.
+
+> [!NOTE]
+> [FEP-ef61] does not define tombstones; it only says that a gateway responds
+> with `200 OK` to a request for an object that it stores, and with
+> `404 Not Found` otherwise.  Fedify responds with `410 Gone` for signed
+> tombstones anyway, for consistency with [ActivityPub] and with tombstones of
+> ordinary objects.
+
+A tombstone only tells what this gateway knows about the object; other
+gateways of the same actor may still serve the object until they learn about
+its deletion.  So send a `Delete` activity signed by the DID as well, and
+create the signed tombstone while the key is still available, if you are
+going to discard the key.
+
 Note that only object dispatchers and the actor dispatcher (see the
 [*Portable actors and WebFinger*
 section](./actor.md#portable-actors-and-webfinger)) serve portable objects for
@@ -290,9 +377,6 @@ whereas deliveries to portable inboxes are handled by inbox listeners (see the
 [*Portable inboxes* section](./inbox.md#portable-inboxes)).
 Also, a route of your own that matches the `/.well-known/apgateway/...` path,
 e.g., `/{+path}`, takes precedence over the gateway endpoint.
-
-[FEP-ef61]: https://w3id.org/fep/ef61
-[DID]: https://www.w3.org/TR/did-core/
 
 
 Serving hashlink media

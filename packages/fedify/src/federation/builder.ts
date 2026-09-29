@@ -1597,10 +1597,9 @@ function warnMismatchedTombstoneId<TContextData>(
     return;
   }
   // An FEP-ef61 portable object's URIs are not this server's URIs, so they
-  // are not compared with the ones Context builds:
-  if (tombstone.id.protocol === "ap:" || tombstone.id.protocol === "ap+ef61:") {
-    return;
-  }
+  // are not compared with the ones Context builds, even when its ID is
+  // a compatible identifier on this server:
+  if (isPortableId(tombstone.id)) return;
   const expected = context.getObjectUri(cls, values);
   if (tombstone.id.href !== expected.href) {
     logger.warn(
