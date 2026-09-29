@@ -111,6 +111,7 @@
     "valibot": "^1.2.0"
   },
   "devDependencies": {
+    "@fedify/fixture": "workspace:*",
     "@types/bun": "catalog:",
     "@types/node": "catalog:",
     "tsdown": "catalog:",
