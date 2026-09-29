@@ -100,8 +100,9 @@ export interface Context<TContextData> {
    * property accessors, `lookupObject()`, and `traverseCollection()`, passing
    * a context as their options applies the policy, e.g.,
    * `await create.getObject(ctx)`.  Objects parsed with a context as options,
-   * such as activities that inboxes receive, also use it by default for
-   * their property accessors.  It never verifies an object by itself being
+   * such as activities that inboxes receive, and objects that accessors
+   * fetch with a context as options also use it by default for their
+   * property accessors.  It never verifies an object by itself being
    * there: it only applies to objects that are dereferenced.
    *
    * It is optional only so that custom implementations of this interface

@@ -1055,11 +1055,25 @@ To be released.
  -  Added the `verifyPortableObject` option to the constructors, the
     `fromJsonLd()` methods, and the `clone()` methods of vocabulary
     classes.  The object uses it by default when its property accessors are
-    called without the option.  Objects that it fetches, and objects
-    embedded in the JSON-LD document it was parsed from, inherit it, but
-    a verifier given to a single accessor call is not passed on to the
-    returned object.  `lookupObject()` passes its `verifyPortableObject`
-    option to the object it returns.  [[#288], [#1107], [#1120]]
+    called without the option.  Objects embedded in the JSON-LD document it
+    was parsed from inherit it.  `lookupObject()` passes its
+    `verifyPortableObject` option to the object it returns.
+    [[#288], [#1107], [#1120]]
+
+ -  Objects that property accessors and `traverseCollection()` fetch now use
+    the `verifyPortableObject` option of that call, or else the default of
+    the object they were obtained from, as their default verifier.  So
+    `(await create.getObject(ctx))?.getAttribution()` verifies portable
+    objects without passing `ctx` again.  Objects already cached in their
+    parent keep the default they got when they were fetched.  Having
+    a default verifier does not mean that an object was verified.
+    [[#288], [#1129], [#1137]]
+
+ -  Added the `inheritPortableObjectVerifier` option to property accessors
+    and `TraverseCollectionOptions`.  Set it to `false` to keep
+    a `verifyPortableObject` option to that call only, e.g., for a verifier
+    that accepts everything; fetched objects then use the default of the
+    object they were obtained from, if any.  [[#288], [#1129], [#1137]]
 
  -  Property accessors such as `Create.getObject()` now dereference
     [FEP-ef61] compatible identifiers, i.e., HTTP(S) URLs under a gateway's
@@ -1108,6 +1122,8 @@ To be released.
 [#1077]: https://github.com/fedify-dev/fedify/pull/1077
 [#1090]: https://github.com/fedify-dev/fedify/issues/1090
 [#1091]: https://github.com/fedify-dev/fedify/pull/1091
+[#1129]: https://github.com/fedify-dev/fedify/issues/1129
+[#1137]: https://github.com/fedify-dev/fedify/pull/1137
 
 ### @fedify/vocab-runtime
 

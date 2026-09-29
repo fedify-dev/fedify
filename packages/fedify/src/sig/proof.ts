@@ -2252,6 +2252,9 @@ export async function verifyObject<T extends Object>(
       // their raw proof candidates:
       gateways: [],
       verifyPortableObject: acceptPortableProofDocument,
+      // The proofs are cached in the returned object, so they must not keep
+      // the verifier that accepts everything as their default:
+      inheritPortableObjectVerifier: false,
     })
   ) {
     const rawProofCandidate = takeRawProofCandidate(
