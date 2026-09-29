@@ -2785,6 +2785,7 @@ for (
     ["block const", "{ const deliver = 0; }"],
     ["for initializer", "for (let deliver = 0; deliver < 1; deliver++) {}"],
     ["for binding", "for (const deliver of [0]) {}"],
+    ["class static block", "const C = class { static { var deliver; } };"],
   ] as const
 ) {
   for (const dropped of [false, true]) {

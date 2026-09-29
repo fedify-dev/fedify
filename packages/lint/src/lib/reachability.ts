@@ -555,6 +555,19 @@ function collectFunctionsByName(
     return;
   }
   if (isFunctionLikeNode(n)) return;
+  if (n.type === "StaticBlock") {
+    // A class static block has its own var scope. Keep its declarations
+    // from suppressing helpers in the enclosing function.
+    collectFunctionsByName(
+      n.body,
+      out,
+      assignmentDefaults,
+      assignmentPatterns,
+      new Set<string>(),
+      scopeDeclarations,
+    );
+    return;
+  }
   if (n.type === "VariableDeclaration") {
     // Only var and declarations directly in this function body establish
     // shadowing for the whole scope; flattened block declarations do not.
