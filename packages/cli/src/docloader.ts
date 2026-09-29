@@ -10,6 +10,11 @@ const documentLoaders: Record<string, DocumentLoader> = {};
 export interface DocumentLoaderOptions {
   userAgent?: string;
   allowPrivateAddress?: boolean;
+  /**
+   * The timeout for each fetch in milliseconds.  The default timeout of
+   * the built-in document loader is used if omitted.
+   */
+  timeout?: number;
 }
 
 /**
@@ -30,9 +35,10 @@ export function getDocumentLoaderCachePrefix(
 }
 
 export async function getDocumentLoader(
-  { userAgent, allowPrivateAddress = false }: DocumentLoaderOptions = {},
+  { userAgent, allowPrivateAddress = false, timeout }: DocumentLoaderOptions =
+    {},
 ): Promise<DocumentLoader> {
-  const cacheKey = `${userAgent ?? ""}:${allowPrivateAddress}`;
+  const cacheKey = `${userAgent ?? ""}:${allowPrivateAddress}:${timeout ?? ""}`;
   if (documentLoaders[cacheKey]) return documentLoaders[cacheKey];
   const kv = await getKvStore();
   return documentLoaders[cacheKey] = kvCache({
@@ -76,6 +82,7 @@ export async function getDocumentLoader(
     loader: getDefaultDocumentLoader({
       allowPrivateAddress,
       userAgent,
+      timeout,
     }),
   });
 }

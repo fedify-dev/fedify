@@ -35,7 +35,13 @@ import {
 } from "@std/assert";
 import fetchMock from "fetch-mock";
 import serialize from "json-canon";
-import { deepStrictEqual, ok, rejects, strictEqual } from "node:assert/strict";
+import {
+  deepStrictEqual,
+  ok,
+  rejects,
+  strictEqual,
+  throws,
+} from "node:assert/strict";
 import dns from "node:dns/promises";
 import createFixture from "../../../fixture/src/fixtures/example.com/create.json" with {
   type: "json",
@@ -12654,5 +12660,114 @@ test("Federation.fetch() serves tombstones of objects", async (t) => {
         await reset();
       }
     });
+  });
+});
+
+test("createFederation() applies documentLoaderTimeout to built-in loaders", async (t) => {
+  fetchMock.mockGlobal();
+  let requests = 0;
+  fetchMock.get("begin:https://slow.example/", () => {
+    requests++;
+    return new Promise<never>(() => {});
+  });
+  const isTimeout = (error: unknown) => {
+    ok(error instanceof FetchError, String(error));
+    strictEqual(error.response, undefined);
+    ok(error.cause instanceof DOMException);
+    strictEqual(error.cause.name, "TimeoutError");
+    ok(error.message.endsWith("Timed out after 100 ms"), error.message);
+    return true;
+  };
+  try {
+    await t.step("built-in loaders", async () => {
+      const federation = createFederation<void>({
+        kv: new MemoryKvStore(),
+        // Skips DNS lookups, which the mocked host would fail:
+        allowPrivateAddress: true,
+        documentLoaderTimeout: { milliseconds: 100 },
+      });
+      const ctx = federation.createContext(
+        new URL("https://example.com/"),
+        undefined,
+      );
+      await rejects(
+        ctx.documentLoader("https://slow.example/object"),
+        isTimeout,
+      );
+      await rejects(
+        ctx.contextLoader("https://slow.example/context"),
+        isTimeout,
+      );
+      const authLoader = ctx.getDocumentLoader({
+        keyId: new URL("https://example.com/key2"),
+        privateKey: rsaPrivateKey2,
+      });
+      await rejects(authLoader("https://slow.example/private"), isTimeout);
+      strictEqual(requests, 3);
+    });
+
+    await t.step("per-call override and null", async () => {
+      const federation = createFederation<void>({
+        kv: new MemoryKvStore(),
+        allowPrivateAddress: true,
+        documentLoaderTimeout: null,
+      }) as FederationImpl<void>;
+      await rejects(
+        federation.documentLoaderFactory({ timeout: 100 })(
+          "https://slow.example/object",
+        ),
+        isTimeout,
+      );
+      await rejects(
+        federation.authenticatedDocumentLoaderFactory(
+          {
+            keyId: new URL("https://example.com/key2"),
+            privateKey: rsaPrivateKey2,
+          },
+          { timeout: 100 },
+        )("https://slow.example/private"),
+        isTimeout,
+      );
+      // Without a timeout, only the caller's signal ends the call:
+      const controller = new AbortController();
+      const reason = new Error("Canceled by the caller");
+      setTimeout(() => controller.abort(reason), 150);
+      await rejects(
+        federation.documentLoaderFactory()("https://slow.example/object", {
+          signal: controller.signal,
+        }),
+        // Depending on the fetch implementation, the rejection is either
+        // the signal's reason or a generic AbortError:
+        (error) =>
+          error === reason ||
+          error instanceof Error && error.name === "AbortError",
+      );
+    });
+  } finally {
+    fetchMock.hardReset();
+  }
+});
+
+test("createFederation() validates documentLoaderTimeout", () => {
+  for (
+    const documentLoaderTimeout of [
+      { milliseconds: 0 },
+      { seconds: -1 },
+      { days: 25 },
+      { months: 1 },
+    ]
+  ) {
+    throws(
+      () =>
+        createFederation<void>({
+          kv: new MemoryKvStore(),
+          documentLoaderTimeout,
+        }),
+      RangeError,
+    );
+  }
+  createFederation<void>({
+    kv: new MemoryKvStore(),
+    documentLoaderTimeout: Temporal.Duration.from({ seconds: 30 }),
   });
 });

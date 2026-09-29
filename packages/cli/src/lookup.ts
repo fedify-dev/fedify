@@ -15,6 +15,7 @@ import {
 import {
   type DocumentLoader,
   expandIPv6Address,
+  FetchError,
   isValidPublicIPv4Address,
   isValidPublicIPv6Address,
   UrlError,
@@ -59,11 +60,22 @@ const logger = getLogger(["fedify", "cli", "lookup"]);
 
 export class TimeoutError extends Error {
   override name = "TimeoutError";
-  constructor(message: string) {
-    super(message);
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
     this.name = "TimeoutError";
   }
 }
+
+/**
+ * The timeout that the built-in document loaders use when `-T`/`--timeout`
+ * is not given, in seconds.
+ */
+const DEFAULT_TIMEOUT_SECONDS = 10;
+
+/**
+ * The maximum delay in milliseconds that timers accept.
+ */
+const MAX_TIMEOUT_MS = 2_147_483_647;
 
 /**
  * Error thrown when a recursive lookup target cannot be fetched.
@@ -224,48 +236,54 @@ export async function collectAsyncItems<T>(
   }
 }
 
-const signalTimers = new WeakMap<AbortSignal, ReturnType<typeof setTimeout>>();
-
-export function createTimeoutSignal(
+/**
+ * Converts the `-T`/`--timeout` option in seconds into the `timeout` option
+ * of the built-in document loaders in milliseconds.  Zero means timing out
+ * immediately, and too long timeouts are clamped to what timers accept.
+ * @param timeoutSeconds The timeout in seconds, if given.
+ * @returns The timeout in milliseconds, or `undefined` for the default.
+ */
+export function toDocumentLoaderTimeout(
   timeoutSeconds?: number,
-): AbortSignal | undefined {
+): number | undefined {
   if (timeoutSeconds == null) return undefined;
-  const controller = new AbortController();
-  const timerId = setTimeout(() => {
-    controller.abort(
-      new TimeoutError(`Request timed out after ${timeoutSeconds} seconds`),
-    );
-  }, timeoutSeconds * 1000);
-
-  signalTimers.set(controller.signal, timerId);
-
-  return controller.signal;
+  return Math.min(
+    MAX_TIMEOUT_MS,
+    Math.max(1, Math.ceil(timeoutSeconds * 1000)),
+  );
 }
 
-export function clearTimeoutSignal(signal?: AbortSignal): void {
-  if (!signal) return;
-  const timerId = signalTimers.get(signal);
-  if (timerId !== undefined) {
-    clearTimeout(timerId);
-    signalTimers.delete(signal);
-  }
+/**
+ * Checks whether the given error was thrown by a built-in document loader
+ * that timed out.
+ * @param error The error to check.
+ * @returns `true` if the document loader timed out.
+ */
+export function isDocumentLoaderTimeoutError(error: unknown): boolean {
+  return error instanceof FetchError && error.response == null &&
+    error.cause instanceof Error && error.cause.name === "TimeoutError";
 }
 
-function wrapDocumentLoaderWithTimeout(
+/**
+ * Wraps a built-in document loader so that its timeouts are thrown as
+ * {@link TimeoutError}s, which the lookup command reports specially.
+ */
+export function wrapDocumentLoaderWithTimeout(
   loader: DocumentLoader,
   timeoutSeconds?: number,
 ): DocumentLoader {
-  if (timeoutSeconds == null) return loader;
-
-  return (url: string, options?) => {
-    const signal = createTimeoutSignal(timeoutSeconds);
-    return loader(url, { ...options, signal }).catch((error) => {
-      // Some runtimes report a truncated JSON body instead of the abort reason.
-      // Preserve the actual timeout when it interrupted the document loader.
-      if (signal?.aborted) throw signal.reason;
+  return (url, options) =>
+    loader(url, options).catch((error) => {
+      if (isDocumentLoaderTimeoutError(error)) {
+        throw new TimeoutError(
+          `Request timed out after ${
+            timeoutSeconds ?? DEFAULT_TIMEOUT_SECONDS
+          } seconds`,
+          { cause: error },
+        );
+      }
       throw error;
-    }).finally(() => clearTimeoutSignal(signal));
-  };
+    });
 }
 
 function handleTimeoutError(
@@ -274,7 +292,11 @@ function handleTimeoutError(
   url?: string,
 ): void {
   const urlText = url ? ` for: ${colors.red(url)}` : "";
-  spinner.fail(`Request timed out after ${timeoutSeconds} seconds${urlText}.`);
+  spinner.fail(
+    `Request timed out after ${
+      timeoutSeconds ?? DEFAULT_TIMEOUT_SECONDS
+    } seconds${urlText}.`,
+  );
   printError(
     message`Try increasing the timeout with ${
       optionNames(["-T", "--timeout"])
@@ -619,6 +641,7 @@ export async function runLookup(
   const initialBaseDocumentLoader = await getDocumentLoader({
     userAgent: command.userAgent,
     allowPrivateAddress: true,
+    timeout: toDocumentLoaderTimeout(command.timeout),
   });
   const initialDocumentLoader = wrapDocumentLoaderWithTimeout(
     initialBaseDocumentLoader,
@@ -627,6 +650,7 @@ export async function runLookup(
   const baseDocumentLoader = await getDocumentLoader({
     userAgent: command.userAgent,
     allowPrivateAddress: command.allowPrivateAddress,
+    timeout: toDocumentLoaderTimeout(command.timeout),
   });
   const documentLoader = wrapDocumentLoaderWithTimeout(
     baseDocumentLoader,
@@ -635,6 +659,7 @@ export async function runLookup(
   const baseContextLoader = await getContextLoader({
     userAgent: command.userAgent,
     allowPrivateAddress: command.allowPrivateAddress,
+    timeout: toDocumentLoaderTimeout(command.timeout),
   });
   const contextLoader = wrapDocumentLoaderWithTimeout(
     baseContextLoader,
@@ -734,6 +759,7 @@ export async function runLookup(
       {
         allowPrivateAddress: command.allowPrivateAddress,
         userAgent: command.userAgent,
+        timeout: toDocumentLoaderTimeout(command.timeout),
         specDeterminer: {
           determineSpec() {
             return firstKnock;
@@ -752,6 +778,7 @@ export async function runLookup(
       {
         allowPrivateAddress: true,
         userAgent: command.userAgent,
+        timeout: toDocumentLoaderTimeout(command.timeout),
         specDeterminer: {
           determineSpec() {
             return firstKnock;
@@ -789,6 +816,7 @@ export async function runLookup(
     const recursiveBaseContextLoader = await getContextLoader({
       userAgent: command.userAgent,
       allowPrivateAddress: false,
+      timeout: toDocumentLoaderTimeout(command.timeout),
     });
     const recursiveContextLoader = wrapDocumentLoaderWithTimeout(
       recursiveBaseContextLoader,

@@ -25,7 +25,11 @@ import type {
   GetUserAgentOptions,
   PortableObjectVerifier,
 } from "@fedify/vocab-runtime";
-import { FetchError, getDocumentLoader } from "@fedify/vocab-runtime";
+import {
+  FetchError,
+  getDocumentLoader,
+  resolveDocumentLoaderTimeout,
+} from "@fedify/vocab-runtime";
 import type {
   LookupWebFingerOptions,
   ResourceDescriptor,
@@ -881,6 +885,13 @@ export class FederationImpl<TContextData>
     }
     const { userAgent } = options;
     this.allowPrivateAddress = allowPrivateAddress;
+    const documentLoaderTimeout = resolveDocumentLoaderTimeout(
+      options.documentLoaderTimeout == null
+        ? options.documentLoaderTimeout
+        : Temporal.Duration.from(options.documentLoaderTimeout).total(
+          "millisecond",
+        ),
+    );
     // The loader factory closures below read `this._meterProvider` at
     // call time, not when they are created.  Factories are only invoked
     // after the constructor has assigned `_meterProvider` (see below), so
@@ -894,6 +905,9 @@ export class FederationImpl<TContextData>
           allowPrivateAddress: opts?.allowPrivateAddress ??
             allowPrivateAddress,
           userAgent: opts?.userAgent ?? userAgent,
+          timeout: opts?.timeout !== undefined
+            ? opts.timeout
+            : documentLoaderTimeout,
         }),
         kv: options.kv,
         prefix: this.kvPrefixes.remoteDocument,
@@ -906,6 +920,9 @@ export class FederationImpl<TContextData>
           allowPrivateAddress: opts?.allowPrivateAddress ??
             allowPrivateAddress,
           userAgent: opts?.userAgent ?? userAgent,
+          timeout: opts?.timeout !== undefined
+            ? opts.timeout
+            : documentLoaderTimeout,
         }),
         kv: options.kv,
         prefix: this.kvPrefixes.remoteDocument,
@@ -960,6 +977,9 @@ export class FederationImpl<TContextData>
             allowPrivateAddress: factoryOpts?.allowPrivateAddress ??
               allowPrivateAddress,
             userAgent: factoryOpts?.userAgent ?? userAgent,
+            timeout: factoryOpts?.timeout !== undefined
+              ? factoryOpts.timeout
+              : documentLoaderTimeout,
             specDeterminer: new KvSpecDeterminer(
               this.kv,
               this.kvPrefixes.httpMessageSignaturesSpec,

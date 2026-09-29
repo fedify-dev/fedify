@@ -1,7 +1,7 @@
 import { Activity, Collection, Note } from "@fedify/vocab";
 import type { Annotations } from "@optique/core/annotations";
 import { parse, type Parser, type Result } from "@optique/core/parser";
-import { UrlError } from "@fedify/vocab-runtime";
+import { FetchError, UrlError } from "@fedify/vocab-runtime";
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
 import { createWriteStream } from "node:fs";
@@ -17,20 +17,21 @@ import { getContextLoader } from "./docloader.ts";
 import { runCli } from "./runner.ts";
 import {
   authorizedFetchOption,
-  clearTimeoutSignal,
   collectAsyncItems,
   collectRecursiveObjects,
-  createTimeoutSignal,
   getLookupFailureHint,
   getPrivateUrlCandidate,
   getRecursiveTargetId,
+  isDocumentLoaderTimeoutError,
   lookupCommand,
   RecursiveLookupError,
   runLookup,
   shouldPrintLookupFailureHint,
   shouldSuggestSuppressErrorsForLookupFailure,
   TimeoutError,
+  toDocumentLoaderTimeout,
   toPresentationOrder,
+  wrapDocumentLoaderWithTimeout,
   writeObjectToStream,
   writeSeparator,
 } from "./lookup.ts";
@@ -291,49 +292,72 @@ test("writeObjectToStream - rejects when stream emits write error", async () => 
   );
 });
 
-test("createTimeoutSignal - returns undefined when no timeout specified", () => {
-  const signal = createTimeoutSignal();
-  assert.strictEqual(signal, undefined);
+test("toDocumentLoaderTimeout - converts seconds to milliseconds", () => {
+  assert.equal(toDocumentLoaderTimeout(), undefined);
+  assert.equal(toDocumentLoaderTimeout(10), 10_000);
+  assert.equal(toDocumentLoaderTimeout(0.0015), 2);
+  // Zero keeps meaning to time out immediately:
+  assert.equal(toDocumentLoaderTimeout(0), 1);
+  // Too long timeouts are clamped to what timers accept:
+  assert.equal(toDocumentLoaderTimeout(1e12), 2_147_483_647);
 });
 
-test("createTimeoutSignal - returns undefined when timeout is null", () => {
-  const signal = createTimeoutSignal(undefined);
-  assert.strictEqual(signal, undefined);
-});
+function createDocumentLoaderTimeoutError(): FetchError {
+  const error = new FetchError(
+    "https://example.com/",
+    "Timed out after 10 ms",
+  );
+  error.cause = new DOMException("Timed out", "TimeoutError");
+  return error;
+}
 
-test("createTimeoutSignal - creates AbortSignal that aborts after timeout", async () => {
-  const signal = createTimeoutSignal(0.1);
-  assert.ok(signal);
-  assert.ok(!signal.aborted);
-
-  await new Promise((resolve) => setTimeout(resolve, 150));
-
-  assert.ok(signal.aborted);
-  assert.ok(signal.reason instanceof TimeoutError);
-  assert.equal(
-    (signal.reason as TimeoutError).message,
-    "Request timed out after 0.1 seconds",
+test("isDocumentLoaderTimeoutError - recognizes document loader timeouts", () => {
+  assert.ok(isDocumentLoaderTimeoutError(createDocumentLoaderTimeoutError()));
+  assert.ok(
+    !isDocumentLoaderTimeoutError(new FetchError("https://example.com/")),
+  );
+  const httpError = new FetchError(
+    "https://example.com/",
+    "HTTP 504",
+    new Response(null, { status: 504 }),
+  );
+  httpError.cause = new DOMException("Timed out", "TimeoutError");
+  assert.ok(!isDocumentLoaderTimeoutError(httpError));
+  assert.ok(
+    !isDocumentLoaderTimeoutError(
+      new DOMException("Timed out", "TimeoutError"),
+    ),
   );
 });
 
-test("createTimeoutSignal - signal is not aborted before timeout", () => {
-  const signal = createTimeoutSignal(1); // 1 second timeout
-  assert.ok(signal);
-  assert.ok(!signal.aborted);
-
-  clearTimeoutSignal(signal);
-});
-
-test("clearTimeoutSignal - cleans up timer properly", async () => {
-  const signal = createTimeoutSignal(0.05); // 50ms timeout
-  assert.ok(signal);
-  assert.ok(!signal.aborted);
-
-  clearTimeoutSignal(signal);
-
-  await new Promise((resolve) => setTimeout(resolve, 100));
-
-  assert.ok(!signal.aborted);
+test("wrapDocumentLoaderWithTimeout - reports timeouts as TimeoutError", async () => {
+  const timeoutError = createDocumentLoaderTimeoutError();
+  const timingOut = wrapDocumentLoaderWithTimeout(
+    () => Promise.reject(timeoutError),
+    0.5,
+  );
+  await assert.rejects(timingOut("https://example.com/"), (error) => {
+    assert.ok(error instanceof TimeoutError);
+    assert.equal(error.message, "Request timed out after 0.5 seconds");
+    assert.equal(error.cause, timeoutError);
+    return true;
+  });
+  const timingOutByDefault = wrapDocumentLoaderWithTimeout(
+    () => Promise.reject(timeoutError),
+  );
+  await assert.rejects(timingOutByDefault("https://example.com/"), {
+    name: "TimeoutError",
+    message: "Request timed out after 10 seconds",
+  });
+  const otherError = new FetchError("https://example.com/", "HTTP 500");
+  const failing = wrapDocumentLoaderWithTimeout(
+    () => Promise.reject(otherError),
+    0.5,
+  );
+  await assert.rejects(failing("https://example.com/"), (error) => {
+    assert.equal(error, otherError);
+    return true;
+  });
 });
 
 test("authorizedFetchOption - parses successfully without -a flag", () => {
@@ -1781,5 +1805,34 @@ test("runLookup - emits root object on recurse reverse failure", async () => {
     ]);
   } finally {
     await rm(testDir, { recursive: true });
+  }
+});
+
+test("runLookup - times out a stalled request with --timeout", async () => {
+  let release: () => void = () => {};
+  const released = new Promise<void>((resolve) => release = resolve);
+  const server = serve({
+    port: 0,
+    hostname: "127.0.0.1",
+    silent: true,
+    async fetch() {
+      await released;
+      return new Response(null, { status: 404 });
+    },
+  });
+  await server.ready();
+  assert.ok(server.url != null);
+  const url = new URL("/stalled", server.url).href;
+  try {
+    const { result: exitCode, stderr } = await captureStderr(() =>
+      runLookupAndCaptureExitCode(
+        createLookupRunCommand({ urls: [url], timeout: 0.2 }),
+      )
+    );
+    assert.equal(exitCode, 1);
+    assert.match(stderr, /Request timed out after 0\.2 seconds/);
+  } finally {
+    release();
+    await server.close(true);
   }
 });

@@ -361,6 +361,40 @@ the same as the `documentLoaderFactory`, but their purposes are different
 (see also [*Document loader vs. context loader*
 section](./context.md#document-loader-vs-context-loader)).
 
+### `documentLoaderTimeout`
+
+*This API is available since Fedify 2.4.0.*
+
+The time limit for each call of the built-in document loader, context loader,
+and authenticated document loader, e.g., when Fedify fetches the key of
+an HTTP Signature.  It takes a `Temporal.Duration` or a `Temporal.DurationLike`
+object.  The limit covers the whole call, including every redirect it follows,
+retries, and reading the response body, but not reading from or writing to
+the cache.
+
+10 seconds by default.  Set it to `null` to turn off the timeout:
+
+~~~~ typescript twoslash
+import { createFederation, MemoryKvStore } from "@fedify/fedify";
+// ---cut-before---
+const federation = createFederation<void>({
+  kv: new MemoryKvStore(),
+  documentLoaderTimeout: { seconds: 5 },
+});
+~~~~
+
+It does not affect the loaders that the [`documentLoaderFactory`],
+[`contextLoaderFactory`], and [`authenticatedDocumentLoaderFactory`] options
+make.  Note that if you set only `documentLoaderFactory`, it also makes
+the context loaders.
+
+See the [*Timeouts* section](./context.md#timeouts) for how a timeout is
+reported.
+
+[`documentLoaderFactory`]: #documentloaderfactory
+[`contextLoaderFactory`]: #contextloaderfactory
+[`authenticatedDocumentLoaderFactory`]: #authenticateddocumentloaderfactory
+
 ### `allowPrivateAddress`
 
 *This API is available since Fedify 0.15.0.*

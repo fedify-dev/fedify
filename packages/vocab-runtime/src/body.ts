@@ -93,3 +93,60 @@ export async function readBoundedText(
     reader?.releaseLock();
   }
 }
+
+/**
+ * Reads raw bytes while limiting bytes received from the body stream.
+ * Unlike {@link readBoundedText}, the bytes are returned as they were
+ * received, without decoding.
+ * @param message The response or request to read.
+ * @param maxBytes The maximum number of decoded bytes to read.
+ * @param url The URL to include in errors and logs.
+ * @returns The body bytes.
+ * @throws {BodyTooLargeError} If the body exceeds the limit.
+ * @internal
+ */
+export async function readBoundedBytes(
+  message: Pick<Request, "body" | "headers">,
+  maxBytes: number,
+  url: string | URL,
+): Promise<Uint8Array<ArrayBuffer>> {
+  validateBodySizeLimit(maxBytes);
+  const reader = message.body?.getReader();
+  const tooLarge = (): never => {
+    getLogger(["fedify", "runtime", "body"]).warn(
+      "Body from {url} exceeds the limit of {maxBytes} bytes.",
+      { url: url.toString(), maxBytes },
+    );
+    throw new BodyTooLargeError(url, maxBytes);
+  };
+  try {
+    const length = message.headers.get("Content-Length");
+    const encoding = message.headers.get("Content-Encoding");
+    if (
+      (encoding == null || encoding.toLowerCase() === "identity") &&
+      length != null && /^\d+$/.test(length) && Number(length) > maxBytes
+    ) tooLarge();
+    if (reader == null) return new Uint8Array(0);
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > maxBytes) tooLarge();
+      chunks.push(value);
+    }
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return bytes;
+  } catch (error) {
+    if (reader != null) void reader.cancel(error).catch(() => {});
+    throw error;
+  } finally {
+    reader?.releaseLock();
+  }
+}

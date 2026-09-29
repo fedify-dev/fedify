@@ -508,6 +508,31 @@ To be released.
         the new *Clearing legacy cache entries* section of the
         [key–value store guide] to clear them proactively instead of waiting.
 
+ -  Changed the built-in document loader, context loader, and authenticated
+    document loader to time out each call after 10 seconds by default.
+    Previously, a remote server that responded slowly or never could hold
+    a request for as long as the runtime and the network allowed, e.g.,
+    an incoming activity whose signature key Fedify fetched, and the sender
+    picks such key URLs.  The time limit covers the whole call, including
+    every redirect and alternate document it follows, double-knocking
+    retries, and reading the response body.  A call that times out throws
+    a `FetchError` without a response, whose `cause` is a `DOMException`
+    named `"TimeoutError"`, so a key fetch that times out is reported as
+    a `keyFetchError` by `verifyRequestDetailed()` and is cached like other
+    failures to fetch a key.  Custom document loaders are not affected.
+    [[#1131], [#1169]]
+
+     -  Added `FederationOptions.documentLoaderTimeout` option to change
+        the time limit, or to turn it off with `null`.
+
+     -  Added the `timeout` option to `getAuthenticatedDocumentLoader()`.
+
+ -  Changed the built-in document loaders to read the body of an error
+    response before they throw a `FetchError`, at most 1 MiB, so that
+    the time limit also bounds reading it.  `FetchError.response` keeps
+    the body byte for byte, or only the status and headers if the body is
+    larger than that.  [[#1131], [#1169]]
+
  -  Fixed outbound delivery circuit breaker transitions when a key–value
     store compares encoded values.  Existing half-open states can now recover
     after switching to a CAS-capable store.  [[#1163], [#1167]]
@@ -720,6 +745,7 @@ To be released.
 [#1123]: https://github.com/fedify-dev/fedify/issues/1123
 [#1124]: https://github.com/fedify-dev/fedify/pull/1124
 [#1130]: https://github.com/fedify-dev/fedify/issues/1130
+[#1131]: https://github.com/fedify-dev/fedify/issues/1131
 [#1132]: https://github.com/fedify-dev/fedify/issues/1132
 [#1133]: https://github.com/fedify-dev/fedify/issues/1133
 [#1134]: https://github.com/fedify-dev/fedify/pull/1134
@@ -732,6 +758,7 @@ To be released.
 [#1165]: https://github.com/fedify-dev/fedify/pull/1165
 [#1166]: https://github.com/fedify-dev/fedify/pull/1166
 [#1167]: https://github.com/fedify-dev/fedify/pull/1167
+[#1169]: https://github.com/fedify-dev/fedify/pull/1169
 
 ### @fedify/adonisjs
 
@@ -772,6 +799,11 @@ To be released.
  -  Switched the CLI's Temporal runtime dependency from
     `@js-temporal/polyfill` to `temporal-polyfill`.
     [[#823], [#925]]
+ -  Changed `fedify lookup` to time out each request after 10 seconds when
+    the `-T`/`--timeout` option is not given, since the document loaders it
+    uses now have a default timeout.  Previously, there was no timeout by
+    default.  The `-T`/`--timeout` option now also bounds DNS lookups.
+    [[#1131], [#1169]]
 
 [#892]: https://github.com/fedify-dev/fedify/issues/892
 [#940]: https://github.com/fedify-dev/fedify/pull/940
@@ -1267,39 +1299,47 @@ To be released.
     computing, parsing, creating, and verifying portable media resource
     digests as required by [FEP-ef61].
     [[#831], [#935]]
+
  -  Added the [FEP-ef61] JSON-LD context to the preloaded context registry so
     portable actor and media documents can compact and expand `gateways` and
     `digestMultibase` without fetching the context remotely.
     [[#830], [#928]]
+
  -  Added `getFe34Origin()` and `haveSameFe34Origin()` for comparing ordinary
     web origins and [FEP-ef61] cryptographic origins with one shared
     [FEP-fe34] helper.  HTTP(S) URLs keep web-origin semantics, while
     `ap:`/`ap+ef61:` URIs and DID URLs use their DID component as the origin.
     [[#829], [#926]]
+
  -  Added `canonicalizePortableUri()` and `arePortableUrisEqual()` for
     comparing [FEP-ef61] portable ActivityPub URI strings.  The helpers accept
     `ap:` and `ap+ef61:` values with decoded or percent-encoded DID
     authorities, normalize them to `ap+ef61:`, and ignore query hints such as
     `gateways` during comparison.
     [[#828], [#924]]
+
  -  Added the [FEP-7aa9] JSON-LD context to the preloaded context registry so
     FEP-7aa9 documents can be compacted and expanded without fetching the
     context remotely.
     [[#810], [#914]]
+
  -  Added helpers for Ed25519 `did:key` DIDs and verification method DID
     URLs: `exportDidKey()` exports public keys to base58-btc `did:key` DIDs,
     `importDidKey()` imports supported DIDs back to `CryptoKey`, and
     `parseDidKeyVerificationMethod()` validates `did:key:z...#z...`
     verification methods.
     [[#827], [#915]]
+
  -  Changed `getDocumentLoader()` to reject HTML and XHTML responses that do
     not advertise an ActivityPub alternate document with a `FetchError`
     instead of attempting to parse the HTML as JSON.  This makes remote HTML
     error pages surface as document loading failures with the response URL and
     content type, rather than generic JSON parser crashes.
     [[#912], [#913]]
+
  -  Added <https://w3id.org/fep/22cd> to preloaded JSON-LD contexts.
     [[#1037], [#1038]]
+
  -  Added the `PortableObjectVerifier`, `PortableObjectVerifierOptions`,
     `PortableObjectVerification`, and `PortableObjectReferrer` types, which
     describe the `verifyPortableObject` option of property accessors for
@@ -1309,10 +1349,12 @@ To be released.
     integrity proof as `unsecured`.  `verifyPortableObject()` and
     `verifyPortableObjectProof()` from `@fedify/fedify` satisfy
     `PortableObjectVerifier`.  [[#288], [#834], [#836], [#1077], [#1084]]
+
  -  Added the `verifyPortableObject` property to
     `PropertyPreprocessorContext`, the default [FEP-ef61] portable object
     verifier that objects returned by a property preprocessor should use for
     their property accessors.  [[#288], [#1107], [#1120]]
+
  -  Added `toCompatibleEf61Id()` and `fromCompatibleEf61Id()` for converting
     between [FEP-ef61] portable IDs and compatible identifiers, which are
     HTTP(S) URLs under a gateway's fixed `/.well-known/apgateway/` path that
@@ -1323,6 +1365,24 @@ To be released.
     `TypeError` for malformed ones, including those with location hints.
     Converting a compatible identifier does not authenticate it; the object's
     proof still has to be verified against its DID.  [[#288], [#833], [#1074]]
+
+ -  Changed `getDocumentLoader()` to time out each call after 10 seconds by
+    default.  The time limit covers the whole call, including every redirect
+    and alternate document it follows and reading the response body.
+    A call that times out throws a `FetchError` without a response, whose
+    `cause` is a `DOMException` named `"TimeoutError"`.  An `AbortSignal`
+    passed as the `signal` option still cancels a call as before.
+    [[#1131], [#1169]]
+
+     -  Added `DocumentLoaderFactoryOptions.timeout` option, in milliseconds,
+        to change the time limit, or to turn it off with `null`.
+
+ -  Changed `getDocumentLoader()` to read the body of an error response
+    before it throws a `FetchError`, at most 1 MiB, so that the time limit
+    also bounds reading it.  `FetchError.response` keeps the body byte for
+    byte, or only the status and headers if the body is larger than that.
+    [[#1131], [#1169]]
+
  -  Changed the `Accept` header that document loaders send when fetching
     ActivityPub objects to
     `application/activity+json, application/ld+json; profile="https://www.w3.org/ns/activitystreams"`,

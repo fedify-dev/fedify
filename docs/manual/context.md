@@ -515,6 +515,53 @@ too large, before JSON parsing or signature verification.
 Custom document loaders are responsible for enforcing their own response
 size limits.
 
+### Timeouts
+
+*This API is available since Fedify 2.4.0.*
+
+The built-in document loaders time out each call after 10 seconds by default.
+The time limit covers the whole call: URL validation, every redirect and
+alternate document link it follows, double-knocking retries of
+the authenticated document loader, and reading the response body.  So a remote
+server that responds slowly or never cannot hold a request of yours, e.g.,
+an incoming activity whose signature key Fedify fetches, for longer than that.
+
+A call that times out throws a `FetchError` without a `~FetchError.response`,
+whose `cause` is a `DOMException` named `"TimeoutError"`:
+
+~~~~ typescript twoslash
+import { type Context } from "@fedify/fedify";
+import { FetchError } from "@fedify/vocab-runtime";
+const ctx = null as unknown as Context<void>;
+// ---cut-before---
+try {
+  await ctx.documentLoader("https://example.com/slow-object");
+} catch (error) {
+  if (
+    error instanceof FetchError &&
+    error.cause instanceof DOMException &&
+    error.cause.name === "TimeoutError"
+  ) {
+    console.error("Timed out:", error.url.href);
+  }
+}
+~~~~
+
+Such a failure is treated like other network failures.  For example, if
+fetching the key of an HTTP Signature times out, `verifyRequestDetailed()`
+reports it as a `keyFetchError`, and the failure is cached like other failures
+to fetch a key.  Note that a cached failure keeps only the error's name and
+message, not its `cause`.
+
+An `AbortSignal` passed as the `signal` option still cancels a call; the loader
+then throws the signal's reason instead of a `FetchError`.
+
+You can change the time limit with the [`documentLoaderTimeout`
+option](./federation.md#documentloadertimeout) of `createFederation()`, or
+the `timeout` option (in milliseconds) of `getDocumentLoader()` and
+`getAuthenticatedDocumentLoader()`.  Setting it to `null` turns the timeout
+off.  Custom document loaders are responsible for their own timeouts.
+
 
 Looking up remote objects
 -------------------------

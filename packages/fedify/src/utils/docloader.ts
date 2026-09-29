@@ -7,8 +7,10 @@ import {
   getRemoteDocument,
   logRequest,
   type RemoteDocument,
+  resolveDocumentLoaderTimeout,
   UrlError,
   validatePublicUrl,
+  withDocumentLoaderTimeout,
 } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
 import type { TracerProvider } from "@opentelemetry/api";
@@ -52,11 +54,14 @@ export interface GetAuthenticatedDocumentLoaderOptions
  * the fetched documents.
  * At most 20 HTTP redirects and alternate document links are followed in total
  * per call.  Revisiting a URL within that chain throws a {@link FetchError}.
+ * Each call, including its double-knocking retries, times out after
+ * 10 seconds by default; see {@link DocumentLoaderFactoryOptions.timeout}.
  * @param identity The identity to get the document loader for.
  *                 The actor's key pair.
  * @param options The options for the document loader.
  * @returns The authenticated document loader.
  * @throws {TypeError} If the key is invalid or unsupported.
+ * @throws {RangeError} If the `timeout` option is invalid.
  * @since 0.4.0
  */
 export function getAuthenticatedDocumentLoader(
@@ -66,10 +71,12 @@ export function getAuthenticatedDocumentLoader(
     maxRedirection,
     userAgent,
     specDeterminer,
+    timeout,
     tracerProvider,
   }: GetAuthenticatedDocumentLoaderOptions = {},
 ): DocumentLoader {
   validateCryptoKey(identity.privateKey);
+  const resolvedTimeout = resolveDocumentLoaderTimeout(timeout);
   async function load(
     url: string,
     options?: DocumentLoaderOptions,
@@ -114,6 +121,7 @@ export function getAuthenticatedDocumentLoader(
         },
       },
     );
+    options?.signal?.throwIfAborted();
     return getRemoteDocument(currentUrl, response, (alternateUrl) => {
       follow(alternateUrl);
       return load(alternateUrl, options, redirected, visited);
@@ -140,7 +148,13 @@ export function getAuthenticatedDocumentLoader(
         }
         throw error;
       }
+      // The DNS lookup cannot be aborted, so do not go on if the call was
+      // aborted or timed out in the meantime:
+      options?.signal?.throwIfAborted();
     }
   }
-  return (url, options) => load(url, options);
+  return withDocumentLoaderTimeout(
+    (url, options) => load(url, options),
+    resolvedTimeout,
+  );
 }

@@ -732,3 +732,112 @@ test("getAuthenticatedDocumentLoader() rejects cancellation before fetching", as
     fetchMock.hardReset();
   }
 });
+
+function assertTimeoutFetchError(error: unknown, url: string): true {
+  ok(error instanceof FetchError, String(error));
+  deepStrictEqual(error.url.href, url);
+  deepStrictEqual(error.response, undefined);
+  ok(error.cause instanceof DOMException);
+  deepStrictEqual(error.cause.name, "TimeoutError");
+  return true;
+}
+
+test("getAuthenticatedDocumentLoader() times out", async (t) => {
+  const identity = {
+    keyId: new URL("https://example.com/key2"),
+    privateKey: rsaPrivateKey2,
+  };
+  const delay = (ms: number) =>
+    new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+  await t.step("a request without a response", async () => {
+    fetchMock.mockGlobal();
+    const url = "https://example.com/hang";
+    fetchMock.get(url, () => new Promise<never>(() => {}));
+    try {
+      const loader = getAuthenticatedDocumentLoader(identity, {
+        allowPrivateAddress: true,
+        timeout: 100,
+      });
+      await rejects(loader(url), (e) => assertTimeoutFetchError(e, url));
+    } finally {
+      fetchMock.hardReset();
+    }
+  });
+
+  await t.step("double-knocking shares the timeout", async () => {
+    fetchMock.mockGlobal();
+    const url = "https://example.com/double-knock";
+    let requests = 0;
+    fetchMock.get(url, async () => {
+      requests++;
+      await delay(80);
+      return new Response(null, { status: 401 });
+    });
+    try {
+      const loader = getAuthenticatedDocumentLoader(identity, {
+        allowPrivateAddress: true,
+        timeout: 120,
+      });
+      await rejects(loader(url), (e) => assertTimeoutFetchError(e, url));
+      deepStrictEqual(requests, 2);
+      await delay(100);
+      deepStrictEqual(requests, 2);
+    } finally {
+      fetchMock.hardReset();
+    }
+  });
+
+  for (const step of ["determineSpec", "rememberSpec"] as const) {
+    await t.step(`a slow ${step}()`, async () => {
+      fetchMock.mockGlobal();
+      const url = `https://example.com/slow-${step}`;
+      let requests = 0;
+      fetchMock.get(url, () => {
+        requests++;
+        return Response.json({ parsed: true });
+      });
+      try {
+        const loader = getAuthenticatedDocumentLoader(identity, {
+          allowPrivateAddress: true,
+          timeout: 50,
+          specDeterminer: {
+            async determineSpec() {
+              if (step === "determineSpec") await delay(150);
+              return "rfc9421" as const;
+            },
+            async rememberSpec() {
+              if (step === "rememberSpec") await delay(150);
+            },
+          },
+        });
+        await rejects(loader(url), (e) => assertTimeoutFetchError(e, url));
+        await delay(200);
+        // Nothing goes on after the call timed out:
+        deepStrictEqual(requests, step === "determineSpec" ? 0 : 1);
+      } finally {
+        fetchMock.hardReset();
+      }
+    });
+  }
+
+  await t.step("the caller's signal still aborts", async () => {
+    fetchMock.mockGlobal();
+    const url = "https://example.com/hang";
+    fetchMock.get(url, () => new Promise<never>(() => {}));
+    try {
+      const loader = getAuthenticatedDocumentLoader(identity, {
+        allowPrivateAddress: true,
+      });
+      const controller = new AbortController();
+      const reason = new Error("Canceled by the caller");
+      setTimeout(() => controller.abort(reason), 50);
+      await rejects(
+        loader(url, { signal: controller.signal }),
+        (e) => e === reason,
+      );
+    } finally {
+      fetchMock.hardReset();
+    }
+  });
+});

@@ -10,6 +10,7 @@ import {
   type DocumentLoaderOptions,
   exportSpki,
   FetchError,
+  getDocumentLoader,
 } from "@fedify/vocab-runtime";
 import {
   assert,
@@ -4367,4 +4368,89 @@ test("selectRequestSignature()", async () => {
   assertEquals(await selected.text(), body);
   // The original request is left intact:
   assertEquals(await request.text(), body);
+});
+
+test("verifyRequestDetailed() reports a timed-out key fetch", async (t) => {
+  for (const stall of ["headers", "body"] as const) {
+    await t.step(`stalled ${stall}`, async () => {
+      fetchMock.mockGlobal();
+      const keyId = new URL(`https://slow.example/actors/alice#${stall}`);
+      let requests = 0;
+      fetchMock.get(`begin:https://slow.example/actors/alice`, () => {
+        requests++;
+        if (stall === "headers") return new Promise<never>(() => {});
+        // An error response whose body never ends:
+        return new Response(
+          new ReadableStream({ pull: () => new Promise(() => {}) }),
+          { status: 404 },
+        );
+      });
+      // Skips DNS lookups, which the mocked host would fail:
+      const loader = getDocumentLoader({
+        allowPrivateAddress: true,
+        timeout: 100,
+      });
+      const documentLoader = (
+        url: string,
+        options?: { signal?: AbortSignal },
+      ) =>
+        url.startsWith("https://slow.example/")
+          ? loader(url, options)
+          : mockDocumentLoader(url);
+      const kv = new MemoryKvStore();
+      try {
+        const sign = () =>
+          signRequest(
+            new Request("https://example.com/inbox", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/activity+json",
+                accept: "application/ld+json",
+              },
+              body: JSON.stringify({
+                "@context": "https://www.w3.org/ns/activitystreams",
+                type: "Create",
+                actor: "https://slow.example/actors/alice",
+              }),
+            }),
+            rsaPrivateKey2,
+            keyId,
+          );
+        const result = await verifyRequestDetailed(await sign(), {
+          contextLoader: mockDocumentLoader,
+          documentLoader,
+          keyCache: new KvKeyCache(kv, ["pk"]),
+        });
+        assertFalse(result.verified);
+        assert(result.reason.type === "keyFetchError");
+        assertEquals(result.reason.keyId, keyId);
+        assert("error" in result.reason.result);
+        const error = result.reason.result.error;
+        assert(error instanceof FetchError);
+        assertEquals(error.response, undefined);
+        assert(error.cause instanceof DOMException);
+        assertEquals(error.cause.name, "TimeoutError");
+        assertEquals(requests, 1);
+
+        // The failure is cached like other fetch failures, even across
+        // key cache instances:
+        const cached = await verifyRequestDetailed(await sign(), {
+          contextLoader: mockDocumentLoader,
+          documentLoader,
+          keyCache: new KvKeyCache(kv, ["pk"]),
+        });
+        assertFalse(cached.verified);
+        assert(cached.reason.type === "keyFetchError");
+        assert("error" in cached.reason.result);
+        assertEquals(cached.reason.result.error.name, "FetchError");
+        assertStringIncludes(
+          cached.reason.result.error.message,
+          "Timed out after 100 ms",
+        );
+        assertEquals(requests, 1);
+      } finally {
+        fetchMock.hardReset();
+      }
+    });
+  }
 });
