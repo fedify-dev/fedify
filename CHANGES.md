@@ -129,9 +129,15 @@ To be released.
     be parsed at all, such as an inlined quote object without an `id`, is now
     ignored instead of failing the whole object, and ATProto `at://` quote
     URLs are accepted.  [[#1015], [#1043] by Jang Hanarae\]
+ -  Fixed `suppressError: true` being ignored when vocabulary accessors parsed
+    embedded JSON-LD values.  Malformed values are now skipped by iterators or
+    returned as `null` by singular accessors; calls without suppression continue
+    to throw.  [[#937], [#1136]]
 
+[#937]: https://github.com/fedify-dev/fedify/issues/937
 [#1015]: https://github.com/fedify-dev/fedify/issues/1015
 [#1043]: https://github.com/fedify-dev/fedify/pull/1043
+[#1136]: https://github.com/fedify-dev/fedify/pull/1136
 
 ### @fedify/vocab-runtime
 
@@ -160,6 +166,10 @@ To be released.
     made them throw `TypeError: Invalid URL`.  They now read both forms,
     accept ATProto `at://` URIs, and skip a value that cannot be parsed
     instead of throwing.  [[#1015], [#1043] by Jang Hanarae\]
+ -  Fixed generated vocabulary accessors ignoring `suppressError: true` when
+    parsing embedded JSON-LD values.  Generated iterators now skip malformed
+    values, and singular accessors return `null`; calls without suppression
+    continue to throw.  [[#937], [#1136]]
 
 ### @fedify/webfinger
 

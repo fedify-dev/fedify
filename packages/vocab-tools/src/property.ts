@@ -251,7 +251,16 @@ async function* generateProperty(
             ${JSON.stringify(property.compactName)}];
           const doc = Array.isArray(prop) ? prop[0] : prop;
           if (doc != null && typeof doc === "object" && "@context" in doc) {
-            v = await this.#${property.singularName}_fromJsonLd(doc, options);
+            try {
+              v = await this.#${property.singularName}_fromJsonLd(doc, options);
+            } catch (error) {
+              if (!options.suppressError) throw error;
+              getLogger(["fedify", "vocab"]).debug(
+                "Failed to parse embedded value of {property}: {error}",
+                { property: ${JSON.stringify(property.uri)}, error },
+              );
+              return null;
+            }
           }
         }
         `;
@@ -350,7 +359,18 @@ async function* generateProperty(
               ${JSON.stringify(property.compactName)}];
             const obj = Array.isArray(prop) ? prop[i] : prop;
             if (obj != null && typeof obj === "object" && "@context" in obj) {
-              v = await this.#${property.singularName}_fromJsonLd(obj, options);
+              try {
+                v = await this.#${property.singularName}_fromJsonLd(obj, options);
+              } catch (error) {
+                if (!options.suppressError) throw error;
+                getLogger(["fedify", "vocab"]).debug(
+                  "Failed to parse embedded value of {property} at index {index}: {error}",
+                  { property: ${
+          JSON.stringify(property.uri)
+        }, index: i, error },
+                );
+                continue;
+              }
             }
           }
         `;
