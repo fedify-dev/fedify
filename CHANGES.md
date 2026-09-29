@@ -10,6 +10,11 @@ To be released.
 
 ### @fedify/fedify
 
+ -  DNS failures during initial inbox validation now record failed delivery
+    metrics, matching DNS failures during redirect validation.  Both paths
+    count toward the outbox circuit breaker, including DNS lookups that
+    return no usable IP addresses.  Private-address rejections retain their
+    existing behavior. [[#1055]]
  -  Fixed an unhandled error when a POST request has multiple RFC 9421
     signatures covering `Content-Digest` and an earlier signature fails.
     Verification now reads the body once, allowing later valid signatures

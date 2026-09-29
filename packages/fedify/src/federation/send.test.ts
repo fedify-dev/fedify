@@ -898,6 +898,7 @@ for (const signed of [false, true]) {
       for (const result of ["throws", "empty", "cname", "private"] as const) {
         for (const redirected of [false, true]) {
           await t.step(`${result}, redirected: ${redirected}`, async () => {
+            const [meterProvider, recorder] = createTestMeterProvider();
             const originalLookup = dns.lookup;
             const resolverError = new Error("Resolver unavailable");
             const lookups: string[] = [];
@@ -926,6 +927,8 @@ for (const signed of [false, true]) {
               const send = () =>
                 sendActivity({
                   activity,
+                  activityType: "https://www.w3.org/ns/activitystreams#Create",
+                  meterProvider,
                   keys,
                   inbox: new URL(redirected ? publicInbox : destination),
                 });
@@ -941,6 +944,30 @@ for (const signed of [false, true]) {
                   error.cause.cause,
                   result === "throws" ? resolverError : undefined,
                 );
+              }
+              // Initial policy rejections remain outside delivery accounting;
+              // redirect policy rejections retain their existing failed metric.
+              const expectedCount = result === "private" && !redirected ? 0 : 1;
+              const sent = recorder.getMeasurements(
+                "activitypub.delivery.sent",
+              );
+              const durations = recorder.getMeasurements(
+                "activitypub.delivery.duration",
+              );
+              assertEquals(sent.length, expectedCount);
+              assertEquals(durations.length, expectedCount);
+              if (expectedCount === 1) {
+                assertEquals(sent[0].value, 1);
+                assertEquals(sent[0].attributes, {
+                  "activitypub.remote.host": redirected
+                    ? "8.8.8.8"
+                    : "delivery.invalid",
+                  "activitypub.activity.type":
+                    "https://www.w3.org/ns/activitystreams#Create",
+                  "activitypub.delivery.success": false,
+                });
+                assertEquals(durations[0].attributes, sent[0].attributes);
+                assertGreaterOrEqual(durations[0].value, 0);
               }
               assertEquals(lookups, ["delivery.invalid"]);
               assertEquals(fetchMock.callHistory.calls(destination).length, 0);

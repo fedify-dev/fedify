@@ -306,11 +306,21 @@ async function sendActivityInternal(
     }
   }
 
-  // TODO: When forwarding to 2.3+, include initial DNS failures in delivery
-  // metrics without changing disallowed-URL handling. Test metrics and
-  // circuit-breaker accounting for both direct and redirected destinations.
-  // https://github.com/fedify-dev/fedify/issues/1055
-  await validateUrl(inbox.href);
+  try {
+    await validateUrl(inbox.href);
+  } catch (error) {
+    // DNS validation failures are transport failures. Initial policy
+    // rejections still exit before delivery accounting or request creation.
+    if (error instanceof FetchError) {
+      federationMetrics.recordDelivery(
+        inbox,
+        getDurationMs(started),
+        false,
+        activityType,
+      );
+    }
+    throw error;
+  }
   headers = new Headers(headers);
   headers.set("Content-Type", "application/activity+json");
   const request = new Request(inbox, {
