@@ -363,8 +363,10 @@ jobs:
     - uses: ./.github/actions/determine-version
     - run: sudo npm install -g npm@latest && npm --version
     - run: pnpm -r --filter='!./examples/**' run build:self
+    # Bug #973: Materialize skills and disable lifecycle scripts to prevent build races during packing
+    - run: node packages/fedify/scripts/pack-skills.mjs pre
     - run: |
-        pnpm pack --recursive --workspace-concurrency=1 --filter='!./examples/**' --config.enable-pre-post-scripts=true
+        pnpm pack --recursive --filter='!./examples/**' --config.enable-pre-post-scripts=false
         # Remove private packages
         for pkg in fedify-*.tgz; do
           if tar -xOzf "$pkg" package/package.json | jq -e '.private == true' > /dev/null 2>&1; then
@@ -372,6 +374,8 @@ jobs:
             rm "$pkg"
           fi
         done
+    - if: always()
+      run: node packages/fedify/scripts/pack-skills.mjs post
     - uses: actions/upload-artifact@v7
       with:
         name: npm-packages
