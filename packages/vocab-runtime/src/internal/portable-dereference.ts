@@ -7,7 +7,11 @@ import {
 import preloadedContexts from "../contexts.ts";
 import type { DocumentLoader, RemoteDocument } from "../docloader.ts";
 import jsonld from "../jsonld.ts";
-import { createScopedContextLoader } from "./jsonld-cache.ts";
+import {
+  createScopedContextLoader,
+  registerDocumentLoaderWrapper,
+  unwrapReleasedDocumentLoader,
+} from "./jsonld-cache.ts";
 import type {
   PortableObjectReferrer,
   PortableObjectVerification,
@@ -568,13 +572,7 @@ export function createSnapshotContextLoader(
   // Objects parsed during a dereference keep its loader, so later
   // dereferences from them would otherwise wrap released pass-throughs in
   // ever deeper chains:
-  for (
-    let wrapped = snapshotLoaders.get(contextLoader);
-    wrapped?.released;
-    wrapped = snapshotLoaders.get(contextLoader)
-  ) {
-    contextLoader = wrapped.base;
-  }
+  contextLoader = unwrapReleasedDocumentLoader(contextLoader);
   const cache = new Map<string, Promise<RemoteDocument>>();
   let released = false;
   const release = () => {
@@ -607,14 +605,9 @@ export function createSnapshotContextLoader(
     return structuredClone(await promise);
   };
   const state = { base: contextLoader, released: false };
-  snapshotLoaders.set(loader, state);
+  registerDocumentLoaderWrapper(loader, state);
   return { loader, release };
 }
-
-const snapshotLoaders = new WeakMap<
-  DocumentLoader,
-  { readonly base: DocumentLoader; released: boolean }
->();
 
 /**
  * Options for {@link dereferencePortableIri}.

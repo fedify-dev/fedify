@@ -5820,6 +5820,86 @@ test("suppressed context loading does not persist on fetched objects", async () 
   deepStrictEqual(states.includes(true), false);
 });
 
+test("attribution chains alternate ordinary and portable suppression", async () => {
+  const states: (boolean | undefined)[] = [];
+  const depths: number[][] = [];
+  let hop = 0;
+  const contextUrl = "https://example.com/attribution-context";
+  const contextLoader: DocumentLoader = (url, options) => {
+    if (url !== contextUrl) return mockDocumentLoader(url, options);
+    states.push(options?.suppressError);
+    const stack = new Error().stack;
+    ok(stack);
+    depths[hop]?.push(stack.split("\n").length);
+    return Promise.resolve({
+      contextUrl: null,
+      documentUrl: url,
+      document: {
+        "@context": { name: "https://www.w3.org/ns/activitystreams#name" },
+      },
+    });
+  };
+  const documentLoader: DocumentLoader = (url) => {
+    const hop = Number(new URL(url).pathname.split("/").at(-1));
+    return Promise.resolve({
+      contextUrl: null,
+      documentUrl: url,
+      document: {
+        "@context": ["https://www.w3.org/ns/activitystreams", contextUrl],
+        id: url,
+        type: "Person",
+        name: `Actor ${hop}`,
+        attributedTo: `https://example.com/actors/${hop + 1}`,
+      },
+    });
+  };
+  let person = new Person({
+    id: new URL("https://example.com/actors/root"),
+    attribution: new URL("https://example.com/actors/0"),
+  }, { documentLoader, contextLoader });
+  const stackTraceLimit = globalThis.Object.getOwnPropertyDescriptor(
+    Error,
+    "stackTraceLimit",
+  );
+  try {
+    ok(Reflect.set(Error, "stackTraceLimit", Infinity));
+    for (; hop < 100; hop++) {
+      depths[hop] = [];
+      const next = await person.getAttribution({
+        suppressError: true,
+        ...(hop % 2 === 0 ? {} : {
+          verifyPortableObject: () =>
+            Promise.resolve({ verified: true as const }),
+        }),
+      });
+      assertInstanceOf(next, Person);
+      deepStrictEqual(next.id, new URL(`https://example.com/actors/${hop}`));
+      person = next;
+    }
+    // Compare the same mode after warmup; a retained wrapper per hop would
+    // increase the synchronous call depth even before the stack overflows.
+    ok(depths.every((values) => values.length > 0));
+    deepStrictEqual(depths[98], depths[2]);
+    deepStrictEqual(depths[99], depths[3]);
+    ok(states.length >= 100);
+    ok(states.every((state) => state === true));
+    states.length = 0;
+    assertInstanceOf(await person.getAttribution(), Person);
+    ok(states.length > 0);
+    ok(states.every((state) => state !== true));
+  } finally {
+    if (stackTraceLimit == null) {
+      Reflect.deleteProperty(Error, "stackTraceLimit");
+    } else {
+      globalThis.Object.defineProperty(
+        Error,
+        "stackTraceLimit",
+        stackTraceLimit,
+      );
+    }
+  }
+});
+
 test("portable accessors suppress document and context failure logs", async () => {
   const records: LogRecord[] = [];
   const id = new URL("ap+ef61://did%3Akey%3Az6Mkabc/objects/1");

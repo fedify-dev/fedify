@@ -4,10 +4,41 @@ import { formatIri, haveSameFe34Origin, haveSameIriOrigin } from "../url.ts";
 
 const noJsonLdContext = Symbol("noJsonLdContext");
 
-const scopedLoaders = new WeakMap<
+const documentLoaderWrappers = new WeakMap<
   DocumentLoader,
-  { base: DocumentLoader; released: boolean }
+  { readonly base: DocumentLoader; released: boolean }
 >();
+
+/**
+ * Registers a loader wrapper with the shared released-wrapper registry.
+ * Both suppression and snapshot wrappers must use this registry so mixed
+ * chains can be unwrapped.  The caller updates the state on release.
+ * @internal Not a public API.
+ */
+export function registerDocumentLoaderWrapper(
+  loader: DocumentLoader,
+  state: { readonly base: DocumentLoader; released: boolean },
+): void {
+  documentLoaderWrappers.set(loader, state);
+}
+
+/**
+ * Removes released loader wrappers, stopping at the first active wrapper.
+ * Active wrappers retain their operation's suppression or snapshot cache.
+ * @internal Not a public API.
+ */
+export function unwrapReleasedDocumentLoader(
+  base: DocumentLoader,
+): DocumentLoader {
+  for (
+    let state = documentLoaderWrappers.get(base);
+    state?.released;
+    state = documentLoaderWrappers.get(base)
+  ) {
+    base = state.base;
+  }
+  return base;
+}
 
 /**
  * Lowers context loading failure logs for one accessor operation.  Parsed
@@ -19,18 +50,12 @@ export function createScopedContextLoader(
   base: DocumentLoader,
   suppressError?: boolean,
 ): { loader: DocumentLoader; release: () => void } {
-  for (
-    let state = scopedLoaders.get(base);
-    state?.released;
-    state = scopedLoaders.get(base)
-  ) {
-    base = state.base;
-  }
+  base = unwrapReleasedDocumentLoader(base);
   if (!suppressError) return { loader: base, release: () => {} };
   const state = { base, released: false };
   const loader: DocumentLoader = (url, options) =>
     base(url, state.released ? options : { ...options, suppressError: true });
-  scopedLoaders.set(loader, state);
+  registerDocumentLoaderWrapper(loader, state);
   return {
     loader,
     release: () => {
