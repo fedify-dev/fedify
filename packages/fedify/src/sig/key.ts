@@ -462,12 +462,110 @@ export interface FetchKeyDetailedResult<T extends CryptographicKey | Multikey>
   readonly fetchError?: FetchKeyErrorResult;
 }
 
-interface FetchErrorMetadataCache extends KeyCache {
+/**
+ * What a key at an [FEP-ef61] compatible identifier is looked up for.  Such
+ * a key may be a gateway key of a portable actor, which only HTTP Signatures
+ * accept, so each purpose resolves it on its own:
+ *
+ *  -  `"httpSignature"`: HTTP Signature verification, which accepts gateway
+ *     keys;
+ *  -  `"cryptographicKey"`: any other lookup of a {@link CryptographicKey},
+ *     e.g., for Linked Data Signatures;
+ *  -  `"multikey"`: any lookup of a {@link Multikey}, e.g., for Object
+ *     Integrity Proofs.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
+ * @internal
+ */
+export type CompatibleKeyScope =
+  | "httpSignature"
+  | "cryptographicKey"
+  | "multikey";
+
+/**
+ * Options for {@link CompatibleKeyCache.set}.
+ * @internal
+ */
+export interface CompatibleKeyCacheSetOptions {
+  /**
+   * The time after which the entry must not be used anymore, e.g., when
+   * the proof of the document that vouches for the key expires.
+   */
+  readonly expires?: Temporal.Instant;
+}
+
+/**
+ * A cache namespace for keys at compatible identifiers looked up for one
+ * {@link CompatibleKeyScope}.  Unlike the shared namespace, a `null` entry
+ * here only ever means the key was resolved and turned out to be invalid for
+ * that purpose; transport-level fetch failures, which fail every purpose
+ * alike, are cached in the shared namespace instead.
+ * @internal
+ */
+export interface CompatibleKeyCache {
+  get(keyId: URL): Promise<CryptographicKey | Multikey | null | undefined>;
+  set(
+    keyId: URL,
+    key: CryptographicKey | Multikey | null,
+    options?: CompatibleKeyCacheSetOptions,
+  ): Promise<void>;
+  delete(keyId: URL): Promise<void>;
+}
+
+/**
+ * Internal extensions that Fedify's own key cache implements on top of
+ * the public {@link KeyCache} interface.
+ * @internal
+ */
+export interface FetchErrorMetadataCache extends KeyCache {
   getFetchError?(keyId: URL): Promise<FetchKeyErrorResult | undefined>;
   setFetchError?(
     keyId: URL,
     error: FetchKeyErrorResult | null,
   ): Promise<void>;
+  /**
+   * Returns a namespace, separate from the shared one and from those of
+   * the other purposes, for keys at [FEP-ef61] compatible identifiers looked
+   * up for the given purpose.  A cache without it caches only transport-level
+   * fetch failures of such keys.
+   *
+   * [FEP-ef61]: https://w3id.org/fep/ef61
+   */
+  compatibleKeyScope?(scope: CompatibleKeyScope): CompatibleKeyCache;
+}
+
+/**
+ * Wraps a key cache so that lookups through the wrapper miss, while
+ * whatever they resolve is still written to the cache.  It is used to retry
+ * a verification that failed with a cached key with a freshly fetched one.
+ * @param keyCache The key cache to wrap.
+ * @returns The wrapped key cache.
+ * @internal
+ */
+export function bypassKeyCacheReads(keyCache?: KeyCache): KeyCache {
+  const cache = keyCache as FetchErrorMetadataCache | undefined;
+  const bypassed: FetchErrorMetadataCache = {
+    // Returning `undefined` signals "nothing cached" and forces `fetchKey()`
+    // to refetch from the network; returning `null` would instead be
+    // interpreted as a cached-unavailable result and short-circuit the retry.
+    get: () => Promise.resolve(undefined),
+    set: async (keyId, key) => await cache?.set(keyId, key),
+    getFetchError: () => Promise.resolve(undefined),
+    setFetchError: async (keyId, error) =>
+      await cache?.setFetchError?.(keyId, error),
+  };
+  if (cache?.compatibleKeyScope != null) {
+    bypassed.compatibleKeyScope = (scope) => {
+      const scoped = cache.compatibleKeyScope!(scope);
+      return {
+        get: () => Promise.resolve(undefined),
+        set: async (keyId, key, options) =>
+          await scoped.set(keyId, key, options),
+        delete: async (keyId) => await scoped.delete(keyId),
+      };
+    };
+  }
+  return bypassed;
 }
 
 type FetchableKeyClass<T extends CryptographicKey | Multikey> =
@@ -526,9 +624,9 @@ async function withFetchKeySpan<T extends { cached: boolean }>(
  * Gateway keys of [FEP-ef61] portable actors, i.e., keys whose IDs are
  * compatible identifiers that dereference to portable actor documents, are
  * not resolved by this function, as they only authenticate HTTP requests;
- * use `verifyRequest()` or `getKeyOwner()` for them instead.  Keys
- * whose IDs are compatible identifiers are never read from or written to
- * the key cache.
+ * use `verifyRequest()` or `getKeyOwner()` for them instead.  Keys whose IDs
+ * are compatible identifiers are never read from or written to the key
+ * cache under their IDs, except for failures to fetch them.
  *
  * [FEP-ef61]: https://w3id.org/fep/ef61
  * @template T The type of the key to fetch.  Either {@link CryptographicKey}
@@ -560,9 +658,9 @@ export function fetchKey<T extends CryptographicKey | Multikey>(
  * Gateway keys of [FEP-ef61] portable actors, i.e., keys whose IDs are
  * compatible identifiers that dereference to portable actor documents, are
  * not resolved by this function, as they only authenticate HTTP requests;
- * use `verifyRequest()` or `getKeyOwner()` for them instead.  Keys
- * whose IDs are compatible identifiers are never read from or written to
- * the key cache.
+ * use `verifyRequest()` or `getKeyOwner()` for them instead.  Keys whose IDs
+ * are compatible identifiers are never read from or written to the key
+ * cache under their IDs, except for failures to fetch them.
  *
  * [FEP-ef61]: https://w3id.org/fep/ef61
  *
@@ -830,6 +928,10 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
     // that a gateway holds for the actor.  The host that served the document
     // does not speak for the actor, only the actor's DID does, so there is
     // no falling back to the checks below, which trust web origins.
+    // The key cache here is the namespace of this lookup's purpose (see
+    // fetchKeyWithResult()), so whatever is cached below is never read for
+    // another purpose:
+    const scopedCache = keyCache as CompatibleKeyCache | undefined;
     if (
       portableGatewayKeyResolver == null ||
       cls !== (CryptographicKey as unknown as FetchableKeyClass<T>)
@@ -839,6 +941,7 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
           "actor {actorId}, which is only accepted for HTTP Signatures.",
         { keyId, actorId: object.id?.href },
       );
+      await scopedCache?.set(cacheKey, null);
       return { key: null, cached: false };
     }
     const resolution = await portableGatewayKeyResolver(
@@ -852,8 +955,14 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
           "its gateway key {keyId}.",
         { keyId, actorId: object.id?.href },
       );
+      await scopedCache?.set(cacheKey, null);
       return { key: null, cached: false };
     }
+    // The key is only as good as the proof of the document that vouches for
+    // it, so it must not outlive the proof:
+    await scopedCache?.set(cacheKey, resolution.key, {
+      expires: resolution.expires,
+    });
     return {
       key: resolution.key as unknown as T & { publicKey: CryptoKey },
       cached: false,
@@ -1035,8 +1144,9 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
 
 /**
  * Tells whether a key claims a portable actor as its owner.  Such a key can
- * only be a gateway key, which is never cached, so a cached one was cached
- * by an older version that trusted web origins, and is fetched again.
+ * only be a gateway key, which is never cached under its ID, so a cached one
+ * was cached by an older version that trusted web origins, and is fetched
+ * again.
  */
 function claimsPortableOwner(key: CryptographicKey | Multikey | null): boolean {
   const ownerId = key instanceof CryptographicKey
@@ -1073,13 +1183,19 @@ async function fetchKeyWithResult<
   try {
     const logger = getLogger(["fedify", "sig", "key"]);
     const keyId = cacheKey.href;
-    // Keys at compatible identifiers may be gateway keys of portable actors,
-    // which are accepted for some purposes but not for others.  Keeping them
-    // out of the shared cache means one purpose never reuses what another
-    // resolved, nor what another rejected.
-    const bypassCache = isCompatibleKeyId(cacheKey);
-    if (bypassCache) options = { ...options, keyCache: undefined };
     const keyCache = options.keyCache as FetchErrorMetadataCache | undefined;
+    if (isCompatibleKeyId(cacheKey)) {
+      const result = await fetchCompatibleKey(
+        cacheKey,
+        cls,
+        options,
+        onCachedUnavailable,
+        onFetchError,
+        logger,
+      );
+      outcome = result.outcome;
+      return result.result;
+    }
     const didKey = await resolveDidKey(cacheKey, cls, keyCache, logger);
     if (didKey != null) {
       outcome = {
@@ -1154,6 +1270,128 @@ async function fetchKeyWithResult<
       statusCode: outcome.statusCode,
     });
   }
+}
+
+/**
+ * Tells which purpose a lookup of a key at a compatible identifier serves.
+ */
+function getCompatibleKeyScope<T extends CryptographicKey | Multikey>(
+  cls: FetchableKeyClass<T>,
+  options: FetchKeyOptions,
+): CompatibleKeyScope {
+  if (cls !== (CryptographicKey as unknown as FetchableKeyClass<T>)) {
+    return "multikey";
+  }
+  return options.portableGatewayKeyResolver == null
+    ? "cryptographicKey"
+    : "httpSignature";
+}
+
+/**
+ * Looks up a key at an [FEP-ef61] compatible identifier.  Such a key may be
+ * a gateway key of a portable actor, which is accepted for some purposes but
+ * not for others, so everything resolved from the document at the key ID is
+ * cached in a namespace of the lookup's purpose, and one purpose never reuses
+ * what another resolved, nor what another rejected.  A failure to fetch
+ * the document fails every purpose alike, so it is cached in the shared
+ * namespace, as for any other key.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
+ */
+async function fetchCompatibleKey<
+  T extends CryptographicKey | Multikey,
+  TResult extends FetchKeyResult<T>,
+>(
+  cacheKey: URL,
+  cls: FetchableKeyClass<T>,
+  options: FetchKeyOptions,
+  onCachedUnavailable: (
+    cacheKey: URL,
+    keyId: string,
+    keyCache: FetchErrorMetadataCache | undefined,
+    logger: ReturnType<typeof getLogger>,
+  ) => Promise<TResult> | TResult,
+  onFetchError: (
+    error: unknown,
+    cacheKey: URL,
+    keyId: string,
+    keyCache: FetchErrorMetadataCache | undefined,
+    logger: ReturnType<typeof getLogger>,
+  ) => Promise<TResult> | TResult,
+  logger: ReturnType<typeof getLogger>,
+): Promise<{
+  result: TResult;
+  outcome: { result: KeyLookupResult; statusCode?: number };
+}> {
+  const keyId = cacheKey.href;
+  const sharedCache = options.keyCache as FetchErrorMetadataCache | undefined;
+  const scopedCache = sharedCache?.compatibleKeyScope?.(
+    getCompatibleKeyScope(cls, options),
+  );
+  // What this purpose resolved takes precedence over the shared namespace:
+  const cached = await getCachedFetchKey(
+    cacheKey,
+    keyId,
+    cls,
+    scopedCache,
+    logger,
+  );
+  if (cached != null) {
+    // A null entry here means the key was resolved and found invalid for this
+    // purpose, not that fetching it failed, so there is no fetch error:
+    return { result: cached as TResult, outcome: { result: "hit" } };
+  }
+  // The shared namespace only has fetch failures of compatible key IDs.  A key
+  // found there was cached by an older version that did not tell purposes
+  // apart, and is fetched again:
+  if (await sharedCache?.get(cacheKey) === null) {
+    logger.debug(
+      "Entry {keyId} found in cache, but it could not be fetched.",
+      { keyId },
+    );
+    return {
+      result: await onCachedUnavailable(cacheKey, keyId, sharedCache, logger),
+      outcome: { result: "hit" },
+    };
+  }
+  logger.debug("Fetching key {keyId} to verify signature...", { keyId });
+  let document: unknown;
+  let documentUrl: URL;
+  try {
+    const remoteDocument =
+      await (options.documentLoader ?? getDocumentLoader())(keyId);
+    document = remoteDocument.document;
+    documentUrl = new URL(remoteDocument.documentUrl ?? "", cacheKey);
+  } catch (error) {
+    const outcome = classifyFetchError(error);
+    const result = await onFetchError(
+      error,
+      cacheKey,
+      keyId,
+      sharedCache,
+      logger,
+    );
+    // A key this purpose resolved before is not fresh anymore, e.g., when
+    // it has just failed to verify a signature and is being refetched:
+    await scopedCache?.delete(cacheKey);
+    return { result, outcome };
+  }
+  const resolved = await resolveFetchedKey(
+    document,
+    cacheKey,
+    documentUrl,
+    keyId,
+    cls,
+    // Only the namespace of this purpose is written, and a successful fetch
+    // does not clear the shared fetch failure metadata, which has to stay
+    // paired with the shared entry that nothing can delete:
+    { ...options, keyCache: scopedCache },
+    logger,
+  );
+  return {
+    result: resolved as TResult,
+    outcome: { result: resolved.key != null ? "fetched" : "invalid" },
+  };
 }
 
 async function fetchKeyInternal<T extends CryptographicKey | Multikey>(

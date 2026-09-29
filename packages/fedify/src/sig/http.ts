@@ -38,6 +38,7 @@ import {
   validateAcceptSignature,
 } from "./accept.ts";
 import {
+  bypassKeyCacheReads,
   fetchKeyDetailed,
   type FetchKeyErrorResult,
   type KeyCache,
@@ -1332,10 +1333,7 @@ async function verifyRequestDraft(
           contextLoader,
           timeWindow,
           currentTime,
-          keyCache: {
-            get: () => Promise.resolve(undefined),
-            set: async (keyId, key) => await keyCache?.set(keyId, key),
-          },
+          keyCache: bypassKeyCacheReads(keyCache),
           meterProvider,
           tracerProvider,
         },
@@ -1735,10 +1733,7 @@ async function verifyRequestRfc9421(
             contextLoader,
             timeWindow,
             currentTime,
-            keyCache: {
-              get: () => Promise.resolve(undefined),
-              set: async (keyId, key) => await keyCache?.set(keyId, key),
-            },
+            keyCache: bypassKeyCacheReads(keyCache),
             spec: "rfc9421",
             meterProvider,
             tracerProvider,

@@ -22,7 +22,12 @@ import {
   measureSignatureKeyFetch,
   type SignatureVerificationResult,
 } from "../federation/metrics.ts";
-import { fetchKey, type KeyCache, validateCryptoKey } from "./key.ts";
+import {
+  bypassKeyCacheReads,
+  fetchKey,
+  type KeyCache,
+  validateCryptoKey,
+} from "./key.ts";
 
 const logger = getLogger(["fedify", "sig", "ld"]);
 // This is the internal compaction target for LD-signature normalization, not
@@ -1004,10 +1009,7 @@ export async function verifySignature(
       () =>
         fetchKey(new URL(sig.creator), CryptographicKey, {
           ...options,
-          keyCache: {
-            get: () => Promise.resolve(undefined),
-            set: async (keyId, key) => await options.keyCache?.set(keyId, key),
-          },
+          keyCache: bypassKeyCacheReads(options.keyCache),
         }),
     );
     if (key == null) return null;

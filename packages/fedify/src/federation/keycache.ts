@@ -1,7 +1,12 @@
 import { CryptographicKey, Multikey } from "@fedify/vocab";
 import type { DocumentLoader } from "@fedify/vocab-runtime";
 import type { TracerProvider } from "@opentelemetry/api";
-import type { FetchKeyErrorResult, KeyCache } from "../sig/key.ts";
+import type {
+  CompatibleKeyCache,
+  CompatibleKeyScope,
+  FetchErrorMetadataCache,
+  FetchKeyErrorResult,
+} from "../sig/key.ts";
 import type { KvKey, KvStore } from "./kv.ts";
 
 // Cached keys carry the owner that was verified when they were fetched, so
@@ -11,6 +16,26 @@ import type { KvKey, KvStore } from "./kv.ts";
 // upgrading retires the whole previous generation, whatever prefix the
 // application configured.  See GHSA-q9f8-5hc7-898f.
 const KEY_CACHE_GENERATION = "2";
+
+// Keys at FEP-ef61 compatible identifiers are cached apart for each purpose,
+// under this segment; see KvKeyCache.compatibleKeyScope().
+const COMPATIBLE_KEY_SEGMENT = "__compatible";
+
+// A key at a compatible identifier may be a gateway key, which the portable
+// actor's signed document vouches for.  The actor can drop the gateway or
+// the key from its document at any time, so the key is looked up again at
+// least this often, however long other keys are cached:
+const MAX_COMPATIBLE_KEY_TTL = Temporal.Duration.from({ hours: 1 });
+
+interface CompatibleKeyEntry {
+  readonly key: unknown;
+  readonly expires: number;
+}
+
+function isCompatibleKeyEntry(value: unknown): value is CompatibleKeyEntry {
+  return value != null && typeof value === "object" && "key" in value &&
+    "expires" in value && typeof value.expires === "number";
+}
 
 export interface KvKeyCacheOptions {
   documentLoader?: DocumentLoader;
@@ -29,9 +54,16 @@ export interface KvKeyCacheOptions {
    * @since 2.4.0
    */
   keyTtl?: Temporal.Duration;
+
+  /**
+   * The clock that decides when entries of keys at compatible identifiers
+   * expire.  Only for testing.
+   * @internal
+   */
+  now?: () => Temporal.Instant;
 }
 
-export class KvKeyCache implements KeyCache {
+export class KvKeyCache implements FetchErrorMetadataCache {
   readonly kv: KvStore;
   readonly prefix: KvKey;
   readonly options: KvKeyCacheOptions;
@@ -107,6 +139,82 @@ export class KvKeyCache implements KeyCache {
     await this.kv.set(this.#entryKey(keyId), serialized, {
       ttl: this.keyTtl,
     });
+  }
+
+  /**
+   * Returns the namespace of keys at FEP-ef61 compatible identifiers looked
+   * up for the given purpose.  Its entries carry the time they expire, which
+   * is checked when they are read, so that an entry is never used after
+   * the proof that vouched for its key expired, however late the underlying
+   * store evicts it.
+   * @param scope The purpose of the lookups.
+   * @returns The namespace.
+   * @internal
+   */
+  compatibleKeyScope(scope: CompatibleKeyScope): CompatibleKeyCache {
+    const now = this.options.now ?? (() => Temporal.Now.instant());
+    const entryKey = (keyId: URL): KvKey => [
+      ...this.prefix,
+      COMPATIBLE_KEY_SEGMENT,
+      scope,
+      keyId.href,
+    ];
+    const isExpired = (entry: CompatibleKeyEntry): boolean =>
+      entry.expires <= now().epochMilliseconds;
+    const keyTtl = Math.min(
+      this.keyTtl.total("millisecond"),
+      MAX_COMPATIBLE_KEY_TTL.total("millisecond"),
+    );
+    const unavailableKeyTtl = this.unavailableKeyTtl.total("millisecond");
+    return {
+      get: async (keyId) => {
+        const entry = await this.kv.get(entryKey(keyId));
+        if (entry === undefined) return undefined;
+        if (!isCompatibleKeyEntry(entry) || isExpired(entry)) {
+          await this.kv.delete(entryKey(keyId));
+          return undefined;
+        }
+        if (entry.key === null) return null;
+        let key: CryptographicKey | Multikey;
+        try {
+          key = await CryptographicKey.fromJsonLd(entry.key, this.options);
+        } catch {
+          try {
+            key = await Multikey.fromJsonLd(entry.key, this.options);
+          } catch {
+            await this.kv.delete(entryKey(keyId));
+            return undefined;
+          }
+        }
+        // Parsing the key may have taken long enough for it to expire:
+        return isExpired(entry) ? undefined : key;
+      },
+      set: async (keyId, key, options) => {
+        const serialized = key == null
+          ? null
+          : await key.toJsonLd(this.options);
+        const current = now();
+        let expires = current.epochMilliseconds +
+          (key == null ? unavailableKeyTtl : keyTtl);
+        if (options?.expires != null) {
+          expires = Math.min(expires, options.expires.epochMilliseconds);
+        }
+        const ttl = expires - current.epochMilliseconds;
+        if (ttl <= 0) {
+          // Whatever was cached before is not valid any longer either:
+          await this.kv.delete(entryKey(keyId));
+          return;
+        }
+        await this.kv.set(
+          entryKey(keyId),
+          { key: serialized, expires } satisfies CompatibleKeyEntry,
+          { ttl: Temporal.Duration.from({ milliseconds: ttl }) },
+        );
+      },
+      delete: async (keyId) => {
+        await this.kv.delete(entryKey(keyId));
+      },
+    };
   }
 
   async getFetchError(keyId: URL): Promise<FetchKeyErrorResult | undefined> {

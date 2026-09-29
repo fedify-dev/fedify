@@ -154,10 +154,23 @@ To be released.
     as an explicit sender key.  [[#288], [#840], [#1099]]
 
  -  Changed key lookups so that keys whose IDs are FEP-ef61 compatible
-    identifiers are no longer read from or written to the `KeyCache`, as
-    whether such a key is valid depends on what it is used for.  `fetchKey()`
-    and `fetchKeyDetailed()` do not resolve gateway keys of portable actors.
-    [[#288], [#840], [#1099]]
+    identifiers are cached apart for each purpose, as whether such a key is
+    valid depends on what it is used for: a gateway key cached for an HTTP
+    Signature is never used for an Object Integrity Proof or a Linked Data
+    Signature, and a key rejected for one of them is not rejected for
+    the others.  A failure to fetch such a key, e.g., a network error or
+    `404 Not Found`, fails every purpose alike and is cached like that of any
+    other key.  A gateway key is cached for an hour at most, and never
+    beyond the expiration of the proof on the actor's document, since
+    the actor can drop the gateway from its document at any time.
+    `fetchKey()` and `fetchKeyDetailed()` do not resolve gateway keys of
+    portable actors.
+    [[#288], [#840], [#1095], [#1099], [#1119]]
+
+     -  Only the key cache that Fedify's inbox uses caches keys at compatible
+        identifiers apart for each purpose.  A custom `KeyCache` passed to
+        `verifyRequest()`, `fetchKey()`, and the like caches only the
+        failures to fetch them.
 
  -  Added support for publishing [FEP-ef61] portable actors and objects whose
     IDs are compatible identifiers, such as
@@ -537,6 +550,7 @@ To be released.
 [#1092]: https://github.com/fedify-dev/fedify/pull/1092
 [#1093]: https://github.com/fedify-dev/fedify/issues/1093
 [#1094]: https://github.com/fedify-dev/fedify/issues/1094
+[#1095]: https://github.com/fedify-dev/fedify/issues/1095
 [#1099]: https://github.com/fedify-dev/fedify/pull/1099
 [#1100]: https://github.com/fedify-dev/fedify/issues/1100
 [#1101]: https://github.com/fedify-dev/fedify/issues/1101
@@ -549,6 +563,7 @@ To be released.
 [#1112]: https://github.com/fedify-dev/fedify/issues/1112
 [#1114]: https://github.com/fedify-dev/fedify/pull/1114
 [#1117]: https://github.com/fedify-dev/fedify/pull/1117
+[#1119]: https://github.com/fedify-dev/fedify/pull/1119
 
 ### @fedify/adonisjs
 

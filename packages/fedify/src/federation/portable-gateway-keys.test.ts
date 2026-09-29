@@ -4,6 +4,7 @@ import {
   type DocumentLoader,
   encodeMultibase,
   exportDidKey,
+  FetchError,
   parseIri,
   type RemoteDocument,
 } from "@fedify/vocab-runtime";
@@ -423,13 +424,15 @@ async function deliver(
     kv = new MemoryKvStore(),
     httpSignature = true,
     actor,
+    documentLoader,
   }: {
     kv?: MemoryKvStore;
     httpSignature?: boolean;
     actor?: Record<string, unknown>;
+    documentLoader?: DocumentLoader;
   } = {},
 ): Promise<{ status: number; dispatched: number }> {
-  const documentLoader = createLoader({
+  documentLoader ??= createLoader({
     [compatibleActorId(gateway)]: actor ?? await actorDocument(gateways),
   });
   const unsigned = new Request("https://local.example/inbox", {
@@ -514,6 +517,28 @@ test("handleInbox() requires proofs of portable actors despite gateway signature
       dispatched: 1,
     },
   );
+});
+
+test("handleInbox() fetches an unreachable gateway key once", async () => {
+  // Every delivery is signed with the same key ID, whose gateway is down:
+  const fetched: string[] = [];
+  const documentLoader: DocumentLoader = (url) => {
+    if (url.replace(/#.*$/, "") !== compatibleActorId(gateway)) {
+      return mockDocumentLoader(url);
+    }
+    fetched.push(url);
+    return Promise.reject(
+      new FetchError(url, "HTTP 503", new Response(null, { status: 503 })),
+    );
+  };
+  const kv = new MemoryKvStore();
+  for (let i = 0; i < 3; i++) {
+    const { status } = await deliver(await createJson(`unreachable-${i}`), [
+      gateway,
+    ], { kv, documentLoader });
+    assertEquals(status, 401);
+  }
+  assertEquals(fetched.length, 1);
 });
 
 test("handleInbox() does not need gateway signatures for portable actors", async () => {

@@ -1191,9 +1191,18 @@ names a portable actor as its owner or controller is never that actor's key.
 
 > [!NOTE]
 > Fedify does not resolve gateway keys whose IDs are `ap:` or `ap+ef61:`
-> URIs, as there is no gateway to dereference them through.  Also, Fedify
-> does not cache gateway keys in the key cache, as their validity depends
-> on the actor's signed document rather than their origin.
+> URIs, as there is no gateway to dereference them through.
+
+Whether a key at a compatible identifier is valid depends on what it is used
+for, so Fedify caches such keys apart for each purpose: a gateway key cached
+for verifying HTTP Signatures is never used for Object Integrity Proofs or
+Linked Data Signatures.  Since the key's validity depends on the actor's
+signed document rather than its origin, and the actor can drop the gateway
+from its document at any time, Fedify looks up a cached gateway key again
+after an hour at most, or once the proof on the actor's document expires,
+whichever comes first.  A failure to fetch a key at a compatible identifier,
+by contrast, fails every purpose alike, so it is cached like that of any
+other key.
 
 [FEP-521a]: https://w3id.org/fep/521a
 [compatible identifier]: https://w3id.org/fep/ef61#compatible-ids

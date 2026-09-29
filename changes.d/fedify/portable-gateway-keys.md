@@ -1,6 +1,8 @@
 ---
 links:
+  '#1095': https://github.com/fedify-dev/fedify/issues/1095
   '#1099': https://github.com/fedify-dev/fedify/pull/1099
+  '#1119': https://github.com/fedify-dev/fedify/pull/1119
   '#288': https://github.com/fedify-dev/fedify/issues/288
   '#840': https://github.com/fedify-dev/fedify/issues/840
 ---
@@ -44,9 +46,22 @@ links:
     as an explicit sender key.  [[#288], [#840], [#1099]]
 
  -  Changed key lookups so that keys whose IDs are FEP-ef61 compatible
-    identifiers are no longer read from or written to the `KeyCache`, as
-    whether such a key is valid depends on what it is used for.  `fetchKey()`
-    and `fetchKeyDetailed()` do not resolve gateway keys of portable actors.
-    [[#288], [#840], [#1099]]
+    identifiers are cached apart for each purpose, as whether such a key is
+    valid depends on what it is used for: a gateway key cached for an HTTP
+    Signature is never used for an Object Integrity Proof or a Linked Data
+    Signature, and a key rejected for one of them is not rejected for
+    the others.  A failure to fetch such a key, e.g., a network error or
+    `404 Not Found`, fails every purpose alike and is cached like that of any
+    other key.  A gateway key is cached for an hour at most, and never
+    beyond the expiration of the proof on the actor's document, since
+    the actor can drop the gateway from its document at any time.
+    `fetchKey()` and `fetchKeyDetailed()` do not resolve gateway keys of
+    portable actors.
+    [[#288], [#840], [#1095], [#1099], [#1119]]
+
+     -  Only the key cache that Fedify's inbox uses caches keys at compatible
+        identifiers apart for each purpose.  A custom `KeyCache` passed to
+        `verifyRequest()`, `fetchKey()`, and the like caches only the
+        failures to fetch them.
 
 [FEP-ef61]: https://w3id.org/fep/ef61

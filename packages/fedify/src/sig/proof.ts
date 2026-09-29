@@ -41,6 +41,7 @@ import {
   type SignatureVerificationResult,
 } from "../federation/metrics.ts";
 import {
+  bypassKeyCacheReads,
   fetchKey,
   type FetchKeyResult,
   type KeyCache,
@@ -726,6 +727,12 @@ interface ProofMessageDigestCache {
   values?: Map<string, Promise<ProofMessageDigests>>;
   proofContextLoader?: DocumentLoader;
   proofPropertyMode?: "jsonLd" | "literal";
+  /**
+   * The earliest expiration among the proof configurations accepted while
+   * verifying one document, so that whatever the document vouches for is
+   * not trusted for longer than its proofs are.
+   */
+  expires?: Temporal.Instant;
 }
 
 function expandContextPropertyIri(
@@ -1268,28 +1275,37 @@ function equalStringSets(left: Set<string>, right: Set<string>): boolean {
     [...left].every((value) => right.has(value));
 }
 
+/**
+ * What {@link hasValidProofOptions} learned about a proof configuration it
+ * accepted.
+ */
+interface ValidProofOptions {
+  /** When the proof expires, if its configuration says so. */
+  readonly expires?: Temporal.Instant;
+}
+
 async function hasValidProofOptions(
   proofConfig: Record<string, unknown>,
   options: VerifyProofOptions,
   documentLoader: DocumentLoader,
-): Promise<boolean> {
+): Promise<ValidProofOptions | null> {
   const expires = await getProofOption(
     proofConfig,
     SECURITY_EXPIRATION,
     ["expires", SECURITY_EXPIRATION],
     documentLoader,
   );
-  if (expires == null) return false;
+  if (expires == null) return null;
+  let expiration: Temporal.Instant | undefined;
   if (expires.present) {
-    if (typeof expires.value !== "string") return false;
-    let expiration: Temporal.Instant;
+    if (typeof expires.value !== "string") return null;
     try {
       expiration = Temporal.Instant.from(expires.value);
     } catch {
-      return false;
+      return null;
     }
     if (Temporal.Instant.compare(Temporal.Now.instant(), expiration) >= 0) {
-      return false;
+      return null;
     }
   }
 
@@ -1299,16 +1315,16 @@ async function hasValidProofOptions(
     ["domain", SECURITY_DOMAIN],
     documentLoader,
   );
-  if (domain == null) return false;
+  if (domain == null) return null;
   const proofDomains = domain.present ? parseStringSet(domain.value) : null;
-  if (domain.present && proofDomains == null) return false;
+  if (domain.present && proofDomains == null) return null;
   if (options.domain != null) {
     const expectedDomains = parseStringSet(options.domain);
     if (
       expectedDomains == null || proofDomains == null ||
       !equalStringSets(proofDomains, expectedDomains)
     ) {
-      return false;
+      return null;
     }
   }
 
@@ -1324,7 +1340,7 @@ async function hasValidProofOptions(
     options.challenge != null &&
       (!challenge.present || challenge.value !== options.challenge)
   ) {
-    return false;
+    return null;
   }
 
   const nonce = await getProofOption(
@@ -1337,7 +1353,7 @@ async function hasValidProofOptions(
     nonce == null ||
     nonce.present && typeof nonce.value !== "string"
   ) {
-    return false;
+    return null;
   }
 
   const previousProof = await getProofOption(
@@ -1353,9 +1369,9 @@ async function hasValidProofOptions(
       (!Array.isArray(previousProof.value) ||
         previousProof.value.some((item) => typeof item !== "string"))
   ) {
-    return false;
+    return null;
   }
-  return true;
+  return { expires: expiration };
 }
 
 async function verifyProofInternal(
@@ -1384,15 +1400,20 @@ async function verifyProofInternal(
     proofContextLoader,
     rawProofCandidate,
   );
+  if (proofConfiguration == null) return null;
+  const validProofOptions = await hasValidProofOptions(
+    proofConfiguration.value,
+    options,
+    proofContextLoader,
+  );
+  if (validProofOptions == null) return null;
+  const { expires } = validProofOptions;
   if (
-    proofConfiguration == null ||
-    !await hasValidProofOptions(
-      proofConfiguration.value,
-      options,
-      proofContextLoader,
-    )
+    expires != null &&
+    (messageDigestCache.expires == null ||
+      Temporal.Instant.compare(expires, messageDigestCache.expires) < 0)
   ) {
-    return null;
+    messageDigestCache.expires = expires;
   }
   // Start the key fetch eagerly so it overlaps with the JCS
   // canonicalization and SHA-256 digest work below.  `measureSignatureKeyFetch`
@@ -1453,14 +1474,7 @@ async function verifyProofInternal(
         proof,
         {
           ...options,
-          keyCache: {
-            // Returning `undefined` signals "nothing cached" and forces
-            // `fetchKey()` to refetch from the network; returning `null`
-            // would instead be interpreted as a cached-unavailable result
-            // and short-circuit the retry.
-            get: () => Promise.resolve(undefined),
-            set: async (keyId, key) => await options.keyCache?.set(keyId, key),
-          },
+          keyCache: bypassKeyCacheReads(options.keyCache),
         },
         messageDigestCache,
         rawProofCandidate,
@@ -1527,10 +1541,7 @@ async function verifyProofInternal(
       proof,
       {
         ...options,
-        keyCache: {
-          get: () => Promise.resolve(undefined),
-          set: async (keyId, key) => await options.keyCache?.set(keyId, key),
-        },
+        keyCache: bypassKeyCacheReads(options.keyCache),
       },
       messageDigestCache,
       rawProofCandidate,
@@ -2003,6 +2014,11 @@ export interface PortableObjectProofVerification {
   readonly root?: Record<string, unknown>;
   /** The FEP-2277 core type of {@link root}. */
   readonly objectType?: Fep2277CoreType;
+  /**
+   * The earliest expiration among the verified proofs, if any of them has
+   * one.  Present only when {@link result} is verified.
+   */
+  readonly expires?: Temporal.Instant;
 }
 
 /**
@@ -2026,19 +2042,28 @@ export async function verifyPortableObjectProofWithRoot(
         : { objectType: prepared.objectType }),
     };
   }
-  const { root, objectType } = prepared;
+  const { root, objectType, proofContextLoader } = prepared;
+  const messageDigestCache: ProofMessageDigestCache = { proofContextLoader };
   const result = await verifyPreparedPortableObjectProof(
     jsonLd,
     prepared,
     options,
+    messageDigestCache,
   );
-  return { result, root, objectType };
+  const { expires } = messageDigestCache;
+  return {
+    result,
+    root,
+    objectType,
+    ...(result.verified && expires != null ? { expires } : {}),
+  };
 }
 
 async function verifyPreparedPortableObjectProof(
   jsonLd: unknown,
   prepared: PreparedPortableObjectProof,
   options: VerifyPortableObjectProofOptions,
+  messageDigestCache: ProofMessageDigestCache,
 ): Promise<VerifyPortableObjectProofResult> {
   const { proofs, rawProofValues, proofContextLoader } = prepared;
 
@@ -2053,7 +2078,6 @@ async function verifyPreparedPortableObjectProof(
     candidates: rawProofCandidates,
     used: new Set(),
   };
-  const messageDigestCache: ProofMessageDigestCache = { proofContextLoader };
   for (let proofIndex = 0; proofIndex < proofs.length; proofIndex++) {
     const rawProofCandidate = takeRawProofCandidate(
       rawProofCandidatePool,
