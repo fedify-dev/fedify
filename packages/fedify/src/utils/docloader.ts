@@ -70,7 +70,7 @@ export function getAuthenticatedDocumentLoader(
     url: string,
     options?: DocumentLoaderOptions,
   ): Promise<RemoteDocument> {
-    await validateUrl(url);
+    await validateUrl(url, options);
     const originalRequest = createActivityPubRequest(url, { userAgent });
     const response = await doubleKnock(
       originalRequest,
@@ -81,19 +81,25 @@ export function getAuthenticatedDocumentLoader(
         log: curry(logRequest)(logger),
         tracerProvider,
         signal: options?.signal,
-        validateRedirect: validateUrl,
+        validateRedirect: (url) => validateUrl(url, options),
       },
     );
-    return getRemoteDocument(url, response, load);
+    return getRemoteDocument(url, response, load, options);
   }
 
-  async function validateUrl(url: string): Promise<void> {
+  async function validateUrl(
+    url: string,
+    options?: DocumentLoaderOptions,
+  ): Promise<void> {
     if (!allowPrivateAddress) {
       try {
         await validatePublicUrl(url);
       } catch (error) {
         if (error instanceof UrlError) {
-          logger.error("Disallowed private URL: {url}", { url, error });
+          logger[options?.suppressError ? "warn" : "error"](
+            "Disallowed private URL: {url}",
+            { url, error },
+          );
         }
         throw error;
       }

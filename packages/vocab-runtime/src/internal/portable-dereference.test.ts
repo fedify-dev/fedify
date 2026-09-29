@@ -2,6 +2,7 @@ import { deepStrictEqual, ok, throws } from "node:assert/strict";
 import { test } from "node:test";
 import type { DocumentLoader } from "../docloader.ts";
 import { parseIri } from "../url.ts";
+import { createScopedContextLoader } from "./jsonld-cache.ts";
 import {
   createSnapshotContextLoader,
   getPortableGatewayCandidates,
@@ -103,4 +104,74 @@ test("createSnapshotContextLoader() does not nest released snapshots", async () 
   deepStrictEqual(calls.length, 2);
   inner.release();
   outer.release();
+});
+
+test("context loaders unwrap mixed released wrappers", async () => {
+  const calls: string[] = [];
+  const base: DocumentLoader = (url) => {
+    calls.push(url);
+    return Promise.resolve({
+      contextUrl: null,
+      documentUrl: url,
+      document: { "@context": {} },
+    });
+  };
+  for (const snapshotFirst of [false, true]) {
+    let loader = base;
+    for (let i = 0; i < 10000; i++) {
+      const wrapper = (i % 2 === 0) === snapshotFirst
+        ? createSnapshotContextLoader(loader, true)
+        : createScopedContextLoader(loader, true);
+      wrapper.release();
+      loader = wrapper.loader;
+    }
+    const unwrapped = createScopedContextLoader(loader, false).loader;
+    deepStrictEqual(unwrapped, base);
+    await unwrapped("https://example.com/context");
+  }
+  deepStrictEqual(calls, [
+    "https://example.com/context",
+    "https://example.com/context",
+  ]);
+});
+
+test("mixed context wrappers preserve active suppression and snapshots", async () => {
+  for (const activeSnapshot of [false, true]) {
+    const calls: Parameters<DocumentLoader>[1][] = [];
+    const base: DocumentLoader = (url, options) => {
+      calls.push(options);
+      return Promise.resolve({
+        contextUrl: null,
+        documentUrl: url,
+        document: { "@context": {} },
+      });
+    };
+    const active = activeSnapshot
+      ? createSnapshotContextLoader(base, true)
+      : createScopedContextLoader(base, true);
+    let loader = active.loader;
+    for (let i = 0; i < 4; i++) {
+      const wrapper = i % 2 === 0
+        ? createScopedContextLoader(loader, true)
+        : createSnapshotContextLoader(loader, true);
+      wrapper.release();
+      loader = wrapper.loader;
+    }
+    const unwrapped = createScopedContextLoader(loader, false).loader;
+    deepStrictEqual(unwrapped, active.loader);
+    const options = { signal: new AbortController().signal };
+    const first = await unwrapped("https://example.com/context", options);
+    ok(first.document != null && typeof first.document === "object");
+    Reflect.set(first.document, "changed", true);
+    const second = await unwrapped("https://example.com/context", options);
+    deepStrictEqual(second.document, { "@context": {} });
+    deepStrictEqual(calls.length, activeSnapshot ? 1 : 2);
+    for (const call of calls) {
+      deepStrictEqual(call, { ...options, suppressError: true });
+    }
+    active.release();
+    deepStrictEqual(createScopedContextLoader(loader, false).loader, base);
+    await unwrapped("https://example.com/context", options);
+    deepStrictEqual(calls.at(-1), options);
+  }
 });

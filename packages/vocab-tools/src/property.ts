@@ -162,7 +162,9 @@ async function* generateProperty(
         }
         let fetchResult: RemoteDocument;
         try {
-          fetchResult = await documentLoader(lookupUrl);
+          fetchResult = await documentLoader(lookupUrl, {
+            suppressError: options.suppressError,
+          });
         } catch (error) {
           span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -170,7 +172,7 @@ async function* generateProperty(
           });
           span.end();
           if (options.suppressError) {
-            getLogger(["fedify", "vocab"]).error(
+            getLogger(["fedify", "vocab"]).warn(
               "Failed to fetch {url}: {error}",
               { error, url: lookupUrl }
             );
@@ -182,8 +184,12 @@ async function* generateProperty(
         // In portable mode, the document may turn out to be a portable object,
         // which has to be verified with the same context documents:
         const snapshot = portableMode
-          ? createSnapshotContextLoader(contextLoader)
+          ? createSnapshotContextLoader(contextLoader, options.suppressError)
           : null;
+        const scopedContext = createScopedContextLoader(
+          snapshot?.loader ?? contextLoader,
+          snapshot == null && options.suppressError,
+        );
         try {
           let claim: PortableResponseClaim | null | undefined;
           try {
@@ -192,7 +198,7 @@ async function* generateProperty(
               document,
               {
                 documentLoader,
-                contextLoader: snapshot?.loader ?? contextLoader,
+                contextLoader: scopedContext.loader,
                 tracerProvider,
                 verifyPortableObject: this._verifyPortableObject,
                 baseUrl,
@@ -237,7 +243,7 @@ async function* generateProperty(
             }
           } catch (e) {
             if (options.suppressError) {
-              getLogger(["fedify", "vocab"]).error(
+              getLogger(["fedify", "vocab"]).warn(
                 "Failed to parse {url}: {error}",
                 { error: e, url: lookupUrl }
               );
@@ -263,6 +269,7 @@ async function* generateProperty(
             contextLoader: snapshot?.loader,
           });
         } finally {
+          scopedContext.release();
           snapshot?.release();
         }
       });

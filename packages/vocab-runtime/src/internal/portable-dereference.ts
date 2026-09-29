@@ -7,6 +7,11 @@ import {
 import preloadedContexts from "../contexts.ts";
 import type { DocumentLoader, RemoteDocument } from "../docloader.ts";
 import jsonld from "../jsonld.ts";
+import {
+  createScopedContextLoader,
+  registerDocumentLoaderWrapper,
+  unwrapReleasedDocumentLoader,
+} from "./jsonld-cache.ts";
 import type {
   PortableObjectReferrer,
   PortableObjectVerification,
@@ -570,17 +575,12 @@ function parseGatewayOrigin(gateway: string | URL): URL | null {
  */
 export function createSnapshotContextLoader(
   contextLoader: DocumentLoader,
+  suppressError?: boolean,
 ): { loader: DocumentLoader; release: () => void } {
   // Objects parsed during a dereference keep its loader, so later
   // dereferences from them would otherwise wrap released pass-throughs in
   // ever deeper chains:
-  for (
-    let wrapped = snapshotLoaders.get(contextLoader);
-    wrapped?.released;
-    wrapped = snapshotLoaders.get(contextLoader)
-  ) {
-    contextLoader = wrapped.base;
-  }
+  contextLoader = unwrapReleasedDocumentLoader(contextLoader);
   const cache = new Map<string, Promise<RemoteDocument>>();
   let released = false;
   const release = () => {
@@ -600,9 +600,10 @@ export function createSnapshotContextLoader(
     }
     let promise = cache.get(key);
     if (promise == null) {
-      const loading = contextLoader(url, options).then((document) =>
-        structuredClone(document)
-      );
+      const loading = contextLoader(
+        url,
+        suppressError ? { ...options, suppressError: true } : options,
+      ).then((document) => structuredClone(document));
       promise = loading;
       cache.set(key, loading);
       loading.catch(() => {
@@ -612,14 +613,9 @@ export function createSnapshotContextLoader(
     return structuredClone(await promise);
   };
   const state = { base: contextLoader, released: false };
-  snapshotLoaders.set(loader, state);
+  registerDocumentLoaderWrapper(loader, state);
   return { loader, release };
 }
-
-const snapshotLoaders = new WeakMap<
-  DocumentLoader,
-  { readonly base: DocumentLoader; released: boolean }
->();
 
 /**
  * Options for {@link dereferencePortableIri}.
@@ -729,7 +725,7 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
   const fail = (error: unknown): null => {
     span?.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
     if (options.suppressError) {
-      logger.error("Failed to dereference {url}: {error}", {
+      logger.warn("Failed to dereference {url}: {error}", {
         url: lookupUrl,
         error,
       });
@@ -778,8 +774,15 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
     // retrieve the portable IRI itself:
     requestUrls.push({ url: lookupUrl, gateway: null });
   }
-  const snapshot = createSnapshotContextLoader(options.contextLoader);
+  const snapshot = createSnapshotContextLoader(
+    options.contextLoader,
+    options.suppressError,
+  );
   const contextLoader = snapshot.loader;
+  const scopedDocument = createScopedContextLoader(
+    options.documentLoader,
+    options.suppressError,
+  );
   const attempts: Attempt[] = [];
   const { signal } = options;
   const gatewayHints = explicitGateways == null && inferredGateways.length > 0
@@ -793,7 +796,7 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
       try {
         remoteDocument = response ?? await options.documentLoader(
           requestUrl,
-          signal == null ? undefined : { signal },
+          { signal, suppressError: options.suppressError },
         );
       } catch (error) {
         signal?.throwIfAborted();
@@ -817,7 +820,7 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
         let result: PortableObjectVerification;
         try {
           result = await verify(document, {
-            documentLoader: options.documentLoader,
+            documentLoader: scopedDocument.loader,
             contextLoader,
             tracerProvider: options.tracerProvider,
             ...(documentUrl == null ? {} : { documentUrl }),
@@ -875,6 +878,7 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
       }
     }
   } finally {
+    scopedDocument.release();
     snapshot.release();
   }
   const rejected = attempts.filter((a) => a.type === "rejected");

@@ -2,6 +2,8 @@ import { mockDocumentLoader, test } from "@fedify/fixture";
 import {
   decodeMultibase,
   type DocumentLoader,
+  FetchError,
+  getDocumentLoader,
   LanguageString,
   parseDecimal,
   type RemoteDocument,
@@ -14,6 +16,7 @@ import {
 } from "@fedify/vocab-tools";
 import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { pascalCase } from "es-toolkit";
+import fetchMock from "fetch-mock";
 import {
   deepStrictEqual,
   notDeepStrictEqual,
@@ -1802,6 +1805,130 @@ test({
       type: "Note",
       content: "Hello world",
     });
+  },
+});
+test({
+  name: "Announce.getObject() logs suppressed failures as warnings",
+  permissions: { env: true, read: true },
+  async fn() {
+    const records: LogRecord[] = [];
+    const notFoundUrl = "https://example.com/suppressed-not-found";
+    const invalidObjectUrl = "https://example.com/invalid-object";
+
+    await reset();
+    fetchMock.spyGlobal();
+
+    try {
+      await configure({
+        sinks: {
+          buffer(record: LogRecord): void {
+            records.push(record);
+          },
+        },
+        filters: {},
+        loggers: [{ category: [], sinks: ["buffer"] }],
+      });
+
+      fetchMock.get(notFoundUrl, { status: 404 });
+
+      const suppressedFetch = new Announce({
+        object: new URL(notFoundUrl),
+      });
+      deepStrictEqual(
+        await suppressedFetch.getObject({ suppressError: true }),
+        null,
+      );
+      ok(
+        records.some((record) =>
+          record.level === "warning" &&
+          record.rawMessage ===
+            "Failed to fetch document: {status} {url} {headers}"
+        ),
+      );
+      ok(
+        records.some((record) =>
+          record.level === "warning" &&
+          record.rawMessage === "Failed to fetch {url}: {error}"
+        ),
+      );
+      deepStrictEqual(
+        records.some((record) =>
+          record.level === "error" &&
+          (
+            record.rawMessage ===
+              "Failed to fetch document: {status} {url} {headers}" ||
+            record.rawMessage === "Failed to fetch {url}: {error}"
+          )
+        ),
+        false,
+      );
+
+      records.length = 0;
+
+      const unsuppressedFetch = new Announce({
+        object: new URL(notFoundUrl),
+      });
+      await rejects(
+        () => unsuppressedFetch.getObject(),
+        FetchError,
+      );
+      ok(
+        records.some((record) =>
+          record.level === "error" &&
+          record.rawMessage ===
+            "Failed to fetch document: {status} {url} {headers}"
+        ),
+      );
+
+      records.length = 0;
+
+      // deno-lint-ignore require-await
+      const invalidDocumentLoader: DocumentLoader = async (url) => ({
+        contextUrl: null,
+        documentUrl: url,
+        document: null,
+      });
+
+      const suppressedParsing = new Announce({
+        object: new URL(invalidObjectUrl),
+      });
+      deepStrictEqual(
+        await suppressedParsing.getObject({
+          documentLoader: invalidDocumentLoader,
+          suppressError: true,
+        }),
+        null,
+      );
+      ok(
+        records.some((record) =>
+          record.level === "warning" &&
+          record.rawMessage === "Failed to parse {url}: {error}"
+        ),
+      );
+      deepStrictEqual(
+        records.some((record) =>
+          record.level === "error" &&
+          record.rawMessage === "Failed to parse {url}: {error}"
+        ),
+        false,
+      );
+
+      records.length = 0;
+
+      const unsuppressedParsing = new Announce({
+        object: new URL(invalidObjectUrl),
+      });
+      await rejects(
+        () =>
+          unsuppressedParsing.getObject({
+            documentLoader: invalidDocumentLoader,
+          }),
+        TypeError,
+      );
+    } finally {
+      fetchMock.hardReset();
+      await reset();
+    }
   },
 });
 
@@ -5559,3 +5686,370 @@ for (const typeUri in types) {
     deepStrictEqual(cls.typeId, new URL(type.uri));
   });
 }
+
+test("Announce.getObject() suppresses redirect, context, and private URL logs", async () => {
+  const records: LogRecord[] = [];
+  const objectUrl = "https://example.com/suppression-object";
+  const contextUrl = "https://example.com/suppression-context";
+  const scenarios = [
+    "redirect limit",
+    "redirect loop",
+    "context",
+    "private",
+    "private redirect",
+  ];
+  await reset();
+  await configure({
+    sinks: {
+      capture: (record) => {
+        records.push(record);
+      },
+    },
+    loggers: [{
+      category: ["fedify"],
+      lowestLevel: "debug",
+      sinks: ["capture"],
+    }],
+  });
+  try {
+    for (const scenario of scenarios) {
+      fetchMock.spyGlobal();
+      let fetches = 0;
+      fetchMock.get("begin:https://example.com/", (call) => {
+        fetches++;
+        if (scenario === "redirect limit") {
+          return Response.redirect(
+            `https://example.com/redirect-${fetches}`,
+            302,
+          );
+        }
+        if (scenario === "redirect loop") {
+          return Response.redirect(objectUrl, 302);
+        }
+        if (scenario === "private redirect") {
+          return Response.redirect("http://127.0.0.1/private", 302);
+        }
+        if (call.url === contextUrl) return new Response(null, { status: 404 });
+        return new Response(
+          JSON.stringify({
+            "@context": ["https://www.w3.org/ns/activitystreams", contextUrl],
+            id: objectUrl,
+            type: "Note",
+          }),
+          { headers: { "Content-Type": "application/activity+json" } },
+        );
+      });
+      try {
+        for (const suppressError of [true, false, undefined]) {
+          records.length = 0;
+          fetches = 0;
+          const announce = new Announce({
+            object: new URL(
+              scenario === "private" ? "http://127.0.0.1/private" : objectUrl,
+            ),
+          });
+          if (suppressError) {
+            deepStrictEqual(await announce.getObject({ suppressError }), null);
+            deepStrictEqual(
+              records.filter((r) => r.level === "error"),
+              [],
+              scenario,
+            );
+            ok(records.some((r) => r.level === "warning"), scenario);
+          } else {
+            await rejects(() => announce.getObject({ suppressError }));
+            ok(records.some((r) => r.level === "error"), scenario);
+          }
+          if (scenario === "private") deepStrictEqual(fetches, 0);
+          if (scenario === "private redirect") deepStrictEqual(fetches, 1);
+        }
+      } finally {
+        fetchMock.hardReset();
+      }
+    }
+  } finally {
+    await reset();
+  }
+});
+
+test("suppressed context loading does not persist on fetched objects", async () => {
+  const states: (boolean | undefined)[] = [];
+  const contextLoader: DocumentLoader = (url, options) => {
+    if (url === "https://www.w3.org/ns/activitystreams") {
+      return mockDocumentLoader(url);
+    }
+    states.push(options?.suppressError);
+    return Promise.resolve({
+      contextUrl: null,
+      documentUrl: url,
+      document: {
+        "@context": {
+          as: "https://www.w3.org/ns/activitystreams#",
+          name: "as:name",
+        },
+      },
+    });
+  };
+  const documentLoader: DocumentLoader = (url) =>
+    Promise.resolve({
+      contextUrl: null,
+      documentUrl: url,
+      document: {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://example.com/scoped-context",
+        ],
+        id: url,
+        type: url.endsWith("actor") ? "Person" : "Note",
+        attributedTo: "https://example.com/scoped-actor",
+      },
+    });
+  const note = await new Announce({
+    object: new URL("https://example.com/scoped-note"),
+  }).getObject({
+    documentLoader,
+    contextLoader,
+    suppressError: true,
+  });
+  assertInstanceOf(note, Note);
+  ok(states.includes(true));
+  states.length = 0;
+  const actor = await note.getAttribution();
+  assertInstanceOf(actor, Person);
+  ok(states.length > 0);
+  deepStrictEqual(states.includes(true), false);
+});
+
+test("attribution chains alternate ordinary and portable suppression", async () => {
+  const states: (boolean | undefined)[] = [];
+  const depths: number[][] = [];
+  let hop = 0;
+  const contextUrl = "https://example.com/attribution-context";
+  const contextLoader: DocumentLoader = (url, options) => {
+    if (url !== contextUrl) return mockDocumentLoader(url, options);
+    states.push(options?.suppressError);
+    const stack = new Error().stack;
+    ok(stack);
+    depths[hop]?.push(stack.split("\n").length);
+    return Promise.resolve({
+      contextUrl: null,
+      documentUrl: url,
+      document: {
+        "@context": { name: "https://www.w3.org/ns/activitystreams#name" },
+      },
+    });
+  };
+  const documentLoader: DocumentLoader = (url) => {
+    const hop = Number(new URL(url).pathname.split("/").at(-1));
+    return Promise.resolve({
+      contextUrl: null,
+      documentUrl: url,
+      document: {
+        "@context": ["https://www.w3.org/ns/activitystreams", contextUrl],
+        id: url,
+        type: "Person",
+        name: `Actor ${hop}`,
+        attributedTo: `https://example.com/actors/${hop + 1}`,
+      },
+    });
+  };
+  let person = new Person({
+    id: new URL("https://example.com/actors/root"),
+    attribution: new URL("https://example.com/actors/0"),
+  }, { documentLoader, contextLoader });
+  const stackTraceLimit = globalThis.Object.getOwnPropertyDescriptor(
+    Error,
+    "stackTraceLimit",
+  );
+  try {
+    ok(Reflect.set(Error, "stackTraceLimit", Infinity));
+    for (; hop < 100; hop++) {
+      depths[hop] = [];
+      const next = await person.getAttribution({
+        suppressError: true,
+        ...(hop % 2 === 0 ? {} : {
+          verifyPortableObject: () =>
+            Promise.resolve({ verified: true as const }),
+        }),
+      });
+      assertInstanceOf(next, Person);
+      deepStrictEqual(next.id, new URL(`https://example.com/actors/${hop}`));
+      person = next;
+    }
+    // Compare the same mode after warmup; a retained wrapper per hop would
+    // increase the synchronous call depth even before the stack overflows.
+    ok(depths.every((values) => values.length > 0));
+    deepStrictEqual(depths[98], depths[2]);
+    deepStrictEqual(depths[99], depths[3]);
+    ok(states.length >= 100);
+    ok(states.every((state) => state === true));
+    states.length = 0;
+    assertInstanceOf(await person.getAttribution(), Person);
+    ok(states.length > 0);
+    ok(states.every((state) => state !== true));
+  } finally {
+    if (stackTraceLimit == null) {
+      Reflect.deleteProperty(Error, "stackTraceLimit");
+    } else {
+      globalThis.Object.defineProperty(
+        Error,
+        "stackTraceLimit",
+        stackTraceLimit,
+      );
+    }
+  }
+});
+
+test("portable accessors suppress document and context failure logs", async () => {
+  const records: LogRecord[] = [];
+  const id = new URL("ap+ef61://did%3Akey%3Az6Mkabc/objects/1");
+  const contextUrl = "https://example.com/portable-suppression-context";
+  await reset();
+  await configure({
+    sinks: {
+      capture: (record) => {
+        records.push(record);
+      },
+    },
+    loggers: [{
+      category: ["fedify"],
+      lowestLevel: "debug",
+      sinks: ["capture"],
+    }],
+  });
+  try {
+    for (const failContext of [false, true]) {
+      fetchMock.spyGlobal();
+      fetchMock.get("begin:https://example.com/", (call) => {
+        if (!failContext || call.url === contextUrl) {
+          return new Response(null, { status: 404 });
+        }
+        return new Response(
+          JSON.stringify({
+            "@context": ["https://www.w3.org/ns/activitystreams", contextUrl],
+            id: "ap://did:key:z6Mkabc/objects/1",
+            type: "Note",
+          }),
+          { headers: { "Content-Type": "application/activity+json" } },
+        );
+      });
+      try {
+        for (const suppressError of [true, false, undefined]) {
+          records.length = 0;
+          const announce = new Announce({ object: id });
+          const options = {
+            suppressError,
+            gateways: ["https://example.com/"],
+            verifyPortableObject: () =>
+              Promise.resolve({ verified: true as const }),
+          };
+          if (suppressError) {
+            deepStrictEqual(await announce.getObject(options), null);
+            deepStrictEqual(records.filter((r) => r.level === "error"), []);
+            ok(records.some((r) => r.level === "warning"));
+          } else {
+            await rejects(() => announce.getObject(options));
+            ok(records.some((r) => r.level === "error"));
+          }
+        }
+      } finally {
+        fetchMock.hardReset();
+      }
+    }
+  } finally {
+    await reset();
+  }
+});
+
+test("portable verifiers suppress document logs only during dereferencing", async () => {
+  const records: LogRecord[] = [];
+  const id = new URL("ap+ef61://did%3Akey%3Az6Mkabc/objects/1");
+  const verificationUrl = "https://example.com/verification-document";
+  const missingUrl = "https://example.com/missing-verification-document";
+  const signal = new AbortController().signal;
+  await reset();
+  await configure({
+    sinks: { capture: (record) => records.push(record) },
+    loggers: [{
+      category: ["fedify"],
+      lowestLevel: "debug",
+      sinks: ["capture"],
+    }],
+  });
+  try {
+    for (const failVerification of [false, true]) {
+      fetchMock.spyGlobal();
+      fetchMock.get("begin:https://example.com/.well-known/", {
+        headers: { "Content-Type": "application/activity+json" },
+        body: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          id: "ap://did:key:z6Mkabc/objects/1",
+          type: "Note",
+        },
+      });
+      fetchMock.get(verificationUrl, {
+        status: failVerification ? 404 : 200,
+        headers: { "Content-Type": "application/ld+json" },
+        body: {},
+      });
+      fetchMock.get(missingUrl, { status: 404 });
+      try {
+        for (const suppressError of [true, false, undefined]) {
+          records.length = 0;
+          const baseLoader = getDocumentLoader();
+          const calls: Parameters<DocumentLoader>[1][] = [];
+          const documentLoader: DocumentLoader = (url, options) => {
+            calls.push(options);
+            return baseLoader(url, options);
+          };
+          let retainedLoader: DocumentLoader | undefined;
+          const loaderOptions = { signal };
+          const announce = new Announce({ object: id });
+          const object = await announce.getObject({
+            suppressError,
+            documentLoader,
+            gateways: ["https://example.com/"],
+            verifyPortableObject: async (_document, options) => {
+              retainedLoader = options.documentLoader;
+              ok(options.documentLoader);
+              await options.documentLoader(verificationUrl, loaderOptions);
+              return { verified: true };
+            },
+          });
+          if (failVerification) {
+            deepStrictEqual(object, null);
+            deepStrictEqual(
+              records.some((record) => record.level === "error"),
+              !suppressError,
+            );
+            ok(records.some((record) => record.level === "warning"));
+          } else {
+            assertInstanceOf(object, Note);
+          }
+          deepStrictEqual(calls.at(-1)?.signal, signal);
+          deepStrictEqual(
+            calls.at(-1)?.suppressError,
+            suppressError ? true : undefined,
+          );
+          deepStrictEqual(loaderOptions, { signal });
+
+          // A verifier may retain the loader after success or rejection.
+          // Suppression must end when the accessor returns in either case.
+          records.length = 0;
+          const releasedLoader = retainedLoader;
+          ok(releasedLoader);
+          await rejects(
+            () => releasedLoader(missingUrl, loaderOptions),
+            FetchError,
+          );
+          deepStrictEqual(calls.at(-1), loaderOptions);
+          ok(records.some((record) => record.level === "error"));
+        }
+      } finally {
+        fetchMock.hardReset();
+      }
+    }
+  } finally {
+    await reset();
+  }
+});

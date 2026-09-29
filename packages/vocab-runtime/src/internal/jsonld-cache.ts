@@ -4,6 +4,66 @@ import { formatIri, haveSameFe34Origin, haveSameIriOrigin } from "../url.ts";
 
 const noJsonLdContext = Symbol("noJsonLdContext");
 
+const documentLoaderWrappers = new WeakMap<
+  DocumentLoader,
+  { readonly base: DocumentLoader; released: boolean }
+>();
+
+/**
+ * Registers a loader wrapper with the shared released-wrapper registry.
+ * Both suppression and snapshot wrappers must use this registry so mixed
+ * chains can be unwrapped.  The caller updates the state on release.
+ * @internal Not a public API.
+ */
+export function registerDocumentLoaderWrapper(
+  loader: DocumentLoader,
+  state: { readonly base: DocumentLoader; released: boolean },
+): void {
+  documentLoaderWrappers.set(loader, state);
+}
+
+/**
+ * Removes released loader wrappers, stopping at the first active wrapper.
+ * Active wrappers retain their operation's suppression or snapshot cache.
+ * @internal Not a public API.
+ */
+export function unwrapReleasedDocumentLoader(
+  base: DocumentLoader,
+): DocumentLoader {
+  for (
+    let state = documentLoaderWrappers.get(base);
+    state?.released;
+    state = documentLoaderWrappers.get(base)
+  ) {
+    base = state.base;
+  }
+  return base;
+}
+
+/**
+ * Lowers context loading failure logs for one accessor operation.  Parsed
+ * objects retain the loader, so release it before returning to the caller.
+ * Released wrappers are unwrapped to avoid accumulating loader chains.
+ * @internal Used by generated vocabulary accessors; not a public API.
+ */
+export function createScopedContextLoader(
+  base: DocumentLoader,
+  suppressError?: boolean,
+): { loader: DocumentLoader; release: () => void } {
+  base = unwrapReleasedDocumentLoader(base);
+  if (!suppressError) return { loader: base, release: () => {} };
+  const state = { base, released: false };
+  const loader: DocumentLoader = (url, options) =>
+    base(url, state.released ? options : { ...options, suppressError: true });
+  registerDocumentLoaderWrapper(loader, state);
+  return {
+    loader,
+    release: () => {
+      state.released = true;
+    },
+  };
+}
+
 /**
  * Options for deciding whether two IRIs should be treated as same-origin.
  *

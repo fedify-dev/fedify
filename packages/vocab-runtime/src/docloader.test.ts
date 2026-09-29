@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { deepStrictEqual, ok, rejects } from "node:assert";
 import { test } from "node:test";
 import { createServer } from "node:http";
@@ -8,6 +9,78 @@ import cidV1Context from "./contexts/cid-v1.json" with { type: "json" };
 import { getDocumentLoader, getRemoteDocument } from "./docloader.ts";
 import { FetchError } from "./request.ts";
 import { UrlError } from "./url.ts";
+
+test("getRemoteDocument() forwards options to alternate documents", async () => {
+  const records: LogRecord[] = [];
+  await reset();
+  await configure({
+    sinks: { capture: (record) => records.push(record) },
+    loggers: [{
+      category: ["fedify"],
+      lowestLevel: "debug",
+      sinks: ["capture"],
+    }],
+  });
+  try {
+    for (const linkHeader of [true, false]) {
+      for (const suppressError of [true, false, undefined]) {
+        records.length = 0;
+        const url = "https://example.com/alternate-source";
+        const alternateUrl = "https://example.com/missing-alternate";
+        const options = {
+          suppressError,
+          signal: new AbortController().signal,
+        };
+        const response = new Response(
+          `<link rel="alternate" type="application/activity+json" href="${alternateUrl}">`,
+          {
+            headers: {
+              "Content-Type": "text/html",
+              ...(linkHeader
+                ? {
+                  Link:
+                    `<${alternateUrl}>; rel="alternate"; type="application/activity+json"`,
+                }
+                : {}),
+            },
+          },
+        );
+        let alternateRequests = 0;
+        await rejects(
+          () =>
+            getRemoteDocument(
+              url,
+              response,
+              async (requestedUrl, forwarded) => {
+                alternateRequests++;
+                deepStrictEqual(requestedUrl, alternateUrl);
+                deepStrictEqual(forwarded, options);
+                return await getRemoteDocument(
+                  requestedUrl,
+                  new Response(null, { status: 404 }),
+                  () => {
+                    throw new Error("Unexpected additional alternate");
+                  },
+                  forwarded,
+                );
+              },
+              options,
+            ),
+          FetchError,
+        );
+        deepStrictEqual(alternateRequests, 1);
+        const failures = records.filter((record) =>
+          record.rawMessage ===
+            "Failed to fetch document: {status} {url} {headers}"
+        );
+        deepStrictEqual(failures.length, 1);
+        deepStrictEqual(failures[0].level, suppressError ? "warning" : "error");
+      }
+    }
+  } finally {
+    await reset();
+  }
+});
 
 test("new FetchError()", () => {
   const e = new FetchError("https://example.com/", "An error message.");

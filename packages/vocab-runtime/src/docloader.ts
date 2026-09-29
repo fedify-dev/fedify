@@ -47,6 +47,13 @@ export interface DocumentLoaderOptions {
    * @since 1.8.0
    */
   signal?: AbortSignal;
+
+  /**
+   * Whether to lower error-level logs for recoverable document loading
+   * failures to warning-level logs.  The loader still throws the error.
+   * @default `false`
+   */
+  suppressError?: boolean;
 }
 
 /**
@@ -127,6 +134,7 @@ function createResponseMetadata(response: Response): Response {
  * @param url The URL of the document to load.
  * @param response The response to get the document from.
  * @param fetch The function to fetch the document.
+ * @param options The options for loading the document.
  * @returns The loaded remote document.
  * @throws {FetchError} If the response is not OK.
  * @internal
@@ -138,18 +146,31 @@ export async function getRemoteDocument(
     url: string,
     options?: DocumentLoaderOptions,
   ) => Promise<RemoteDocument>,
+  options?: DocumentLoaderOptions,
 ): Promise<RemoteDocument> {
   const documentUrl = response.url === "" ? url : response.url;
   const docUrl = new URL(documentUrl);
   if (!response.ok) {
-    logger.error(
-      "Failed to fetch document: {status} {url} {headers}",
-      {
-        status: response.status,
-        url: documentUrl,
-        headers: Object.fromEntries(response.headers.entries()),
-      },
-    );
+    if (options?.suppressError) {
+      logger.warn(
+        "Failed to fetch document: {status} {url} {headers}",
+        {
+          status: response.status,
+          url: documentUrl,
+          headers: Object.fromEntries(response.headers.entries()),
+        },
+      );
+    } else {
+      logger.error(
+        "Failed to fetch document: {status} {url} {headers}",
+        {
+          status: response.status,
+          url: documentUrl,
+          headers: Object.fromEntries(response.headers.entries()),
+        },
+      );
+    }
+
     throw new FetchError(
       documentUrl,
       `HTTP ${response.status}: ${documentUrl}`,
@@ -198,7 +219,7 @@ export async function getRemoteDocument(
             "Found alternate document: {alternateUrl} from {url}",
             { alternateUrl: altUri.href, url: documentUrl },
           );
-          return await fetch(altUri.href);
+          return await fetch(altUri.href, options);
         }
       }
     }
@@ -260,7 +281,7 @@ export async function getRemoteDocument(
           "Found alternate document: {alternateUrl} from {url}",
           { alternateUrl: attribs.href, url: documentUrl },
         );
-        return await fetch(new URL(attribs.href, docUrl).href);
+        return await fetch(new URL(attribs.href, docUrl).href, options);
       }
     }
     try {
@@ -350,10 +371,13 @@ export function getDocumentLoader(
         await validatePublicUrl(currentUrl);
       } catch (error) {
         if (error instanceof UrlError) {
-          logger.error("Disallowed private URL: {url}", {
-            url: currentUrl,
-            error,
-          });
+          logger[options?.suppressError ? "warn" : "error"](
+            "Disallowed private URL: {url}",
+            {
+              url: currentUrl,
+              error,
+            },
+          );
         }
         throw error;
       }
@@ -387,7 +411,7 @@ export function getDocumentLoader(
             response.headers.has("Location")
           ) {
             if (redirected >= maximumRedirection) {
-              logger.error(
+              logger[options?.suppressError ? "warn" : "error"](
                 "Too many redirections ({redirections}) while fetching document.",
                 { redirections: redirected + 1, url: currentUrl },
               );
@@ -402,7 +426,7 @@ export function getDocumentLoader(
             ).href;
             span.setAttribute("http.redirect.url", redirectUrl);
             if (visited.has(redirectUrl)) {
-              logger.error(
+              logger[options?.suppressError ? "warn" : "error"](
                 "Detected a redirect loop while fetching document: {url} -> " +
                   "{redirectUrl}",
                 { url: currentUrl, redirectUrl },
@@ -415,7 +439,12 @@ export function getDocumentLoader(
             return await load(redirectUrl, options, redirected + 1, visited);
           }
 
-          const result = await getRemoteDocument(currentUrl, response, load);
+          const result = await getRemoteDocument(
+            currentUrl,
+            response,
+            load,
+            options,
+          );
           span.setAttribute("docloader.document_url", result.documentUrl);
           if (result.contextUrl != null) {
             span.setAttribute("docloader.context_url", result.contextUrl);

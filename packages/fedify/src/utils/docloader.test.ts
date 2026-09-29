@@ -3,6 +3,7 @@ import { FetchError, UrlError } from "@fedify/vocab-runtime";
 import { assertEquals, assertRejects } from "@std/assert";
 import fetchMock from "fetch-mock";
 import { verifyRequest } from "../sig/http.ts";
+import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { rsaPrivateKey2 } from "../testing/keys.ts";
 import { getAuthenticatedDocumentLoader } from "./docloader.ts";
 
@@ -248,5 +249,97 @@ test("getAuthenticatedDocumentLoader() bounds JSON after redirects", async () =>
     assertEquals((await loader(url)).document, { name: "hello" });
   } finally {
     fetchMock.hardReset();
+  }
+});
+
+test("authenticated document loader suppresses HTTP failure logs", async () => {
+  const records: LogRecord[] = [];
+  const url = "https://example.com/missing-authenticated-document";
+  const loader = getAuthenticatedDocumentLoader({
+    keyId: new URL("https://example.com/key2"),
+    privateKey: rsaPrivateKey2,
+  }, { allowPrivateAddress: true });
+  await reset();
+  await configure({
+    sinks: { capture: (record) => records.push(record) },
+    loggers: [{
+      category: ["fedify"],
+      lowestLevel: "debug",
+      sinks: ["capture"],
+    }],
+  });
+  fetchMock.mockGlobal();
+  fetchMock.get(url, { status: 404 });
+  try {
+    for (const suppressError of [true, false, undefined]) {
+      records.length = 0;
+      const error = await assertRejects(
+        () => loader(url, { suppressError }),
+        FetchError,
+      );
+      assertEquals(error.response?.status, 404);
+      const failures = records.filter((record) =>
+        record.rawMessage ===
+          "Failed to fetch document: {status} {url} {headers}"
+      );
+      assertEquals(failures.length, 1);
+      assertEquals(failures[0].level, suppressError ? "warning" : "error");
+      if (suppressError) {
+        assertEquals(records.filter((record) => record.level === "error"), []);
+      }
+    }
+  } finally {
+    fetchMock.hardReset();
+    await reset();
+  }
+});
+
+test("authenticated document loader suppresses private URL logs", async () => {
+  const records: LogRecord[] = [];
+  const loader = getAuthenticatedDocumentLoader({
+    keyId: new URL("https://example.com/key2"),
+    privateKey: rsaPrivateKey2,
+  });
+  await reset();
+  await configure({
+    sinks: {
+      capture: (record) => {
+        records.push(record);
+      },
+    },
+    loggers: [{
+      category: ["fedify"],
+      lowestLevel: "debug",
+      sinks: ["capture"],
+    }],
+  });
+  fetchMock.spyGlobal();
+  let requests = 0;
+  fetchMock.get("https://example.com/private-redirect", () => {
+    requests++;
+    return Response.redirect("http://127.0.0.1/private", 302);
+  });
+  try {
+    for (
+      const url of [
+        "http://127.0.0.1/private",
+        "https://example.com/private-redirect",
+      ]
+    ) {
+      for (const suppressError of [true, false, undefined]) {
+        records.length = 0;
+        requests = 0;
+        await assertRejects(() => loader(url, { suppressError }), UrlError);
+        const failures = records.filter((r) =>
+          r.rawMessage === "Disallowed private URL: {url}"
+        );
+        assertEquals(failures.length, 1);
+        assertEquals(failures[0].level, suppressError ? "warning" : "error");
+        assertEquals(requests, url.startsWith("http://127") ? 0 : 1);
+      }
+    }
+  } finally {
+    fetchMock.hardReset();
+    await reset();
   }
 });
