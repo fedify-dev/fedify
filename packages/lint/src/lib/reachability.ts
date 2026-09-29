@@ -440,21 +440,26 @@ function collectHeldFunctions(node: unknown, out: FunctionLikeNode[]): void {
 function collectFunctionsByName(
   node: unknown,
   out: Map<string, FunctionLikeNode[]>,
+  memberDefaults: Map<string, FunctionLikeNode[]>,
 ): void {
   if (node == null || typeof node !== "object") return;
   if (Array.isArray(node)) {
-    for (const item of node) collectFunctionsByName(item, out);
+    for (const item of node) collectFunctionsByName(item, out, memberDefaults);
     return;
   }
   if (!isNode(node)) return;
   const n = node;
 
-  const bindTo = (names: string[], from: unknown): void => {
+  const bindTo = (
+    names: string[],
+    from: unknown,
+    bindings = out,
+  ): void => {
     const functions: FunctionLikeNode[] = [];
     collectHeldFunctions(from, functions);
     if (functions.length < 1) return;
     for (const name of names) {
-      out.set(name, [...(out.get(name) ?? []), ...functions]);
+      bindings.set(name, [...(bindings.get(name) ?? []), ...functions]);
     }
   };
 
@@ -473,28 +478,34 @@ function collectFunctionsByName(
       const names: string[] = [];
       collectBoundNames(decl.id, names);
       bindTo(names, decl.init);
-      collectFunctionsByName(decl.init, out);
+      collectFunctionsByName(decl.init, out, memberDefaults);
     }
     return;
   }
   if (n.type === "AssignmentPattern") {
-    const names: string[] = [];
-    collectBoundNames(n.left, names);
-    bindTo(names, n.right);
-    collectFunctionsByName(n.right, out);
+    if (n.left.type === "MemberExpression") {
+      const name = getAssignmentTargetName(n.left);
+      // A property write augments the object; it does not shadow its binding.
+      if (name != null) bindTo([name], n.right, memberDefaults);
+    } else {
+      const names: string[] = [];
+      collectBoundNames(n.left, names);
+      bindTo(names, n.right);
+    }
+    collectFunctionsByName(n.right, out, memberDefaults);
     return;
   }
   if (n.type === "AssignmentExpression") {
     const name = getAssignmentTargetName(n.left as Node);
     if (name != null) bindTo([name], n.right);
-    collectFunctionsByName(n.right, out);
+    collectFunctionsByName(n.right, out, memberDefaults);
     return;
   }
 
   const record = n as unknown as Record<string, unknown>;
   for (const key in record) {
     if (key === "parent") continue;
-    collectFunctionsByName(record[key], out);
+    collectFunctionsByName(record[key], out, memberDefaults);
   }
 }
 
@@ -572,12 +583,19 @@ export function walkUsedScopes(
     collectReachableStatements(scopeRoot, statements);
 
     const functionsHere = new Map<string, FunctionLikeNode[]>();
+    const memberDefaultsHere = new Map<string, FunctionLikeNode[]>();
     for (const statement of statements) {
-      collectFunctionsByName(statement, functionsHere);
+      collectFunctionsByName(statement, functionsHere, memberDefaultsHere);
     }
     const functionsByName = new Map(outerFunctionsByName);
     for (const [name, functions] of functionsHere) {
       functionsByName.set(name, functions);
+    }
+    for (const [name, functions] of memberDefaultsHere) {
+      functionsByName.set(name, [
+        ...(functionsByName.get(name) ?? []),
+        ...functions,
+      ]);
     }
     visit({ fn: scopeFn, statements, functionsByName });
 
@@ -612,8 +630,10 @@ export function walkUsedScopes(
     // not check whether the result is awaited: a delivery call that is
     // never awaited is left alone too. Leave this as is.
     const held = new Set<FunctionLikeNode>();
-    for (const functions of functionsHere.values()) {
-      for (const fn of functions) held.add(fn);
+    for (const bindings of [functionsHere, memberDefaultsHere]) {
+      for (const functions of bindings.values()) {
+        for (const fn of functions) held.add(fn);
+      }
     }
     for (const statement of statements) {
       const nested: FunctionLikeNode[] = [];

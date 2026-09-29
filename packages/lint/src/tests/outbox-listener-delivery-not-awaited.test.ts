@@ -2991,3 +2991,106 @@ federation
     expectedError: "Delivery is not awaited",
   }),
 );
+
+for (
+  const [kind, pattern, member, readsTarget] of [
+    [
+      "object",
+      "{ deliver: target.deliver = DEFAULT }",
+      "target.deliver",
+      false,
+    ],
+    ["array", "[target.deliver = DEFAULT]", "target.deliver", false],
+    [
+      "computed object",
+      '{ deliver: target["deliver"] = DEFAULT }',
+      'target["deliver"]',
+      false,
+    ],
+    [
+      "nested object",
+      "{ deliver: target.nested.deliver = DEFAULT }",
+      "target.nested.deliver",
+      // Accessing the intermediate object conservatively reaches its functions.
+      true,
+    ],
+  ] as const
+) {
+  for (const used of [false, true]) {
+    test(
+      `${ruleName}: ${
+        used ? "used" : "unused"
+      } ${kind} member-target default function`,
+      lintTest({
+        code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const target = { deliver: () => {}, nested: { deliver: () => {} } };
+    for (${
+          pattern.replace(
+            "DEFAULT",
+            `() => {
+      ctx.sendActivity(
+        { identifier: ctx.identifier },
+        new URL("https://example.com/inbox"),
+        activity,
+      );
+    }`,
+          )
+        } of [${kind === "array" ? "[]" : "{}"}]) {
+      ${used ? `${member}();` : ""}
+    }
+  });
+`,
+        rule,
+        ruleName,
+        expectedError: used || readsTarget
+          ? "Delivery is not awaited"
+          : undefined,
+      }),
+    );
+  }
+}
+
+for (const shadowed of [false, true]) {
+  test(
+    `${ruleName}: member-target default preserves ${
+      shadowed ? "local" : "inherited"
+    } object functions`,
+    lintTest({
+      code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const target = {
+      deliver: async () => {
+        ctx.sendActivity(
+          { identifier: ctx.identifier },
+          new URL("https://example.com/inbox"),
+          activity,
+        );
+      },
+    };
+    const run = async () => {
+      ${
+        shadowed
+          ? "const target = { deliver: async () => {}, fallback: () => {} };"
+          : ""
+      }
+      for ({ fallback: target.fallback = () => {} } of [{}]) {}
+      await target.deliver();
+    };
+    await run();
+  });
+`,
+      rule,
+      ruleName,
+      expectedError: shadowed ? undefined : "Delivery is not awaited",
+    }),
+  );
+}

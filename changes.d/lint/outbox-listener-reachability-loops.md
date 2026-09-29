@@ -10,4 +10,6 @@ links:
     Unreachable loop branches no longer count as deliveries, and
     `outbox-listener-delivery-not-awaited` now correctly catches dropped
     promises inside loop binding patterns.
+    Loop default functions are checked only when the bound value or target
+    object is referenced.
     [[#1071], [#1088] by @ArchieTansaria]
