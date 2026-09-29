@@ -1,6 +1,8 @@
 ---
 links:
   '#1076': https://github.com/fedify-dev/fedify/pull/1076
+  '#1113': https://github.com/fedify-dev/fedify/issues/1113
+  '#1124': https://github.com/fedify-dev/fedify/pull/1124
   '#288': https://github.com/fedify-dev/fedify/issues/288
   '#835': https://github.com/fedify-dev/fedify/issues/835
 ---
@@ -21,5 +23,14 @@ links:
     dispatcher the DID and ID of the requested portable object.  Custom
     implementations of the `Context` interface need to implement the new
     method.  [[#288], [#835], [#1076]]
+
+ -  Added serving of tombstones of [FEP-ef61] portable objects and actors
+    through the gateway endpoint with `410 Gone`, as for ordinary objects,
+    so that other gateways and consumers can tell a deleted portable object
+    from one that the gateway never stored.  A `Tombstone` that an object
+    dispatcher or the actor dispatcher returns for such a request is served
+    with `410 Gone` if its ID is the requested portable ID and it has
+    an Object Integrity Proof made with a key of the DID, and with
+    `404 Not Found` if it has no proof.  [[#288], [#1113], [#1124]]
 
 [FEP-ef61]: https://w3id.org/fep/ef61

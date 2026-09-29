@@ -345,6 +345,11 @@ export interface PortableObjectHandlerParameters<TContextData>
  * dispatcher, or the actor dispatcher adapted to one.  The object is served
  * only if its ID canonically matches the requested portable ID and it
  * satisfies the FEP-ef61 proof policy.
+ *
+ * A {@link Tombstone} is served with `410 Gone` if it has an Object Integrity
+ * Proof made with a key of the DID in its ID.  An unsigned tombstone cannot
+ * be served as a portable object, so the response is the same as for
+ * an object that this server does not store, i.e., `404 Not Found`.
  * @template TContextData The context data to pass to the context.
  * @param request The HTTP request.
  * @param parameters The parameters for handling the portable object.
@@ -412,22 +417,41 @@ export async function handlePortableObject<TContextData>(
     );
     return await onNotFound(request);
   }
-  if (
-    !result.verified && result.reason.type !== "unsecuredCollection" &&
-    result.reason.type !== "unsupportedObjectType"
-  ) {
-    logger.error(
-      "Refusing to serve the portable object {portableId}, as it does not " +
-        "satisfy the FEP-ef61 proof policy: {reason}.  Portable actors, " +
-        "activities, and objects need an Object Integrity Proof made with " +
-        "a key of the DID in their ID.",
-      { portableId: canonicalId, reason: result.reason.type },
-    );
-    return portableObjectInternalServerError(request);
+  const tombstone = object instanceof Tombstone;
+  if (!result.verified) {
+    if (tombstone && result.reason.type === "missingProof") {
+      // An application may have no key left to sign the tombstone of
+      // a deleted portable object with, e.g., after the key was lost:
+      logger.debug(
+        "Not serving the tombstone of the portable object {portableId}, as " +
+          "it has no Object Integrity Proof; responding as if this server " +
+          "did not store the object.",
+        { portableId: canonicalId },
+      );
+      return await onNotFound(request);
+    }
+    // Unsecured collections and other core types are exempt from the proof
+    // policy, but a tombstone is never served without a proof:
+    if (
+      tombstone || (
+        result.reason.type !== "unsecuredCollection" &&
+        result.reason.type !== "unsupportedObjectType"
+      )
+    ) {
+      logger.error(
+        "Refusing to serve the portable object {portableId}, as it does not " +
+          "satisfy the FEP-ef61 proof policy: {reason}.  Portable actors, " +
+          "activities, objects, and tombstones need an Object Integrity " +
+          "Proof made with a key of the DID in their ID.",
+        { portableId: canonicalId, reason: result.reason.type },
+      );
+      return portableObjectInternalServerError(request);
+    }
   }
   return new Response(
     request.method === "HEAD" ? null : JSON.stringify(jsonLd),
     {
+      status: tombstone ? 410 : 200,
       headers: {
         "Content-Type": PORTABLE_OBJECT_CONTENT_TYPE,
         Vary: "Accept",

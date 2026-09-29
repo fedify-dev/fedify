@@ -97,6 +97,15 @@ To be released.
     implementations of the `Context` interface need to implement the new
     method.  [[#288], [#835], [#1076]]
 
+ -  Added serving of tombstones of [FEP-ef61] portable objects and actors
+    through the gateway endpoint with `410 Gone`, as for ordinary objects,
+    so that other gateways and consumers can tell a deleted portable object
+    from one that the gateway never stored.  A `Tombstone` that an object
+    dispatcher or the actor dispatcher returns for such a request is served
+    with `410 Gone` if its ID is the requested portable ID and it has
+    an Object Integrity Proof made with a key of the DID, and with
+    `404 Not Found` if it has no proof.  [[#288], [#1113], [#1124]]
+
  -  Added serving of resources addressed by [FEP-ef61] hashlinks, such as
     media attached to portable objects, through the gateway endpoint, e.g.,
     `GET /.well-known/apgateway/hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n`.
@@ -268,8 +277,6 @@ To be released.
      -  Changed object dispatchers registered for `Tombstone` or `Object`
         that return tombstones to be served with `410 Gone` instead of
         `200 OK`.
-     -  Tombstones of [FEP-ef61] portable objects requested through
-        the gateway endpoint are still served as other portable objects.
 
  -  Changed `Context.sendActivity()` so that an activity containing
     [FEP-ef61] portable objects gets at most one Object Integrity Proof.
@@ -561,9 +568,11 @@ To be released.
 [#1109]: https://github.com/fedify-dev/fedify/pull/1109
 [#1110]: https://github.com/fedify-dev/fedify/pull/1110
 [#1112]: https://github.com/fedify-dev/fedify/issues/1112
+[#1113]: https://github.com/fedify-dev/fedify/issues/1113
 [#1114]: https://github.com/fedify-dev/fedify/pull/1114
 [#1117]: https://github.com/fedify-dev/fedify/pull/1117
 [#1119]: https://github.com/fedify-dev/fedify/pull/1119
+[#1124]: https://github.com/fedify-dev/fedify/pull/1124
 
 ### @fedify/adonisjs
 

@@ -429,29 +429,6 @@ test("Federation.fetch() applies the FEP-ef61 proof policy to portable objects",
           gateways: [new URL("https://example.com/")],
         }),
       ),
-    // Tombstones of portable objects are not served with 410 Gone (yet),
-    // but go through the same proof policy as other portable objects:
-    "tombstone": () =>
-      sign(
-        new Tombstone({
-          id: parseIri(`ap+ef61://${did}/objects/tombstone`),
-          formerType: Note,
-        }),
-      ),
-    "unsigned-tombstone": () =>
-      Promise.resolve(
-        new Tombstone({
-          id: parseIri(`ap+ef61://${did}/objects/unsigned-tombstone`),
-          formerType: Note,
-        }),
-      ),
-    "mismatched-tombstone": () =>
-      sign(
-        new Tombstone({
-          id: parseIri(`ap+ef61://${did}/objects/other`),
-          formerType: Note,
-        }),
-      ),
   };
   federation.setObjectDispatcher(
     Object,
@@ -470,9 +447,6 @@ test("Federation.fetch() applies the FEP-ef61 proof policy to portable objects",
     "actor": 200,
     "mutated-id": 404,
     "unsigned-actor": 500,
-    "tombstone": 200,
-    "unsigned-tombstone": 500,
-    "mismatched-tombstone": 404,
   };
   for (const [id, status] of globalThis.Object.entries(expected)) {
     await t.step(`${id} → ${status}`, async () => {
@@ -495,26 +469,237 @@ test("Federation.fetch() applies the FEP-ef61 proof policy to portable objects",
     assertEquals(response.status, 500);
     assertEquals(response.body, null);
   });
+});
 
-  await t.step("serves a signed tombstone with its body", async () => {
-    const response = await federation.fetch(
-      gatewayRequest("/objects/tombstone"),
-      { contextData: undefined },
+test("Federation.fetch() serves tombstones of portable objects", async (t) => {
+  const federation = createTestFederation();
+  const compatible = (path: string) =>
+    new URL(`https://example.com/.well-known/apgateway/${did}${path}`);
+  const tombstoneFromJsonLd = (
+    path: string,
+    properties: Record<string, unknown>,
+  ) =>
+    // Keeps the extra properties, which make it look like another FEP-2277
+    // core type than an object:
+    Tombstone.fromJsonLd(
+      {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Tombstone",
+        id: `ap+ef61://${did}${path}`,
+        ...properties,
+      },
+      {
+        contextLoader: mockDocumentLoader,
+        documentLoader: mockDocumentLoader,
+      },
     );
-    assertEquals(response.status, 200);
-    const body = await response.json() as Record<string, unknown>;
-    assertEquals(body.type, "Tombstone");
-    assertEquals(body.id, `ap+ef61://${did}/objects/tombstone`);
+  const tombstones: Record<string, () => Promise<Tombstone>> = {
+    "signed": () =>
+      sign(
+        new Tombstone({
+          id: parseIri(`ap+ef61://${did}/notes/signed`),
+          formerType: Note,
+          deleted: Temporal.Instant.from("2026-01-01T00:00:00Z"),
+        }),
+      ),
+    "compatible": () =>
+      sign(
+        new Tombstone({
+          id: compatible("/notes/compatible"),
+          formerType: Note,
+        }),
+      ),
+    // A collection-shaped tombstone is still verified if it has a proof:
+    "signed-collection": async () =>
+      sign(
+        await tombstoneFromJsonLd("/notes/signed-collection", {
+          totalItems: 0,
+        }),
+      ),
+    "unsigned": () =>
+      Promise.resolve(
+        new Tombstone({
+          id: parseIri(`ap+ef61://${did}/notes/unsigned`),
+          formerType: Note,
+        }),
+      ),
+    "wrong-did": () =>
+      sign(
+        new Tombstone({ id: parseIri(`ap+ef61://${did}/notes/wrong-did`) }),
+        otherKeyPair.privateKey,
+        otherKeyId,
+      ),
+    "tampered": async () =>
+      (await sign(
+        new Tombstone({ id: parseIri(`ap+ef61://${did}/notes/tampered`) }),
+      )).clone({ formerType: Note }),
+    // The exemption of unsecured collections does not apply to tombstones:
+    "unsigned-collection": () =>
+      tombstoneFromJsonLd("/notes/unsigned-collection", { totalItems: 0 }),
+    // Nor does the exemption of links:
+    "link": () =>
+      tombstoneFromJsonLd("/notes/link", { href: "https://example.com/" }),
+    "mismatched": () =>
+      sign(new Tombstone({ id: parseIri(`ap+ef61://${did}/notes/other`) })),
+    "mutated-id": async () => {
+      // A tombstone that keeps its signed JSON-LD, but whose id is changed
+      // afterwards, must not be served as the tombstone in the changed id:
+      const signed = await sign(
+        new Tombstone({ id: parseIri(`ap+ef61://${did}/notes/original`) }),
+      );
+      const tombstone = await Tombstone.fromJsonLd(
+        await signed.toJsonLd({ contextLoader: mockDocumentLoader }),
+        {
+          contextLoader: mockDocumentLoader,
+          documentLoader: mockDocumentLoader,
+        },
+      );
+      tombstone.id!.pathname = tombstone.id!.pathname.replace(
+        /original$/,
+        "mutated-id",
+      );
+      return tombstone;
+    },
+  };
+  federation
+    .setObjectDispatcher(
+      Note,
+      "/notes/{id}",
+      (_ctx, { id }) => tombstones[id]?.() ?? null,
+    )
+    .authorize((ctx) => ctx.request.headers.get("X-Deny") == null);
+
+  // Makes sure that each failing fixture fails for the intended reason:
+  const reasons: Record<string, string> = {
+    "unsigned": "missingProof",
+    "wrong-did": "verificationMethodMismatch",
+    "tampered": "invalidProof",
+    "unsigned-collection": "unsecuredCollection",
+    "link": "unsupportedObjectType",
+  };
+  for (const [id, reason] of globalThis.Object.entries(reasons)) {
+    const tombstone = await tombstones[id]();
+    const result = await verifyPortableObjectProof(
+      await tombstone.toJsonLd({ contextLoader: mockDocumentLoader }),
+      { contextLoader: mockDocumentLoader },
+    );
+    assert(!result.verified, id);
+    assertEquals(result.reason.type, reason, id);
+  }
+
+  const expected: Record<string, number> = {
+    "signed": 410,
+    "compatible": 410,
+    "signed-collection": 410,
+    "unsigned": 404,
+    "wrong-did": 500,
+    "tampered": 500,
+    "unsigned-collection": 500,
+    "link": 500,
+    "mismatched": 404,
+    "mutated-id": 404,
+  };
+  for (const [id, status] of globalThis.Object.entries(expected)) {
+    await t.step(`${id} → ${status}`, async () => {
+      let notFound = false;
+      const response = await federation.fetch(gatewayRequest(`/notes/${id}`), {
+        contextData: undefined,
+        onNotFound() {
+          notFound = true;
+          return new Response("Not found", { status: 404 });
+        },
+      });
+      assertEquals(response.status, status);
+      assertEquals(notFound, status === 404);
+      if (status === 410) {
+        assertEquals(
+          response.headers.get("Content-Type"),
+          PORTABLE_OBJECT_CONTENT_TYPE,
+        );
+        assertEquals(response.headers.get("Vary"), "Accept");
+        const body = await response.json() as Record<string, unknown>;
+        assertEquals(body.type, "Tombstone");
+        const verified = await verifyPortableObjectProof(body, {
+          contextLoader: mockDocumentLoader,
+        });
+        assert(verified.verified);
+      } else if (status === 500) {
+        assertEquals(await response.text(), "Internal server error.");
+      }
+    });
+  }
+
+  await t.step(
+    "serves the tombstone as the dispatcher returns it",
+    async () => {
+      let response = await federation.fetch(gatewayRequest("/notes/signed"), {
+        contextData: undefined,
+      });
+      let body = await response.json() as Record<string, unknown>;
+      assertEquals(body.id, `ap+ef61://${did}/notes/signed`);
+      assertEquals(body.formerType, "as:Note");
+      assertEquals(body.deleted, "2026-01-01T00:00:00Z");
+      // A compatible identifier is not rewritten to the portable ID:
+      response = await federation.fetch(gatewayRequest("/notes/compatible"), {
+        contextData: undefined,
+      });
+      body = await response.json() as Record<string, unknown>;
+      assertEquals(body.id, compatible("/notes/compatible").href);
+    },
+  );
+
+  await t.step("responds to HEAD without a body", async () => {
+    for (const [id, status] of [["signed", 410], ["unsigned", 404]] as const) {
+      const response = await federation.fetch(
+        gatewayRequest(`/notes/${id}`, { method: "HEAD" }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, status, id);
+      assertEquals(response.body, null, id);
+      if (status === 410) {
+        assertEquals(
+          response.headers.get("Content-Type"),
+          PORTABLE_OBJECT_CONTENT_TYPE,
+        );
+        assertEquals(response.headers.get("Vary"), "Accept");
+      }
+    }
   });
 
-  await t.step("responds to HEAD for a tombstone without a body", async () => {
-    const response = await federation.fetch(
-      gatewayRequest("/objects/tombstone", { method: "HEAD" }),
-      { contextData: undefined },
-    );
-    assertEquals(response.status, 200);
-    assertEquals(response.body, null);
+  await t.step("authorizes before serving a tombstone", async () => {
+    for (const id of ["signed", "unsigned"]) {
+      let unauthorized = false;
+      const response = await federation.fetch(
+        gatewayRequest(`/notes/${id}`, { headers: { "X-Deny": "1" } }),
+        {
+          contextData: undefined,
+          onUnauthorized() {
+            unauthorized = true;
+            return new Response("Unauthorized", { status: 401 });
+          },
+        },
+      );
+      assertEquals(response.status, 401, id);
+      assertEquals(unauthorized, true, id);
+    }
   });
+
+  await t.step(
+    "does not warn about tombstones with compatible IDs",
+    async () => {
+      const records = await captureWarnings(async () => {
+        const response = await federation.fetch(
+          gatewayRequest("/notes/compatible"),
+          { contextData: undefined },
+        );
+        assertEquals(response.status, 410);
+      });
+      assertEquals(
+        records.filter((record) => record.category[2] === "object"),
+        [],
+      );
+    },
+  );
 });
 
 test("Federation.fetch() authorizes portable object requests", async (t) => {
