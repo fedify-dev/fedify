@@ -442,6 +442,11 @@ function collectBoundNames(pattern: unknown, out: string[]): void {
     return;
   }
   const p = pattern as Node;
+  if ((p.type as string) === "TSParameterProperty") {
+    // A constructor's `private name` parameter binds `name` like any other.
+    collectBoundNames((p as unknown as { parameter: unknown }).parameter, out);
+    return;
+  }
   switch (p.type) {
     case "Identifier":
       out.push(p.name);
@@ -466,6 +471,103 @@ function collectBoundNames(pattern: unknown, out: string[]): void {
       return;
   }
 }
+
+/**
+ * Every name the function scope rooted at `root` binds or rebinds anywhere,
+ * reachable or not: `fn`'s parameters and own name, any declaration (in a
+ * block, a loop head, a `catch` clause, a class static block or a TypeScript
+ * enum too), and any assignment or update of the name itself. Does not
+ * descend into a nested function's body. Deliberately broad, since a name
+ * outside this set is taken to be an enclosing scope's binding throughout
+ * `root`.
+ */
+function collectScopeBoundNames(
+  root: Node,
+  fn: FunctionLikeNode | null,
+): Set<string> {
+  const names = new Set<string>();
+  const add = (pattern: unknown): void => {
+    const bound: string[] = [];
+    collectBoundNames(pattern, bound);
+    for (const name of bound) names.add(name);
+  };
+  const addAssigned = (target: unknown): void => {
+    // `(name as T) = ...` and `name! = ...` still rebind `name`.
+    let current = target;
+    while (
+      isNode(current) && TS_EXPRESSION_WRAPPERS.has(current.type)
+    ) {
+      current = (current as unknown as { expression: unknown }).expression;
+    }
+    add(current);
+  };
+  for (const param of fn?.params ?? []) add(param);
+  if (fn?.type === "FunctionExpression") add(fn.id);
+
+  const visit = (node: unknown): void => {
+    if (node == null || typeof node !== "object") return;
+    if (Array.isArray(node)) {
+      for (const item of node) visit(item);
+      return;
+    }
+    if (!isNode(node)) return;
+    const record = node as unknown as Record<string, unknown>;
+    switch (node.type as string) {
+      case "FunctionDeclaration":
+      case "TSDeclareFunction":
+        add(record.id);
+        return;
+      case "FunctionExpression":
+      case "ArrowFunctionExpression":
+        return;
+      case "ClassDeclaration":
+      case "ClassExpression":
+      case "VariableDeclarator":
+      case "TSEnumDeclaration":
+      case "TSModuleDeclaration":
+      case "TSImportEqualsDeclaration":
+        add(record.id);
+        break;
+      case "TSEnumMember": {
+        // Inside an enum, a member's name shadows an outer binding.
+        const id = record.id as Node;
+        if (id.type === "Identifier") names.add(id.name);
+        else if (id.type === "Literal" && typeof id.value === "string") {
+          names.add(id.value);
+        }
+        break;
+      }
+      case "CatchClause":
+        add(record.param);
+        break;
+      case "AssignmentExpression":
+        addAssigned(record.left);
+        break;
+      case "UpdateExpression":
+        addAssigned(record.argument);
+        break;
+      case "ForInStatement":
+      case "ForOfStatement":
+        // A declaration here is found as its own `VariableDeclarator`.
+        addAssigned(record.left);
+        break;
+    }
+    for (const key in record) {
+      if (key !== "parent") visit(record[key]);
+    }
+  };
+  // A parameter default runs in this scope too: `(a = (name = {})) => ...`.
+  for (const param of fn?.params ?? []) visit(param);
+  visit(root);
+  return names;
+}
+
+const TS_EXPRESSION_WRAPPERS = new Set([
+  "TSAsExpression",
+  "TSNonNullExpression",
+  "TSSatisfiesExpression",
+  "TSTypeAssertion",
+]);
 
 /**
  * Finds the function literals a value holds itself: the value is the
@@ -506,15 +608,19 @@ function collectHeldFunctions(node: unknown, out: FunctionLikeNode[]): void {
  * function. Does not descend into a found function's own body: a name bound
  * inside it is only found once that function is itself resolved as
  * reachable, so it can be layered on top of (and correctly shadow) the outer
- * scope's names.
+ * scope's names. What goes into `augmentingAssignments` instead of `out`
+ * extends the names' enclosing candidates rather than shadowing them: an
+ * assignment-form loop default, and a property write through an object that
+ * this scope inherits (a name not in `localNames`).
  */
 function collectFunctionsByName(
   node: unknown,
   out: Map<string, FunctionLikeNode[]>,
-  assignmentDefaults: Map<string, FunctionLikeNode[]>,
+  augmentingAssignments: Map<string, FunctionLikeNode[]>,
   declarationPatterns: ReadonlySet<Node>,
   declaredHere: Set<string>,
   scopeDeclarations: ReadonlySet<Node>,
+  localNames: ReadonlySet<string>,
 ): void {
   if (node == null || typeof node !== "object") return;
   if (Array.isArray(node)) {
@@ -522,10 +628,11 @@ function collectFunctionsByName(
       collectFunctionsByName(
         item,
         out,
-        assignmentDefaults,
+        augmentingAssignments,
         declarationPatterns,
         declaredHere,
         scopeDeclarations,
+        localNames,
       );
     }
     return;
@@ -561,10 +668,11 @@ function collectFunctionsByName(
     collectFunctionsByName(
       n.body,
       out,
-      assignmentDefaults,
+      augmentingAssignments,
       declarationPatterns,
       new Set<string>(),
       scopeDeclarations,
+      localNames,
     );
     return;
   }
@@ -582,10 +690,11 @@ function collectFunctionsByName(
       collectFunctionsByName(
         decl,
         out,
-        assignmentDefaults,
+        augmentingAssignments,
         declarationPatterns,
         declaredHere,
         scopeDeclarations,
+        localNames,
       );
     }
     return;
@@ -599,10 +708,11 @@ function collectFunctionsByName(
       collectFunctionsByName(
         decl.init,
         out,
-        assignmentDefaults,
+        augmentingAssignments,
         declarationPatterns,
         declaredHere,
         scopeDeclarations,
+        localNames,
       );
     }
     return;
@@ -621,29 +731,44 @@ function collectFunctionsByName(
       names,
       n.right,
       n.left.type === "MemberExpression" || !declarationPatterns.has(n)
-        ? assignmentDefaults
+        ? augmentingAssignments
         : out,
     );
     collectFunctionsByName(
       n.right,
       out,
-      assignmentDefaults,
+      augmentingAssignments,
       declarationPatterns,
       declaredHere,
       scopeDeclarations,
+      localNames,
     );
     return;
   }
   if (n.type === "AssignmentExpression") {
     const name = getAssignmentTargetName(n.left as Node);
-    if (name != null) bindTo([name], n.right);
+    // A property write through an object this scope inherits adds to what
+    // the object already holds rather than replacing it. Only a name outside
+    // `localNames` is certainly that inherited object: the functions are
+    // keyed by name, so a local one's mentions could not be told apart from
+    // it.
+    if (name != null) {
+      bindTo(
+        [name],
+        n.right,
+        n.left.type === "MemberExpression" && !localNames.has(name)
+          ? augmentingAssignments
+          : out,
+      );
+    }
     collectFunctionsByName(
       n.right,
       out,
-      assignmentDefaults,
+      augmentingAssignments,
       declarationPatterns,
       declaredHere,
       scopeDeclarations,
+      localNames,
     );
     return;
   }
@@ -654,10 +779,11 @@ function collectFunctionsByName(
     collectFunctionsByName(
       record[key],
       out,
-      assignmentDefaults,
+      augmentingAssignments,
       declarationPatterns,
       declaredHere,
       scopeDeclarations,
+      localNames,
     );
   }
 }
@@ -728,6 +854,7 @@ export function walkUsedScopes(
     scopeRoot: Node,
     scopeFn: FunctionLikeNode | null,
     outerFunctionsByName: ReadonlyMap<string, FunctionLikeNode[]>,
+    outerStaleNames: ReadonlySet<string>,
   ): void => {
     if (visited.has(scopeRoot)) return;
     visited.add(scopeRoot);
@@ -743,7 +870,7 @@ export function walkUsedScopes(
     });
 
     const functionsHere = new Map<string, FunctionLikeNode[]>();
-    const assignmentDefaultsHere = new Map<string, FunctionLikeNode[]>();
+    const augmentingAssignmentsHere = new Map<string, FunctionLikeNode[]>();
     // Parameters are local bindings too, including destructured parameters.
     for (const param of scopeFn?.params ?? []) {
       const names: string[] = [];
@@ -753,21 +880,30 @@ export function walkUsedScopes(
     const scopeDeclarations = new Set<Node>(
       scopeRoot.type === "BlockStatement" ? scopeRoot.body as Node[] : [],
     );
+    const scopeBoundNames = collectScopeBoundNames(scopeRoot, scopeFn);
+    const localNames = new Set([...scopeBoundNames, ...outerStaleNames]);
     for (const statement of statements) {
       collectFunctionsByName(
         statement,
         functionsHere,
-        assignmentDefaultsHere,
+        augmentingAssignmentsHere,
         declarationPatterns,
         declaredHere,
         scopeDeclarations,
+        localNames,
       );
     }
+    // A name bound here without an entry of its own still maps to a further
+    // out binding's functions, so a nested scope must not take that entry
+    // for the object it writes to.
+    const staleNames = new Set(
+      [...localNames].filter((name) => !functionsHere.has(name)),
+    );
     const functionsByName = new Map(outerFunctionsByName);
     for (const [name, functions] of functionsHere) {
       functionsByName.set(name, functions);
     }
-    for (const [name, functions] of assignmentDefaultsHere) {
+    for (const [name, functions] of augmentingAssignmentsHere) {
       const base = declaredHere.has(name)
         ? functionsHere.get(name) ?? []
         : functionsByName.get(name) ?? [];
@@ -806,7 +942,7 @@ export function walkUsedScopes(
     // not check whether the result is awaited: a delivery call that is
     // never awaited is left alone too. Leave this as is.
     const held = new Set<FunctionLikeNode>();
-    for (const bindings of [functionsHere, assignmentDefaultsHere]) {
+    for (const bindings of [functionsHere, augmentingAssignmentsHere]) {
       for (const functions of bindings.values()) {
         for (const fn of functions) held.add(fn);
       }
@@ -821,11 +957,16 @@ export function walkUsedScopes(
 
     for (const reachedFn of reached) {
       used.add(reachedFn);
-      processScope(reachedFn.body as Node, reachedFn, functionsByName);
+      processScope(
+        reachedFn.body as Node,
+        reachedFn,
+        functionsByName,
+        staleNames,
+      );
     }
   };
 
-  processScope(root, null, new Map());
+  processScope(root, null, new Map(), new Set());
   return used;
 }
 
