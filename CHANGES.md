@@ -335,6 +335,19 @@ To be released.
     not used to verify the given object; the returned object uses it by
     default for its property accessors.  [[#288], [#1107], [#1120]]
 
+ -  Added the `portable` option to `Context.parseUri()`, and the
+    `ParseUriOptions` interface.  With `{ portable: true }`, the method also
+    recognizes [FEP-ef61] portable IDs, e.g.,
+    `ap+ef61://did:key:z6Mk.../users/alice`, and their compatible identifiers
+    on any gateway by the same paths through which the gateway endpoint serves
+    them, so that an inbox listener can tell that an activity is about one of
+    its portable actors, objects, or collections.  The result then has the DID
+    of the ID in its new `authority` property.  Since anyone can make
+    a portable ID with the same path under another DID, check that
+    `authority` is the DID that you store for the actor or object before
+    acting on the result.  Without the option, `parseUri()` behaves as
+    before.  [[#288], [#1143], [#1145]]
+
  -  Added `verifyPortableObject()`, which applies the [FEP-ef61] trust policy
     to portable objects fetched through gateways.  It verifies Object
     Integrity Proofs like `verifyPortableObjectProof()`, and also accepts
@@ -678,6 +691,8 @@ To be released.
 [#1134]: https://github.com/fedify-dev/fedify/pull/1134
 [#1138]: https://github.com/fedify-dev/fedify/pull/1138
 [#1142]: https://github.com/fedify-dev/fedify/pull/1142
+[#1143]: https://github.com/fedify-dev/fedify/issues/1143
+[#1145]: https://github.com/fedify-dev/fedify/pull/1145
 
 ### @fedify/adonisjs
 
@@ -975,6 +990,12 @@ To be released.
     now returns `null` for a `Tombstone` that the object dispatcher returns,
     unless the tombstone is an instance of the requested class or
     `{ tombstone: "passthrough" }` is given.  [[#1112], [#1117]]
+ -  Changed `parseUri()` of the mock contexts to accept the `portable` option,
+    following `Context.parseUri()` of `@fedify/fedify`.  It no longer
+    recognizes an FEP-ef61 portable ID or compatible identifier whose path
+    starts with `/users/` unless the option is enabled, in which case the
+    result has the DID in its `authority` property.  It also returns `null`
+    for `null`.  [[#288], [#1143], [#1145]]
  -  Fixed the CommonJS testing utilities build so it no longer requires
     `@js-temporal/polyfill` at runtime.  The build now bundles
     `temporal-polyfill`, while type declarations rely on the standard

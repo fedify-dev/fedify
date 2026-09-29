@@ -12,7 +12,7 @@ import {
   Person,
   Tombstone,
 } from "@fedify/vocab";
-import { exportDidKey, formatIri } from "@fedify/vocab-runtime";
+import { exportDidKey, formatIri, parseIri } from "@fedify/vocab-runtime";
 import {
   assertEquals,
   assertInstanceOf,
@@ -2042,6 +2042,49 @@ test("MockContext builds portable IDs", async (t) => {
       }
     });
   }
+});
+
+test("MockContext.parseUri() recognizes portable IDs on request", async () => {
+  const did = await exportDidKey(ed25519PublicKey.publicKey);
+  const context = createFederation<void>().createContext(
+    new URL("https://example.com/"),
+    undefined,
+  );
+  const portableIds = [
+    parseIri(`ap+ef61://${did}/users/alice`),
+    parseIri(`ap://${did}/users/alice?@gateway=https%3A%2F%2Fgw.example`),
+    new URL(
+      `https://gateway.example/.well-known/apgateway/${did}/users/alice`,
+    ),
+  ];
+  for (const uri of portableIds) {
+    assertEquals(context.parseUri(uri), null, uri.href);
+    assertEquals(
+      context.parseUri(uri, { portable: true }),
+      { type: "actor", identifier: "alice", authority: did },
+      uri.href,
+    );
+  }
+  const malformed = [
+    new URL(
+      `ap+ef61://${
+        encodeURIComponent(`did:key:u${did.slice("did:key:z".length)}`)
+      }/users/alice`,
+    ),
+    new URL(`ap+ef61://${encodeURIComponent(did)}/users/%ZZ`),
+    new URL(`ap+ef61://user@${encodeURIComponent(did)}/users/alice`),
+    new URL("https://gateway.example/.well-known/apgateway/did:/users/alice"),
+  ];
+  for (const uri of malformed) {
+    assertEquals(context.parseUri(uri, { portable: true }), null, uri.href);
+  }
+  assertEquals(context.parseUri(null, { portable: true }), null);
+  assertEquals(
+    context.parseUri(new URL("https://example.com/users/alice"), {
+      portable: true,
+    }),
+    { type: "actor", identifier: "alice" },
+  );
 });
 
 test("MockContext.getObject() suppresses tombstones unless passed through", async () => {

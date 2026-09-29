@@ -114,6 +114,7 @@ import type {
   GetSignedKeyOptions,
   InboxContext,
   OutboxContext,
+  ParseUriOptions,
   ParseUriResult,
   PortableRequest,
   RequestContext,
@@ -172,6 +173,7 @@ import {
   type HashlinkGatewayRequest,
   parseHashlinkGatewayRequest,
   parsePortableGatewayRequest,
+  parsePortableId,
   type PortableGatewayRequest,
 } from "./portable.ts";
 import {
@@ -4282,14 +4284,33 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     return buildPortableUri(requirePortableAuthority(authority), path);
   }
 
-  parseUri(uri: URL | null): ParseUriResult | null {
+  parseUri(
+    uri: URL | null,
+    options: ParseUriOptions = {},
+  ): ParseUriResult | null {
     if (uri == null) return null;
-    if (uri.origin !== this.origin && uri.origin !== this.canonicalOrigin) {
-      return null;
+    if (uri.origin === this.origin || uri.origin === this.canonicalOrigin) {
+      const route = this.federation.router.route(uri.pathname as Path);
+      // Routes registered by the application take precedence over
+      // the FEP-ef61 gateway endpoint, as they do in Federation.fetch():
+      if (route != null) return this.#parseRoute(route);
     }
-    const route = this.federation.router.route(uri.pathname as Path);
-    if (route == null) return null;
-    else if (route.name === "sharedInbox") {
+    if (!options.portable) return null;
+    const portable = parsePortableId(uri);
+    if (portable == null) return null;
+    const route = this.federation.router.route(portable.path);
+    // The gateway endpoint serves no shared inbox:
+    if (route == null || route.name === "sharedInbox") return null;
+    const result = this.#parseRoute(route);
+    return result == null
+      ? null
+      : { ...result, authority: portable.authority } as ParseUriResult;
+  }
+
+  #parseRoute(
+    route: { name: string; values: Record<string, string> },
+  ): ParseUriResult | null {
+    if (route.name === "sharedInbox") {
       return {
         type: "inbox",
         identifier: undefined,

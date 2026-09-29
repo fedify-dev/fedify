@@ -106,6 +106,106 @@ federation
 
 [`Context.parseUri()`]: https://jsr.io/@fedify/fedify/doc/federation/~/Context#method_parseUri_0
 
+### Portable IDs
+
+_This API is available since Fedify 2.4.0._
+
+By default, `parseUri()` recognizes only URIs on this server's origin.
+Pass `{ portable: true }` to also recognize [FEP-ef61] [portable
+IDs](./context.md#portable-ids) such as
+`ap+ef61://did:key:z6Mk.../users/alice`, and their compatible identifiers
+such as
+`https://example.com/.well-known/apgateway/did:key:z6Mk.../users/alice`.
+They are recognized by the same paths through which the gateway endpoint
+serves them, and the result has the DID of the portable ID in its `authority`
+property.  For a URI on this server's origin, `authority` is `undefined`.
+
+The DID of a portable ID is anyone's to choose, so a recognized portable ID
+does not mean that this server hosts anything for the DID: anyone can make
+`ap+ef61://did:key:z6MkOther.../users/alice` as well.  Before acting on
+the result, check that `authority` is the DID that you store for the actor or
+object:
+
+~~~~ typescript twoslash
+import { type Federation } from "@fedify/fedify";
+const federation = null as unknown as Federation<void>;
+interface User {
+  /** The DID of a portable actor, or `undefined` for an ordinary actor. */
+  did?: string;
+}
+async function getUser(identifier: string): Promise<User | null> {
+  return null;
+}
+// ---cut-before---
+import { Accept, Follow } from "@fedify/vocab";
+
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  .on(Follow, async (ctx, follow) => {
+    if (follow.id == null || follow.objectId == null) return;
+    const parsed = ctx.parseUri(follow.objectId, { portable: true }); // [!code highlight]
+    if (parsed?.type !== "actor") return;
+    const user = await getUser(parsed.identifier);
+    if (user == null || parsed.authority !== user.did) return; // [!code highlight]
+    const recipient = await follow.getActor(ctx);
+    if (recipient == null) return;
+    await ctx.sendActivity(
+      { identifier: parsed.identifier },
+      recipient,
+      new Accept({
+        actor: user.did == null
+          ? ctx.getActorUri(parsed.identifier)
+          : ctx.getPortableActorUri(parsed.identifier, user.did),
+        object: follow.id,
+      }),
+    );
+  });
+~~~~
+
+A few things to note:
+
+ -  A matching `authority` only tells you that the ID is under a DID that you
+    control.  It does not authenticate the activity, which Fedify does
+    with HTTP Signatures and Object Integrity Proofs as usual.
+
+ -  As with URIs on this server's origin, a portable ID is recognized by its
+    path; its query, e.g., `@gateway` location hints, and its fragment are
+    ignored.  If the exact ID matters, compare its canonical form with that
+    of the ID you store instead, e.g.:
+
+    ~~~~ typescript twoslash
+    import {
+      canonicalizePortableUri,
+      formatIri,
+      fromCompatibleEf61Id,
+    } from "@fedify/vocab-runtime";
+
+    function getCanonicalPortableId(id: URL): string | null {
+      try {
+        return canonicalizePortableUri(
+          formatIri(fromCompatibleEf61Id(id) ?? id),
+        );
+      } catch {
+        return null;  // Not a portable ID, or malformed.
+      }
+    }
+    ~~~~
+
+ -  Compatible identifiers are recognized on any gateway, not only on this
+    server, since FEP-ef61 treats them as instances of the same object, and
+    a secondary gateway sees the IDs made with the first gateway.
+    On this server's origin, however, the routes you registered take
+    precedence, as they do when serving requests.
+
+ -  A shared inbox is never recognized in a portable ID, as the gateway
+    endpoint does not serve one.  Neither is a portable ID with a malformed
+    DID, or with a `did:key` DID that is not encoded in base58-btc.
+
+ -  Parsing never calls your dispatchers or other callbacks, including
+    `~CustomCollectionCallbackSetters.mapPortableOwner()`.
+
+[FEP-ef61]: https://w3id.org/fep/ef61
+
 
 Routing activities manually
 ---------------------------
