@@ -574,6 +574,31 @@ test("Federation.fetch() filters portable followers collections", async () => {
     ),
   );
   assertEquals(json?.orderedItems, ["https://a.example/users/1"]);
+
+  // Pages are relative to the same normalized filter as the collection:
+  const collectionId = json?.id as string;
+  const [pageResponse, page] = await fetchJson(
+    federation,
+    gatewayUrl(
+      "/users/alice/followers?base-url=" +
+        encodeURIComponent("https://a.example/path") + "&cursor=0",
+    ),
+  );
+  assertEquals(pageResponse.status, 200);
+  assertEquals(page?.id, `${collectionId}&cursor=0`);
+  assertEquals(page?.partOf, collectionId);
+
+  // An invalid base-url is dropped from pages too, as from the collection:
+  const [invalidResponse, invalidPage] = await fetchJson(
+    federation,
+    gatewayUrl("/users/alice/followers?base-url=invalid&cursor=0"),
+  );
+  assertEquals(invalidResponse.status, 200);
+  assertEquals(
+    invalidPage?.id,
+    portableId("/users/alice/followers?cursor=0"),
+  );
+  assertEquals(invalidPage?.partOf, portableId("/users/alice/followers"));
 });
 
 test("Federation.fetch() authorizes portable collection requests", async (t) => {

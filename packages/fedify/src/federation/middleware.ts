@@ -3355,6 +3355,13 @@ export class FederationImpl<TContextData>
       }
       const id = new URL(resolution.collectionId);
       if (filter != null) id.searchParams.set(...filter.parameter);
+      const view = buildPortableCollectionView(resolution.collectionId, url);
+      if (routeName === "followers") {
+        // The pages have the same filter as the collection's ID, i.e.,
+        // the normalized base-url, or none if it is invalid:
+        view.searchParams.delete("base-url");
+        if (filter != null) view.searchParams.set(...filter.parameter);
+      }
       return await handleCollection(request, {
         name,
         identifier,
@@ -3365,7 +3372,7 @@ export class FederationImpl<TContextData>
         collectionCallbacks: callbacks,
         portable: {
           id,
-          view: buildPortableCollectionView(resolution.collectionId, url),
+          view,
           attribution: resolution.ownerId,
         },
         tracerProvider: this.tracerProvider,
