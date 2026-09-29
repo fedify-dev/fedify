@@ -197,3 +197,89 @@ test("KvKeyCache.get() ignores entries from an earlier generation", async () => 
   });
   assertEquals(await cache.get(new URL("https://example.com/key")), undefined);
 });
+
+test("KvKeyCache.compatibleKeyScope() keeps each purpose apart", async () => {
+  const kv = new MemoryKvStore();
+  const cache = new KvKeyCache(kv, ["pk"]);
+  const keyId = new URL(
+    "https://gw.example/.well-known/apgateway/did:key:z6Mk/actor#main-key",
+  );
+  const http = cache.compatibleKeyScope("httpSignature");
+  await http.set(keyId, new CryptographicKey({ id: keyId }));
+  await cache.compatibleKeyScope("multikey").set(keyId, null);
+  assertInstanceOf(await http.get(keyId), CryptographicKey);
+  assertEquals(await cache.compatibleKeyScope("multikey").get(keyId), null);
+  assertEquals(
+    await cache.compatibleKeyScope("cryptographicKey").get(keyId),
+    undefined,
+  );
+  // Nor are the entries visible in the shared namespace:
+  assertEquals(await cache.get(keyId), undefined);
+  await http.delete(keyId);
+  assertEquals(await http.get(keyId), undefined);
+});
+
+test("KvKeyCache.compatibleKeyScope() entries expire", async () => {
+  const kv = new ManualClockKvStore();
+  let now = Temporal.Instant.fromEpochMilliseconds(0);
+  const cache = new KvKeyCache(kv, ["pk"], {
+    now: () => now,
+    keyTtl: Temporal.Duration.from({ days: 30 }),
+    unavailableKeyTtl: Temporal.Duration.from({ minutes: 10 }),
+  });
+  const scope = cache.compatibleKeyScope("httpSignature");
+  const keyId = new URL("https://gw.example/.well-known/apgateway/did:key:z/a");
+  const nullId = new URL(
+    "https://gw.example/.well-known/apgateway/did:key:z/b",
+  );
+  const expiringId = new URL(
+    "https://gw.example/.well-known/apgateway/did:key:z/c",
+  );
+  await scope.set(keyId, new CryptographicKey({ id: keyId }));
+  await scope.set(nullId, null);
+  await scope.set(expiringId, new CryptographicKey({ id: expiringId }), {
+    expires: now.add({ minutes: 5 }),
+  });
+  now = now.add({ minutes: 5 });
+  assertInstanceOf(await scope.get(keyId), CryptographicKey);
+  assertEquals(await scope.get(nullId), null);
+  // The given expiration is checked on read, whenever the store evicts it:
+  assertEquals(await scope.get(expiringId), undefined);
+  now = now.add({ minutes: 5 });
+  assertEquals(await scope.get(nullId), undefined);
+  // Keys are cached for an hour at most, however long keyTtl is:
+  now = Temporal.Instant.fromEpochMilliseconds(0).add({ hours: 1 });
+  assertEquals(await scope.get(keyId), undefined);
+  // The store evicts them as well:
+  kv.advance({ hours: 1 });
+  assertEquals(
+    await kv.get(["pk", "__compatible", "httpSignature", keyId.href]),
+    undefined,
+  );
+});
+
+test("KvKeyCache.compatibleKeyScope() drops an entry replaced by an expired one", async () => {
+  const kv = new MemoryKvStore();
+  const now = Temporal.Now.instant();
+  const cache = new KvKeyCache(kv, ["pk"], { now: () => now });
+  const scope = cache.compatibleKeyScope("httpSignature");
+  const keyId = new URL("https://gw.example/.well-known/apgateway/did:key:z/a");
+  await scope.set(keyId, new CryptographicKey({ id: keyId }));
+  await scope.set(keyId, new CryptographicKey({ id: keyId }), {
+    expires: now,
+  });
+  assertEquals(await scope.get(keyId), undefined);
+});
+
+test("KvKeyCache.compatibleKeyScope() ignores malformed entries", async () => {
+  const kv = new MemoryKvStore();
+  const cache = new KvKeyCache(kv, ["pk"]);
+  const keyId = new URL("https://gw.example/.well-known/apgateway/did:key:z/a");
+  const entryKey = ["pk", "__compatible", "multikey", keyId.href] as const;
+  await kv.set(entryKey, { key: "garbage" });
+  assertEquals(
+    await cache.compatibleKeyScope("multikey").get(keyId),
+    undefined,
+  );
+  assertEquals(await kv.get(entryKey), undefined);
+});

@@ -46,6 +46,11 @@ export type PortableGatewayKeyResolution =
     readonly type: "verified";
     readonly actor: Actor;
     readonly key: CryptographicKey & { publicKey: CryptoKey };
+    /**
+     * When the proof of the actor's document expires, if it does.  The
+     * document does not vouch for the key after that.
+     */
+    readonly expires?: Temporal.Instant;
   };
 
 /**
@@ -134,7 +139,7 @@ export async function verifyPortableGatewayKeyDocument(
     if (!(error instanceof TypeError)) throw error;
     return reject(`The actor document is malformed: ${error.message}`);
   }
-  const { result, root } = verification;
+  const { result, root, expires } = verification;
   if (!result.verified) {
     return reject(
       "The actor document does not satisfy the FEP-ef61 proof policy: " +
@@ -276,7 +281,12 @@ export async function verifyPortableGatewayKeyDocument(
     owner: actor.id,
     publicKey,
   }) as CryptographicKey & { publicKey: CryptoKey };
-  return { type: "verified", actor, key };
+  return {
+    type: "verified",
+    actor,
+    key,
+    ...(expires == null ? {} : { expires }),
+  };
 }
 
 /**

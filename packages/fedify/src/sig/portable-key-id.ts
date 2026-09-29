@@ -67,8 +67,9 @@ export function hasPortableActor(activity: Activity): boolean {
 /**
  * Checks whether a key ID looks like an [FEP-ef61] compatible identifier,
  * i.e., an HTTP(S) URL under a gateway's `/.well-known/apgateway/did:` path.
- * Such a key ID names a key that a gateway holds for a portable actor, so it
- * is resolved only as a gateway key, and never cached in a key cache.
+ * Such a key ID may name a key that a gateway holds for a portable actor,
+ * which only HTTP Signatures accept, so what it resolves to is cached apart
+ * for each purpose, never under the key ID itself.
  *
  * [FEP-ef61]: https://w3id.org/fep/ef61
  * @internal
