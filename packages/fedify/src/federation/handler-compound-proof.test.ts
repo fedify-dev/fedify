@@ -1,6 +1,12 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
-import { Create } from "@fedify/vocab";
-import { encodeMultibase } from "@fedify/vocab-runtime";
+import {
+  Create,
+  CryptographicKey,
+  Multikey,
+  Person,
+  Update,
+} from "@fedify/vocab";
+import { encodeMultibase, exportDidKey, parseIri } from "@fedify/vocab-runtime";
 import { assertEquals } from "@std/assert";
 import serialize from "json-canon";
 import vector from "../../test-vectors/fep-8b32/map-local-create-note.json" with {
@@ -14,6 +20,7 @@ import {
   ed25519PrivateKey,
   ed25519PublicKey,
   rsaPrivateKey3,
+  rsaPublicKey2,
   rsaPublicKey3,
 } from "../testing/keys.ts";
 import { signRequest } from "../sig/http.ts";
@@ -93,9 +100,11 @@ async function handle(
     contextLoader: mockDocumentLoader,
   });
   const inboxListeners = new ActivityListenerSet<InboxContext<void>>();
-  inboxListeners.add(Create, () => {
+  const count = () => {
     if (dispatched != null) dispatched.count++;
-  });
+  };
+  inboxListeners.add(Create, count);
+  inboxListeners.add(Update, count);
   return await handleInbox(request, {
     recipient: null,
     context,
@@ -422,4 +431,91 @@ test("handleInbox() inspects compounds without the Linked Data Signature", async
     signatureValue: "not-a-signature",
   };
   assertEquals(await handleDispatched(activity), [202, "", 1]);
+});
+
+test("handleInbox() accepts portable actors with keys at ap: URIs", async () => {
+  // An FEP-ae97 client identifies the keys of its actor by ap: URIs, and
+  // publishes an Update of the actor after registering it on a gateway:
+  const did = await exportDidKey(ed25519PublicKey.publicKey);
+  const verificationMethod = `${did}#${did.slice("did:key:".length)}`;
+  const privateJwk = await crypto.subtle.exportKey("jwk", ed25519PrivateKey);
+  const actorId = `ap://${did}/actor`;
+  const inboxId = `https://gw.example/.well-known/apgateway/${did}/actor/inbox`;
+  const actor = await new Person({
+    id: parseIri(actorId),
+    inbox: new URL(inboxId),
+    gateways: [new URL("https://gw.example")],
+    publicKey: new CryptographicKey({
+      id: parseIri(`${actorId}#main-key`),
+      owner: parseIri(actorId),
+      publicKey: rsaPublicKey2.publicKey,
+    }),
+    assertionMethods: [
+      new Multikey({
+        id: parseIri(`${actorId}#ed25519-key`),
+        controller: parseIri(actorId),
+        publicKey: ed25519PublicKey.publicKey,
+      }),
+    ],
+  }).toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+  }) as Record<string, unknown>;
+  const update = async (keyBase: string) => {
+    const [multikey] = actor.assertionMethod as Record<string, unknown>[];
+    return await secureDocument(
+      {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/security/data-integrity/v1",
+        ],
+        id: `ap://${did}/activities/update`,
+        type: "Update",
+        actor: actorId,
+        object: await secureDocument(
+          {
+            ...actor,
+            id: actorId,
+            publicKey: {
+              ...actor.publicKey as Record<string, unknown>,
+              id: `${keyBase}#main-key`,
+              owner: actorId,
+            },
+            assertionMethod: [
+              {
+                ...multikey,
+                id: `${keyBase}#ed25519-key`,
+                controller: actorId,
+              },
+            ],
+          },
+          privateJwk,
+          verificationMethod,
+        ),
+      },
+      privateJwk,
+      verificationMethod,
+    );
+  };
+
+  for (
+    const keyBase of [
+      actorId,
+      `ap+ef61://${encodeURIComponent(did)}/actor`,
+    ]
+  ) {
+    const dispatched = { count: 0 };
+    const response = await handle(await update(keyBase), dispatched);
+    assertEquals([response.status, dispatched.count], [202, 1], keyBase);
+  }
+
+  // Keys at ap: URIs of another DID are not the actor's:
+  const dispatched = { count: 0 };
+  const response = await handle(
+    await update(
+      "ap://did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK/actor",
+    ),
+    dispatched,
+  );
+  assertEquals([response.status, dispatched.count], [401, 0]);
 });
