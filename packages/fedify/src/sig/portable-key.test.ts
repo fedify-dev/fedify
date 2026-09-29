@@ -31,12 +31,14 @@ import {
 import { signRequest, verifyRequest, verifyRequestDetailed } from "./http.ts";
 import {
   fetchKey,
+  fetchKeyDetailed,
   type FetchKeyOptions,
   type FetchKeyResult,
   type KeyCache,
 } from "./key.ts";
 import { signJsonLd, verifyJsonLd } from "./ld.ts";
 import { doesActorOwnKey, getKeyOwner } from "./owner.ts";
+import { resolvePortableActorKey } from "./portable-key.ts";
 import { createProof, verifyProof } from "./proof.ts";
 
 const did = await exportDidKey(ed25519PublicKey.publicKey);
@@ -1318,7 +1320,8 @@ test("verifyRequest() tries the gateways of ap: key IDs in order", async () => {
     }) != null,
   );
   deepStrictEqual(documentLoader.fetched, [compatibleId(gw1)]);
-  // At most five hints are followed:
+  // At most three hints are followed, fewer than when dereferencing objects,
+  // since whoever made the signature chose them:
   const gateways = Array.from(
     { length: 7 },
     (_, i) => `https://gw${i + 10}.example`,
@@ -1332,7 +1335,45 @@ test("verifyRequest() tries the gateways of ap: key IDs in order", async () => {
   );
   deepStrictEqual(
     many.fetched,
-    gateways.slice(0, 5).map((g) => compatibleId(g)),
+    gateways.slice(0, 3).map((g) => compatibleId(g)),
+  );
+  // The key is accepted at the third gateway, but never at the fourth:
+  for (const [index, expected] of [[2, true], [3, false]] as const) {
+    const documentLoader = createLoader({
+      [compatibleId(gateways[index])]: signed,
+    });
+    const key = await verifyRequest(
+      await signedRequest(undefined, hinted(...gateways)),
+      { documentLoader, contextLoader },
+    );
+    strictEqual(key != null, expected, `gateway ${index + 1}`);
+    deepStrictEqual(
+      documentLoader.fetched,
+      gateways.slice(0, 3).map((g) => compatibleId(g)),
+      `gateway ${index + 1}`,
+    );
+  }
+  // Invalid and duplicate hints do not count:
+  const sparse = createLoader({ [compatibleId(gateways[2])]: signed });
+  ok(
+    await verifyRequest(
+      await signedRequest(
+        undefined,
+        hinted(
+          "not a gateway",
+          gateways[0],
+          gateways[0].toUpperCase(),
+          "https://gw.example/path",
+          gateways[1],
+          gateways[2],
+        ),
+      ),
+      { documentLoader: sparse, contextLoader },
+    ) != null,
+  );
+  deepStrictEqual(
+    sparse.fetched,
+    gateways.slice(0, 3).map((g) => compatibleId(g)),
   );
 });
 
@@ -1659,4 +1700,332 @@ test("verifyRequest() does not cache keys at ap: key IDs it could not process", 
   );
   strictEqual(key?.ownerId?.href, parseIri(actorId).href);
   strictEqual(documentLoader.fetched.length, 2);
+});
+
+// Lookups of keys at ap: key IDs share one timeout among their gateways:
+
+interface ControlledLoader extends DocumentLoader {
+  readonly fetched: string[];
+  readonly signals: (AbortSignal | undefined)[];
+}
+
+/**
+ * A loader that serves the given responses, and never responds for the URLs
+ * in `hanging`.  A hanging response is given up when its signal aborts,
+ * unless `ignoreSignal` is set.
+ */
+function controlledLoader(
+  responses: Record<string, unknown | number>,
+  hanging: readonly string[],
+  { ignoreSignal = false, delays = {} }: {
+    ignoreSignal?: boolean;
+    delays?: Record<string, number>;
+  } = {},
+): ControlledLoader {
+  const fetched: string[] = [];
+  const signals: (AbortSignal | undefined)[] = [];
+  const respond = failingLoader(responses);
+  const loader = async (
+    url: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<RemoteDocument> => {
+    fetched.push(url);
+    signals.push(options?.signal);
+    const signal = ignoreSignal ? undefined : options?.signal;
+    const delay = delays[url];
+    if (delay != null) {
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+    if (hanging.includes(url)) {
+      return await new Promise((_, reject) => {
+        signal?.addEventListener("abort", () => reject(signal.reason));
+      });
+    }
+    return await respond(url);
+  };
+  return Object.assign(loader, { fetched, signals });
+}
+
+function isTimeoutError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "TimeoutError";
+}
+
+test("resolvePortableActorKey() gives up gateways that do not respond in time", async () => {
+  const signed = await sign(await apActorJson());
+  for (const ignoreSignal of [false, true]) {
+    const documentLoader = controlledLoader(
+      { [compatibleId(gw2)]: signed },
+      [compatibleId(gw1)],
+      { ignoreSignal },
+    );
+    const resolution = await resolvePortableActorKey(hinted(gw1, gw2), {
+      documentLoader,
+      contextLoader,
+      lookupTimeout: 50,
+    });
+    // The first gateway used up the time, so the second one was never asked,
+    // and nothing tells what it would have served:
+    strictEqual(
+      resolution.type,
+      "unavailable",
+      `ignoreSignal: ${ignoreSignal}`,
+    );
+    if (resolution.type === "unavailable") {
+      strictEqual(resolution.cacheable, false);
+    }
+    deepStrictEqual(documentLoader.fetched, [compatibleId(gw1)]);
+    // The loader is told that the lookup gave up:
+    const [signal] = documentLoader.signals;
+    ok(signal?.aborted);
+    ok(isTimeoutError(signal.reason));
+  }
+});
+
+test("resolvePortableActorKey() caches timeouts only as failures to fetch", async () => {
+  const invalid = await apActorJson();
+  const cases: {
+    name: string;
+    responses: Record<string, unknown | number>;
+    hanging: string[];
+    hints: string[];
+    cacheable: boolean;
+  }[] = [
+    {
+      name: "the only gateway times out",
+      responses: {},
+      hanging: [compatibleId(gw1)],
+      hints: [gw1],
+      cacheable: true,
+    },
+    {
+      name: "a gateway responds with 404, and the last one times out",
+      responses: { [compatibleId(gw1)]: 404 },
+      hanging: [compatibleId(gw2)],
+      hints: [gw1, gw2],
+      cacheable: true,
+    },
+    {
+      name: "a gateway serves an invalid document, and the last one times out",
+      responses: { [compatibleId(gw1)]: invalid },
+      hanging: [compatibleId(gw2)],
+      hints: [gw1, gw2],
+      cacheable: false,
+    },
+    {
+      name: "the document loader cannot resolve the ap: URI in time",
+      responses: {},
+      hanging: [actorId],
+      hints: [],
+      cacheable: true,
+    },
+  ];
+  for (const { name, responses, hanging, hints, cacheable } of cases) {
+    const documentLoader = controlledLoader(responses, hanging);
+    const resolution = await resolvePortableActorKey(hinted(...hints), {
+      documentLoader,
+      contextLoader,
+      lookupTimeout: 50,
+    });
+    strictEqual(resolution.type, "unavailable", name);
+    if (resolution.type !== "unavailable") continue;
+    strictEqual(resolution.cacheable, cacheable, name);
+    // A timeout has no HTTP status, so neither does the lookup as a whole:
+    ok(!(resolution.error instanceof FetchError), name);
+    if (hanging.length === 1 && hints.length < 2) {
+      ok(isTimeoutError(resolution.error), name);
+    }
+  }
+});
+
+test("resolvePortableActorKey() shares one timeout among all gateways", async () => {
+  // The first gateway takes most of the time before responding with
+  // 404 Not Found, which leaves the second one only the rest of it; a timeout
+  // for each gateway would let the lookup take 550 ms:
+  const documentLoader = controlledLoader(
+    { [compatibleId(gw1)]: 404 },
+    [compatibleId(gw2)],
+    { delays: { [compatibleId(gw1)]: 250 } },
+  );
+  const started = Date.now();
+  const resolution = await resolvePortableActorKey(hinted(gw1, gw2), {
+    documentLoader,
+    contextLoader,
+    lookupTimeout: 300,
+  });
+  const elapsed = Date.now() - started;
+  ok(elapsed < 500, `took ${elapsed} ms`);
+  strictEqual(resolution.type, "unavailable");
+  deepStrictEqual(documentLoader.fetched, [
+    compatibleId(gw1),
+    compatibleId(gw2),
+  ]);
+  ok(documentLoader.signals[1]?.aborted);
+});
+
+test("resolvePortableActorKey() bounds loading the contexts of actor documents", async () => {
+  // The actor's document is served at once, but a context it needs never is:
+  const documentLoader = controlledLoader(
+    { [compatibleId(gw1)]: await sign(await apActorJson()) },
+    [],
+  );
+  const hangingContextLoader: DocumentLoader = (_url, options) =>
+    new Promise((_, reject) => {
+      options?.signal?.addEventListener(
+        "abort",
+        () => reject(options.signal!.reason),
+      );
+    });
+  const resolution = await resolvePortableActorKey(hinted(gw1, gw2), {
+    documentLoader,
+    contextLoader: hangingContextLoader,
+    lookupTimeout: 50,
+  });
+  // What the document says could not be told, which is not a rejection:
+  strictEqual(resolution.type, "unavailable");
+  if (resolution.type === "unavailable") {
+    strictEqual(resolution.cacheable, false);
+  }
+  deepStrictEqual(documentLoader.fetched, [compatibleId(gw1)]);
+});
+
+test("resolvePortableActorKey() ignores what is resolved after the timeout", async () => {
+  // A key cache that answers only after the lookup has returned holds up
+  // verifying the document's proof without loading anything, so
+  // the verification ends after the timeout:
+  let verifiedLate: () => void = () => {};
+  const late = new Promise<void>((resolve) => verifiedLate = resolve);
+  let lookupDone: () => void = () => {};
+  const done = new Promise<void>((resolve) => lookupDone = resolve);
+  const slowKeyCache: KeyCache = {
+    async get() {
+      await done;
+      return undefined;
+    },
+    set() {
+      verifiedLate();
+      return Promise.resolve();
+    },
+  };
+  const documentLoader = controlledLoader(
+    { [compatibleId(gw1)]: await sign(await apActorJson()) },
+    [],
+  );
+  const resolution = await resolvePortableActorKey(hinted(gw1), {
+    documentLoader,
+    contextLoader,
+    keyCache: slowKeyCache,
+    lookupTimeout: 300,
+  });
+  lookupDone();
+  strictEqual(resolution.type, "unavailable");
+  if (resolution.type === "unavailable") {
+    strictEqual(resolution.cacheable, false);
+  }
+  // The proof was verified after all, too late to count:
+  await late;
+  // A loader that rejects after the timeout does not leave an unhandled
+  // rejection behind:
+  const lateRejection = controlledLoader({}, [], {
+    delays: { [compatibleId(gw1)]: 60 },
+  });
+  const rejected = await resolvePortableActorKey(hinted(gw1), {
+    documentLoader: lateRejection,
+    contextLoader,
+    lookupTimeout: 20,
+  });
+  strictEqual(rejected.type, "unavailable");
+  await new Promise((resolve) => setTimeout(resolve, 80));
+});
+
+test("resolvePortableActorKey() validates the lookup timeout", async () => {
+  const documentLoader = controlledLoader({}, []);
+  for (const lookupTimeout of [-1, NaN, Infinity, 2 ** 31]) {
+    let error: unknown;
+    try {
+      await resolvePortableActorKey(hinted(gw1), {
+        documentLoader,
+        contextLoader,
+        lookupTimeout,
+      });
+    } catch (e) {
+      error = e;
+    }
+    ok(error instanceof RangeError, String(lookupTimeout));
+  }
+  // No time at all asks no gateway:
+  const resolution = await resolvePortableActorKey(hinted(gw1), {
+    documentLoader,
+    contextLoader,
+    lookupTimeout: 0,
+  });
+  strictEqual(resolution.type, "unavailable");
+  if (resolution.type === "unavailable") {
+    strictEqual(resolution.cacheable, false);
+  }
+  deepStrictEqual(documentLoader.fetched, []);
+});
+
+test("fetchKeyDetailed() caches keys at ap: key IDs that time out as fetch failures", async () => {
+  const cases = [
+    // Every gateway failed to serve the document, the last one in time:
+    {
+      responses: { [compatibleId(gw1)]: 404 },
+      hanging: [compatibleId(gw2)],
+      cached: true,
+    },
+    // The first gateway used up the time, so the second one was never asked:
+    { responses: {}, hanging: [compatibleId(gw1)], cached: false },
+  ];
+  for (const { responses, hanging, cached } of cases) {
+    const documentLoader = controlledLoader(responses, hanging);
+    const keyCache = new KvKeyCache(new MemoryKvStore(), ["pk"]);
+    const options: FetchKeyOptions = {
+      documentLoader,
+      contextLoader,
+      keyCache,
+      portableKeyResolvers: {
+        gatewayKey: () => Promise.resolve({ type: "legacy" }),
+        actorKey: (keyId) =>
+          resolvePortableActorKey(keyId, {
+            documentLoader,
+            contextLoader,
+            lookupTimeout: 50,
+          }),
+      },
+    };
+    const hintedKeyId = hinted(gw1, gw2);
+    for (let i = 0; i < 2; i++) {
+      const result = await fetchKeyDetailed(
+        hintedKeyId,
+        CryptographicKey,
+        options,
+      );
+      strictEqual(result.key, null);
+      strictEqual(result.cached, cached && i > 0, `${cached}, ${i}`);
+      ok(
+        result.fetchError == null || !("status" in result.fetchError),
+        "a timeout has no HTTP status",
+      );
+    }
+    strictEqual(
+      documentLoader.fetched.filter((url) => url === compatibleId(gw1)).length,
+      cached ? 1 : 2,
+    );
+  }
+});
+
+test("verifyRequestDetailed() reports keys at ap: key IDs that time out as fetch errors", async () => {
+  const timeout = new DOMException("Timed out", "TimeoutError");
+  const documentLoader: DocumentLoader = () => Promise.reject(timeout);
+  for (const spec of specs) {
+    const result = await verifyRequestDetailed(
+      await signedRequest(spec, hinted(gw1)),
+      { documentLoader, contextLoader, spec },
+    );
+    ok(!result.verified, spec);
+    strictEqual(result.reason.type, "keyFetchError", spec);
+    if (result.reason.type === "keyFetchError") {
+      ok(!("status" in result.reason.result), spec);
+    }
+  }
 });
