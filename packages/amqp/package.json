@@ -1,6 +1,6 @@
 {
   "name": "@fedify/amqp",
-  "version": "2.1.25",
+  "version": "2.1.26",
   "description": "AMQP/RabbitMQ driver for Fedify",
   "keywords": [
     "fedify",
