@@ -520,12 +520,38 @@ export interface Context<TContextData> {
 
   /**
    * Determines the type of the URI and extracts the associated data.
+   *
+   * By default, only URIs on this server's origin are recognized.  With
+   * the `portable` option, [FEP-ef61] portable IDs, e.g.,
+   * `ap+ef61://did:key:z6Mk.../users/alice`, and their compatible
+   * identifiers on any gateway, e.g.,
+   * `https://example.com/.well-known/apgateway/did:key:z6Mk.../users/alice`,
+   * are also recognized by the same paths that the gateway endpoint routes
+   * to the dispatchers, and the result has the DID in its `authority`
+   * property.
+   *
+   * The DID of a portable ID is anyone's to choose, so recognizing it does
+   * not mean that this server hosts anything for the DID.  Check that
+   * `authority` is the DID that the application stores for the actor or
+   * object before acting on it:
+   *
+   * ~~~~ typescript
+   * const parsed = ctx.parseUri(follow.objectId, { portable: true });
+   * if (parsed?.type !== "actor") return;
+   * const user = await getUser(parsed.identifier);
+   * if (user == null) return;
+   * if (parsed.authority != null && parsed.authority !== user.did) return;
+   * ~~~~
+   *
+   * [FEP-ef61]: https://w3id.org/fep/ef61
+   *
    * @param uri The URI to parse.
+   * @param options Options for parsing the URI.  Since 2.4.0.
    * @returns The result of parsing the URI.  If `null` is given or
    *          the URI is not recognized, `null` is returned.
    * @since 0.9.0
    */
-  parseUri(uri: URL | null): ParseUriResult | null;
+  parseUri(uri: URL | null, options?: ParseUriOptions): ParseUriResult | null;
 
   /**
    * Gets the key pairs for an actor.
@@ -1552,6 +1578,31 @@ export interface OutboxContext<TContextData> extends Context<TContextData> {
 }
 
 /**
+ * Options for {@link Context.parseUri}.
+ * @since 2.4.0
+ */
+export interface ParseUriOptions {
+  /**
+   * Whether to also recognize [FEP-ef61] portable IDs, i.e., `ap:` and
+   * `ap+ef61:` URIs, and their compatible identifiers on any gateway.
+   * The result of a portable ID has its DID, without percent-encoding, in
+   * the `authority` property, which the caller has to compare with the DID
+   * that it stores for the actor or object, since anyone can make a portable
+   * ID with the same path under another DID.
+   *
+   * Like URIs on this server's origin, a portable ID is recognized by its
+   * path, and its query, e.g., location hints, and fragment are ignored.
+   * A shared inbox is never recognized in a portable ID, and a portable ID
+   * with a malformed DID, or with a `did:key` DID that is not encoded in
+   * base58-btc, is not recognized either.
+   *
+   * [FEP-ef61]: https://w3id.org/fep/ef61
+   * @default `false`
+   */
+  readonly portable?: boolean;
+}
+
+/**
  * A result of parsing an URI.
  */
 export type ParseUriResult =
@@ -1561,6 +1612,12 @@ export type ParseUriResult =
   | {
     readonly type: "actor";
     readonly identifier: string;
+    /**
+     * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
+     * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
+     * @since 2.4.0
+     */
+    readonly authority?: string;
   }
   /**
    * The case of an object URI.
@@ -1570,6 +1627,12 @@ export type ParseUriResult =
     readonly class: ConstructorWithTypeId<Object>;
     readonly typeId: URL;
     readonly values: Record<string, string>;
+    /**
+     * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
+     * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
+     * @since 2.4.0
+     */
+    readonly authority?: string;
   }
   /**
    * The case of an shared inbox URI.
@@ -1577,6 +1640,7 @@ export type ParseUriResult =
   | {
     readonly type: "inbox";
     readonly identifier: undefined;
+    readonly authority?: undefined;
   }
   /**
    * The case of an personal inbox URI.
@@ -1584,6 +1648,12 @@ export type ParseUriResult =
   | {
     readonly type: "inbox";
     readonly identifier: string;
+    /**
+     * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
+     * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
+     * @since 2.4.0
+     */
+    readonly authority?: string;
   }
   /**
    * The case of an outbox collection URI.
@@ -1591,6 +1661,12 @@ export type ParseUriResult =
   | {
     readonly type: "outbox";
     readonly identifier: string;
+    /**
+     * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
+     * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
+     * @since 2.4.0
+     */
+    readonly authority?: string;
   }
   /**
    * The case of a following collection URI.
@@ -1598,6 +1674,12 @@ export type ParseUriResult =
   | {
     readonly type: "following";
     readonly identifier: string;
+    /**
+     * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
+     * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
+     * @since 2.4.0
+     */
+    readonly authority?: string;
   }
   /**
    * The case of a followers collection URI.
@@ -1605,6 +1687,12 @@ export type ParseUriResult =
   | {
     readonly type: "followers";
     readonly identifier: string;
+    /**
+     * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
+     * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
+     * @since 2.4.0
+     */
+    readonly authority?: string;
   }
   /**
    * The case of a liked collection URI.
@@ -1613,6 +1701,12 @@ export type ParseUriResult =
   | {
     readonly type: "liked";
     readonly identifier: string;
+    /**
+     * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
+     * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
+     * @since 2.4.0
+     */
+    readonly authority?: string;
   }
   /**
    * The case of a featured collection URI.
@@ -1621,6 +1715,12 @@ export type ParseUriResult =
   | {
     readonly type: "featured";
     readonly identifier: string;
+    /**
+     * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
+     * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
+     * @since 2.4.0
+     */
+    readonly authority?: string;
   }
   /**
    * The case of a featured tags collection URI.
@@ -1629,6 +1729,12 @@ export type ParseUriResult =
   | {
     readonly type: "featuredTags";
     readonly identifier: string;
+    /**
+     * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
+     * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
+     * @since 2.4.0
+     */
+    readonly authority?: string;
   }
   /**
    * The case of a custom collection URI.
@@ -1640,6 +1746,12 @@ export type ParseUriResult =
     readonly class: ConstructorWithTypeId<Object>;
     readonly typeId: URL;
     readonly values: Record<string, string>;
+    /**
+     * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
+     * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
+     * @since 2.4.0
+     */
+    readonly authority?: string;
   }
   /**
    * The case of a custom ordered collection URI.
@@ -1651,6 +1763,12 @@ export type ParseUriResult =
     readonly class: ConstructorWithTypeId<Object>;
     readonly typeId: URL;
     readonly values: Record<string, string>;
+    /**
+     * The DID of the portable ID, e.g., `did:key:z6Mk...`, or `undefined`
+     * for a URI on this server's origin.  See {@link ParseUriOptions.portable}.
+     * @since 2.4.0
+     */
+    readonly authority?: string;
   };
 
 /**

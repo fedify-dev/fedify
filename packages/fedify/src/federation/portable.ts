@@ -100,6 +100,45 @@ export function parsePortableGatewayRequest(
 }
 
 /**
+ * Recognizes an FEP-ef61 portable ID, i.e., an `ap:` or `ap+ef61:` URI, or
+ * a compatible identifier on any gateway, and splits it into its DID and
+ * the object path to route.
+ *
+ * It accepts the same IDs as the gateway endpoint does: the query, e.g.,
+ * location hints, and the fragment are ignored, and a malformed DID, or
+ * a `did:key` DID that is not encoded in base58-btc, is refused.
+ *
+ * @param uri The ID to recognize.
+ * @returns The DID normalized as an FEP-fe34 origin, and the object path,
+ *          or `null` if the ID is not a portable ID or is malformed.
+ */
+export function parsePortableId(
+  uri: URL,
+): { readonly authority: string; readonly path: `/${string}` } | null {
+  if (uri.username !== "" || uri.password !== "") return null;
+  if (uri.protocol !== "ap:" && uri.protocol !== "ap+ef61:") {
+    const request = parsePortableGatewayRequest(uri);
+    if (request?.type !== "object") return null;
+    return {
+      authority: request.portableRequest.authority,
+      path: request.path,
+    };
+  }
+  try {
+    const id = parseIri(uri);
+    // Validates the percent-encoding of the path and fragment, which parseIri()
+    // leaves as is:
+    canonicalizePortableUri(formatIri(id));
+    const authority = getFe34Origin(id);
+    assertBase58BtcDidKey(authority);
+    return { authority, path: id.pathname as `/${string}` };
+  } catch (error) {
+    if (error instanceof TypeError) return null;
+    throw error;
+  }
+}
+
+/**
  * Builds a portable ID from a DID authority and an object path.
  * @param authority The bare DID, e.g., `did:key:z6Mk...`.
  * @param path The object path, e.g., `/notes/123`.

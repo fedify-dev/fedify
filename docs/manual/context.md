@@ -248,6 +248,10 @@ A few things to note about them:
     a portable ID on a gateway, an HTTP(S) URL for software that does not
     support portable IDs, use `toCompatibleEf61Id()` from
     `@fedify/vocab-runtime`.
+ -  The other way around, `~Context.parseUri()` recognizes portable IDs and
+    compatible identifiers when the `portable` option is enabled; see the
+    [*Portable IDs* section](./context-advanced.md#portable-ids) of
+    *Advanced context helpers*.
 
 Portable actors and objects with such IDs can be served by the same
 dispatchers through the gateway endpoint; see the [*Portable actors and

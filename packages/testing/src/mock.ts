@@ -7,6 +7,7 @@ import type {
   FederationStartQueueOptions,
   GetObjectOptions,
   Message,
+  ParseUriOptions,
   ParseUriResult,
   RequestContext,
   RouteActivityOptions,
@@ -20,7 +21,10 @@ import type {
   TraverseCollectionOptions,
 } from "@fedify/vocab";
 import {
+  canonicalizePortableUri,
   type DocumentLoader,
+  formatIri,
+  fromCompatibleEf61Id,
   getFe34Origin,
   parseIri,
 } from "@fedify/vocab-runtime";
@@ -140,16 +144,75 @@ function buildPortableUri(authority: string, path: string): URL {
     );
   }
   const did = getFe34Origin(authority);
-  if (
-    did.startsWith("did:key:") &&
-    !/^z[1-9A-HJ-NP-Za-km-z]+$/.test(did.slice("did:key:".length))
-  ) {
+  if (!isBase58BtcDidKey(did)) {
     throw new TypeError(
       "The did:key authority of a portable ID must be encoded in base58-btc, " +
         "i.e., start with z.",
     );
   }
   return parseIri(`ap+ef61://${did}${path}`);
+}
+
+/**
+ * Checks that a normalized DID, if it is a `did:key` DID, is encoded in
+ * base58-btc, as `@fedify/fedify` requires of portable IDs.
+ */
+function isBase58BtcDidKey(did: string): boolean {
+  return !did.startsWith("did:key:") ||
+    /^z[1-9A-HJ-NP-Za-km-z]+$/.test(did.slice("did:key:".length));
+}
+
+/**
+ * Recognizes an FEP-ef61 portable ID, i.e., an `ap:` or `ap+ef61:` URI, or
+ * a compatible identifier on any gateway, validating it the same way as
+ * `Context.parseUri()` of `@fedify/fedify` does.
+ * @returns The DID and the path of the portable ID, `null` if it is
+ *          malformed, or `undefined` if the URI is not a portable ID.
+ */
+function parseMockPortableId(
+  uri: URL,
+): { authority: string; path: string } | null | undefined {
+  const portable = uri.protocol === "ap:" || uri.protocol === "ap+ef61:";
+  if (
+    !portable &&
+    !((uri.protocol === "http:" || uri.protocol === "https:") &&
+      /^\/\.well-known\/apgateway\/did(?::|%3A)/i.test(uri.pathname))
+  ) {
+    return undefined;
+  }
+  if (uri.username !== "" || uri.password !== "") return null;
+  try {
+    // The query of a compatible identifier is ignored, as the gateway
+    // endpoint does:
+    const id = portable
+      ? parseIri(uri)
+      : fromCompatibleEf61Id(uri.origin + uri.pathname);
+    if (id == null) return null;
+    canonicalizePortableUri(formatIri(id));
+    const authority = getFe34Origin(id);
+    if (!isBase58BtcDidKey(authority)) return null;
+    return { authority, path: id.pathname };
+  } catch (error) {
+    if (error instanceof TypeError) return null;
+    throw error;
+  }
+}
+
+/**
+ * Parses a path in the way {@link MockContext.parseUri} does, i.e., only
+ * `/users/{identifier}` and its subpaths are recognized, as actors.
+ */
+function parseMockPath(path: string): ParseUriResult | null {
+  if (path.startsWith("/users/")) {
+    const parts = path.split("/");
+    if (parts.length >= 3) {
+      return {
+        type: "actor",
+        identifier: parts[2],
+      };
+    }
+  }
+  return null;
 }
 
 function validateOutboxListenerPath(
@@ -1350,17 +1413,18 @@ class MockContext<TContextData> implements Context<TContextData> {
     return new URL(`/collections/${String(_name)}/${path}`, this.origin);
   }
 
-  parseUri(uri: URL): ParseUriResult | null {
-    if (uri.pathname.startsWith("/users/")) {
-      const parts = uri.pathname.split("/");
-      if (parts.length >= 3) {
-        return {
-          type: "actor",
-          identifier: parts[2],
-        };
-      }
-    }
-    return null;
+  parseUri(
+    uri: URL | null,
+    options: ParseUriOptions = {},
+  ): ParseUriResult | null {
+    if (uri == null) return null;
+    const portable = parseMockPortableId(uri);
+    if (portable === undefined) return parseMockPath(uri.pathname);
+    if (portable === null || !options.portable) return null;
+    const result = parseMockPath(portable.path);
+    return result == null
+      ? null
+      : { ...result, authority: portable.authority } as ParseUriResult;
   }
 
   async getActorKeyPairs(identifier: string): Promise<ActorKeyPair[]> {
