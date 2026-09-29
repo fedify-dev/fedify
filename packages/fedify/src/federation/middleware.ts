@@ -60,8 +60,10 @@ import { getNodeInfo, type GetNodeInfoOptions } from "../nodeinfo/client.ts";
 import { handleNodeInfo, handleNodeInfoJrd } from "../nodeinfo/handler.ts";
 import type { JsonValue, NodeInfo } from "../nodeinfo/types.ts";
 import {
+  DEFAULT_MAX_RFC9421_SIGNATURES,
   type HttpMessageSignaturesSpec,
   type HttpMessageSignaturesSpecDeterminer,
+  validateMaxSignatures,
   verifyRequest,
 } from "../sig/http.ts";
 import { exportJwk, importJwk, validateCryptoKey } from "../sig/key.ts";
@@ -639,6 +641,8 @@ export interface FederationOrigin {
  * @returns A new {@link Federation} instance.
  * @throws {TypeError} If benchmark mode and `meterProvider` are both
  * specified.
+ * @throws {RangeError} If {@link FederationOptions.maxHttpSignatures} is not
+ * a positive integer or `Infinity`.
  * @since 0.10.0
  */
 export function createFederation<TContextData>(
@@ -670,6 +674,7 @@ export class FederationImpl<TContextData>
   onOutboxError?: OutboxErrorHandler;
   permanentFailureStatusCodes: readonly number[];
   signatureTimeWindow: Temporal.Duration | Temporal.DurationLike | false;
+  maxHttpSignatures: number;
   skipSignatureVerification: boolean;
   outboxRetryPolicy: RetryPolicy;
   inboxRetryPolicy: RetryPolicy;
@@ -707,6 +712,9 @@ export class FederationImpl<TContextData>
       (benchmarkMode && !hasCustomLoaderFactory ? true : false);
     const signatureTimeWindow = options.signatureTimeWindow ??
       (benchmarkMode ? false : { hours: 1 });
+    if (options.maxHttpSignatures !== undefined) {
+      validateMaxSignatures(options.maxHttpSignatures, "maxHttpSignatures");
+    }
     if (benchmarkMode && options.meterProvider != null) {
       throw new TypeError(
         "benchmarkMode requires Fedify to own the meterProvider; " +
@@ -972,6 +980,8 @@ export class FederationImpl<TContextData>
     this.permanentFailureStatusCodes = options.permanentFailureStatusCodes ??
       [404, 410];
     this.signatureTimeWindow = signatureTimeWindow;
+    this.maxHttpSignatures = options.maxHttpSignatures ??
+      DEFAULT_MAX_RFC9421_SIGNATURES;
     this.skipSignatureVerification = options.skipSignatureVerification ?? false;
     this.inboxChallengePolicy = options.inboxChallengePolicy;
     this.outboxRetryPolicy = options.outboxRetryPolicy ??
@@ -3463,6 +3473,7 @@ export class FederationImpl<TContextData>
       unverifiedActivityHandler: this.unverifiedActivityHandler,
       onNotFound,
       signatureTimeWindow: this.signatureTimeWindow,
+      maxHttpSignatures: this.maxHttpSignatures,
       skipSignatureVerification: this.skipSignatureVerification,
       inboxChallengePolicy: this.inboxChallengePolicy,
       meterProvider: this.meterProvider,
@@ -5458,6 +5469,7 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
       contextLoader: options.contextLoader ?? this.contextLoader,
       documentLoader: options.documentLoader ?? this.documentLoader,
       timeWindow: this.federation.signatureTimeWindow,
+      maxSignatures: this.federation.maxHttpSignatures,
       meterProvider: this.meterProvider,
       tracerProvider: options.tracerProvider ?? this.tracerProvider,
     });

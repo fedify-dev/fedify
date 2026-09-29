@@ -469,6 +469,20 @@ Defaults to `"rfc9421"`.
 [HTTP Signatures]: https://datatracker.ietf.org/doc/html/draft-cavage-http-signatures-12
 [RFC 9421]: https://www.rfc-editor.org/rfc/rfc9421
 
+### `maxHttpSignatures`
+
+*This API is available since Fedify 2.4.0.*
+
+The maximum number of [RFC 9421] signatures of an incoming request to verify,
+in the inbox and in `~RequestContext.getSignedKey()`.  Each signature may make
+Fedify fetch the key that it names, so only the first ones in the order of
+the `Signature-Input` header are verified, and the rest are ignored.  It has
+to be a positive integer, or `Infinity` to verify every signature, which lets
+a single request make Fedify fetch any number of keys.
+
+Defaults to `3`.  See also the [*Requests with several RFC 9421 signatures*
+section](./inbox.md#requests-with-several-rfc-9421-signatures).
+
 ### `permanentFailureStatusCodes`
 
 *This API is available since Fedify 2.0.0.*

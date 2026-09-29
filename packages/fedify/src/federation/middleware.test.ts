@@ -1730,15 +1730,22 @@ test({
 });
 
 test("Federation.fetch() [rfc9421] multiple POST signatures", async (t) => {
-  for (const validSecond of [true, false]) {
+  for (
+    const [name, validSecond, maxHttpSignatures] of [
+      ["valid second signature", true, undefined],
+      ["both signatures invalid", false, undefined],
+      ["valid second signature beyond maxHttpSignatures", true, 1],
+    ] as const
+  ) {
     await t.step(
-      validSecond ? "valid second signature" : "both signatures invalid",
+      name,
       async () => {
         const inbox: string[] = [];
         const federation = createFederation<void>({
           kv: new MemoryKvStore(),
           documentLoaderFactory: () => mockDocumentLoader,
           contextLoaderFactory: () => mockDocumentLoader,
+          maxHttpSignatures,
         });
         federation.setActorDispatcher(
           "/users/{identifier}",
@@ -1776,11 +1783,76 @@ test("Federation.fetch() [rfc9421] multiple POST signatures", async (t) => {
         const response = await federation.fetch(signed, {
           contextData: undefined,
         });
-        assertEquals(response.status, validSecond ? 202 : 401);
-        assertEquals(inbox, validSecond ? [createFixture.id] : []);
+        const accepted = validSecond && maxHttpSignatures == null;
+        assertEquals(response.status, accepted ? 202 : 401);
+        assertEquals(inbox, accepted ? [createFixture.id] : []);
       },
     );
   }
+});
+
+test("FederationOptions.maxHttpSignatures", async (t) => {
+  const kv = new MemoryKvStore();
+
+  await t.step("defaults to three", () => {
+    const federation = createFederation<void>({ kv });
+    assertInstanceOf(federation, FederationImpl);
+    assertEquals(federation.maxHttpSignatures, 3);
+  });
+
+  await t.step("rejects invalid values", () => {
+    for (
+      const maxHttpSignatures of [
+        0,
+        -1,
+        1.5,
+        NaN,
+        2 ** 53,
+        null as unknown as number,
+      ]
+    ) {
+      assertThrows(
+        () => createFederation<void>({ kv, maxHttpSignatures }),
+        RangeError,
+      );
+    }
+    const federation = createFederation<void>({
+      kv,
+      maxHttpSignatures: Infinity,
+    });
+    assertInstanceOf(federation, FederationImpl);
+    assertEquals(federation.maxHttpSignatures, Infinity);
+  });
+
+  await t.step("applies to RequestContext.getSignedKey()", async () => {
+    let request = new Request("https://example.com/", {
+      headers: { "Accept": "application/ld+json" },
+    });
+    for (
+      const [label, keyId] of [
+        ["sig1", new URL("https://example.com/missing-key")],
+        ["sig2", rsaPublicKey2.id!],
+      ] as const
+    ) {
+      request = await signRequest(request, rsaPrivateKey2, keyId, {
+        spec: "rfc9421",
+        rfc9421: { label },
+      });
+    }
+    for (const maxHttpSignatures of [undefined, 1]) {
+      const federation = createFederation<void>({
+        kv,
+        documentLoaderFactory: () => mockDocumentLoader,
+        contextLoaderFactory: () => mockDocumentLoader,
+        maxHttpSignatures,
+      });
+      const ctx = federation.createContext(request, undefined);
+      assertEquals(
+        await ctx.getSignedKey(),
+        maxHttpSignatures == null ? rsaPublicKey2 : null,
+      );
+    }
+  });
 });
 
 test("Federation.fetch()", async (t) => {
