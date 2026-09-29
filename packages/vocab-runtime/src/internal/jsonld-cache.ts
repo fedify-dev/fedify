@@ -4,6 +4,41 @@ import { formatIri, haveSameFe34Origin, haveSameIriOrigin } from "../url.ts";
 
 const noJsonLdContext = Symbol("noJsonLdContext");
 
+const scopedLoaders = new WeakMap<
+  DocumentLoader,
+  { base: DocumentLoader; released: boolean }
+>();
+
+/**
+ * Lowers context loading failure logs for one accessor operation.  Parsed
+ * objects retain the loader, so release it before returning to the caller.
+ * Released wrappers are unwrapped to avoid accumulating loader chains.
+ * @internal Used by generated vocabulary accessors; not a public API.
+ */
+export function createScopedContextLoader(
+  base: DocumentLoader,
+  suppressError?: boolean,
+): { loader: DocumentLoader; release: () => void } {
+  for (
+    let state = scopedLoaders.get(base);
+    state?.released;
+    state = scopedLoaders.get(base)
+  ) {
+    base = state.base;
+  }
+  if (!suppressError) return { loader: base, release: () => {} };
+  const state = { base, released: false };
+  const loader: DocumentLoader = (url, options) =>
+    base(url, state.released ? options : { ...options, suppressError: true });
+  scopedLoaders.set(loader, state);
+  return {
+    loader,
+    release: () => {
+      state.released = true;
+    },
+  };
+}
+
 /**
  * Options for deciding whether two IRIs should be treated as same-origin.
  *

@@ -371,10 +371,13 @@ export function getDocumentLoader(
         await validatePublicUrl(currentUrl);
       } catch (error) {
         if (error instanceof UrlError) {
-          logger.error("Disallowed private URL: {url}", {
-            url: currentUrl,
-            error,
-          });
+          logger[options?.suppressError ? "warn" : "error"](
+            "Disallowed private URL: {url}",
+            {
+              url: currentUrl,
+              error,
+            },
+          );
         }
         throw error;
       }
@@ -408,7 +411,7 @@ export function getDocumentLoader(
             response.headers.has("Location")
           ) {
             if (redirected >= maximumRedirection) {
-              logger.error(
+              logger[options?.suppressError ? "warn" : "error"](
                 "Too many redirections ({redirections}) while fetching document.",
                 { redirections: redirected + 1, url: currentUrl },
               );
@@ -423,7 +426,7 @@ export function getDocumentLoader(
             ).href;
             span.setAttribute("http.redirect.url", redirectUrl);
             if (visited.has(redirectUrl)) {
-              logger.error(
+              logger[options?.suppressError ? "warn" : "error"](
                 "Detected a redirect loop while fetching document: {url} -> " +
                   "{redirectUrl}",
                 { url: currentUrl, redirectUrl },

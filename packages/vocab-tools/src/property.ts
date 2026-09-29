@@ -181,8 +181,12 @@ async function* generateProperty(
         // In portable mode, the document may turn out to be a portable object,
         // which has to be verified with the same context documents:
         const snapshot = portableMode
-          ? createSnapshotContextLoader(contextLoader)
+          ? createSnapshotContextLoader(contextLoader, options.suppressError)
           : null;
+        const scopedContext = createScopedContextLoader(
+          snapshot?.loader ?? contextLoader,
+          snapshot == null && options.suppressError,
+        );
         try {
           let claim: PortableResponseClaim | null | undefined;
           try {
@@ -191,7 +195,7 @@ async function* generateProperty(
               document,
               {
                 documentLoader,
-                contextLoader: snapshot?.loader ?? contextLoader,
+                contextLoader: scopedContext.loader,
                 tracerProvider,
                 baseUrl,
               }
@@ -261,6 +265,7 @@ async function* generateProperty(
             contextLoader: snapshot?.loader,
           });
         } finally {
+          scopedContext.release();
           snapshot?.release();
         }
       });

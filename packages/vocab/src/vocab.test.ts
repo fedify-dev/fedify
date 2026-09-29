@@ -5685,3 +5685,197 @@ for (const typeUri in types) {
     deepStrictEqual(cls.typeId, new URL(type.uri));
   });
 }
+
+test("Announce.getObject() suppresses redirect, context, and private URL logs", async () => {
+  const records: LogRecord[] = [];
+  const objectUrl = "https://example.com/suppression-object";
+  const contextUrl = "https://example.com/suppression-context";
+  const scenarios = [
+    "redirect limit",
+    "redirect loop",
+    "context",
+    "private",
+    "private redirect",
+  ];
+  await reset();
+  await configure({
+    sinks: {
+      capture: (record) => {
+        records.push(record);
+      },
+    },
+    loggers: [{
+      category: ["fedify"],
+      lowestLevel: "debug",
+      sinks: ["capture"],
+    }],
+  });
+  try {
+    for (const scenario of scenarios) {
+      fetchMock.spyGlobal();
+      let fetches = 0;
+      fetchMock.get("begin:https://example.com/", (call) => {
+        fetches++;
+        if (scenario === "redirect limit") {
+          return Response.redirect(
+            `https://example.com/redirect-${fetches}`,
+            302,
+          );
+        }
+        if (scenario === "redirect loop") {
+          return Response.redirect(objectUrl, 302);
+        }
+        if (scenario === "private redirect") {
+          return Response.redirect("http://127.0.0.1/private", 302);
+        }
+        if (call.url === contextUrl) return new Response(null, { status: 404 });
+        return new Response(
+          JSON.stringify({
+            "@context": ["https://www.w3.org/ns/activitystreams", contextUrl],
+            id: objectUrl,
+            type: "Note",
+          }),
+          { headers: { "Content-Type": "application/activity+json" } },
+        );
+      });
+      try {
+        for (const suppressError of [true, false, undefined]) {
+          records.length = 0;
+          fetches = 0;
+          const announce = new Announce({
+            object: new URL(
+              scenario === "private" ? "http://127.0.0.1/private" : objectUrl,
+            ),
+          });
+          if (suppressError) {
+            deepStrictEqual(await announce.getObject({ suppressError }), null);
+            deepStrictEqual(
+              records.filter((r) => r.level === "error"),
+              [],
+              scenario,
+            );
+            ok(records.some((r) => r.level === "warning"), scenario);
+          } else {
+            await rejects(() => announce.getObject({ suppressError }));
+            ok(records.some((r) => r.level === "error"), scenario);
+          }
+          if (scenario === "private") deepStrictEqual(fetches, 0);
+          if (scenario === "private redirect") deepStrictEqual(fetches, 1);
+        }
+      } finally {
+        fetchMock.hardReset();
+      }
+    }
+  } finally {
+    await reset();
+  }
+});
+
+test("suppressed context loading does not persist on fetched objects", async () => {
+  const states: (boolean | undefined)[] = [];
+  const contextLoader: DocumentLoader = (url, options) => {
+    if (url === "https://www.w3.org/ns/activitystreams") {
+      return mockDocumentLoader(url);
+    }
+    states.push(options?.suppressError);
+    return Promise.resolve({
+      contextUrl: null,
+      documentUrl: url,
+      document: {
+        "@context": {
+          as: "https://www.w3.org/ns/activitystreams#",
+          name: "as:name",
+        },
+      },
+    });
+  };
+  const documentLoader: DocumentLoader = (url) =>
+    Promise.resolve({
+      contextUrl: null,
+      documentUrl: url,
+      document: {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://example.com/scoped-context",
+        ],
+        id: url,
+        type: url.endsWith("actor") ? "Person" : "Note",
+        attributedTo: "https://example.com/scoped-actor",
+      },
+    });
+  const note = await new Announce({
+    object: new URL("https://example.com/scoped-note"),
+  }).getObject({
+    documentLoader,
+    contextLoader,
+    suppressError: true,
+  });
+  assertInstanceOf(note, Note);
+  ok(states.includes(true));
+  states.length = 0;
+  const actor = await note.getAttribution();
+  assertInstanceOf(actor, Person);
+  ok(states.length > 0);
+  deepStrictEqual(states.includes(true), false);
+});
+
+test("portable accessors suppress document and context failure logs", async () => {
+  const records: LogRecord[] = [];
+  const id = new URL("ap+ef61://did%3Akey%3Az6Mkabc/objects/1");
+  const contextUrl = "https://example.com/portable-suppression-context";
+  await reset();
+  await configure({
+    sinks: {
+      capture: (record) => {
+        records.push(record);
+      },
+    },
+    loggers: [{
+      category: ["fedify"],
+      lowestLevel: "debug",
+      sinks: ["capture"],
+    }],
+  });
+  try {
+    for (const failContext of [false, true]) {
+      fetchMock.spyGlobal();
+      fetchMock.get("begin:https://example.com/", (call) => {
+        if (!failContext || call.url === contextUrl) {
+          return new Response(null, { status: 404 });
+        }
+        return new Response(
+          JSON.stringify({
+            "@context": ["https://www.w3.org/ns/activitystreams", contextUrl],
+            id: "ap://did:key:z6Mkabc/objects/1",
+            type: "Note",
+          }),
+          { headers: { "Content-Type": "application/activity+json" } },
+        );
+      });
+      try {
+        for (const suppressError of [true, false, undefined]) {
+          records.length = 0;
+          const announce = new Announce({ object: id });
+          const options = {
+            suppressError,
+            gateways: ["https://example.com/"],
+            verifyPortableObject: () =>
+              Promise.resolve({ verified: true as const }),
+          };
+          if (suppressError) {
+            deepStrictEqual(await announce.getObject(options), null);
+            deepStrictEqual(records.filter((r) => r.level === "error"), []);
+            ok(records.some((r) => r.level === "warning"));
+          } else {
+            await rejects(() => announce.getObject(options));
+            ok(records.some((r) => r.level === "error"));
+          }
+        }
+      } finally {
+        fetchMock.hardReset();
+      }
+    }
+  } finally {
+    await reset();
+  }
+});

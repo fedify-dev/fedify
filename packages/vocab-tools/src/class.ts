@@ -14,6 +14,7 @@ const XSD_ANY_URI = "http://www.w3.org/2001/XMLSchema#anyURI";
 const FEDIFY_URL = "fedify:url";
 const INTERNAL_RUNTIME_IMPORTS = [
   "compactJsonLdCache",
+  "createScopedContextLoader",
   "getJsonLdContext",
   "isTrustedIriOrigin",
   "normalizeJsonLdIris",

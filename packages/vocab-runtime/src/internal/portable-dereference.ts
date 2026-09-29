@@ -562,6 +562,7 @@ function parseGatewayOrigin(gateway: string | URL): URL | null {
  */
 export function createSnapshotContextLoader(
   contextLoader: DocumentLoader,
+  suppressError?: boolean,
 ): { loader: DocumentLoader; release: () => void } {
   // Objects parsed during a dereference keep its loader, so later
   // dereferences from them would otherwise wrap released pass-throughs in
@@ -592,9 +593,10 @@ export function createSnapshotContextLoader(
     }
     let promise = cache.get(key);
     if (promise == null) {
-      const loading = contextLoader(url, options).then((document) =>
-        structuredClone(document)
-      );
+      const loading = contextLoader(
+        url,
+        suppressError ? { ...options, suppressError: true } : options,
+      ).then((document) => structuredClone(document));
       promise = loading;
       cache.set(key, loading);
       loading.catch(() => {
@@ -721,7 +723,7 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
   const fail = (error: unknown): null => {
     span?.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
     if (options.suppressError) {
-      logger.error("Failed to dereference {url}: {error}", {
+      logger.warn("Failed to dereference {url}: {error}", {
         url: lookupUrl,
         error,
       });
@@ -769,7 +771,10 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
     // retrieve the portable IRI itself:
     requestUrls.push({ url: lookupUrl, gateway: null });
   }
-  const snapshot = createSnapshotContextLoader(options.contextLoader);
+  const snapshot = createSnapshotContextLoader(
+    options.contextLoader,
+    options.suppressError,
+  );
   const contextLoader = snapshot.loader;
   const attempts: Attempt[] = [];
   const { signal } = options;
@@ -784,7 +789,7 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
       try {
         remoteDocument = response ?? await options.documentLoader(
           requestUrl,
-          signal == null ? undefined : { signal },
+          { signal, suppressError: options.suppressError },
         );
       } catch (error) {
         signal?.throwIfAborted();
