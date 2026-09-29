@@ -49,8 +49,13 @@ unsigned top-level portable collection does not apply inside a compound
 document; an embedded portable collection needs its own proof and `@context`.
 The only maps exempt from this are keys embedded in the `publicKey` or
 `assertionMethod` of a verified portable actor whose IDs are the actor's
-compatible identifiers plus fragments, such as its gateway keys, which the
-actor's proof covers.
+compatible identifiers or `ap:` or `ap+ef61:` URIs plus non-empty fragments,
+such as its gateway keys
+or the keys an [FEP-ae97] client makes for it, which the actor's proof covers.
+Their IDs are compared as they are written, so an ID that only becomes
+the actor's after URL parsing, e.g., through dot segments, is not exempt.
+The exemption only spares such a key its own proof; which keys may verify
+signatures is decided separately.
 
 This check uses the received JSON after the normal outer authentication and
 actor ownership checks.  Since a Linked Data Signature is made after the
@@ -65,6 +70,7 @@ the inspection or verification limits receive `401 Unauthorized`.  Fedify does
 not dispatch any part of those documents to application code.
 
 [FEP-ef61]: https://w3id.org/fep/ef61
+[FEP-ae97]: https://w3id.org/fep/ae97
 
 ### Portable actors
 

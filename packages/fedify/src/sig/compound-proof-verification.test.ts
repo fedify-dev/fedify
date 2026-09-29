@@ -893,3 +893,265 @@ test("verifyCompoundPortableObjectProofs() exempts only keys of the parent itsel
     );
   }
 });
+
+/**
+ * Rewrites the IDs of a {@link compatibleActor}'s keys as they are written,
+ * e.g., as `ap:` URIs, which the serializer would canonicalize otherwise.
+ */
+function withKeyIds(
+  actor: Record<string, unknown>,
+  keyBase: string,
+  { id = actor.id as string, owner = id }: { id?: string; owner?: string } = {},
+): Record<string, unknown> {
+  const [multikey] = actor.assertionMethod as Record<string, unknown>[];
+  return {
+    ...actor,
+    id,
+    publicKey: {
+      ...asRecord(actor.publicKey),
+      id: `${keyBase}#main-key`,
+      owner,
+    },
+    assertionMethod: [
+      { ...multikey, id: `${keyBase}#ed25519-key`, controller: owner },
+    ],
+  };
+}
+
+const apActorId = `ap://${compatibleDid}/actor`;
+
+test("verifyCompoundPortableObjectProofs() exempts keys at ap: URIs embedded in portable actors", async () => {
+  const actor = await compatibleActor();
+  const encodedDid = encodeURIComponent(compatibleDid);
+  const cases: Record<string, [string, string]> = {
+    // As FEP-ae97 clients and Mitra identify the keys of portable actors:
+    "ap: keys of an ap: actor": [apActorId, apActorId],
+    "ap: keys of a compatible-ID actor": [compatibleActorId, apActorId],
+    "ap+ef61: keys": [apActorId, `ap+ef61://${compatibleDid}/actor`],
+    "keys with percent-encoded DIDs": [apActorId, `ap://${encodedDid}/actor`],
+    "ap+ef61: keys of a percent-encoded actor": [
+      `ap+ef61://${encodedDid}/actor`,
+      `ap+ef61://${encodedDid}/actor`,
+    ],
+    "keys with an uppercase scheme": [apActorId, `AP://${compatibleDid}/actor`],
+    "keys with location hints": [
+      apActorId,
+      `${apActorId}?@gateway=https%3A%2F%2Fgw.example`,
+    ],
+  };
+  for (const [name, [id, keyBase]] of Object.entries(cases)) {
+    const result = await verifyCompoundPortableObjectProofs(
+      await signCompatible(withKeyIds(actor, keyBase, { id })),
+      limits,
+      options,
+    );
+    assert(result.status === "ok", name);
+    assert(result.verified, name);
+    assertEquals(result.portableObjects.map((o) => o.path), [""], name);
+  }
+  // Keys identified by @id rather than id:
+  const apActor = withKeyIds(actor, apActorId, { id: apActorId });
+  const atIdKeys = (key: unknown) => {
+    const { id, ...rest } = asRecord(key);
+    return { ...rest, "@id": id };
+  };
+  const withAtIds = await verifyCompoundPortableObjectProofs(
+    await signCompatible({
+      ...apActor,
+      publicKey: atIdKeys(apActor.publicKey),
+      assertionMethod: (apActor.assertionMethod as unknown[]).map(atIdKeys),
+    }),
+    limits,
+    options,
+  );
+  assert(withAtIds.status === "ok");
+  assert(withAtIds.verified);
+  assertEquals(withAtIds.portableObjects.map((o) => o.path), [""]);
+  // A context that defines an ap term does not turn ap: URIs into compact
+  // IRIs:
+  const withApTerm = await verifyCompoundPortableObjectProofs(
+    await signCompatible({
+      ...withKeyIds(actor, apActorId, { id: apActorId }),
+      "@context": [
+        ...actor["@context"] as unknown[],
+        { ap: "https://ap.example/" },
+      ],
+    }),
+    limits,
+    options,
+  );
+  assert(withApTerm.status === "ok");
+  assert(withApTerm.verified);
+  assertEquals(withApTerm.portableObjects.map((o) => o.path), [""]);
+  // Embedded in a signed Update, as an FEP-ae97 client publishes one after
+  // registering its actor:
+  const update = await signCompatible({
+    "@context": [...compatibleContext],
+    id: `ap://${compatibleDid}/activities/1`,
+    type: "Update",
+    actor: apActorId,
+    object: await signCompatible(
+      withKeyIds(actor, apActorId, { id: apActorId }),
+    ),
+  });
+  const result = await verifyCompoundPortableObjectProofs(
+    update,
+    limits,
+    options,
+  );
+  assert(result.status === "ok");
+  assert(result.verified);
+  assertEquals(result.portableObjects.map((o) => o.path), ["/object", ""]);
+});
+
+test("verifyCompoundPortableObjectProofs() exempts only ap: keys of the parent itself", async () => {
+  const actor = withKeyIds(await compatibleActor(), apActorId, {
+    id: apActorId,
+  });
+  const publicKey = asRecord(actor.publicKey);
+  const otherDid = "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK";
+  const keyIds: Record<string, string> = {
+    "a key of another actor": `ap://${compatibleDid}/other#main-key`,
+    "a key of another DID": `ap://${otherDid}/actor#main-key`,
+    "a key without a fragment": apActorId,
+    "a key with an empty fragment": `${apActorId}#`,
+    "a key with dot segments": `ap://${compatibleDid}/x/../actor#main-key`,
+    "a key with encoded dot segments":
+      `ap://${compatibleDid}/x/%2E%2E/actor#main-key`,
+    "a key with an encoded slash": `${apActorId}%2F#main-key`,
+    "a key with an encoded fragment delimiter": `${apActorId}%23main-key`,
+    "a compatible key with dot segments":
+      `https://gw.example/.well-known/apgateway/${compatibleDid}/x/../actor#main-key`,
+  };
+  const cases: Record<string, Record<string, unknown>> = {};
+  for (const [name, id] of Object.entries(keyIds)) {
+    cases[name] = { ...actor, publicKey: { ...publicKey, id } };
+  }
+  Object.assign(cases, {
+    "a key owned by another actor": {
+      ...actor,
+      publicKey: { ...publicKey, owner: `ap://${otherDid}/actor` },
+    },
+    "a key controlled by another actor": {
+      ...actor,
+      assertionMethod: (actor.assertionMethod as Record<string, unknown>[])
+        .map((key) => ({ ...key, controller: `ap://${otherDid}/actor` })),
+    },
+    "a key with extra content": {
+      ...actor,
+      publicKey: { ...publicKey, name: "Extra" },
+    },
+    "a key with a scoped context": {
+      ...actor,
+      publicKey: {
+        ...publicKey,
+        "@context": {
+          CryptographicKey: {
+            "@id": "https://w3id.org/security#Key",
+            "@context": {},
+          },
+        },
+      },
+    },
+  });
+  for (const [name, document] of Object.entries(cases)) {
+    const result = await verifyCompoundPortableObjectProofs(
+      await signCompatible(document),
+      limits,
+      options,
+    );
+    assert(result.status === "ok", name);
+    assertEquals(result.verified, false, name);
+    // The actor itself is verified; it is the key that is not exempt:
+    const root = result.portableObjects.find((o) => o.path === "");
+    assert(root?.verified, name);
+    assert(
+      result.portableObjects.some((o) => o.path !== "" && !o.verified),
+      name,
+    );
+  }
+  // A key whose id and @id differ makes the actor itself invalid:
+  const conflicting = await verifyCompoundPortableObjectProofs(
+    await signCompatible({
+      ...actor,
+      publicKey: {
+        ...publicKey,
+        "@id": `ap://${compatibleDid}/other#main-key`,
+      },
+    }),
+    limits,
+    options,
+  );
+  assert(conflicting.status === "ok");
+  assertEquals(conflicting.verified, false);
+});
+
+test("verifyCompoundPortableObjectProofs() exempts ap: keys only of verified actors", async () => {
+  const actor = withKeyIds(await compatibleActor(), apActorId, {
+    id: apActorId,
+  });
+  const signed = await signCompatible(actor);
+  // The keys of an unverified actor are checked on their own, and fail:
+  const unverified = {
+    "": true,
+    "/object": false,
+    "/object/publicKey": false,
+    "/object/assertionMethod/0": false,
+  };
+  const cases: Record<
+    string,
+    [Record<string, unknown>, Record<string, boolean>]
+  > = {
+    "an unsigned actor": [actor, unverified],
+    "a tampered actor": [{ ...signed, name: "Tampered" }, unverified],
+    // A key that carries its own proof is verified by that proof instead:
+    "an actor with a key with an invalid proof": [
+      await signCompatible({
+        ...actor,
+        publicKey: {
+          ...asRecord(actor.publicKey),
+          "@context": [...compatibleContext],
+          proof: asRecord(signed.proof),
+        },
+      }),
+      { "": true, "/object": true, "/object/publicKey": false },
+    ],
+  };
+  for (const [name, [object, expected]] of Object.entries(cases)) {
+    const result = await verifyCompoundPortableObjectProofs(
+      await signCompatible({
+        "@context": [...compatibleContext],
+        id: `ap://${compatibleDid}/activities/1`,
+        type: "Update",
+        actor: apActorId,
+        object,
+      }),
+      limits,
+      options,
+    );
+    assert(result.status === "ok", name);
+    assertEquals(result.verified, false, name);
+    assertEquals(
+      Object.fromEntries(
+        result.portableObjects.map((o) => [o.path, o.verified]),
+      ),
+      expected,
+      name,
+    );
+  }
+});
+
+test("verifyCompoundPortableObjectProofs() leaves keys at DID URLs alone", async () => {
+  // A key identified by a DID URL is not a portable object, so it needs no
+  // exemption:
+  const result = await verifyCompoundPortableObjectProofs(
+    await signCompatible(
+      withKeyIds(await compatibleActor(), compatibleDid, { id: apActorId }),
+    ),
+    limits,
+    options,
+  );
+  assert(result.status === "ok");
+  assert(result.verified);
+  assertEquals(result.portableObjects.map((o) => o.path), [""]);
+});

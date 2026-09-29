@@ -1,9 +1,13 @@
 import type { Multikey } from "@fedify/vocab";
-import { fromCompatibleEf61Id, parseIri } from "@fedify/vocab-runtime";
+import { parseIri } from "@fedify/vocab-runtime";
 import jsonld from "@fedify/vocab-runtime/jsonld";
 import { preloadedOnlyDocumentLoader } from "../compat/preloaded-context-loader.ts";
 import { getNormalizationContextLoader } from "./ld.ts";
-import { getCanonicalPortableId, isPortableId } from "./portable-key-id.ts";
+import {
+  getCanonicalPortableId,
+  getRawCanonicalPortableId,
+  isPortableId,
+} from "./portable-key-id.ts";
 import {
   verifyMapLocalProof,
   type VerifyPortableObjectProofFailureReason,
@@ -990,7 +994,8 @@ export async function verifyCompoundPortableObjectProofs(
   );
   // Unsigned maps under the publicKey or assertionMethod of a portable map
   // may be the keys of a portable actor, e.g., its gateway keys, whose IDs
-  // are compatible identifiers.  They are decided after their parents:
+  // are compatible identifiers, or the keys of an FEP-ae97 client, whose IDs
+  // are ap: URIs.  They are decided after their parents:
   const isKeyCandidate = (object: CompoundPortableObject) =>
     object.keyOf != null && !Object.hasOwn(object.document, "proof");
   const results = new Map<string, CompoundPortableObjectVerification>();
@@ -1079,9 +1084,9 @@ const KEY_PROPERTIES: ReadonlySet<string> = new Set([
  *
  * The projection must expand to the parent's verified ID with the key as the
  * single value of `publicKey` or `assertionMethod`, and the key must be
- * nothing but a `CryptographicKey` or `Multikey` whose ID is a compatible
- * identifier of the parent plus a fragment, and whose owner or controller,
- * if any, is the parent.
+ * nothing but a `CryptographicKey` or `Multikey` whose ID is the parent's
+ * `ap:` or `ap+ef61:` URI, or its compatible identifier, plus a fragment,
+ * and whose owner or controller, if any, is the parent.
  */
 async function isEmbeddedPortableKey(
   parent: CompoundProofJsonObject,
@@ -1192,21 +1197,17 @@ function getCanonicalPortableIdOf(id: string): string | null {
 }
 
 /**
- * Checks whether an ID is a compatible identifier of the given portable
- * object plus a fragment.
+ * Checks whether an ID is the given portable object's `ap:` or `ap+ef61:`
+ * URI, or its compatible identifier, plus a non-empty fragment.  The ID is
+ * compared as it is written, so an ID that URL parsing would turn into
+ * the portable object's, e.g., through dot segments, is not one of its keys.
  */
 function isKeyIdOf(id: string, portableId: string): boolean {
-  let url: URL;
-  try {
-    if (fromCompatibleEf61Id(id) == null) return false;
-    url = new URL(id);
-  } catch (error) {
-    if (error instanceof TypeError) return false;
-    throw error;
-  }
-  if (url.hash.length < 2) return false;
-  url.hash = "";
-  return getCanonicalPortableId(url) === portableId;
+  const canonical = getRawCanonicalPortableId(id);
+  if (canonical == null) return false;
+  const hash = canonical.indexOf("#");
+  return hash >= 0 && hash < canonical.length - 1 &&
+    canonical.slice(0, hash) === portableId;
 }
 
 /**

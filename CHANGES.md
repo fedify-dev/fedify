@@ -555,7 +555,12 @@ To be released.
     traversal limits are rejected as unsupported.  The top-level Linked
     Data Signature of an activity is not part of any proof input, so an
     activity that carries both proofs and a Linked Data Signature is
-    accepted.  [[#288], [#938], [#1041], [#1094], [#1102]]
+    accepted.  An unsigned key embedded in the `publicKey` or
+    `assertionMethod` of a verified portable actor needs no proof of its own
+    if its ID is the actor's compatible identifier or `ap:` or `ap+ef61:` URI
+    plus a non-empty fragment, as with the keys that [FEP-ae97] clients make
+    for their actors, which Mitra serves under `ap:` URIs.
+    [[#288], [#938], [#1041], [#1094], [#1102], [#1133], [#1138]]
 
 [FEP-ef61]: https://w3id.org/fep/ef61
 [key–value store guide]: https://fedify.dev/manual/kv
@@ -563,6 +568,7 @@ To be released.
 [FEP-fe34]: https://w3id.org/fep/fe34
 [ActivityPub Media Upload extension]: https://www.w3.org/wiki/SocialCG/ActivityPub/MediaUpload
 [Standard Schema]: https://standardschema.dev/
+[FEP-ae97]: https://w3id.org/fep/ae97
 [#206]: https://github.com/fedify-dev/fedify/issues/206
 [#288]: https://github.com/fedify-dev/fedify/issues/288
 [#754]: https://github.com/fedify-dev/fedify/issues/754
@@ -625,7 +631,9 @@ To be released.
 [#1119]: https://github.com/fedify-dev/fedify/pull/1119
 [#1120]: https://github.com/fedify-dev/fedify/pull/1120
 [#1124]: https://github.com/fedify-dev/fedify/pull/1124
+[#1133]: https://github.com/fedify-dev/fedify/issues/1133
 [#1134]: https://github.com/fedify-dev/fedify/pull/1134
+[#1138]: https://github.com/fedify-dev/fedify/pull/1138
 
 ### @fedify/adonisjs
 
