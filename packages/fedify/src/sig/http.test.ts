@@ -30,8 +30,10 @@ import {
   formatRfc9421Signature,
   formatRfc9421SignatureParameters,
   type HttpMessageSignaturesSpec,
+  listRequestSignatures,
   parseRfc9421Signature,
   parseRfc9421SignatureInput,
+  selectRequestSignature,
   signRequest,
   timingSafeEqual,
   verifyRequest,
@@ -3662,3 +3664,100 @@ test(
     fetchMock.hardReset();
   },
 );
+
+test("listRequestSignatures()", async (t) => {
+  const request = () =>
+    new Request("https://example.com/inbox", {
+      method: "POST",
+      body: "Test message",
+    });
+  await t.step("draft-cavage", async () => {
+    const signed = await signRequest(
+      request(),
+      rsaPrivateKey2,
+      rsaPublicKey2.id!,
+    );
+    const signatures = listRequestSignatures(signed);
+    assertEquals(signatures.map((s) => [s.keyId.href, s.label]), [
+      [rsaPublicKey2.id!.href, null],
+    ]);
+    const components = signatures[0].components;
+    assertEquals(
+      components.map((c) => c.value),
+      signed.headers.get("Signature")!.match(/headers="([^"]*)"/)![1]
+        .split(" "),
+    );
+    assert(components.every((c) => Object.keys(c.params).length < 1));
+  });
+  await t.step("RFC 9421", async () => {
+    const signed = await signRequest(
+      request(),
+      rsaPrivateKey2,
+      rsaPublicKey2.id!,
+      { spec: "rfc9421", rfc9421: { label: "a" } },
+    );
+    const signatures = listRequestSignatures(signed);
+    assertEquals(signatures.map((s) => [s.keyId.href, s.label]), [
+      [rsaPublicKey2.id!.href, "a"],
+    ]);
+    assertEquals(
+      signatures[0].components.map((c) => c.value),
+      [
+        "@method",
+        "@target-uri",
+        "@authority",
+        "host",
+        "date",
+        "content-digest",
+      ],
+    );
+  });
+  await t.step("unsigned or malformed", () => {
+    assertEquals(listRequestSignatures(request()), []);
+    const malformed = request();
+    malformed.headers.set("Signature", 'keyId="not a URL",signature="AA=="');
+    assertEquals(listRequestSignatures(malformed), []);
+    const garbage = request();
+    garbage.headers.set("Signature-Input", "((");
+    garbage.headers.set("Signature", "((");
+    assertEquals(listRequestSignatures(garbage), []);
+  });
+});
+
+test("selectRequestSignature()", async () => {
+  const body = "Test message";
+  const sign = (label: string, keyId: URL) =>
+    signRequest(
+      new Request("https://example.com/inbox", { method: "POST", body }),
+      rsaPrivateKey2,
+      keyId,
+      { spec: "rfc9421", rfc9421: { label } },
+    );
+  const other = new URL("https://example.com/other#key");
+  const first = await sign("a", other);
+  const second = await sign("b", rsaPublicKey2.id!);
+  const headers = new Headers(second.headers);
+  for (const name of ["Signature-Input", "Signature"]) {
+    headers.set(
+      name,
+      `${first.headers.get(name)}, ${second.headers.get(name)}`,
+    );
+  }
+  const request = new Request(second.url, { method: "POST", headers, body });
+  const signatures = listRequestSignatures(request);
+  assertEquals(signatures.map((s) => s.label), ["a", "b"]);
+  const selected = selectRequestSignature(request, signatures[1]);
+  assertEquals(
+    listRequestSignatures(selected).map((s) => [s.label, s.keyId.href]),
+    [["b", rsaPublicKey2.id!.href]],
+  );
+  const result = await verifyRequestDetailed(selected, {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  assert(result.verified);
+  assertEquals(result.key.id, rsaPublicKey2.id);
+  assertEquals(await selected.text(), body);
+  // The original request is left intact:
+  assertEquals(await request.text(), body);
+});

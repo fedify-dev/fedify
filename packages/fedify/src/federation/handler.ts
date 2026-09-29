@@ -40,7 +40,9 @@ import {
   verifyCompoundPortableObjectProofs,
 } from "../sig/compound-proof.ts";
 import {
+  listRequestSignatures,
   parseRfc9421SignatureInput,
+  selectRequestSignature,
   verifyRequestDetailed,
 } from "../sig/http.ts";
 import {
@@ -117,7 +119,11 @@ import {
 import type { MessageQueue } from "./mq.ts";
 import { acceptsJsonLd } from "./negotiation.ts";
 import { PORTABLE_OBJECT_CONTENT_TYPE } from "./portable.ts";
-import type { PortableInboxRecipient } from "./portable-inbox.ts";
+import {
+  coversDelivery,
+  type PortableInboxRecipient,
+  type PortableInboxSignature,
+} from "./portable-inbox.ts";
 import { hasMalformedKnownTemporalLiteral } from "./temporal.ts";
 
 export const rawInboxContextFactorySymbol: unique symbol = Symbol(
@@ -1492,11 +1498,14 @@ export interface PortableInboxDelivery {
    * @param activity The activity, exactly as it was received.
    * @param activityId The ID of the activity.
    * @param activityType The qualified URI of the activity type.
+   * @param signatures The HTTP Signatures of the delivery, which may identify
+   *                   the gateway that forwarded it.
    */
   forward(
     activity: unknown,
     activityId: URL,
     activityType: string,
+    signatures: readonly PortableInboxSignature[],
   ): Promise<unknown>;
 }
 
@@ -2307,6 +2316,24 @@ async function handleInboxInternal<TContextData>(
           json,
           activity.id,
           getTypeId(activity).href,
+          listRequestSignatures(request).map((signature) => ({
+            keyId: signature.keyId,
+            coversDelivery: coversDelivery(signature),
+            verify: async () => {
+              const verification = await verifyRequestDetailed(
+                selectRequestSignature(request, signature),
+                {
+                  contextLoader: ctx.contextLoader,
+                  documentLoader: ctx.documentLoader,
+                  timeWindow: signatureTimeWindow,
+                  keyCache,
+                  meterProvider,
+                  tracerProvider,
+                },
+              );
+              return verification.verified ? verification.key : null;
+            },
+          })),
         );
       } catch (error) {
         logger.error(

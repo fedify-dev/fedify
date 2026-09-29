@@ -2,6 +2,7 @@ import { mockDocumentLoader, test } from "@fedify/fixture";
 import {
   type Activity,
   Create,
+  CryptographicKey,
   Follow,
   Note,
   Person,
@@ -15,6 +16,7 @@ import {
   type RemoteDocument,
 } from "@fedify/vocab-runtime";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
+import { encodeBase64 } from "byte-encodings/base64";
 import fetchMock from "fetch-mock";
 import { signRequest, verifyRequestDetailed } from "../sig/http.ts";
 import { signJsonLd } from "../sig/ld.ts";
@@ -33,8 +35,10 @@ import type { FederationOptions } from "./federation.ts";
 import { createFederation } from "./middleware.ts";
 import type { MessageQueue } from "./mq.ts";
 import {
+  coversDelivery,
   forwardPortableInboxActivity,
   type ForwardPortableInboxActivityParameters,
+  type PortableInboxSignature,
   resolvePortableInboxForwardingOptions,
 } from "./portable-inbox.ts";
 import type { Message, OutboxMessage } from "./queue.ts";
@@ -1011,12 +1015,13 @@ function signatureKeyId(headers: Headers): string | undefined {
  */
 async function createGatewayLoader(
   keyPairs: CryptoKeyPair[],
+  origin = LOCAL,
 ): Promise<DocumentLoader> {
   const { federation } = setup({
     aliceKeyPairs: keyPairs,
     mapPortableActorId: mapAlice,
   });
-  const keys = await federation.createContext(new URL(LOCAL))
+  const keys = await federation.createContext(new URL(origin))
     .getActorKeyPairs("alice");
   const actor = await signObject(
     new Person({
@@ -1031,7 +1036,7 @@ async function createGatewayLoader(
   );
   const document = await actor.toJsonLd({ contextLoader: mockDocumentLoader });
   return (url: string): Promise<RemoteDocument> => {
-    if (url.replace(/#.*$/, "") !== compatibleAliceId()) {
+    if (url.replace(/#.*$/, "") !== compatibleAliceId(origin)) {
       return mockDocumentLoader(url);
     }
     return Promise.resolve({
@@ -1359,9 +1364,10 @@ test("A Fedify gateway accepts signed forwarded portable inbox deliveries", asyn
     await createGatewayLoader([rsaGatewayKeyPair]),
   );
   const queue = new RecordingQueue();
+  const loader = await createGatewayLoader([rsaGatewayKeyPair]);
   const { federation, received } = setup({
     queue,
-    options: { origin: GATEWAY2 },
+    options: { origin: GATEWAY2, documentLoaderFactory: () => loader },
   });
   const response = await federation.fetch(toRequest(forwarded), {
     contextData: undefined,
@@ -1369,11 +1375,330 @@ test("A Fedify gateway accepts signed forwarded portable inbox deliveries", asyn
   assertEquals(response.status, 202);
   assertEquals(received.length, 1);
   assertEquals(received[0].recipient, "alice");
-  // The gateway forwards it on, except back to itself:
-  assertEquals(queue.outbox.map((m) => m.inbox).sort(), [
-    inboxUrl(did, "/users/alice/inbox", LOCAL),
+  // The gateway forwards it on, except back to itself and to the gateway that
+  // forwarded it:
+  assertEquals(queue.outbox.map((m) => m.inbox), [
     inboxUrl(did, "/users/alice/inbox", GATEWAY3),
   ]);
+});
+
+// Identifying the gateway that forwarded a delivery
+
+/** Records the URLs that a document loader is asked for. */
+function recordLoader(
+  loader: DocumentLoader,
+): { loader: DocumentLoader; urls: string[] } {
+  const urls: string[] = [];
+  return {
+    urls,
+    loader: (url, options) => {
+      urls.push(url);
+      return loader(url, options);
+    },
+  };
+}
+
+const gateway2KeyId = new URL(`${compatibleAliceId(GATEWAY2)}#main-key`);
+
+/** Signs a delivery to Alice's inbox on {@link LOCAL}. */
+async function signDelivery(
+  body: unknown,
+  {
+    keyId = gateway2KeyId,
+    privateKey = rsaGatewayKeyPair.privateKey,
+    spec = "draft-cavage-http-signatures-12",
+    components,
+    label,
+    headers,
+  }: {
+    keyId?: URL;
+    privateKey?: CryptoKey;
+    spec?: "draft-cavage-http-signatures-12" | "rfc9421";
+    /**
+     * The covered components.  Unless given, `content-digest` is added and
+     * covers the body.
+     */
+    components?: string[];
+    label?: string;
+    headers?: HeadersInit;
+  } = {},
+): Promise<Request> {
+  const signed = await signRequest(
+    post(inboxUrl(), body, headers),
+    privateKey,
+    keyId,
+    {
+      spec,
+      // The signer adds content-digest to the covered components unless it is
+      // told that there is no body:
+      ...(components == null ? {} : { body: null }),
+      rfc9421: {
+        label,
+        components: components?.map((value) => ({ value, params: {} })),
+      },
+    },
+  );
+  // The signer may drop the body it is told that there is not:
+  return new Request(signed.url, {
+    method: "POST",
+    headers: signed.headers,
+    body: JSON.stringify(body),
+  });
+}
+
+async function deliverToGateway(
+  request: Request,
+  { loader, kv, maxTargets }: {
+    loader: DocumentLoader;
+    kv?: KvStore;
+    maxTargets?: number;
+  },
+): Promise<{ response: Response; queue: RecordingQueue; kv: KvStore }> {
+  const queue = new RecordingQueue();
+  const { federation, received, kv: store } = setup({
+    queue,
+    kv,
+    options: {
+      documentLoaderFactory: () => loader,
+      ...(maxTargets == null
+        ? {}
+        : { portableInboxForwarding: { maxTargets } }),
+    },
+  });
+  const response = await federation.fetch(request, { contextData: undefined });
+  // A duplicate is not processed again:
+  assert(received.length <= 1);
+  return { response, queue, kv: store };
+}
+
+function forwardedGateways(queue: RecordingQueue): string[] {
+  return queue.outbox.map((m) => new URL(m.inbox).origin).sort();
+}
+
+test("Federation.fetch() does not forward portable inbox deliveries back to the gateway that forwarded them", async (t) => {
+  const gatewayLoader = await createGatewayLoader(
+    [rsaGatewayKeyPair],
+    GATEWAY2,
+  );
+  const specs = [
+    "draft-cavage-http-signatures-12",
+    "rfc9421",
+  ] as const;
+  for (const spec of specs) {
+    await t.step(spec, async () => {
+      const { loader, urls } = recordLoader(gatewayLoader);
+      const json = await signedFollow();
+      const { response, queue, kv } = await deliverToGateway(
+        await signDelivery(json, { spec }),
+        { loader },
+      );
+      assertEquals(response.status, 202);
+      assertEquals(forwardedGateways(queue), [GATEWAY3]);
+      // The actor document is fetched once, from the sending gateway:
+      assertEquals(
+        urls.filter((u) => u.startsWith(GATEWAY2)),
+        [gateway2KeyId.href],
+      );
+      // The sending gateway is remembered, so a duplicate delivered through
+      // another gateway is not forwarded to it either:
+      const { queue: queue2 } = await deliverToGateway(
+        post(inboxUrl(), json),
+        { loader, kv },
+      );
+      assertEquals(queue2.outbox, []);
+    });
+  }
+  await t.step("identified before the targets are capped", async () => {
+    const { queue } = await deliverToGateway(
+      await signDelivery(await signedFollow()),
+      { loader: gatewayLoader, maxTargets: 1 },
+    );
+    assertEquals(forwardedGateways(queue), [GATEWAY3]);
+  });
+  await t.step("with an unrelated signature first", async () => {
+    const { loader, urls } = recordLoader(gatewayLoader);
+    const json = await signedFollow();
+    const unrelated = await signDelivery(json, {
+      spec: "rfc9421",
+      keyId: new URL("https://unrelated.example/key"),
+      privateKey: rsaPrivateKey3,
+      label: "sig1",
+    });
+    const gateway = await signDelivery(json, {
+      spec: "rfc9421",
+      label: "sig2",
+    });
+    const headers = new Headers(gateway.headers);
+    for (const name of ["Signature-Input", "Signature"]) {
+      headers.set(
+        name,
+        `${unrelated.headers.get(name)}, ${gateway.headers.get(name)}`,
+      );
+    }
+    const { queue } = await deliverToGateway(
+      new Request(gateway.url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(json),
+      }),
+      { loader },
+    );
+    assertEquals(forwardedGateways(queue), [GATEWAY3]);
+    // The unrelated key is not fetched:
+    assertFalse(urls.some((u) => u.startsWith("https://unrelated.example/")));
+  });
+  await t.step(
+    "activity authenticated by a Linked Data Signature",
+    async () => {
+      const activity = await signJsonLd(
+        {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          id: `https://example.com/follows/lds-${++activityCounter}`,
+          type: "Follow",
+          actor: "https://example.com/person2",
+          object: formatIri(aliceId),
+        },
+        rsaPrivateKey3,
+        rsaPublicKey3.id!,
+        { contextLoader: mockDocumentLoader },
+      );
+      const { queue } = await deliverToGateway(await signDelivery(activity), {
+        loader: gatewayLoader,
+      });
+      assertEquals(forwardedGateways(queue), [GATEWAY3]);
+    },
+  );
+});
+
+test("Federation.fetch() forwards portable inbox deliveries whose sending gateway is not identified", async (t) => {
+  const gatewayLoader = await createGatewayLoader(
+    [rsaGatewayKeyPair],
+    GATEWAY2,
+  );
+  const bobKeyId = new URL(
+    `${GATEWAY2}/.well-known/apgateway/${did}/users/bob#main-key`,
+  );
+  // An actor document at Alice's compatible identifier on GATEWAY2 that is
+  // not signed by her DID, which the gateway could serve by itself:
+  const compatibleId = new URL(compatibleAliceId(GATEWAY2));
+  const unsignedActor = await new Person({
+    id: compatibleId,
+    inbox: new URL(`${compatibleId.href}/inbox`),
+    publicKey: rsaPublicKey2.clone({ id: gateway2KeyId, owner: compatibleId }),
+  }).toJsonLd({ contextLoader: mockDocumentLoader });
+  const unsignedLoader: DocumentLoader = (url) => {
+    if (url.replace(/#.*$/, "") !== compatibleId.href) {
+      return mockDocumentLoader(url);
+    }
+    return Promise.resolve({
+      contextUrl: null,
+      documentUrl: url,
+      document: structuredClone(unsignedActor),
+    });
+  };
+  const json = await signedFollow();
+  const contentDigest = `sha-256=:${
+    encodeBase64(
+      await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(JSON.stringify(json)),
+      ),
+    )
+  }:`;
+  const cases: {
+    name: string;
+    sign?: Parameters<typeof signDelivery>[1];
+    unsigned?: boolean;
+    loader?: DocumentLoader;
+    fetches: boolean;
+  }[] = [
+    { name: "unsigned", unsigned: true, fetches: false },
+    {
+      name: "invalid signature",
+      sign: { privateKey: rsaPrivateKey2 },
+      fetches: true,
+    },
+    {
+      name: "unknown key",
+      loader: mockDocumentLoader,
+      fetches: true,
+    },
+    {
+      name: "gateway not in gateways",
+      sign: {
+        keyId: new URL(
+          `https://unlisted.example/.well-known/apgateway/${did}` +
+            "/users/alice#main-key",
+        ),
+      },
+      fetches: false,
+    },
+    { name: "key of another actor", sign: { keyId: bobKeyId }, fetches: false },
+    {
+      name: "content-digest not covered",
+      sign: { spec: "rfc9421", components: ["@method", "@target-uri"] },
+      fetches: false,
+    },
+    {
+      name: "target URI not covered",
+      sign: {
+        spec: "rfc9421",
+        components: ["@method", "@authority", "@path", "content-digest"],
+        headers: { "Content-Digest": contentDigest },
+      },
+      fetches: false,
+    },
+    {
+      // Content-Digest is not checked against the body unless content-digest
+      // is covered:
+      name: "non-canonical spelling of content-digest",
+      sign: {
+        spec: "rfc9421",
+        components: ["@method", "@target-uri", "Content-Digest"],
+        headers: { "Content-Digest": "sha-256=:AAAA:" },
+      },
+      fetches: false,
+    },
+    {
+      name: "key not vouched for by the DID",
+      sign: { privateKey: rsaPrivateKey2 },
+      loader: unsignedLoader,
+      fetches: true,
+    },
+  ];
+  for (const { name, sign, unsigned, loader, fetches } of cases) {
+    await t.step(name, async () => {
+      const recorded = recordLoader(loader ?? gatewayLoader);
+      const { response, queue } = await deliverToGateway(
+        unsigned ? post(inboxUrl(), json) : await signDelivery(json, sign),
+        { loader: recorded.loader },
+      );
+      // The activity is authenticated by its proof either way:
+      assertEquals(response.status, 202);
+      assertEquals(forwardedGateways(queue), [GATEWAY3, GATEWAY2].sort());
+      assertEquals(
+        recorded.urls.some((u) => u.includes("/.well-known/apgateway/")),
+        fetches,
+      );
+    });
+  }
+  await t.step("already forwarded to the gateway", async () => {
+    const recorded = recordLoader(gatewayLoader);
+    const kv = new MemoryKvStore();
+    const json = await signedFollow();
+    const { queue } = await deliverToGateway(post(inboxUrl(), json), {
+      loader: recorded.loader,
+      kv,
+    });
+    assertEquals(forwardedGateways(queue), [GATEWAY3, GATEWAY2].sort());
+    const { queue: queue2 } = await deliverToGateway(
+      await signDelivery(json),
+      { loader: recorded.loader, kv },
+    );
+    assertEquals(queue2.outbox, []);
+    // Nothing would be saved by identifying the gateway:
+    assertEquals(recorded.urls.filter((u) => u.startsWith(GATEWAY2)), []);
+  });
 });
 
 function forwardingParameters(
@@ -1498,6 +1823,207 @@ test("forwardPortableInboxActivity() does not wait for slow keys", async () => {
   } finally {
     fetchMock.hardReset();
   }
+});
+
+function gatewaySignature(
+  keyId: URL,
+  verify: () => Promise<CryptographicKey | null>,
+): PortableInboxSignature {
+  return { keyId, coversDelivery: true, verify };
+}
+
+function gatewayKeyOf(keyId: URL, owner: URL = aliceId): CryptographicKey {
+  return new CryptographicKey({
+    id: keyId,
+    owner,
+    publicKey: rsaGatewayKeyPair.publicKey,
+  });
+}
+
+test("forwardPortableInboxActivity() skips the gateway that forwarded the activity", async (t) => {
+  const recipient = {
+    // Compared by their canonical forms:
+    actorId: parseIri(`ap://${did}/users/alice`),
+    inboxId: parseIri(`ap+ef61://${did}/users/alice/inbox`),
+    canonicalInboxId: `ap://${did}/users/alice/inbox`,
+    gateways: [new URL(LOCAL), new URL(GATEWAY3), new URL(GATEWAY2)],
+  };
+  const owners: [string, URL][] = [
+    ["identified", aliceId],
+    // A DID-signed actor document may use a compatible identifier as its ID:
+    [
+      "identified by a key of a compatible identifier",
+      new URL(compatibleAliceId()),
+    ],
+  ];
+  for (const [name, owner] of owners) {
+    await t.step(name, async () => {
+      const queue = new RecordingQueue();
+      const forwarded = await forwardPortableInboxActivity(
+        forwardingParameters({
+          recipient,
+          outboxQueue: queue,
+          signatures: [
+            gatewaySignature(
+              gateway2KeyId,
+              () => Promise.resolve(gatewayKeyOf(gateway2KeyId, owner)),
+            ),
+          ],
+        }),
+      );
+      assertEquals(forwarded.map((u) => u.origin), [GATEWAY3]);
+    });
+  }
+  const notIdentified: [string, PortableInboxSignature[]][] = [
+    ["verify() rejects", [
+      gatewaySignature(
+        gateway2KeyId,
+        () => Promise.reject(new Error("Failed.")),
+      ),
+    ]],
+    ["verify() throws", [
+      gatewaySignature(gateway2KeyId, () => {
+        throw new Error("Failed.");
+      }),
+    ]],
+    ["not verified", [
+      gatewaySignature(gateway2KeyId, () => Promise.resolve(null)),
+    ]],
+    ["the key is not owned by a portable actor", [
+      gatewaySignature(
+        gateway2KeyId,
+        () =>
+          Promise.resolve(
+            gatewayKeyOf(gateway2KeyId, new URL(`${GATEWAY2}/users/alice`)),
+          ),
+      ),
+    ]],
+    ["the key is owned by another actor", [
+      gatewaySignature(
+        gateway2KeyId,
+        () =>
+          Promise.resolve(
+            gatewayKeyOf(gateway2KeyId, parseIri(`ap://${did}/users/bob`)),
+          ),
+      ),
+    ]],
+    ["another key is verified", [
+      gatewaySignature(
+        gateway2KeyId,
+        () =>
+          Promise.resolve(
+            gatewayKeyOf(new URL(`${compatibleAliceId(GATEWAY3)}#main-key`)),
+          ),
+      ),
+    ]],
+    ["the signature does not cover the delivery", [{
+      ...gatewaySignature(
+        gateway2KeyId,
+        () => Promise.resolve(gatewayKeyOf(gateway2KeyId)),
+      ),
+      coversDelivery: false,
+    }]],
+  ];
+  for (const [name, signatures] of notIdentified) {
+    await t.step(name, async () => {
+      const queue = new RecordingQueue();
+      const forwarded = await forwardPortableInboxActivity(
+        forwardingParameters({ recipient, outboxQueue: queue, signatures }),
+      );
+      assertEquals(forwarded.map((u) => u.origin), [GATEWAY3, GATEWAY2]);
+    });
+  }
+  await t.step("verified only if it may save a request", async (t) => {
+    const cases: [string, Partial<ForwardPortableInboxActivityParameters>][] = [
+      ["forwarding is turned off", {
+        options: resolvePortableInboxForwardingOptions({ maxTargets: 0 }),
+      }],
+      ["no compare-and-swap", {
+        kv: { ...new MemoryKvStore(), cas: undefined } as unknown as KvStore,
+      }],
+      ["this server", { excludedOrigins: [LOCAL, GATEWAY2] }],
+    ];
+    for (const [name, overrides] of cases) {
+      await t.step(name, async () => {
+        let calls = 0;
+        await forwardPortableInboxActivity(
+          forwardingParameters({
+            recipient,
+            outboxQueue: new RecordingQueue(),
+            signatures: [
+              gatewaySignature(gateway2KeyId, () => {
+                calls++;
+                return Promise.resolve(gatewayKeyOf(gateway2KeyId));
+              }),
+            ],
+            ...overrides,
+          }),
+        );
+        assertEquals(calls, 0);
+      });
+    }
+  });
+  await t.step("verification does not finish in time", async () => {
+    let release: (key: CryptographicKey) => void = () => {};
+    const pending = new Promise<CryptographicKey>((resolve) =>
+      release = resolve
+    );
+    const kv = new MemoryKvStore();
+    const parameters = forwardingParameters({
+      recipient,
+      kv,
+      outboxQueue: new RecordingQueue(),
+      options: resolvePortableInboxForwardingOptions({
+        maxTargets: 1,
+        deadline: { milliseconds: 10 },
+      }),
+      signatures: [gatewaySignature(gateway2KeyId, () => pending)],
+    });
+    const started = performance.now();
+    const forwarded = await forwardPortableInboxActivity(parameters);
+    assert(performance.now() - started < 5_000);
+    // GATEWAY2 is beyond the cap, so only GATEWAY3 is claimed:
+    assertEquals(forwarded.map((u) => u.origin), [GATEWAY3]);
+    // A late verification does not claim GATEWAY2:
+    release(gatewayKeyOf(gateway2KeyId));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const claimed: string[] = [];
+    for await (const { key } of kv.list(parameters.kvPrefix)) {
+      claimed.push(String(key.at(-1)));
+    }
+    assertEquals(claimed, [GATEWAY3]);
+  });
+});
+
+test("coversDelivery()", () => {
+  const signature = (label: string | null, ...names: string[]) => ({
+    keyId: gateway2KeyId,
+    label,
+    components: names.map((value) => ({ value, params: {} })),
+  });
+  assert(coversDelivery(
+    signature("sig1", "@method", "@target-uri", "@authority", "content-digest"),
+  ));
+  assert(coversDelivery(
+    signature(null, "(request-target)", "host", "date", "digest"),
+  ));
+  assertFalse(coversDelivery(signature("sig1", "@method", "@target-uri")));
+  assertFalse(coversDelivery(
+    signature("sig1", "@method", "@target-uri", "Content-Digest"),
+  ));
+  assertFalse(coversDelivery(
+    signature("sig1", "@method", "@authority", "@path", "content-digest"),
+  ));
+  assertFalse(coversDelivery(signature(null, "(request-target)", "digest")));
+  assertFalse(coversDelivery({
+    keyId: gateway2KeyId,
+    label: "sig1",
+    components: [
+      { value: "@method", params: {} },
+      { value: "@target-uri", params: {} },
+      { value: "content-digest", params: { req: true } },
+    ],
+  }));
 });
 
 test("Context.getPortableInboxUri()", async (t) => {

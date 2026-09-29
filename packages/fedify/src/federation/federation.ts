@@ -943,8 +943,11 @@ export interface PortableInboxForwardingOptions {
   /**
    * How long a delivery waits for forwarding requests made immediately, i.e.,
    * when no outbox queue is configured, before Fedify responds to it.
-   * Requests still running afterwards continue in the background.  It does
-   * not apply when forwarding is queued.  It cannot have calendar units,
+   * Requests still running afterwards continue in the background.  It also
+   * bounds verifying the HTTP Signature that identifies the gateway which
+   * forwarded the delivery, with or without an outbox queue; if the
+   * verification does not finish in time, the activity is forwarded to that
+   * gateway as well.  It cannot have calendar units,
    * i.e., weeks, months, or years, and cannot be longer than
    * 2,147,483,647 milliseconds (about 24.8 days), the longest delay timers
    * support.
