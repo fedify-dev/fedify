@@ -46,14 +46,20 @@ test("InProcessMessageQueue", async (t) => {
       await enqueued;
       assertEquals(timers.length, 1);
       assertEquals(timers[0].delay, 3_000);
-      assertEquals(messages, ["Hello, world!"]);
+      await mq.enqueue("Single delay marker");
+      await waitFor(() => messages.includes("Single delay marker"), 15_000);
+      assertEquals(messages, ["Hello, world!", "Single delay marker"]);
       timers[0].callback();
     });
 
-    await waitFor(() => messages.length > 1, 15_000);
+    await waitFor(() => messages.length >= 3, 15_000);
 
     await t.step("listen() with delay", () => {
-      assertEquals(messages, ["Hello, world!", "Delayed message"]);
+      assertEquals(messages, [
+        "Hello, world!",
+        "Single delay marker",
+        "Delayed message",
+      ]);
     });
 
     // Clear messages array
@@ -93,16 +99,19 @@ test("InProcessMessageQueue", async (t) => {
       await enqueued;
       assertEquals(timers.length, 1);
       assertEquals(timers[0].delay, 2_000);
-      assertEquals(messages.length, 0);
+      await mq.enqueue("Batch delay marker");
+      await waitFor(() => messages.includes("Batch delay marker"), 15_000);
+      assertEquals(messages, ["Batch delay marker"]);
       timers[0].callback();
     });
 
-    await waitFor(() => messages.length >= 3, 15_000);
+    await waitFor(() => messages.length >= 4, 15_000);
 
     await t.step("listen() [delayed multiple]", () => {
-      assertEquals(messages.length, 3);
+      assertEquals(messages.length, 4);
+      assertEquals(messages[0], "Batch delay marker");
       for (let i = 0; i < 3; i++) {
-        assertEquals(messages[i], `Delayed batch ${i}!`);
+        assertEquals(messages[i + 1], `Delayed batch ${i}!`);
       }
     });
   } finally {
