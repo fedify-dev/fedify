@@ -145,7 +145,8 @@ export interface Context<TContextData> {
    *                  `exportDidKey()` from `@fedify/vocab-runtime`.
    * @returns The actor's portable ID.
    * @throws {RouterError} If no actor dispatcher is available.
-   * @throws {TypeError} If the authority is not a DID.
+   * @throws {TypeError} If the authority is not a DID, or it is a `did:key`
+   *                     DID that is not encoded in base58-btc.
    * @since 2.4.0
    */
   getPortableActorUri(identifier: string, authority: string): URL;
@@ -189,7 +190,9 @@ export interface Context<TContextData> {
    *                  a path, query, or fragment.
    * @returns The object's portable ID.
    * @throws {RouterError} If no object dispatcher is available for the class.
-   * @throws {TypeError} If values are invalid or the authority is not a DID.
+   * @throws {TypeError} If values are invalid, or the authority is not a DID
+   *                     or is a `did:key` DID that is not encoded in
+   *                     base58-btc.
    * @since 2.4.0
    */
   getPortableObjectUri<TObject extends Object>(
@@ -223,7 +226,8 @@ export interface Context<TContextData> {
    *                  a path, query, or fragment.
    * @returns The inbox's portable ID.
    * @throws {RouterError} If no inbox path is registered.
-   * @throws {TypeError} If the authority is not a DID.
+   * @throws {TypeError} If the authority is not a DID, or it is a `did:key`
+   *                     DID that is not encoded in base58-btc.
    * @since 2.4.0
    */
   getPortableInboxUri(identifier: string, authority: string): URL;
@@ -700,8 +704,9 @@ export interface RequestContext<TContextData> extends Context<TContextData> {
    *                  the requested portable object.
    * @returns The actor's portable ID.
    * @throws {RouterError} If no actor dispatcher is available.
-   * @throws {TypeError} If the authority is not a DID, or the authority is
-   *                     omitted outside a portable gateway request.
+   * @throws {TypeError} If the authority is not a DID, it is a `did:key` DID
+   *                     that is not encoded in base58-btc, or the authority
+   *                     is omitted outside a portable gateway request.
    * @since 2.4.0
    */
   getPortableActorUri(identifier: string, authority?: string): URL;
@@ -723,9 +728,10 @@ export interface RequestContext<TContextData> extends Context<TContextData> {
    *                  the requested portable object.
    * @returns The object's portable ID.
    * @throws {RouterError} If no object dispatcher is available for the class.
-   * @throws {TypeError} If values are invalid, the authority is not a DID, or
-   *                     the authority is omitted outside a portable gateway
-   *                     request.
+   * @throws {TypeError} If values are invalid, the authority is not a DID,
+   *                     it is a `did:key` DID that is not encoded in
+   *                     base58-btc, or the authority is omitted outside
+   *                     a portable gateway request.
    * @since 2.4.0
    */
   getPortableObjectUri<TObject extends Object>(
@@ -752,8 +758,9 @@ export interface RequestContext<TContextData> extends Context<TContextData> {
    *                  the requested portable object, if any.
    * @returns The inbox's portable ID.
    * @throws {RouterError} If no inbox path is registered.
-   * @throws {TypeError} If the authority is not a DID, or the authority is
-   *                     omitted outside a portable gateway request.
+   * @throws {TypeError} If the authority is not a DID, it is a `did:key` DID
+   *                     that is not encoded in base58-btc, or the authority
+   *                     is omitted outside a portable gateway request.
    * @since 2.4.0
    */
   getPortableInboxUri(identifier: string, authority?: string): URL;
