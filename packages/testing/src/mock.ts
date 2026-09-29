@@ -821,10 +821,10 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   ): any {
     // Mock implementation - just return a mock callback setters object
     const setters = {
-      setCounter: () => this as any,
-      setFirstCursor: () => this as any,
-      setLastCursor: () => this as any,
-      authorize: () => this as any,
+      setCounter: () => setters,
+      setFirstCursor: () => setters,
+      setLastCursor: () => setters,
+      authorize: () => setters,
       mapPortableOwner: () => setters,
     };
     return setters;
@@ -841,10 +841,10 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   ): any {
     // Mock implementation - just return a mock callback setters object
     const setters = {
-      setCounter: () => this as any,
-      setFirstCursor: () => this as any,
-      setLastCursor: () => this as any,
-      authorize: () => this as any,
+      setCounter: () => setters,
+      setFirstCursor: () => setters,
+      setLastCursor: () => setters,
+      authorize: () => setters,
       mapPortableOwner: () => setters,
     };
     return setters;

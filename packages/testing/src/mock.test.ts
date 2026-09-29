@@ -2006,4 +2006,15 @@ test("MockFederation custom collection setters chain mapPortableOwner()", () => 
     () => ({ items: [] }),
   );
   assertEquals(ordered.mapPortableOwner(() => null), ordered);
+  // The other setters return the same setters, so that they chain in any
+  // order:
+  assertEquals(
+    ordered
+      .setFirstCursor(() => "0")
+      .setLastCursor(() => "1")
+      .setCounter(() => 0)
+      .authorize(() => true)
+      .mapPortableOwner(() => null),
+    ordered,
+  );
 });
