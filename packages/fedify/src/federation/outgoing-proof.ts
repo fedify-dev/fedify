@@ -1,16 +1,17 @@
 import type { Activity } from "@fedify/vocab";
-import {
-  type DocumentLoader,
-  getFe34Origin,
-  haveSameFe34Origin,
-} from "@fedify/vocab-runtime";
+import type { DocumentLoader } from "@fedify/vocab-runtime";
+import { isCompatibleEf61Iri } from "@fedify/vocab-runtime/internal/portable-dereference";
 import { getLogger } from "@logtape/logtape";
 import type { TracerProvider } from "@opentelemetry/api";
 import {
   containsCompoundPortableObject,
   findUnsupportedCompoundProofShape,
 } from "../sig/compound-proof.ts";
-import { isCompatibleKeyId } from "../sig/portable-key-id.ts";
+import {
+  getPortableDid,
+  isCompatibleKeyId,
+  isPortableId,
+} from "../sig/portable-key-id.ts";
 import { signObject } from "../sig/proof.ts";
 
 /**
@@ -45,10 +46,6 @@ export interface SignOutgoingActivityResult {
   readonly proofCreated: boolean;
 }
 
-function isPortableUrl(url: URL): boolean {
-  return url.protocol === "ap:" || url.protocol === "ap+ef61:";
-}
-
 function formatKeyIds(candidates: readonly ProofSigningCandidate[]): string {
   return candidates.map((c) => c.verificationMethod.href).join(", ");
 }
@@ -56,17 +53,32 @@ function formatKeyIds(candidates: readonly ProofSigningCandidate[]): string {
 /**
  * Rejects an activity of a portable actor whose ID cannot be authenticated by
  * the actor's DID: FEP-ef61 requires the activity to be a portable object
- * signed by that DID, so its ID has to be a portable ID with the same DID.
+ * signed by that DID, so its ID has to be a portable ID, i.e., an `ap:` or
+ * `ap+ef61:` URI or a compatible identifier, with the same DID.  A portable
+ * actor is one whose ID is such an ID as well.
  * @throws {TypeError} If the activity is performed by a portable actor, but
- *                     its ID is not a portable ID of the actor's DID, or its
- *                     portable actors do not share a DID.
+ *                     its ID is not a portable ID of the actor's DID, its
+ *                     portable actors do not share a DID, or the ID of one of
+ *                     them is a malformed compatible identifier.
  * @internal
  */
 export function assertPortableActorActivity(activity: Activity): void {
-  const portableActors = activity.actorIds.filter(isPortableUrl);
+  const portableActors = activity.actorIds.filter((id) => isPortableId(id));
   if (portableActors.length < 1) return;
-  const did = getFe34Origin(portableActors[0]);
-  if (portableActors.some((actorId) => getFe34Origin(actorId) !== did)) {
+  const dids = portableActors.map((actorId) => {
+    const did = getPortableDid(actorId);
+    if (did == null) {
+      throw new TypeError(
+        `The activity ${activity.id?.href} is performed by the actor ` +
+          `${actorId.href}, whose ID is a malformed FEP-ef61 portable ID.  ` +
+          `A compatible identifier must have a valid DID and an object ` +
+          `path, and must not have credentials or @gateway location hints.`,
+      );
+    }
+    return did;
+  });
+  const did = dids[0];
+  if (dids.some((d) => d !== did)) {
     throw new TypeError(
       `The activity ${activity.id?.href} has portable actors with different ` +
         `DIDs (${portableActors.map((a) => a.href).join(", ")}); ` +
@@ -74,16 +86,32 @@ export function assertPortableActorActivity(activity: Activity): void {
     );
   }
   if (
-    activity.id == null || !isPortableUrl(activity.id) ||
-    getFe34Origin(activity.id) !== did
+    activity.id == null || !isPortableId(activity.id) ||
+    getPortableDid(activity.id) !== did
   ) {
     throw new TypeError(
       `The activity ${activity.id?.href} is performed by the portable actor ` +
         `${portableActors[0].href}, so its ID has to be an ap: or ap+ef61: ` +
-        `URI with the same DID (${did}), as FEP-ef61 requires it to carry ` +
-        `an Object Integrity Proof made by that DID.`,
+        `URI, or an FEP-ef61 compatible identifier, with the same DID ` +
+        `(${did}), as FEP-ef61 requires it to carry an Object Integrity ` +
+        `Proof made by that DID.`,
     );
   }
+  // Receivers compare DIDs, not gateways, so this is not an error, but
+  // FEP-ef61 requires publishers to build compatible identifiers with
+  // the actor's first gateway, which the actor and the activity then share:
+  if (!isCompatibleEf61Iri(activity.id)) return;
+  const mismatched = portableActors.find((actorId) =>
+    isCompatibleEf61Iri(actorId) && actorId.origin !== activity.id?.origin
+  );
+  if (mismatched == null) return;
+  getLogger(["fedify", "federation", "outbox"]).warn(
+    "The activity {activityId} and its actor {actorId} are identified by " +
+      "FEP-ef61 compatible identifiers on different gateways.  FEP-ef61 " +
+      "requires publishers to use the first gateway in the actor's gateways " +
+      "when constructing compatible identifiers.",
+    { activityId: activity.id.href, actorId: mismatched.href },
+  );
 }
 
 /**
@@ -91,7 +119,7 @@ export function assertPortableActorActivity(activity: Activity): void {
  *
  * Keys whose IDs are FEP-ef61 compatible identifiers are gateway keys, which
  * never sign proofs.  A portable activity, i.e., one with an `ap:` or
- * `ap+ef61:` ID, that carries no proof is signed only by the one Ed25519 key
+ * `ap+ef61:` ID or a compatible identifier, that carries no proof is signed only by the one Ed25519 key
  * whose verification method is a DID URL for its DID, even if it is the only
  * key; if no key or more than one key qualifies, this function throws.
  *
@@ -139,7 +167,7 @@ export async function signOutgoingActivity(
     // claim that the gateway authored the activity:
     !isCompatibleKeyId(c.verificationMethod)
   );
-  if (!hasProof && activity.id != null && isPortableUrl(activity.id)) {
+  if (!hasProof && activity.id != null && isPortableId(activity.id)) {
     // The single-key shortcut below does not apply: FEP-ef61 accepts only
     // a proof made by the activity's own DID.
     return await sign(selectPortableActivityKey(activity, activity.id, keys));
@@ -188,10 +216,20 @@ function selectPortableActivityKey(
   activityId: URL,
   keys: readonly ProofSigningCandidate[],
 ): readonly ProofSigningCandidate[] {
-  const activityDid = getFe34Origin(activityId);
+  // The DID of a compatible identifier is not its web origin, so the DIDs
+  // are compared rather than the FEP-fe34 origins of the IDs:
+  const activityDid = getPortableDid(activityId);
+  if (activityDid == null) {
+    throw new TypeError(
+      `Cannot sign the portable activity ${activityId.href}, as its ID is ` +
+        `a malformed FEP-ef61 portable ID.  A compatible identifier must ` +
+        `have a valid DID and an object path, and must not have credentials ` +
+        `or @gateway location hints.`,
+    );
+  }
   const eligible = keys.filter((c) =>
     c.verificationMethod.protocol === "did:" &&
-    haveSameFe34Origin(activityId, c.verificationMethod)
+    getPortableDid(c.verificationMethod) === activityDid
   );
   if (eligible.length !== 1) {
     throw new TypeError(

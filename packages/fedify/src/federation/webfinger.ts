@@ -5,6 +5,7 @@ import {
 } from "@fedify/vocab";
 import {
   formatIri,
+  fromCompatibleEf61Id,
   isGatewayUrl,
   parseIri,
   toCompatibleEf61Id,
@@ -20,6 +21,7 @@ import type {
   ActorHandleMapper,
   WebFingerLinksDispatcher,
 } from "./callback.ts";
+import { isPortableId, isPortableUri } from "../sig/portable-key-id.ts";
 import type { RequestContext } from "./context.ts";
 import {
   recordWebFingerHandle,
@@ -82,6 +84,28 @@ interface PortableWebFingerSubjectAndAliasesOptions {
   preferredUsername: string | LanguageString | null | undefined;
   acctUsername: string | null;
   gatewayHost: string;
+}
+
+/**
+ * Gets the compatible identifier that a WebFinger response links to for
+ * an FEP-ef61 portable actor.  An actor identified by an `ap:` or `ap+ef61:`
+ * URI is linked through its compatible identifier on the given gateway, while
+ * an actor identified by a compatible identifier is linked through its ID as
+ * is, so that software without FEP-ef61 support finds the same ID in the actor
+ * document.
+ * @param actorId The portable actor's ID.
+ * @param gateway The actor's first gateway.
+ * @returns The compatible identifier, or `null` if the actor ID is malformed
+ *          or cannot be represented as a compatible identifier.
+ */
+function getCompatibleActorId(actorId: URL, gateway: URL): URL | null {
+  try {
+    if (isPortableUri(actorId)) return toCompatibleEf61Id(actorId, gateway);
+    return fromCompatibleEf61Id(actorId) == null ? null : actorId;
+  } catch (error) {
+    if (error instanceof TypeError) return null;
+    throw error;
+  }
 }
 
 /**
@@ -422,22 +446,11 @@ async function handleWebFingerInternal<TContextData>(
   }
   let actorUri = context.getActorUri(identifier);
   let portable: { compatibleId: URL; gatewayHost: string } | undefined;
-  if (
-    actor.id != null &&
-    (actor.id.protocol === "ap:" || actor.id.protocol === "ap+ef61:")
-  ) {
+  if (actor.id != null && isPortableId(actor.id)) {
     // FEP-ef61 portable actor; its WebFinger address and compatible
     // identifier are based on the first gateway in its gateways:
     const gateway = actor.gateway;
-    let compatibleId: URL | undefined;
-    if (gateway != null && isGatewayUrl(gateway)) {
-      try {
-        compatibleId = toCompatibleEf61Id(actor.id, gateway);
-      } catch (error) {
-        if (!(error instanceof TypeError)) throw error;
-      }
-    }
-    if (gateway == null || compatibleId == null) {
+    if (gateway == null || !isGatewayUrl(gateway)) {
       logger.error(
         "The portable actor {actorId} (identifier: {identifier}) needs " +
           "an HTTP(S) origin as the first item of its gateways property " +
@@ -446,6 +459,19 @@ async function handleWebFingerInternal<TContextData>(
       );
       return await onNotFound(request);
     }
+    const compatibleId = getCompatibleActorId(actor.id, gateway);
+    if (compatibleId == null) {
+      logger.error(
+        "The portable actor {actorId} (identifier: {identifier}) cannot be " +
+          "discovered through WebFinger, as its ID is malformed or cannot " +
+          "be represented as an FEP-ef61 compatible identifier.",
+        { actorId: formatIri(actor.id), identifier },
+      );
+      return await onNotFound(request);
+    }
+    // The actor dispatcher already warns if a compatible identifier is not
+    // on the first gateway; the self link is still the actor's own ID, so
+    // that software without FEP-ef61 support finds it in the actor document.
     actorUri = compatibleId;
     portable = { compatibleId, gatewayHost: gateway.host };
   }

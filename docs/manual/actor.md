@@ -782,7 +782,10 @@ returns an actor whose ID is a portable ID, Fedify responds as follows:
     so that software that does not support portable IDs can still fetch the
     actor.  Software that supports them recovers the portable ID from it.
     The portable ID itself is not put in the response, as it is not a valid
-    URI for most WebFinger clients.
+    URI for most WebFinger clients.  If the actor's ID is a compatible
+    identifier already (see the [*Compatible identifiers as actor IDs*
+    section](#compatible-identifiers-as-actor-ids)), the `self` link is the
+    ID as is.
  -  The `subject` is the `acct:` URI whose domain is the host of the first
     gateway.  If this server is not the first gateway, the queried `acct:`
     URI is listed in `aliases` instead.
@@ -869,6 +872,143 @@ WebFinger response for it links back to the actor, since anyone can list any
 server in the `gateways` of their actor.
 
 [FEP-ef61]: https://w3id.org/fep/ef61
+
+
+Compatible identifiers as actor IDs
+-----------------------------------
+
+*This API is available since Fedify 2.4.0.*
+
+Software that does not support [FEP-ef61] cannot handle portable IDs like
+`ap+ef61://did:key:z6Mk.../actors/alice`, and may refuse an actor document
+whose ID is one.  For such software, FEP-ef61 lets a portable actor, and its
+activities and objects, be identified by their *compatible identifiers*
+instead, e.g.,
+`https://example.com/.well-known/apgateway/did:key:z6Mk.../actors/alice`.
+Some implementations, such as [tootik], identify all their portable actors
+this way.
+
+Prefer portable IDs unless your actors have to interoperate with software
+that cannot handle them.  A compatible identifier has a few drawbacks:
+
+ -  FEP-ef61 requires publishers to construct compatible identifiers with
+    the *first* gateway in the actor's `gateways`, so changing the first
+    gateway changes the IDs that software without FEP-ef61 support sees,
+    although the canonical portable IDs stay the same.
+ -  Software without FEP-ef61 support takes every object that a gateway
+    serves as having the same origin, as it does not know the DIDs in the
+    compatible identifiers.
+
+Fedify treats an actor whose ID is a compatible identifier as a portable actor
+in the same way as one whose ID is a portable ID, since software that supports
+FEP-ef61 turns the compatible identifier back into the portable ID it contains:
+
+ -  Its activities follow the same rules as those of other portable actors:
+    each has to have a portable ID or a compatible identifier of the actor's
+    DID, and is signed only by the DID's key.  See the [*Choosing the proof
+    key* section](./send.md#choosing-the-proof-key).
+ -  The [object dispatcher](./object.md#serving-portable-objects) that serves
+    the actor or its objects may return them with compatible identifiers as
+    their IDs.
+ -  Its WebFinger `self` link is its ID as is, while the domain of its
+    address still comes from its first gateway.
+ -  Its inbox may be a compatible identifier as well, through which Fedify
+    accepts deliveries as for other [portable
+    inboxes](./inbox.md#portable-inboxes).
+ -  The `~ActorCallbackSetters.mapPortableActorId()` callback may return the
+    compatible identifier; see the [*Gateway keys of portable actors*
+    section](#gateway-keys-of-portable-actors).
+
+The `~Context.getPortableObjectUri()` and `~Context.getPortableInboxUri()`
+methods build portable IDs only.  Turn them into compatible identifiers on
+the actor's first gateway with `toCompatibleEf61Id()`, before signing the
+documents that contain them; a signed document cannot be rewritten without
+invalidating its proof:
+
+~~~~ typescript twoslash
+import { type Context, signObject } from "@fedify/fedify";
+import { Person } from "@fedify/vocab";
+import { toCompatibleEf61Id } from "@fedify/vocab-runtime";
+interface User { username: string; did: string; identifier: string }
+async function getPortableKey(
+  _did: string,
+): Promise<{ privateKey: CryptoKey; keyId: URL }> {
+  return null!;
+}
+// ---cut-before---
+const gateways = [new URL("https://example.com"), new URL("https://other.example")];
+
+async function getPortableActor(
+  ctx: Context<void>,
+  user: User,
+): Promise<Person> {
+  const { privateKey, keyId } = await getPortableKey(user.did);
+  return await signObject(
+    new Person({
+      // https://example.com/.well-known/apgateway/did:key:z6Mk.../actors/alice
+      id: toCompatibleEf61Id(
+        ctx.getPortableObjectUri(Person, { name: user.username }, user.did),
+        gateways[0],
+      ),
+      // https://example.com/.well-known/apgateway/did:key:z6Mk.../users/alice/inbox
+      inbox: toCompatibleEf61Id(
+        ctx.getPortableInboxUri(user.identifier, user.did),
+        gateways[0],
+      ),
+      preferredUsername: user.username,
+      gateways,
+    }),
+    privateKey,
+    keyId,  // e.g., did:key:z6Mk...#z6Mk...
+  );
+}
+~~~~
+
+If the actor dispatcher returns an actor whose ID is a compatible identifier
+that is malformed, e.g., has `@gateway` location hints, or is not on the
+actor's first gateway, Fedify logs a warning.  It does not check the
+compatible identifiers of activities and objects against the first gateway,
+as it does not know their actors' `gateways`, except that it warns when
+an activity and its actor are identified by compatible identifiers on
+different gateways.
+
+A WebFinger query for the compatible identifier itself does not match the
+actor dispatcher's path, so map it back to the actor's identifier through
+`~ActorCallbackSetters.mapAlias()`:
+
+~~~~ typescript twoslash
+import { type Federation } from "@fedify/fedify";
+import { fromCompatibleEf61Id, getFe34Origin } from "@fedify/vocab-runtime";
+const federation = null as unknown as Federation<void>;
+interface User { identifier: string; username: string }
+async function findUserByDid(_did: string): Promise<User | null> {
+  return null;
+}
+// ---cut-before---
+federation
+  .setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
+    // Omitted for brevity; see the example above.
+    return null;
+  })
+  .mapAlias(async (ctx, resource) => {
+    let portableId: URL | null;
+    try {
+      // e.g., ap+ef61://did:key:z6Mk.../actors/alice:
+      portableId = fromCompatibleEf61Id(resource);
+    } catch {
+      return null;  // A malformed compatible identifier.
+    }
+    if (portableId == null) return null;  // Not a compatible identifier.
+    // did:key:z6Mk...
+    const user = await findUserByDid(getFe34Origin(portableId));
+    if (user == null || portableId.pathname !== `/actors/${user.username}`) {
+      return null;
+    }
+    return { identifier: user.identifier };
+  });
+~~~~
+
+[tootik]: https://github.com/dimkr/tootik
 
 
 Gateway keys of portable actors
@@ -1000,7 +1140,8 @@ async function getPortableActor(
 Since the DID's key pair is not dispatched by the key pairs dispatcher, sign
 a portable actor's activities with `signObject()` before sending them, or pass
 the DID's key to `Context.sendActivity()` as an explicit sender key.  An
-activity of a portable actor has to have a portable ID of the actor's DID, and
+activity of a portable actor has to have a portable ID or a compatible
+identifier of the actor's DID, and
 `Context.sendActivity()` throws a `TypeError` if it does not, or if it has no
 proof and no key can make one.  See the [*Choosing the proof key*
 section](./send.md#choosing-the-proof-key) for details.
@@ -1047,4 +1188,3 @@ names a portable actor as its owner or controller is never that actor's key.
 
 [FEP-521a]: https://w3id.org/fep/521a
 [compatible identifier]: https://w3id.org/fep/ef61#compatible-ids
-[tootik]: https://github.com/dimkr/tootik

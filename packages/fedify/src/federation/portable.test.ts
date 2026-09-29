@@ -8,14 +8,21 @@ import {
   Person,
   Tombstone,
 } from "@fedify/vocab";
-import { exportDidKey, formatIri, parseIri } from "@fedify/vocab-runtime";
 import {
+  exportDidKey,
+  formatIri,
+  parseIri,
+  toCompatibleEf61Id,
+} from "@fedify/vocab-runtime";
+import {
+  assert,
   assertEquals,
   assertInstanceOf,
   assertStrictEquals,
   assertThrows,
 } from "@std/assert";
 import type { ResourceDescriptor } from "@fedify/webfinger";
+import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { signRequest } from "../sig/http.ts";
 import { signObject, verifyPortableObjectProof } from "../sig/proof.ts";
 import {
@@ -537,6 +544,163 @@ test("Federation.fetch() authorizes portable object requests", async (t) => {
   });
 });
 
+test("Federation.fetch() serves portable objects with compatible IDs", async (t) => {
+  const federation = createTestFederation();
+  const compatible = (path: string, authority = did, origin = "example.com") =>
+    new URL(`https://${origin}/.well-known/apgateway/${authority}${path}`);
+  const objects: Record<string, () => Promise<Object>> = {
+    "compatible": () =>
+      sign(new Note({ id: compatible("/objects/compatible") })),
+    // A compatible identifier on another gateway than the one requested:
+    "other-gateway": () =>
+      sign(
+        new Note({
+          id: compatible("/objects/other-gateway", did, "other.example"),
+        }),
+      ),
+    "percent-encoded": () =>
+      sign(
+        new Note({
+          id: compatible(
+            "/objects/percent-encoded",
+            did.replaceAll(":", "%3A"),
+          ),
+        }),
+      ),
+    "other-did": () =>
+      sign(
+        new Note({ id: compatible("/objects/other-did", otherDid) }),
+        otherKeyPair.privateKey,
+        otherKeyId,
+      ),
+    "other-path": () => sign(new Note({ id: compatible("/objects/else") })),
+    "fragment": () =>
+      sign(new Note({ id: compatible("/objects/fragment#note") })),
+    // FEP-ef61 forbids location hints in compatible identifiers:
+    "malformed": () =>
+      sign(
+        new Note({
+          id: new URL(
+            compatible("/objects/malformed").href +
+              "?@gateway=https%3A%2F%2Fexample.com",
+          ),
+        }),
+      ),
+    "ordinary": () =>
+      sign(new Note({ id: new URL("https://example.com/objects/ordinary") })),
+    "unsigned": () =>
+      Promise.resolve(new Note({ id: compatible("/objects/unsigned") })),
+    "wrong-did": () =>
+      sign(
+        new Note({ id: compatible("/objects/wrong-did") }),
+        otherKeyPair.privateKey,
+        otherKeyId,
+      ),
+    "mutated-id": async () => {
+      // An object that keeps its signed JSON-LD, but whose id is changed
+      // afterwards, must not be served as the object in the changed id:
+      const signed = await sign(
+        new Note({ id: compatible("/objects/original") }),
+      );
+      const object = await Note.fromJsonLd(
+        await signed.toJsonLd({ contextLoader: mockDocumentLoader }),
+        {
+          contextLoader: mockDocumentLoader,
+          documentLoader: mockDocumentLoader,
+        },
+      );
+      object.id!.pathname = object.id!.pathname.replace(
+        /original$/,
+        "mutated-id",
+      );
+      return object;
+    },
+    "actor": () =>
+      sign(
+        new Person({
+          id: compatible("/objects/actor"),
+          inbox: compatible("/objects/actor/inbox"),
+          outbox: compatible("/objects/actor/outbox"),
+          gateways: [new URL("https://example.com/")],
+        }),
+      ),
+  };
+  federation.setObjectDispatcher(
+    Object,
+    "/objects/{id}",
+    (_ctx, { id }) => objects[id]?.() ?? null,
+  );
+  const expected: Record<string, number> = {
+    "compatible": 200,
+    "other-gateway": 200,
+    "percent-encoded": 200,
+    "other-did": 404,
+    "other-path": 404,
+    "fragment": 404,
+    "malformed": 404,
+    "ordinary": 404,
+    "unsigned": 500,
+    "wrong-did": 500,
+    "mutated-id": 404,
+    "actor": 200,
+  };
+  for (const host of ["example.com", "other.example"]) {
+    for (const [id, status] of globalThis.Object.entries(expected)) {
+      await t.step(`${id} on ${host} → ${status}`, async () => {
+        const response = await federation.fetch(
+          new Request(
+            `https://${host}/.well-known/apgateway/${did}/objects/${id}`,
+            { headers: { Accept: ACCEPT } },
+          ),
+          { contextData: undefined },
+        );
+        assertEquals(response.status, status);
+        if (status !== 200) return;
+        assertEquals(
+          response.headers.get("Content-Type"),
+          PORTABLE_OBJECT_CONTENT_TYPE,
+        );
+        // The object is served as it is, with the compatible identifier
+        // naming its own gateway:
+        const json = await response.json() as Record<string, unknown>;
+        assertEquals(json.id, (await objects[id]()).id?.href);
+      });
+    }
+  }
+
+  await t.step("authorizes compatible-ID objects on any gateway", async () => {
+    const authorized = createTestFederation();
+    authorized
+      .setObjectDispatcher(
+        Note,
+        "/notes/{id}",
+        (_ctx, values) =>
+          sign(new Note({ id: compatible(`/notes/${values.id}`) })),
+      )
+      .authorize(async (ctx) => {
+        const owner = await ctx.getSignedKeyOwner();
+        return owner?.id?.href === "https://example.com/person2";
+      });
+    for (const host of ["example.com", "other.example"]) {
+      const url = `https://${host}/.well-known/apgateway/${did}/notes/1`;
+      const request = new Request(url, { headers: { Accept: ACCEPT } });
+      let response = await authorized.fetch(request, {
+        contextData: undefined,
+      });
+      assertEquals(response.status, 401, host);
+      response = await authorized.fetch(
+        await signRequest(
+          new Request(url, { headers: { Accept: ACCEPT } }),
+          rsaPrivateKey3,
+          rsaPublicKey3.id!,
+        ),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 200, host);
+    }
+  });
+});
+
 test("Federation.fetch() lets application routes shadow the gateway", async () => {
   const federation = createTestFederation();
   const paths: string[] = [];
@@ -799,5 +963,184 @@ test("Federation.fetch() serves portable actors through WebFinger", async () => 
         }),
     }),
     null,
+  );
+});
+
+/**
+ * Captures Fedify's warnings logged while `run` executes.
+ */
+async function captureWarnings(run: () => unknown): Promise<LogRecord[]> {
+  const records: LogRecord[] = [];
+  await reset();
+  try {
+    await configure({
+      sinks: { buffer: (record: LogRecord) => records.push(record) },
+      filters: {},
+      loggers: [
+        { category: ["logtape", "meta"], sinks: [] },
+        { category: [], sinks: ["buffer"], lowestLevel: "warning" },
+      ],
+    });
+    await run();
+  } finally {
+    await reset();
+  }
+  return records.filter((record) => record.category[0] === "fedify");
+}
+
+test("Federation.fetch() serves compatible-ID actors", async (t) => {
+  const federation = createTestFederation();
+  const actorGateways: Record<string, string[]> = {
+    alice: ["https://example.com"],
+    // The compatible identifier is not on the first gateway:
+    secondary: ["https://primary.example", "https://example.com"],
+    nogateway: [],
+    malformed: ["https://example.com"],
+  };
+  const getActor = async (
+    ctx: Context<void>,
+    name: string,
+  ): Promise<Person | null> => {
+    const gateways = actorGateways[name];
+    if (gateways == null) return null;
+    // Compatible identifiers are built before signing, never by rewriting
+    // signed documents:
+    const id = toCompatibleEf61Id(
+      ctx.getPortableObjectUri(Person, { name }, did),
+      "https://example.com",
+    );
+    // FEP-ef61 forbids location hints in compatible identifiers:
+    if (name === "malformed") id.search = "?@gateway=https%3A%2F%2Fexample.com";
+    return await sign(
+      new Person({
+        id,
+        preferredUsername: name,
+        inbox: new URL(`${id.href}/inbox`),
+        followers: new URL(`${id.href}/followers`),
+        gateways: gateways.map((g) => new URL(g)),
+      }),
+    );
+  };
+  federation
+    .setActorDispatcher(
+      "/users/{identifier}",
+      (ctx, identifier) => getActor(ctx, identifier),
+    )
+    .mapHandle((_ctx, username) => username)
+    .mapAlias((_ctx, resource) => {
+      // Maps compatible identifiers of the actors back to their identifiers:
+      const match = resource.href.match(/\/actors\/([^/?#]+)$/);
+      return match == null || !resource.href.startsWith(gatewayUrl("/"))
+        ? null
+        : { identifier: match[1] };
+    });
+  federation.setFollowersDispatcher(
+    "/users/{identifier}/followers",
+    () => ({ items: [] }),
+  );
+  federation.setObjectDispatcher(
+    Person,
+    "/actors/{name}",
+    (ctx, values) =>
+      ctx.portableRequest?.authority === did
+        ? getActor(ctx, values.name)
+        : null,
+  );
+  const compatibleId = gatewayUrl("/actors/alice");
+
+  await t.step("WebFinger", async () => {
+    let records: LogRecord[] = [];
+    records = await captureWarnings(async () => {
+      for (const resource of ["acct:alice@example.com", compatibleId]) {
+        const response = await federation.fetch(
+          new Request(
+            `https://example.com/.well-known/webfinger?resource=${
+              encodeURIComponent(resource)
+            }`,
+          ),
+          { contextData: undefined },
+        );
+        assertEquals(response.status, 200, resource);
+        const jrd: ResourceDescriptor = await response.json();
+        assertEquals(jrd.subject, "acct:alice@example.com", resource);
+        assertEquals(jrd.links?.[0], {
+          rel: "self",
+          href: compatibleId,
+          type: "application/activity+json",
+        });
+      }
+    });
+    // The actor's IDs are not compared with the ones Context builds:
+    assertEquals(records.map((r) => r.rawMessage), []);
+  });
+
+  await t.step("gateway", async () => {
+    const response = await federation.fetch(
+      new Request(compatibleId, { headers: { Accept: ACCEPT } }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 200);
+    const json = await response.json() as Record<string, unknown>;
+    assertEquals(json.id, compatibleId);
+    const actor = await lookupObject(compatibleId, {
+      documentLoader: (url) =>
+        Promise.resolve({ contextUrl: null, documentUrl: url, document: json }),
+      contextLoader: mockDocumentLoader,
+      verifyPortableObject: verifyPortableObjectProof,
+    });
+    assertInstanceOf(actor, Person);
+    assertEquals(actor.id?.href, compatibleId);
+  });
+
+  await t.step("warns if the ID is not on the first gateway", async () => {
+    const records = await captureWarnings(async () => {
+      const response = await federation.fetch(
+        new Request(
+          "https://example.com/.well-known/webfinger?resource=acct:secondary@example.com",
+        ),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 200);
+      const jrd: ResourceDescriptor = await response.json();
+      assertEquals(jrd.subject, "acct:secondary@primary.example");
+      assertEquals(jrd.links?.[0].href, gatewayUrl("/actors/secondary"));
+    });
+    assertEquals(
+      records.map((r) => r.properties.gateway),
+      ["https://primary.example"],
+    );
+  });
+
+  await t.step("warns if the actor has no gateways", async () => {
+    const records = await captureWarnings(async () => {
+      const response = await federation.fetch(
+        new Request("https://example.com/users/nogateway", {
+          headers: { Accept: ACCEPT },
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 200);
+    });
+    assertEquals(
+      records.map((r) => r.properties.actorId),
+      [gatewayUrl("/actors/nogateway")],
+    );
+  });
+
+  await t.step(
+    "warns if the ID is a malformed compatible identifier",
+    async () => {
+      const records = await captureWarnings(async () => {
+        const response = await federation.fetch(
+          new Request("https://example.com/users/malformed", {
+            headers: { Accept: ACCEPT },
+          }),
+          { contextData: undefined },
+        );
+        assertEquals(response.status, 200);
+      });
+      assertEquals(records.length, 1);
+      assert(String(records[0].rawMessage).includes("malformed"));
+    },
   );
 });

@@ -17,6 +17,9 @@ import { getLogger } from "@logtape/logtape";
 import type { Tracer } from "@opentelemetry/api";
 import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
 import metadata from "../../deno.json" with { type: "json" };
+import { fromCompatibleEf61Id, isGatewayUrl } from "@fedify/vocab-runtime";
+import { isCompatibleEf61Iri } from "@fedify/vocab-runtime/internal/portable-dereference";
+import { isPortableId } from "../sig/portable-key-id.ts";
 import { ActivityListenerSet } from "./activity-listener.ts";
 import type {
   ActorAliasMapper,
@@ -336,9 +339,9 @@ export class FederationBuilderImpl<TContextData>
         if (actor == null) return null;
         const logger = getLogger(["fedify", "federation", "actor"]);
         // An FEP-ef61 portable actor's URIs are not this server's URIs, so
-        // they are not compared with the ones Context builds:
-        const portable = actor.id?.protocol === "ap:" ||
-          actor.id?.protocol === "ap+ef61:";
+        // they are not compared with the ones Context builds, even when its
+        // ID is a compatible identifier on this server:
+        const portable = actor.id != null && isPortableId(actor.id);
         if (actor.id == null) {
           logger.warn(
             "Actor dispatcher returned an actor without an id property.  " +
@@ -354,6 +357,9 @@ export class FederationBuilderImpl<TContextData>
           );
         }
         if (actor instanceof Tombstone) return actor;
+        if (actor.id != null && isCompatibleEf61Iri(actor.id)) {
+          warnCompatibleActorId(actor.id, actor.gateway);
+        }
         if (
           this.followingCallbacks != null &&
           this.followingCallbacks.dispatcher != null
@@ -1575,4 +1581,42 @@ interface ObjectCallbacks<TContextData, TParam extends string> {
   dispatcher: ObjectDispatcher<TContextData, Object, string>;
   parameters: Set<TParam>;
   authorizePredicate?: ObjectAuthorizePredicate<TContextData, TParam>;
+}
+
+/**
+ * Warns about an FEP-ef61 portable actor identified by a compatible identifier
+ * that is malformed, or is not on the actor's first gateway, where FEP-ef61
+ * requires publishers to construct compatible identifiers.
+ */
+function warnCompatibleActorId(actorId: URL, gateway: URL | null): void {
+  const logger = getLogger(["fedify", "federation", "actor"]);
+  try {
+    fromCompatibleEf61Id(actorId);
+  } catch (error) {
+    if (!(error instanceof TypeError)) throw error;
+    logger.warn(
+      "Actor dispatcher returned an actor whose id property, {actorId}, is " +
+        "a malformed FEP-ef61 compatible identifier: {error}",
+      { actorId: actorId.href, error },
+    );
+    return;
+  }
+  if (gateway == null || !isGatewayUrl(gateway)) {
+    logger.warn(
+      "Actor dispatcher returned an actor whose id property, {actorId}, is " +
+        "an FEP-ef61 compatible identifier, but whose first gateway is not " +
+        "an HTTP(S) origin.  Set the gateways property, and construct " +
+        "the compatible identifier with its first gateway.",
+      { actorId: actorId.href },
+    );
+  } else if (actorId.origin !== gateway.origin) {
+    logger.warn(
+      "Actor dispatcher returned an actor whose id property, {actorId}, is " +
+        "an FEP-ef61 compatible identifier on another gateway than its first " +
+        "gateway, {gateway}.  FEP-ef61 requires publishers to construct " +
+        "compatible identifiers with the first gateway in the actor's " +
+        "gateways.",
+      { actorId: actorId.href, gateway: gateway.origin },
+    );
+  }
 }

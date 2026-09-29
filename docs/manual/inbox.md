@@ -858,8 +858,11 @@ federation
 Fedify accepts a delivery to a portable inbox only if the actor dispatcher,
 called with the identifier in the inbox path, returns an actor such that:
 
- -  its ID is a portable ID with the same DID as the requested inbox;
- -  its `inbox` is the requested portable inbox; and
+ -  its ID is a portable ID, or a [compatible
+    identifier](./actor.md#compatible-identifiers-as-actor-ids), with the same
+    DID as the requested inbox;
+ -  its `inbox` is the requested portable inbox, or a compatible identifier of
+    it on any gateway; and
  -  its `gateways` include the origin of this server, i.e.,
     `~Context.canonicalOrigin`.
 
@@ -917,7 +920,10 @@ the sender retries it.  All of the following have to hold as well:
 The activity is sent as received to the compatible inbox URL on each gateway
 other than this server, e.g.,
 `https://other.example/.well-known/apgateway/did:key:z6Mk.../users/alice/inbox`,
-to at most 10 gateways per delivery by default.  With an outbox queue,
+to at most 10 gateways per delivery by default.  An activity is told apart by
+its canonical portable ID, so it is not forwarded again when it arrives with
+a compatible identifier on another gateway instead of its `ap:` ID, or vice
+versa.  With an outbox queue,
 forwarding is queued like other outgoing activities and retried on failures.
 Without one, the requests are made immediately, and Fedify waits for them for
 up to 10 seconds by default before responding to the delivery.

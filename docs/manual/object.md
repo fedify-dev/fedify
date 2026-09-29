@@ -168,9 +168,13 @@ Fedify serves the returned object with `200 OK` and the
 type only if both of the following hold:
 
  -  Its ID canonically equals the requested portable ID, e.g., an `ap:` ID is
-    equivalent to an `ap+ef61:` one.  Otherwise, including when the dispatcher
-    returns an object with an HTTP(S) ID or `null`, Fedify responds with
-    `404 Not Found`, as the object is not stored on this server.
+    equivalent to an `ap+ef61:` one.  A compatible identifier, such as
+    `https://example.com/.well-known/apgateway/did:key:z6Mk.../users/alice/notes/123`,
+    is equivalent to the portable ID it contains, whichever gateway it names,
+    as FEP-ef61 treats objects on different gateways as instances of the same
+    object.  Otherwise, including when the dispatcher returns an object with an
+    ordinary HTTP(S) ID or `null`, Fedify responds with `404 Not Found`, as the
+    object is not stored on this server.
  -  It satisfies the FEP-ef61 proof policy: a portable actor, activity, or
     object needs an [Object Integrity Proof](./send.md#object-integrity-proofs)
     made with a key of the DID in its ID.  A portable collection may be served
@@ -179,6 +183,12 @@ type only if both of the following hold:
     the application.
 
 A malformed portable ID in the request path results in `400 Bad Request`.
+
+The object is served as the dispatcher returns it, so an object whose ID is
+a compatible identifier keeps naming the gateway in its ID even when it is
+served by another gateway.  See the [*Compatible identifiers as actor IDs*
+section](./actor.md#compatible-identifiers-as-actor-ids) for when to identify
+portable objects by compatible identifiers.
 
 > [!WARNING]
 > The DID in `~RequestContext.portableRequest` comes from the request path,

@@ -817,6 +817,165 @@ test("forwardPortableInboxActivity() does not wait for slow gateways", async () 
   }
 });
 
+// Compatible-ID actors
+
+function compatibleAlice(
+  path = "/users/alice",
+  { authority = did, origin = LOCAL, gateways = [LOCAL, GATEWAY2, GATEWAY3] }: {
+    authority?: string;
+    origin?: string;
+    gateways?: string[];
+  } = {},
+): { id: URL; inbox: URL; gateways: URL[] } {
+  return {
+    id: new URL(`${origin}/.well-known/apgateway/${authority}${path}`),
+    inbox: new URL(inboxUrl(authority, `${path}/inbox`, origin)),
+    gateways: gateways.map((g) => new URL(g)),
+  };
+}
+
+test("Federation.fetch() delivers to portable inboxes of compatible-ID actors", async (t) => {
+  const apAlice = parseIri(`ap+ef61://${did}/users/alice`);
+  const apInbox = parseIri(`ap+ef61://${did}/users/alice/inbox`);
+  const cases: [string, { id: URL; inbox: URL; gateways: URL[] }, string][] = [
+    ["compatible actor and inbox", compatibleAlice(), ""],
+    // FEP-ef61 treats objects on different gateways as instances of the same
+    // object:
+    [
+      "on another gateway",
+      compatibleAlice(undefined, { origin: GATEWAY2 }),
+      "",
+    ],
+    [
+      "compatible actor and ap: inbox",
+      { ...compatibleAlice(), inbox: apInbox },
+      "",
+    ],
+    [
+      "ap: actor and compatible inbox",
+      { ...compatibleAlice(), id: apAlice },
+      "",
+    ],
+    [
+      "compatible inbox with a query",
+      {
+        ...compatibleAlice(),
+        inbox: new URL(inboxUrl() + "?page=1"),
+      },
+      "?page=1",
+    ],
+  ];
+  for (const [name, alice, query] of cases) {
+    await t.step(name, async () => {
+      const queue = new RecordingQueue();
+      const { federation, received } = setup({
+        queue,
+        actor: (_ctx, identifier) =>
+          identifier === "alice" ? new Person(alice) : null,
+      });
+      const response = await federation.fetch(
+        post(inboxUrl(), await signedFollow()),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 202);
+      assertEquals(received.length, 1);
+      assertEquals(received[0].recipient, "alice");
+      // The inbox is forwarded to in its compatible identifiers on the other
+      // gateways, keeping the query of the inbox ID:
+      assertEquals(queue.outbox.map((m) => m.inbox).sort(), [
+        inboxUrl(did, "/users/alice/inbox", GATEWAY3) + query,
+        inboxUrl(did, "/users/alice/inbox", GATEWAY2) + query,
+      ]);
+    });
+  }
+
+  const json = await signedFollow();
+  const rejections: [string, Person][] = [
+    [
+      "DID mismatch",
+      new Person(compatibleAlice(undefined, { authority: otherDid })),
+    ],
+    [
+      "inbox mismatch",
+      new Person({
+        ...compatibleAlice(),
+        inbox: new URL(inboxUrl(did, "/users/alice/other-inbox")),
+      }),
+    ],
+    [
+      "this server is not a gateway of the actor",
+      new Person(compatibleAlice(undefined, { gateways: [GATEWAY2] })),
+    ],
+    [
+      // FEP-ef61 forbids location hints in compatible identifiers:
+      "malformed actor ID",
+      new Person({
+        ...compatibleAlice(),
+        id: new URL(
+          compatibleAlice().id.href + "?@gateway=https%3A%2F%2Fexample.com",
+        ),
+      }),
+    ],
+    [
+      "malformed inbox ID",
+      new Person({
+        ...compatibleAlice(),
+        inbox: new URL(inboxUrl() + "?@gateway=https%3A%2F%2Fexample.com"),
+      }),
+    ],
+  ];
+  for (const [name, actor] of rejections) {
+    await t.step(name, async () => {
+      const { federation, received } = setup({
+        actor: (_ctx, identifier) => identifier === "alice" ? actor : null,
+      });
+      const response = await federation.fetch(post(inboxUrl(), json), {
+        contextData: undefined,
+      });
+      assertEquals(response.status, 404);
+      assertEquals(received.length, 0);
+    });
+  }
+});
+
+test("forwardPortableInboxActivity() deduplicates compatible activity IDs", async () => {
+  const kv = new MemoryKvStore();
+  const queue = new RecordingQueue();
+  const forward = (activityId: URL) =>
+    forwardPortableInboxActivity({
+      recipient: {
+        actorId: compatibleAlice().id,
+        inboxId: parseIri(`ap+ef61://${did}/users/alice/inbox`),
+        canonicalInboxId: `ap+ef61://${did}/users/alice/inbox`,
+        gateways: [new URL(LOCAL), new URL(GATEWAY2)],
+      },
+      activity: { id: activityId.href },
+      activityId,
+      activityType: "https://www.w3.org/ns/activitystreams#Follow",
+      excludedOrigins: [LOCAL],
+      baseUrl: LOCAL,
+      kv,
+      kvPrefix: ["_fedify", "portableInboxForwarding"],
+      outboxQueue: queue,
+    });
+  const path = `${did}/follows/compatible`;
+  assertEquals(
+    (await forward(new URL(`${LOCAL}/.well-known/apgateway/${path}`))).length,
+    1,
+  );
+  // The same activity in another representation is not forwarded again:
+  for (
+    const id of [
+      new URL(`${GATEWAY2}/.well-known/apgateway/${path}`),
+      new URL(`${LOCAL}/.well-known/apgateway/${path}?x=1`),
+      parseIri(`ap://${path}`),
+    ]
+  ) {
+    assertEquals(await forward(id), [], id.href);
+  }
+  assertEquals(queue.outbox.length, 1);
+});
+
 // Gateway keys
 
 const aliceId = parseIri(`ap+ef61://${did}/users/alice`);
