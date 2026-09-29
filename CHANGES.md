@@ -17,6 +17,8 @@ To be released.
     logged as “DNS lookup failed for {url}”: at the debug level by
     `getAuthenticatedDocumentLoader()`, and at the error level by
     `getNodeInfo()`, as with its other network failures.  [[#1062], [#1065]]
+ -  Fixed malformed activity URLs causing an unhandled error on Cloudflare
+    Workers instead of a `400 Bad Request` response.  [[#1115], [#1121]]
  -  Fixed outbound delivery raising `UrlError` instead of `FetchError` when
     resolving an inbox or redirect hostname fails or returns no usable IP
     addresses.  Applications can now distinguish these network failures from
@@ -27,6 +29,8 @@ To be released.
 [#1060]: https://github.com/fedify-dev/fedify/pull/1060
 [#1062]: https://github.com/fedify-dev/fedify/issues/1062
 [#1065]: https://github.com/fedify-dev/fedify/pull/1065
+[#1115]: https://github.com/fedify-dev/fedify/issues/1115
+[#1121]: https://github.com/fedify-dev/fedify/pull/1121
 
 ### @fedify/cli
 
