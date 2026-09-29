@@ -653,6 +653,24 @@ export interface GetActorOptions {
 }
 
 /**
+ * Options for {@link RequestContext.getObject}.
+ * @since 2.4.0
+ */
+export interface GetObjectOptions {
+  /**
+   * Controls how tombstoned objects are returned.
+   *
+   * By default, or if set to `"suppress"`, a {@link Tombstone} is returned as
+   * `null`, unless it is an instance of the requested class, e.g., when
+   * the requested class is `Object` or `Tombstone` itself.  In that case,
+   * the tombstone is returned as is, as it is an object of the requested
+   * class.  Set this to `"passthrough"` to always receive a {@link Tombstone}
+   * result instead of `null`.
+   */
+  readonly tombstone?: "suppress" | "passthrough";
+}
+
+/**
  * A context for a request.
  */
 export interface RequestContext<TContextData> extends Context<TContextData> {
@@ -837,7 +855,8 @@ export interface RequestContext<TContextData> extends Context<TContextData> {
    * @param cls The class to instantiate.
    * @param values The values to pass to the object dispatcher.
    * @returns The object of the given class with the given values, or `null`
-   *          if the object is not found.
+   *          if the object is not found.  Tombstoned objects are suppressed
+   *          unless the tombstone is an instance of `cls`.
    * @throws {Error} If no object dispatcher is available for the class.
    * @throws {TypeError} If values are invalid.
    * @since 0.7.0
@@ -846,6 +865,65 @@ export interface RequestContext<TContextData> extends Context<TContextData> {
     cls: ConstructorWithTypeId<TObject>,
     values: Record<string, string>,
   ): Promise<TObject | null>;
+
+  /**
+   * Gets an object of the given class, or a {@link Tombstone}, with the given
+   * values.
+   * @param cls The class to instantiate.
+   * @param values The values to pass to the object dispatcher.
+   * @param options Options for getting the object.  Set `options.tombstone`
+   *                to `"passthrough"` to receive tombstoned objects instead
+   *                of `null`.
+   * @returns The object of the given class with the given values,
+   *          a tombstone, or `null` if the object is not found.
+   * @throws {Error} If no object dispatcher is available for the class.
+   * @throws {TypeError} If values are invalid.
+   * @since 2.4.0
+   */
+  getObject<TObject extends Object>(
+    cls: ConstructorWithTypeId<TObject>,
+    values: Record<string, string>,
+    options: GetObjectOptions & { readonly tombstone: "passthrough" },
+  ): Promise<TObject | Tombstone | null>;
+
+  /**
+   * Gets an object of the given class with the given values.
+   * @param cls The class to instantiate.
+   * @param values The values to pass to the object dispatcher.
+   * @param options Options for getting the object.
+   * @returns The object of the given class with the given values, or `null`
+   *          if the object is not found.  Tombstoned objects are suppressed
+   *          unless `options.tombstone` is `"passthrough"` or the tombstone
+   *          is an instance of `cls`.
+   * @throws {Error} If no object dispatcher is available for the class.
+   * @throws {TypeError} If values are invalid.
+   * @since 2.4.0
+   */
+  getObject<TObject extends Object>(
+    cls: ConstructorWithTypeId<TObject>,
+    values: Record<string, string>,
+    options: GetObjectOptions & { readonly tombstone?: "suppress" | undefined },
+  ): Promise<TObject | null>;
+
+  /**
+   * Gets an object of the given class, or a {@link Tombstone}, with the given
+   * values.
+   * @param cls The class to instantiate.
+   * @param values The values to pass to the object dispatcher.
+   * @param options Options for getting the object.
+   * @returns The object of the given class with the given values,
+   *          a tombstone, or `null` if the object is not found.  This broad
+   *          overload is used when the caller passes an options value whose
+   *          `tombstone` mode is not known statically.
+   * @throws {Error} If no object dispatcher is available for the class.
+   * @throws {TypeError} If values are invalid.
+   * @since 2.4.0
+   */
+  getObject<TObject extends Object>(
+    cls: ConstructorWithTypeId<TObject>,
+    values: Record<string, string>,
+    options: GetObjectOptions,
+  ): Promise<TObject | Tombstone | null>;
 
   /**
    * Gets the public key of the sender, if any exists and it is verified.

@@ -429,6 +429,29 @@ test("Federation.fetch() applies the FEP-ef61 proof policy to portable objects",
           gateways: [new URL("https://example.com/")],
         }),
       ),
+    // Tombstones of portable objects are not served with 410 Gone (yet),
+    // but go through the same proof policy as other portable objects:
+    "tombstone": () =>
+      sign(
+        new Tombstone({
+          id: parseIri(`ap+ef61://${did}/objects/tombstone`),
+          formerType: Note,
+        }),
+      ),
+    "unsigned-tombstone": () =>
+      Promise.resolve(
+        new Tombstone({
+          id: parseIri(`ap+ef61://${did}/objects/unsigned-tombstone`),
+          formerType: Note,
+        }),
+      ),
+    "mismatched-tombstone": () =>
+      sign(
+        new Tombstone({
+          id: parseIri(`ap+ef61://${did}/objects/other`),
+          formerType: Note,
+        }),
+      ),
   };
   federation.setObjectDispatcher(
     Object,
@@ -447,6 +470,9 @@ test("Federation.fetch() applies the FEP-ef61 proof policy to portable objects",
     "actor": 200,
     "mutated-id": 404,
     "unsigned-actor": 500,
+    "tombstone": 200,
+    "unsigned-tombstone": 500,
+    "mismatched-tombstone": 404,
   };
   for (const [id, status] of globalThis.Object.entries(expected)) {
     await t.step(`${id} → ${status}`, async () => {
@@ -467,6 +493,26 @@ test("Federation.fetch() applies the FEP-ef61 proof policy to portable objects",
       { contextData: undefined },
     );
     assertEquals(response.status, 500);
+    assertEquals(response.body, null);
+  });
+
+  await t.step("serves a signed tombstone with its body", async () => {
+    const response = await federation.fetch(
+      gatewayRequest("/objects/tombstone"),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 200);
+    const body = await response.json() as Record<string, unknown>;
+    assertEquals(body.type, "Tombstone");
+    assertEquals(body.id, `ap+ef61://${did}/objects/tombstone`);
+  });
+
+  await t.step("responds to HEAD for a tombstone without a body", async () => {
+    const response = await federation.fetch(
+      gatewayRequest("/objects/tombstone", { method: "HEAD" }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 200);
     assertEquals(response.body, null);
   });
 });

@@ -236,6 +236,28 @@ To be released.
     `VerifyPortableObjectResult`, and `VerifyPortableObjectFailureReason`
     types describe it.  [[#288], [#836], [#1084]]
 
+ -  Allowed object dispatchers to return `Tombstone` for deleted objects, as
+    actor dispatchers already can.  Fedify now serves such object URIs with
+    `410 Gone` and the serialized tombstone body, as ActivityPub recommends,
+    after applying the authorization predicate as for other objects, so that
+    applications no longer need a separate route in front of Fedify for
+    deleted posts.  Fedify logs a warning if the tombstone's `id` does not
+    match `Context.getObjectUri()`.  [[#1112], [#1117]]
+
+     -  Changed the return type of `ObjectDispatcher` from
+        `TObject | null` to `TObject | Tombstone | null`.
+     -  Added a `RequestContext.getObject()` overload that takes
+        a `GetObjectOptions` object.  By default, `getObject()` still returns
+        `null` for a tombstone unless the tombstone is an instance of
+        the requested class, e.g., `Object` or `Tombstone`.  Pass
+        `{ tombstone: "passthrough" }` to receive tombstones.
+     -  Added the `GetObjectOptions` interface.
+     -  Changed object dispatchers registered for `Tombstone` or `Object`
+        that return tombstones to be served with `410 Gone` instead of
+        `200 OK`.
+     -  Tombstones of [FEP-ef61] portable objects requested through
+        the gateway endpoint are still served as other portable objects.
+
  -  Changed `Context.sendActivity()` so that an activity containing
     [FEP-ef61] portable objects gets at most one Object Integrity Proof.
     Previously Fedify signed every outgoing activity once for each Ed25519
@@ -524,7 +546,9 @@ To be released.
 [#1106]: https://github.com/fedify-dev/fedify/issues/1106
 [#1109]: https://github.com/fedify-dev/fedify/pull/1109
 [#1110]: https://github.com/fedify-dev/fedify/pull/1110
+[#1112]: https://github.com/fedify-dev/fedify/issues/1112
 [#1114]: https://github.com/fedify-dev/fedify/pull/1114
+[#1117]: https://github.com/fedify-dev/fedify/pull/1117
 
 ### @fedify/adonisjs
 
@@ -784,6 +808,11 @@ To be released.
     object returned by `createFederation()`, following the new
     `Federatable.setHashlinkMediaDispatcher()` method of `@fedify/fedify`.
     [[#288], [#838], [#1080]]
+ -  Changed `getObject()` of the mock context that `createFederation()`
+    creates to follow `RequestContext.getObject()` of `@fedify/fedify`: it
+    now returns `null` for a `Tombstone` that the object dispatcher returns,
+    unless the tombstone is an instance of the requested class or
+    `{ tombstone: "passthrough" }` is given.  [[#1112], [#1117]]
  -  Fixed the CommonJS testing utilities build so it no longer requires
     `@js-temporal/polyfill` at runtime.  The build now bundles
     `temporal-polyfill`, while type declarations rely on the standard

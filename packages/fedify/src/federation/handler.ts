@@ -308,6 +308,18 @@ export async function handleObject<TContextData>(
     }
   }
   const jsonLd = await object.toJsonLd(context);
+  if (object instanceof Tombstone) {
+    return new Response(
+      request.method === "HEAD" ? null : JSON.stringify(jsonLd),
+      {
+        status: 410,
+        headers: {
+          "Content-Type": "application/activity+json",
+          Vary: "Accept",
+        },
+      },
+    );
+  }
   return new Response(JSON.stringify(jsonLd), {
     headers: {
       "Content-Type": "application/activity+json",

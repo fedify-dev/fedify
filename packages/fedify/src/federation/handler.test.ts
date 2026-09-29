@@ -628,6 +628,124 @@ test("handleObject()", async () => {
   assertEquals(onUnauthorizedCalled, null);
 });
 
+test("handleObject() with a tombstone", async () => {
+  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+  const url = new URL("https://example.com/users/someone/notes/123");
+  let context = createRequestContext<void>({
+    federation,
+    data: undefined,
+    url,
+    request: new Request(url, {
+      headers: { Accept: "application/activity+json" },
+    }),
+  });
+  const objectDispatcher: ObjectDispatcher<void, Note, string> = (
+    _ctx,
+    values,
+  ) => {
+    if (values.id !== "123") return null;
+    return new Tombstone({
+      id: new URL(
+        `https://example.com/users/${values.identifier}/notes/${values.id}`,
+      ),
+      formerType: Note,
+      deleted: Temporal.Instant.from("2024-01-15T00:00:00Z"),
+    });
+  };
+  let onNotFoundCalled: Request | null = null;
+  const onNotFound = (request: Request) => {
+    onNotFoundCalled = request;
+    return new Response("Not found", { status: 404 });
+  };
+  let onUnauthorizedCalled: Request | null = null;
+  const onUnauthorized = (request: Request) => {
+    onUnauthorizedCalled = request;
+    return new Response("Unauthorized", { status: 401 });
+  };
+  let response = await handleObject(context.request, {
+    context,
+    values: { identifier: "someone", id: "123" },
+    objectDispatcher,
+    onNotFound,
+    onUnauthorized,
+  });
+  assertEquals(response.status, 410);
+  assertEquals(
+    response.headers.get("Content-Type"),
+    "application/activity+json",
+  );
+  assertEquals(response.headers.get("Vary"), "Accept");
+  const body = await response.json() as Record<string, unknown>;
+  assertEquals(body.id, "https://example.com/users/someone/notes/123");
+  assertEquals(body.type, "Tombstone");
+  assertEquals(body.formerType, "as:Note");
+  assertEquals(body.deleted, "2024-01-15T00:00:00Z");
+  assertEquals(onNotFoundCalled, null);
+  assertEquals(onUnauthorizedCalled, null);
+
+  response = await handleObject(context.request, {
+    context,
+    values: { identifier: "someone", id: "456" },
+    objectDispatcher,
+    onNotFound,
+    onUnauthorized,
+  });
+  assertEquals(response.status, 404);
+  assertEquals(onNotFoundCalled, context.request);
+  assertEquals(onUnauthorizedCalled, null);
+
+  // The authorization predicate is applied before serving a tombstone:
+  onNotFoundCalled = null;
+  let authorized = false;
+  const authorizePredicate = () => authorized;
+  response = await handleObject(context.request, {
+    context,
+    values: { identifier: "someone", id: "123" },
+    objectDispatcher,
+    authorizePredicate,
+    onNotFound,
+    onUnauthorized,
+  });
+  assertEquals(response.status, 401);
+  assertEquals(onNotFoundCalled, null);
+  assertEquals(onUnauthorizedCalled, context.request);
+
+  onUnauthorizedCalled = null;
+  authorized = true;
+  response = await handleObject(context.request, {
+    context,
+    values: { identifier: "someone", id: "123" },
+    objectDispatcher,
+    authorizePredicate,
+    onNotFound,
+    onUnauthorized,
+  });
+  assertEquals(response.status, 410);
+  assertEquals(onUnauthorizedCalled, null);
+
+  // A HEAD request gets the same status without the body:
+  context = createRequestContext<void>({
+    ...context,
+    request: new Request(url, {
+      method: "HEAD",
+      headers: { Accept: "application/activity+json" },
+    }),
+  });
+  response = await handleObject(context.request, {
+    context,
+    values: { identifier: "someone", id: "123" },
+    objectDispatcher,
+    onNotFound,
+    onUnauthorized,
+  });
+  assertEquals(response.status, 410);
+  assertEquals(
+    response.headers.get("Content-Type"),
+    "application/activity+json",
+  );
+  assertEquals(response.body, null);
+});
+
 test("handleCollection()", async () => {
   const federation = createFederation<void>({ kv: new MemoryKvStore() });
   let context = createRequestContext<void>({

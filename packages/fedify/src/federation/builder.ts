@@ -703,9 +703,9 @@ export class FederationBuilderImpl<TContextData>
     const variables = Router.variables(path);
     this.router.add(path, routeName);
     const callbacks: ObjectCallbacks<TContextData, TParam> = {
-      dispatcher: (ctx, values) => {
+      dispatcher: async (ctx, values) => {
         const tracer = this._getTracer();
-        return tracer.startActiveSpan(
+        const object = await tracer.startActiveSpan(
           "activitypub.dispatch_object",
           {
             kind: SpanKind.SERVER,
@@ -746,6 +746,10 @@ export class FederationBuilderImpl<TContextData>
             }
           },
         );
+        if (object instanceof Tombstone) {
+          warnMismatchedTombstoneId(ctx, cls, values, object);
+        }
+        return object;
       },
       parameters: variables as unknown as Set<TParam>,
     };
@@ -1575,6 +1579,42 @@ interface ActorCallbacks<TContextData> {
   aliasMapper?: ActorAliasMapper<TContextData>;
   portableActorIdMapper?: PortableActorIdMapper<TContextData>;
   authorizePredicate?: AuthorizePredicate<TContextData>;
+}
+
+function warnMismatchedTombstoneId<TContextData>(
+  context: RequestContext<TContextData>,
+  cls: ConstructorWithTypeId<Object>,
+  values: Record<string, string>,
+  tombstone: Tombstone,
+): void {
+  const logger = getLogger(["fedify", "federation", "object"]);
+  if (tombstone.id == null) {
+    logger.warn(
+      "Object dispatcher for {class} returned a tombstone without an id " +
+        "property.  Set the property with Context.getObjectUri().",
+      { class: cls.name, values },
+    );
+    return;
+  }
+  // An FEP-ef61 portable object's URIs are not this server's URIs, so they
+  // are not compared with the ones Context builds:
+  if (tombstone.id.protocol === "ap:" || tombstone.id.protocol === "ap+ef61:") {
+    return;
+  }
+  const expected = context.getObjectUri(cls, values);
+  if (tombstone.id.href !== expected.href) {
+    logger.warn(
+      "Object dispatcher for {class} returned a tombstone with an id " +
+        "property {tombstoneId} that does not match the object URI " +
+        "{objectUri}.  Set the property with Context.getObjectUri().",
+      {
+        class: cls.name,
+        values,
+        tombstoneId: tombstone.id.href,
+        objectUri: expected.href,
+      },
+    );
+  }
 }
 
 interface ObjectCallbacks<TContextData, TParam extends string> {
