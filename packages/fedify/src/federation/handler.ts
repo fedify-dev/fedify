@@ -1882,6 +1882,7 @@ async function handleInboxInternal<TContextData>(
         keyCache,
         meterProvider,
         tracerProvider,
+        verifyPortableObject: ctx.verifyPortableObject,
       });
     } catch (error) {
       if (

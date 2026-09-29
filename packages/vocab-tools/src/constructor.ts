@@ -89,6 +89,7 @@ export async function* generateConstructor(
       documentLoader?: DocumentLoader,
       contextLoader?: DocumentLoader,
       tracerProvider?: TracerProvider,
+      verifyPortableObject?: PortableObjectVerifier,
     } = {},
   ) {
   `;
@@ -97,6 +98,7 @@ export async function* generateConstructor(
     this.#documentLoader = options.documentLoader;
     this.#contextLoader = options.contextLoader;
     this.#tracerProvider = options.tracerProvider;
+    this.#verifyPortableObject = options.verifyPortableObject;
     const baseUrl = (options as { baseUrl?: URL }).baseUrl;
     this.#_baseUrl = baseUrl == null ? undefined : new URL(baseUrl.href);
     if ("$warning" in options) {
@@ -228,6 +230,7 @@ export async function* generateCloner(
     options: {
       documentLoader?: DocumentLoader,
       contextLoader?: DocumentLoader,
+      verifyPortableObject?: PortableObjectVerifier,
     } = {}
   ): ${type.name} {
     if (this._warning != null) {

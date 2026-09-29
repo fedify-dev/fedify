@@ -98,7 +98,15 @@ function getObjectId(object: unknown): URL | null {
 
 /**
  * Checks whether a vocabulary object is part of a chain of portable objects,
- * i.e., whether it has a portable ID or was obtained from a portable object.
+ * i.e., whether it has a portable ID, has an FEP-ef61 compatible identifier
+ * as its ID (even a malformed one, so that it fails closed), or was obtained
+ * from a portable object.  Accessors of such objects dereference references
+ * as portable objects.
+ *
+ * Being part of a chain does not mean that the object itself is verified:
+ * an object parsed from arbitrary JSON-LD is in a chain just because of its
+ * ID.  Only {@link dereferencePortableIri} records that an object was
+ * accepted by a verifier.
  *
  * @internal Technically exported for generated vocabulary classes, but not
  * part of the public API contract.  This is not considered public API for
@@ -107,7 +115,7 @@ function getObjectId(object: unknown): URL | null {
 export function isInPortableChain(object: object): boolean {
   if (provenances.has(object)) return true;
   const id = getObjectId(object);
-  return id != null && isPortableIri(id);
+  return id != null && (isPortableIri(id) || isCompatibleEf61Iri(id));
 }
 
 /**
@@ -734,8 +742,9 @@ export async function dereferencePortableIri<T extends { id: URL | null }>(
     return fail(
       new TypeError(
         "Dereferencing the portable object " + lookupUrl + " requires the " +
-          "verifyPortableObject option, e.g., verifyPortableObjectProof() " +
-          "from @fedify/fedify.",
+          "verifyPortableObject option, e.g., verifyPortableObject() from " +
+          "@fedify/fedify.  Passing a Fedify Context as the options gives " +
+          "it, and objects parsed with the option use it by default.",
       ),
     );
   }

@@ -15,12 +15,13 @@ import {
 } from "@fedify/vocab-runtime";
 import fetchMock from "fetch-mock";
 import { deepStrictEqual, ok, rejects } from "node:assert/strict";
-import { traverseCollection } from "./lookup.ts";
+import { lookupObject, traverseCollection } from "./lookup.ts";
 import { assertInstanceOf } from "./utils.ts";
 import {
   Collection,
   CollectionPage,
   Create,
+  Image,
   Note,
   OrderedCollection,
   Person,
@@ -1857,4 +1858,337 @@ test("singular accessors drop anonymous objects embedded in unsecured collection
     await Array.fromAsync(traverseCollection(outbox, options)),
     [],
   );
+});
+
+function createCompatibleActivity(
+  object: unknown,
+  id: string = gatewayUrl("https://gw.example", "/activities/1"),
+  options: { verifyPortableObject?: PortableObjectVerifier } = {},
+): Promise<Create> {
+  return Create.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Create",
+    id,
+    object,
+  }, { contextLoader: mockDocumentLoader, ...options });
+}
+
+test("accessors of objects with compatible identifiers dereference references as portable objects", async (t) => {
+  await t.step("verifying the object at the reference", async () => {
+    const documentLoader = createLoader({
+      [compatibleNoteId]: { ...note(), id: compatibleNoteId },
+    });
+    const verifier = createRecordingVerifier();
+    const activity = await createCompatibleActivity(compatibleNoteId);
+    const object = await activity.getObject({
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      verifyPortableObject: verifier,
+    });
+    assertInstanceOf(object, Note);
+    deepStrictEqual(object.id, new URL(compatibleNoteId));
+    deepStrictEqual(documentLoader.fetched, [compatibleNoteId]);
+    deepStrictEqual(verifier.calls.length, 1);
+    deepStrictEqual(verifier.calls[0].options.gatewayHints, [
+      new URL("https://gw.example"),
+    ]);
+    ok(verifier.calls[0].options.referrer?.object === activity);
+    // The root itself is not marked as verified:
+    deepStrictEqual(verifier.calls[0].options.referrer?.acceptance, undefined);
+  });
+
+  await t.step("rejecting an unsigned object at the reference", async () => {
+    const documentLoader = createLoader({
+      [compatibleNoteId]: { ...note(), id: compatibleNoteId },
+    });
+    const activity = await createCompatibleActivity(compatibleNoteId);
+    deepStrictEqual(
+      await activity.getObject({
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        verifyPortableObject: createVerifier(false),
+      }),
+      null,
+    );
+    // Even with crossOrigin: "trust":
+    deepStrictEqual(
+      await Array.fromAsync(
+        (await createCompatibleActivity([compatibleNoteId])).getObjects({
+          documentLoader,
+          contextLoader: mockDocumentLoader,
+          verifyPortableObject: createVerifier(false),
+          crossOrigin: "trust",
+        }),
+      ),
+      [],
+    );
+  });
+
+  await t.step("without verifyPortableObject", async () => {
+    const documentLoader = createLoader({
+      [compatibleNoteId]: { ...note(), id: compatibleNoteId },
+    });
+    const activity = await createCompatibleActivity(compatibleNoteId);
+    await rejects(
+      async () =>
+        await activity.getObject({
+          documentLoader,
+          contextLoader: mockDocumentLoader,
+        }),
+      TypeError,
+    );
+    deepStrictEqual(
+      await activity.getObject({
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        suppressError: true,
+      }),
+      null,
+    );
+    deepStrictEqual(documentLoader.fetched, []);
+  });
+
+  await t.step("embedded objects with compatible identifiers", async () => {
+    // Even on the same gateway and with the same DID, an embedded object
+    // with a compatible identifier is verified on its own:
+    const documentLoader = createLoader({ [compatibleNoteId]: note() });
+    const verifier = createRecordingVerifier();
+    const activity = await createCompatibleActivity({
+      type: "Note",
+      id: compatibleNoteId,
+      content: "Embedded",
+    });
+    const object = await activity.getObject({
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      verifyPortableObject: verifier,
+    });
+    assertInstanceOf(object, Note);
+    deepStrictEqual(object.content, "Portable note");
+    deepStrictEqual(verifier.calls.length, 1);
+  });
+
+  await t.step("objects with malformed compatible identifiers", async () => {
+    const malformedId = `${
+      gatewayUrl("https://gw.example", "/activities/1")
+    }?@gateway=https%3A%2F%2Fgw2.example`;
+    // Portable references need a verifier:
+    const activity = await createCompatibleActivity(objectId, malformedId);
+    await rejects(
+      async () =>
+        await activity.getObject({
+          documentLoader: createLoader({}),
+          contextLoader: mockDocumentLoader,
+        }),
+      TypeError,
+    );
+    // Ordinary HTTP(S) references are still fetched without one:
+    const plainUrl = "https://example.com/notes/1";
+    const plainLoader = createLoader({
+      [plainUrl]: { ...note(), id: plainUrl },
+    });
+    const plain = await (await createCompatibleActivity(plainUrl, malformedId))
+      .getObject({
+        documentLoader: plainLoader,
+        contextLoader: mockDocumentLoader,
+      });
+    deepStrictEqual(plain?.id, new URL(plainUrl));
+    // ...unless the response turns out to be a portable object:
+    const claimLoader = createLoader({ [plainUrl]: note() });
+    await rejects(
+      async () =>
+        await (await createCompatibleActivity(plainUrl, malformedId))
+          .getObject({
+            documentLoader: claimLoader,
+            contextLoader: mockDocumentLoader,
+          }),
+      TypeError,
+    );
+  });
+
+  await t.step("objects with ordinary HTTP(S) identifiers", async () => {
+    const documentLoader = createLoader({
+      [compatibleNoteId]: { ...note(), id: compatibleNoteId },
+    });
+    const object = await (await createHttpActivity(compatibleNoteId))
+      .getObject({ documentLoader, contextLoader: mockDocumentLoader });
+    deepStrictEqual(object?.id, new URL(compatibleNoteId));
+  });
+});
+
+test("objects use the verifyPortableObject option they were parsed with by default", async (t) => {
+  const attributedNote = (id: string) => ({
+    ...note(id),
+    attributedTo: `ap://${did}/actor`,
+  });
+  const actor = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    id: `ap://${did}/actor`,
+    type: "Person",
+    inbox: `ap://${did}/actor/inbox`,
+  };
+  const documentLoader = createLoader({
+    [compatibleNoteId]: attributedNote(compatibleNoteId),
+    [gatewayUrl("https://gw.example", "/actor")]: actor,
+  });
+
+  await t.step("fromJsonLd()", async () => {
+    const verifier = createRecordingVerifier();
+    const activity = await createCompatibleActivity(
+      compatibleNoteId,
+      undefined,
+      { verifyPortableObject: verifier },
+    );
+    const object = await activity.getObject({
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+    });
+    assertInstanceOf(object, Note);
+    deepStrictEqual(verifier.calls.length, 1);
+    // Fetched objects inherit the default:
+    const author = await object.getAttribution({
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      gateways: ["https://gw.example"],
+    });
+    assertInstanceOf(author, Person);
+    deepStrictEqual(verifier.calls.length, 2);
+    // Embedded objects too:
+    const embedding = await createCompatibleActivity(
+      attributedNote(`ap://${did}/objects/2`),
+      `ap://${did}/activities/1`,
+      { verifyPortableObject: verifier },
+    );
+    const embedded = await embedding.getObject({
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+    });
+    assertInstanceOf(embedded, Note);
+    assertInstanceOf(
+      await embedded.getAttribution({
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        gateways: ["https://gw.example"],
+      }),
+      Person,
+    );
+    deepStrictEqual(verifier.calls.length, 3);
+  });
+
+  await t.step("the constructor and clone()", async () => {
+    const verifier = createRecordingVerifier();
+    const activity = new Create({
+      id: new URL(gatewayUrl("https://gw.example", "/activities/1")),
+      object: new URL(compatibleNoteId),
+    }, { contextLoader: mockDocumentLoader, verifyPortableObject: verifier });
+    assertInstanceOf(
+      await activity.getObject({
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+      }),
+      Note,
+    );
+    deepStrictEqual(verifier.calls.length, 1);
+    // A clone does not inherit it, but takes it as an option:
+    const clone = activity.clone({ object: new URL(compatibleNoteId) });
+    await rejects(
+      async () =>
+        await clone.getObject({
+          documentLoader,
+          contextLoader: mockDocumentLoader,
+        }),
+      TypeError,
+    );
+    const clone2 = activity.clone(
+      { object: new URL(compatibleNoteId) },
+      { contextLoader: mockDocumentLoader, verifyPortableObject: verifier },
+    );
+    assertInstanceOf(
+      await clone2.getObject({
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+      }),
+      Note,
+    );
+    deepStrictEqual(verifier.calls.length, 2);
+  });
+
+  await t.step("an explicit option applies to that call only", async () => {
+    const stored = createRecordingVerifier();
+    const given = createRecordingVerifier();
+    const activity = await createCompatibleActivity(
+      compatibleNoteId,
+      undefined,
+      { verifyPortableObject: stored },
+    );
+    const object = await activity.getObject({
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      verifyPortableObject: given,
+    });
+    assertInstanceOf(object, Note);
+    deepStrictEqual([stored.calls.length, given.calls.length], [0, 1]);
+    // The fetched object inherits the parent's default, not the verifier
+    // given to the call:
+    await object.getAttribution({
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      gateways: ["https://gw.example"],
+    });
+    deepStrictEqual([stored.calls.length, given.calls.length], [1, 1]);
+
+    // Without a default, the fetched object has none either:
+    const plain = await createCompatibleActivity(compatibleNoteId);
+    const object2 = await plain.getObject({
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      verifyPortableObject: given,
+    });
+    assertInstanceOf(object2, Note);
+    await rejects(
+      async () =>
+        await object2.getAttribution({
+          documentLoader,
+          contextLoader: mockDocumentLoader,
+          gateways: ["https://gw.example"],
+        }),
+      TypeError,
+    );
+  });
+
+  await t.step("lookupObject()", async () => {
+    const verifier = createRecordingVerifier();
+    const object = await lookupObject(compatibleNoteId, {
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      verifyPortableObject: verifier,
+    });
+    assertInstanceOf(object, Note);
+    deepStrictEqual(verifier.calls.length, 1);
+    assertInstanceOf(
+      await object.getAttribution({
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        gateways: ["https://gw.example"],
+      }),
+      Person,
+    );
+    deepStrictEqual(verifier.calls.length, 2);
+  });
+
+  await t.step("property preprocessors", async () => {
+    const verifier = createVerifier();
+    const person = await Person.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: `ap://${did}/actor`,
+      type: "Person",
+      icon: { type: "Link", href: "https://example.com/icon.png" },
+    }, { contextLoader: mockDocumentLoader, verifyPortableObject: verifier });
+    const icon = await person.getIcon({ documentLoader });
+    assertInstanceOf(icon, Image);
+    ok(
+      (icon as unknown as { _verifyPortableObject: unknown })
+        ._verifyPortableObject === verifier,
+    );
+  });
 });

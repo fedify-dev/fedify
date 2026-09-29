@@ -46,5 +46,5 @@ export const normalizeLinkToImage: PropertyPreprocessor<Image> = async (
     width: link.width,
     height: link.height,
     digestMultibase: link.digestMultibase,
-  });
+  }, context);
 };

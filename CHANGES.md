@@ -244,6 +244,40 @@ To be released.
     Likewise, the gateway endpoint responds with `400 Bad Request` to
     requests whose path has such a DID.  [[#288], [#841], [#1114]]
 
+ -  Added the `Context.verifyPortableObject` property, the [FEP-ef61]
+    portable object policy of the context: `verifyPortableObject()` with the
+    context's document loader and context loader.  Since it has the same name
+    as the `verifyPortableObject` option of property accessors, passing
+    a context as their options, e.g., `await create.getObject(ctx)`, now
+    verifies portable objects that they dereference.  Previously,
+    `create.getObject(ctx)` on an activity whose ID is a compatible
+    identifier, such as one from tootik, fetched the object it refers to as
+    an ordinary HTTP(S) URL and trusted it because of its origin.  Note that
+    this also applies to objects with ordinary HTTP(S) IDs: their references
+    to compatible identifiers are now verified as portable objects when you
+    pass a context.  [[#288], [#1107], [#1120]]
+
+ -  Inboxes now parse received activities with `Context.verifyPortableObject`
+    as their default verifier, so accessors called without options in inbox
+    listeners, e.g., `await create.getObject()`, verify portable objects
+    too, including for queued activities and for activities authenticated
+    by Object Integrity Proofs.  The activities passed to the
+    `onOutboxError` callback have the default as well.
+    [[#288], [#1107], [#1120]]
+
+ -  Changed `Context.lookupObject()` to use `Context.verifyPortableObject`
+    instead of `verifyPortableObjectProof()` as the default
+    `verifyPortableObject` option, so that it also accepts an unsecured
+    portable collection served by a gateway that its owner lists, as
+    accessors do.  Pass `verifyPortableObject: verifyPortableObjectProof` to
+    accept only objects with proofs.  The returned object uses the policy by
+    default for its property accessors.  `Context.traverseCollection()` also
+    uses `Context.verifyPortableObject` by default.  [[#288], [#1107], [#1120]]
+
+ -  Added the `verifyPortableObject` option to `VerifyObjectOptions`.  It is
+    not used to verify the given object; the returned object uses it by
+    default for its property accessors.  [[#288], [#1107], [#1120]]
+
  -  Added `verifyPortableObject()`, which applies the [FEP-ef61] trust policy
     to portable objects fetched through gateways.  It verifies Object
     Integrity Proofs like `verifyPortableObjectProof()`, and also accepts
@@ -565,6 +599,7 @@ To be released.
 [#1104]: https://github.com/fedify-dev/fedify/pull/1104
 [#1105]: https://github.com/fedify-dev/fedify/pull/1105
 [#1106]: https://github.com/fedify-dev/fedify/issues/1106
+[#1107]: https://github.com/fedify-dev/fedify/issues/1107
 [#1109]: https://github.com/fedify-dev/fedify/pull/1109
 [#1110]: https://github.com/fedify-dev/fedify/pull/1110
 [#1112]: https://github.com/fedify-dev/fedify/issues/1112
@@ -572,6 +607,7 @@ To be released.
 [#1114]: https://github.com/fedify-dev/fedify/pull/1114
 [#1117]: https://github.com/fedify-dev/fedify/pull/1117
 [#1119]: https://github.com/fedify-dev/fedify/pull/1119
+[#1120]: https://github.com/fedify-dev/fedify/pull/1120
 [#1124]: https://github.com/fedify-dev/fedify/pull/1124
 
 ### @fedify/adonisjs
@@ -842,6 +878,12 @@ To be released.
     `temporal-polyfill`, while type declarations rely on the standard
     `esnext.temporal` lib reference.
     [[#823], [#925]]
+ -  The mock contexts that `createContext()` creates now keep the
+    `verifyPortableObject` property given to them, following the new
+    `Context.verifyPortableObject` property of `@fedify/fedify`, and their
+    default `lookupObject()` and `traverseCollection()` methods pass it and
+    a `verifyPortableObject` option given to them on.
+    [[#288], [#1107], [#1120]]
 
 ### @fedify/vocab
 
@@ -963,6 +1005,30 @@ To be released.
     [FEP-ef61] portable collections through gateways.
     [[#288], [#836], [#1084], [#1090], [#1091]]
 
+ -  Property accessors of objects whose IDs are [FEP-ef61] compatible
+    identifiers, e.g.,
+    `https://gw.example/.well-known/apgateway/did:key:z6Mk.../activities/1`,
+    now dereference their references as portable objects, as those of objects
+    with `ap:` IDs do.  Previously, such an accessor fetched a compatible
+    identifier as an ordinary HTTP(S) URL and trusted the result because of
+    its origin, so anyone could serve an unsigned object at the reference.
+    Without the `verifyPortableObject` option, such an accessor now throws
+    a `TypeError` (or returns `null` with `suppressError: true`) for
+    a portable reference or a compatible identifier; pass a `Context` from
+    `@fedify/fedify`, which carries a verifier, or use a default verifier
+    (see below).  An object whose ID is a malformed compatible identifier is
+    handled the same way.  Having such an ID does not make an object
+    verified.  [[#288], [#1107], [#1120]]
+
+ -  Added the `verifyPortableObject` option to the constructors, the
+    `fromJsonLd()` methods, and the `clone()` methods of vocabulary
+    classes.  The object uses it by default when its property accessors are
+    called without the option.  Objects that it fetches, and objects
+    embedded in the JSON-LD document it was parsed from, inherit it, but
+    a verifier given to a single accessor call is not passed on to the
+    returned object.  `lookupObject()` passes its `verifyPortableObject`
+    option to the object it returns.  [[#288], [#1107], [#1120]]
+
  -  Property accessors such as `Create.getObject()` now dereference
     [FEP-ef61] compatible identifiers, i.e., HTTP(S) URLs under a gateway's
     */.well-known/apgateway/* path, as the portable objects they stand for
@@ -1059,6 +1125,10 @@ To be released.
     integrity proof as `unsecured`.  `verifyPortableObject()` and
     `verifyPortableObjectProof()` from `@fedify/fedify` satisfy
     `PortableObjectVerifier`.  [[#288], [#834], [#836], [#1077], [#1084]]
+ -  Added the `verifyPortableObject` property to
+    `PropertyPreprocessorContext`, the default [FEP-ef61] portable object
+    verifier that objects returned by a property preprocessor should use for
+    their property accessors.  [[#288], [#1107], [#1120]]
  -  Added `toCompatibleEf61Id()` and `fromCompatibleEf61Id()` for converting
     between [FEP-ef61] portable IDs and compatible identifiers, which are
     HTTP(S) URLs under a gateway's fixed `/.well-known/apgateway/` path that
