@@ -3313,3 +3313,349 @@ federation
     );
   }
 }
+
+const expectNotAwaited = (reaches: boolean, dropped: boolean) =>
+  reaches && dropped ? "Delivery is not awaited" : undefined;
+
+const OUTER_TARGET = (dropped: boolean) => `
+    const key = "fallback";
+    let target = {
+      deliver: async () => {
+        ${dropped ? "" : "await "}ctx.sendActivity(
+          { identifier: ctx.identifier }, "followers", activity,
+        );
+      },
+      fallback: () => {},
+      handlers: {},
+    };`;
+
+for (
+  const [kind, write] of [
+    ["property", "target.fallback = () => {};"],
+    ["computed literal", 'target["fallback"] = () => {};'],
+    ["computed key", "target[key] = () => {};"],
+    ["nested property", "target.handlers.fallback = () => {};"],
+  ] as const
+) {
+  for (
+    const [scenario, read, call] of [
+      ["called", "await target.deliver();", "await run();"],
+      ["uncalled", "await target.deliver();", ""],
+      ["write-only", "", "await run();"],
+    ] as const
+  ) {
+    for (const dropped of [false, true]) {
+      test(
+        `${ruleName}: ${kind} write in a ${scenario} nested helper keeps ${
+          dropped ? "dropped" : "awaited"
+        } object delivery`,
+        lintTest({
+          code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {${OUTER_TARGET(dropped)}
+    const run = async () => {
+      ${write}
+      ${read}
+    };
+    ${call}
+  });
+`,
+          rule,
+          ruleName,
+          expectedError: expectNotAwaited(scenario === "called", dropped),
+        }),
+      );
+    }
+  }
+}
+
+for (
+  const [kind, reaches, helper] of [
+    [
+      "local object",
+      false,
+      `const run = async () => {
+      const target = { deliver: async () => {}, handlers: {} };
+      target.fallback = () => {};
+      await target.deliver();
+    };`,
+    ],
+    [
+      "local empty object",
+      false,
+      `const run = async () => {
+      const target = { handlers: {} };
+      target.fallback = () => {};
+      await target.deliver();
+    };`,
+    ],
+    [
+      "parameter",
+      false,
+      `const run = async (target = { handlers: {} }) => {
+      target.fallback = () => {};
+      await target.deliver();
+    };`,
+    ],
+    [
+      "constructor parameter property",
+      false,
+      `class Runner {
+      constructor(private target: any) {
+        target.fallback = () => {};
+        target.deliver();
+      }
+    }
+    const run = async () => new Runner({});`,
+    ],
+    [
+      "empty class",
+      false,
+      `const run = async () => {
+      class target {}
+      target.fallback = () => {};
+      await target.deliver();
+    };`,
+    ],
+    [
+      "var in dead code",
+      false,
+      `const run = async () => {
+      if (false) {
+        var target;
+      }
+      target.fallback = () => {};
+      await target.deliver();
+    };`,
+    ],
+    [
+      "var after return",
+      false,
+      `const run = async () => {
+      target.fallback = () => {};
+      await target.deliver();
+      return;
+      var target;
+    };`,
+    ],
+    [
+      "catch binding",
+      false,
+      `const run = async () => {
+      try {
+        throw {};
+      } catch (target) {
+        target.fallback = () => {};
+        await target.deliver();
+      }
+    };`,
+    ],
+    [
+      "loop binding",
+      false,
+      `const run = async () => {
+      for (const target of [{ handlers: {} }]) {
+        target.fallback = () => {};
+        await target.deliver();
+      }
+    };`,
+    ],
+    [
+      "switch-local binding",
+      false,
+      `const run = async () => {
+      switch (activity.id) {
+        default:
+          let target = { handlers: {} };
+          target.fallback = () => {};
+          await target.deliver();
+      }
+    };`,
+    ],
+    [
+      "static block var",
+      false,
+      `const run = async () => {
+      const C = class {
+        static {
+          var target = { handlers: {} };
+          target.fallback = () => {};
+          target.deliver();
+        }
+      };
+    };`,
+    ],
+    [
+      "enum member",
+      false,
+      `const run = async () => {
+      enum E {
+        target = 0,
+        result = (target.fallback = () => {}, target.deliver(), 1),
+      }
+    };`,
+    ],
+    [
+      "block-local read",
+      false,
+      `const run = async () => {
+      target.fallback = () => {};
+      {
+        const target = { deliver: async () => {}, handlers: {} };
+        await target.deliver();
+      }
+    };`,
+    ],
+    [
+      "reassigned outer binding",
+      false,
+      `const run = async () => {
+      target = { deliver: async () => {}, handlers: {} };
+      target.fallback = () => {};
+      await target.deliver();
+    };`,
+    ],
+    [
+      "reassignment in a parameter default",
+      false,
+      `const run = async (
+      _ = (target = { deliver: async () => {}, handlers: {} }),
+    ) => {
+      target.fallback = () => {};
+      await target.deliver();
+    };`,
+    ],
+    [
+      "destructured reassignment",
+      false,
+      `const run = async () => {
+      ({ target } = { target: { deliver: async () => {}, handlers: {} } });
+      target.fallback = () => {};
+      await target.deliver();
+    };`,
+    ],
+    [
+      "closure over a local empty object",
+      false,
+      `const run = async () => {
+      const target = {};
+      const go = async () => {
+        target.fallback = () => {};
+        await target.deliver();
+      };
+      await go();
+    };`,
+    ],
+    [
+      "closure over a loop binding",
+      false,
+      `const run = async () => {
+      for (const target of [{}]) {
+        const go = async () => {
+          target.fallback = () => {};
+          await target.deliver();
+        };
+        await go();
+      }
+    };`,
+    ],
+    [
+      "closure over the outer object",
+      true,
+      `const run = async () => {
+      const go = async () => {
+        target.fallback = () => {};
+        await target.deliver();
+      };
+      await go();
+    };`,
+    ],
+    [
+      "write inside a block",
+      true,
+      `const run = async () => {
+      if (activity.id != null) {
+        target.fallback = () => {};
+      }
+      await target.deliver();
+    };`,
+    ],
+    [
+      "expression-bodied helper",
+      true,
+      `const run = async () => (
+      target.fallback = () => {}, await target.deliver()
+    );`,
+    ],
+    [
+      "write before a member loop default",
+      true,
+      `const run = async () => {
+      target.fallback = () => {};
+      for ({ other: target.other = () => {} } of [{}]) {}
+      await target.deliver();
+    };`,
+    ],
+    [
+      "write after a member loop default",
+      true,
+      `const run = async () => {
+      for ({ other: target.other = () => {} } of [{}]) {}
+      target.fallback = () => {};
+      await target.deliver();
+    };`,
+    ],
+  ] as const
+) {
+  for (const dropped of [false, true]) {
+    test(
+      `${ruleName}: nested helper property write with ${kind} ${
+        reaches ? "keeps" : "does not reach"
+      } ${dropped ? "dropped" : "awaited"} outer object delivery`,
+      lintTest({
+        code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {${OUTER_TARGET(dropped)}
+    ${helper}
+    await run();
+  });
+`,
+        rule,
+        ruleName,
+        expectedError: expectNotAwaited(reaches, dropped),
+      }),
+    );
+  }
+}
+
+test(
+  `${ruleName}: unread function written by a nested helper does not count`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+
+federation
+  .setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const target = { deliver: async () => {} };
+    const run = async () => {
+      target.fallback = async () => {
+        ctx.sendActivity(
+          { identifier: ctx.identifier }, "followers", activity,
+        );
+      };
+    };
+    await run();
+  });
+`,
+    rule,
+    ruleName,
+    expectedError: undefined,
+  }),
+);
