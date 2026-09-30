@@ -9,11 +9,18 @@ import type {
   Message,
   ParseUriOptions,
   ParseUriResult,
+  PortableRequest,
   RequestContext,
   RouteActivityOptions,
 } from "@fedify/fedify/federation";
 import { hasProofLike, hasSignatureLike } from "@fedify/fedify/sig";
-import { Activity, CryptographicKey, Multikey, Tombstone } from "@fedify/vocab";
+import {
+  Activity,
+  CryptographicKey,
+  lookupObject as globalLookupObject,
+  Multikey,
+  Tombstone,
+} from "@fedify/vocab";
 import type {
   Collection,
   LookupObjectOptions,
@@ -22,11 +29,15 @@ import type {
 } from "@fedify/vocab";
 import {
   canonicalizePortableUri,
+  decodeMultibase,
   type DocumentLoader,
   formatIri,
   fromCompatibleEf61Id,
   getFe34Origin,
+  parseDigestMultibase,
+  parseHashlink,
   parseIri,
+  type PortableObjectVerifier,
 } from "@fedify/vocab-runtime";
 import {
   createContext,
@@ -277,6 +288,7 @@ interface TestContext<TContextData>
       RequestContext<TContextData>,
       | "request"
       | "url"
+      | "portableRequest"
       | "getActor"
       | "getObject"
       | "getSignedKey"
@@ -316,6 +328,15 @@ interface TestFederation<TContextData>
   reset(): void;
 
   // Override createContext to return TestContext
+  createContext(
+    baseUrl: URL,
+    contextData: TContextData,
+  ): TestContext<TContextData>;
+  createContext(
+    request: Request,
+    contextData: TContextData,
+    options?: { portableRequest?: PortableRequest },
+  ): TestContext<TContextData>;
   createContext(
     baseUrlOrRequest: URL | Request,
     contextData: TContextData,
@@ -409,6 +430,9 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       origin?: string;
       meterProvider?: any;
       tracerProvider?: any;
+      documentLoader?: DocumentLoader;
+      contextLoader?: DocumentLoader;
+      verifyPortableObject?: PortableObjectVerifier;
     } = {},
   ) {
     this.contextData = options.contextData;
@@ -671,16 +695,32 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   }
 
   createContext(
-    baseUrlOrRequest: any,
+    baseUrl: URL,
     contextData: TContextData,
-  ): any {
+  ): TestContext<TContextData>;
+  createContext(
+    request: Request,
+    contextData: TContextData,
+    options?: { portableRequest?: PortableRequest },
+  ): TestContext<TContextData>;
+  createContext(
+    baseUrlOrRequest: URL | Request,
+    contextData: TContextData,
+  ): TestContext<TContextData>;
+  createContext(
+    baseUrlOrRequest: URL | Request,
+    contextData: TContextData,
+    options: { portableRequest?: PortableRequest } = {},
+  ): TestContext<TContextData> {
     // deno-lint-ignore no-this-alias
     const mockFederation = this;
 
     const request = baseUrlOrRequest instanceof Request
       ? baseUrlOrRequest
       : null;
-    const url = request == null ? baseUrlOrRequest : new URL(request.url);
+    const url = request == null
+      ? baseUrlOrRequest as URL
+      : new URL(request.url);
 
     return new MockContext({
       url,
@@ -689,15 +729,83 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       federation: mockFederation as any,
       meterProvider: this.options.meterProvider,
       tracerProvider: this.options.tracerProvider,
+      documentLoader: this.options.documentLoader,
+      contextLoader: this.options.contextLoader,
+      verifyPortableObject: this.options.verifyPortableObject,
+      portableRequest: options.portableRequest,
     });
   }
 
-  // deno-lint-ignore require-await
   async fetch(
     request: Request,
     options: FederationFetchOptions<TContextData>,
   ): Promise<Response> {
-    // returning 404 by default
+    if (this.hashlinkMediaDispatcher != null) {
+      const url = new URL(request.url);
+      const prefix = "/.well-known/apgateway/";
+      if (
+        (url.protocol === "http:" || url.protocol === "https:") &&
+        url.pathname.startsWith(prefix)
+      ) {
+        const encoded = url.pathname.slice(prefix.length);
+        if (/^hl(?::|%3A)/i.test(encoded)) {
+          if (request.method !== "GET" && request.method !== "HEAD") {
+            return new Response("Method not allowed.", {
+              status: 405,
+              headers: {
+                Allow: "GET, HEAD",
+                "Content-Type": "text/plain; charset=utf-8",
+              },
+            });
+          }
+          let media;
+          try {
+            let hashlink: string;
+            try {
+              hashlink = decodeURIComponent(encoded);
+            } catch (error) {
+              throw new TypeError("Invalid percent-encoding in the hashlink.", {
+                cause: error,
+              });
+            }
+            const { digestMultibase } = parseHashlink(hashlink);
+            const { digest } = parseDigestMultibase(digestMultibase);
+            media = globalThis.Object.freeze({
+              hashlink: `hl:${digestMultibase}`,
+              digestMultibase,
+              algorithm: "sha2-256",
+              digest,
+              multihash: decodeMultibase(digestMultibase),
+            });
+          } catch (error) {
+            if (!(error instanceof TypeError)) throw error;
+            return new Response(
+              request.method === "HEAD" ? null : "Malformed hashlink.",
+              {
+                status: 400,
+                headers: { "Content-Type": "text/plain; charset=utf-8" },
+              },
+            );
+          }
+          const context = this.createContext(request, options.contextData);
+          const response = await this.hashlinkMediaDispatcher(context, media);
+          if (response == null) {
+            return options.onNotFound == null
+              ? new Response("Not Found", { status: 404 })
+              : await options.onNotFound(request);
+          }
+          if (request.method !== "HEAD" || response.body == null) {
+            return response;
+          }
+          response.body.cancel().catch(() => {});
+          return new Response(null, {
+            status: response.status,
+            statusText: response.statusText,
+            headers: response.headers,
+          });
+        }
+      }
+    }
     if (options.onNotFound) {
       return options.onNotFound(request);
     }
@@ -970,6 +1078,16 @@ export function createFederation<TContextData>(
      */
     meterProvider?: any;
     tracerProvider?: any;
+    /** The document loader used by mock context lookups. @since 2.4.0 */
+    documentLoader?: DocumentLoader;
+    /** The JSON-LD context loader used by mock context lookups. @since 2.4.0 */
+    contextLoader?: DocumentLoader;
+    /**
+     * The portable object verifier used by mock context lookups when a
+     * document loader is provided.  Mock collection traversal remains empty.
+     * @since 2.4.0
+     */
+    verifyPortableObject?: PortableObjectVerifier;
   } = {},
 ): TestFederation<TContextData> {
   return new MockFederation<TContextData>(options);
@@ -1031,6 +1149,10 @@ class MockContext<TContextData> implements Context<TContextData> {
   readonly tracerProvider: any;
   readonly request: Request;
   readonly url: URL;
+  readonly portableRequest?: PortableRequest;
+  readonly verifyPortableObject?: PortableObjectVerifier;
+  private readonly hasDocumentLoader: boolean;
+  private readonly hasContextLoader: boolean;
 
   private sentActivities: Array<{
     sender: any;
@@ -1047,6 +1169,10 @@ class MockContext<TContextData> implements Context<TContextData> {
       federation: Federation<TContextData>;
       documentLoader?: DocumentLoader;
       contextLoader?: DocumentLoader;
+      verifyPortableObject?: PortableObjectVerifier;
+      portableRequest?: PortableRequest;
+      hasDocumentLoader?: boolean;
+      hasContextLoader?: boolean;
       meterProvider?: any;
       tracerProvider?: any;
     },
@@ -1058,6 +1184,12 @@ class MockContext<TContextData> implements Context<TContextData> {
     this.hostname = url.hostname;
     this.url = url;
     this.request = options.request ?? new Request(url);
+    this.portableRequest = options.portableRequest;
+    this.verifyPortableObject = options.verifyPortableObject;
+    this.hasDocumentLoader = options.hasDocumentLoader ??
+      options.documentLoader != null;
+    this.hasContextLoader = options.hasContextLoader ??
+      options.contextLoader != null;
     this.data = options.data;
     this.federation = options.federation;
     // deno-lint-ignore require-await
@@ -1200,10 +1332,15 @@ class MockContext<TContextData> implements Context<TContextData> {
   clone(data: TContextData): TestContext<TContextData> {
     return new MockContext({
       url: this.url,
+      request: this.request,
       data,
       federation: this.federation,
       documentLoader: this.documentLoader,
       contextLoader: this.contextLoader,
+      verifyPortableObject: this.verifyPortableObject,
+      portableRequest: this.portableRequest,
+      hasDocumentLoader: this.hasDocumentLoader,
+      hasContextLoader: this.hasContextLoader,
       meterProvider: this.meterProvider,
       tracerProvider: this.tracerProvider,
     });
@@ -1474,10 +1611,38 @@ class MockContext<TContextData> implements Context<TContextData> {
   }
 
   lookupObject(
-    _uri: URL | string,
-    _options?: LookupObjectOptions,
+    uri: URL | string,
+    options: LookupObjectOptions = {},
   ): Promise<Object | null> {
-    return Promise.resolve(null);
+    if (
+      (!this.hasDocumentLoader && options.documentLoader == null) ||
+      (options.verifyPortableObject ?? this.verifyPortableObject) == null
+    ) {
+      return Promise.resolve(null);
+    }
+    // The mock only supports portable lookups.  The global helper falls back
+    // to live WebFinger for ordinary URLs and handles when a fixture misses.
+    const value = typeof uri === "string" ? uri : formatIri(uri);
+    if (!/^ap(?:\+ef61)?:\/\//i.test(value)) {
+      try {
+        if (fromCompatibleEf61Id(value) == null) {
+          return Promise.resolve(null);
+        }
+      } catch (error) {
+        if (error instanceof TypeError) return Promise.resolve(null);
+        throw error;
+      }
+    }
+    return globalLookupObject(uri, {
+      ...options,
+      documentLoader: options.documentLoader ?? this.documentLoader,
+      contextLoader: options.contextLoader ??
+        (this.hasContextLoader
+          ? this.contextLoader
+          : options.documentLoader ?? this.contextLoader),
+      verifyPortableObject: options.verifyPortableObject ??
+        this.verifyPortableObject,
+    });
   }
 
   traverseCollection<TItem, TContext extends Context<TContextData>>(
