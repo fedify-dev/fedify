@@ -137,10 +137,23 @@ export function extractInboxes(
       );
       if (target == null) continue;
       const gatewayInboxes = target.inboxes.map((u) => u.href);
-      const key = portableKeys.get(target.portableInbox) ??
-        gatewayInboxes.find((i) => i in inboxes) ?? gatewayInboxes[0];
+      // Every entry that already stands for this portable inbox, i.e., its
+      // entry, and those of ordinary recipients that reached it through one
+      // of its compatible identifiers, is folded into one:
+      const existingKeys = new Set<string>();
+      const portableKey = portableKeys.get(target.portableInbox);
+      if (portableKey != null) existingKeys.add(portableKey);
+      for (const i of gatewayInboxes) {
+        const k = compatibleKeys.get(i) ?? i;
+        if (Object.hasOwn(inboxes, k)) existingKeys.add(k);
+      }
+      const [key = gatewayInboxes[0], ...otherKeys] = existingKeys;
       portableKeys.set(target.portableInbox, key);
       const entry = inboxes[key] ??= { actorIds: new Set(), sharedInbox };
+      for (const k of otherKeys) {
+        for (const actorId of inboxes[k].actorIds) entry.actorIds.add(actorId);
+        delete inboxes[k];
+      }
       // An entry that an ordinary recipient reached through the same URL,
       // e.g., the compatible identifier as its inbox, is upgraded:
       entry.sharedInbox = false;

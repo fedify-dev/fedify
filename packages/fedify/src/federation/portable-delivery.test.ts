@@ -189,6 +189,41 @@ test("extractInboxes() resolves portable inboxes", async (t) => {
     }
   });
 
+  await t.step("merging inboxes on several gateways", () => {
+    const onGateway = (gateway: string): Recipient => ({
+      id: new URL(`${gateway}/.well-known/apgateway/${DID}/actor`),
+      inboxId: new URL(inboxOn(gateway)),
+    });
+    const portable = portableActor({
+      gateways: ["https://gw1.example", "https://gw2.example"],
+    });
+    const gw1 = onGateway("https://gw1.example");
+    const gw2 = onGateway("https://gw2.example");
+    for (
+      const recipients of [
+        [gw1, gw2, portable],
+        [gw2, gw1, portable],
+        [gw1, portable, gw2],
+        [portable, gw2, gw1],
+      ]
+    ) {
+      const inboxes = extractInboxes({ recipients });
+      const keys = Object.keys(inboxes);
+      strictEqual(keys.length, 1);
+      const entry = inboxes[keys[0]];
+      strictEqual(entry.gatewayInboxes?.[0], keys[0]);
+      deepStrictEqual(
+        new Set(entry.gatewayInboxes),
+        new Set([
+          inboxOn("https://gw1.example"),
+          inboxOn("https://gw2.example"),
+        ]),
+      );
+      strictEqual(entry.portableInbox, PORTABLE_INBOX);
+      strictEqual(entry.actorIds.size, 3);
+    }
+  });
+
   await t.step("merging with a shared inbox of the same URL", () => {
     const shared: Recipient = {
       id: new URL("https://other.example/users/bob"),
