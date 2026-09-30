@@ -340,6 +340,7 @@ interface TestFederation<TContextData>
   createContext(
     baseUrlOrRequest: URL | Request,
     contextData: TContextData,
+    options?: { portableRequest?: PortableRequest },
   ): TestContext<TContextData>;
 }
 
@@ -706,6 +707,7 @@ class MockFederation<TContextData> implements Federation<TContextData> {
   createContext(
     baseUrlOrRequest: URL | Request,
     contextData: TContextData,
+    options?: { portableRequest?: PortableRequest },
   ): TestContext<TContextData>;
   createContext(
     baseUrlOrRequest: URL | Request,

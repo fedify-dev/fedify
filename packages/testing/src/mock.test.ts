@@ -2104,9 +2104,16 @@ test("MockContext carries an explicit portable request to dispatchers", async ()
     federation.createContext(request, undefined).portableRequest,
     undefined,
   );
-  const createWithUnion = (input: URL | Request) =>
-    federation.createContext(input, undefined);
+  const createWithUnion = (
+    input: URL | Request,
+    options?: { portableRequest?: typeof portableRequest },
+  ) => federation.createContext(input, undefined, options);
   assertStrictEquals(createWithUnion(request).request, request);
+  const unionContext = createWithUnion(request, { portableRequest });
+  assertStrictEquals(unionContext.request, request);
+  assertStrictEquals(unionContext.portableRequest, portableRequest);
+  assertInstanceOf(await unionContext.getActor("alice"), Person);
+  assertInstanceOf(await unionContext.getObject(Note, { id: "1" }), Note);
 });
 
 test("MockFederation.fetch() dispatches hashlink media", async () => {
