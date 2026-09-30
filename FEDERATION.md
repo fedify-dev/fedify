@@ -62,7 +62,6 @@ Supported FEPs
 [FEP-22cd]: https://w3id.org/fep/22cd
 [FEP-0837]: https://w3id.org/fep/0837
 [FEP-ae0c]: https://w3id.org/fep/ae0c
-[FEP-ef61]: https://w3id.org/fep/ef61
 [FEP-ef61 section]: #fep-ef61
 
 
@@ -103,12 +102,36 @@ omits the JSON-LD mapping for `gateways`; Fedify reads that list and requires
 JCS proofs to authenticate the original JSON. The unchanged response and
 capture procedure are recorded in the [tootik fixture].
 
-This result covers actor parsing and proof verification. Incoming HTTP
-Signatures and activities captured from tootik, acceptance of Fedify output
-by other implementations, and live Mitra/Mastodon interoperability remain
+In a separate local HTTPS test, a freshly registered portable tootik `Person`
+sent a `Follow` to a Fedify inbox. Fedify independently verified the original
+Cavage RSA HTTP Signature, returned HTTP 202, and dispatched the activity to
+the `Follow` listener. The inbox authenticated the activity's original
+`eddsa-jcs-2022` proof; proof-authenticated delivery does not itself check the
+HTTP Signature. The exact request, actor response, and procedure are recorded
+in the [tootik Follow fixture]. Offline replay uses the captured time to check
+the HTTP Signature's freshness; the live request used the normal current-time
+check.
+
+In the reverse direction, tootik v0.25.4 accepted a Fedify-generated portable
+`Create` and stored its embedded `Note` with the expected ID, author, and
+content. Fedify generated the actor and object proofs and sent the activity
+through `Context.sendActivity()`. The first request received HTTP 401 with
+`actor is too young`; the automatic retry received HTTP 202, followed by
+database confirmation of processing. Changing the embedded note's content
+without updating its proofs received HTTP 401. The [Fedify to tootik fixture]
+records the original output, responses, and stored note.
+
+This reverse test used HTTPS gateway origins without explicit ports: tootik
+v0.25.4 does not recognize compatible actor IDs with an explicit port. Its
+inbox authenticated the activity through its proof and skipped HTTP Signature
+verification. The request carried a gateway RSA signature, but this result
+does not establish independent acceptance of that signature by tootik.
+Bidirectional Mitra interoperability and Mastodon compatibility remain
 unverified.
 
 [tootik fixture]: packages/fedify/test-vectors/fep-ef61/tootik-v0.25.4/README.md
+[tootik Follow fixture]: packages/fedify/test-vectors/fep-ef61/tootik-v0.25.4/follow/README.md
+[Fedify to tootik fixture]: packages/fedify/test-vectors/fep-ef61/tootik-v0.25.4/send/README.md
 
 
 ActivityPub

@@ -1,0 +1,20 @@
+{
+  "implementation": "tootik",
+  "version": "0.25.4",
+  "tag": "v0.25.4",
+  "commit": "5ce4b7fe074d7c385808be387ffcda7040842a19",
+  "binarySha256": "c24982af1a58cf8d4a8ae1a66dae7252d90bb1310c31d297ddc4b040d790f0c2",
+  "capturedAt": "2026-09-30T13:30:43.325Z",
+  "requestUrl": "https://fedify.example:18444/users/alice/inbox",
+  "actorUrl": "https://tootik.example/.well-known/apgateway/did:key:z6MkpWqhz4YAuBfC4ddjU49mGfs6CAuYcm243K5hW2YEGAyR/actor",
+  "actorLoaderUrl": "https://tootik.example/.well-known/apgateway/did:key:z6MkpWqhz4YAuBfC4ddjU49mGfs6CAuYcm243K5hW2YEGAyR/actor#main-key",
+  "activityType": "Follow",
+  "actorType": "Person",
+  "requestBodySha256": "6650d90a7758918702bcf329166459244f904f5495b70a297be28f695e54febf",
+  "actorBodySha256": "a58dad10d1051aed670bd79ee7dbfb9d3606cc8e6f231a9a742edd9317b28cd8",
+  "liveResult": {
+    "httpSignatureVerified": true,
+    "inboxStatus": 202,
+    "listenerActivityType": "Follow"
+  }
+}

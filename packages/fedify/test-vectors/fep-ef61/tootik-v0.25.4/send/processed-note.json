@@ -1,0 +1,87 @@
+{
+  "capturedAt": "2026-09-30T14:16:58.628204+00:00",
+  "query": "SELECT id, author, json(object) FROM notes WHERE id = ?",
+  "parameter": "https://fedify.example/.well-known/apgateway/did:key:z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN/notes/native-inbox",
+  "rows": [
+    {
+      "id": "https://fedify.example/.well-known/apgateway/did:key:z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN/notes/native-inbox",
+      "author": "https://fedify.example/.well-known/apgateway/did:key:z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN/actor",
+      "object": {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/security/data-integrity/v1",
+          "https://gotosocial.org/ns",
+          {
+            "Emoji": "toot:Emoji",
+            "Hashtag": "as:Hashtag",
+            "QuoteAuthorization": "https://w3id.org/fep/044f#QuoteAuthorization",
+            "_misskey_quote": "misskey:_misskey_quote",
+            "emojiReactions": {
+              "@id": "fedibird:emojiReactions",
+              "@type": "@id"
+            },
+            "fedibird": "http://fedibird.com/ns#",
+            "misskey": "https://misskey-hub.net/ns#",
+            "quote": {
+              "@id": "https://w3id.org/fep/044f#quote",
+              "@type": "@id"
+            },
+            "quoteAuthorization": {
+              "@id": "https://w3id.org/fep/044f#quoteAuthorization",
+              "@type": "@id"
+            },
+            "quoteUri": "fedibird:quoteUri",
+            "quoteUrl": "as:quoteUrl",
+            "sensitive": "as:sensitive",
+            "toot": "http://joinmastodon.org/ns#"
+          }
+        ],
+        "id": "https://fedify.example/.well-known/apgateway/did:key:z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN/notes/native-inbox",
+        "type": "Note",
+        "attributedTo": "https://fedify.example/.well-known/apgateway/did:key:z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN/actor",
+        "content": "<p>Native Fedify to tootik v0.25.4 portable interoperability.</p>",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public",
+          "https://tootik.example/.well-known/apgateway/did:key:z6MkqoM6ybQGmFBWcwsDGbD927SQrnLGTHGJxTABHtWk7DVg/actor"
+        ],
+        "proof": {
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            "https://w3id.org/security/data-integrity/v1",
+            "https://gotosocial.org/ns",
+            {
+              "Emoji": "toot:Emoji",
+              "Hashtag": "as:Hashtag",
+              "QuoteAuthorization": "https://w3id.org/fep/044f#QuoteAuthorization",
+              "_misskey_quote": "misskey:_misskey_quote",
+              "emojiReactions": {
+                "@id": "fedibird:emojiReactions",
+                "@type": "@id"
+              },
+              "fedibird": "http://fedibird.com/ns#",
+              "misskey": "https://misskey-hub.net/ns#",
+              "quote": {
+                "@id": "https://w3id.org/fep/044f#quote",
+                "@type": "@id"
+              },
+              "quoteAuthorization": {
+                "@id": "https://w3id.org/fep/044f#quoteAuthorization",
+                "@type": "@id"
+              },
+              "quoteUri": "fedibird:quoteUri",
+              "quoteUrl": "as:quoteUrl",
+              "sensitive": "as:sensitive",
+              "toot": "http://joinmastodon.org/ns#"
+            }
+          ],
+          "type": "DataIntegrityProof",
+          "cryptosuite": "eddsa-jcs-2022",
+          "verificationMethod": "did:key:z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN#z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN",
+          "proofPurpose": "assertionMethod",
+          "proofValue": "z3Qs33iEXVq9qLD29kiMa26yLGVuYaKvUKCMqPmuj2z3Y4FmjVVtm4Nb3vMGiaeSNvVahpPni6H7ttesNjpZ9SsDe",
+          "created": "2026-09-30T14:16:34.84575Z"
+        }
+      }
+    }
+  ]
+}

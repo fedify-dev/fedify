@@ -1,0 +1,64 @@
+{
+  "implementation": "tootik",
+  "version": "0.25.4",
+  "tag": "v0.25.4",
+  "commit": "5ce4b7fe074d7c385808be387ffcda7040842a19",
+  "binarySha256": "c24982af1a58cf8d4a8ae1a66dae7252d90bb1310c31d297ddc4b040d790f0c2",
+  "direction": "Fedify to tootik",
+  "capturedAt": "2026-09-30T14:16:35.040Z",
+  "requestUrl": "https://tootik.example/.well-known/apgateway/did:key:z6MkqoM6ybQGmFBWcwsDGbD927SQrnLGTHGJxTABHtWk7DVg/actor/inbox",
+  "sha256": {
+    "requestBody": "581eedea3b0fe3bfc010f1f211c133fd149bd4c4d15e4789ef2ff3b8c2f32557",
+    "actorBody": "e164c9b9c9009887a97b4260b3acdad5cb68281b11663a2f99e1e3cf66b8d5c1",
+    "recipientBody": "8104376557559155f4a82406a66bc7ac571dd02bd23ee8ad9cbbb9eefc4e6aa5",
+    "tamperedBody": "5a6f2c7fe5dccac671511d0a6b43d9bb5158acdb585ae6897d78be34c96a919b"
+  },
+  "firstAttempt": {
+    "spec": "rfc9421",
+    "status": 401,
+    "reason": "actor is too young"
+  },
+  "acceptedAttempt": {
+    "spec": "draft-cavage-http-signatures-12",
+    "status": 202,
+    "nativeNotePersisted": true
+  },
+  "tamperedNestedNoteStatus": 401,
+  "httpVerification": {
+    "localReplay": true,
+    "tootikEnforcedForProofAuthenticatedActivity": false
+  },
+  "strategy": "Native default signObject contexts and Context.sendActivity normalizeExistingProofs:true; compatible HTTPS portable identifiers; transport-only remap with original Host",
+  "source": {
+    "repository": "https://github.com/dimkr/tootik",
+    "tag": "v0.25.4",
+    "commit": "5ce4b7fe074d7c385808be387ffcda7040842a19",
+    "binarySha256": "c24982af1a58cf8d4a8ae1a66dae7252d90bb1310c31d297ddc4b040d790f0c2"
+  },
+  "runtime": {
+    "deno": "deno 2.9.5 (stable, release, x86_64-unknown-linux-gnu)\nv8 15.0.245.2-rusty\ntypescript 6.0.3",
+    "nativeMethods": [
+      "signObject(Person)",
+      "signObject(Note)",
+      "signObject(Create)",
+      "Context.sendActivity(normalizeExistingProofs:true)"
+    ]
+  },
+  "routing": {
+    "network": "fedify-1097-reverse-net",
+    "tlsProxy": "fedify-1097-reverse-proxy; Alpine3.23 socat TCP443/18444 -> host.containers.internal:18444",
+    "actorGateway": "https://fedify.example",
+    "inboxTransport": "original signed URL https://tootik.example mapped to https://localhost:18443; retained Host tootik.example; TLS certificate explicitly trusted",
+    "receiverBind": "0.0.0.0:18444",
+    "externalBinaryModified": false
+  },
+  "observed": {
+    "attempt1": 401,
+    "attempt1Reason": "actor is too young",
+    "nativeFallbackAttempt2": 202,
+    "processedDatabaseNote": true,
+    "tamperedNestedContent": 401,
+    "authenticationLimit": "tootik verifies object integrity proof in preference to HTTP signatures; this does not establish independent HTTP signature acceptance"
+  },
+  "recipientBodyProvenance": "Semantic copy of the tootik recipient actor produced by parsing and serializing the captured document; not an original wire byte capture"
+}
