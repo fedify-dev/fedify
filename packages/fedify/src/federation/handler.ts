@@ -2465,7 +2465,11 @@ async function handleInboxInternal<TContextData>(
           json,
           activity.id,
           getTypeId(activity).href,
-          listRequestSignatures(request).map((signature) => ({
+          // Signatures beyond the limit are ignored here as well, so that
+          // they cannot identify the sending gateway either:
+          listRequestSignatures(request, maxHttpSignatures).map((
+            signature,
+          ) => ({
             keyId: signature.keyId,
             coversDelivery: coversDelivery(signature),
             verify: async () => {

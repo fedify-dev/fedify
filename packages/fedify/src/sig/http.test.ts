@@ -4239,6 +4239,36 @@ test("listRequestSignatures()", async (t) => {
       ],
     );
   });
+  await t.step("RFC 9421 beyond the limit", async () => {
+    const currentTime = Temporal.Instant.from("2024-03-05T08:09:44Z");
+    const signed = await signRfc9421Many(
+      [1, 2, 3, 4].map((n) => `https://example.com/key-${n}`),
+      currentTime,
+    );
+    // A signature whose key ID is not a URL is not listed, but still counts
+    // toward the limit, as it does for verifyRequest():
+    const headers = new Headers(signed.headers);
+    headers.set(
+      "Signature-Input",
+      headers.get("Signature-Input")!.replace(
+        "https://example.com/key-1",
+        "not a URL",
+      ),
+    );
+    const request = new Request(signed.url, { method: "POST", headers });
+    const keyIds = (maxSignatures?: number) =>
+      listRequestSignatures(request, maxSignatures).map((s) => s.keyId.href);
+    assertEquals(keyIds(), [
+      "https://example.com/key-2",
+      "https://example.com/key-3",
+    ]);
+    assertEquals(keyIds(1), []);
+    assertEquals(keyIds(Infinity), [
+      "https://example.com/key-2",
+      "https://example.com/key-3",
+      "https://example.com/key-4",
+    ]);
+  });
   await t.step("unsigned or malformed", () => {
     assertEquals(listRequestSignatures(request()), []);
     const malformed = request();

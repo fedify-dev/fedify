@@ -529,16 +529,22 @@ export interface RequestSignature {
  * Lists the HTTP Signatures that a request claims to carry, without verifying
  * any of them.  Signatures whose key IDs are not URLs are left out.
  * @param request The request.
+ * @param maxSignatures The maximum number of RFC 9421 signatures to consider,
+ *                      counted the same way as by {@link verifyRequest}, so
+ *                      that the signatures it ignores are not listed either.
  * @returns The signatures; RFC 9421 ones if the request has
  *          a `Signature-Input` header, or a draft-cavage one otherwise.
  * @internal
  */
-export function listRequestSignatures(request: Request): RequestSignature[] {
+export function listRequestSignatures(
+  request: Request,
+  maxSignatures: number = DEFAULT_MAX_RFC9421_SIGNATURES,
+): RequestSignature[] {
   const signatureInput = request.headers.get("Signature-Input");
   if (signatureInput != null) {
     const signatures: RequestSignature[] = [];
-    const inputs = parseRfc9421SignatureInput(signatureInput);
-    for (const [label, input] of Object.entries(inputs)) {
+    const inputs = Object.entries(parseRfc9421SignatureInput(signatureInput));
+    for (const [label, input] of inputs.slice(0, maxSignatures)) {
       const keyId = parseKeyId(input.keyId);
       if (keyId == null) continue;
       signatures.push({ keyId, label, components: input.components });

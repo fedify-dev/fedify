@@ -1451,10 +1451,11 @@ async function signDelivery(
 
 async function deliverToGateway(
   request: Request,
-  { loader, kv, maxTargets }: {
+  { loader, kv, maxTargets, maxHttpSignatures }: {
     loader: DocumentLoader;
     kv?: KvStore;
     maxTargets?: number;
+    maxHttpSignatures?: number;
   },
 ): Promise<{ response: Response; queue: RecordingQueue; kv: KvStore }> {
   const queue = new RecordingQueue();
@@ -1463,6 +1464,7 @@ async function deliverToGateway(
     kv,
     options: {
       documentLoaderFactory: () => loader,
+      maxHttpSignatures,
       ...(maxTargets == null
         ? {}
         : { portableInboxForwarding: { maxTargets } }),
@@ -1550,6 +1552,54 @@ test("Federation.fetch() does not forward portable inbox deliveries back to the 
     // The unrelated key is not fetched:
     assertFalse(urls.some((u) => u.startsWith("https://unrelated.example/")));
   });
+  await t.step(
+    "with the gateway's signature beyond maxHttpSignatures",
+    async () => {
+      const json = await signedFollow();
+      const unrelated = await signDelivery(json, {
+        spec: "rfc9421",
+        keyId: new URL("https://unrelated.example/key"),
+        privateKey: rsaPrivateKey3,
+        label: "sig1",
+      });
+      const gateway = await signDelivery(json, {
+        spec: "rfc9421",
+        label: "sig2",
+      });
+      const headers = new Headers(gateway.headers);
+      for (const name of ["Signature-Input", "Signature"]) {
+        headers.set(
+          name,
+          `${unrelated.headers.get(name)}, ${gateway.headers.get(name)}`,
+        );
+      }
+      const request = () =>
+        new Request(gateway.url, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(json),
+        });
+      for (
+        const [maxHttpSignatures, expected] of [
+          [2, [GATEWAY3]],
+          // The gateway's signature is ignored, so the sending gateway is not
+          // identified, and the activity is forwarded back to it as well:
+          [1, [GATEWAY2, GATEWAY3]],
+        ] as const
+      ) {
+        const { loader, urls } = recordLoader(gatewayLoader);
+        const { queue } = await deliverToGateway(request(), {
+          loader,
+          maxHttpSignatures,
+        });
+        assertEquals(forwardedGateways(queue), [...expected].sort());
+        assertEquals(
+          urls.some((u) => u.startsWith(GATEWAY2)),
+          maxHttpSignatures > 1,
+        );
+      }
+    },
+  );
   await t.step(
     "activity authenticated by a Linked Data Signature",
     async () => {
