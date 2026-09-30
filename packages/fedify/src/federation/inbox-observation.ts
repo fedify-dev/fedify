@@ -49,9 +49,8 @@ export class InboxObservation {
   };
   constructor(readonly inbox: InboxRequestReport["inbox"]) {}
 
-  async run<T>(
-    getContext: () => RequestContext<T>,
-    handler: InboxRequestFinishedHandler<T> | undefined,
+  /** Run an ingress operation and project telemetry; fetch owns completion. */
+  async run(
     operation: () => Promise<Response>,
     span?: Span,
   ): Promise<Response> {
@@ -69,9 +68,33 @@ export class InboxObservation {
       outcome = { type: "exception", stage: this.stage, error };
     }
     if (span != null) this.project(span, outcome);
-    await this.finish(getContext(), handler, outcome);
     if (threw) throw originalError;
     return response!;
+  }
+
+  /** Complete standalone handler calls that have no enclosing fetch boundary. */
+  async runAndFinish<T>(
+    getContext: () => RequestContext<T>,
+    handler: InboxRequestFinishedHandler<T> | undefined,
+    operation: () => Promise<Response>,
+  ): Promise<Response> {
+    let response: Response;
+    try {
+      response = await this.run(operation);
+    } catch (error) {
+      await this.finish(getContext(), handler, {
+        type: "exception",
+        stage: this.stage,
+        error,
+      });
+      throw error;
+    }
+    await this.finish(getContext(), handler, {
+      type: "response",
+      status: response.status,
+      ...this.result,
+    });
+    return response;
   }
 
   project(span: Span, outcome?: InboxRequestOutcome): void {

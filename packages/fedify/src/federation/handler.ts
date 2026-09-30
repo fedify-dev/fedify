@@ -1801,7 +1801,7 @@ export async function handleInbox<TContextData>(
         : "personal",
       recipient: options.recipient,
     });
-    return await observation.run(
+    return await observation.runAndFinish(
       () => options.context,
       options.inboxRequestFinishedHandler,
       () => handleInbox(request, { ...options, observation }),

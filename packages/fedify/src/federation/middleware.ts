@@ -3504,8 +3504,6 @@ export class FederationImpl<TContextData>
       });
       this.#setInboxCompletion(metricState, observation, () => context);
       return await observation.run(
-        () => context,
-        undefined,
         async () => {
           if (routeName === "inbox") {
             context = this.#createContext(request, contextData, {
@@ -4109,8 +4107,6 @@ export class FederationImpl<TContextData>
     const observation = new InboxObservation(inbox);
     this.#setInboxCompletion(metricState, observation, () => context);
     return await observation.run(
-      () => context,
-      undefined,
       () => Promise.reject(error),
       span,
     );
@@ -4224,8 +4220,6 @@ export class FederationImpl<TContextData>
     });
     this.#setInboxCompletion(metricState, observation, () => context);
     return await observation.run(
-      () => context,
-      undefined,
       async () => {
         // The actor is looked up only by its identifier, as for ordinary inbox
         // deliveries, so that the identifier alone determines the recipient,
