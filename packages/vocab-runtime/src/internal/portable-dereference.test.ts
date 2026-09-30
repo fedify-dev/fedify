@@ -55,6 +55,8 @@ test("getPortableGatewayCandidates() reads @gateway hints", () => {
         "&gateways=https%3A%2F%2Flegacy.example" +
         "&@gateway=not%20a%20URL" +
         "&@gateway=https%3A%2F%2Fb.example%2Fpath" +
+        "&@gateway=https%3A%2F%2Fquery.example%2F%3F" +
+        "&@gateway=https%3A%2F%2Ffragment.example%2F%23" +
         "&%40gateway=https%3A%2F%2Fb.example" +
         "&@gateway=https%3A%2F%2Fa.example%2F",
     ))),

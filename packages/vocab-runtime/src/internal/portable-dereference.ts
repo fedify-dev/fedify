@@ -22,6 +22,7 @@ import {
   formatIri,
   fromCompatibleEf61Id,
   haveSameFe34Origin,
+  isGatewayUrl,
   parseIri,
   toCompatibleEf61Id,
 } from "../url.ts";
@@ -547,14 +548,7 @@ function parseGatewayOrigin(gateway: string | URL): URL | null {
   else if (typeof gateway === "string" && URL.canParse(gateway)) {
     url = new URL(gateway);
   } else return null;
-  // Comparing href with the origin also rejects credentials, a path, and
-  // query and fragment components, including empty ? and # delimiters.
-  if (
-    (url.protocol !== "http:" && url.protocol !== "https:") ||
-    url.href !== `${url.origin}/`
-  ) {
-    return null;
-  }
+  if (!isGatewayUrl(url)) return null;
   return url;
 }
 
