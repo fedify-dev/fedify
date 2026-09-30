@@ -1,3 +1,10 @@
+import {
+  observeAttempt,
+  observeCheck,
+  triedKey,
+  verificationObservation,
+  type VerificationObservationOptions,
+} from "./verification.ts";
 import { Activity, CryptographicKey, getTypeId, Object } from "@fedify/vocab";
 import {
   type DocumentLoader,
@@ -881,7 +888,7 @@ export function detachSignature(jsonLd: unknown): unknown {
  * Options for verifying Linked Data Signatures.
  * @since 1.0.0
  */
-export interface VerifySignatureOptions {
+export interface VerifySignatureOptions extends VerificationObservationOptions {
   /**
    * The document loader to use for fetching the public key.
    */
@@ -936,6 +943,22 @@ export async function verifySignature(
   options: VerifySignatureOptions = {},
 ): Promise<CryptographicKey | null> {
   if (!hasSignature(jsonLd)) return null;
+  if (
+    options[verificationObservation]?.attempt != null &&
+    options[verificationObservation]?.check == null
+  ) {
+    const declared = getLdSignatureObject(jsonLd)?.creator;
+    return await observeCheck(
+      options,
+      { mechanism: "linkedData" },
+      typeof declared === "string" ? declared : null,
+      (observation) =>
+        verifySignature(jsonLd, {
+          ...options,
+          [verificationObservation]: observation,
+        }),
+    );
+  }
   const sig = jsonLd.signature;
   let signature: Uint8Array;
   try {
@@ -990,6 +1013,7 @@ export async function verifySignature(
   const encoder = new TextEncoder();
   const message = sigOptsHash + docHash;
   const messageBytes = encoder.encode(message);
+  triedKey(options, key);
   const verified = await crypto.subtle.verify(
     "RSASSA-PKCS1-v1_5",
     key.publicKey,
@@ -1014,6 +1038,7 @@ export async function verifySignature(
         }),
     );
     if (key == null) return null;
+    triedKey(options, key);
     const verified = await crypto.subtle.verify(
       "RSASSA-PKCS1-v1_5",
       key.publicKey,
@@ -1108,6 +1133,25 @@ async function verifyJsonLdInternal(
   options: VerifyJsonLdOptions,
   compact: boolean,
 ): Promise<boolean> {
+  if (
+    options[verificationObservation]?.attempt == null
+  ) {
+    return await observeAttempt(
+      {
+        ...options,
+        [verificationObservation]: options[verificationObservation] ??
+          { attempts: [] },
+      },
+      "linkedData",
+      (observation) =>
+        verifyJsonLdInternal(jsonLd, {
+          ...options,
+          [verificationObservation]: observation,
+        }, compact),
+      (value) => value,
+    );
+  }
+  const observation = options[verificationObservation];
   const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
   const tracer = tracerProvider.getTracer(metadata.name, metadata.version);
   return await tracer.startActiveSpan(
@@ -1130,6 +1174,12 @@ async function verifyJsonLdInternal(
             : jsonLd
           : jsonLd;
         const object = await Object.fromJsonLd(compacted, verificationOptions);
+        observation?.parsedObject?.(object);
+        if (observation?.subject != null) {
+          observation.subject.id = object.id == null
+            ? null
+            : new URL(object.id.href);
+        }
         if (object.id != null) {
           span.setAttribute("activitypub.object.id", object.id.href);
         }
@@ -1159,13 +1209,27 @@ async function verifyJsonLdInternal(
           for (const uri of object.actorIds) attributions.add(uri.href);
         }
         const key = await verifySignature(compacted, verificationOptions);
-        if (key == null) return false;
+        if (key == null) {
+          if (observation?.attempt != null && !hasLdSignatureProperty(jsonLd)) {
+            observation.attempt.reason = { type: "noSignature" };
+          }
+          return false;
+        }
         if (key.ownerId == null) {
+          if (observation?.attempt != null) {
+            observation.attempt.reason = { type: "missingOwner" };
+          }
           logger.debug("Key {keyId} has no owner.", { keyId: key.id?.href });
           return false;
         }
         attributions.delete(key.ownerId.href);
         if (attributions.size > 0) {
+          if (observation?.attempt != null) {
+            observation.attempt.reason = {
+              type: "uncoveredAttribution",
+              attributionIds: [...attributions].map((id) => new URL(id)),
+            };
+          }
           logger.debug(
             "Some attributions are not authenticated by the Linked Data " +
               "Signatures: {attributions}.",
@@ -1187,6 +1251,13 @@ async function verifyJsonLdInternal(
         // or a primitive) counts as "had signature" for classification, so
         // malformed signatures are reported as `rejected` rather than as
         // `missing`.
+        if (observation?.attempt?.reason != null) {
+          span.setAttribute(
+            "activitypub.verification.failure_reason",
+            observation.attempt.reason.type,
+          );
+          span.setStatus({ code: SpanStatusCode.ERROR });
+        }
         const classified: SignatureVerificationResult = threw
           ? "error"
           : verified
@@ -1199,7 +1270,15 @@ async function verifyJsonLdInternal(
             getDurationMs(start),
             "linked_data",
             classified,
-            { ldType: signatureType },
+            {
+              ldType: signatureType,
+              verificationFailureReason: verified || threw
+                ? undefined
+                : observation?.attempt?.reason?.type ??
+                  (hasLdSignatureProperty(jsonLd)
+                    ? "signatureVerificationFailed"
+                    : "noSignature"),
+            },
           );
         span.end();
       }

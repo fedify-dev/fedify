@@ -1,3 +1,4 @@
+import type { InboxRequestFinishedHandler } from "./inbox-report.ts";
 import type {
   Activity,
   Actor,
@@ -1711,6 +1712,19 @@ export interface InboxListenerSetters<TContextData> {
    */
   onError(
     handler: InboxErrorHandler<TContextData>,
+  ): InboxListenerSetters<TContextData>;
+
+  /**
+   * Observes each configured inbox delivery once, before fetch finishes.
+   * The callback is awaited and its errors do not alter delivery processing.
+   * Calling this again replaces the previous callback.  Built federations
+   * retain the callback registered at build time.
+   * @param handler The request completion observer.
+   * @returns This setter for chaining.
+   * @since 2.4.0
+   */
+  onRequestFinished(
+    handler: InboxRequestFinishedHandler<TContextData>,
   ): InboxListenerSetters<TContextData>;
 
   /**

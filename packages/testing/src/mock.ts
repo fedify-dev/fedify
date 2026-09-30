@@ -602,6 +602,9 @@ class MockFederation<TContextData> implements Federation<TContextData> {
       onUnverifiedActivity(): any {
         return this;
       },
+      onRequestFinished(): any {
+        return this;
+      },
       setSharedKeyDispatcher(): any {
         return this;
       },

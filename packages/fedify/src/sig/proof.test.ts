@@ -24,6 +24,7 @@ import {
   importMultibaseKey,
   parseIri,
 } from "@fedify/vocab-runtime";
+import jsonld from "@fedify/vocab-runtime/jsonld";
 import {
   assert,
   assertEquals,
@@ -49,12 +50,14 @@ import {
   createProof,
   hasProofLike,
   signObject,
+  verifyMapLocalProof,
   verifyObject,
   type VerifyObjectOptions,
   verifyPortableObjectProof,
   verifyProof,
   type VerifyProofOptions,
 } from "./proof.ts";
+import { verificationObservation } from "./verification.ts";
 
 // Test vector from <https://codeberg.org/fediverse/fep/src/branch/main/fep/8b32/fep-8b32.feature>:
 const fep8b32TestVectorPrivateKey = await crypto.subtle.importKey(
@@ -1361,6 +1364,97 @@ test("verifyProof() records verification duration metric", async (t) => {
       );
     },
   );
+});
+
+test("proof verification processes raw declaration contexts only for observers", async (t) => {
+  const options = {
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  };
+  const proofUrl = `ap://did:key:${portableDidMethod}/proofs/diagnostics`;
+  const signed = await signPortableJsonLd({
+    "@context": portableContext,
+    id: `ap://did:key:${portableDidMethod}/objects/diagnostics`,
+    type: "Note",
+    attributedTo: `ap://did:key:${portableDidMethod}/actor`,
+    content: "Observed proof",
+  }, { proofOptions: { id: proofUrl } });
+  const rawProof = signed.proof;
+  const proof = await DataIntegrityProof.fromJsonLd(rawProof, options);
+  const referenced = { ...signed };
+  delete referenced.proof;
+  referenced["https://w3id.org/security#proof"] = {
+    "@graph": [{ "@id": proofUrl }],
+  };
+  const cases: {
+    name: string;
+    verify: (options: VerifyProofOptions) => Promise<boolean>;
+  }[] = [
+    {
+      name: "object",
+      verify: async (options) =>
+        await verifyObject(Note, structuredClone(signed), options) != null,
+    },
+    {
+      name: "portable",
+      verify: async (options) =>
+        (await verifyPortableObjectProof(structuredClone(signed), options))
+          .verified,
+    },
+    {
+      name: "map-local",
+      verify: async (options) =>
+        await verifyMapLocalProof(structuredClone(signed), options) != null,
+    },
+    {
+      name: "proof",
+      verify: async (options) =>
+        await verifyProof(structuredClone(signed), proof, options) != null,
+    },
+    {
+      name: "remote proof",
+      verify: async (options) =>
+        await verifyObject(Note, structuredClone(referenced), {
+          ...options,
+          documentLoader: (url) =>
+            Promise.resolve({
+              contextUrl: null,
+              documentUrl: url,
+              document: structuredClone(rawProof),
+            }),
+        }) != null,
+    },
+  ];
+  for (const { name, verify } of cases) {
+    await t.step(name, async () => {
+      const original = jsonld.processContext;
+      let calls = 0;
+      jsonld.processContext = (...args: Parameters<typeof original>) => {
+        calls++;
+        return original(...args);
+      };
+      try {
+        assert(await verify(options));
+        const unobservedCalls = calls;
+        calls = 0;
+        assert(
+          await verify({
+            ...options,
+            [verificationObservation]: {
+              attempts: [],
+              attempt: { checks: [] },
+            },
+          }),
+        );
+        assert(
+          calls > unobservedCalls,
+          "Raw declaration processing should be absent from unobserved verification",
+        );
+      } finally {
+        jsonld.processContext = original;
+      }
+    });
+  }
 });
 
 test("verifyPortableObjectProof()", async (t) => {

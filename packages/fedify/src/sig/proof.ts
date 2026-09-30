@@ -1,4 +1,11 @@
 import {
+  observeAttempt,
+  observeCheck,
+  triedKey,
+  verificationObservation,
+  type VerificationObservationOptions,
+} from "./verification.ts";
+import {
   Activity,
   DataIntegrityProof,
   getTypeId,
@@ -450,7 +457,7 @@ export async function signObject<T extends Object>(
  * Options for {@link verifyProof}.
  * @since 0.10.0
  */
-export interface VerifyProofOptions {
+export interface VerifyProofOptions extends VerificationObservationOptions {
   /**
    * The security domain expected by the verifier.  When specified, it must
    * contain the same strings as the proof's `domain` option.
@@ -626,6 +633,24 @@ export async function verifyMapLocalProof(
   ) {
     return null;
   }
+  const rawProof = jsonLd.proof;
+  const previousChecks = options[verificationObservation]?.attempt?.checks
+    .length;
+  const malformed = () =>
+    observeCheck<Multikey>(
+      options,
+      {
+        mechanism: "objectIntegrity",
+        proofId: typeof rawProof.id === "string"
+          ? rawProof.id
+          : typeof rawProof["@id"] === "string"
+          ? rawProof["@id"]
+          : null,
+        proofIndex: previousChecks ?? null,
+      },
+      getDeclaredProofKeyId(rawProof),
+      () => Promise.resolve(null),
+    );
   const proofContextLoader = getNormalizationContextLoader(
     preloadedOnlyDocumentLoader,
   );
@@ -636,7 +661,7 @@ export async function verifyMapLocalProof(
       options,
       proofContextLoader,
     );
-    if (candidate.proof == null) return null;
+    if (candidate.proof == null) return await malformed();
     return await verifyProofWithMessageDigestCache(
       jsonLd,
       candidate.proof,
@@ -645,8 +670,31 @@ export async function verifyMapLocalProof(
       candidate,
     );
   } catch {
+    if (
+      previousChecks != null &&
+      options[verificationObservation]?.attempt?.checks.length ===
+        previousChecks
+    ) return await malformed();
     return null;
   }
+}
+
+function getDeclaredProofKeyId(
+  value: unknown,
+  propertyNames: Iterable<string> = [
+    "verificationMethod",
+    "https://w3id.org/security#verificationMethod",
+  ],
+): string | null {
+  if (!isJsonLdNode(value)) return null;
+  const method = Array.from(propertyNames, (name) => value[name]).find((v) =>
+    v != null
+  );
+  const candidate = Array.isArray(method) ? method[0] : method;
+  if (typeof candidate === "string") return candidate;
+  return isJsonLdNode(candidate) && typeof candidate["@id"] === "string"
+    ? candidate["@id"]
+    : null;
 }
 
 async function verifyProofWithMessageDigestCache(
@@ -658,6 +706,48 @@ async function verifyProofWithMessageDigestCache(
   // See the call in verifyPortableObjectProof() for why this exists.
   keyIdBoundByCaller = false,
 ): Promise<Multikey | null> {
+  if (options[verificationObservation] == null) {
+    return await verifyProofWithMessageDigestCache(
+      jsonLd,
+      proof,
+      {
+        ...options,
+        [verificationObservation]: {
+          attempts: [],
+          attempt: { checks: [] },
+          captureRawKeyIds: false,
+        },
+      },
+      messageDigestCache,
+      rawProofCandidate,
+      keyIdBoundByCaller,
+    );
+  }
+  if (
+    options[verificationObservation]?.attempt != null &&
+    options[verificationObservation]?.check == null
+  ) {
+    return await observeCheck(
+      options,
+      {
+        mechanism: "objectIntegrity",
+        proofId: proof.id?.href ?? null,
+        proofIndex: options[verificationObservation]!.attempt!.checks.length,
+      },
+      rawProofCandidate?.declaredKeyId ??
+        getDeclaredProofKeyId(rawProofCandidate?.value) ??
+        proof.verificationMethodId?.href ?? null,
+      (observation) =>
+        verifyProofWithMessageDigestCache(
+          jsonLd,
+          proof,
+          { ...options, [verificationObservation]: observation },
+          messageDigestCache,
+          rawProofCandidate,
+          keyIdBoundByCaller,
+        ),
+    );
+  }
   const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
   const tracer = tracerProvider.getTracer(metadata.name, metadata.version);
   return await tracer.startActiveSpan(
@@ -700,8 +790,14 @@ async function verifyProofWithMessageDigestCache(
           rawProofCandidate,
           keyIdBoundByCaller,
         );
-        if (key == null) span.setStatus({ code: SpanStatusCode.ERROR });
-        else verified = true;
+        if (key == null) {
+          span.setStatus({ code: SpanStatusCode.ERROR });
+          span.setAttribute(
+            "activitypub.verification.failure_reason",
+            options[verificationObservation]?.check?.reason?.type ??
+              "invalidSignature",
+          );
+        } else verified = true;
         return key;
       } catch (error) {
         threw = true;
@@ -721,7 +817,13 @@ async function verifyProofWithMessageDigestCache(
             getDurationMs(start),
             "object_integrity",
             classified,
-            { cryptosuite },
+            {
+              cryptosuite,
+              verificationFailureReason: verified || threw
+                ? undefined
+                : options[verificationObservation]?.check?.reason?.type ??
+                  "invalidSignature",
+            },
           );
         span.end();
       }
@@ -775,18 +877,29 @@ async function getJsonLdPropertyNames(
   documentLoader: DocumentLoader = preloadedOnlyDocumentLoader,
   inheritedContext?: unknown,
   rejectOnContextError = false,
+  contextState?: { initial?: unknown; scoped?: unknown; active?: unknown },
 ): Promise<Set<string> | null> {
   const names = new Set(defaults);
   const context = jsonLd["@context"] ?? inheritedContext;
-  if (context == null) return names;
+  if (context == null && contextState?.initial == null) return names;
   try {
     const options = { documentLoader };
-    let activeContext = await jsonld.processContext(null, null, options);
-    activeContext = await jsonld.processContext(
-      activeContext,
-      context,
-      options,
-    );
+    let activeContext = contextState?.initial ??
+      await jsonld.processContext(null, null, options);
+    if (contextState?.scoped != null) {
+      activeContext = await jsonld.processContext(
+        activeContext,
+        contextState.scoped,
+        options,
+      );
+    }
+    if (context != null) {
+      activeContext = await jsonld.processContext(
+        activeContext,
+        context,
+        options,
+      );
+    }
     const typeScopedContext = activeContext;
     for (const key of globalThis.Object.keys(jsonLd).sort()) {
       if (
@@ -813,6 +926,7 @@ async function getJsonLdPropertyNames(
         }
       }
     }
+    if (contextState != null) contextState.active = activeContext;
     for (const key of globalThis.Object.keys(jsonLd)) {
       if (expandContextPropertyIri(activeContext, key) === propertyIri) {
         names.add(key);
@@ -963,6 +1077,72 @@ interface RawProofCandidate {
   readonly value: unknown;
   readonly proof: DataIntegrityProof | null;
   readonly reference?: string;
+  readonly declaredKeyId?: string | null;
+}
+
+// Replay contexts already read by the vocabulary parser when resolving raw
+// property aliases.  Diagnostic extraction never dereferences another context.
+function recordProofContexts(documentLoader: DocumentLoader): {
+  loader: DocumentLoader;
+  replay: DocumentLoader;
+} {
+  const documents = new Map<string, RemoteDocument>();
+  return {
+    loader: async (url, options) => {
+      const document = await documentLoader(url, options);
+      documents.set(url, document);
+      return document;
+    },
+    replay: (url, options) => {
+      const document = documents.get(url);
+      return document == null
+        ? preloadedOnlyDocumentLoader(url, options)
+        : Promise.resolve(document);
+    },
+  };
+}
+
+async function getAliasedDeclaredProofKeyId(
+  value: unknown,
+  inheritedContext: unknown,
+  contextLoader: DocumentLoader,
+): Promise<string | null> {
+  if (!isJsonLdNode(value)) return null;
+  const contextState: { active?: unknown } = {};
+  const names = await getJsonLdPropertyNames(
+    value,
+    "https://w3id.org/security#verificationMethod",
+    ["verificationMethod", "https://w3id.org/security#verificationMethod"],
+    contextLoader,
+    inheritedContext,
+    false,
+    contextState,
+  );
+  const methodName = Array.from(names ?? []).find((name) =>
+    value[name] != null
+  );
+  const method = methodName == null ? undefined : value[methodName];
+  const candidate = Array.isArray(method) ? method[0] : method;
+  if (typeof candidate === "string") return candidate;
+  if (!isJsonLdNode(candidate)) return null;
+  const idNames = await getJsonLdPropertyNames(
+    candidate,
+    "@id",
+    ["@id"],
+    contextLoader,
+    undefined,
+    false,
+    {
+      initial: contextState.active,
+      scoped: contextState.active == null || methodName == null
+        ? undefined
+        : jsonld.getContextValue(contextState.active, methodName, "@context"),
+    },
+  );
+  for (const name of idNames ?? []) {
+    if (typeof candidate[name] === "string") return candidate[name];
+  }
+  return null;
 }
 
 function normalizeDocumentUrl(url: string): string {
@@ -990,6 +1170,10 @@ async function parseRawProofCandidates(
   const candidates: RawProofCandidate[] = [];
   for (const value of values) {
     let parsed: DataIntegrityProof | null = null;
+    const contexts = options[verificationObservation] != null &&
+        options[verificationObservation]?.captureRawKeyIds !== false
+      ? recordProofContexts(documentLoader)
+      : undefined;
     if (isJsonLdNode(value)) {
       const proofJsonLd = value["@context"] == null &&
           jsonLd["@context"] != null
@@ -998,7 +1182,7 @@ async function parseRawProofCandidates(
       try {
         parsed = await DataIntegrityProof.fromJsonLd(
           proofJsonLd,
-          { ...options, contextLoader: documentLoader },
+          { ...options, contextLoader: contexts?.loader ?? documentLoader },
         );
       } catch {
         // Malformed sibling proofs cannot match a typed proof.
@@ -1008,6 +1192,13 @@ async function parseRawProofCandidates(
       value,
       proof: parsed,
       reference: getRawProofReference(value) ?? parsed?.id?.href,
+      declaredKeyId: contexts == null
+        ? undefined
+        : await getAliasedDeclaredProofKeyId(
+          value,
+          jsonLd["@context"],
+          contexts.replay,
+        ),
     });
   }
   return candidates;
@@ -1506,8 +1697,13 @@ async function verifyProofInternal(
   const digest = new Uint8Array(proofDigest.byteLength + SHA256_LENGTH);
   digest.set(new Uint8Array(proofDigest), 0);
   const proofValue = proof.proofValue;
+  let keyTried = false;
   const verifyCandidate = async (msgDigest: ArrayBuffer): Promise<boolean> => {
     digest.set(new Uint8Array(msgDigest), proofDigest.byteLength);
+    if (!keyTried) {
+      triedKey(options, publicKey);
+      keyTried = true;
+    }
     return await crypto.subtle.verify(
       "Ed25519",
       publicKey.publicKey,
@@ -2244,8 +2440,57 @@ export async function verifyObject<T extends Object>(
   jsonLd: unknown,
   options: VerifyObjectOptions = {},
 ): Promise<T | null> {
+  if (options[verificationObservation]?.attempt == null) {
+    const observedOptions = {
+      ...options,
+      [verificationObservation]: options[verificationObservation] ??
+        { attempts: [], captureRawKeyIds: false },
+    };
+    const tracer = (options.tracerProvider ?? trace.getTracerProvider())
+      .getTracer(metadata.name, metadata.version);
+    return await tracer.startActiveSpan(
+      "object_integrity_proofs.verify_object",
+      async (span) => {
+        try {
+          return await observeAttempt(
+            observedOptions,
+            "objectIntegrity",
+            async (observation) => {
+              const object = await verifyObject(cls, jsonLd, {
+                ...options,
+                [verificationObservation]: observation,
+              });
+              if (object == null) {
+                span.setStatus({ code: SpanStatusCode.ERROR });
+                span.setAttribute(
+                  "activitypub.verification.failure_reason",
+                  observation.attempt?.reason?.type ??
+                    "signatureVerificationFailed",
+                );
+              }
+              return object;
+            },
+            (value) => value != null,
+          );
+        } catch (error) {
+          span.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: String(error),
+          });
+          throw error;
+        } finally {
+          span.end();
+        }
+      },
+    );
+  }
+  const observation = options[verificationObservation];
   const logger = getLogger(["fedify", "sig", "proof"]);
   const object = await cls.fromJsonLd(jsonLd, options);
+  observation?.parsedObject?.(object);
+  if (observation?.subject != null) {
+    observation.subject.id = object.id == null ? null : new URL(object.id.href);
+  }
   const defaultDocumentLoader = getDocumentLoader();
   const proofContextLoader = options.contextLoader ?? defaultDocumentLoader;
   const attributions = new Set(object.attributionIds.map((uri) => uri.href));
@@ -2301,12 +2546,16 @@ export async function verifyObject<T extends Object>(
     if (candidateIndex >= 0) {
       hydratedCandidates.add(candidateIndex);
       let parsed: DataIntegrityProof | null = null;
+      const contexts = options[verificationObservation] != null &&
+          options[verificationObservation]?.captureRawKeyIds !== false
+        ? recordProofContexts(proofContextLoader)
+        : undefined;
       try {
         parsed = await DataIntegrityProof.fromJsonLd(
           remoteDocument.document,
           {
             documentLoader: baseDocumentLoader,
-            contextLoader: proofContextLoader,
+            contextLoader: contexts?.loader ?? proofContextLoader,
             tracerProvider: options.tracerProvider,
             baseUrl: parseIri(remoteDocument.documentUrl),
           },
@@ -2318,6 +2567,13 @@ export async function verifyObject<T extends Object>(
         value: structuredClone(remoteDocument.document),
         proof: parsed,
         reference,
+        declaredKeyId: contexts == null
+          ? undefined
+          : await getAliasedDeclaredProofKeyId(
+            remoteDocument.document,
+            undefined,
+            contexts.replay,
+          ),
       };
     }
     return remoteDocument;
@@ -2370,6 +2626,15 @@ export async function verifyObject<T extends Object>(
     return null;
   }
   if (attributions.size > 0) {
+    if (observation?.attempt != null) {
+      observation.attempt.reason = observation.attempt.checks.length === 0
+        ? { type: "noSignature" }
+        : {
+          type: "uncoveredAttribution",
+          attributionIds: [...attributions].map((id) => new URL(id)),
+        };
+    }
+
     logger.debug(
       "Some attributions are not authenticated by the proofs: {attributions}.",
       { attributions: [...attributions] },

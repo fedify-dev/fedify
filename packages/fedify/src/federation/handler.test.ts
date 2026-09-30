@@ -1,3 +1,4 @@
+import type { InboxRequestReport } from "./inbox-report.ts";
 import {
   createTestMeterProvider,
   createTestTracerProvider,
@@ -1577,6 +1578,77 @@ test("handleCollection() records not_found collection metrics", async () => {
     recorder.getMeasurements("activitypub.collection.page.items").length,
     0,
   );
+});
+
+test("handleInbox() reports dispatch context errors before a failing error hook", async () => {
+  const kv = new MemoryKvStore();
+  const federation = createFederation<void>({ kv });
+  const request = await signRequest(
+    new Request("https://example.com/inbox", {
+      method: "POST",
+      body: JSON.stringify(
+        await new Create({
+          actor: rsaPublicKey3.ownerId,
+        }).toJsonLd({ contextLoader: mockDocumentLoader }),
+      ),
+    }),
+    rsaPrivateKey3,
+    rsaPublicKey3.id!,
+  );
+  const context = createRequestContext({
+    federation,
+    request,
+    url: new URL(request.url),
+    data: undefined,
+    documentLoader: mockDocumentLoader,
+    contextLoader: mockDocumentLoader,
+  });
+  const error = new Error("Cannot create dispatch context");
+  const reports: InboxRequestReport[] = [];
+  const listeners = new ActivityListenerSet<InboxContext<void>>();
+  let listenerCalled = false;
+  listeners.add(Create, () => {
+    listenerCalled = true;
+  });
+  let errorHookCalled = false;
+  const response = await handleInbox(request, {
+    context,
+    recipient: null,
+    kv,
+    kvPrefixes: {
+      activityIdempotence: ["activity"],
+      publicKey: ["key"],
+      acceptSignatureNonce: ["nonce"],
+    },
+    actorDispatcher: () => new Person({}),
+    inboxListeners: listeners,
+    inboxContextFactory: () => {
+      throw error;
+    },
+    inboxErrorHandler: (_ctx, value) => {
+      assertEquals(value, error);
+      errorHookCalled = true;
+      throw new Error("Error hook failed");
+    },
+    inboxRequestFinishedHandler: (_ctx, report) => {
+      reports.push(report);
+    },
+    onNotFound: () => new Response(null, { status: 404 }),
+    signatureTimeWindow: false,
+    skipSignatureVerification: false,
+  });
+  assertEquals(response.status, 500);
+  assertEquals(listenerCalled, false);
+  assertEquals(errorHookCalled, true);
+  assertEquals(reports.length, 1);
+  assertEquals(reports[0].authentication.status, "verified");
+  assertEquals(reports[0].outcome, {
+    type: "response",
+    status: 500,
+    disposition: "failed",
+    reason: "listenerError",
+    error,
+  });
 });
 
 test("handleInbox()", async () => {
@@ -5604,7 +5676,11 @@ test("handleInbox() nonce replay prevention", async () => {
     if (identifier !== "someone") return null;
     return new Person({ name: "Someone" });
   };
+  let report: InboxRequestReport | undefined;
   const response = await handleInbox(signedRequest, {
+    inboxRequestFinishedHandler: (_ctx, value) => {
+      report = value;
+    },
     recipient: "someone",
     context,
     inboxContextFactory(_activity) {
@@ -5632,6 +5708,12 @@ test("handleInbox() nonce replay prevention", async () => {
     },
   });
   assertEquals(response.status, 401);
+  assert(report != null);
+  assertEquals(report.authentication, {
+    status: "rejected",
+    reason: { type: "invalidNonce" },
+  });
+  assertEquals(report.attempts.at(-1)?.status, "verified");
   // Should return a fresh challenge with a new nonce
   const acceptSig = response.headers.get("Accept-Signature");
   assert(acceptSig != null, "Must emit fresh Accept-Signature challenge");

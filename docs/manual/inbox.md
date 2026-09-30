@@ -187,6 +187,86 @@ authenticated by their [Linked Data Signatures] or Object Integrity Proofs do
 not rely on the request's signatures, so they are not affected.
 
 
+Observing inbox requests
+------------------------
+
+*This API is available since Fedify 2.4.0.*
+
+Register `onRequestFinished()` to record the result of each inbox delivery,
+including rejected requests.  The callback receives a `RequestContext` and an
+`InboxRequestReport`.  It runs once after processing and is awaited before
+`Federation.fetch()` returns a response or rethrows an exception:
+
+~~~~ typescript twoslash
+import type { Federation, InboxRequestReport } from "@fedify/fedify";
+declare const federation: Federation<void>;
+declare function saveReport(report: InboxRequestReport): Promise<void>;
+// ---cut-before---
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  .onRequestFinished(async (ctx, report) => {
+    await saveReport(report);
+  });
+~~~~
+
+`report.inbox` identifies the personal, shared, or portable inbox and its local
+recipient identifier.  Shared inboxes have a `null` recipient.  The hook also
+covers failures while preparing document loaders or resolving a portable
+recipient.  Inbox collection requests, unmatched routes, programmatic
+`routeActivity()` calls, and queue workers do not invoke it.
+
+`report.payload` is either `unavailable` or `parsed`, whose `value` contains the
+original JSON.  A parsed JSON `null` is distinct from an unavailable body.
+`report.activity` contains the `Activity` obtained by the existing processing
+flow, if any.  Observation does not parse the body again or fetch more objects.
+
+`report.attempts` retains each logical evaluation of HTTP Signatures, Linked
+Data Signatures, or Object Integrity Proofs.  An attempt's `checks` describes
+the signatures/proofs evaluated, including the declared key ID and the actual
+`CryptoKey` objects used.  A stale cached key and its fresh replacement are
+both retained in `triedKeys`.  Refresh failure retains the key already tried.
+A verified check's `key` is the successful entry in `triedKeys`, and a verified
+attempt's `signatures` references its successful checks directly.  Attempts
+can repeat a mechanism when additional portable proof policy is evaluated.
+The subject includes its ID and an RFC 6901 JSON Pointer when known; the root
+pointer is `""`.
+
+Cryptographic checks and authentication are separate.  For example, valid
+proofs can leave an actor attribution uncovered, or a valid HTTP Signature can
+fail the actor ownership or nonce check.  Such checks remain `verified` in a
+rejected attempt or request.  Linked Data Signature failure followed by HTTP
+success retains both attempts.  Consult `report.authentication` for the final
+`verified`, `rejected`, `skipped`, or `notDetermined` decision.  `skipped` means
+processing reached the signature bypass; an earlier parse or preparation
+failure leaves authentication `notDetermined`.
+
+Key snapshots have `URL | null` IDs and either `ownerId` for a
+`cryptographicKey` or `controllerId` for a `multikey`.  These URL objects are
+independent of the vocabulary key objects.  The declared key ID is a
+`string | null`, preserving its spelling even when invalid.  Keys and their
+owner/controller claims remain untrusted until the final authentication
+checks accept them.  A readonly report does not freeze its `Activity`,
+`CryptoKey`, or error objects.
+
+`report.outcome` records a response status and disposition (`processed`,
+`enqueued`, `duplicate`, `unhandled`, `rejected`, `customResponse`, or
+`failed`), or the original exception and its processing stage.  An `enqueued`
+result reports producer acceptance, not later worker success.  A custom `202`
+returned by `onUnverifiedActivity()` remains unauthenticated.  The report
+contains no live `Response` to consume or alter.
+
+Errors from the observer are logged and swallowed, preserving the delivery's
+original response or exception.  The callback does not make database writes
+and queue acceptance atomic.  Calling `onRequestFinished()` again replaces the
+previous callback; a federation built from a builder retains the callback
+registered when it was built.  Reports and key objects are never serialized
+into queue messages.
+
+The hook runs independently of [OpenTelemetry sampling](./opentelemetry.md).
+Use it when your application needs every delivery's result or actual public
+keys for later inspection.
+
+
 Handling unverified activities
 ------------------------------
 

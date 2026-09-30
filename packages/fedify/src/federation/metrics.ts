@@ -11,6 +11,10 @@ import {
 } from "@opentelemetry/api";
 import metadata from "../../deno.json" with { type: "json" };
 import type { MessageQueue } from "./mq.ts";
+import type {
+  InboxSignatureFailureReason,
+  InboxVerificationFailureReason,
+} from "../sig/verification.ts";
 
 /**
  * The role of a queued task, derived from the queued message's `type` field.
@@ -411,6 +415,10 @@ export interface SignatureVerificationExtraAttributes {
    * cardinality on success rows.
    */
   failureReason?: HttpSignatureMetricFailureReason;
+  /** Bounded diagnostic shared by signature mechanisms. */
+  verificationFailureReason?:
+    | InboxSignatureFailureReason["type"]
+    | InboxVerificationFailureReason["type"];
 }
 
 /**
@@ -962,6 +970,10 @@ class FederationMetrics {
     }
     if (extra.failureReason != null) {
       attributes["http_signatures.failure_reason"] = extra.failureReason;
+    }
+    if (extra.verificationFailureReason != null) {
+      attributes["activitypub.verification.failure_reason"] =
+        extra.verificationFailureReason;
     }
     if (extra.ldType != null) {
       attributes["ld_signatures.type"] = extra.ldType;

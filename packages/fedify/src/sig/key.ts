@@ -1,4 +1,8 @@
 import {
+  verificationObservation,
+  type VerificationObservationOptions,
+} from "./verification.ts";
+import {
   type Actor,
   CryptographicKey,
   isActor,
@@ -178,7 +182,7 @@ export async function importJwk(
  * Options for {@link fetchKey}.
  * @since 1.3.0
  */
-export interface FetchKeyOptions {
+export interface FetchKeyOptions extends VerificationObservationOptions {
   /**
    * The document loader for loading remote JSON-LD documents.
    */
@@ -1694,10 +1698,48 @@ async function fetchKeyInternal<T extends CryptographicKey | Multikey>(
     cacheKey,
     cls,
     options,
-    (_cacheKey, _keyId, _keyCache, _logger) => {
+    async (_cacheKey, _keyId, _keyCache, _logger) => {
+      const check = options[verificationObservation]?.check;
+      if (check != null) {
+        try {
+          const result = await _keyCache?.getFetchError?.(_cacheKey);
+          if (result != null) {
+            check.reason = {
+              type: "keyFetchError",
+              keyId: new URL(_cacheKey.href),
+              result,
+            };
+          }
+        } catch {
+          // Optional diagnostic metadata must not change a cached miss.
+        }
+      }
       return { key: null, cached: true };
     },
     async (error, cacheKey, keyId, keyCache, logger) => {
+      const check = options[verificationObservation]?.check;
+      if (check != null) {
+        let result: FetchKeyErrorResult;
+        try {
+          result = error instanceof FetchError && error.response != null
+            ? {
+              status: error.response.status,
+              response: error.response.clone(),
+            }
+            : {
+              error: error instanceof Error ? error : new Error(String(error)),
+            };
+        } catch {
+          // A custom loader can provide a response whose body is already used.
+          // Collecting evidence must preserve the original verification result.
+          result = { error: error instanceof Error ? error : new Error() };
+        }
+        check.reason = {
+          type: "keyFetchError",
+          keyId: new URL(cacheKey.href),
+          result,
+        };
+      }
       logger.debug("Failed to fetch key {keyId}.", { keyId, error });
       await keyCache?.set(cacheKey, null);
       if (error instanceof FetchError && error.response != null) {
