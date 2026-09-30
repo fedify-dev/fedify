@@ -195,6 +195,7 @@ import {
   resolvePortableInboxForwardingOptions,
   resolvePortableInboxRecipient,
 } from "./portable-inbox.ts";
+import { getOrderingDestination } from "./portable-delivery.ts";
 import {
   assertSupportedCompoundProofShape,
   signOutgoingActivity,
@@ -212,6 +213,8 @@ import {
   extractInboxes,
   sendActivity,
   SendActivityError,
+  type SendActivityParameters,
+  sendActivityThroughGateways,
   type SenderKeyPair,
 } from "./send.ts";
 import {
@@ -381,6 +384,49 @@ function maxDelay(
   second: Temporal.Duration,
 ): Temporal.Duration {
   return Temporal.Duration.compare(first, second) >= 0 ? first : second;
+}
+
+/**
+ * Gets the fields of a queued message that describe the FEP-ef61 portable
+ * inbox an inbox stands for, if any, omitting the absent ones.
+ */
+function getPortableMessageFields(
+  portableInbox: string | undefined,
+  gatewayInboxes: readonly string[] | undefined,
+): { portableInbox?: string; gatewayInboxes?: readonly string[] } {
+  return {
+    ...(portableInbox == null ? {} : { portableInbox }),
+    ...(gatewayInboxes == null ? {} : { gatewayInboxes: [...gatewayInboxes] }),
+  };
+}
+
+/**
+ * Sends an activity to an inbox, or, if the inbox is the compatible
+ * identifier of an FEP-ef61 portable inbox on more than one gateway, through
+ * the first gateway that accepts it.
+ */
+function sendActivityToInbox(
+  inbox: string,
+  gatewayInboxes: readonly string[] | undefined,
+  parameters: Omit<SendActivityParameters, "inbox">,
+): Promise<void> {
+  if (gatewayInboxes == null || gatewayInboxes.length < 2) {
+    return sendActivity({ ...parameters, inbox: new URL(inbox) });
+  }
+  return sendActivityThroughGateways(
+    parameters,
+    gatewayInboxes.map((i) => new URL(i)),
+  );
+}
+
+function parseInstant(value: string | undefined): Temporal.Instant | undefined {
+  if (value == null) return undefined;
+  try {
+    return Temporal.Instant.from(value);
+  } catch (error) {
+    if (error instanceof RangeError) return undefined;
+    throw error;
+  }
 }
 
 function isTransportDeliveryError(error: unknown): boolean {
@@ -1478,6 +1524,25 @@ export class FederationImpl<TContextData>
         message.activityType,
       );
     };
+    const { gatewayInboxes } = message;
+    if (gatewayInboxes != null && gatewayInboxes.length > 1) {
+      await this.#listenGatewayOutboxMessage(
+        _,
+        {
+          ...message,
+          gatewayInboxes,
+        },
+        span,
+        {
+          keys,
+          logData,
+          getActorIds,
+          parseActivity,
+          dropHeldOutboxMessage,
+        },
+      );
+      return;
+    }
     try {
       const inbox = new URL(message.inbox);
       const circuit = this.outboxQueue == null
@@ -1829,6 +1894,454 @@ export class FederationImpl<TContextData>
     logger.info(
       "Successfully sent activity {activityId} to {inbox}.",
       { ...logData },
+    );
+  }
+
+  /**
+   * Delivers a queued activity to an FEP-ef61 portable inbox through the first
+   * of its gateways that accepts it, trying them one after another in a single
+   * round, so that the round counts as one attempt for the retry policy, keeps
+   * the message's place in its ordering key, and is replayed as a whole by
+   * queues that retry natively.
+   *
+   * A gateway that fails with a permanent failure status is not tried again.
+   * A gateway whose circuit is open, or which asked to be retried later with
+   * `Retry-After`, is skipped in this round.  If no gateway accepts the
+   * activity, the message is held while every remaining gateway is held, and
+   * otherwise retried according to the retry policy.
+   */
+  async #listenGatewayOutboxMessage(
+    contextData: TContextData,
+    message: OutboxMessage & { readonly gatewayInboxes: readonly string[] },
+    span: Span,
+    helpers: {
+      readonly keys: readonly SenderKeyPair[];
+      readonly logData: Record<string, unknown>;
+      readonly getActorIds: () => URL[];
+      readonly parseActivity: () => Promise<Activity>;
+      readonly dropHeldOutboxMessage: (
+        circuit: CircuitBreaker,
+        remoteHost: string,
+        inbox: URL,
+        heldSince: Temporal.Instant,
+        activity: Activity,
+      ) => Promise<void>;
+    },
+  ): Promise<void> {
+    const logger = getLogger(["fedify", "federation", "outbox"]);
+    const circuitLogger = getLogger(["fedify", "federation", "circuit"]);
+    const { keys, logData, getActorIds, parseActivity, dropHeldOutboxMessage } =
+      helpers;
+    const circuit = this.outboxQueue == null ? undefined : this.circuitBreaker;
+    const specDeterminer = new KvSpecDeterminer(
+      this.kv,
+      this.kvPrefixes.httpMessageSignaturesSpec,
+      this.firstKnock,
+      { specTtl: this.httpMessageSignaturesSpecTtl },
+    );
+    interface Survivor {
+      readonly inbox: string;
+      /** How long the gateway is held, or `undefined` if it just failed. */
+      readonly holdDelay?: Temporal.Duration;
+      /** Whether the gateway's circuit holds it, rather than `Retry-After`. */
+      readonly circuitHeld?: boolean;
+      /** Whether the gateway was held after it failed in this round. */
+      readonly postFailure?: boolean;
+      /** The time before which the gateway must not be tried again. */
+      readonly notBefore?: Temporal.Instant;
+      readonly retryAfter?: Temporal.Duration;
+    }
+    const survivors: Survivor[] = [];
+    let lastError: unknown;
+    let lastPermanent: { error: SendActivityError; inbox: URL } | undefined;
+    let activity: Activity | undefined;
+    const getActivity = async () => activity ??= await parseActivity();
+    const drop = async (
+      circuit: CircuitBreaker,
+      remoteHost: string,
+      inbox: URL,
+      heldSince: Temporal.Instant,
+    ) => {
+      await dropHeldOutboxMessage(
+        circuit,
+        remoteHost,
+        inbox,
+        heldSince,
+        await getActivity(),
+      );
+    };
+    // Checked up front, as gateways deferred by Retry-After are skipped
+    // without asking the circuit breaker, which would otherwise tell:
+    const heldSince = parseInstant(message.circuitHeldSince);
+    if (
+      circuit != null && heldSince != null &&
+      Temporal.Instant.compare(
+          heldSince.add(circuit.options.heldActivityTtl),
+          Temporal.Now.instant(),
+        ) <= 0
+    ) {
+      const inbox = new URL(message.gatewayInboxes[0]);
+      await drop(circuit, getRemoteHost(inbox), inbox, heldSince);
+      return;
+    }
+    for (const inboxHref of message.gatewayInboxes) {
+      const inbox = new URL(inboxHref);
+      const remoteHost = getRemoteHost(inbox);
+      const now = Temporal.Now.instant();
+      const notBefore = parseInstant(message.gatewayNotBefore?.[inboxHref]);
+      if (notBefore != null && Temporal.Instant.compare(notBefore, now) > 0) {
+        // Checked before the circuit, so that no recovery probe is taken:
+        survivors.push({
+          inbox: inboxHref,
+          holdDelay: now.until(notBefore),
+          notBefore,
+        });
+        continue;
+      }
+      let decision: CircuitBreakerBeforeSendDecision | undefined;
+      if (circuit != null) {
+        try {
+          decision = await circuit.beforeSend(remoteHost, message);
+        } catch (circuitError) {
+          circuitLogger.error(
+            "Failed to check circuit breaker state before sending; " +
+              "proceeding with delivery:\n{error}",
+            { ...logData, remoteHost, error: circuitError },
+          );
+        }
+      }
+      if (decision != null && circuit != null) {
+        if (decision.type === "drop") {
+          await drop(circuit, remoteHost, inbox, decision.heldSince);
+          return;
+        } else if (decision.type === "hold") {
+          recordCircuitBreakerHeldSpanEvent(span, remoteHost, decision.state);
+          survivors.push({
+            inbox: inboxHref,
+            holdDelay: decision.delay,
+            circuitHeld: true,
+          });
+          continue;
+        } else if (decision.stateChange != null) {
+          recordCircuitBreakerSpanEvent(
+            span,
+            remoteHost,
+            decision.stateChange,
+          );
+        }
+      }
+      try {
+        await sendActivity({
+          allowPrivateAddress: this.allowPrivateAddress,
+          keys,
+          activity: message.activity,
+          activityId: message.activityId,
+          activityType: message.activityType,
+          inbox,
+          sharedInbox: message.sharedInbox,
+          headers: new Headers(message.headers),
+          specDeterminer,
+          meterProvider: this.meterProvider,
+          tracerProvider: this.tracerProvider,
+        });
+      } catch (error) {
+        lastError = error;
+        const isPermanentFailure = error instanceof SendActivityError &&
+          this.permanentFailureStatusCodes.includes(error.statusCode);
+        let retryAfter = !isPermanentFailure &&
+            error instanceof SendActivityError &&
+            (error.statusCode === 429 || error.statusCode === 503)
+          ? parseRetryAfter(error.responseHeaders)
+          : undefined;
+        let retryAt: Temporal.Instant | undefined;
+        if (retryAfter != null) {
+          try {
+            retryAt = Temporal.Now.instant().add(retryAfter);
+          } catch (e) {
+            // A Retry-After too long to be an instant cannot be honored, and
+            // must not keep the round from trying the other gateways:
+            if (!(e instanceof RangeError)) throw e;
+            retryAfter = undefined;
+          }
+        }
+        let postDecision: CircuitBreakerBeforeSendDecision | undefined;
+        if (circuit != null) {
+          try {
+            if (error instanceof SendActivityError) {
+              const { statusCode } = error;
+              const stateChange = isPermanentFailure || statusCode === 429 ||
+                  (statusCode >= 400 && statusCode < 500)
+                ? await circuit.recordReachableFailure(remoteHost)
+                : statusCode >= 500
+                ? await circuit.recordFailure(remoteHost)
+                : undefined;
+              if (stateChange != null) {
+                recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
+              }
+            } else if (isTransportDeliveryError(error)) {
+              const stateChange = await circuit.recordFailure(remoteHost);
+              if (stateChange != null) {
+                recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
+              }
+            }
+            if (!isPermanentFailure) {
+              postDecision = await circuit.beforeSend(remoteHost, message);
+            }
+          } catch (circuitError) {
+            circuitLogger.error(
+              "Failed to update circuit breaker state after delivery " +
+                "failure; falling back to normal failure handling:\n{error}",
+              { ...logData, remoteHost, error: circuitError },
+            );
+          }
+        }
+        span.addEvent("activitypub.delivery.failed", {
+          "activitypub.remote.host": remoteHost,
+          "activitypub.delivery.attempt": message.attempt,
+          "activitypub.delivery.permanent_failure": isPermanentFailure,
+          ...(error instanceof SendActivityError
+            ? { "http.response.status_code": error.statusCode }
+            : {}),
+        });
+        try {
+          await this.onOutboxError?.(error as Error, await getActivity());
+        } catch (handlerError) {
+          logger.error(
+            "An unexpected error occurred in onError handler:\n{error}",
+            { ...logData, inbox: inboxHref, error: handlerError },
+          );
+        }
+        if (isPermanentFailure) {
+          logger.warn(
+            "Permanent delivery failure for activity {activityId} to " +
+              "{inbox} ({status}); not trying the gateway again.",
+            { ...logData, inbox: inboxHref, status: error.statusCode },
+          );
+          lastPermanent = { error, inbox };
+          continue;
+        }
+        if (postDecision?.type === "drop" && circuit != null) {
+          await drop(circuit, remoteHost, inbox, postDecision.heldSince);
+          return;
+        } else if (postDecision?.type === "hold") {
+          recordCircuitBreakerHeldSpanEvent(
+            span,
+            remoteHost,
+            postDecision.state,
+          );
+          survivors.push({
+            inbox: inboxHref,
+            holdDelay: retryAfter == null
+              ? postDecision.delay
+              : maxDelay(postDecision.delay, retryAfter),
+            circuitHeld: true,
+            postFailure: true,
+            notBefore: retryAt,
+            retryAfter,
+          });
+        } else {
+          survivors.push({ inbox: inboxHref, notBefore: retryAt, retryAfter });
+        }
+        logger.warn(
+          "Failed to send activity {activityId} to {inbox} (attempt " +
+            "#{attempt}); trying the next gateway if any:\n{error}",
+          { ...logData, inbox: inboxHref, error },
+        );
+        continue;
+      }
+      if (circuit != null) {
+        try {
+          const stateChange = await circuit.recordSuccess(remoteHost);
+          if (stateChange != null) {
+            recordCircuitBreakerSpanEvent(span, remoteHost, stateChange);
+          }
+        } catch (error) {
+          circuitLogger.error(
+            "Failed to record successful delivery in circuit breaker state; " +
+              "the activity was already delivered:\n{error}",
+            { ...logData, remoteHost, error },
+          );
+        }
+      }
+      logger.info(
+        "Successfully sent activity {activityId} to {inbox}.",
+        { ...logData, inbox: inboxHref },
+      );
+      return;
+    }
+    if (lastError != null) {
+      span.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: String(lastError),
+      });
+    }
+    if (survivors.length < 1) {
+      // Every gateway failed permanently:
+      const { error, inbox } = lastPermanent!;
+      this.metrics.recordPermanentFailure(error.inbox, error.statusCode);
+      logger.warn(
+        "Permanent delivery failure for activity {activityId} to every " +
+          "gateway of {portableInbox}; not retrying.",
+        { ...logData, portableInbox: message.portableInbox },
+      );
+      if (this.outboxPermanentFailureHandler != null) {
+        const ctx = this.#createContext(
+          new URL(message.baseUrl),
+          contextData,
+          {
+            documentLoader: this.documentLoaderFactory(
+              this.#getLoaderOptions(message.baseUrl),
+            ),
+          },
+        );
+        try {
+          await this.outboxPermanentFailureHandler(ctx, {
+            reason: "http",
+            inbox,
+            activity: await getActivity(),
+            error,
+            statusCode: error.statusCode,
+            actorIds: getActorIds(),
+          });
+        } catch (handlerError) {
+          logger.error(
+            "An unexpected error occurred in " +
+              "outboxPermanentFailureHandler:\n{error}",
+            { ...logData, error: handlerError },
+          );
+        }
+      }
+      recordOutboxActivity(
+        this.meterProvider,
+        "abandoned",
+        message.activityType,
+      );
+      return;
+    }
+    const now = Temporal.Now.instant();
+    const gatewayNotBefore: Record<string, string> = {};
+    for (const survivor of survivors) {
+      if (
+        survivor.notBefore != null &&
+        Temporal.Instant.compare(survivor.notBefore, now) > 0
+      ) {
+        gatewayNotBefore[survivor.inbox] = survivor.notBefore.toString();
+      }
+    }
+    const {
+      circuitHeld: _circuitHeld,
+      gatewayNotBefore: _gatewayNotBefore,
+      ...rest
+    } = message;
+    const nextMessage = {
+      ...rest,
+      inbox: survivors[0].inbox,
+      gatewayInboxes: survivors.map((s) => s.inbox),
+      ...(globalThis.Object.keys(gatewayNotBefore).length < 1
+        ? {}
+        : { gatewayNotBefore }),
+    } satisfies OutboxMessage;
+    const { outboxQueue } = this;
+    const policyDelay = this.outboxRetryPolicy({
+      elapsedTime: Temporal.Instant.from(message.started).until(now),
+      attempts: message.attempt,
+    });
+    if (
+      outboxQueue != null && survivors.every((s) => s.holdDelay != null) &&
+      (policyDelay != null || !survivors.some((s) => s.postFailure))
+    ) {
+      // Every remaining gateway is held, so the whole delivery waits for the
+      // first of them without counting as an attempt:
+      let delay = survivors
+        .map((s) => s.holdDelay!)
+        .reduce((a, b) => Temporal.Duration.compare(a, b) <= 0 ? a : b);
+      let heldMessage: OutboxMessage = nextMessage;
+      if (survivors.some((s) => s.circuitHeld)) {
+        const since = heldSince ?? now;
+        if (circuit != null) delay = circuit.capHeldDelay(since, delay);
+        heldMessage = {
+          ...nextMessage,
+          circuitHeld: true,
+          circuitHeldSince: since.toString(),
+        };
+      }
+      logger.warn(
+        "Failed to send activity {activityId} to {portableInbox}; holding it " +
+          "until one of its gateways can be tried again.",
+        { ...logData, portableInbox: message.portableInbox },
+      );
+      await outboxQueue.enqueue(heldMessage, {
+        delay: clampNegativeDelay(delay),
+        orderingKey: message.orderingKey,
+      });
+      this.metrics.recordQueueTaskEnqueued(
+        {
+          role: "outbox",
+          queue: outboxQueue,
+          activityType: heldMessage.activityType,
+        },
+        heldMessage.attempt,
+      );
+      return;
+    }
+    const hasRetryAfter = survivors.some((s) => s.retryAfter != null);
+    // A natively retrying queue replays the original message, so it is left
+    // to the queue only if no gateway has to be excluded from the retry:
+    if (
+      outboxQueue?.nativeRetrial && !hasRetryAfter &&
+      survivors.length === message.gatewayInboxes.length &&
+      globalThis.Object.keys(gatewayNotBefore).length < 1
+    ) {
+      logger.error(
+        "Failed to send activity {activityId} to every gateway of " +
+          "{portableInbox}; backend will handle retry:\n{error}",
+        { ...logData, portableInbox: message.portableInbox, error: lastError },
+      );
+      throw lastError;
+    }
+    if (policyDelay == null || outboxQueue == null) {
+      logger.error(
+        "Failed to send activity {activityId} to every gateway of " +
+          "{portableInbox} after {attempt} attempts; giving up:\n{error}",
+        { ...logData, portableInbox: message.portableInbox, error: lastError },
+      );
+      recordOutboxActivity(
+        this.meterProvider,
+        "abandoned",
+        message.activityType,
+      );
+      return;
+    }
+    // The next round is due as soon as any gateway can be tried again; the
+    // others are skipped then until their own time comes:
+    const delay = survivors
+      .map((s) => s.holdDelay ?? s.retryAfter ?? policyDelay)
+      .reduce((a, b) => Temporal.Duration.compare(a, b) <= 0 ? a : b);
+    const retryMessage = {
+      ...nextMessage,
+      attempt: message.attempt + 1,
+    } satisfies OutboxMessage;
+    logger.error(
+      "Failed to send activity {activityId} to every gateway of " +
+        "{portableInbox} (attempt #{attempt}); retry...:\n{error}",
+      { ...logData, portableInbox: message.portableInbox, error: lastError },
+    );
+    await outboxQueue.enqueue(retryMessage, {
+      delay: clampNegativeDelay(delay),
+      orderingKey: message.orderingKey,
+    });
+    this.metrics.recordQueueTaskEnqueued(
+      {
+        role: "outbox",
+        queue: outboxQueue,
+        activityType: retryMessage.activityType,
+      },
+      retryMessage.attempt,
+    );
+    recordOutboxActivity(
+      this.meterProvider,
+      "retried",
+      retryMessage.activityType,
     );
   }
 
@@ -2423,7 +2936,12 @@ export class FederationImpl<TContextData>
     keys: SenderKeyPair[],
     inboxes: Record<
       string,
-      { actorIds: Iterable<string>; sharedInbox: boolean }
+      {
+        actorIds: Iterable<string>;
+        sharedInbox: boolean;
+        portableInbox?: string;
+        gatewayInboxes?: readonly string[];
+      }
     >,
     activity: Activity,
     options: SendActivityInternalOptions<TContextData>,
@@ -2557,13 +3075,12 @@ export class FederationImpl<TContextData>
       const promises: Promise<void>[] = [];
       for (const inbox in inboxes) {
         promises.push(
-          sendActivity({
+          sendActivityToInbox(inbox, inboxes[inbox].gatewayInboxes, {
             allowPrivateAddress: this.allowPrivateAddress,
             keys,
             activity: jsonLd,
             activityId: activity.id?.href,
             activityType: getTypeId(activity).href,
-            inbox: new URL(inbox),
             sharedInbox: inboxes[inbox].sharedInbox,
             headers: collectionSync == null ? undefined : new Headers({
               "Collection-Synchronization":
@@ -2600,10 +3117,10 @@ export class FederationImpl<TContextData>
     propagation.inject(context.active(), carrier);
     const messages: { message: OutboxMessage; orderingKey?: string }[] = [];
     for (const inbox in inboxes) {
-      const inboxOrigin = new URL(inbox).origin;
+      const { portableInbox, gatewayInboxes } = inboxes[inbox];
       const messageOrderingKey = orderingKey == null
         ? undefined
-        : `${orderingKey}\n${inboxOrigin}`;
+        : `${orderingKey}\n${getOrderingDestination(inbox, portableInbox)}`;
       const message: OutboxMessage = {
         type: "outbox",
         id: crypto.randomUUID(),
@@ -2625,6 +3142,7 @@ export class FederationImpl<TContextData>
             ),
         },
         orderingKey: messageOrderingKey,
+        ...getPortableMessageFields(portableInbox, gatewayInboxes),
         traceContext: carrier,
       };
       messages.push({ message, orderingKey: messageOrderingKey });
@@ -4961,8 +5479,12 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       keys: keyJwkPairs,
       inboxes: globalThis.Object.fromEntries(
         globalThis.Object.entries(inboxes).map((
-          [k, { actorIds, sharedInbox }],
-        ) => [k, { actorIds: [...actorIds], sharedInbox }]),
+          [k, { actorIds, sharedInbox, portableInbox, gatewayInboxes }],
+        ) => [k, {
+          actorIds: [...actorIds],
+          sharedInbox,
+          ...getPortableMessageFields(portableInbox, gatewayInboxes),
+        }]),
       ),
       activity: activityJsonLd,
       activityId: activity.id?.href,
@@ -5705,13 +6227,12 @@ async function forwardActivityInternal<TContextData>(
     const promises: Promise<void>[] = [];
     for (const inbox in inboxes) {
       promises.push(
-        sendActivity({
+        sendActivityToInbox(inbox, inboxes[inbox].gatewayInboxes, {
           allowPrivateAddress: ctx.federation.allowPrivateAddress,
           keys,
           activity: ctx.activity,
           activityId: ctx.activityId,
           activityType: ctx.activityType,
-          inbox: new URL(inbox),
           sharedInbox: inboxes[inbox].sharedInbox,
           meterProvider: ctx.meterProvider,
           tracerProvider: ctx.tracerProvider,
@@ -5745,7 +6266,7 @@ async function forwardActivityInternal<TContextData>(
   const started = new Date().toISOString();
   const messages: { message: OutboxMessage; orderingKey?: string }[] = [];
   for (const inbox in inboxes) {
-    const inboxUrl = new URL(inbox);
+    const { portableInbox, gatewayInboxes } = inboxes[inbox];
     const message: OutboxMessage = {
       type: "outbox",
       id: crypto.randomUUID(),
@@ -5762,7 +6283,8 @@ async function forwardActivityInternal<TContextData>(
       headers: {},
       orderingKey: orderingKey == null
         ? undefined
-        : `${orderingKey}\n${inboxUrl.origin}`,
+        : `${orderingKey}\n${getOrderingDestination(inbox, portableInbox)}`,
+      ...getPortableMessageFields(portableInbox, gatewayInboxes),
       traceContext: carrier,
     };
     messages.push({

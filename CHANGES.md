@@ -79,6 +79,32 @@ To be released.
     prefix for remembering forwarded activities, which defaults to
     `["_fedify", "portableInboxForwarding"]`.  [[#288], [#839], [#1092]]
 
+ -  Added delivery to [FEP-ef61] portable inboxes, i.e., `ap:` and `ap+ef61:`
+    URIs, to `Context.sendActivity()` and `InboxContext.forwardActivity()`.
+    They deliver an activity to the compatible identifier of such an inbox
+    on one of the recipient's gateways, e.g.,
+    `https://gateway.example/.well-known/apgateway/did:key:z6Mk.../actor/inbox`.
+    The gateways are taken from the recipient's `gateways`, or, if it has no
+    valid gateway, from the `@gateway` location hints of the inbox URI, and
+    at most five of them are tried one after another until one accepts the
+    activity.  Previously, such a delivery failed with
+    `UrlError: Unsupported protocol: ap+ef61:`.  A recipient with no gateway
+    to deliver through is skipped with a warning.  [[#288], [#1147], [#1180]]
+
+     -  A gateway that fails with a permanent failure status, such as
+        `404 Not Found`, is not tried again for the activity.  If no gateway
+        accepts the activity, the whole round of gateways counts as one
+        attempt of the retry policy.
+
+     -  The `preferSharedInbox` option is ignored for recipients with portable
+        inboxes, the `excludeBaseUris` option is compared with the origins of
+        their gateways, and deliveries to a portable inbox are ordered by the
+        actor's DID when the `orderingKey` option is given.
+
+     -  Queue workers of older Fedify versions deliver queued activities to
+        portable inboxes only through the first gateway, so upgrade them
+        before the servers that enqueue deliveries.
+
  -  Added serving of [FEP-ef61] portable collections through the gateway
     endpoint, e.g.,
     `GET /.well-known/apgateway/did:key:z6Mk.../users/alice/outbox`, by the
@@ -779,6 +805,7 @@ To be released.
 [#1143]: https://github.com/fedify-dev/fedify/issues/1143
 [#1145]: https://github.com/fedify-dev/fedify/pull/1145
 [#1146]: https://github.com/fedify-dev/fedify/issues/1146
+[#1147]: https://github.com/fedify-dev/fedify/issues/1147
 [#1148]: https://github.com/fedify-dev/fedify/issues/1148
 [#1163]: https://github.com/fedify-dev/fedify/issues/1163
 [#1164]: https://github.com/fedify-dev/fedify/pull/1164
@@ -788,6 +815,7 @@ To be released.
 [#1169]: https://github.com/fedify-dev/fedify/pull/1169
 [#1171]: https://github.com/fedify-dev/fedify/pull/1171
 [#1178]: https://github.com/fedify-dev/fedify/pull/1178
+[#1180]: https://github.com/fedify-dev/fedify/pull/1180
 
 ### @fedify/adonisjs
 
@@ -1187,6 +1215,13 @@ To be released.
     `temporal-polyfill`, while type declarations rely on the standard
     `esnext.temporal` lib reference.
     [[#823], [#925]]
+
+ -  Added the optional `Recipient.gateways` property, the [FEP-ef61] gateways
+    of a portable actor, through which Fedify delivers activities to its
+    `ap:` or `ap+ef61:` inbox.  Every actor class already has it, so
+    applications that build `Recipient` objects by hand, e.g., in followers
+    collection dispatchers, need to set it only for portable actors.
+    [[#288], [#1147], [#1180]]
 
  -  Added the `verifyPortableObject` option to `LookupObjectOptions`.  With
     it, `lookupObject()` looks up [FEP-ef61] portable objects: `ap:` and

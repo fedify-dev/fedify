@@ -15,7 +15,12 @@ import {
   doubleKnock,
   type HttpMessageSignaturesSpecDeterminer,
 } from "../sig/http.ts";
+import { isPortableUri } from "../sig/portable-key-id.ts";
 import { getDurationMs, getFederationMetrics } from "./metrics.ts";
+import {
+  mergeGatewayInboxes,
+  resolvePortableDeliveryTarget,
+} from "./portable-delivery.ts";
 
 /**
  * Parameters for {@link extractInboxes}.
@@ -36,7 +41,11 @@ export interface ExtractInboxesParameters {
    * The base URIs to exclude from the recipients' inboxes.  It is useful
    * for excluding the recipients having the same shared inbox with the sender.
    *
-   * Note that the only `origin` parts of the `URL`s are compared.
+   * Note that the only `origin` parts of the `URL`s are compared.  For
+   * an [FEP-ef61] portable inbox, they are compared with the origins of
+   * the recipient's gateways, and only the excluded gateways are skipped.
+   *
+   * [FEP-ef61]: https://w3id.org/fep/ef61
    *
    * @since 0.9.0
    */
@@ -44,37 +53,128 @@ export interface ExtractInboxesParameters {
 }
 
 /**
+ * An inbox extracted by {@link extractInboxes}.
+ */
+export interface ExtractedInbox {
+  /**
+   * The IDs of the recipients that the inbox belongs to.
+   */
+  actorIds: Set<string>;
+
+  /**
+   * Whether the inbox is a shared inbox.
+   */
+  sharedInbox: boolean;
+
+  /**
+   * The canonical form of the [FEP-ef61] portable inbox, i.e., an `ap:` or
+   * `ap+ef61:` URI, that the inbox stands for.  It is set only if the inbox
+   * is resolved from a portable inbox, in which case the inbox is the portable
+   * inbox's compatible identifier on its first gateway.
+   *
+   * [FEP-ef61]: https://w3id.org/fep/ef61
+   * @since 2.4.0
+   */
+  portableInbox?: string;
+
+  /**
+   * The compatible identifiers of the portable inbox on each gateway to
+   * deliver through, in order, starting with the inbox itself.  It is set
+   * only if {@link portableInbox} is set.
+   * @since 2.4.0
+   */
+  gatewayInboxes?: string[];
+}
+
+/**
  * Extracts the inbox URLs from recipients.
+ *
+ * An [FEP-ef61] portable inbox, i.e., an `ap:` or `ap+ef61:` URI, is resolved
+ * to its compatible identifiers on the recipient's gateways, or, if the
+ * recipient has no valid gateway, on the gateways in the `@gateway` location
+ * hints of the inbox URI.  The inbox is keyed by the compatible identifier on
+ * the first gateway, and the others are listed in
+ * {@link ExtractedInbox.gatewayInboxes}.  A recipient whose portable inbox
+ * has no gateway to deliver through is skipped.  The shared inbox of
+ * a recipient with a portable inbox is never preferred, since only a portable
+ * inbox is synchronized between the gateways.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
  * @param parameters The parameters to extract the inboxes.
  *                   See also {@link ExtractInboxesParameters}.
  * @returns The inboxes as a map of inbox URL to actor URIs.
  */
 export function extractInboxes(
   { recipients, preferSharedInbox, excludeBaseUris }: ExtractInboxesParameters,
-): Record<string, { actorIds: Set<string>; sharedInbox: boolean }> {
-  const inboxes: Record<
-    string,
-    { actorIds: Set<string>; sharedInbox: boolean }
-  > = {};
+): Record<string, ExtractedInbox> {
+  const inboxes: Record<string, ExtractedInbox> = {};
+  // The keys of portable inboxes by their canonical forms, so that different
+  // spellings of the same portable inbox are merged:
+  const portableKeys = new Map<string, string>();
+  // The keys of portable inboxes by their compatible identifiers on each of
+  // their gateways, so that a recipient that has one of them as its inbox is
+  // merged too:
+  const compatibleKeys = new Map<string, string>();
   for (const recipient of recipients) {
+    if (recipient.id == null) continue;
     let inbox: URL | null;
     let sharedInbox = false;
-    if (preferSharedInbox && recipient.endpoints?.sharedInbox != null) {
+    if (
+      preferSharedInbox && recipient.endpoints?.sharedInbox != null &&
+      (recipient.inboxId == null || !isPortableUri(recipient.inboxId))
+    ) {
       inbox = recipient.endpoints.sharedInbox;
       sharedInbox = true;
     } else {
       inbox = recipient.inboxId;
     }
-    if (inbox != null && recipient.id != null) {
-      if (
-        excludeBaseUris != null &&
-        excludeBaseUris.some((u) => u.origin === inbox?.origin)
-      ) {
-        continue;
+    if (inbox == null) continue;
+    if (isPortableUri(inbox)) {
+      const target = resolvePortableDeliveryTarget(
+        recipient,
+        inbox,
+        excludeBaseUris,
+      );
+      if (target == null) continue;
+      const gatewayInboxes = target.inboxes.map((u) => u.href);
+      // Every entry that already stands for this portable inbox, i.e., its
+      // entry, and those of ordinary recipients that reached it through one
+      // of its compatible identifiers, is folded into one:
+      const existingKeys = new Set<string>();
+      const portableKey = portableKeys.get(target.portableInbox);
+      if (portableKey != null) existingKeys.add(portableKey);
+      for (const i of gatewayInboxes) {
+        const k = compatibleKeys.get(i) ?? i;
+        if (Object.hasOwn(inboxes, k)) existingKeys.add(k);
       }
-      inboxes[inbox.href] ??= { actorIds: new Set(), sharedInbox };
-      inboxes[inbox.href].actorIds.add(recipient.id.href);
+      const [key = gatewayInboxes[0], ...otherKeys] = existingKeys;
+      portableKeys.set(target.portableInbox, key);
+      const entry = inboxes[key] ??= { actorIds: new Set(), sharedInbox };
+      for (const k of otherKeys) {
+        for (const actorId of inboxes[k].actorIds) entry.actorIds.add(actorId);
+        delete inboxes[k];
+      }
+      // An entry that an ordinary recipient reached through the same URL,
+      // e.g., the compatible identifier as its inbox, is upgraded:
+      entry.sharedInbox = false;
+      entry.portableInbox = target.portableInbox;
+      entry.gatewayInboxes = mergeGatewayInboxes(
+        entry.gatewayInboxes ?? [key],
+        gatewayInboxes,
+      );
+      for (const i of entry.gatewayInboxes) compatibleKeys.set(i, key);
+      entry.actorIds.add(recipient.id.href);
+      continue;
     }
+    if (
+      excludeBaseUris != null &&
+      excludeBaseUris.some((u) => u.origin === inbox?.origin)
+    ) {
+      continue;
+    }
+    const key = compatibleKeys.get(inbox.href) ?? inbox.href;
+    inboxes[key] ??= { actorIds: new Set(), sharedInbox };
+    inboxes[key].actorIds.add(recipient.id.href);
   }
   return inboxes;
 }
@@ -204,6 +304,43 @@ export function sendActivity(
       }
     },
   );
+}
+
+/**
+ * Sends an activity to the first of the given inboxes that accepts it, i.e.,
+ * the compatible identifiers of a portable inbox on its gateways, trying them
+ * one after another.
+ * @param parameters The parameters, except for the inbox.
+ * @param inboxes The inboxes to try, in order.  Must not be empty.
+ * @throws {Error} The error of the last inbox if no inbox accepts it.
+ */
+export async function sendActivityThroughGateways(
+  parameters: Omit<SendActivityParameters, "inbox">,
+  inboxes: readonly URL[],
+): Promise<void> {
+  const logger = getLogger(["fedify", "federation", "outbox"]);
+  let lastError: unknown;
+  for (const [i, inbox] of inboxes.entries()) {
+    try {
+      await sendActivity({ ...parameters, inbox });
+      return;
+    } catch (error) {
+      lastError = error;
+      if (i < inboxes.length - 1) {
+        logger.warn(
+          "Failed to send activity {activityId} to {inbox}; trying the next " +
+            "gateway {next}:\n{error}",
+          {
+            activityId: parameters.activityId,
+            inbox: inbox.href,
+            next: inboxes[i + 1].href,
+            error,
+          },
+        );
+      }
+    }
+  }
+  throw lastError;
 }
 
 const MAX_ERROR_RESPONSE_BODY_BYTES = 1024;

@@ -26,7 +26,22 @@ export interface FanoutMessage {
   readonly inboxes: Readonly<
     Record<
       string,
-      { readonly actorIds: readonly string[]; readonly sharedInbox: boolean }
+      {
+        readonly actorIds: readonly string[];
+        readonly sharedInbox: boolean;
+        /**
+         * The canonical form of the FEP-ef61 portable inbox that the inbox
+         * stands for.
+         * @internal
+         */
+        readonly portableInbox?: string;
+        /**
+         * The compatible identifiers of the portable inbox on each gateway to
+         * deliver through, in order.
+         * @internal
+         */
+        readonly gatewayInboxes?: readonly string[];
+      }
     >
   >;
   readonly activity: unknown;
@@ -72,6 +87,27 @@ export interface OutboxMessage {
    * @internal
    */
   readonly circuitHeldSince?: string;
+  /**
+   * The canonical form of the FEP-ef61 portable inbox that {@link inbox}, its
+   * compatible identifier on a gateway, stands for.
+   * @internal
+   */
+  readonly portableInbox?: string;
+  /**
+   * The compatible identifiers of the FEP-ef61 portable inbox on each gateway
+   * that is still to be tried, in order.  {@link inbox} is the first one.
+   * If there is more than one, the activity is delivered through the first
+   * gateway that accepts it.
+   * @internal
+   */
+  readonly gatewayInboxes?: readonly string[];
+  /**
+   * The times before which each of {@link gatewayInboxes} must not be tried
+   * again, as their responses' `Retry-After` headers requested, keyed by
+   * the inbox URL, in ISO 8601.
+   * @internal
+   */
+  readonly gatewayNotBefore?: Readonly<Record<string, string>>;
   readonly traceContext: Readonly<Record<string, string>>;
 }
 

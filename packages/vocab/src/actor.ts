@@ -541,4 +541,14 @@ export interface Recipient {
      */
     readonly sharedInbox: URL | null;
   } | null;
+
+  /**
+   * The [FEP-ef61] gateways of the actor, in order, if it is a portable actor.
+   * Activities to a portable inbox, i.e., an `ap:` or `ap+ef61:` URI, are
+   * delivered to the inbox's compatible identifier on one of these gateways.
+   *
+   * [FEP-ef61]: https://w3id.org/fep/ef61
+   * @since 2.4.0
+   */
+  readonly gateways?: readonly URL[];
 }
