@@ -100,6 +100,7 @@ export function parseJsonLdId(
  * Portable URI and FEP-ef61 compatible identifier strings whose path contains
  * a `.` or `..` segment, including percent-encoded spellings, throw a
  * `TypeError`: JavaScript `URL` would otherwise identify a different object.
+ * This also applies to compatible identifier strings used as relative bases.
  * A `URL` argument may already have lost such segments before this function
  * receives it.
  */
@@ -322,6 +323,9 @@ function normalizeBaseIri(base?: string | URL): string | URL | undefined {
   if (base == null) return undefined;
   if (base instanceof URL) return normalizePortableUrl(base) ?? base;
   assertPortablePathCanBeParsed(base);
+  if (URL.canParse(base)) {
+    assertCompatiblePathCanBeParsed(base, new URL(base));
+  }
   return parsePortableIri(base) ??
     (base.startsWith("at://") && !URL.canParse(".", base)
       ? parseAtUri(base)

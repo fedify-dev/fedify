@@ -141,6 +141,19 @@ test("parseIri() resolves relative IRIs against portable string bases", () => {
   );
 });
 
+test("parseIri() rejects lossy compatible ID string bases", () => {
+  const base = "https://server.example/.well-known/apgateway/did:key:z6MkAlice";
+  for (const segment of [".", "..", "%2e", "%2e%2e"]) {
+    const rawBase = `${base}/a/${segment}/b`;
+    throws(() => parseIri("child", rawBase), TypeError, rawBase);
+    throws(() => parseJsonLdId("child", rawBase), TypeError, rawBase);
+  }
+  deepStrictEqual(
+    parseIri("child", "https://server.example/a/../b"),
+    new URL("https://server.example/child"),
+  );
+});
+
 test("parseIri() resolves relative IRIs against at:// string bases", () => {
   deepStrictEqual(
     parseIri("/record", "at://did:plc:example/collection/item"),
