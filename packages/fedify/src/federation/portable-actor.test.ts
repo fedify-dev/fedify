@@ -241,6 +241,10 @@ test("Context.getPortableActorUri()", async (t) => {
     );
   });
 
+  await t.step("does not mint a different ID for a dot segment", () => {
+    assertThrows(() => ctx.getPortableActorUri("..", did), TypeError);
+  });
+
   await t.step("is serialized in the canonical form", async () => {
     const person = new Person({ id: ctx.getPortableActorUri("alice", did) });
     const json = await person.toJsonLd({

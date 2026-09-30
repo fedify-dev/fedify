@@ -29,6 +29,56 @@ const INVALID_PERCENT_ENCODING_PATTERN = /%(?![0-9A-Fa-f]{2})/;
 const PERCENT_ENCODING_PATTERN = /%[0-9A-Fa-f]{2}/g;
 const DID_SCHEME_PATTERN = /^did:/i;
 const DID_PATTERN = /^did:[a-z0-9]+:[-A-Za-z0-9._%]+(?::[-A-Za-z0-9._%]+)*$/i;
+const DOT_SEGMENT_PATTERN = /(?:^|\/)(?:\.|%2e){1,2}(?=\/|$)/i;
+
+function prepareUrlInput(iri: string): string {
+  // WHATWG URL removes these characters before it recognizes dot segments.
+  // Check the same spelling it will parse, while retaining the raw path for
+  // the comparison-only canonicalizer below.
+  let prepared = iri.replace(/[\t\n\r]/g, "");
+  while (prepared.length > 0 && prepared.charCodeAt(0) <= 0x20) {
+    prepared = prepared.slice(1);
+  }
+  while (
+    prepared.length > 0 && prepared.charCodeAt(prepared.length - 1) <= 0x20
+  ) {
+    prepared = prepared.slice(0, -1);
+  }
+  return prepared;
+}
+
+function assertPortablePathCanBeParsed(iri: string): void {
+  const match = prepareUrlInput(iri).match(PORTABLE_IRI_PATTERN);
+  if (match != null && DOT_SEGMENT_PATTERN.test(match[3])) {
+    throw new TypeError(
+      "Portable ActivityPub IRI paths with dot segments cannot be represented as URLs.",
+    );
+  }
+}
+
+function assertCompatiblePathCanBeParsed(raw: string, parsed: URL): void {
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return;
+  const prepared = prepareUrlInput(raw);
+  const match = prepared.match(/^https?:[\/\\]*[^/?#\\]*([^?#]*)/i);
+  if (match == null) return;
+  const rawPath = match[1].replace(/\\/g, "/");
+  const compatiblePath =
+    parsed.pathname.startsWith(COMPATIBLE_ID_PATH_PREFIX) &&
+    COMPATIBLE_ID_DID_PATTERN.test(
+      parsed.pathname.slice(COMPATIBLE_ID_PATH_PREFIX.length),
+    );
+  const rawCompatiblePath = rawPath.startsWith(COMPATIBLE_ID_PATH_PREFIX) &&
+    COMPATIBLE_ID_DID_PATTERN.test(
+      rawPath.slice(COMPATIBLE_ID_PATH_PREFIX.length),
+    );
+  if (
+    (compatiblePath || rawCompatiblePath) && DOT_SEGMENT_PATTERN.test(rawPath)
+  ) {
+    throw new TypeError(
+      "FEP-ef61 compatible identifier paths with dot segments cannot be represented as URLs.",
+    );
+  }
+}
 
 /**
  * Parses a JSON-LD `@id` value as an IRI.
@@ -47,11 +97,18 @@ export function parseJsonLdId(
 
 /**
  * Parses an IRI as a URL, including FEP-ef61 portable ActivityPub IRIs.
+ * Portable URI and FEP-ef61 compatible identifier strings whose path contains
+ * a `.` or `..` segment, including percent-encoded spellings, throw a
+ * `TypeError`: JavaScript `URL` would otherwise identify a different object.
+ * This also applies to compatible identifier strings used as relative bases.
+ * A `URL` argument may already have lost such segments before this function
+ * receives it.
  */
 export function parseIri(iri: string | URL, base?: string | URL): URL {
   if (iri instanceof URL) {
     return normalizePortableUrl(iri) ?? new URL(iri.href);
   }
+  assertPortablePathCanBeParsed(iri);
   const portable = parsePortableIri(iri);
   if (portable != null) return portable;
   base = normalizeBaseIri(base);
@@ -59,20 +116,25 @@ export function parseIri(iri: string | URL, base?: string | URL): URL {
     return parseAtUri(iri);
   }
   const parsed = new URL(iri, base);
+  assertCompatiblePathCanBeParsed(iri, parsed);
   return normalizePortableUrl(parsed) ?? parsed;
 }
 
 /**
  * Formats a URL as an IRI, including FEP-ef61 portable ActivityPub IRIs.
+ * Portable URI and FEP-ef61 compatible identifier strings with dot segments
+ * throw a `TypeError` because their paths cannot be represented by JavaScript
+ * `URL` without normalization.
  */
 export function formatIri(iri: string | URL): string {
+  if (typeof iri === "string") assertPortablePathCanBeParsed(iri);
   const parsed = parsePortableIri(iri instanceof URL ? iri.href : iri);
   if (parsed == null) {
-    return iri instanceof URL
-      ? iri.href
-      : URL.canParse(iri)
-      ? new URL(iri).href
-      : iri;
+    if (iri instanceof URL) return iri.href;
+    if (!URL.canParse(iri)) return iri;
+    const url = new URL(iri);
+    assertCompatiblePathCanBeParsed(iri, url);
+    return url.href;
   }
   const authority = decodePortableAuthority(parsed.host);
   return `ap+ef61://${authority}${parsed.pathname}${parsed.search}${parsed.hash}`;
@@ -252,14 +314,18 @@ function parsePortableIri(iri: string): URL | null {
 
 function normalizePortableUrl(iri: URL): URL | null {
   if (iri.protocol !== "ap:" && iri.protocol !== "ap+ef61:") return null;
-  return parsePortableIri(
-    `ap+ef61://${iri.host}${iri.pathname}${iri.search}${iri.hash}`,
-  );
+  const raw = `ap+ef61://${iri.host}${iri.pathname}${iri.search}${iri.hash}`;
+  assertPortablePathCanBeParsed(raw);
+  return parsePortableIri(raw);
 }
 
 function normalizeBaseIri(base?: string | URL): string | URL | undefined {
   if (base == null) return undefined;
   if (base instanceof URL) return normalizePortableUrl(base) ?? base;
+  assertPortablePathCanBeParsed(base);
+  if (URL.canParse(base)) {
+    assertCompatiblePathCanBeParsed(base, new URL(base));
+  }
   return parsePortableIri(base) ??
     (base.startsWith("at://") && !URL.canParse(".", base)
       ? parseAtUri(base)
@@ -367,6 +433,8 @@ export function parseGatewayUrl(url: string): URL {
 
 const COMPATIBLE_ID_PATH_PREFIX = "/.well-known/apgateway/";
 const COMPATIBLE_ID_DID_PATTERN = /^did(?::|%3A)/i;
+const RAW_COMPATIBLE_ID_PREFIX_PATTERN =
+  /^(?:[hH][tT][tT][pP][sS]?):\/\/[^/?#]*\/\.well-known\/apgateway\/(?=[dD][iI][dD](?::|%3[aA]))/;
 // `gateways` is the location hint parameter name used by earlier FEP-ef61
 // revisions; strip it as well for compatibility with older publishers.
 const LOCATION_HINT_PARAMETERS: ReadonlySet<string> = new Set([
@@ -408,8 +476,9 @@ const LOCATION_HINT_PARAMETERS: ReadonlySet<string> = new Set([
  *                     malformed, e.g., it has an invalid DID, no object path,
  *                     invalid percent-encoding, credentials, or location
  *                     hints (`@gateway` query parameters, or the legacy
- *                     `gateways` parameter), which FEP-ef61 forbids in
- *                     compatible identifiers.
+ *                     `gateways` parameter), or its raw string path would
+ *                     change during URL parsing.  Already-parsed `URL`
+ *                     arguments cannot reveal segments lost by their parser.
  * @since 2.4.0
  */
 export function fromCompatibleEf61Id(input: string | URL): URL | null {
@@ -420,14 +489,39 @@ function convertCompatibleEf61Id(
   input: string | URL,
 ): { url: URL; iri: string } | null {
   let url: URL;
+  const rawPrefix = typeof input === "string"
+    ? input.match(RAW_COMPATIBLE_ID_PREFIX_PATTERN)
+    : null;
   if (input instanceof URL) url = input;
   else if (typeof input === "string" && URL.canParse(input)) {
     url = new URL(input);
   } else return null;
   if (url.protocol !== "http:" && url.protocol !== "https:") return null;
-  if (!url.pathname.startsWith(COMPATIBLE_ID_PATH_PREFIX)) return null;
+  // A raw compatible ID may lose path segments before URL.pathname is read.
+  // Likewise, preprocessing must not turn a different raw string into one.
+  if (typeof input === "string" && rawPrefix == null) {
+    if (
+      url.pathname.startsWith(COMPATIBLE_ID_PATH_PREFIX) &&
+      COMPATIBLE_ID_DID_PATTERN.test(
+        url.pathname.slice(COMPATIBLE_ID_PATH_PREFIX.length),
+      )
+    ) {
+      throw new TypeError("Invalid FEP-ef61 compatible identifier.");
+    }
+  }
+  if (!url.pathname.startsWith(COMPATIBLE_ID_PATH_PREFIX)) {
+    if (rawPrefix != null) {
+      throw new TypeError("Invalid FEP-ef61 compatible identifier.");
+    }
+    return null;
+  }
   const tail = url.pathname.slice(COMPATIBLE_ID_PATH_PREFIX.length);
-  if (!COMPATIBLE_ID_DID_PATTERN.test(tail)) return null;
+  if (!COMPATIBLE_ID_DID_PATTERN.test(tail)) {
+    if (rawPrefix != null) {
+      throw new TypeError("Invalid FEP-ef61 compatible identifier.");
+    }
+    return null;
+  }
   if (url.username !== "" || url.password !== "") {
     throw new TypeError(
       "Invalid FEP-ef61 compatible identifier: credentials are not allowed.",
@@ -440,6 +534,13 @@ function convertCompatibleEf61Id(
   try {
     const parsed = parsePortableIri(iri);
     if (parsed == null) throw new TypeError("Not a portable IRI.");
+    if (
+      typeof input === "string" && rawPrefix != null &&
+      canonicalizePortableUri("ap://" + input.slice(rawPrefix[0].length)) !==
+        canonicalizePortableUri(iri)
+    ) {
+      throw new TypeError("URL parsing changed the portable identifier.");
+    }
     // parsePortableIri() does not validate path and fragment
     // percent-encoding, but canonicalizePortableUri() does:
     canonicalizePortableUri(iri);
@@ -490,7 +591,8 @@ function convertCompatibleEf61Id(
  * @returns The compatible identifier.
  * @throws {TypeError} If the portable ID is not a valid `ap:` or `ap+ef61:`
  *                     URI, if its path has `.` or `..` segments (which
- *                     HTTP(S) URLs cannot represent), or if the gateway is
+ *                     HTTP(S) URLs cannot represent without changing the
+ *                     identified object), or if the gateway is
  *                     not an HTTP(S) origin with no credentials, path, query,
  *                     or fragment.
  * @since 2.4.0

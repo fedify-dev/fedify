@@ -40,6 +40,35 @@ test("parseIri() accepts portable ActivityPub URI schemes", () => {
   }
 });
 
+test("portable URI parsing refuses dot segments before URL normalization", () => {
+  const base = "ap://did:key:z6Mkabc";
+  for (const segment of [".", "..", "%2e", ".%2E", "%2e.", "%2E%2e"]) {
+    for (const path of [`/${segment}`, `/a/${segment}/b`, `/a/${segment}`]) {
+      const iri = base + path;
+      throws(() => parseIri(iri), TypeError, iri);
+      throws(() => parseJsonLdId(iri), TypeError, iri);
+      throws(() => formatIri(iri), TypeError, iri);
+    }
+  }
+  for (
+    const iri of [
+      `${base}/a/.\t./b`,
+      `${base}/a/..\n/b`,
+      ` ${base}/a/../b`,
+      `${base}/a/.. `,
+    ]
+  ) {
+    throws(() => parseIri(iri), TypeError, iri);
+  }
+  for (const path of ["/a/.../b", "/a/.x/b", "/a/x.y/b", "/a/%252e/b"]) {
+    deepStrictEqual(
+      formatIri(parseIri(base + path)),
+      `ap+ef61://did:key:z6Mkabc${path}`,
+    );
+  }
+  throws(() => parseIri("child", `${base}/a/../b`), TypeError);
+});
+
 test("parseIri() normalizes DID scheme and method casing", () => {
   const cases = [
     "ap://DID:key:z6Mkabc/actor",
@@ -109,6 +138,19 @@ test("parseIri() resolves relative IRIs against portable string bases", () => {
   throws(
     () => parseIri("//example.com/outbox", "ap://did:key:z6Mkabc/objects/1"),
     TypeError,
+  );
+});
+
+test("parseIri() rejects lossy compatible ID string bases", () => {
+  const base = "https://server.example/.well-known/apgateway/did:key:z6MkAlice";
+  for (const segment of [".", "..", "%2e", "%2e%2e"]) {
+    const rawBase = `${base}/a/${segment}/b`;
+    throws(() => parseIri("child", rawBase), TypeError, rawBase);
+    throws(() => parseJsonLdId("child", rawBase), TypeError, rawBase);
+  }
+  deepStrictEqual(
+    parseIri("child", "https://server.example/a/../b"),
+    new URL("https://server.example/child"),
   );
 });
 
@@ -815,6 +857,54 @@ test("fromCompatibleEf61Id() rejects malformed compatible identifiers", () => {
   for (const input of cases) {
     throws(() => fromCompatibleEf61Id(input), TypeError, input);
   }
+});
+
+test("fromCompatibleEf61Id() refuses raw paths changed by URL parsing", () => {
+  const base = "https://server.example/.well-known/apgateway/did:key:z6MkAlice";
+  for (
+    const path of [
+      "/a/../b",
+      "/a/%2e%2E/b",
+      "/a/.\t./b",
+      "/a/.. ",
+    ]
+  ) {
+    throws(() => fromCompatibleEf61Id(base + path), TypeError, path);
+    throws(() => parseIri(base + path), TypeError, path);
+    throws(() => formatIri(base + path), TypeError, path);
+  }
+  for (
+    const input of [
+      "https:/server.example/.well-known/apgateway/did:key:z6MkAlice/a/../b",
+      "https:server.example/.well-known/apgateway/did:key:z6MkAlice/a/../b",
+      "https:\\\\server.example\\.well-known\\apgateway\\did:key:z6MkAlice\\a\\..\\b",
+      ` ${base}/../../other`,
+    ]
+  ) {
+    throws(() => parseIri(input), TypeError, input);
+    throws(() => formatIri(input), TypeError, input);
+  }
+  throws(
+    () => fromCompatibleEf61Id(` ${base}/actor`),
+    TypeError,
+  );
+  throws(
+    () =>
+      fromCompatibleEf61Id(
+        `https://server.example/foo/../.well-known/apgateway/did:key:z6MkAlice/actor`,
+      ),
+    TypeError,
+  );
+  deepStrictEqual(
+    fromCompatibleEf61Id(`${base}/a/%252e/b`)?.pathname,
+    "/a/%252e/b",
+  );
+  deepStrictEqual(
+    fromCompatibleEf61Id(
+      "https://server.example/.WELL-KNOWN/apgateway/did:key:z6MkAlice/actor",
+    ),
+    null,
+  );
 });
 
 test("toCompatibleEf61Id() converts portable URIs", () => {

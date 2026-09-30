@@ -1633,18 +1633,21 @@ test("accessors verify fetched documents that stand for portable objects", async
       deepStrictEqual(object instanceof Note, expected);
     }
     // A final URL that URL parsing would turn into another ID is refused:
-    deepStrictEqual(
-      await (await createHttpActivity(plainUrl)).getObject({
-        documentLoader: createRedirectingLoader({
-          [plainUrl]: {
-            documentUrl: `ap://${did}/objects/x/../1`,
-            document: note(),
-          },
-        }),
-        contextLoader: mockDocumentLoader,
-        verifyPortableObject: createVerifier(),
-      }),
-      null,
+    await rejects(
+      () =>
+        createHttpActivity(plainUrl).then((activity) =>
+          activity.getObject({
+            documentLoader: createRedirectingLoader({
+              [plainUrl]: {
+                documentUrl: `ap://${did}/objects/x/../1`,
+                document: note(),
+              },
+            }),
+            contextLoader: mockDocumentLoader,
+            verifyPortableObject: createVerifier(),
+          })
+        ),
+      TypeError,
     );
   });
 

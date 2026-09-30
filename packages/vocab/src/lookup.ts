@@ -345,7 +345,13 @@ async function lookupObjectInternal(
       if (candidate == null) return null;
       return await lookupPortableObject(portable, candidate, undefined);
     }
-    identifier = toAcctUrl(identifier) ?? new URL(identifier);
+    // Check the raw spelling before WHATWG URL can erase dot segments from a
+    // compatible identifier.  It cannot be recovered from the parsed URL.
+    if (
+      options.verifyPortableObject != null &&
+      parseCompatibleEf61Reference(identifier) === null
+    ) return null;
+    identifier = toAcctUrl(identifier) ?? parseIri(identifier);
   }
   if (isPortableIri(identifier)) {
     let candidate: URL;

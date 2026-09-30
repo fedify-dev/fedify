@@ -1122,7 +1122,7 @@ test("verifyRequest() refuses key IDs whose identity URL parsing changes", async
       // URL parsing strips leading spaces, and tabs anywhere:
       ` ${dotted}`,
       ` ${dottedPortable}`,
-      ` ${parseIri(dottedPortable).href}`,
+      ` ${parseIri(actorId).href}#main-key`,
       dottedPortable.replace("ap+ef61:", "ap+\tef61:"),
       dotted.replace("did:key:", "did:ke\ty:"),
       // Dot segments can leave the gateway path altogether:

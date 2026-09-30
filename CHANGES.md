@@ -623,6 +623,11 @@ To be released.
     their canonical forms, while other actor IDs still have to match exactly.
     [[#288], [#1159], [#1189]]
 
+ -  Fixed portable actor and object URI helpers so a dispatcher identifier
+    containing a `.` or `..` path segment raises a `TypeError` instead of
+    silently producing another object's ID.  Use identifiers without such
+    segments.  [[#288], [#1154], [#1186]]
+
  -  Fixed `signObject()` so that a signed object keeps verifying after it is
     assigned to a typed parent and the parent is serialized.  `signObject()`
     now captures the secured JSON document its proof covers, and nested
@@ -843,6 +848,7 @@ To be released.
 [#1147]: https://github.com/fedify-dev/fedify/issues/1147
 [#1148]: https://github.com/fedify-dev/fedify/issues/1148
 [#1153]: https://github.com/fedify-dev/fedify/issues/1153
+[#1154]: https://github.com/fedify-dev/fedify/issues/1154
 [#1155]: https://github.com/fedify-dev/fedify/issues/1155
 [#1159]: https://github.com/fedify-dev/fedify/issues/1159
 [#1163]: https://github.com/fedify-dev/fedify/issues/1163
@@ -855,6 +861,7 @@ To be released.
 [#1178]: https://github.com/fedify-dev/fedify/pull/1178
 [#1180]: https://github.com/fedify-dev/fedify/pull/1180
 [#1183]: https://github.com/fedify-dev/fedify/pull/1183
+[#1186]: https://github.com/fedify-dev/fedify/pull/1186
 [#1188]: https://github.com/fedify-dev/fedify/pull/1188
 [#1189]: https://github.com/fedify-dev/fedify/pull/1189
 
@@ -1545,6 +1552,12 @@ To be released.
     `application/activity+json, application/ld+json; profile="https://www.w3.org/ns/activitystreams"`,
     as ActivityPub and [FEP-ef61] gateways require.  Previously, the JSON-LD
     media type lacked the ActivityStreams profile.  [[#288], [#834], [#1077]]
+
+ -  Fixed portable and gateway-compatible ID strings with `.` or `..` path
+    segments being interpreted as different IDs after URL parsing.  Fedify now
+    rejects these strings because the segments cannot be preserved by its
+    URL-based APIs.  Raw portable ID strings can still be compared without
+    losing their paths.  [[#288], [#1154], [#1186]]
 
 [#828]: https://github.com/fedify-dev/fedify/issues/828
 [#831]: https://github.com/fedify-dev/fedify/issues/831

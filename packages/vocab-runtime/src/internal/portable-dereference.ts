@@ -212,19 +212,16 @@ export function copyPortableProvenance(from: object, to: object): void {
 export function parseCompatibleEf61Reference(
   url: URL | string,
 ): { readonly id: URL; readonly gateway: URL } | null | undefined {
-  if (typeof url === "string") {
-    if (!URL.canParse(url)) return undefined;
-    url = new URL(url);
-  }
   try {
     const id = fromCompatibleEf61Id(url);
     if (id == null) return undefined;
+    if (typeof url === "string") url = new URL(url);
     return { id, gateway: new URL(url.origin) };
   } catch (error) {
     if (error instanceof TypeError) {
       logger.debug(
         "Invalid FEP-ef61 compatible identifier {url}: {error}",
-        { url: url.href, error },
+        { url: typeof url === "string" ? url : url.href, error },
       );
       return null;
     }
