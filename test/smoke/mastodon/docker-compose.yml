@@ -44,7 +44,7 @@ services:
 
   # Fedify test harness — renamed to avoid colliding with the Caddy alias.
   fedify-harness-backend:
-    image: denoland/deno:2.9.5
+    image: denoland/deno:2.9.7
     working_dir: /workspace
     volumes:
       - ../../../:/workspace
