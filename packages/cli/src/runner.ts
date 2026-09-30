@@ -117,7 +117,7 @@ function staticCommandParser<
     [selectedCommand]: staticCommand,
     [selectedRun]: (globalOptions: GlobalOptions) =>
       runCommand({ ...value, ...globalOptions }),
-  })) as Parser<"sync", CommandInvocation<TCommand>, unknown>;
+  })) as unknown as Parser<"sync", CommandInvocation<TCommand>, unknown>;
 }
 
 function staticCommandsParser<TCommand extends CliCommand>(
