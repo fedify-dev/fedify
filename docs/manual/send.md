@@ -804,6 +804,65 @@ the recipients parameter.
 > they are ignored when comparing the URIs.
 
 
+Delivering to portable actors
+-----------------------------
+
+*This API is available since Fedify 2.4.0.*
+
+An [FEP-ef61] portable actor has an `ap:` or `ap+ef61:` URI as its inbox, e.g.,
+`ap://did:key:z6Mk.../actor/inbox`, which no server can receive a `POST`
+request at.  Instead, the servers listed in the actor's `gateways` property
+accept deliveries to the inbox at its compatible identifier, e.g.,
+`https://gateway.example/.well-known/apgateway/did:key:z6Mk.../actor/inbox`,
+and forward them to each other.
+
+`~Context.sendActivity()` and `~InboxContext.forwardActivity()` deliver to such
+an inbox automatically.  Fedify takes the gateways from the recipient's
+`gateways`, in order, or, if it has no valid gateway, from the `@gateway`
+location hints of the inbox URI, and tries at most five of them one after
+another until one accepts the activity.  In particular, a gateway that responds
+with `404 Not Found`, which FEP-ef61 uses for a server that does not accept
+deliveries on behalf of the actor, is not tried again for the activity.
+If no gateway accepts the activity, the whole round of gateways is retried
+according to the [retry policy](./federation.md#outboxretrypolicy), so that
+the round counts as one attempt.  A recipient with no gateway to deliver
+through is skipped with a warning.
+
+Fedify delivers to the gateways that the recipient object names, just as it
+delivers to any inbox URL that a recipient object names.  So make sure that
+recipient objects of portable actors come from their verified actor documents,
+e.g., through `~Context.lookupObject()`.  If you implement
+a [followers collection dispatcher](./collections.md#followers) that returns
+`Recipient` objects instead of actors, include the `~Recipient.gateways` of
+portable followers along with their `~Recipient.inboxId`.
+
+A few options behave differently for portable actors:
+
+`~SendActivityOptions.preferSharedInbox`
+:   Ignored for a recipient whose inbox is an `ap:` or `ap+ef61:` URI, since
+    FEP-ef61 has no shared inbox and gateways synchronize only the actor's
+    own inbox.
+
+`~SendActivityOptions.excludeBaseUris`
+:   Compared with the origins of the recipient's gateways, so that the
+    activity is not delivered directly to the excluded gateways.  The other
+    gateways may still forward it to them.  A recipient whose gateways are
+    all excluded is skipped.
+
+`~SendActivityOptions.orderingKey`
+:   Keeps deliveries to a portable inbox in order by the actor's DID rather
+    than by the origin of a gateway, so that the order holds whichever gateway
+    an activity goes through.
+
+The gateways are fixed when the activity is sent, so queued deliveries do not
+follow later changes of the recipient's `gateways`.  Queue workers of older
+Fedify versions deliver such queued activities only to the first gateway;
+upgrade the workers before the servers that enqueue deliveries if you run
+them separately.
+
+[FEP-ef61]: https://w3id.org/fep/ef61
+
+
 Error handling
 --------------
 
@@ -1151,7 +1210,6 @@ embedded portable object needs its own verification; success for an outer
 activity does not authenticate portable objects nested inside it.
 
 [FEP-8b32]: https://w3id.org/fep/8b32
-[FEP-ef61]: https://w3id.org/fep/ef61
 [FEP-fe34]: https://w3id.org/fep/fe34
 
 ### Compound portable objects
