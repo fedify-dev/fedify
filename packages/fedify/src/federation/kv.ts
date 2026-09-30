@@ -45,7 +45,8 @@ export interface KvStore {
   /**
    * Gets the value for the given key.
    * @param key The key to get the value for.
-   * @returns The value for the key, or `undefined` if the key does not exist.
+   * @returns The value for the key, including `null` if stored, or `undefined`
+   *          if the key does not exist.
    * @template T The type of the value to get.
    */
   get<T = unknown>(key: KvKey): Promise<T | undefined>;
@@ -53,7 +54,7 @@ export interface KvStore {
   /**
    * Sets the value for the given key.
    * @param key The key to set the value for.
-   * @param value The value to set.
+   * @param value The value to set.  `null` is a storable value.
    * @param options Additional options for setting the value.
    */
   set(key: KvKey, value: unknown, options?: KvStoreSetOptions): Promise<void>;
