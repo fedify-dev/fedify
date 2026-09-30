@@ -1427,6 +1427,57 @@ export interface RequestContext<TContextData> extends Context<TContextData> {
   getSignedKeyOwner(
     options: GetKeyOwnerOptions,
   ): Promise<Actor | null>;
+
+  /**
+   * Checks whether the request is signed by an actor who belongs to
+   * the intended audience of an object, i.e., the owner of the signed key
+   * (see {@link RequestContext.getSignedKeyOwner}) is one of the object's
+   * `to`, `cc`, `bto`, `bcc`, and `audience`, or a member of one of them
+   * according to the `isMember` option.
+   *
+   * Everyone belongs to the audience of a publicly addressed object, so it
+   * returns `true` for such an object even if the request is not signed.
+   *
+   * This can be used in authorization predicates for serving non-public
+   * objects, which [FEP-ef61] requires of gateways serving portable objects.
+   * [FEP-ef61] portable IDs are compared by their canonical forms, so
+   * an `ap:` URI, an `ap+ef61:` URI, and a compatible identifier on any
+   * gateway refer to the same actor.
+   *
+   * [FEP-ef61]: https://w3id.org/fep/ef61
+   *
+   * @param object The object whose audience is checked.
+   * @param options Options for checking the audience.
+   * @returns `true` if the object is publicly addressed, or the request is
+   *          signed by an actor who belongs to its audience.
+   * @since 2.4.0
+   */
+  isSignedByAudience(
+    object: Object,
+    options?: IsSignedByAudienceOptions,
+  ): Promise<boolean>;
+}
+
+/**
+ * Options for {@link RequestContext.isSignedByAudience} method.
+ * @since 2.4.0
+ */
+export interface IsSignedByAudienceOptions extends GetKeyOwnerOptions {
+  /**
+   * Checks whether the actor who signed the request is a member of
+   * an addressee of the object that is not the actor itself, e.g.,
+   * a followers collection.  Fedify does not resolve collections by itself,
+   * as only the application can tell their members reliably.
+   *
+   * It is called for each such addressee in order until it returns `true`.
+   * If it is omitted, only the actors that the object addresses directly
+   * belong to its audience.
+   * @param addressee The ID of the addressee, e.g., the ID of a followers
+   *                  collection.
+   * @param actor The actor who signed the request.
+   * @returns `true` if the actor is a member of the addressee.
+   */
+  isMember?: (addressee: URL, actor: Actor) => boolean | Promise<boolean>;
 }
 
 /**

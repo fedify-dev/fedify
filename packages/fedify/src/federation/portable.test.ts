@@ -6,6 +6,7 @@ import {
   Note,
   Object,
   Person,
+  PUBLIC_COLLECTION,
   Tombstone,
 } from "@fedify/vocab";
 import {
@@ -93,6 +94,7 @@ async function signedNote(
     new Note({
       id: parseIri(`ap+ef61://${authority}${path}`),
       attribution: parseIri(`ap+ef61://${authority}/actor`),
+      to: PUBLIC_COLLECTION,
       content,
     }),
   );
@@ -120,6 +122,7 @@ test("Federation.fetch() serves portable objects through object dispatchers", as
         return await sign(
           new Note({
             id: parseIri(`ap://${did}/users/${values.userId}/notes/ap`),
+            to: PUBLIC_COLLECTION,
             content: "Hello",
           }),
         );
@@ -136,6 +139,7 @@ test("Federation.fetch() serves portable objects through object dispatchers", as
         new Note({
           id: ctx.getPortableObjectUri(Note, values),
           attribution: parseIri(`ap+ef61://${did}/actor`),
+          to: PUBLIC_COLLECTION,
           content: `Note ${values.noteId} by ${values.userId}`,
         }),
       );
@@ -442,11 +446,15 @@ test("Federation.fetch() applies the FEP-ef61 proof policy to portable objects",
         }),
       ),
   };
-  federation.setObjectDispatcher(
-    Object,
-    "/objects/{id}",
-    (_ctx, { id }) => objects[id]?.() ?? null,
-  );
+  federation
+    .setObjectDispatcher(
+      Object,
+      "/objects/{id}",
+      (_ctx, { id }) => objects[id]?.() ?? null,
+    )
+    // Serves the objects regardless of their audience, as this test is about
+    // the proof policy:
+    .authorize(() => true);
   const expected: Record<string, number> = {
     "valid": 200,
     "unsigned": 500,
@@ -788,23 +796,308 @@ test("Federation.fetch() authorizes portable object requests", async (t) => {
   });
 });
 
+test("Federation.fetch() serves only public portable objects by default", async (t) => {
+  const federation = createTestFederation();
+  const person2 = new URL("https://example.com/person2");
+  const note = (id: string, values: Record<string, unknown> = {}) =>
+    sign(
+      new Note({ id: parseIri(`ap+ef61://${did}/objects/${id}`), ...values }),
+    );
+  const objects: Record<string, () => Promise<Object>> = {
+    "to": () => note("to", { to: PUBLIC_COLLECTION }),
+    "cc": () => note("cc", { to: person2, cc: PUBLIC_COLLECTION }),
+    "bto": () => note("bto", { bto: PUBLIC_COLLECTION }),
+    "bcc": () => note("bcc", { bcc: PUBLIC_COLLECTION }),
+    "audience": () => note("audience", { audience: PUBLIC_COLLECTION }),
+    "unaddressed": () => note("unaddressed"),
+    "direct": () => note("direct", { to: person2 }),
+    "followers": () =>
+      note("followers", { cc: new URL("https://example.com/followers") }),
+    // Signed by another DID, so it would be refused with 500 if its proof
+    // were verified:
+    "wrong-did": () =>
+      sign(
+        new Note({
+          id: parseIri(`ap+ef61://${did}/objects/wrong-did`),
+          to: person2,
+        }),
+        otherKeyPair.privateKey,
+        otherKeyId,
+      ),
+    "public-create-of-private-note": async () =>
+      await sign(
+        new Create({
+          id: parseIri(
+            `ap+ef61://${did}/objects/public-create-of-private-note`,
+          ),
+          actor: parseIri(`ap+ef61://${did}/actor`),
+          to: PUBLIC_COLLECTION,
+          object: await note("private-note", { to: person2 }),
+        }),
+      ),
+    "private-create-of-public-note": async () =>
+      await sign(
+        new Create({
+          id: parseIri(
+            `ap+ef61://${did}/objects/private-create-of-public-note`,
+          ),
+          actor: parseIri(`ap+ef61://${did}/actor`),
+          object: await note("public-note", { to: PUBLIC_COLLECTION }),
+        }),
+      ),
+    // Collections and tombstones from object dispatchers are not exempt:
+    "collection": () =>
+      Promise.resolve(
+        new Collection({
+          id: parseIri(`ap+ef61://${did}/objects/collection`),
+          totalItems: 0,
+        }),
+      ),
+    "public-collection": () =>
+      Promise.resolve(
+        new Collection({
+          id: parseIri(`ap+ef61://${did}/objects/public-collection`),
+          to: PUBLIC_COLLECTION,
+          totalItems: 0,
+        }),
+      ),
+    "tombstone": () =>
+      sign(
+        new Tombstone({ id: parseIri(`ap+ef61://${did}/objects/tombstone`) }),
+      ),
+    "public-tombstone": () =>
+      sign(
+        new Tombstone({
+          id: parseIri(`ap+ef61://${did}/objects/public-tombstone`),
+          to: PUBLIC_COLLECTION,
+        }),
+      ),
+    // Actors have no audience, so they are served regardless:
+    "actor": () =>
+      sign(
+        new Person({
+          id: parseIri(`ap+ef61://${did}/objects/actor`),
+          inbox: parseIri(`ap+ef61://${did}/objects/actor/inbox`),
+          outbox: parseIri(`ap+ef61://${did}/objects/actor/outbox`),
+          gateways: [new URL("https://example.com/")],
+        }),
+      ),
+    // The object says it is public, but the document that would be served,
+    // which it keeps from fromJsonLd(), does not:
+    "mutated-audience": async () => {
+      const signed = await note("mutated-audience", { to: person2 });
+      const object = await Note.fromJsonLd(
+        await signed.toJsonLd({ contextLoader: mockDocumentLoader }),
+        {
+          contextLoader: mockDocumentLoader,
+          documentLoader: mockDocumentLoader,
+        },
+      );
+      object.toIds[0].href = PUBLIC_COLLECTION.href;
+      return object;
+    },
+  };
+  let dispatched = 0;
+  federation.setObjectDispatcher(Object, "/objects/{id}", (ctx, { id }) => {
+    dispatched++;
+    // An ordinary request for a non-public object is left to the application
+    // as before:
+    if (ctx.portableRequest == null) {
+      return new Note({ id: ctx.getObjectUri(Object, { id }), to: person2 });
+    }
+    return objects[id]?.() ?? null;
+  });
+  const expected: Record<string, number> = {
+    "to": 200,
+    "cc": 200,
+    "bto": 200,
+    "bcc": 200,
+    "audience": 200,
+    "unaddressed": 404,
+    "direct": 404,
+    "followers": 404,
+    "wrong-did": 404,
+    "public-create-of-private-note": 200,
+    "private-create-of-public-note": 404,
+    "collection": 404,
+    "public-collection": 200,
+    "tombstone": 404,
+    "public-tombstone": 410,
+    "actor": 200,
+    "mutated-audience": 404,
+  };
+  for (const [id, status] of globalThis.Object.entries(expected)) {
+    await t.step(`${id} → ${status}`, async () => {
+      for (const method of ["GET", "HEAD"]) {
+        dispatched = 0;
+        let response: Response | undefined;
+        const records = await captureWarnings(async () => {
+          response = await federation.fetch(
+            gatewayRequest(`/objects/${id}`, { method }),
+            { contextData: undefined },
+          );
+        });
+        assertEquals(response?.status, status, method);
+        assertEquals(dispatched, 1);
+        // Nothing depends on the requester without an authorization
+        // predicate, so the response may be cached as usual:
+        assertEquals(response?.headers.get("Cache-Control"), null);
+        // A non-public object's proof is not even verified, so it is not
+        // refused for its proof:
+        assertEquals(
+          records.filter((r) => r.level === "error").map((r) => r.rawMessage),
+          [],
+        );
+        if (method === "HEAD") assertEquals(response?.body, null);
+      }
+    });
+  }
+
+  await t.step("responds to a denied request with onNotFound()", async () => {
+    let notFound = false;
+    const response = await federation.fetch(gatewayRequest("/objects/direct"), {
+      contextData: undefined,
+      onNotFound() {
+        notFound = true;
+        return new Response("Not found", { status: 404 });
+      },
+    });
+    assertEquals(response.status, 404);
+    assertEquals(notFound, true);
+  });
+
+  await t.step("keeps ordinary object requests unchanged", async () => {
+    const response = await federation.fetch(
+      new Request("https://example.com/objects/direct", {
+        headers: { Accept: ACCEPT },
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 200);
+  });
+});
+
+test("Federation.fetch() serves non-public portable objects to their audience", async (t) => {
+  const federation = createTestFederation();
+  const person2 = new URL("https://example.com/person2");
+  const followers = new URL("https://example.com/users/alice/followers");
+  const notes: Record<string, Promise<Note>> = {
+    direct: sign(
+      new Note({ id: parseIri(`ap+ef61://${did}/notes/direct`), to: person2 }),
+    ),
+    followers: sign(
+      new Note({
+        id: parseIri(`ap+ef61://${did}/notes/followers`),
+        cc: followers,
+      }),
+    ),
+    public: signedNote("/notes/public"),
+    other: sign(
+      new Note({
+        id: parseIri(`ap+ef61://${did}/notes/other`),
+        to: new URL("https://example.com/other"),
+      }),
+    ),
+  };
+  federation
+    .setObjectDispatcher(
+      Note,
+      "/notes/{id}",
+      (_ctx, values) => notes[values.id] ?? null,
+    )
+    .authorize(async (ctx, values) => {
+      const note = await notes[values.id];
+      return note != null && await ctx.isSignedByAudience(note, {
+        isMember: (addressee, actor) =>
+          addressee.href === followers.href &&
+          actor.id?.href === person2.href,
+      });
+    });
+  const signed = async (id: string, key: "key2" | "key3" = "key3") =>
+    await signRequest(
+      gatewayRequest(`/notes/${id}`),
+      key === "key3" ? rsaPrivateKey3 : rsaPrivateKey2,
+      key === "key3" ? rsaPublicKey3.id! : rsaPublicKey2.id!,
+    );
+
+  await t.step("serves a request signed by an addressee", async () => {
+    for (const id of ["direct", "followers"]) {
+      const response = await federation.fetch(await signed(id), {
+        contextData: undefined,
+      });
+      assertEquals(response.status, 200, id);
+      assertEquals(response.headers.get("Cache-Control"), "private", id);
+      const json = await response.json() as Record<string, unknown>;
+      assertEquals(json.id, `ap+ef61://${did}/notes/${id}`);
+    }
+  });
+
+  await t.step("denies a request by anyone else", async () => {
+    for (
+      const request of [
+        gatewayRequest("/notes/direct"),
+        await signed("direct", "key2"),
+        await signed("followers", "key2"),
+        await signed("other"),
+      ]
+    ) {
+      const response = await federation.fetch(request, {
+        contextData: undefined,
+      });
+      assertEquals(response.status, 401, request.url);
+    }
+  });
+
+  await t.step("serves a public object to anyone", async () => {
+    const response = await federation.fetch(gatewayRequest("/notes/public"), {
+      contextData: undefined,
+    });
+    assertEquals(response.status, 200);
+    // The predicate decides, so the response still depends on the requester:
+    assertEquals(response.headers.get("Cache-Control"), "private");
+  });
+
+  await t.step("serves anything if the predicate allows it", async () => {
+    const permissive = createTestFederation();
+    permissive
+      .setObjectDispatcher(
+        Note,
+        "/notes/{id}",
+        (_ctx, values) => notes[values.id] ?? null,
+      )
+      .authorize(() => true);
+    const response = await permissive.fetch(gatewayRequest("/notes/direct"), {
+      contextData: undefined,
+    });
+    assertEquals(response.status, 200);
+    assertEquals(response.headers.get("Cache-Control"), "private");
+  });
+});
+
 test("Federation.fetch() serves portable objects with compatible IDs", async (t) => {
   const federation = createTestFederation();
   const compatible = (path: string, authority = did, origin = "example.com") =>
     new URL(`https://${origin}/.well-known/apgateway/${authority}${path}`);
   const objects: Record<string, () => Promise<Object>> = {
     "compatible": () =>
-      sign(new Note({ id: compatible("/objects/compatible") })),
+      sign(
+        new Note({
+          to: PUBLIC_COLLECTION,
+          id: compatible("/objects/compatible"),
+        }),
+      ),
     // A compatible identifier on another gateway than the one requested:
     "other-gateway": () =>
       sign(
         new Note({
+          to: PUBLIC_COLLECTION,
           id: compatible("/objects/other-gateway", did, "other.example"),
         }),
       ),
     "percent-encoded": () =>
       sign(
         new Note({
+          to: PUBLIC_COLLECTION,
           id: compatible(
             "/objects/percent-encoded",
             did.replaceAll(":", "%3A"),
@@ -813,17 +1106,29 @@ test("Federation.fetch() serves portable objects with compatible IDs", async (t)
       ),
     "other-did": () =>
       sign(
-        new Note({ id: compatible("/objects/other-did", otherDid) }),
+        new Note({
+          to: PUBLIC_COLLECTION,
+          id: compatible("/objects/other-did", otherDid),
+        }),
         otherKeyPair.privateKey,
         otherKeyId,
       ),
-    "other-path": () => sign(new Note({ id: compatible("/objects/else") })),
+    "other-path": () =>
+      sign(
+        new Note({ to: PUBLIC_COLLECTION, id: compatible("/objects/else") }),
+      ),
     "fragment": () =>
-      sign(new Note({ id: compatible("/objects/fragment#note") })),
+      sign(
+        new Note({
+          to: PUBLIC_COLLECTION,
+          id: compatible("/objects/fragment#note"),
+        }),
+      ),
     // FEP-ef61 forbids location hints in compatible identifiers:
     "malformed": () =>
       sign(
         new Note({
+          to: PUBLIC_COLLECTION,
           id: new URL(
             compatible("/objects/malformed").href +
               "?@gateway=https%3A%2F%2Fexample.com",
@@ -831,12 +1136,25 @@ test("Federation.fetch() serves portable objects with compatible IDs", async (t)
         }),
       ),
     "ordinary": () =>
-      sign(new Note({ id: new URL("https://example.com/objects/ordinary") })),
+      sign(
+        new Note({
+          to: PUBLIC_COLLECTION,
+          id: new URL("https://example.com/objects/ordinary"),
+        }),
+      ),
     "unsigned": () =>
-      Promise.resolve(new Note({ id: compatible("/objects/unsigned") })),
+      Promise.resolve(
+        new Note({
+          to: PUBLIC_COLLECTION,
+          id: compatible("/objects/unsigned"),
+        }),
+      ),
     "wrong-did": () =>
       sign(
-        new Note({ id: compatible("/objects/wrong-did") }),
+        new Note({
+          to: PUBLIC_COLLECTION,
+          id: compatible("/objects/wrong-did"),
+        }),
         otherKeyPair.privateKey,
         otherKeyId,
       ),
@@ -844,7 +1162,10 @@ test("Federation.fetch() serves portable objects with compatible IDs", async (t)
       // An object that keeps its signed JSON-LD, but whose id is changed
       // afterwards, must not be served as the object in the changed id:
       const signed = await sign(
-        new Note({ id: compatible("/objects/original") }),
+        new Note({
+          to: PUBLIC_COLLECTION,
+          id: compatible("/objects/original"),
+        }),
       );
       const object = await Note.fromJsonLd(
         await signed.toJsonLd({ contextLoader: mockDocumentLoader }),
@@ -964,7 +1285,10 @@ test("Federation.fetch() compares portable IDs with the requested path", async (
   federation.setObjectDispatcher(Note, "/notes/{id}", async (ctx, values) => {
     if (values.id === "a/b") {
       return await sign(
-        new Note({ id: ctx.getPortableObjectUri(Note, values) }),
+        new Note({
+          id: ctx.getPortableObjectUri(Note, values),
+          to: PUBLIC_COLLECTION,
+        }),
       );
     }
     return await signedNote(`/notes/${values.id}`);
@@ -1009,7 +1333,12 @@ test("RequestContext.portableRequest", async (t) => {
     ctx.portableRequest!.id.pathname = "/notes/other";
     await ctx.getObject(Tombstone, { id: values.id });
     contexts.push(ctx.clone(undefined));
-    return await sign(new Note({ id: ctx.getPortableObjectUri(Note, values) }));
+    return await sign(
+      new Note({
+        id: ctx.getPortableObjectUri(Note, values),
+        to: PUBLIC_COLLECTION,
+      }),
+    );
   });
   const response = await federation.fetch(gatewayRequest("/notes/1"), {
     contextData: undefined,

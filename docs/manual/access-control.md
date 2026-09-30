@@ -187,6 +187,15 @@ federation
   });
 ~~~~
 
+*Since Fedify 2.4.0*, the `~RequestContext.isSignedByAudience()` method checks
+whether the request is signed by an actor in the audience of an object, i.e.,
+its `to`, `cc`, `bto`, `bcc`, or `audience`, so you do not have to compare
+the actor with them yourself.  It returns `true` for a publicly addressed
+object even if the request is not signed, and it takes the `isMember` option
+to check the members of collections such as followers, which Fedify cannot
+tell by itself.  See the [*Non-public portable objects*
+section](./object.md#non-public-portable-objects) for an example.
+
 
 Instance actor
 --------------

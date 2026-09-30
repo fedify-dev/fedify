@@ -188,7 +188,7 @@ path:
 ~~~~ typescript twoslash
 import { signObject } from "@fedify/fedify";
 import { type Federation } from "@fedify/fedify";
-import { Note } from "@fedify/vocab";
+import { Note, PUBLIC_COLLECTION } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 interface Note_ { content: string }
 async function findPortableNote(
@@ -222,6 +222,7 @@ federation.setObjectDispatcher(
       new Note({
         // ap+ef61://did:key:z6Mk.../users/alice/notes/123
         id: ctx.getPortableObjectUri(Note, values),
+        to: PUBLIC_COLLECTION,
         content: note.content,
       }),
       privateKey,
@@ -233,7 +234,7 @@ federation.setObjectDispatcher(
 
 Fedify serves the returned object with `200 OK` and the
 `application/ld+json; profile="https://www.w3.org/ns/activitystreams"` media
-type only if both of the following hold:
+type only if all of the following hold:
 
  -  Its ID canonically equals the requested portable ID, e.g., an `ap:` ID is
     equivalent to an `ap+ef61:` one.  A compatible identifier, such as
@@ -249,6 +250,11 @@ type only if both of the following hold:
     without proofs.  Otherwise, Fedify logs an error and responds with
     `500 Internal Server Error`, as serving the object would be a bug of
     the application.
+ -  It is publicly addressed, unless the dispatcher has an authorization
+    predicate or the object is an actor.  Otherwise, Fedify responds with
+    `404 Not Found`, as if this server did not store the object.  See the
+    [*Non-public portable objects* section](#non-public-portable-objects)
+    below.
 
 A malformed portable ID in the request path results in `400 Bad Request`.
 
@@ -275,15 +281,110 @@ cannot represent the canonical form; `formatIri()` from `@fedify/vocab-runtime`
 returns the canonical string, and generated vocabulary classes serialize it in
 the canonical form.
 
-If the object dispatcher has an [authorization predicate](./access-control.md),
-it is also applied to portable object requests.  [FEP-ef61] requires that
-a non-public portable object be served only to a request signed by an actor
-in its audience, so check the signature in the predicate, e.g., with
-`~RequestContext.getSignedKeyOwner()`.  Without a predicate, the object is
-served to anyone.
-
 [FEP-ef61]: https://w3id.org/fep/ef61
 [DID]: https://www.w3.org/TR/did-core/
+
+### Non-public portable objects
+
+[FEP-ef61] forbids a gateway to serve a non-public object unless the request
+is signed by an actor in the object's intended audience.  A gateway may store
+objects that other servers or clients have created, so Fedify does not serve
+such objects to anyone by default: without an [authorization
+predicate](./access-control.md), an object dispatcher serves a portable object
+through the gateway endpoint only if the object is publicly addressed, i.e.,
+its `to`, `cc`, `bto`, `bcc`, or `audience` has the public collection
+(`PUBLIC_COLLECTION`, or `as:Public` or `Public` in the JSON-LD document).
+Fedify responds to a request for any other portable object with
+`404 Not Found`, as if this server did not store it, whether the request is
+signed or not, and it does so before verifying the object's proofs.
+
+Actors are exempt, as they have no audience, whether they are served by
+the actor dispatcher or an object dispatcher.  Collections and tombstones are
+not: give them public addressing to serve them without a predicate.
+
+To serve a non-public portable object to its audience, set an authorization
+predicate on the object dispatcher.  The predicate then decides alone who may
+retrieve the dispatcher's portable objects, both public and non-public ones,
+and Fedify responds to a request that it denies with `401 Unauthorized`
+through the `onUnauthorized` callback.  The
+`~RequestContext.isSignedByAudience()` method checks whether the request is
+signed by an actor in an object's audience.  It compares portable IDs
+canonically, so an addressee identified by an `ap:` URI matches a signer
+identified by a compatible identifier on any gateway, and it returns `true`
+for a publicly addressed object even if the request is not signed.  Fedify
+cannot tell who the members of a collection such as followers are, so provide
+the `isMember` option to check them:
+
+~~~~ typescript twoslash
+import { type Federation } from "@fedify/fedify";
+import { type Actor, Note } from "@fedify/vocab";
+const federation = null as unknown as Federation<void>;
+async function findPortableNote(
+  _did: string,
+  _userId: string,
+  _noteId: string,
+): Promise<Note | null> {
+  return null;
+}
+async function isFollower(
+  _followers: URL,
+  _actor: Actor,
+): Promise<boolean> {
+  return false;
+}
+// ---cut-before---
+federation
+  .setObjectDispatcher(
+    Note,
+    "/users/{userId}/notes/{noteId}",
+    async (ctx, values) => {
+      if (ctx.portableRequest == null) return null;  // Omitted for brevity.
+      return await findPortableNote(
+        ctx.portableRequest.authority,
+        values.userId,
+        values.noteId,
+      );
+    },
+  )
+  .authorize(async (ctx, values) => {
+    if (ctx.portableRequest == null) return true;  // Omitted for brevity.
+    const note = await findPortableNote(
+      ctx.portableRequest.authority,
+      values.userId,
+      values.noteId,
+    );
+    return note != null && await ctx.isSignedByAudience(note, {
+      // Called for each addressee other than the signer, e.g., a followers
+      // collection:
+      isMember: (addressee, actor) => isFollower(addressee, actor),
+    });
+  });
+~~~~
+
+A predicate that always returns `true` serves every portable object to anyone,
+contrary to [FEP-ef61], so use one only if the dispatcher never serves
+non-public objects.  Also keep the following in mind:
+
+ -  Fedify responds to a request allowed by a predicate with
+    `Cache-Control: private`, as another requester may be denied the same
+    object, so that shared caches do not reuse the response.  A response from
+    your `onUnauthorized` or `onNotFound` callback may depend on the requester
+    as well, so mark it with `Cache-Control: no-store` if a shared cache sits
+    in front of the gateway.
+ -  A `401 Unauthorized` response tells the requester that the object exists.
+    Respond with `404 Not Found` from `onUnauthorized` if you do not want to
+    reveal that.
+ -  Only the object's own addressing is checked, not that of the objects
+    embedded in it, e.g., a public `Create` activity serves the `Note` it
+    embeds whatever the note's audience is.  Do not embed non-public objects
+    in public ones.
+ -  An Object Integrity Proof covers `bto` and `bcc` as well, so they cannot
+    be removed from a signed object before serving it, and every actor who
+    may retrieve the object sees them.
+ -  This applies only to requests through the gateway endpoint.  Ordinary
+    requests to the same object dispatcher, and routes of your own, are
+    served as before, so do not serve non-public portable objects through
+    them without checking the requester.
 
 ### Deleted portable objects
 
@@ -296,7 +397,7 @@ been deleted.  So sign the tombstone as you would sign the object:
 ~~~~ typescript twoslash
 import { signObject } from "@fedify/fedify";
 import { type Federation } from "@fedify/fedify";
-import { Note, Tombstone } from "@fedify/vocab";
+import { Note, PUBLIC_COLLECTION, Tombstone } from "@fedify/vocab";
 const federation = null as unknown as Federation<void>;
 interface Note_ { content: string; deletedAt: Temporal.Instant | null }
 async function findPortableNote(
@@ -325,6 +426,7 @@ federation.setObjectDispatcher(
       return await signObject(
         new Tombstone({
           id: ctx.getPortableObjectUri(Note, values),
+          to: PUBLIC_COLLECTION,
           formerType: Note,
           deleted: note.deletedAt,
         }),
@@ -335,6 +437,7 @@ federation.setObjectDispatcher(
     return await signObject(
       new Note({
         id: ctx.getPortableObjectUri(Note, values),
+        to: PUBLIC_COLLECTION,
         content: note.content,
       }),
       privateKey,
@@ -346,15 +449,18 @@ federation.setObjectDispatcher(
 
 Fedify serves such a tombstone with `410 Gone` and the same media type as
 other portable objects, under the same conditions: its ID canonically equals
-the requested portable ID, the authorization predicate allows the request,
-and its proof is made with a key of the DID.  If the tombstone has no proof,
-e.g., because the key of a deleted actor is no longer available, Fedify
-responds with `404 Not Found` instead, as if this server did not store
-the object.  A tombstone with an invalid proof, or one made by another DID,
-results in `500 Internal Server Error` as for other portable objects.  So is
-a tombstone without a proof that has properties of another kind of object,
-e.g., `totalItems`, as the exemptions for unsigned portable collections do
-not apply to tombstones.
+the requested portable ID, the authorization predicate allows the request (or
+the tombstone is publicly addressed if there is no predicate), and its proof
+is made with a key of the DID.  So give the tombstone of a public object
+public addressing as in the example above; that of a non-public object is
+served only to its audience, like the object itself.  If the tombstone has no
+proof, e.g., because the key of a deleted actor is no longer available, Fedify
+responds with `404 Not Found` instead, as if this server did not store the
+object.  A tombstone with an invalid proof, or one made by another DID, results
+in `500 Internal Server Error` as for other portable objects.  So is a
+tombstone without a proof that has properties of another kind of object, e.g.,
+`totalItems`, as the exemptions for unsigned portable collections do not apply
+to tombstones.
 
 > [!NOTE]
 > [FEP-ef61] does not define tombstones; it only says that a gateway responds

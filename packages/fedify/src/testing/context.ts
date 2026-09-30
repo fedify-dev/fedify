@@ -12,6 +12,7 @@ import type {
   OutboxContext,
   RequestContext,
 } from "../federation/context.ts";
+import { isInAudience } from "../federation/audience.ts";
 import type { Federation } from "../federation/federation.ts";
 
 export function createContext<TContextData>(
@@ -169,6 +170,16 @@ export function createRequestContext<TContextData>(
     getObject: args.getObject ?? (() => Promise.resolve(null)),
     getSignedKey: args.getSignedKey ?? (() => Promise.resolve(null)),
     getSignedKeyOwner: args.getSignedKeyOwner ?? (() => Promise.resolve(null)),
+    isSignedByAudience: args.isSignedByAudience ??
+      (async (object, options) =>
+        await isInAudience(object, null) ||
+        await isInAudience(
+          object,
+          args.getSignedKeyOwner == null
+            ? null
+            : await args.getSignedKeyOwner(options ?? {}),
+          options,
+        )),
     sendActivity: args.sendActivity ?? ((_params) => {
       throw new Error("Not implemented");
     }),

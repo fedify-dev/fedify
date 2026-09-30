@@ -6,6 +6,7 @@ import {
   CollectionPage,
   type CryptographicKey,
   getTypeId,
+  isActor,
   Link,
   Object,
   OrderedCollection,
@@ -88,6 +89,7 @@ import type {
   PortableCollectionOwnerMapper,
   UnverifiedActivityHandler,
 } from "./callback.ts";
+import { isPubliclyAddressedNode } from "./audience.ts";
 import type { PageItems } from "./collection.ts";
 import type {
   Context,
@@ -340,6 +342,14 @@ export interface PortableObjectHandlerParameters<TContextData>
    * The canonical form of the requested portable ID.
    */
   canonicalId: string;
+
+  /**
+   * The kind of the dispatcher that serves the portable object.  Without
+   * an authorization predicate, an object dispatcher's object is served only
+   * if it is publicly addressed, unless it is an actor, whereas whatever
+   * the actor dispatcher returns is served, as actors have no audience.
+   */
+  kind: "actor" | "object";
 }
 
 /**
@@ -347,6 +357,15 @@ export interface PortableObjectHandlerParameters<TContextData>
  * dispatcher, or the actor dispatcher adapted to one.  The object is served
  * only if its ID canonically matches the requested portable ID and it
  * satisfies the FEP-ef61 proof policy.
+ *
+ * FEP-ef61 forbids serving a non-public object to anyone but its intended
+ * audience.  If the dispatcher has an authorization predicate, it decides who
+ * may retrieve the object, and the response is marked with
+ * `Cache-Control: private`, as it depends on the requester.  Otherwise, only
+ * a publicly addressed object is served, and any other object is responded
+ * to with `404 Not Found`, as if this server did not store it.  Actors, and
+ * anything the actor dispatcher returns, are exempt from the latter, as
+ * actors have no audience.
  *
  * A {@link Tombstone} is served with `410 Gone` if it has an Object Integrity
  * Proof made with a key of the DID in its ID.  An unsigned tombstone cannot
@@ -365,6 +384,7 @@ export async function handlePortableObject<TContextData>(
     objectDispatcher,
     authorizePredicate,
     canonicalId,
+    kind,
     onNotFound,
     onUnauthorized,
   }: PortableObjectHandlerParameters<TContextData>,
@@ -388,14 +408,58 @@ export async function handlePortableObject<TContextData>(
       return await onUnauthorized(request);
     }
   }
+  // The same memoized context loader is used to decide who may see
+  // the document and to verify its proofs, so that both see the same
+  // contexts even if the application's context loader is nondeterministic:
+  const contextLoader = getNormalizationContextLoader(context.contextLoader);
   let jsonLd: unknown;
-  let servedId: string | null;
-  let result: VerifyPortableObjectProofResult;
+  let root: Record<string, unknown> | null;
   try {
     jsonLd = await object.toJsonLd(context);
-    servedId = await getJsonLdRootId(jsonLd, context.contextLoader);
+    root = await expandJsonLdRoot(jsonLd, contextLoader);
+  } catch (error) {
+    logger.error(
+      "Failed to serialize the portable object {portableId}:\n{error}",
+      { portableId: canonicalId, error },
+    );
+    return portableObjectInternalServerError(request);
+  }
+  // The serialized document can differ from object.id, e.g., when the object
+  // keeps its signed JSON-LD but its id URL was mutated afterwards, so check
+  // the ID that is actually served too:
+  const servedId = root?.["@id"];
+  if (
+    root == null || typeof servedId !== "string" ||
+    !isRequestedPortableId(servedId, canonicalId)
+  ) {
+    logger.debug(
+      "The serialized object does not match the requested portable object " +
+        "{portableId}.",
+      { portableId: canonicalId },
+    );
+    return await onNotFound(request);
+  }
+  // Decides on the served document rather than the object, as the two can
+  // differ, and before verifying the proofs, so that a request that may not
+  // see the object can neither trigger the verification nor tell its result:
+  if (
+    authorizePredicate == null && kind === "object" && !isActor(object) &&
+    !isPubliclyAddressedNode(root)
+  ) {
+    logger.debug(
+      "Not serving the portable object {portableId}, as it is not publicly " +
+        "addressed and its object dispatcher has no authorization predicate; " +
+        "responding as if this server did not store the object.  Set " +
+        "an authorization predicate that checks if the request is signed by " +
+        "an actor in the object's audience to serve it.",
+      { portableId: canonicalId },
+    );
+    return await onNotFound(request);
+  }
+  let result: VerifyPortableObjectProofResult;
+  try {
     result = await verifyPortableObjectProof(jsonLd, {
-      contextLoader: context.contextLoader,
+      contextLoader,
       documentLoader: context.documentLoader,
       tracerProvider: context.tracerProvider,
       meterProvider: context.meterProvider,
@@ -407,17 +471,6 @@ export async function handlePortableObject<TContextData>(
       { portableId: canonicalId, error },
     );
     return portableObjectInternalServerError(request);
-  }
-  // The serialized document can differ from object.id, e.g., when the object
-  // keeps its signed JSON-LD but its id URL was mutated afterwards, so check
-  // the ID that is actually served too:
-  if (servedId == null || !isRequestedPortableId(servedId, canonicalId)) {
-    logger.debug(
-      "The serialized object does not match the requested portable object " +
-        "{portableId}.",
-      { portableId: canonicalId },
-    );
-    return await onNotFound(request);
   }
   const tombstone = object instanceof Tombstone;
   if (!result.verified) {
@@ -460,15 +513,16 @@ export async function handlePortableObject<TContextData>(
       return portableObjectInternalServerError(request);
     }
   }
+  const headers = new Headers({
+    "Content-Type": PORTABLE_OBJECT_CONTENT_TYPE,
+    Vary: "Accept",
+  });
+  // A response allowed by an authorization predicate may be denied to other
+  // requesters, so shared caches must not reuse it for them:
+  if (authorizePredicate != null) headers.set("Cache-Control", "private");
   return new Response(
     request.method === "HEAD" ? null : JSON.stringify(jsonLd),
-    {
-      status: tombstone ? 410 : 200,
-      headers: {
-        "Content-Type": PORTABLE_OBJECT_CONTENT_TYPE,
-        Vary: "Accept",
-      },
-    },
+    { status: tombstone ? 410 : 200, headers },
   );
 }
 
@@ -482,19 +536,19 @@ function isRequestedPortableObject(
   return object.id != null && getCanonicalPortableId(object.id) === canonicalId;
 }
 
-async function getJsonLdRootId(
+async function expandJsonLdRoot(
   jsonLd: unknown,
   contextLoader: DocumentLoader,
-): Promise<string | null> {
-  // Expands the document rather than reading its "id" key, since the document
-  // may be in the expanded form or alias @id differently:
+): Promise<Record<string, unknown> | null> {
+  // Expands the document rather than reading its keys, since the document
+  // may be in the expanded form or alias @id and addressing properties
+  // differently:
   const expanded = await jsonld.expand(jsonLd, {
-    documentLoader: getNormalizationContextLoader(contextLoader),
+    documentLoader: contextLoader,
     keepFreeFloatingNodes: true,
   });
   if (expanded.length !== 1) return null;
-  const id = expanded[0]["@id"];
-  return typeof id === "string" ? id : null;
+  return expanded[0] as Record<string, unknown>;
 }
 
 function isRequestedPortableId(id: string, canonicalId: string): boolean {
