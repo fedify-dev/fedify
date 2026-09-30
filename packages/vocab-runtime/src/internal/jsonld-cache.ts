@@ -1,6 +1,42 @@
 import type { DocumentLoader } from "../docloader.ts";
 import jsonld from "../jsonld.ts";
-import { formatIri, haveSameFe34Origin, haveSameIriOrigin } from "../url.ts";
+import {
+  formatIri,
+  fromCompatibleEf61Id,
+  getFe34Origin,
+  haveSameFe34Origin,
+  haveSameIriOrigin,
+  parseIri,
+} from "../url.ts";
+
+/**
+ * Reads expanded gateways, including an unmapped term on portable actors.
+ * The original values and their order are preserved for URL validation by
+ * the caller.  An explicitly mapped FEP-ef61 property always takes precedence.
+ * @internal Used by generated vocabulary classes and portable proof checks.
+ */
+export function getPortableActorGateways(
+  node: Record<string, unknown>,
+  allowUnmapped = true,
+): unknown[] | undefined {
+  const property = "https://w3id.org/fep/ef61/gateways";
+  if (globalThis.Object.hasOwn(node, property)) {
+    return Array.isArray(node[property]) ? node[property] : undefined;
+  }
+  if (
+    !allowUnmapped || typeof node["@id"] !== "string" ||
+    !("http://www.w3.org/ns/ldp#inbox" in node) ||
+    !("https://www.w3.org/ns/activitystreams#outbox" in node)
+  ) return undefined;
+  try {
+    const id = fromCompatibleEf61Id(node["@id"]) ?? node["@id"];
+    if (!getFe34Origin(parseIri(id)).startsWith("did:")) return undefined;
+  } catch (error) {
+    if (error instanceof TypeError) return undefined;
+    throw error;
+  }
+  return Array.isArray(node["_:gateways"]) ? node["_:gateways"] : undefined;
+}
 
 const noJsonLdContext = Symbol("noJsonLdContext");
 

@@ -1169,7 +1169,12 @@ proof must use a DID URL, and that DID must match the authority of the portable
 object ID.  A portable actor must also have a non-empty `gateways` list whose
 items are all HTTP(S) URIs with an empty path, query, and fragment; this is
 checked before the proofs, so the `invalidGateways` reason does not mean that
-the proofs are valid.  The detailed result distinguishes documents outside the
+the proofs are valid. When a portable actor omits the JSON-LD mapping for
+`gateways`, as tootik v0.25.4 does, Fedify accepts the otherwise unmapped
+ActivityStreams term only if every proof uses `eddsa-jcs-2022`. These proofs
+authenticate the original JSON, including the gateway list.
+
+The detailed result distinguishes documents outside the
 policy, missing or invalid proofs, actors without valid gateways, unsupported
 verification methods, DID mismatches, and successful verification:
 

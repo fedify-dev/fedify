@@ -30,6 +30,7 @@ Supported FEPs
  -  [FEP-9091][]: Export Actor Service Endpoint
  -  [FEP-f1d5][]: NodeInfo in Fediverse Software
  -  [FEP-8b32][]: Object Integrity Proofs
+ -  [FEP-ef61][]: Portable objects
  -  [FEP-521a][]: Representing actor's public keys
  -  [FEP-5feb][]: Search indexing consent for actors
  -  [FEP-fe34][]: Origin-based security model
@@ -49,6 +50,7 @@ Supported FEPs
 [FEP-9091]: https://w3id.org/fep/9091
 [FEP-f1d5]: https://w3id.org/fep/f1d5
 [FEP-8b32]: https://w3id.org/fep/8b32
+[FEP-ef61]: https://w3id.org/fep/ef61
 [FEP-521a]: https://w3id.org/fep/521a
 [FEP-5feb]: https://w3id.org/fep/5feb
 [FEP-fe34]: https://w3id.org/fep/fe34
@@ -89,6 +91,24 @@ profile.
 
 [FEP-ae97]: https://w3id.org/fep/ae97
 [portable objects]: https://fedify.dev/manual/portable
+
+
+FEP-ef61 interoperability
+-------------------------
+
+Fedify accepts the portable `Application` actor captured from tootik v0.25.4
+(commit `5ce4b7fe074d7c385808be387ffcda7040842a19`), including its HTTPS
+compatible identifier and `eddsa-jcs-2022` Object Integrity Proof. The actor
+omits the JSON-LD mapping for `gateways`; Fedify reads that list and requires
+JCS proofs to authenticate the original JSON. The unchanged response and
+capture procedure are recorded in the [tootik fixture].
+
+This result covers actor parsing and proof verification. Incoming HTTP
+Signatures and activities captured from tootik, acceptance of Fedify output
+by other implementations, and live Mitra/Mastodon interoperability remain
+unverified.
+
+[tootik fixture]: packages/fedify/test-vectors/fep-ef61/tootik-v0.25.4/README.md
 
 
 ActivityPub

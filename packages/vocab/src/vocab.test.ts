@@ -722,6 +722,75 @@ test("FEP-ef61: actor gateways round-trip as an ordered URI list", async () => {
   }
 });
 
+test("FEP-ef61: portable actors parse unmapped gateway lists", async () => {
+  const actorClasses = [Application, Group, Organization, Person, Service];
+  const gateways = ["https://first.example", "https://second.example"];
+  const ids = [
+    "ap://did:key:z6Mkabc/actor",
+    "https://first.example/.well-known/apgateway/did:key:z6Mkabc/actor",
+  ];
+  for (const ActorClass of actorClasses) {
+    for (const id of ids) {
+      const actor = await ActorClass.fromJsonLd({
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: ActorClass.name,
+        id,
+        inbox: `${id}/inbox`,
+        outbox: `${id}/outbox`,
+        gateways,
+      });
+      deepStrictEqual(actor.gateways, gateways.map((g) => new URL(g)));
+    }
+  }
+});
+
+test("FEP-ef61: unmapped gateways retain their context meaning", async () => {
+  const actorClasses = [Application, Group, Organization, Person, Service];
+  const id = "ap://did:key:z6Mkabc/actor";
+  for (const ActorClass of actorClasses) {
+    const document = {
+      type: ActorClass.name,
+      id,
+      inbox: `${id}/inbox`,
+      outbox: `${id}/outbox`,
+      gateways: ["https://unmapped.example"],
+    };
+    for (
+      const context of [
+        { gateways: "https://example.com/unrelated" },
+        { gateways: null },
+        { "@vocab": "https://example.com/" },
+        {
+          [ActorClass.name]: {
+            "@id": `https://www.w3.org/ns/activitystreams#${ActorClass.name}`,
+            "@context": { gateways: "https://example.com/scoped" },
+          },
+        },
+      ]
+    ) {
+      const actor = await ActorClass.fromJsonLd({
+        "@context": ["https://www.w3.org/ns/activitystreams", context],
+        ...document,
+      });
+      deepStrictEqual(actor.gateways, []);
+    }
+    const ordinary = await ActorClass.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      ...document,
+      id: "https://ordinary.example/actor",
+    });
+    deepStrictEqual(ordinary.gateways, []);
+    const canonical = await ActorClass.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      ...document,
+      "https://w3id.org/fep/ef61/gateways": {
+        "@list": [{ "@id": "https://canonical.example" }],
+      },
+    });
+    deepStrictEqual(canonical.gateways, [new URL("https://canonical.example")]);
+  }
+});
+
 test("FEP-ef61: actor gateways preserve single, empty, and invalid cases", async () => {
   const singleGateway = new Person({
     id: new URL("ap+ef61://did%3Akey%3Az6Mkabc/actor"),

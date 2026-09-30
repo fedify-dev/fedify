@@ -17,6 +17,7 @@ import {
   type PortableObjectVerifier,
   type RemoteDocument,
 } from "@fedify/vocab-runtime";
+import { getPortableActorGateways } from "@fedify/vocab-runtime/internal/jsonld-cache";
 import {
   isPlainJsonTree,
   retainSignedRepresentation,
@@ -1590,7 +1591,6 @@ const FEP_2277_COLLECTION_PROPERTIES = [
   "prev",
   "current",
 ].map((property) => AS_NAMESPACE + property);
-const FEP_EF61_GATEWAYS = "https://w3id.org/fep/ef61/gateways";
 const PORTABLE_OBJECT_ID_PATTERN = /^ap(?:\+ef61)?:\/\//i;
 const FUNCTIONAL_PROOF_PROPERTIES = [
   `${SECURITY_NAMESPACE}cryptosuite`,
@@ -1634,14 +1634,18 @@ function hasValidPortableProofShape(proofValue: unknown): boolean {
  * FEP-ef61 requires: a non-empty list whose items are all HTTP(S) URIs with
  * an empty path, query, and fragment.  Like the generated vocabulary decoder,
  * this also tolerates a plain set of values instead of a `@list`, and gateway
- * strings given as `@value`s instead of `@id`s.
+ * strings given as `@value`s instead of `@id`s.  JCS-authenticated actors may
+ * also supply an unmapped literal `gateways` list.
  */
-function hasValidPortableActorGateways(node: Record<string, unknown>): boolean {
-  const values = node[FEP_EF61_GATEWAYS];
+function hasValidPortableActorGateways(
+  node: Record<string, unknown>,
+  allowUnmapped: boolean,
+): boolean {
+  const values = getPortableActorGateways(node, allowUnmapped);
   if (!Array.isArray(values)) return false;
   let items: unknown = values;
   if (values.some((value) => isJsonLdNode(value) && "@list" in value)) {
-    if (values.length !== 1) return false;
+    if (values.length !== 1 || !isJsonLdNode(values[0])) return false;
     items = values[0]["@list"];
   }
   if (!Array.isArray(items) || items.length < 1) return false;
@@ -1951,7 +1955,14 @@ async function preparePortableObjectProof(
   // FEP-ef61 requires a portable actor to list where it can be retrieved.
   // This is checked before any key is resolved, since the document is
   // rejected whether or not its proofs are valid:
-  if (objectType === "actor" && !hasValidPortableActorGateways(root)) {
+  if (
+    objectType === "actor" &&
+    !hasValidPortableActorGateways(
+      root,
+      // JCS authenticates unmapped JSON properties, unlike RDF-based suites.
+      proofs.every((proof) => proof.cryptosuite === "eddsa-jcs-2022"),
+    )
+  ) {
     return {
       prepared: false,
       root,
@@ -2048,6 +2059,8 @@ export async function verifyPortableObjectProofPolicy(
  * and fragment; otherwise, it is rejected with the `invalidGateways` reason
  * before its proofs are verified.  The proofs are verified over the document as
  * given; a compatible identifier is never rewritten into a portable ID.
+ * An unmapped literal `gateways` property is also accepted when every proof
+ * uses `eddsa-jcs-2022`, which authenticates the original JSON properties.
  *
  * [FEP-ef61]: https://w3id.org/fep/ef61
  *

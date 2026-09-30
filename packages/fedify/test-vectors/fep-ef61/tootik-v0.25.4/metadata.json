@@ -1,0 +1,54 @@
+{
+  "implementation": "tootik",
+  "version": "0.25.4",
+  "tag": "v0.25.4",
+  "commit": "5ce4b7fe074d7c385808be387ffcda7040842a19",
+  "binaryUrl": "https://github.com/dimkr/tootik/releases/download/v0.25.4/tootik-amd64",
+  "binarySha256": "c24982af1a58cf8d4a8ae1a66dae7252d90bb1310c31d297ddc4b040d790f0c2",
+  "capturedAt": "2026-09-30T11:57:45.598951+00:00",
+  "actorUrl": "https://tootik.example/.well-known/apgateway/did:key:z6MknxT9xX8cmnsEqBk2u74aYaGQNjVQL1eHxhn1qb27p5vE/actor",
+  "transport": "HTTPS; curl --connect-to maps tootik.example:443 to 127.0.0.1:18443; self-signed certificate trusted explicitly",
+  "actorSha256": "c9826d63e3ed01529a048e32389df27ff4d31a3fc4d46a207d30c6a406a8ce82",
+  "contexts": [
+    {
+      "url": "https://www.w3.org/ns/activitystreams",
+      "capturedSha256": "a27b78b82f4980963127140d0cb74f0e8f21c0e2b8efd0368232bf9823edff5a",
+      "fixture": "packages/fixture/src/fixtures/www.w3.org/ns/activitystreams.json",
+      "matchesFixtureJsonValues": true
+    },
+    {
+      "url": "https://w3id.org/security/data-integrity/v1",
+      "capturedSha256": "b5d829bd09aa7c42abc6efa0c8ed7635313b5487f37ccfce3ecd149ca9418554",
+      "fixture": "packages/fixture/src/fixtures/w3id.org/security/data-integrity/v1.json",
+      "matchesFixtureJsonValues": true
+    },
+    {
+      "url": "https://w3id.org/security/v1",
+      "capturedSha256": "abaf97e107d1925503c433dcaf3ffd2831697cacc1ed2a293e1bc8030d5bcb47",
+      "fixture": "packages/fixture/src/fixtures/w3id.org/security/v1.json",
+      "matchesFixtureJsonValues": true
+    }
+  ],
+  "expected": {
+    "proofVerified": true,
+    "parsedGateways": [
+      "https://tootik.example/"
+    ],
+    "portableObjectProof": {
+      "verified": true
+    }
+  },
+  "baseline": {
+    "fedifyCommit": "3d507d94631110b066056a16618b907a75e8e7ff",
+    "observed": {
+      "proofVerified": true,
+      "parsedGateways": [],
+      "portableObjectProof": {
+        "verified": false,
+        "reason": {
+          "type": "invalidGateways"
+        }
+      }
+    }
+  }
+}
