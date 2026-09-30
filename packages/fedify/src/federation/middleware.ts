@@ -1844,7 +1844,7 @@ export class FederationImpl<TContextData>
           onNotFound,
         });
       case "collection": {
-        const name = route.name.replace(/^collection:/, "");
+        const name = this.getCollectionName(route.name);
         const callbacks = this.collectionCallbacks[name];
         return await handleCustomCollection<
           URL | Object | Link | Recipient,
@@ -1852,7 +1852,7 @@ export class FederationImpl<TContextData>
           RequestContext<TContextData>,
           TContextData
         >(request, {
-          name,
+          name: String(name),
           context,
           values: route.values,
           collectionCallbacks: callbacks,
@@ -1862,7 +1862,7 @@ export class FederationImpl<TContextData>
         });
       }
       case "orderedCollection": {
-        const name = route.name.replace(/^orderedCollection:/, "");
+        const name = this.getCollectionName(route.name);
         const callbacks = this.collectionCallbacks[name];
         return await handleOrderedCollection<
           URL | Object | Link | Recipient,
@@ -1870,7 +1870,7 @@ export class FederationImpl<TContextData>
           RequestContext<TContextData>,
           TContextData
         >(request, {
-          name,
+          name: String(name),
           context,
           values: route.values,
           collectionCallbacks: callbacks,
@@ -2191,8 +2191,10 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       string,
     ];
     if (match !== null) {
-      const [, type, name] = match;
+      const [, type] = match;
+      const name = this.federation.getCollectionName(route.name);
       const cls = this.federation.collectionTypeIds[name];
+      if (cls == null) return null;
       return {
         type,
         name,
