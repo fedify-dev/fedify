@@ -519,3 +519,58 @@ test("handleInbox() accepts portable actors with keys at ap: URIs", async () => 
   );
   assertEquals([response.status, dispatched.count], [401, 0]);
 });
+
+test("handleInbox() rejects embedded portable actors without valid gateways", async () => {
+  const did = await exportDidKey(ed25519PublicKey.publicKey);
+  const verificationMethod = `${did}#${did.slice("did:key:".length)}`;
+  const privateJwk = await crypto.subtle.exportKey("jwk", ed25519PrivateKey);
+  const actorId = `ap://${did}/actor`;
+  const update = async (gateways: Record<string, unknown>) =>
+    await secureDocument(
+      {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/security/data-integrity/v1",
+        ],
+        id: `ap://${did}/activities/update`,
+        type: "Update",
+        actor: actorId,
+        // The embedded actor is signed separately, before the activity:
+        object: await secureDocument(
+          {
+            "@context": [
+              "https://www.w3.org/ns/activitystreams",
+              "https://w3id.org/security/data-integrity/v1",
+              "https://w3id.org/fep/ef61",
+            ],
+            id: actorId,
+            type: "Person",
+            inbox: `${actorId}/inbox`,
+            outbox: `${actorId}/outbox`,
+            ...gateways,
+          },
+          privateJwk,
+          verificationMethod,
+        ),
+      },
+      privateJwk,
+      verificationMethod,
+    );
+  const cases: [Record<string, unknown>, number, number][] = [
+    [{ gateways: ["https://gw.example"] }, 202, 1],
+    [{}, 401, 0],
+    [{ gateways: [] }, 401, 0],
+    // The vocabulary cannot even parse a gateway with a path, so the activity
+    // is rejected as malformed rather than as unverified:
+    [{ gateways: ["https://gw.example/path"] }, 400, 0],
+  ];
+  for (const [gateways, status, count] of cases) {
+    const dispatched = { count: 0 };
+    const response = await handle(await update(gateways), dispatched);
+    assertEquals(
+      [response.status, dispatched.count],
+      [status, count],
+      JSON.stringify(gateways),
+    );
+  }
+});

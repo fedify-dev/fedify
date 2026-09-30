@@ -362,6 +362,9 @@ export class FederationBuilderImpl<TContextData>
           );
         }
         if (actor instanceof Tombstone) return actor;
+        if (portable && actor.id != null) {
+          warnPortableActorGateways(actor.id, actor.gateways);
+        }
         if (actor.id != null && isCompatibleEf61Iri(actor.id)) {
           warnCompatibleActorId(actor.id, actor.gateway);
         }
@@ -1736,9 +1739,32 @@ interface ObjectCallbacks<TContextData, TParam extends string> {
 }
 
 /**
+ * Warns about an FEP-ef61 portable actor whose `gateways` is empty or has
+ * an item that is not an HTTP(S) origin, which FEP-ef61 does not allow.
+ * Every item is checked, since the list and its URLs can be mutated after
+ * the actor is constructed.
+ */
+function warnPortableActorGateways(
+  actorId: URL,
+  gateways: readonly URL[],
+): void {
+  if (gateways.length > 0 && gateways.every(isGatewayUrl)) return;
+  getLogger(["fedify", "federation", "actor"]).warn(
+    "Actor dispatcher returned an FEP-ef61 portable actor, {actorId}, whose " +
+      "gateways property is empty or has an item that is not an HTTP(S) " +
+      "origin.  FEP-ef61 requires a portable actor to have at least one " +
+      "gateway, and every gateway to be an HTTP(S) URI with an empty path, " +
+      "query, and fragment.  Set the gateways property.",
+    { actorId: actorId.href, gateways: gateways.map((g) => g.href) },
+  );
+}
+
+/**
  * Warns about an FEP-ef61 portable actor identified by a compatible identifier
  * that is malformed, or is not on the actor's first gateway, where FEP-ef61
- * requires publishers to construct compatible identifiers.
+ * requires publishers to construct compatible identifiers.  A missing or
+ * invalid first gateway is reported by {@link warnPortableActorGateways}
+ * instead.
  */
 function warnCompatibleActorId(actorId: URL, gateway: URL | null): void {
   const logger = getLogger(["fedify", "federation", "actor"]);
@@ -1753,15 +1779,8 @@ function warnCompatibleActorId(actorId: URL, gateway: URL | null): void {
     );
     return;
   }
-  if (gateway == null || !isGatewayUrl(gateway)) {
-    logger.warn(
-      "Actor dispatcher returned an actor whose id property, {actorId}, is " +
-        "an FEP-ef61 compatible identifier, but whose first gateway is not " +
-        "an HTTP(S) origin.  Set the gateways property, and construct " +
-        "the compatible identifier with its first gateway.",
-      { actorId: actorId.href },
-    );
-  } else if (actorId.origin !== gateway.origin) {
+  if (gateway == null || !isGatewayUrl(gateway)) return;
+  if (actorId.origin !== gateway.origin) {
     logger.warn(
       "Actor dispatcher returned an actor whose id property, {actorId}, is " +
         "an FEP-ef61 compatible identifier on another gateway than its first " +

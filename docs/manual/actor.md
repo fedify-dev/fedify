@@ -771,6 +771,14 @@ FEP-ef61 takes the domain of the actor's WebFinger address from the *first*
 gateway instead: a portable actor with `preferredUsername` `alice` and
 `https://example.com` as its first gateway is `@alice@example.com`.
 
+FEP-ef61 requires a portable actor to have at least one gateway, and every
+gateway to be an HTTP(S) URI with an empty path, query, and fragment, such as
+`https://example.com`.  If the actor dispatcher returns a portable actor whose
+`gateways` is empty or has any other item, Fedify logs a warning.  Fedify does
+not serve such an actor through the gateway endpoint, and
+`verifyPortableObjectProof()` rejects it with the `invalidGateways` reason,
+so other servers running Fedify reject it too.
+
 Fedify's WebFinger endpoint supports portable actors through the same actor
 dispatcher, `~ActorCallbackSetters.mapHandle()`, and
 `~ActorCallbackSetters.mapAlias()` as ordinary actors.  If the actor dispatcher

@@ -348,13 +348,17 @@ export function isGatewayUrl(url: URL): boolean {
 
 /**
  * Parses and validates an FEP-ef61 gateway base URI.
+ * @throws {TypeError} If the URI is malformed, or is not an HTTP(S) base URI
+ *                     with no credentials, path, query, or fragment.  In the
+ *                     latter case, the message starts with
+ *                     `Invalid FEP-ef61 gateway:`.
  */
 export function parseGatewayUrl(url: string): URL {
   const parsed = parseIri(url);
   if (!isGatewayUrl(parsed)) {
     throw new TypeError(
-      "FEP-ef61 gateways must be HTTP(S) base URIs with no credentials, " +
-        "path, query, or fragment.",
+      `Invalid FEP-ef61 gateway: ${url}.  FEP-ef61 gateways must be HTTP(S) ` +
+        "base URIs with no credentials, path, query, or fragment.",
     );
   }
   return parsed;

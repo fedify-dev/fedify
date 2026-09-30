@@ -420,6 +420,18 @@ test("Federation.fetch() applies the FEP-ef61 proof policy to portable objects",
       object.id!.pathname = "/objects/mutated-id";
       return object;
     },
+    "actor-without-gateways": () =>
+      sign(
+        new Person({
+          id: parseIri(`ap+ef61://${did}/objects/actor-without-gateways`),
+          inbox: parseIri(
+            `ap+ef61://${did}/objects/actor-without-gateways/inbox`,
+          ),
+          outbox: parseIri(
+            `ap+ef61://${did}/objects/actor-without-gateways/outbox`,
+          ),
+        }),
+      ),
     "unsigned-actor": () =>
       Promise.resolve(
         new Person({
@@ -446,6 +458,7 @@ test("Federation.fetch() applies the FEP-ef61 proof policy to portable objects",
     "activity": 200,
     "actor": 200,
     "mutated-id": 404,
+    "actor-without-gateways": 500,
     "unsigned-actor": 500,
   };
   for (const [id, status] of globalThis.Object.entries(expected)) {
@@ -1359,6 +1372,7 @@ test("Federation.fetch() serves compatible-ID actors", async (t) => {
       records.map((r) => r.properties.actorId),
       [gatewayUrl("/actors/nogateway")],
     );
+    assert(String(records[0].rawMessage).includes("gateways property"));
   });
 
   await t.step(
@@ -1377,4 +1391,79 @@ test("Federation.fetch() serves compatible-ID actors", async (t) => {
       assert(String(records[0].rawMessage).includes("malformed"));
     },
   );
+});
+
+test("Federation.fetch() warns about portable actors without valid gateways", async (t) => {
+  const federation = createTestFederation();
+  const actors: Record<string, (ctx: Context<void>) => Person | Tombstone> = {
+    valid: (ctx) =>
+      new Person({
+        id: ctx.getPortableObjectUri(Person, { name: "valid" }, did),
+        gateways: [
+          new URL("https://example.com"),
+          new URL("https://other.example/"),
+        ],
+      }),
+    empty: (ctx) =>
+      new Person({
+        id: ctx.getPortableObjectUri(Person, { name: "empty" }, did),
+      }),
+    mutated: (ctx) => {
+      const actor = new Person({
+        id: ctx.getPortableObjectUri(Person, { name: "mutated" }, did),
+        gateways: [
+          new URL("https://example.com"),
+          new URL("https://other.example/"),
+        ],
+      });
+      // The gateways and their URLs can be mutated after construction:
+      actor.gateways[1].pathname = "/gateway";
+      return actor;
+    },
+    https: (ctx) => new Person({ id: ctx.getActorUri("https") }),
+    tombstone: (ctx) =>
+      new Tombstone({
+        id: ctx.getPortableObjectUri(Person, { name: "tombstone" }, did),
+      }),
+  };
+  federation.setActorDispatcher(
+    "/users/{identifier}",
+    (ctx, identifier) => actors[identifier]?.(ctx) ?? null,
+  );
+  federation.setObjectDispatcher(
+    Person,
+    "/actors/{name}",
+    () => null,
+  );
+  const expected: Record<string, string[]> = {
+    valid: [],
+    empty: [`ap+ef61://${did}/actors/empty`],
+    mutated: [`ap+ef61://${did}/actors/mutated`],
+    https: [],
+    tombstone: [],
+  };
+  for (const [identifier, actorIds] of globalThis.Object.entries(expected)) {
+    await t.step(identifier, async () => {
+      const records = await captureWarnings(async () => {
+        await federation.fetch(
+          new Request(`https://example.com/users/${identifier}`, {
+            headers: { Accept: ACCEPT },
+          }),
+          { contextData: undefined },
+        );
+      });
+      // A tombstone is logged as a 410 Gone response, not as a warning about
+      // the actor:
+      const actorRecords = records.filter((r) =>
+        r.category.join(".") === "fedify.federation.actor"
+      );
+      assertEquals(
+        actorRecords.map((r) => r.properties.actorId),
+        actorIds.map((id) => parseIri(id).href),
+      );
+      for (const record of actorRecords) {
+        assert(String(record.rawMessage).includes("gateways property"));
+      }
+    });
+  }
 });

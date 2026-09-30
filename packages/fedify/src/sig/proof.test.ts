@@ -84,6 +84,7 @@ const portableContext = [
   "https://www.w3.org/ns/activitystreams",
   "https://w3id.org/security/data-integrity/v1",
 ];
+const portableActorContext = [...portableContext, "https://w3id.org/fep/ef61"];
 const portableProofCreated = "2023-02-24T23:36:38Z";
 
 async function signPortableJsonLd(
@@ -1537,11 +1538,12 @@ test("verifyPortableObjectProof()", async (t) => {
     for (
       const document of [
         {
-          "@context": portableContext,
+          "@context": portableActorContext,
           id: `ap+ef61://did:key:${portableDidMethod}/actor`,
           type: "UnknownActorType",
           inbox: "https://gateway.example/users/alice/inbox",
           outbox: "https://gateway.example/users/alice/outbox",
+          gateways: ["https://gateway.example"],
         },
         {
           "@context": portableContext,
@@ -1560,6 +1562,185 @@ test("verifyPortableObjectProof()", async (t) => {
       assertEquals(result.keys.length, 1);
     }
   });
+
+  await t.step("requires portable actors to have valid gateways", async () => {
+    const actorIds = [
+      `ap://did:key:${portableDidMethod}/actor`,
+      `ap+ef61://did%3Akey%3A${portableDidMethod}/actor`,
+      `https://gateway.example/.well-known/apgateway/did:key:${portableDidMethod}/actor`,
+    ];
+    const actor = (id: string, extra: Record<string, unknown>) => ({
+      "@context": portableActorContext,
+      id,
+      type: "Person",
+      inbox: `${id}/inbox`,
+      outbox: `${id}/outbox`,
+      ...extra,
+    });
+    const validGateways = [
+      ["https://gateway.example"],
+      ["https://gateway.example/"],
+      ["https://gateway.example", "http://other.example:8080"],
+    ];
+    const invalidGateways: Record<string, unknown>[] = [
+      {},
+      { gateways: [] },
+      { gateways: ["https://gateway.example/path"] },
+      { gateways: ["https://gateway.example/?query"] },
+      { gateways: ["https://gateway.example/#fragment"] },
+      { gateways: ["ftp://gateway.example"] },
+      { gateways: ["https://user:password@gateway.example"] },
+      { gateways: ["gateway.example"] },
+      // Some valid and some invalid gateways:
+      { gateways: ["https://gateway.example", "https://other.example/path"] },
+    ];
+    for (const id of actorIds) {
+      for (const gateways of validGateways) {
+        const result = await verifyPortableObjectProof(
+          await signPortableJsonLd(actor(id, { gateways })),
+          options,
+        );
+        assert(result.verified, `${id} with ${gateways}`);
+      }
+      for (const extra of invalidGateways) {
+        assertEquals(
+          await verifyPortableObjectProof(
+            await signPortableJsonLd(actor(id, extra)),
+            options,
+          ),
+          { verified: false, reason: { type: "invalidGateways" } },
+          `${id} with ${JSON.stringify(extra)}`,
+        );
+      }
+    }
+  });
+
+  await t.step("reads gateways in any JSON-LD form", async () => {
+    const id = `ap://did:key:${portableDidMethod}/actor`;
+    const property = "https://w3id.org/fep/ef61/gateways";
+    const documents = [
+      // An expanded IRI with an explicit list:
+      {
+        "@context": portableContext,
+        [property]: { "@list": [{ "@id": "https://gateway.example" }] },
+      },
+      // A plain set of string values, as the vocabulary decoder tolerates:
+      { "@context": portableContext, [property]: "https://gateway.example" },
+      // An aliased term:
+      {
+        "@context": [
+          ...portableContext,
+          {
+            relays: {
+              "@id": property,
+              "@type": "@id",
+              "@container": "@list",
+            },
+          },
+        ],
+        relays: ["https://gateway.example"],
+      },
+    ];
+    for (const document of documents) {
+      const result = await verifyPortableObjectProof(
+        await signPortableJsonLd({
+          ...document,
+          id,
+          type: "Person",
+          inbox: `${id}/inbox`,
+          outbox: `${id}/outbox`,
+        }),
+        options,
+      );
+      assert(result.verified, JSON.stringify(document));
+    }
+    assertEquals(
+      await verifyPortableObjectProof(
+        await signPortableJsonLd({
+          "@context": portableContext,
+          id,
+          type: "Person",
+          inbox: `${id}/inbox`,
+          outbox: `${id}/outbox`,
+          [property]: [
+            { "@list": [{ "@id": "https://gateway.example" }] },
+            { "@list": [{ "@id": "https://other.example" }] },
+          ],
+        }),
+        options,
+      ),
+      { verified: false, reason: { type: "invalidGateways" } },
+    );
+  });
+
+  await t.step("checks gateways only for FEP-2277 actors", async () => {
+    // Without an outbox, a Person is not an actor by FEP-2277:
+    const result = await verifyPortableObjectProof(
+      await signPortableJsonLd({
+        "@context": portableContext,
+        id: `ap://did:key:${portableDidMethod}/actor`,
+        type: "Person",
+        inbox: `ap://did:key:${portableDidMethod}/actor/inbox`,
+      }),
+      options,
+    );
+    assert(result.verified);
+    // Portable objects do not need gateways:
+    assert(
+      (await verifyPortableObjectProof(
+        await signPortableJsonLd(unsignedObject),
+        options,
+      )).verified,
+    );
+  });
+
+  await t.step(
+    "checks gateways after the proof shape and before the keys",
+    async () => {
+      const id = `ap://did:key:${portableDidMethod}/actor`;
+      const document = {
+        "@context": portableActorContext,
+        id,
+        type: "Person",
+        inbox: `${id}/inbox`,
+        outbox: `${id}/outbox`,
+      };
+      assertEquals(
+        await verifyPortableObjectProof(document, options),
+        { verified: false, reason: { type: "missingProof" } },
+      );
+      const keyIds: string[] = [];
+      const keyCache: KeyCache = {
+        get(keyId) {
+          keyIds.push(keyId.href);
+          return Promise.resolve(undefined);
+        },
+        set(keyId) {
+          keyIds.push(keyId.href);
+          return Promise.resolve();
+        },
+      };
+      const signed = await signPortableJsonLd(document);
+      const tampered = { ...signed, name: "Tampered" };
+      assertEquals(
+        await verifyPortableObjectProof(tampered, { ...options, keyCache }),
+        { verified: false, reason: { type: "invalidGateways" } },
+      );
+      assertEquals(keyIds, []);
+      // The same actor with gateways resolves its key:
+      const withGateways = await signPortableJsonLd({
+        ...document,
+        gateways: ["https://gateway.example"],
+      });
+      assert(
+        (await verifyPortableObjectProof(withGateways, {
+          ...options,
+          keyCache,
+        })).verified,
+      );
+      assert(keyIds.length > 0);
+    },
+  );
 
   await t.step("uses the normative FEP-2277 precedence order", async () => {
     for (
@@ -1733,11 +1914,12 @@ test("verifyPortableObjectProof()", async (t) => {
     const compatibleActorId =
       `https://gateway.example/.well-known/apgateway/did:key:${portableDidMethod}/actor`;
     const actor = {
-      "@context": portableContext,
+      "@context": portableActorContext,
       id: compatibleActorId,
       type: "Person",
       inbox: `${compatibleActorId}/inbox`,
       outbox: `${compatibleActorId}/outbox`,
+      gateways: ["https://gateway.example"],
     };
     const signed = await signPortableJsonLd(actor);
     const result = await verifyPortableObjectProof(signed, options);
