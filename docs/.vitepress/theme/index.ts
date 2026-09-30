@@ -7,6 +7,7 @@ import PageMarkdownActions from "./components/PageMarkdownActions.vue";
 import Theme from "vitepress/theme";
 
 import "@fontsource-variable/source-serif-4/opsz.css";
+import "@fontsource-variable/source-serif-4/opsz-italic.css";
 import "@shikijs/vitepress-twoslash/style.css";
 import "./brand.css";
 import "./style.css";

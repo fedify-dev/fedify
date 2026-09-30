@@ -550,7 +550,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
           <p class="lp-eyebrow">TypeScript · ActivityPub · Open source</p>
           <h1 class="lp-title">
             Build for the
-            <span class="lp-grad">fediverse</span>,<br />
+            <em class="lp-em">fediverse</em>,<br />
             skip the boilerplate.
           </h1>
           <p class="lp-lede">
@@ -1207,18 +1207,9 @@ federation.<span class="c-fn">setActorDispatcher</span>(
   color: var(--vp-c-text-1);
 }
 
-.lp-grad {
-  background: linear-gradient(120deg, #0ea5e9, #6d28d9 92%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-}
-.dark .lp-grad {
-  background: linear-gradient(120deg, #7dd3fc, #c084fc 92%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+.lp-em {
+  font-style: italic;
+  color: var(--vp-c-brand-1);
 }
 
 .lp-lede {
