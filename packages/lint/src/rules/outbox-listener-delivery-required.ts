@@ -464,13 +464,11 @@ function ignoredLocalSetupFunctions(
       assignment.type !== "AssignmentExpression" ||
       assignment.operator !== "=" ||
       assignment.left.type !== "MemberExpression" ||
-      assignment.left.object.type !== "Identifier" ||
       !isFunction(assignment.right as Expression)
     ) continue;
     const setup = enclosingFunction(assignment as Node);
     if (
-      setup == null || setup === listener || !isInside(setup, listener) ||
-      !isDirectStatement(assignment as Node, setup)
+      setup == null || setup === listener || !isInside(setup, listener)
     ) continue;
     const setupParent = getParent(setup);
     const namedLocalSetup = enclosingFunction(setup) === listener &&
@@ -484,6 +482,14 @@ function ignoredLocalSetupFunctions(
       )
     );
     if (!namedLocalSetup || passedToCall) continue;
+    const installed = assignment.right as FunctionLikeNode;
+    if (
+      !isDirectStatement(assignment as Node, setup) ||
+      assignment.left.object.type !== "Identifier"
+    ) {
+      ignored.push(installed);
+      continue;
+    }
     const property = getMemberPropertyName(assignment.left);
     if (property == null) continue;
 
@@ -502,7 +508,6 @@ function ignoredLocalSetupFunctions(
       assignment.left.object as Node,
       assignment.left.object.name,
     );
-    const installed = assignment.right as FunctionLikeNode;
     const deliveryCalls = directCalls.filter((call) => {
       const callee = call.callee;
       return callee.type === "MemberExpression" &&

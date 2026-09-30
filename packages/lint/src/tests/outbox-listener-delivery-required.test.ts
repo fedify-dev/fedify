@@ -67,6 +67,62 @@ test(
 
 for (
   const [name, code] of [
+    ["uncalled setup with conditional assignment", "await target.deliver();"],
+    [
+      "called setup with conditional assignment",
+      "setup(); await target.deliver();",
+    ],
+  ] as const
+) {
+  test(
+    `${ruleName}: ❌ Bad - ${name}`,
+    lintTest({
+      code: assignedDelivery.replace(
+        "      target.deliver = async () => {",
+        "      if (Math.random() < 0.5) target.deliver = async () => {",
+      ).replace("SETUP_AND_DELIVERY", code),
+      rule,
+      ruleName,
+      expectedError:
+        "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+    }),
+  );
+}
+
+test(
+  `${ruleName}: ✅ Good - passed setup callback with conditional assignment`,
+  lintTest({
+    code: assignedDelivery.replace(
+      "      target.deliver = async () => {",
+      "      if (true) target.deliver = async () => {",
+    ).replace(
+      "SETUP_AND_DELIVERY",
+      "await Promise.resolve().then(setup); await target.deliver();",
+    ),
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - setup assigns a nested object method`,
+  lintTest({
+    code: assignedDelivery.replace(
+      "const target = { deliver: async () => {} };",
+      "const target = { methods: { deliver: async () => {} } };",
+    ).replaceAll("target.deliver", "target.methods.deliver").replace(
+      "SETUP_AND_DELIVERY",
+      "setup(); await target.methods.deliver();",
+    ),
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+for (
+  const [name, code] of [
     ["returned method call", "setup(); return target.deliver();"],
     [
       "method call in initializer",
