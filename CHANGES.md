@@ -1301,6 +1301,11 @@ To be released.
     representation, because a clone may differ from the document the proof
     covers.  [[#288], [#1044], [#1051]]
 
+ -  Exported portable object verifier types from `@fedify/vocab`, so callers
+    can type custom verifiers without importing `@fedify/vocab-runtime`.
+    Also exported other types used in vocabulary API signatures.
+    [[#288], [#1160], [#1184]]
+
  -  Property accessors and `lookupObject()` with the `verifyPortableObject`
     option now accept a portable object whose `@id` is an [FEP-ef61]
     compatible identifier of the requested portable object, e.g., one on the
@@ -1409,6 +1414,8 @@ To be released.
 [#1091]: https://github.com/fedify-dev/fedify/pull/1091
 [#1129]: https://github.com/fedify-dev/fedify/issues/1129
 [#1137]: https://github.com/fedify-dev/fedify/pull/1137
+[#1160]: https://github.com/fedify-dev/fedify/issues/1160
+[#1184]: https://github.com/fedify-dev/fedify/pull/1184
 
 ### @fedify/vocab-runtime
 

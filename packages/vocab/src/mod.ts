@@ -58,7 +58,16 @@ export * from "./type.ts";
 export * from "./vocab.ts";
 export { LanguageString } from "@fedify/vocab-runtime";
 export type {
+  Decimal,
   DocumentLoader,
+  DocumentLoaderOptions,
   GetUserAgentOptions,
+  Json,
+  PortableObjectReferrer,
+  PortableObjectVerification,
+  PortableObjectVerifier,
+  PortableObjectVerifierOptions,
+  PropertyPreprocessor,
+  PropertyPreprocessorContext,
   RemoteDocument,
 } from "@fedify/vocab-runtime";
