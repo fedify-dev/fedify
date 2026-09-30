@@ -18,6 +18,21 @@ To be released.
 [#1144]: https://github.com/fedify-dev/fedify/issues/1144
 [#1173]: https://github.com/fedify-dev/fedify/pull/1173
 
+### @fedify/cfworkers
+
+ -  Fixed `WorkersKvStore` treating stored `null` values as missing keys when
+    reading or listing.  Applications can now store and retrieve `null`
+    without losing it.  [[#1175], [#1181]]
+
+[#1175]: https://github.com/fedify-dev/fedify/issues/1175
+[#1181]: https://github.com/fedify-dev/fedify/pull/1181
+
+### @fedify/denokv
+
+ -  Fixed `DenoKvStore` treating stored `null` values as missing keys when
+    reading, listing, or comparing values.  Applications can now store and
+    retrieve `null` without losing it.  [[#1175], [#1181]]
+
 
 Version 2.0.29
 --------------
