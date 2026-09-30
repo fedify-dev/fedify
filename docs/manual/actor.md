@@ -1208,7 +1208,7 @@ Fedify also verifies an HTTP Signature whose key ID is an `ap:` or
 Such a key ID names no gateway, so the key is taken as a key of the actor
 itself rather than of a gateway.  Fedify fetches the actor's document, i.e.,
 the key ID without its fragment, from the gateways in its `@gateway` location
-hints, up to five of them one after another, and accepts the key if one of the
+hints, up to three of them one after another, and accepts the key if one of the
 documents vouches for it by the rules above, except that:
 
  -  the key is listed under the `ap:` URI with the same canonical ID as the key
@@ -1220,10 +1220,18 @@ documents vouches for it by the rules above, except that:
 Without location hints, Fedify asks the document loader for the `ap:` URI
 itself, which only a custom document loader can resolve.  The hints are chosen
 by whoever made the signature, but only a document with a valid proof by the
-key ID's DID vouches for the key, wherever it is fetched from.
+key ID's DID vouches for the key, wherever it is fetched from.  Since the hints
+decide whom Fedify contacts, it follows fewer of them than the five it follows
+when it dereferences objects, and ignores the rest.
+
+All the gateways share a timeout of ten seconds, which covers fetching the
+actor's document and the remote contexts it needs, so several slow gateways
+cannot hold a request any longer than a single one.  The gateways left once
+the time is up are not asked.  The timeout bounds the waiting, not the number
+of HTTP requests: redirections and remote contexts are fetched as usual.
 
 If no gateway serves such a document, the signature is not verified.  If
-a gateway could not serve the document at all, the reason that
+a gateway could not serve the document at all, or not in time, the reason that
 `~InboxListenerSetters.onUnverifiedActivity()` receives is a failure to fetch
 the key (`keyFetchError`), whose HTTP status is reported only if every gateway
 responded with the same status, e.g., `410 Gone`.

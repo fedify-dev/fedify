@@ -411,10 +411,66 @@ export type PortableActorKeyResolution =
     readonly cacheable: boolean;
   };
 
+/**
+ * The maximum number of `@gateway` location hints followed for one `ap:` or
+ * `ap+ef61:` key ID.  Whoever made a signature chooses the hints of its key
+ * ID, so fewer of them are followed than when dereferencing objects, which
+ * bounds the gateways one signature can make Fedify ask.  Further hints are
+ * ignored.
+ */
+const MAX_KEY_ID_GATEWAY_HINTS = 3;
+
+/**
+ * The default of {@link PortableActorKeyOptions.lookupTimeout}, in
+ * milliseconds.
+ */
+const DEFAULT_KEY_ID_LOOKUP_TIMEOUT = 10_000;
+
+/** The longest delay that `setTimeout()` supports, in milliseconds. */
+const MAX_TIMEOUT = 2 ** 31 - 1;
+
+/**
+ * Options for resolving a key of a portable actor at an `ap:` or `ap+ef61:`
+ * key ID.
+ * @internal
+ */
+export interface PortableActorKeyOptions extends PortableGatewayKeyOptions {
+  /**
+   * How long the lookup may wait for the gateways in total, in milliseconds.
+   * The time is shared by every gateway tried, and covers fetching the actor's
+   * document as well as the remote contexts it needs.  It bounds waiting, not
+   * processing that runs synchronously, nor fetches of loaders that ignore
+   * their `signal`, which are abandoned but keep running.  `0` makes
+   * the lookup time out before the first gateway.
+   * @default `10000`
+   */
+  readonly lookupTimeout?: number;
+}
+
 type PortableActorKeyAttempt =
   | { readonly type: "rejected"; readonly reason: string }
   | { readonly type: "retrievalFailed"; readonly error: unknown }
   | { readonly type: "indeterminate"; readonly error: unknown };
+
+type GatewayAttemptResult =
+  | PortableActorKeyAttempt
+  | Extract<PortableGatewayKeyResolution, { readonly type: "verified" }>;
+
+interface GatewayAttemptOptions extends PortableGatewayKeyOptions {
+  readonly documentLoader: DocumentLoader;
+  readonly contextLoader: DocumentLoader;
+  /** The signal that aborts when the lookup runs out of time. */
+  readonly signal: AbortSignal;
+  readonly formattedKeyId: string;
+}
+
+interface GatewayAttemptState {
+  /**
+   * Whether the gateway has served the document, which is being processed.
+   * It is never set once the lookup has run out of time.
+   */
+  processing: boolean;
+}
 
 /**
  * Resolves a key of a portable actor at an `ap:` or `ap+ef61:` key ID, e.g.,
@@ -444,15 +500,36 @@ type PortableActorKeyAttempt =
  * unreachable gateway would have served, so the result is an `unavailable`
  * that is not cacheable.
  *
+ * Only the first {@link MAX_KEY_ID_GATEWAY_HINTS} location hints are
+ * followed, and all the gateways share one timeout, see
+ * {@link PortableActorKeyOptions.lookupTimeout}.  A gateway that does not
+ * serve the document in time failed to serve it, like an unreachable one,
+ * with an error that has no HTTP status.  A gateway whose document could not
+ * be processed in time, and the gateways left untried, make the result an
+ * `unavailable` that is not cacheable.  A result that arrives after
+ * the timeout is ignored, even if it vouches for the key.
+ *
  * @param keyId The key ID, which must be an `ap:` or `ap+ef61:` URI.
- * @param options Loaders and telemetry providers.
+ * @param options Loaders, telemetry providers, and the timeout.
  * @returns The resolution, which is never `legacy`.
+ * @throws {RangeError} If the timeout is not a non-negative number of
+ *                      milliseconds that `setTimeout()` supports.
  * @internal
  */
 export async function resolvePortableActorKey(
   keyId: URL,
-  options: PortableGatewayKeyOptions = {},
+  options: PortableActorKeyOptions = {},
 ): Promise<PortableActorKeyResolution> {
+  const lookupTimeout = options.lookupTimeout ?? DEFAULT_KEY_ID_LOOKUP_TIMEOUT;
+  if (
+    !Number.isFinite(lookupTimeout) || lookupTimeout < 0 ||
+    lookupTimeout > MAX_TIMEOUT
+  ) {
+    throw new RangeError(
+      `The lookup timeout must be between 0 and ${MAX_TIMEOUT} ms: ` +
+        `${lookupTimeout}`,
+    );
+  }
   const documentLoader = options.documentLoader ?? getDocumentLoader();
   const contextLoader = options.contextLoader ?? getDocumentLoader();
   let formattedKeyId = keyId.href;
@@ -475,8 +552,15 @@ export async function resolvePortableActorKey(
   }
   const actorUrl = new URL(keyId.href);
   actorUrl.hash = "";
+  const gateways = getPortableGatewayCandidates(actorUrl);
+  if (gateways.length > MAX_KEY_ID_GATEWAY_HINTS) {
+    logger.debug(
+      "Following only the first {max} location hints of key {keyId}.",
+      { keyId: formattedKeyId, max: MAX_KEY_ID_GATEWAY_HINTS },
+    );
+  }
   const requestUrls: string[] = [];
-  for (const gateway of getPortableGatewayCandidates(actorUrl)) {
+  for (const gateway of gateways.slice(0, MAX_KEY_ID_GATEWAY_HINTS)) {
     try {
       requestUrls.push(toCompatibleEf61Id(actorUrl, gateway).href);
     } catch (error) {
@@ -487,64 +571,70 @@ export async function resolvePortableActorKey(
   // No gateway to ask; custom document loaders may still know how to
   // retrieve the ap: URI itself:
   if (requestUrls.length < 1) requestUrls.push(formatIri(actorUrl));
+  // One deadline covers every gateway, so that several slow gateways cannot
+  // hold the lookup any longer than a single one.  It bounds the loaders as
+  // well as the waiting for each attempt, so that neither a slow document nor
+  // a slow remote context outlasts it:
+  const controller = new AbortController();
+  const timeoutError = new DOMException(
+    `Timed out looking up the actor of key ${formattedKeyId} after ` +
+      `${lookupTimeout} ms.`,
+    "TimeoutError",
+  );
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  if (lookupTimeout > 0) {
+    timer = setTimeout(() => controller.abort(timeoutError), lookupTimeout);
+  } else {
+    controller.abort(timeoutError);
+  }
+  const { signal } = controller;
+  const attemptOptions: GatewayAttemptOptions = {
+    ...options,
+    documentLoader: withDeadline(documentLoader, signal),
+    contextLoader: withDeadline(contextLoader, signal),
+    signal,
+    formattedKeyId,
+  };
   const attempts: PortableActorKeyAttempt[] = [];
-  for (const url of requestUrls) {
-    let remoteDocument: RemoteDocument;
-    try {
-      remoteDocument = await documentLoader(url);
-    } catch (error) {
-      logger.debug(
-        "Failed to fetch the actor of key {keyId} from {url}: {error}",
-        { keyId: formattedKeyId, url, error },
-      );
-      attempts.push({ type: "retrievalFailed", error });
-      continue;
-    }
-    let resolution: PortableGatewayKeyResolution;
-    try {
-      const object = await ASObject.fromJsonLd(remoteDocument.document, {
-        documentLoader,
-        contextLoader,
-        tracerProvider: options.tracerProvider,
-      });
-      resolution = isPortableActorDocument(object)
-        ? await verifyPortableKeyDocument(
-          remoteDocument.document,
-          object,
-          keyId,
-          false,
-          { ...options, documentLoader, contextLoader },
-        )
-        : {
-          type: "rejected",
-          reason: "The document is not a portable actor.",
-        };
-    } catch (error) {
-      if (error instanceof TypeError) {
-        resolution = {
-          type: "rejected",
-          reason: `The document is malformed: ${error.message}`,
-        };
-      } else {
+  try {
+    for (const url of requestUrls) {
+      if (signal.aborted) {
+        // Nothing tells what the gateways left untried would have served:
         logger.debug(
-          "Failed to process the actor of key {keyId} served from {url}: " +
-            "{error}",
-          { keyId: formattedKeyId, url, error },
+          "Ran out of time looking up the actor of key {keyId}; gateways " +
+            "from {url} on were not tried.",
+          { keyId: formattedKeyId, url },
         );
-        attempts.push({ type: "indeterminate", error });
+        attempts.push({ type: "indeterminate", error: signal.reason });
+        break;
+      }
+      const state: GatewayAttemptState = { processing: false };
+      let attempt: GatewayAttemptResult;
+      try {
+        attempt = await raceAbort(
+          attemptGateway(url, keyId, attemptOptions, state),
+          signal,
+        );
+      } catch (error) {
+        if (!signal.aborted) throw error;
+        logger.debug(
+          "Ran out of time looking up the actor of key {keyId} at {url}.",
+          { keyId: formattedKeyId, url },
+        );
+        // A gateway that did not serve the document in time failed to serve
+        // it like an unreachable one, but one whose document could not be
+        // processed in time says nothing about the document:
+        attempts.push({
+          type: state.processing ? "indeterminate" : "retrievalFailed",
+          error: signal.reason,
+        });
         continue;
       }
+      if (attempt.type === "verified") return attempt;
+      attempts.push(attempt);
     }
-    if (resolution.type === "verified") return resolution;
-    const reason = resolution.type === "rejected"
-      ? resolution.reason
-      : "The document is not a portable actor.";
-    logger.debug(
-      "The actor document served from {url} does not vouch for key {keyId}: " +
-        "{reason}",
-      { keyId: formattedKeyId, url, reason },
-    );
-    attempts.push({ type: "rejected", reason });
+  } finally {
+    clearTimeout(timer);
   }
   const rejections = attempts.flatMap((a) =>
     a.type === "rejected" ? [a.reason] : []
@@ -581,6 +671,156 @@ export async function resolvePortableActorKey(
     ),
     cacheable: false,
   };
+}
+
+/**
+ * Fetches the actor's document of a key at an `ap:` or `ap+ef61:` key ID from
+ * one gateway, and tells whether it vouches for the key.  It never rejects;
+ * the caller races it against the lookup's timeout, and ignores what it
+ * resolves to after the timeout.
+ */
+async function attemptGateway(
+  url: string,
+  keyId: URL,
+  options: GatewayAttemptOptions,
+  state: GatewayAttemptState,
+): Promise<GatewayAttemptResult> {
+  const { documentLoader, contextLoader, signal, formattedKeyId } = options;
+  let remoteDocument: RemoteDocument;
+  try {
+    remoteDocument = await documentLoader(url);
+  } catch (error) {
+    logger.debug(
+      "Failed to fetch the actor of key {keyId} from {url}: {error}",
+      { keyId: formattedKeyId, url, error },
+    );
+    return { type: "retrievalFailed", error };
+  }
+  // The caller has given up on this attempt, so nothing more is started:
+  if (signal.aborted) return { type: "indeterminate", error: signal.reason };
+  state.processing = true;
+  let resolution: PortableGatewayKeyResolution;
+  try {
+    const object = await ASObject.fromJsonLd(remoteDocument.document, {
+      documentLoader,
+      contextLoader,
+      tracerProvider: options.tracerProvider,
+    });
+    signal.throwIfAborted();
+    resolution = isPortableActorDocument(object)
+      ? await verifyPortableKeyDocument(
+        remoteDocument.document,
+        object,
+        keyId,
+        false,
+        options,
+      )
+      : {
+        type: "rejected",
+        reason: "The document is not a portable actor.",
+      };
+  } catch (error) {
+    if (error instanceof TypeError && !signal.aborted) {
+      resolution = {
+        type: "rejected",
+        reason: `The document is malformed: ${error.message}`,
+      };
+    } else {
+      logger.debug(
+        "Failed to process the actor of key {keyId} served from {url}: " +
+          "{error}",
+        { keyId: formattedKeyId, url, error },
+      );
+      return { type: "indeterminate", error };
+    }
+  }
+  if (resolution.type === "verified") return resolution;
+  const reason = resolution.type === "rejected"
+    ? resolution.reason
+    : "The document is not a portable actor.";
+  logger.debug(
+    "The actor document served from {url} does not vouch for key {keyId}: " +
+      "{reason}",
+    { keyId: formattedKeyId, url, reason },
+  );
+  return { type: "rejected", reason };
+}
+
+/**
+ * Wraps a document loader so that it gives up when the given signal aborts,
+ * as well as when the signal in its own options does.  The wrapped loader is
+ * passed a signal that aborts in either case, but in case it ignores that
+ * signal, what it resolves to after the abort is ignored, and the wrapper
+ * rejects with the reason of the abort at once.  After the abort, the wrapped
+ * loader is not called at all.
+ */
+function withDeadline(
+  loader: DocumentLoader,
+  signal: AbortSignal,
+): DocumentLoader {
+  return (url, options) => {
+    const combined = combineSignals(signal, options?.signal);
+    const promise = combined.signal.aborted
+      ? Promise.reject(combined.signal.reason)
+      // A loader that throws synchronously rejects the promise instead:
+      : new Promise<RemoteDocument>((resolve) =>
+        resolve(loader(url, { ...options, signal: combined.signal }))
+      );
+    return raceAbort(promise, combined.signal).finally(combined.dispose);
+  };
+}
+
+/**
+ * Makes a signal that aborts when either of the given signals does, with
+ * the reason of the one that aborted first.  `AbortSignal.any()` is not
+ * available on every supported runtime, e.g., Bun before 1.1.4.
+ * @returns The signal, and a function that stops listening to the given
+ *          signals.
+ */
+function combineSignals(
+  signal: AbortSignal,
+  other?: AbortSignal,
+): { readonly signal: AbortSignal; readonly dispose: () => void } {
+  if (other == null || other === signal) return { signal, dispose() {} };
+  const controller = new AbortController();
+  const sources = [signal, other];
+  const dispose = () => {
+    for (const source of sources) source.removeEventListener("abort", onAbort);
+  };
+  function onAbort(this: AbortSignal) {
+    dispose();
+    controller.abort(this.reason);
+  }
+  const aborted = sources.find((source) => source.aborted);
+  if (aborted == null) {
+    for (const source of sources) source.addEventListener("abort", onAbort);
+  } else {
+    controller.abort(aborted.reason);
+  }
+  return { signal: controller.signal, dispose };
+}
+
+/**
+ * Waits for the given promise unless the given signal aborts first, in which
+ * case it rejects with the reason of the abort.  If the signal has aborted by
+ * the time the promise settles, the abort wins as well, so that nothing that
+ * settles after it counts.
+ */
+function raceAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason);
+    const settle = (settled: () => void) => {
+      signal.removeEventListener("abort", onAbort);
+      if (signal.aborted) onAbort();
+      else settled();
+    };
+    promise.then(
+      (value) => settle(() => resolve(value)),
+      (error) => settle(() => reject(error)),
+    );
+    if (signal.aborted) onAbort();
+    else signal.addEventListener("abort", onAbort, { once: true });
+  });
 }
 
 /**

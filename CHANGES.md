@@ -200,10 +200,13 @@ To be released.
     `@gateway` location hints, or, without them, asks the document loader for
     the `ap:` URI itself, and accepts the key if the document has a valid
     Object Integrity Proof made by the actor's DID, embeds the key under
-    the `ap:` URI, and has a valid gateway.  Such a key is used only for HTTP
-    Signatures, and is owned by the portable actor like a gateway key.  Keys
-    at `ap:` URIs are never used to make Object Integrity Proofs or Linked
-    Data Signatures either.  [[#288], [#1096], [#1134]]
+    the `ap:` URI, and has a valid gateway.  Since the signer chooses the
+    hints, only the first three are followed, and all the gateways share
+    a timeout of ten seconds; a lookup that runs out of time is reported as
+    a `keyFetchError` without an HTTP status.  Such a key is used only for
+    HTTP Signatures, and is owned by the portable actor like a gateway key.
+    Keys at `ap:` URIs are never used to make Object Integrity Proofs or
+    Linked Data Signatures either.  [[#288], [#1096], [#1132], [#1134], [#1165]]
 
  -  Changed inboxes to reject activities of portable actors that do not have
     a valid Object Integrity Proof made by the actor's DID with
@@ -690,6 +693,7 @@ To be released.
 [#1120]: https://github.com/fedify-dev/fedify/pull/1120
 [#1123]: https://github.com/fedify-dev/fedify/issues/1123
 [#1124]: https://github.com/fedify-dev/fedify/pull/1124
+[#1132]: https://github.com/fedify-dev/fedify/issues/1132
 [#1133]: https://github.com/fedify-dev/fedify/issues/1133
 [#1134]: https://github.com/fedify-dev/fedify/pull/1134
 [#1138]: https://github.com/fedify-dev/fedify/pull/1138
@@ -697,6 +701,7 @@ To be released.
 [#1143]: https://github.com/fedify-dev/fedify/issues/1143
 [#1145]: https://github.com/fedify-dev/fedify/pull/1145
 [#1164]: https://github.com/fedify-dev/fedify/pull/1164
+[#1165]: https://github.com/fedify-dev/fedify/pull/1165
 
 ### @fedify/adonisjs
 
