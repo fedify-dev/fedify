@@ -279,6 +279,15 @@ console.log("Context sent activities:", sentActivities);
 console.log("Federation sent activities:", federation.sentActivities);
 ~~~~
 
+For portable-object tests, pass a fixture `documentLoader` and
+`verifyPortableObject` to `createFederation()`.  Pass a `contextLoader` as well
+when the fixture loader does not serve JSON-LD contexts.  Mock context lookups
+use these options for portable IDs; without a document loader, they return
+`null` as before.  A request context can receive an explicit
+`portableRequest` through the third argument of `federation.createContext()`
+when the first argument is a `Request`.  Dispatchers can then inspect it, as
+they do for a routed gateway request.  The mock does not infer it from the URL.
+
 If you want to test an outbox listener directly, you can also create an
 `OutboxContext` with the `createOutboxContext()` helper:
 

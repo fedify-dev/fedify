@@ -1170,6 +1170,11 @@ To be released.
 
 ### @fedify/testing
 
+ -  Added fixture document loaders and portable-object verification to mock
+    context lookups, explicit portable gateway request information for mock
+    dispatchers, and hashlink media responses from mock federations.  Tests can
+    now exercise these FEP-ef61 paths without a live gateway.
+    [[#288], [#1161], [#1196]]
  -  Added `testKvStore()`, a conformance test suite for `KvStore`
     implementations, complementing `testMessageQueue()`.
     [[#1018], [#1020] by ChanHaeng Lee\]
@@ -1224,6 +1229,9 @@ To be released.
     default `lookupObject()` and `traverseCollection()` methods pass it and
     a `verifyPortableObject` option given to them on.
     [[#288], [#1107], [#1120]]
+
+[#1161]: https://github.com/fedify-dev/fedify/issues/1161
+[#1196]: https://github.com/fedify-dev/fedify/pull/1196
 
 ### @fedify/vocab
 
