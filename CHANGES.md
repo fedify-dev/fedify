@@ -615,6 +615,14 @@ To be released.
     store compares encoded values.  Existing half-open states can now recover
     after switching to a CAS-capable store.  [[#1163], [#1167]]
 
+ -  Fixed outbox listeners rejecting a posted activity with
+    `400 Bad Request` when its `actor` referred to an [FEP-ef61] portable
+    outbox owner in another form than the owner's ID, e.g., with `@gateway`
+    location hints, another URI scheme or DID encoding, or as a compatible
+    identifier on another gateway.  Portable actor IDs are now compared by
+    their canonical forms, while other actor IDs still have to match exactly.
+    [[#288], [#1159], [#1189]]
+
  -  Fixed `signObject()` so that a signed object keeps verifying after it is
     assigned to a typed parent and the parent is serialized.  `signObject()`
     now captures the secured JSON document its proof covers, and nested
@@ -836,6 +844,7 @@ To be released.
 [#1148]: https://github.com/fedify-dev/fedify/issues/1148
 [#1153]: https://github.com/fedify-dev/fedify/issues/1153
 [#1155]: https://github.com/fedify-dev/fedify/issues/1155
+[#1159]: https://github.com/fedify-dev/fedify/issues/1159
 [#1163]: https://github.com/fedify-dev/fedify/issues/1163
 [#1164]: https://github.com/fedify-dev/fedify/pull/1164
 [#1165]: https://github.com/fedify-dev/fedify/pull/1165
@@ -847,6 +856,7 @@ To be released.
 [#1180]: https://github.com/fedify-dev/fedify/pull/1180
 [#1183]: https://github.com/fedify-dev/fedify/pull/1183
 [#1188]: https://github.com/fedify-dev/fedify/pull/1188
+[#1189]: https://github.com/fedify-dev/fedify/pull/1189
 
 ### @fedify/adonisjs
 
@@ -1502,6 +1512,16 @@ To be released.
     `TypeError` for malformed ones, including those with location hints.
     Converting a compatible identifier does not authenticate it; the object's
     proof still has to be verified against its DID.  [[#288], [#833], [#1074]]
+
+ -  Added `withGatewayHints()`, `withoutGatewayHints()`, and
+    `getGatewayHints()` to add, remove, and read the [FEP-ef61] `@gateway`
+    location hints of portable IDs, which tell consumers where to retrieve
+    a referenced portable actor.  Use `withGatewayHints()` when referring to
+    a portable actor, e.g., in `attributedTo` or `to`, instead of editing
+    the query by hand; it writes each gateway's URI-encoded origin as
+    FEP-ef61 requires, replaces existing hints, and keeps the other query
+    parameters.  Do not add hints to an object's own `id`.
+    [[#288], [#1159], [#1189]]
 
  -  Changed `getDocumentLoader()` to time out each call after 10 seconds by
     default.  The time limit covers the whole call, including every redirect

@@ -12,6 +12,7 @@ import {
   type PortableObjectVerifier,
   type PortableObjectVerifierOptions,
   type RemoteDocument,
+  withGatewayHints,
 } from "@fedify/vocab-runtime";
 import fetchMock from "fetch-mock";
 import { deepStrictEqual, ok, rejects } from "node:assert/strict";
@@ -2598,4 +2599,36 @@ test("accessors pass the verifier of a call on to the objects they fetch", async
     deepStrictEqual(optedOut.length, 3);
     for (const item of optedOut) ok(getDefaultVerifier(item) == null);
   });
+});
+
+test("getObject() follows location hints made by withGatewayHints()", async () => {
+  const activity = new Create({
+    id: parseIri(`ap://${did}/activities/1`),
+    object: withGatewayHints(objectId, [
+      "https://gw1.example",
+      "https://gw2.example",
+    ]),
+  });
+  const json = await activity.toJsonLd({ contextLoader: mockDocumentLoader });
+  deepStrictEqual(
+    (json as Record<string, unknown>).object,
+    `${objectId}?@gateway=https%3A%2F%2Fgw1.example` +
+      "&@gateway=https%3A%2F%2Fgw2.example",
+  );
+  const parsed = await Create.fromJsonLd(json, {
+    contextLoader: mockDocumentLoader,
+  });
+  const documentLoader = createLoader({
+    [`https://gw2.example${gatewayPath}`]: note(),
+  });
+  const object = await parsed.getObject({
+    documentLoader,
+    contextLoader: mockDocumentLoader,
+    verifyPortableObject: createVerifier(),
+  });
+  assertInstanceOf(object, Note);
+  deepStrictEqual(documentLoader.fetched, [
+    `https://gw1.example${gatewayPath}`,
+    `https://gw2.example${gatewayPath}`,
+  ]);
 });

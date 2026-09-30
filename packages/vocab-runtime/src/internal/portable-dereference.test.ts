@@ -1,7 +1,7 @@
 import { deepStrictEqual, ok, throws } from "node:assert/strict";
 import { test } from "node:test";
 import type { DocumentLoader } from "../docloader.ts";
-import { parseIri } from "../url.ts";
+import { parseIri, withGatewayHints } from "../url.ts";
 import { createScopedContextLoader } from "./jsonld-cache.ts";
 import {
   createSnapshotContextLoader,
@@ -73,6 +73,19 @@ test("getPortableGatewayCandidates() reads @gateway hints", () => {
   deepStrictEqual(
     hrefs(getPortableGatewayCandidates(
       parseIri(`ap://did:key:z6Mkabc/actor?${hints.join("&")}`),
+    )),
+    [0, 1, 2, 3, 4].map((i) => `https://g${i}.example/`),
+  );
+});
+
+test("getPortableGatewayCandidates() reads hints from withGatewayHints()", () => {
+  const gateways = Array.from(
+    { length: 7 },
+    (_, i) => `https://g${i}.example`,
+  );
+  deepStrictEqual(
+    hrefs(getPortableGatewayCandidates(
+      withGatewayHints("ap://did:key:z6Mkabc/actor?page=1", gateways),
     )),
     [0, 1, 2, 3, 4].map((i) => `https://g${i}.example/`),
   );

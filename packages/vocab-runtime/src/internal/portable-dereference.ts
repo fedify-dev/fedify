@@ -21,8 +21,9 @@ import {
   canonicalizePortableUri,
   formatIri,
   fromCompatibleEf61Id,
+  GATEWAY_HINT_PARAMETER,
   haveSameFe34Origin,
-  isGatewayUrl,
+  parseGatewayOrigin,
   parseIri,
   toCompatibleEf61Id,
 } from "../url.ts";
@@ -35,8 +36,6 @@ const logger = getLogger(["fedify", "vocab", "gateway"]);
  * a single accessor call from fanning out to many servers.
  */
 const MAX_GATEWAY_HINTS = 5;
-
-const LOCATION_HINT_PARAMETER = "@gateway";
 
 // The same baseline contexts that Fedify's proof verifier always resolves
 // from its built-in copies (see getNormalizationContextLoader() in
@@ -525,7 +524,7 @@ export function getPortableGatewayCandidates(
   }
   for (
     const hint of new URLSearchParams(url.search).getAll(
-      LOCATION_HINT_PARAMETER,
+      GATEWAY_HINT_PARAMETER,
     )
   ) {
     if (candidates.length >= MAX_GATEWAY_HINTS) break;
@@ -540,16 +539,6 @@ export function getPortableGatewayCandidates(
     add(parsed);
   }
   return candidates;
-}
-
-function parseGatewayOrigin(gateway: string | URL): URL | null {
-  let url: URL;
-  if (gateway instanceof URL) url = new URL(gateway.href);
-  else if (typeof gateway === "string" && URL.canParse(gateway)) {
-    url = new URL(gateway);
-  } else return null;
-  if (!isGatewayUrl(url)) return null;
-  return url;
 }
 
 /**

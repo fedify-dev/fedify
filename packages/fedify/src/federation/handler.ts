@@ -66,6 +66,7 @@ import {
   hasPortableActor,
   isPortableId,
   isPortableKeyId,
+  isSameObjectId,
 } from "../sig/portable-key-id.ts";
 import {
   getCompactRootId,
@@ -1321,8 +1322,13 @@ export async function handleOutbox<TContextData>(
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   }
+  // Portable actor IDs are compared by their canonical forms, so that
+  // an actor referred to with location hints or through a compatible
+  // identifier still matches the outbox owner:
   if (
-    !activity.actorIds.every((actorId) => actorId.href === expectedActorId.href)
+    !activity.actorIds.every((actorId) =>
+      isSameObjectId(actorId, expectedActorId)
+    )
   ) {
     const error = new Error(
       "The activity actor does not match the outbox owner.",
