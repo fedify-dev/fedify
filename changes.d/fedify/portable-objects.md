@@ -258,7 +258,10 @@ links:
         a `TypeError` before anything is delivered or queued.  So does a
         non-portable activity that embeds portable objects, including ones with
         compatible identifiers, when several Ed25519 keys are available, and an
-        activity with portable objects in which any map carries a proof set.
+        activity with portable objects in which any map carries a proof set, or
+        an embedded map carries a proof but not its own `@context`, e.g.,
+        a received signed `Follow` embedded in an `Accept`, which Fedify
+        inboxes would reject; refer to such an object by its ID instead.
         Sign portable activities with `signObject()` beforehand, or pass the
         DID's key as an explicit sender key.
         [[#840], [#1041], [#1045], [#1073], [#1099]]

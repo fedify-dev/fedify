@@ -316,6 +316,8 @@ federation
           ctx.getPortableActorUri(user.identifier, user.did),
           [new URL("https://example.com")],
         ),
+                // By its ID, as the received Follow may carry a proof that no longer
+        // verifies once it is embedded:
         object: follow.id,
       }),
       user.didKeyPair.privateKey,

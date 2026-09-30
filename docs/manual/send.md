@@ -1388,7 +1388,16 @@ keys or pre-sign it instead.
 Fedify also refuses to send an activity with portable objects if any map in it
 already carries a proof set, which happens, for example, when `signObject()`
 is called twice on the same object.  The error names the JSON Pointer of the
-offending `proof`.  These checks only prevent unsupported proof shapes.  They
+offending `proof`.  For the same reason, it refuses to send one in which an
+embedded map carries a proof but not its own `@context`, which Fedify inboxes
+reject however valid the proof is.  An object that you signed with
+`signObject()` is embedded with its own `@context`, but one parsed from
+a received document is rebuilt under the activity's context, so its proof no
+longer covers it (see the warning below).  This typically happens to
+an `Accept` that embeds the `Follow` it accepts, as Fedify signs activities
+with Object Integrity Proofs by default, so refer to such an object by its ID
+instead, e.g., `new Accept({ object: follow.id })`.  These checks only prevent
+unsupported proof shapes.  They
 do not otherwise validate a proof created with a single key.
 
 > [!WARNING]

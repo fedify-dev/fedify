@@ -5,6 +5,7 @@ import { getLogger } from "@logtape/logtape";
 import type { TracerProvider } from "@opentelemetry/api";
 import {
   containsCompoundPortableObject,
+  findEmbeddedProofWithoutContext,
   findUnsupportedCompoundProofShape,
 } from "../sig/compound-proof.ts";
 import {
@@ -264,7 +265,10 @@ function selectPortableActivityKey(
 /**
  * Rejects an outgoing activity whose proofs Fedify's own inbox would reject
  * as unsupported: a document with portable objects in which some map carries
- * a proof set or another value that is not a single proof map.
+ * a proof set or another value that is not a single proof map, or in which
+ * an embedded map carries a proof but not its own `@context`, e.g., a signed
+ * object parsed from a received document and rebuilt under the activity's
+ * context.
  *
  * @param jsonLd The compact JSON-LD document about to be delivered.
  * @param activityId The activity ID, for the error message.
@@ -277,12 +281,28 @@ export function assertSupportedCompoundProofShape(
 ): void {
   if (!containsCompoundPortableObject(jsonLd)) return;
   const path = findUnsupportedCompoundProofShape(jsonLd);
-  if (path == null) return;
-  throw new TypeError(
-    `Cannot send the activity ${activityId}: it embeds portable objects, ` +
-      `but its proof at the JSON Pointer ${JSON.stringify(path)} is not a ` +
-      `single proof map.  The map-local compound-proof profile accepts ` +
-      `exactly one direct proof per map, so Fedify inboxes would reject the ` +
-      `activity.  Sign each object with exactly one key.`,
-  );
+  if (path != null) {
+    throw new TypeError(
+      `Cannot send the activity ${activityId}: it embeds portable objects, ` +
+        `but its proof at the JSON Pointer ${JSON.stringify(path)} is not a ` +
+        `single proof map.  The map-local compound-proof profile accepts ` +
+        `exactly one direct proof per map, so Fedify inboxes would reject ` +
+        `the activity.  Sign each object with exactly one key.`,
+    );
+  }
+  const embedded = findEmbeddedProofWithoutContext(jsonLd);
+  if (embedded != null) {
+    throw new TypeError(
+      `Cannot send the activity ${activityId}: it embeds portable objects, ` +
+        `but the map at the JSON Pointer ${JSON.stringify(embedded)} carries ` +
+        `a proof without its own @context.  The map-local compound-proof ` +
+        `profile verifies each proof-bearing map on its own, so Fedify ` +
+        `inboxes would reject the activity.  This happens when a signed ` +
+        `object parsed from a received document, e.g., a Follow in an ` +
+        `inbox listener, is embedded, as it is rebuilt under the activity's ` +
+        `context and its proof no longer covers it.  Refer to such an object ` +
+        `by its ID instead, e.g., new Accept({ object: follow.id }), or embed ` +
+        `an object that you signed with signObject().`,
+    );
+  }
 }
