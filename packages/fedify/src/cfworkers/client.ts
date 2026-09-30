@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import process from "node:process";
 import { styleText } from "node:util";
+import { expectedTestNames } from "./expected-tests.ts";
 
 const selfTest = process.argv[2] === "--selftest";
 const filters = process.argv.slice(selfTest ? 3 : 2).map((f) =>
@@ -54,6 +55,13 @@ try {
   }
   const response = await mf.dispatchFetch(url);
   const tests = await response.json() as string[];
+  if (!selfTest) {
+    const actual = [...tests].sort();
+    const expected = [...expectedTestNames].sort();
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+      throw new Error(`Unexpected Workers tests: ${JSON.stringify(actual)}`);
+    }
+  }
   let passed = 0;
   let failed = 0;
   let skipped = 0;
@@ -86,7 +94,7 @@ try {
     }, ${styleText("yellow", `${skipped} skipped`)}.`,
   );
 
-  if (failed > 0) process.exitCode = 1;
+  if (failed > 0 || (!selfTest && skipped > 0)) process.exitCode = 1;
 } finally {
   await mf.dispose();
 }

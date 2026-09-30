@@ -2,7 +2,7 @@ import { configure, type LogRecord, reset } from "@logtape/logtape";
 import fetchMock from "fetch-mock";
 import { deepStrictEqual, ok, rejects, throws } from "node:assert";
 import dns from "node:dns/promises";
-import { test } from "node:test";
+import { test } from "@fedify/fixture";
 import {
   createServer,
   type IncomingMessage,
@@ -125,7 +125,7 @@ test("getDocumentLoader()", async (t) => {
     },
   });
 
-  await t.test("ok", async () => {
+  await t.step("ok", async () => {
     deepStrictEqual(await fetchDocumentLoader("https://example.com/object"), {
       contextUrl: null,
       documentUrl: "https://example.com/object",
@@ -182,7 +182,7 @@ test("getDocumentLoader()", async (t) => {
     },
   });
 
-  await t.test("Link header", async () => {
+  await t.step("Link header", async () => {
     deepStrictEqual(await fetchDocumentLoader("https://example.com/link-ctx"), {
       contextUrl: "https://www.w3.org/ns/activitystreams",
       documentUrl: "https://example.com/link-ctx",
@@ -205,7 +205,7 @@ test("getDocumentLoader()", async (t) => {
     });
   });
 
-  await t.test("Link header relative url", async () => {
+  await t.step("Link header relative url", async () => {
     deepStrictEqual(await fetchDocumentLoader("https://example.com/link-ctx"), {
       contextUrl: "https://www.w3.org/ns/activitystreams",
       documentUrl: "https://example.com/link-ctx",
@@ -231,7 +231,7 @@ test("getDocumentLoader()", async (t) => {
     );
   });
 
-  await t.test("wrong Link header syntax", async () => {
+  await t.step("wrong Link header syntax", async () => {
     deepStrictEqual(
       await fetchDocumentLoader("https://example.com/obj-w-wrong-link"),
       {
@@ -260,7 +260,7 @@ test("getDocumentLoader()", async (t) => {
     headers: { "Content-Type": "text/html; charset=utf-8" },
   });
 
-  await t.test("HTML <link>", async () => {
+  await t.step("HTML <link>", async () => {
     deepStrictEqual(
       await fetchDocumentLoader("https://example.com/html-link"),
       {
@@ -289,7 +289,7 @@ test("getDocumentLoader()", async (t) => {
     headers: { "Content-Type": "application/xhtml+xml; charset=utf-8" },
   });
 
-  await t.test("XHTML <link>", async () => {
+  await t.step("XHTML <link>", async () => {
     deepStrictEqual(
       await fetchDocumentLoader("https://example.com/xhtml-link"),
       {
@@ -320,7 +320,7 @@ test("getDocumentLoader()", async (t) => {
     headers: { "Content-Type": "text/html; charset=utf-8" },
   });
 
-  await t.test("HTML <a>", async () => {
+  await t.step("HTML <a>", async () => {
     deepStrictEqual(await fetchDocumentLoader("https://example.com/html-a"), {
       contextUrl: null,
       documentUrl: "https://example.com/object",
@@ -344,7 +344,7 @@ test("getDocumentLoader()", async (t) => {
     headers: { "Content-Type": "text/html; charset=utf-8" },
   });
 
-  await t.test("HTML without ActivityPub alternate link", async () => {
+  await t.step("HTML without ActivityPub alternate link", async () => {
     await rejects(
       () => fetchDocumentLoader("https://example.com/html-no-alternate"),
       (error) => {
@@ -381,7 +381,7 @@ test("getDocumentLoader()", async (t) => {
     headers: { "Content-Type": "text/html; charset=utf-8" },
   });
 
-  await t.test("wrong Content-Type with JSON body", async () => {
+  await t.step("wrong Content-Type with JSON body", async () => {
     deepStrictEqual(
       await fetchDocumentLoader("https://example.com/wrong-content-type"),
       {
@@ -405,7 +405,7 @@ test("getDocumentLoader()", async (t) => {
     },
   });
 
-  await t.test("HTML Content-Length over limit", async () => {
+  await t.step("HTML Content-Length over limit", async () => {
     await rejects(
       () => fetchDocumentLoader("https://example.com/large-html"),
       (error) => {
@@ -426,7 +426,7 @@ test("getDocumentLoader()", async (t) => {
     );
   });
 
-  await t.test("HTML Content-Length over limit cancels body", async () => {
+  await t.step("HTML Content-Length over limit cancels body", async () => {
     let canceled = false;
     const response = new Response("<!DOCTYPE html>", {
       headers: {
@@ -459,7 +459,7 @@ test("getDocumentLoader()", async (t) => {
 
   fetchMock.get("https://example.com/404", { status: 404 });
 
-  await t.test("not ok", async () => {
+  await t.step("not ok", async () => {
     await rejects(
       () => fetchDocumentLoader("https://example.com/404"),
       FetchError,
@@ -467,7 +467,7 @@ test("getDocumentLoader()", async (t) => {
     );
   });
 
-  await t.test("preloaded contexts", async () => {
+  await t.step("preloaded contexts", async () => {
     for (const [url, document] of Object.entries(preloadedContexts)) {
       deepStrictEqual(await fetchDocumentLoader(url), {
         contextUrl: null,
@@ -483,7 +483,7 @@ test("getDocumentLoader()", async (t) => {
   // See: https://www.w3.org/TR/cid-1.0/#json-ld-context
   //      https://github.com/fedify-dev/fedify/issues/932
   fetchMock.get("https://www.w3.org/ns/cid/v1", { status: 503 });
-  await t.test("preloaded CID v1 context", async () => {
+  await t.step("preloaded CID v1 context", async () => {
     const url = "https://www.w3.org/ns/cid/v1";
     deepStrictEqual(await fetchDocumentLoader(url), {
       contextUrl: null,
@@ -497,7 +497,7 @@ test("getDocumentLoader()", async (t) => {
   // document referencing it fails before application handlers run.  It has to
   // be resolved from the built-in copy rather than over the network.
   // See: https://github.com/fedify-dev/fedify/issues/982
-  await t.test("preloaded FEP-ef61 context", async () => {
+  await t.step("preloaded FEP-ef61 context", async () => {
     const url = "https://w3id.org/fep/ef61";
     ok(url in preloadedContexts);
     deepStrictEqual(await fetchDocumentLoader(url), {
@@ -520,7 +520,7 @@ test("getDocumentLoader()", async (t) => {
   // A Codeberg Pages outage must not prevent loading the FEP-7aa9 context.
   // See: https://github.com/fedify-dev/fedify/issues/1078
   fetchMock.get("https://w3id.org/fep/7aa9", { status: 502 });
-  await t.test("preloaded FEP-7aa9 context", async () => {
+  await t.step("preloaded FEP-7aa9 context", async () => {
     const url = "https://w3id.org/fep/7aa9";
     deepStrictEqual(await fetchDocumentLoader(url), {
       contextUrl: null,
@@ -554,7 +554,7 @@ test("getDocumentLoader()", async (t) => {
     deepStrictEqual(fetchMock.callHistory.calls(url).length, 0);
   });
 
-  await t.test("deny non-HTTP/HTTPS", async () => {
+  await t.step("deny non-HTTP/HTTPS", async () => {
     await rejects(
       () => fetchDocumentLoader("ftp://localhost"),
       UrlError,
@@ -588,7 +588,7 @@ test("getDocumentLoader()", async (t) => {
     },
   });
 
-  await t.test("allowPrivateAddress: false", async () => {
+  await t.step("allowPrivateAddress: false", async () => {
     await rejects(
       () => fetchDocumentLoader("https://localhost/object"),
       UrlError,
@@ -605,7 +605,7 @@ test("getDocumentLoader()", async (t) => {
 
   const fetchDocumentLoader2 = getDocumentLoader({ allowPrivateAddress: true });
 
-  await t.test("allowPrivateAddress: true", async () => {
+  await t.step("allowPrivateAddress: true", async () => {
     const expected = {
       contextUrl: null,
       documentUrl: "https://localhost/object",
@@ -642,7 +642,7 @@ test("getDocumentLoader()", async (t) => {
     };
   });
 
-  await t.test("too many redirects", async () => {
+  await t.step("too many redirects", async () => {
     redirectAttempts = 0;
     await rejects(
       () => fetchDocumentLoader("https://example.com/too-many-redirects/0"),
@@ -652,7 +652,7 @@ test("getDocumentLoader()", async (t) => {
     deepStrictEqual(redirectAttempts, 21);
   });
 
-  await t.test("custom max redirection", async () => {
+  await t.step("custom max redirection", async () => {
     redirectAttempts = 0;
     const loader = getDocumentLoader({ maxRedirection: 1 });
     await rejects(
@@ -679,7 +679,7 @@ test("getDocumentLoader()", async (t) => {
     };
   });
 
-  await t.test("redirect loop", async () => {
+  await t.step("redirect loop", async () => {
     loopAttempts = 0;
     await rejects(
       () => fetchDocumentLoader("https://example.com/redirect-loop-a"),
@@ -698,7 +698,7 @@ test("getDocumentLoader()", async (t) => {
     };
   });
 
-  await t.test("redirect loop with relative location", async () => {
+  await t.step("redirect loop with relative location", async () => {
     relativeLoopAttempts = 0;
     await rejects(
       () => fetchDocumentLoader("https://example.com/redirect-loop-relative"),
@@ -718,7 +718,7 @@ test("getDocumentLoader()", async (t) => {
     headers: { "Content-Type": "text/html; charset=utf-8" },
   });
 
-  await t.test("ReDoS resistance (CVE-2025-68475)", async () => {
+  await t.step("ReDoS resistance (CVE-2025-68475)", async () => {
     const start = performance.now();
     // The malicious HTML will fail alternate discovery, but the important
     // thing is that it should complete quickly (not hang due to ReDoS).
@@ -867,12 +867,13 @@ test("getDocumentLoader() logs DNS failures as such", async (t) => {
     "Deno" in globalThis &&
     (await Deno.permissions.query({ name: "net" })).state !== "granted"
   ) {
-    t.skip("requires the net permission");
-    return;
+    throw new Error(
+      "This DNS test requires Deno network permission (--allow-net).",
+    );
   }
   const loader = getDocumentLoader();
   for (const result of ["throws", "empty", "private"] as const) {
-    await t.test(result, async () => {
+    await t.step(result, async () => {
       // Stubbing works only because url.ts uses the default node:dns/promises
       // import; see the FIXME there.
       const originalLookup = dns.lookup;
@@ -928,7 +929,7 @@ test("getDocumentLoader() bounds alternate document chains", async (t) => {
   const loader = getDocumentLoader({ allowPrivateAddress: true });
   for (const mode of ["header", "html", "mixed"] as const) {
     for (const hops of [20, 21]) {
-      await t.test(`${mode}: ${hops} hops`, async () => {
+      await t.step(`${mode}: ${hops} hops`, async () => {
         fetchMock.mockGlobal();
         let requests = 0;
         fetchMock.get(`begin:${base}`, ({ url }) => {
@@ -973,7 +974,7 @@ test("getDocumentLoader() bounds alternate document chains", async (t) => {
       "redirect-intermediate",
     ]
   ) {
-    await t.test(`${mode}: cycle`, async () => {
+    await t.step(`${mode}: cycle`, async () => {
       fetchMock.mockGlobal();
       let requests = 0;
       fetchMock.get(`begin:${base}`, ({ url }) => {
@@ -1007,49 +1008,55 @@ test("getDocumentLoader() bounds alternate document chains", async (t) => {
     });
   }
 
-  await t.test("alternate followed by 20 redirects shares the limit", async () => {
-    fetchMock.mockGlobal();
-    let requests = 0;
-    fetchMock.get(`begin:${base}`, ({ url }) => {
-      requests++;
-      const index = Number(new URL(url).pathname.split("/").at(-1));
-      if (index === 21) return Response.json({ done: true });
-      return index === 0
-        ? alternate(`${base}1`, false)
-        : Response.redirect(`${base}${index + 1}`, 302);
-    });
-    try {
-      await rejects(loader(`${base}0`), (error: unknown) => {
-        ok(error instanceof FetchError);
-        ok(error.message.includes("Too many redirections (21)"));
-        return true;
+  await t.step(
+    "alternate followed by 20 redirects shares the limit",
+    async () => {
+      fetchMock.mockGlobal();
+      let requests = 0;
+      fetchMock.get(`begin:${base}`, ({ url }) => {
+        requests++;
+        const index = Number(new URL(url).pathname.split("/").at(-1));
+        if (index === 21) return Response.json({ done: true });
+        return index === 0
+          ? alternate(`${base}1`, false)
+          : Response.redirect(`${base}${index + 1}`, 302);
       });
-      deepStrictEqual(requests, 21);
-    } finally {
-      fetchMock.hardReset();
-    }
-  });
-
-  await t.test("relative alternate after redirect and isolated calls", async () => {
-    fetchMock.mockGlobal();
-    fetchMock.get(`${base}start`, Response.redirect(`${base}html`, 302));
-    fetchMock.get(`${base}html`, alternate("./document", true));
-    fetchMock.get(`${base}document`, Response.json({ done: true }));
-    try {
-      for (let i = 0; i < 2; i++) {
-        const results = await Promise.all([
-          loader(`${base}start`),
-          loader(`${base}start`),
-        ]);
-        for (const result of results) {
-          deepStrictEqual(result.document, { done: true });
-          deepStrictEqual(result.documentUrl, `${base}document`);
-        }
+      try {
+        await rejects(loader(`${base}0`), (error: unknown) => {
+          ok(error instanceof FetchError);
+          ok(error.message.includes("Too many redirections (21)"));
+          return true;
+        });
+        deepStrictEqual(requests, 21);
+      } finally {
+        fetchMock.hardReset();
       }
-    } finally {
-      fetchMock.hardReset();
-    }
-  });
+    },
+  );
+
+  await t.step(
+    "relative alternate after redirect and isolated calls",
+    async () => {
+      fetchMock.mockGlobal();
+      fetchMock.get(`${base}start`, Response.redirect(`${base}html`, 302));
+      fetchMock.get(`${base}html`, alternate("./document", true));
+      fetchMock.get(`${base}document`, Response.json({ done: true }));
+      try {
+        for (let i = 0; i < 2; i++) {
+          const results = await Promise.all([
+            loader(`${base}start`),
+            loader(`${base}start`),
+          ]);
+          for (const result of results) {
+            deepStrictEqual(result.document, { done: true });
+            deepStrictEqual(result.documentUrl, `${base}document`);
+          }
+        }
+      } finally {
+        fetchMock.hardReset();
+      }
+    },
+  );
 
   function alternate(next: string, html: boolean): Response {
     return html
@@ -1072,7 +1079,7 @@ test("getDocumentLoader() preserves cancellation across alternates", async (t) =
   const base = "https://example.com/alternate-abort/";
   const loader = getDocumentLoader({ allowPrivateAddress: true });
   for (const html of [false, true]) {
-    await t.test(html ? "HTML" : "Link header", async () => {
+    await t.step(html ? "HTML" : "Link header", async () => {
       fetchMock.mockGlobal();
       const controller = new AbortController();
       let requests = 0;
@@ -1238,7 +1245,7 @@ test("getDocumentLoader() shares the timeout across redirects", async () => {
 
 test("getDocumentLoader() shares the timeout across alternates", async (t) => {
   for (const html of [false, true]) {
-    await t.test(html ? "HTML" : "Link header", async () => {
+    await t.step(html ? "HTML" : "Link header", async () => {
       await withServer((request, response) => {
         const index = Number(request.url?.split("/").at(-1));
         setTimeout(() => {
@@ -1306,14 +1313,15 @@ test("getDocumentLoader() lets the caller's signal abort a request", async () =>
   });
 });
 
-test("getDocumentLoader() bounds DNS lookups that ignore the timeout", async (t) => {
+test("getDocumentLoader() bounds DNS lookups that ignore the timeout", async () => {
   // The validator skips DNS when Deno has no network permission.
   if (
     "Deno" in globalThis &&
     (await Deno.permissions.query({ name: "net" })).state !== "granted"
   ) {
-    t.skip("requires the net permission");
-    return;
+    throw new Error(
+      "This DNS test requires Deno network permission (--allow-net).",
+    );
   }
   fetchMock.mockGlobal();
   let requests = 0;
