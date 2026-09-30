@@ -1211,6 +1211,30 @@ export interface FederationOptions<TContextData> {
   signatureTimeWindow?: Temporal.Duration | Temporal.DurationLike | false;
 
   /**
+   * The maximum number of [RFC 9421] signatures of an incoming request to
+   * verify, e.g., in the inbox and in
+   * {@link RequestContext.getSignedKey}.  A request can carry several
+   * signatures, each of which may make Fedify fetch the key that it names,
+   * so only the first ones in the order of the `Signature-Input` header are
+   * verified, and the rest are ignored as if they were absent.  Every
+   * signature among the first ones counts, even if it fails before its key
+   * is fetched.  See also the `maxSignatures` option of `verifyRequest()`.
+   *
+   * It has to be a positive integer, or `Infinity` to verify every
+   * signature, which lets a single request make Fedify fetch any number of
+   * keys.  Draft-cavage HTTP Signatures carry a single signature, so this
+   * option does not affect them.
+   *
+   * Three by default.
+   *
+   * [RFC 9421]: https://www.rfc-editor.org/rfc/rfc9421
+   * @throws {RangeError} Thrown when the federation is created if the value
+   *         is not a positive integer or `Infinity`.
+   * @since 2.4.0
+   */
+  maxHttpSignatures?: number;
+
+  /**
    * Whether to skip HTTP Signatures verification for incoming activities.
    * This is useful for testing purposes, but should not be used in production.
    *

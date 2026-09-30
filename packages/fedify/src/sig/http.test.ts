@@ -5,7 +5,12 @@ import {
   test,
 } from "@fedify/fixture";
 import type { CryptographicKey, Multikey } from "@fedify/vocab";
-import { exportSpki, FetchError } from "@fedify/vocab-runtime";
+import {
+  type DocumentLoader,
+  type DocumentLoaderOptions,
+  exportSpki,
+  FetchError,
+} from "@fedify/vocab-runtime";
 import {
   assert,
   assertEquals,
@@ -19,7 +24,10 @@ import {
 import { encodeBase64 } from "byte-encodings/base64";
 import fetchMock from "fetch-mock";
 import {
+  ed25519PrivateKey,
+  ed25519PublicKey,
   rsaPrivateKey2,
+  rsaPrivateKey3,
   rsaPublicKey1,
   rsaPublicKey2,
   rsaPublicKey5,
@@ -40,7 +48,13 @@ import {
   verifyRequestDetailed,
   type VerifyRequestOptions,
 } from "./http.ts";
-import { exportJwk, type KeyCache } from "./key.ts";
+import { KvKeyCache } from "../federation/keycache.ts";
+import { MemoryKvStore } from "../federation/kv.ts";
+import {
+  exportJwk,
+  type FetchErrorMetadataCache,
+  type KeyCache,
+} from "./key.ts";
 
 test("signRequest() [draft-cavage]", async () => {
   const request = new Request("https://example.com/", {
@@ -372,7 +386,9 @@ test("verifyRequestDetailed() records failure details on span", async () => {
 });
 
 test("verifyRequestDetailed() records verification duration metric", async (t) => {
-  const buildSignedRequest = (): Promise<Request> =>
+  const buildSignedRequest = (
+    spec?: HttpMessageSignaturesSpec,
+  ): Promise<Request> =>
     signRequest(
       new Request("https://example.com/inbox", {
         method: "POST",
@@ -388,6 +404,7 @@ test("verifyRequestDetailed() records verification duration metric", async (t) =
       }),
       rsaPrivateKey2,
       new URL("https://example.com/key2"),
+      { spec },
     );
 
   await t.step("verified path emits one measurement", async () => {
@@ -594,35 +611,47 @@ test("verifyRequestDetailed() records verification duration metric", async (t) =
   await t.step(
     "cached-key retry emits one measurement, not two",
     async () => {
-      const [meterProvider, recorder] = createTestMeterProvider();
-      // Prime the cache with a wrong key so the verifier fails with the cached
-      // key and falls through to the fresh-fetch retry path; both attempts
-      // must collapse to a single measurement.
-      const cache: Record<string, CryptographicKey | Multikey | null> = {
-        "https://example.com/key2": rsaPublicKey1,
-      };
-      const request = await buildSignedRequest();
-      const key = await verifyRequest(request, {
-        contextLoader: mockDocumentLoader,
-        documentLoader: mockDocumentLoader,
-        meterProvider,
-        keyCache: {
-          get(keyId) {
-            return Promise.resolve(cache[keyId.href]);
-          },
-          set(keyId, k) {
-            cache[keyId.href] = k;
-            return Promise.resolve();
-          },
-        } satisfies KeyCache,
-      });
-      assertExists(key);
-      assertEquals(
-        recorder.getMeasurements(
-          "activitypub.signature.verification.duration",
-        ).length,
-        1,
-      );
+      for (
+        const spec of ["draft-cavage-http-signatures-12", "rfc9421"] as const
+      ) {
+        const [meterProvider, recorder] = createTestMeterProvider();
+        // Prime the cache with a wrong key so the verifier fails with the
+        // cached key and falls through to the fresh-fetch retry path; both
+        // attempts must collapse to a single measurement.
+        const cache: Record<string, CryptographicKey | Multikey | null> = {
+          "https://example.com/key2": rsaPublicKey1,
+        };
+        const request = await buildSignedRequest(spec);
+        const key = await verifyRequest(request, {
+          contextLoader: mockDocumentLoader,
+          documentLoader: mockDocumentLoader,
+          meterProvider,
+          keyCache: {
+            get(keyId) {
+              return Promise.resolve(cache[keyId.href]);
+            },
+            set(keyId, k) {
+              cache[keyId.href] = k;
+              return Promise.resolve();
+            },
+          } satisfies KeyCache,
+        });
+        assertExists(key, spec);
+        assertEquals(
+          recorder.getMeasurements(
+            "activitypub.signature.verification.duration",
+          ).length,
+          1,
+          spec,
+        );
+        // The cached key and the fresh one are looked up separately:
+        assertEquals(
+          recorder.getMeasurements("activitypub.signature.key_fetch.duration")
+            .length,
+          2,
+          spec,
+        );
+      }
     },
   );
 
@@ -1169,7 +1198,7 @@ for (
         ? []
         : failure === "missing key"
         ? ["https://example.com/missing-key", "https://example.com/key2"]
-        : ["https://example.com/key2", "https://example.com/key2"],
+        : ["https://example.com/key2"],
     );
     assertFalse(request.bodyUsed);
     assertEquals(
@@ -1178,6 +1207,487 @@ for (
     );
   });
 }
+
+// Signs a request once for each of the given signatures, in the given order.
+// A signature is made with rsaPrivateKey2 unless another private key is given,
+// so only the signatures that name https://example.com/key2 and are made with
+// rsaPrivateKey2 are valid.
+async function signRfc9421Many(
+  signatures: readonly (
+    | string
+    | {
+      readonly label?: string;
+      readonly keyId: string;
+      readonly privateKey?: CryptoKey;
+    }
+  )[],
+  currentTime: Temporal.Instant,
+): Promise<Request> {
+  let request = new Request("https://example.com/inbox", {
+    method: "POST",
+    body: "Hello, world!",
+  });
+  let i = 0;
+  for (const signature of signatures) {
+    const { label, keyId, privateKey } = typeof signature === "string"
+      ? { keyId: signature }
+      : signature;
+    i++;
+    request = await signRequest(
+      request,
+      privateKey ?? rsaPrivateKey2,
+      new URL(keyId),
+      { spec: "rfc9421", currentTime, rfc9421: { label: label ?? `sig${i}` } },
+    );
+  }
+  return request;
+}
+
+// Splits a Signature-Input or Signature header made by signRequest() into its
+// members by label:
+function splitRfc9421Header(header: string): Record<string, string> {
+  return Object.fromEntries(
+    header.split(/,\s*/).map((member) => [
+      member.slice(0, member.indexOf("=")),
+      member,
+    ]),
+  );
+}
+
+// A document loader that serves https://example.com/key2, fails to fetch any
+// other URL, and records the URLs it is asked for:
+function createCountingKeyLoader(): DocumentLoader & { loaded: string[] } {
+  const loaded: string[] = [];
+  const loader = (url: string, options?: DocumentLoaderOptions) => {
+    loaded.push(url);
+    if (url === "https://example.com/key2") {
+      return mockDocumentLoader(url, options);
+    }
+    return Promise.reject(new FetchError(url, `Not found: ${url}`));
+  };
+  return Object.assign(loader, { loaded });
+}
+
+test("verifyRequestDetailed() [rfc9421] caps the number of signatures", async (t) => {
+  const currentTime = Temporal.Instant.from("2024-03-05T08:09:44Z");
+  const missing = (n: number) => `https://example.com/missing-${n}`;
+  const valid = "https://example.com/key2";
+
+  await t.step("fetches only the keys of the first signatures", async () => {
+    const request = await signRfc9421Many(
+      [1, 2, 3, 4, 5].map(missing),
+      currentTime,
+    );
+    for (
+      const [maxSignatures, count] of [
+        [undefined, 3],
+        [1, 1],
+        [5, 5],
+        [Infinity, 5],
+      ] as const
+    ) {
+      const documentLoader = createCountingKeyLoader();
+      const result = await verifyRequestDetailed(request, {
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        currentTime,
+        maxSignatures,
+      });
+      assertFalse(result.verified);
+      assertEquals(result.reason.type, "keyFetchError");
+      assertEquals(
+        "keyId" in result.reason ? result.reason.keyId?.href : undefined,
+        missing(count),
+      );
+      assertEquals(
+        documentLoader.loaded,
+        [1, 2, 3, 4, 5].slice(0, count).map(missing),
+      );
+    }
+  });
+
+  await t.step("accepts a valid signature within the cap", async () => {
+    const documentLoader = createCountingKeyLoader();
+    const result = await verifyRequestDetailed(
+      await signRfc9421Many(
+        [missing(1), missing(2), valid, missing(4)],
+        currentTime,
+      ),
+      { documentLoader, contextLoader: mockDocumentLoader, currentTime },
+    );
+    assert(result.verified);
+    assertEquals(result.key, rsaPublicKey2);
+    assertEquals(result.signatureLabel, "sig3");
+    assertEquals(documentLoader.loaded, [missing(1), missing(2), valid]);
+  });
+
+  await t.step("ignores a valid signature beyond the cap", async () => {
+    const request = await signRfc9421Many(
+      [missing(1), missing(2), missing(3), valid],
+      currentTime,
+    );
+    const documentLoader = createCountingKeyLoader();
+    const result = await verifyRequestDetailed(request, {
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      currentTime,
+    });
+    assertFalse(result.verified);
+    assertEquals(result.reason.type, "keyFetchError");
+    assertEquals(
+      "keyId" in result.reason ? result.reason.keyId?.href : undefined,
+      missing(3),
+    );
+    assertEquals(documentLoader.loaded, [1, 2, 3].map(missing));
+    assertEquals(
+      await verifyRequest(request, {
+        documentLoader: createCountingKeyLoader(),
+        contextLoader: mockDocumentLoader,
+        currentTime,
+        maxSignatures: 4,
+      }),
+      rsaPublicKey2,
+    );
+  });
+
+  await t.step("tries signatures in the header order", async () => {
+    const request = await signRfc9421Many(
+      [
+        { label: "z", keyId: missing(1) },
+        { label: "a", keyId: valid },
+        { label: "m", keyId: missing(3) },
+      ],
+      currentTime,
+    );
+    const documentLoader = createCountingKeyLoader();
+    const key = await verifyRequest(request, {
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      currentTime,
+      maxSignatures: 1,
+    });
+    assertEquals(key, null);
+    assertEquals(documentLoader.loaded, [missing(1)]);
+  });
+
+  await t.step(
+    "counts signatures that fail before their keys are fetched",
+    async () => {
+      const outdated = await signRfc9421Many(
+        [{ label: "old", keyId: missing(1) }],
+        currentTime.subtract({ hours: 2 }),
+      );
+      const signed = await signRfc9421Many(
+        [
+          { label: "nobytes1", keyId: missing(2) },
+          { label: "nobytes2", keyId: missing(3) },
+          { label: "valid", keyId: valid },
+        ],
+        currentTime,
+      );
+      const inputs = {
+        ...splitRfc9421Header(outdated.headers.get("Signature-Input")!),
+        ...splitRfc9421Header(signed.headers.get("Signature-Input")!),
+      };
+      const signatures = {
+        ...splitRfc9421Header(outdated.headers.get("Signature")!),
+        ...splitRfc9421Header(signed.headers.get("Signature")!),
+      };
+      const build = (labels: readonly string[]): Request => {
+        const headers = new Headers(signed.headers);
+        headers.set(
+          "Signature-Input",
+          [
+            // A member that the parser drops, as it has no created parameter,
+            // and that therefore does not count:
+            `dropped=("@method");keyid="${missing(0)}"`,
+            ...labels.map((label) => inputs[label]),
+          ].join(", "),
+        );
+        headers.set(
+          "Signature",
+          labels.filter((label) => !label.startsWith("nobytes"))
+            .map((label) => signatures[label])
+            .join(", "),
+        );
+        return new Request(signed.url, {
+          method: "POST",
+          headers,
+          body: "Hello, world!",
+        });
+      };
+      let documentLoader = createCountingKeyLoader();
+      let result = await verifyRequestDetailed(
+        build(["old", "nobytes1", "valid"]),
+        { documentLoader, contextLoader: mockDocumentLoader, currentTime },
+      );
+      assert(result.verified);
+      assertEquals(result.signatureLabel, "valid");
+      assertEquals(documentLoader.loaded, [valid]);
+
+      documentLoader = createCountingKeyLoader();
+      result = await verifyRequestDetailed(
+        build(["old", "nobytes1", "nobytes2", "valid"]),
+        { documentLoader, contextLoader: mockDocumentLoader, currentTime },
+      );
+      assertFalse(result.verified);
+      assertEquals(documentLoader.loaded, []);
+    },
+  );
+
+  await t.step("rejects an invalid maxSignatures", async () => {
+    const unsigned = new Request("https://example.com/inbox");
+    for (const maxSignatures of [0, -1, 1.5, NaN, 2 ** 53, -Infinity]) {
+      await assertRejects(
+        () => verifyRequestDetailed(unsigned, { maxSignatures }),
+        RangeError,
+      );
+      await assertRejects(
+        () => verifyRequest(unsigned, { maxSignatures }),
+        RangeError,
+      );
+    }
+    // An untyped caller may pass null, which must not turn off verification:
+    await assertRejects(
+      () =>
+        verifyRequestDetailed(unsigned, {
+          maxSignatures: null as unknown as number,
+        }),
+      RangeError,
+    );
+  });
+});
+
+test("verifyRequestDetailed() [rfc9421] looks up each key once per request", async (t) => {
+  const currentTime = Temporal.Instant.from("2024-03-05T08:09:44Z");
+  const missing = (n: number) => `https://example.com/missing-${n}`;
+  const valid = "https://example.com/key2";
+  // Names the key of rsaPrivateKey2 but is made with another key:
+  const forged = { keyId: valid, privateKey: rsaPrivateKey3 };
+
+  await t.step("signatures naming the same key", async () => {
+    const request = await signRfc9421Many([forged, forged, valid], currentTime);
+    for (
+      const keyCache of [undefined, new KvKeyCache(new MemoryKvStore(), ["pk"])]
+    ) {
+      const documentLoader = createCountingKeyLoader();
+      const result = await verifyRequestDetailed(request, {
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        currentTime,
+        keyCache,
+      });
+      assert(result.verified);
+      assertEquals(result.signatureLabel, "sig3");
+      assertEquals(documentLoader.loaded, [valid]);
+    }
+  });
+
+  await t.step("signatures naming the same missing key", async () => {
+    const documentLoader = createCountingKeyLoader();
+    const result = await verifyRequestDetailed(
+      await signRfc9421Many([missing(1), missing(1), missing(1)], currentTime),
+      { documentLoader, contextLoader: mockDocumentLoader, currentTime },
+    );
+    assertFalse(result.verified);
+    assertEquals(result.reason.type, "keyFetchError");
+    assertEquals(documentLoader.loaded, [missing(1)]);
+  });
+
+  await t.step("separate requests", async () => {
+    const request = await signRfc9421Many([valid], currentTime);
+    const documentLoader = createCountingKeyLoader();
+    const options = {
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      currentTime,
+    };
+    assertEquals(await verifyRequest(request, options), rsaPublicKey2);
+    assertEquals(await verifyRequest(request, options), rsaPublicKey2);
+    assertEquals(documentLoader.loaded, [valid, valid]);
+  });
+
+  // A key cache that has a stale key for https://example.com/key2, a failure
+  // to fetch missing-1, and ignores whatever is stored in it:
+  const createStaleKeyCache = () => {
+    const gets: string[] = [];
+    const keyCache: FetchErrorMetadataCache = {
+      get(keyId) {
+        gets.push(keyId.href);
+        return Promise.resolve(
+          keyId.href === valid
+            ? rsaPublicKey1
+            : keyId.href === missing(1)
+            ? null
+            : undefined,
+        );
+      },
+      set: () => Promise.resolve(),
+      getFetchError: (keyId) =>
+        Promise.resolve(
+          keyId.href === missing(1)
+            ? { error: new FetchError(keyId, "Cached failure") }
+            : undefined,
+        ),
+      setFetchError: () => Promise.resolve(),
+    };
+    return { keyCache, gets };
+  };
+
+  await t.step(
+    "refreshes a stale cached key once, only for its signature",
+    async () => {
+      const { keyCache, gets } = createStaleKeyCache();
+      const documentLoader = createCountingKeyLoader();
+      const result = await verifyRequestDetailed(
+        await signRfc9421Many(
+          [missing(1), missing(2), forged, valid],
+          currentTime,
+        ),
+        {
+          documentLoader,
+          contextLoader: mockDocumentLoader,
+          currentTime,
+          keyCache,
+          maxSignatures: 4,
+        },
+      );
+      assert(result.verified);
+      assertEquals(result.key, rsaPublicKey2);
+      assertEquals(result.signatureLabel, "sig4");
+      // The cached failure of missing-1 and the failure of missing-2 are not
+      // fetched again, and the last signature uses the fresh key, although
+      // the key cache still has the stale one:
+      assertEquals(documentLoader.loaded, [missing(2), valid]);
+      assertEquals(gets, [missing(1), missing(2), valid]);
+    },
+  );
+
+  await t.step(
+    "refreshes each stale cached key at most once",
+    async () => {
+      const stale = (n: number) => `https://example.com/stale-${n}`;
+      const gets: string[] = [];
+      const keyCache: KeyCache = {
+        get(keyId) {
+          gets.push(keyId.href);
+          return Promise.resolve(rsaPublicKey1);
+        },
+        set: () => Promise.resolve(),
+      };
+      const documentLoader = createCountingKeyLoader();
+      const result = await verifyRequestDetailed(
+        await signRfc9421Many(
+          [stale(1), stale(2), stale(1), stale(4)],
+          currentTime,
+        ),
+        {
+          documentLoader,
+          contextLoader: mockDocumentLoader,
+          currentTime,
+          keyCache,
+        },
+      );
+      assertFalse(result.verified);
+      // The fresh lookup of stale-1 failed, which the third signature reuses:
+      assertEquals(result.reason.type, "keyFetchError");
+      assertEquals(
+        "keyId" in result.reason ? result.reason.keyId?.href : undefined,
+        stale(1),
+      );
+      assertEquals(documentLoader.loaded, [stale(1), stale(2)]);
+      assertEquals(gets, [stale(1), stale(2)]);
+    },
+  );
+
+  await t.step(
+    "does not refresh a cached key for other failures",
+    async () => {
+      const [input] = Object.values(
+        splitRfc9421Header(
+          (await signRfc9421Many([valid], currentTime)).headers.get(
+            "Signature-Input",
+          )!,
+        ),
+      );
+      const withAlg = (alg: string) =>
+        /;alg="[^"]*"/.test(input)
+          ? input.replace(/;alg="[^"]*"/, `;alg="${alg}"`)
+          : `${input};alg="${alg}"`;
+      for (
+        const signatureInput of [
+          // An unsupported algorithm:
+          withAlg("unknown"),
+          // A signature base that cannot be made:
+          input.replace(/^sig1=\([^)]*\)/, 'sig1=("@unsupported")'),
+        ]
+      ) {
+        const request = await signRfc9421Many([valid], currentTime);
+        request.headers.set("Signature-Input", signatureInput);
+        const { keyCache } = createStaleKeyCache();
+        const documentLoader = createCountingKeyLoader();
+        const key = await verifyRequest(request, {
+          documentLoader,
+          contextLoader: mockDocumentLoader,
+          currentTime,
+          keyCache,
+        });
+        assertEquals(key, null, signatureInput);
+        assertEquals(documentLoader.loaded, [], signatureInput);
+      }
+    },
+  );
+
+  await t.step(
+    "refreshes a cached key of another algorithm family",
+    async () => {
+      // The sender has rotated its key from RSA to Ed25519, and the key cache
+      // still has the RSA one:
+      const keyId = ed25519PublicKey.id!.href;
+      // signRequest() makes only RSA signatures, so an RSA one is replaced
+      // with an Ed25519 one that has an explicit alg parameter:
+      const request = await signRfc9421Many([keyId], currentTime);
+      const input = request.headers.get("Signature-Input")!;
+      request.headers.set(
+        "Signature-Input",
+        /;alg="[^"]*"/.test(input)
+          ? input.replace(/;alg="[^"]*"/, ';alg="ed25519"')
+          : `${input};alg="ed25519"`,
+      );
+      const { sig1 } = parseRfc9421SignatureInput(
+        request.headers.get("Signature-Input")!,
+      );
+      const signature = await crypto.subtle.sign(
+        "Ed25519",
+        ed25519PrivateKey,
+        new TextEncoder().encode(
+          createRfc9421SignatureBase(request, sig1.components, sig1.parameters),
+        ),
+      );
+      request.headers.set(
+        "Signature",
+        `sig1=:${encodeBase64(new Uint8Array(signature))}:`,
+      );
+      const loaded: string[] = [];
+      const result = await verifyRequestDetailed(request, {
+        documentLoader: (url, options) => {
+          loaded.push(url);
+          return mockDocumentLoader(url, options);
+        },
+        contextLoader: mockDocumentLoader,
+        currentTime,
+        keyCache: {
+          get: (id) =>
+            Promise.resolve(id.href === keyId ? rsaPublicKey1 : undefined),
+          set: () => Promise.resolve(),
+        },
+      });
+      assert(result.verified);
+      assertEquals(result.key.id?.href, keyId);
+      assertEquals(loaded.length, 1);
+    },
+  );
+});
 
 test("verifyRequest() [rfc9421] manual POST verification", async () => {
   // We can't easily test full POST verification due to body consumption issues,
@@ -3778,6 +4288,36 @@ test("listRequestSignatures()", async (t) => {
         "content-digest",
       ],
     );
+  });
+  await t.step("RFC 9421 beyond the limit", async () => {
+    const currentTime = Temporal.Instant.from("2024-03-05T08:09:44Z");
+    const signed = await signRfc9421Many(
+      [1, 2, 3, 4].map((n) => `https://example.com/key-${n}`),
+      currentTime,
+    );
+    // A signature whose key ID is not a URL is not listed, but still counts
+    // toward the limit, as it does for verifyRequest():
+    const headers = new Headers(signed.headers);
+    headers.set(
+      "Signature-Input",
+      headers.get("Signature-Input")!.replace(
+        "https://example.com/key-1",
+        "not a URL",
+      ),
+    );
+    const request = new Request(signed.url, { method: "POST", headers });
+    const keyIds = (maxSignatures?: number) =>
+      listRequestSignatures(request, maxSignatures).map((s) => s.keyId.href);
+    assertEquals(keyIds(), [
+      "https://example.com/key-2",
+      "https://example.com/key-3",
+    ]);
+    assertEquals(keyIds(1), []);
+    assertEquals(keyIds(Infinity), [
+      "https://example.com/key-2",
+      "https://example.com/key-3",
+      "https://example.com/key-4",
+    ]);
   });
   await t.step("unsigned or malformed", () => {
     assertEquals(listRequestSignatures(request()), []);

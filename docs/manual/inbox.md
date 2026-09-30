@@ -149,6 +149,43 @@ protection.  Nonces expire after `nonceTtlSeconds` (default: 5 minutes).
 [`Accept-Signature`]: https://www.rfc-editor.org/rfc/rfc9421#section-5.1
 [RFC 9421 §5]: https://www.rfc-editor.org/rfc/rfc9421#section-5
 
+### Requests with several RFC 9421 signatures
+
+*This API is available since Fedify 2.4.0.*
+
+An [RFC 9421] request can carry several signatures, and each of them may make
+Fedify fetch the key that it names from a URL of the sender's choosing.  So
+that a single request cannot make Fedify fetch any number of keys, Fedify
+verifies only the first three signatures in the order of the
+`Signature-Input` header, and ignores the rest as if they were absent:
+
+ -  A signature counts even if it fails before its key is fetched, e.g.,
+    because it is too old, its `Signature` member is missing, or it does not
+    match the `Content-Digest` header.
+ -  A key is looked up only once for all the signatures that name it.
+ -  A valid signature after the first three does not authenticate the
+    request.
+
+Senders usually put a single signature on a request, so this rarely matters.
+If you need to accept more signatures, or fewer, set the `maxHttpSignatures`
+option when creating a `Federation`; it also applies to
+`~RequestContext.getSignedKey()` and `~RequestContext.getSignedKeyOwner()`:
+
+~~~~ typescript
+import { createFederation } from "@fedify/fedify";
+
+const federation = createFederation<void>({
+  // ... other options ...
+  maxHttpSignatures: 1,
+});
+~~~~
+
+This limits the number of signatures, not the number of requests that looking
+up a single key takes, e.g., to fetch the owner of the key, nor the time they
+take.  Draft cavage [HTTP Signatures] carry a single signature, and activities
+authenticated by their [Linked Data Signatures] or Object Integrity Proofs do
+not rely on the request's signatures, so they are not affected.
+
 
 Handling unverified activities
 ------------------------------

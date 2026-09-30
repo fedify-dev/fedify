@@ -1608,6 +1608,11 @@ export interface InboxHandlerParameters<TContextData> {
   unverifiedActivityHandler?: UnverifiedActivityHandler<TContextData>;
   onNotFound(request: Request): Response | Promise<Response>;
   signatureTimeWindow: Temporal.Duration | Temporal.DurationLike | false;
+  /**
+   * The maximum number of RFC 9421 signatures of a request to verify.
+   * @since 2.4.0
+   */
+  maxHttpSignatures?: number;
   skipSignatureVerification: boolean;
   inboxChallengePolicy?: InboxChallengePolicy;
   idempotencyStrategy?:
@@ -1711,6 +1716,7 @@ async function handleInboxInternal<TContextData>(
     unverifiedActivityHandler,
     onNotFound,
     signatureTimeWindow,
+    maxHttpSignatures,
     skipSignatureVerification,
     inboxChallengePolicy,
     meterProvider,
@@ -2055,6 +2061,7 @@ async function handleInboxInternal<TContextData>(
         contextLoader: ctx.contextLoader,
         documentLoader: ctx.documentLoader,
         timeWindow: signatureTimeWindow,
+        maxSignatures: maxHttpSignatures,
         keyCache,
         meterProvider,
         tracerProvider,
@@ -2458,7 +2465,11 @@ async function handleInboxInternal<TContextData>(
           json,
           activity.id,
           getTypeId(activity).href,
-          listRequestSignatures(request).map((signature) => ({
+          // Signatures beyond the limit are ignored here as well, so that
+          // they cannot identify the sending gateway either:
+          listRequestSignatures(request, maxHttpSignatures).map((
+            signature,
+          ) => ({
             keyId: signature.keyId,
             coversDelivery: coversDelivery(signature),
             verify: async () => {
