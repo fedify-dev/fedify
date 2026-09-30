@@ -83,6 +83,7 @@ export {
   formatIri,
   fromCompatibleEf61Id,
   getFe34Origin,
+  getGatewayHints,
   haveSameFe34Origin,
   haveSameIriOrigin,
   isGatewayUrl,
@@ -94,4 +95,6 @@ export {
   toCompatibleEf61Id,
   UrlError,
   validatePublicUrl,
+  withGatewayHints,
+  withoutGatewayHints,
 } from "./url.ts";

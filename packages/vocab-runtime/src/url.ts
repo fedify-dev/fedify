@@ -596,6 +596,238 @@ function isLocationHint(pair: string): boolean {
 }
 
 /**
+ * The name of the FEP-ef61 location hint query parameter.
+ * @internal
+ */
+export const GATEWAY_HINT_PARAMETER = "@gateway";
+
+/**
+ * Parses an FEP-ef61 gateway, which has to be an HTTP(S) origin with no
+ * credentials, path, query, or fragment.
+ * @returns The gateway, or `null` if it is not a valid gateway.
+ * @internal
+ */
+export function parseGatewayOrigin(gateway: string | URL): URL | null {
+  let url: URL;
+  if (gateway instanceof URL) url = new URL(gateway.href);
+  else if (typeof gateway === "string" && URL.canParse(gateway)) {
+    url = new URL(gateway);
+  } else return null;
+  return isGatewayUrl(url) ? url : null;
+}
+
+/**
+ * Returns a copy of an [FEP-ef61] portable ActivityPub URI with `@gateway`
+ * location hints for the given gateways, which tell consumers where they can
+ * retrieve the object.  Put hints on *references* to portable actors, e.g.,
+ * in `actor`, `attributedTo`, `to`, or `cc`, when constructing an object, as
+ * FEP-ef61 recommends:
+ *
+ * ~~~~ typescript
+ * withGatewayHints("ap://did:key:z6Mk.../actor", [
+ *   "https://server1.example",
+ *   "https://server2.example",
+ * ]);
+ * // ap+ef61://did:key:z6Mk.../actor?@gateway=https%3A%2F%2Fserver1.example&@gateway=https%3A%2F%2Fserver2.example
+ * ~~~~
+ *
+ * Do not put hints on an object's own `id`.  Hints do not change the
+ * identity of a portable URI, since FEP-ef61 drops the query when comparing
+ * portable URIs, but implementations that do not canonicalize portable URIs
+ * would take a hinted ID for another object.  Add hints before signing the
+ * object, since its Object Integrity Proof covers its references too.
+ *
+ * The hints that the URI already has, including the legacy `gateways`
+ * parameter, are replaced.  Each gateway becomes a `@gateway` query
+ * parameter whose value is its URI-encoded origin, e.g.,
+ * `@gateway=https%3A%2F%2Fserver1.example`, in the given order after the
+ * other query parameters.  Duplicate gateways are dropped, and an empty list
+ * removes the hints as {@link withoutGatewayHints} does.  The other query
+ * parameters, their order, and the fragment are kept, but percent-encoding
+ * is normalized the same way as {@link canonicalizePortableUri} does it.
+ *
+ * Fedify follows at most five hints when dereferencing a portable URI
+ * (three for the key ID of an HTTP Signature), so list the preferred
+ * gateways first; there is no limit on the number of hints added here.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
+ *
+ * @param portableId The `ap:` or `ap+ef61:` URI.  Pass the raw string rather
+ *                   than a `URL` if its path may have `.` or `..` segments,
+ *                   because the `URL` class resolves them.
+ * @param gateways The gateways, e.g., the `gateways` of the actor that the
+ *                 URI refers to.  Each has to be an HTTP(S) origin with no
+ *                 credentials, path, query, or fragment.
+ * @returns The portable URI with the hints, in the same internal `URL` form
+ *          as {@link parseIri} returns.  Use {@link formatIri} to get its
+ *          canonical string.
+ * @throws {TypeError} If the portable ID is not a valid `ap:` or `ap+ef61:`
+ *                     URI, e.g., it is a compatible identifier, which must
+ *                     not have location hints; if its path has `.` or `..`
+ *                     segments, which the `URL` class cannot represent; or
+ *                     if a gateway is invalid.
+ * @since 2.4.0
+ */
+export function withGatewayHints(
+  portableId: string | URL,
+  gateways: Iterable<string | URL>,
+): URL {
+  const parts = splitPortableIri(portableId);
+  if (typeof gateways === "string") {
+    throw new TypeError(
+      "The gateways must be an iterable of gateways, not a string.",
+    );
+  }
+  const hints: URL[] = [];
+  const seen = new Set<string>();
+  for (const gateway of gateways) {
+    const url = parseGatewayOrigin(gateway);
+    if (url == null) {
+      throw new TypeError(
+        "FEP-ef61 gateways must be HTTP(S) origins with no credentials, " +
+          "path, query, or fragment: " + String(gateway),
+      );
+    }
+    if (seen.has(url.href)) continue;
+    seen.add(url.href);
+    hints.push(url);
+  }
+  return replaceGatewayHints(parts, hints);
+}
+
+/**
+ * Returns a copy of an [FEP-ef61] portable ActivityPub URI without its
+ * location hints, i.e., `@gateway` query parameters and the legacy
+ * `gateways` parameter.  The other query parameters, their order, and the
+ * fragment are kept, but percent-encoding is normalized the same way as
+ * {@link canonicalizePortableUri} does it.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
+ *
+ * @param portableId The `ap:` or `ap+ef61:` URI.  Pass the raw string rather
+ *                   than a `URL` if its path may have `.` or `..` segments,
+ *                   because the `URL` class resolves them.
+ * @returns The portable URI without the hints, in the same internal `URL`
+ *          form as {@link parseIri} returns.
+ * @throws {TypeError} If the portable ID is not a valid `ap:` or `ap+ef61:`
+ *                     URI, or if its path has `.` or `..` segments, which
+ *                     the `URL` class cannot represent.
+ * @since 2.4.0
+ */
+export function withoutGatewayHints(portableId: string | URL): URL {
+  return replaceGatewayHints(splitPortableIri(portableId), []);
+}
+
+/**
+ * Gets the gateways in the `@gateway` location hints of an [FEP-ef61]
+ * portable ActivityPub URI, in order.  Hints that are not valid gateways,
+ * i.e., HTTP(S) origins with no credentials, path, query, or fragment, are
+ * skipped, and so are duplicates.  The legacy `gateways` parameter is not
+ * read.
+ *
+ * Unlike Fedify's dereferencing, which follows at most five hints, this
+ * returns all of them.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
+ *
+ * @param portableId The `ap:` or `ap+ef61:` URI.
+ * @returns The gateways, e.g., `https://server1.example/`.
+ * @throws {TypeError} If the portable ID is not a valid `ap:` or `ap+ef61:`
+ *                     URI.
+ * @since 2.4.0
+ */
+export function getGatewayHints(portableId: string | URL): URL[] {
+  const { query } = splitPortableIri(portableId);
+  return query == null ? [] : parseGatewayHints(query);
+}
+
+interface PortableIriParts {
+  /** The portable ID as it was given, or the `href` of a `URL`. */
+  readonly raw: string;
+  /** The parsed portable ID. */
+  readonly parsed: URL;
+  /** The normalized path. */
+  readonly path: string;
+  /** The normalized query without `?`, or `null` if there is none. */
+  readonly query: string | null;
+  /** The normalized fragment with `#`, or an empty string if there is none. */
+  readonly fragment: string;
+}
+
+function splitPortableIri(portableId: string | URL): PortableIriParts {
+  const raw = getRawPortableIri(portableId);
+  const match = raw.match(PORTABLE_IRI_PATTERN);
+  const parsed = parsePortableIri(raw);
+  if (match == null || parsed == null) {
+    throw new TypeError("Invalid portable ActivityPub IRI.");
+  }
+  // Normalize the components before looking at them, as the URL parser would
+  // otherwise strip characters such as tabs later, which could turn
+  // an unrelated query parameter into a location hint:
+  return {
+    raw,
+    parsed,
+    path: normalizePortableComponent(match[3]),
+    query: match[4] == null
+      ? null
+      : normalizePortableComponent(match[4].slice(1)),
+    fragment: match[5] == null ? "" : normalizePortableComponent(match[5]),
+  };
+}
+
+function parseGatewayHints(query: string): URL[] {
+  const hints: URL[] = [];
+  const seen = new Set<string>();
+  // Keep the delimiter, as URLSearchParams would otherwise strip a leading
+  // question mark that is part of the first parameter's name:
+  for (
+    const hint of new URLSearchParams(`?${query}`).getAll(
+      GATEWAY_HINT_PARAMETER,
+    )
+  ) {
+    const url = parseGatewayOrigin(hint);
+    if (url == null || seen.has(url.href)) continue;
+    seen.add(url.href);
+    hints.push(url);
+  }
+  return hints;
+}
+
+function replaceGatewayHints(
+  parts: PortableIriParts,
+  hints: readonly URL[],
+): URL {
+  const pairs = parts.query == null
+    ? []
+    : parts.query.split("&").filter((pair) =>
+      pair !== "" && !isLocationHint(pair)
+    );
+  for (const hint of hints) {
+    pairs.push(`${GATEWAY_HINT_PARAMETER}=${encodeURIComponent(hint.origin)}`);
+  }
+  const query = pairs.length < 1 ? "" : `?${pairs.join("&")}`;
+  const result = parsePortableIri(
+    `ap+ef61://${parts.parsed.host}${parts.path}${query}${parts.fragment}`,
+  );
+  // Guard against URL parser normalization that would silently change
+  // the referenced object (e.g., dot segments) or its hints:
+  if (
+    result == null ||
+    canonicalizePortableUri(result.href) !==
+      canonicalizePortableUri(parts.raw) ||
+    parseGatewayHints(result.search.slice(1)).map((url) => url.href).join(
+        " ",
+      ) !== hints.map((url) => url.href).join(" ")
+  ) {
+    throw new TypeError(
+      "The portable ActivityPub IRI cannot be represented as a URL without " +
+        "changing the object it refers to.",
+    );
+  }
+  return result;
+}
+
+/**
  * Validates a URL to prevent SSRF attacks.
  */
 export async function validatePublicUrl(url: string): Promise<void> {

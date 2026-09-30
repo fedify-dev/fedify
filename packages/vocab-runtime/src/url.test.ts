@@ -7,6 +7,7 @@ import {
   formatIri,
   fromCompatibleEf61Id,
   getFe34Origin,
+  getGatewayHints,
   haveSameFe34Origin,
   haveSameIriOrigin,
   isGatewayUrl,
@@ -19,6 +20,8 @@ import {
   UrlError,
   validateLookupAddresses,
   validatePublicUrl,
+  withGatewayHints,
+  withoutGatewayHints,
 } from "./url.ts";
 
 test("parseIri() accepts portable ActivityPub URI schemes", () => {
@@ -1225,5 +1228,297 @@ test("expandIPv6Address()", () => {
   deepStrictEqual(
     expandIPv6Address("64:ff9b::8.8.8.8"),
     "0064:ff9b:0000:0000:0000:0000:0808:0808",
+  );
+});
+
+test("withGatewayHints() adds @gateway location hints", () => {
+  const expected = "ap+ef61://did:key:z6Mkabc/actor" +
+    "?@gateway=https%3A%2F%2Fserver1.example" +
+    "&@gateway=https%3A%2F%2Fserver2.example";
+  for (
+    const id of [
+      "ap://did:key:z6Mkabc/actor",
+      "ap+ef61://did:key:z6Mkabc/actor",
+      "ap://did%3Akey%3Az6Mkabc/actor",
+      parseIri("ap://did:key:z6Mkabc/actor"),
+      new URL("ap://did%3Akey%3Az6Mkabc/actor"),
+    ]
+  ) {
+    const hinted = withGatewayHints(id, [
+      "https://server1.example",
+      new URL("https://server2.example/"),
+    ]);
+    ok(hinted instanceof URL);
+    strictEqual(
+      hinted.href,
+      "ap+ef61://did%3Akey%3Az6Mkabc/actor" +
+        "?@gateway=https%3A%2F%2Fserver1.example" +
+        "&@gateway=https%3A%2F%2Fserver2.example",
+    );
+    strictEqual(formatIri(hinted), expected);
+    deepStrictEqual(parseIri(formatIri(hinted)), hinted);
+  }
+});
+
+test("withGatewayHints() encodes and deduplicates gateway origins", () => {
+  function* gateways(): Generator<string | URL> {
+    yield "https://A.example:443";
+    yield "https://a.example/";
+    yield new URL("https://a.example");
+    yield "https://b.example:8443";
+    yield "http://c.example:80/";
+    yield "https://例え.jp";
+  }
+  strictEqual(
+    formatIri(withGatewayHints("ap://did:key:z6Mkabc/actor", gateways())),
+    "ap+ef61://did:key:z6Mkabc/actor" +
+      "?@gateway=https%3A%2F%2Fa.example" +
+      "&@gateway=https%3A%2F%2Fb.example%3A8443" +
+      "&@gateway=http%3A%2F%2Fc.example" +
+      "&@gateway=https%3A%2F%2Fxn--r8jz45g.jp",
+  );
+  strictEqual(
+    formatIri(
+      withGatewayHints(
+        "ap://did:key:z6Mkabc/actor",
+        new Set(["https://b.example", "https://a.example"]),
+      ),
+    ),
+    "ap+ef61://did:key:z6Mkabc/actor" +
+      "?@gateway=https%3A%2F%2Fb.example&@gateway=https%3A%2F%2Fa.example",
+  );
+  // There is no limit on the number of hints:
+  const many = Array.from(
+    { length: 7 },
+    (_, i) => `https://server${i}.example`,
+  );
+  deepStrictEqual(
+    getGatewayHints(withGatewayHints("ap://did:key:z6Mkabc/actor", many))
+      .map((url) => url.origin),
+    many,
+  );
+});
+
+test("withGatewayHints() keeps other query parameters and fragments", () => {
+  strictEqual(
+    formatIri(
+      withGatewayHints(
+        "ap://did:key:z6Mkabc/collection?page=3&maxItems=20&q=a+b%20c%2b",
+        ["https://server.example"],
+      ),
+    ),
+    "ap+ef61://did:key:z6Mkabc/collection?page=3&maxItems=20&q=a+b%20c%2B" +
+      "&@gateway=https%3A%2F%2Fserver.example",
+  );
+  strictEqual(
+    formatIri(
+      withGatewayHints(
+        "ap://did:key:z6Mkabc/actor?x=%26%3D#main-key",
+        ["https://server.example"],
+      ),
+    ),
+    "ap+ef61://did:key:z6Mkabc/actor?x=%26%3D" +
+      "&@gateway=https%3A%2F%2Fserver.example#main-key",
+  );
+  strictEqual(
+    withGatewayHints("ap://did:key:z6Mkabc/actor#", ["https://s.example"])
+      .href,
+    "ap+ef61://did%3Akey%3Az6Mkabc/actor" +
+      "?@gateway=https%3A%2F%2Fs.example#",
+  );
+});
+
+test("withGatewayHints() replaces existing location hints", () => {
+  strictEqual(
+    formatIri(
+      withGatewayHints(
+        "ap://did:key:z6Mkabc/collection?@gateway=https%3A%2F%2Fold.example" +
+          "&page=2&%40gateway=https%3A%2F%2Fold2.example&@gateway" +
+          "&gateways=https%3A%2F%2Flegacy.example&%2540gateway=kept",
+        ["https://new.example"],
+      ),
+    ),
+    "ap+ef61://did:key:z6Mkabc/collection?page=2&%2540gateway=kept" +
+      "&@gateway=https%3A%2F%2Fnew.example",
+  );
+  // Characters that the URL parser strips cannot turn into a hint name:
+  for (const char of ["\t", "\n", "\r"]) {
+    const hinted = withGatewayHints(
+      `ap://did:key:z6Mkabc/actor?@gate${char}way=https%3A%2F%2Fevil.example`,
+      ["https://new.example"],
+    );
+    deepStrictEqual(getGatewayHints(hinted).map((url) => url.href), [
+      "https://new.example/",
+    ]);
+  }
+});
+
+test("withGatewayHints() with no gateways removes location hints", () => {
+  for (
+    const [input, expected] of [
+      [
+        "ap://did:key:z6Mkabc/actor?@gateway=https%3A%2F%2Fa.example",
+        "ap+ef61://did%3Akey%3Az6Mkabc/actor",
+      ],
+      [
+        "ap://did:key:z6Mkabc/actor?&@gateway=https%3A%2F%2Fa.example&&p=1&",
+        "ap+ef61://did%3Akey%3Az6Mkabc/actor?p=1",
+      ],
+      ["ap://did:key:z6Mkabc/actor?", "ap+ef61://did%3Akey%3Az6Mkabc/actor"],
+      [
+        "ap://did:key:z6Mkabc/actor?gateways=https%3A%2F%2Fa.example#k",
+        "ap+ef61://did%3Akey%3Az6Mkabc/actor#k",
+      ],
+    ]
+  ) {
+    strictEqual(withGatewayHints(input, []).href, expected, input);
+    strictEqual(withoutGatewayHints(input).href, expected, input);
+  }
+  const input = parseIri(
+    "ap://did:key:z6Mkabc/actor?@gateway=https%3A%2F%2Fa.example",
+  );
+  const href = input.href;
+  withoutGatewayHints(input);
+  strictEqual(input.href, href);
+});
+
+test("withGatewayHints() rejects non-portable IDs", () => {
+  for (
+    const id of [
+      "https://server.example/.well-known/apgateway/did:key:z6Mkabc/actor",
+      "https://example.com/actor",
+      "did:key:z6Mkabc#z6Mkabc",
+      "ap://did:key:z6Mkabc",
+      "ap://example.com/actor",
+      "ap://did:key:z6Mkabc/actor%zz",
+      new URL("https://example.com/actor"),
+      new URL("ap://did%3Akey%3Az6Mkabc:8080/actor"),
+      new URL("ap://user@did%3Akey%3Az6Mkabc/actor"),
+    ]
+  ) {
+    throws(
+      () => withGatewayHints(id, ["https://server.example"]),
+      TypeError,
+      String(id),
+    );
+    throws(() => withoutGatewayHints(id), TypeError, String(id));
+    throws(() => getGatewayHints(id), TypeError, String(id));
+  }
+});
+
+test("withGatewayHints() rejects paths that URLs cannot represent", () => {
+  for (
+    const id of [
+      "ap://did:key:z6Mkabc/a/../actor",
+      "ap://did:key:z6Mkabc/a/./actor",
+      "ap://did:key:z6Mkabc/a/%2e%2e/actor",
+      "ap://did:key:z6Mkabc/a/%2E/actor",
+    ]
+  ) {
+    throws(
+      () => withGatewayHints(id, ["https://server.example"]),
+      TypeError,
+      id,
+    );
+    throws(() => withoutGatewayHints(id), TypeError, id);
+  }
+  // Characters that the URL parser would strip are percent-encoded instead:
+  strictEqual(
+    withoutGatewayHints("ap://did:key:z6Mkabc/a\tb").href,
+    "ap+ef61://did%3Akey%3Az6Mkabc/a%09b",
+  );
+});
+
+test("withGatewayHints() rejects invalid gateways", () => {
+  for (
+    const gateway of [
+      "https://server.example/path",
+      "https://server.example/?",
+      "https://server.example/#",
+      "https://server.example/?q=1",
+      "https://user:pass@server.example",
+      "ftp://server.example",
+      "ap://did:key:z6Mkabc/actor",
+      "server.example",
+      new URL("https://server.example/path"),
+    ]
+  ) {
+    throws(
+      () => withGatewayHints("ap://did:key:z6Mkabc/actor", [gateway]),
+      TypeError,
+      String(gateway),
+    );
+  }
+  throws(
+    () =>
+      withGatewayHints(
+        "ap://did:key:z6Mkabc/actor",
+        "https://server.example" as unknown as string[],
+      ),
+    TypeError,
+  );
+});
+
+test("getGatewayHints() reads @gateway location hints", () => {
+  deepStrictEqual(
+    getGatewayHints(
+      "ap://did:key:z6Mkabc/actor?@gateway=https%3A%2F%2Fa.example" +
+        "&@gateway=invalid&%40gateway=https%3A%2F%2Fb.example%2F" +
+        "&@gateway=https%3A%2F%2Fa.example%2F" +
+        "&@gateway=https%3A%2F%2Fc.example%2Fpath" +
+        "&gateways=https%3A%2F%2Flegacy.example&page=1#k",
+    ).map((url) => url.href),
+    ["https://a.example/", "https://b.example/"],
+  );
+  deepStrictEqual(getGatewayHints("ap://did:key:z6Mkabc/actor"), []);
+  // A literal question mark is a part of the parameter name:
+  const questioned =
+    "ap://did:key:z6Mkabc/actor??@gateway=https%3A%2F%2Fa.example";
+  deepStrictEqual(getGatewayHints(questioned), []);
+  strictEqual(
+    withoutGatewayHints(questioned).href,
+    "ap+ef61://did%3Akey%3Az6Mkabc/actor??@gateway=https%3A%2F%2Fa.example",
+  );
+  deepStrictEqual(
+    getGatewayHints(withGatewayHints(questioned, ["https://b.example"]))
+      .map((url) => url.href),
+    ["https://b.example/"],
+  );
+  deepStrictEqual(
+    getGatewayHints(
+      "ap://did:key:z6Mkabc/actor?@gate%09way=https%3A%2F%2Fa.example",
+    ),
+    [],
+  );
+  deepStrictEqual(
+    getGatewayHints(
+      "ap://did:key:z6Mkabc/actor?@gate\tway=https%3A%2F%2Fa.example",
+    ),
+    [],
+  );
+});
+
+test("withGatewayHints() round-trips with other portable ID helpers", () => {
+  const hinted = withGatewayHints("ap://did:key:z6Mkabc/objects/1#frag", [
+    "https://server1.example",
+    "https://server2.example",
+  ]);
+  strictEqual(
+    canonicalizePortableUri(formatIri(hinted)),
+    "ap+ef61://did:key:z6Mkabc/objects/1#frag",
+  );
+  ok(
+    arePortableUrisEqual(
+      formatIri(hinted),
+      "ap://did:key:z6Mkabc/objects/1#frag",
+    ),
+  );
+  strictEqual(
+    toCompatibleEf61Id(hinted, "https://server1.example").href,
+    "https://server1.example/.well-known/apgateway/did:key:z6Mkabc/objects/1#frag",
+  );
+  strictEqual(
+    formatIri(withoutGatewayHints(hinted)),
+    "ap+ef61://did:key:z6Mkabc/objects/1#frag",
   );
 });

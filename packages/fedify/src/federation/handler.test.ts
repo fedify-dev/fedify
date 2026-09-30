@@ -14,7 +14,7 @@ import {
   Person,
   Tombstone,
 } from "@fedify/vocab";
-import { FetchError } from "@fedify/vocab-runtime";
+import { FetchError, parseIri } from "@fedify/vocab-runtime";
 import {
   assert,
   assertEquals,
@@ -3541,6 +3541,82 @@ test("handleOutbox()", async () => {
   });
   assertEquals(response.status, 500);
   assertEquals(onErrorCalled, true);
+});
+
+test("handleOutbox() matches portable actors by their canonical IDs", async () => {
+  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+  const actorId = "ap+ef61://did:key:z6MkAlice/users/someone";
+  const actorDispatcher: ActorDispatcher<void> = (_ctx, identifier) => {
+    if (identifier !== "someone") return null;
+    return new Person({ id: parseIri(actorId), name: "Someone" });
+  };
+  const post = async (actor: string | string[]) => {
+    const request = new Request("https://example.com/users/someone/outbox", {
+      method: "POST",
+      body: JSON.stringify({
+        "@context": "https://www.w3.org/ns/activitystreams",
+        type: "Create",
+        id: "https://example.com/activities/1",
+        actor,
+        object: { type: "Note", content: "Hello, world!" },
+      }),
+    });
+    const context = createRequestContext({
+      federation,
+      request,
+      url: new URL(request.url),
+      data: undefined,
+    });
+    const seen: string[] = [];
+    const listeners = new ActivityListenerSet<OutboxContext<void>>();
+    listeners.add(Activity, (_ctx, activity) => {
+      seen.push(activity.id!.href);
+    });
+    const response = await handleOutbox(request, {
+      identifier: "someone",
+      context,
+      outboxContextFactory(identifier) {
+        return createOutboxContext({
+          ...context,
+          clone: undefined,
+          identifier,
+        });
+      },
+      actorDispatcher,
+      outboxListeners: listeners,
+      onNotFound: () => new Response("Not found", { status: 404 }),
+      onUnauthorized: () => new Response("Unauthorized", { status: 401 }),
+    });
+    return [response.status, seen.length] as const;
+  };
+
+  for (
+    const actor of [
+      actorId,
+      "ap://did:key:z6MkAlice/users/someone",
+      "ap+ef61://did%3Akey%3Az6MkAlice/users/someone",
+      "ap://did:key:z6MkAlice/users/someone" +
+      "?@gateway=https%3A%2F%2Fserver1.example" +
+      "&@gateway=https%3A%2F%2Fserver2.example",
+      "https://server2.example/.well-known/apgateway/did:key:z6MkAlice/users/someone",
+    ]
+  ) {
+    assertEquals(await post(actor), [202, 1], actor);
+  }
+
+  for (
+    const actor of [
+      "ap://did:key:z6MkBob/users/someone",
+      "ap://did:key:z6MkAlice/users/other?@gateway=https%3A%2F%2Fserver1.example",
+      "ap://did:key:z6MkAlice/users/someone#main-key",
+      "https://server1.example/.well-known/apgateway/did:key:z6MkAlice/users/someone" +
+      "?@gateway=https%3A%2F%2Fserver1.example",
+      "https://example.com/users/someone",
+      [actorId, "ap://did:key:z6MkAlice/users/other"],
+    ]
+  ) {
+    assertEquals(await post(actor), [400, 0], String(actor));
+  }
 });
 
 test("handleInbox() preserves the raw signed payload for inboxContextFactory", async () => {

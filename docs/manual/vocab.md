@@ -224,10 +224,10 @@ with a URL-safe authority internally, and serializes them as canonical
 
 When comparing portable object IDs, use `canonicalizePortableUri()` or
 `arePortableUrisEqual()` from `@fedify/vocab-runtime`; these helpers remove
-query hints such as `gateways` according to FEP-ef61.  Pass raw URI strings to
-these comparison helpers, because JavaScript `URL` objects normalize opaque
-path segments before Fedify can compare them.  Serialization keeps those query
-hints intact.
+the query, including [location hints](#location-hints), according to
+FEP-ef61.  Pass raw URI strings to these comparison helpers, because
+JavaScript `URL` objects normalize opaque path segments before Fedify can
+compare them.  Serialization keeps the query intact.
 
 Portable IDs also participate in Fedify's origin-based security model.  An
 `ap:` or `ap+ef61:` URI is owned by the DID in its authority component, and a
@@ -295,6 +295,79 @@ yet.
 > DID before trusting it.
 
 [FEP-ef61]: https://w3id.org/fep/ef61
+
+### Location hints
+
+A portable ID says nothing about where the object can be retrieved.  So when
+an object refers to a portable actor, e.g., in its `attributedTo` or `to`,
+FEP-ef61 recommends adding the actor's gateways to the reference as
+`@gateway` query parameters, which are called *location hints*:
+
+~~~~ text
+ap://did:key:z6Mk.../actor?@gateway=https%3A%2F%2Fserver1.example&@gateway=https%3A%2F%2Fserver2.example
+~~~~
+
+Use `withGatewayHints()` from `@fedify/vocab-runtime` to add them, rather
+than editing the query by hand.  It takes a portable ID and gateways, such as
+the actor's `gateways`, and returns a copy of the ID with the hints:
+
+~~~~ typescript twoslash
+import type { Context } from "@fedify/fedify";
+import { type Actor, Note } from "@fedify/vocab";
+const ctx = null as unknown as Context<void>;
+const did = "did:key:z6Mk...";
+const recipient = null as unknown as Actor;
+// ---cut-before---
+import { withGatewayHints } from "@fedify/vocab-runtime";
+
+// The gateways of the local actor, i.e., its `gateways` property:
+const gateways = [new URL("https://example.com")];
+
+const note = new Note({
+  // The object's own ID has no hints:
+  id: ctx.getPortableObjectUri(Note, { id: "1" }, did),
+  // ap+ef61://did:key:z6Mk.../users/alice?@gateway=https%3A%2F%2Fexample.com
+  attribution: withGatewayHints(
+    ctx.getPortableActorUri("alice", did),
+    gateways,
+  ),
+  // A remote portable actor, with the gateways from its actor document:
+  to: withGatewayHints(recipient.id!, recipient.gateways),
+  content: "Hello!",
+});
+~~~~
+
+`withGatewayHints()` replaces the hints that the ID already has, keeps its
+other query parameters and fragment, and drops duplicate gateways.  Each
+gateway has to be an HTTP(S) origin with no path, query, or fragment.
+`withoutGatewayHints()` removes the hints, and `getGatewayHints()` returns
+the valid gateways in them.  All three accept only `ap:` and `ap+ef61:` URIs,
+and throw a `TypeError` for anything else, including compatible identifiers,
+which FEP-ef61 forbids to have hints.
+
+Keep the following in mind:
+
+ -  Put hints on references to portable actors: `actor`, `attributedTo`,
+    `to`, `cc`, `bto`, `bcc`, `inReplyTo`, the `object` of an activity such
+    as `Follow`, the `href` of a `Mention`, and an `ap:` key ID in an HTTP
+    Signature (see the [*Portable actors and WebFinger*
+    section](./actor.md#portable-actors-and-webfinger)).  Do not put them on an
+    object's own `id`, nor on the `inbox`, `outbox`, and collections in a
+    portable actor's own document, where its `gateways` already tells where to
+    retrieve them.  Hints do not change what a portable ID identifies, but
+    software that does not canonicalize portable IDs would see a hinted ID as
+    another object.
+ -  Add hints while constructing an object, before signing it.  Its Object
+    Integrity Proof covers its references too, so adding hints to a signed
+    object invalidates the proof.
+ -  Fedify follows at most five hints of a reference, and at most three of
+    a key ID, so list the preferred gateways first.  `withGatewayHints()`
+    itself does not limit the number of hints.
+ -  Fedify does not add hints by itself; the application decides which
+    references get which gateways.
+ -  Pass a raw string, not a `URL`, if the ID's path may have `.` or `..`
+    segments.  The `URL` class would resolve them and change the ID, so
+    `withGatewayHints()` throws a `TypeError` for such paths instead.
 
 ### Dereferencing portable references
 
