@@ -600,6 +600,31 @@ export function createMismatchRuleTests(
   });`;
 
   return {
+    ...createPortableMismatchTests(
+      prop,
+      config,
+      (value) =>
+        createDispatcherCode(
+          `return new Person({ ${ID_PROP} ${prop.name}: ${value} });`,
+          prop.setter,
+        ),
+    ),
+    ...(!("portableGetter" in prop)
+      ? {
+        "portable getter is not available for this property": [
+          lintTest({
+            code: createDispatcherCode(
+              createActorCode("getPortableInboxUri"),
+              prop.setter,
+            ),
+            rule,
+            ruleName,
+            expectedError,
+          }),
+          false,
+        ] as TestEntry,
+      }
+      : {}),
     // ✅ Good - non-Federation object
     "non-federation object": [
       lintTest({
@@ -674,6 +699,14 @@ export function createIdMismatchRuleTests(config: TestConfig): TestSuite {
   );
 
   return {
+    ...createPortableMismatchTests(
+      properties.id,
+      config,
+      (value) =>
+        createActorDispatcherCode(
+          `return new Person({ id: ${value} });`,
+        ),
+    ),
     // ✅ Good - non-Federation object
     "non-federation object": [
       lintTest({
@@ -752,6 +785,64 @@ export function createIdMismatchRuleTests(config: TestConfig): TestSuite {
       }),
       false,
     ],
+  };
+}
+
+function createPortableMismatchTests(
+  prop: PropertyConfig,
+  { rule, ruleName }: TestConfig,
+  createCode: (value: string) => string,
+): TestSuite {
+  if (prop.portableGetter == null) return {};
+
+  const portableCall = `ctx.${prop.portableGetter}(identifier, did)`;
+  const wrongGetter = prop.portableGetter === "getPortableInboxUri"
+    ? "getPortableOutboxUri"
+    : "getPortableInboxUri";
+  const wrongCall = `ctx.${wrongGetter}(identifier, did)`;
+  const expectedError = actorPropertyMismatch(createMethodCallContext(prop));
+  const valid = (value: string): TestEntry => [
+    lintTest({ code: createCode(value), rule, ruleName }),
+    true,
+  ];
+  const invalid = (value: string): TestEntry => [
+    lintTest({ code: createCode(value), rule, ruleName, expectedError }),
+    false,
+  ];
+
+  return {
+    "portable getter": valid(portableCall),
+    "portable getter with implicit authority": valid(
+      `ctx.${prop.portableGetter}(identifier)`,
+    ),
+    "compatible portable getter": valid(
+      `toCompatibleEf61Id(${portableCall}, gateway)`,
+    ),
+    "wrong portable getter": invalid(wrongCall),
+    "compatible wrong portable getter": invalid(
+      `toCompatibleEf61Id(${wrongCall}, gateway)`,
+    ),
+    "compatible ordinary getter": invalid(
+      `toCompatibleEf61Id(ctx.${prop.getter}(identifier), gateway)`,
+    ),
+    "portable getter with wrong context": invalid(
+      `otherCtx.${prop.portableGetter}(identifier, did)`,
+    ),
+    "portable getter with wrong identifier": invalid(
+      `ctx.${prop.portableGetter}(otherIdentifier, did)`,
+    ),
+    "portable getter with identifier as authority": invalid(
+      `ctx.${prop.portableGetter}(did, identifier)`,
+    ),
+    "compatible getter with identifier as authority": invalid(
+      `toCompatibleEf61Id(ctx.${prop.portableGetter}(did, identifier), gateway)`,
+    ),
+    "different compatibility helper": invalid(
+      `otherCompatibleId(${portableCall}, gateway)`,
+    ),
+    "portable getter as second compatibility argument": invalid(
+      `toCompatibleEf61Id(gateway, ${portableCall})`,
+    ),
   };
 }
 
