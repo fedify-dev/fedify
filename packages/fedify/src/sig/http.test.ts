@@ -24,6 +24,8 @@ import {
 import { encodeBase64 } from "byte-encodings/base64";
 import fetchMock from "fetch-mock";
 import {
+  ed25519PrivateKey,
+  ed25519PublicKey,
   rsaPrivateKey2,
   rsaPrivateKey3,
   rsaPublicKey1,
@@ -1616,8 +1618,6 @@ test("verifyRequestDetailed() [rfc9421] looks up each key once per request", asy
         const signatureInput of [
           // An unsupported algorithm:
           withAlg("unknown"),
-          // An algorithm that does not fit the key, which WebCrypto rejects:
-          withAlg("ed25519"),
           // A signature base that cannot be made:
           input.replace(/^sig1=\([^)]*\)/, 'sig1=("@unsupported")'),
         ]
@@ -1635,6 +1635,56 @@ test("verifyRequestDetailed() [rfc9421] looks up each key once per request", asy
         assertEquals(key, null, signatureInput);
         assertEquals(documentLoader.loaded, [], signatureInput);
       }
+    },
+  );
+
+  await t.step(
+    "refreshes a cached key of another algorithm family",
+    async () => {
+      // The sender has rotated its key from RSA to Ed25519, and the key cache
+      // still has the RSA one:
+      const keyId = ed25519PublicKey.id!.href;
+      // signRequest() makes only RSA signatures, so an RSA one is replaced
+      // with an Ed25519 one that has an explicit alg parameter:
+      const request = await signRfc9421Many([keyId], currentTime);
+      const input = request.headers.get("Signature-Input")!;
+      request.headers.set(
+        "Signature-Input",
+        /;alg="[^"]*"/.test(input)
+          ? input.replace(/;alg="[^"]*"/, ';alg="ed25519"')
+          : `${input};alg="ed25519"`,
+      );
+      const { sig1 } = parseRfc9421SignatureInput(
+        request.headers.get("Signature-Input")!,
+      );
+      const signature = await crypto.subtle.sign(
+        "Ed25519",
+        ed25519PrivateKey,
+        new TextEncoder().encode(
+          createRfc9421SignatureBase(request, sig1.components, sig1.parameters),
+        ),
+      );
+      request.headers.set(
+        "Signature",
+        `sig1=:${encodeBase64(new Uint8Array(signature))}:`,
+      );
+      const loaded: string[] = [];
+      const result = await verifyRequestDetailed(request, {
+        documentLoader: (url, options) => {
+          loaded.push(url);
+          return mockDocumentLoader(url, options);
+        },
+        contextLoader: mockDocumentLoader,
+        currentTime,
+        keyCache: {
+          get: (id) =>
+            Promise.resolve(id.href === keyId ? rsaPublicKey1 : undefined),
+          set: () => Promise.resolve(),
+        },
+      });
+      assert(result.verified);
+      assertEquals(result.key.id?.href, keyId);
+      assertEquals(loaded.length, 1);
     },
   );
 });

@@ -1591,6 +1591,20 @@ async function verifyRfc9421SignatureWithKey(
 
   // Verify the signature
   span?.setAttribute("http_signatures.signature", encodeHex(sigBytes));
+  // A key of another algorithm family cannot verify the signature, and
+  // WebCrypto throws for it rather than returning false, but it may be
+  // a stale copy of a key that has since been rotated, e.g., from RSA to
+  // Ed25519, which a fresh copy of the key could verify:
+  const algorithmName = typeof algorithm === "string"
+    ? algorithm
+    : algorithm.name;
+  if (key.publicKey.algorithm.name !== algorithmName) {
+    logger.debug(
+      "Failed to verify; key {keyId} is not a key for algorithm {algorithm}.",
+      { keyId: sigInput.keyId, algorithm: alg },
+    );
+    return { verified: false, algorithm: metricAlgorithm, mismatched: true };
+  }
   let verified: boolean;
   try {
     verified = await crypto.subtle.verify(
