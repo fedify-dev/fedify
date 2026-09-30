@@ -11,6 +11,10 @@ import {
 } from "@opentelemetry/api";
 import metadata from "../../deno.json" with { type: "json" };
 import type { MessageQueue } from "./mq.ts";
+import type {
+  InboxSignatureFailureReason,
+  InboxVerificationFailureReason,
+} from "../sig/verification.ts";
 
 /**
  * The role of a queued task, derived from the queued message's `type` field.
@@ -413,13 +417,8 @@ export interface SignatureVerificationExtraAttributes {
   failureReason?: HttpSignatureMetricFailureReason;
   /** Bounded diagnostic shared by signature mechanisms. */
   verificationFailureReason?:
-    | "invalidSignature"
-    | "keyFetchError"
-    | "noSignature"
-    | "signatureVerificationFailed"
-    | "uncoveredAttribution"
-    | "missingOwner"
-    | "proofPolicy";
+    | InboxSignatureFailureReason["type"]
+    | InboxVerificationFailureReason["type"];
 }
 
 /**
