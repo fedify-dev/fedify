@@ -1,6 +1,6 @@
 {
   "name": "@fedify/init",
-  "version": "2.1.26",
+  "version": "2.1.27",
   "description": "Project initializer for Fedify",
   "keywords": [
     "fedify",
