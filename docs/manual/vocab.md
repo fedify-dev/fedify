@@ -229,6 +229,19 @@ FEP-ef61.  Pass raw URI strings to these comparison helpers, because
 JavaScript `URL` objects normalize opaque path segments before Fedify can
 compare them.  Serialization keeps the query intact.
 
+Portable IDs whose paths contain a `.` or `..` segment cannot be represented
+by Fedify's `URL`-based APIs: JavaScript and HTTP URL parsers remove these
+segments, including percent-encoded spellings such as `%2e%2e`.  Fedify
+rejects raw portable and compatible ID strings with such paths rather than
+mistaking `/a/../b` for `/b`.  This includes JSON-LD input, portable URI
+helpers, compatible ID conversion, and portable lookups.  Raw strings can
+still be compared with `canonicalizePortableUri()` or
+`arePortableUrisEqual()`, which preserve the opaque path.  A `URL` object
+passed to Fedify may already have lost the original path before Fedify sees
+it, so keep the original string when checking an untrusted identifier.  No
+portable object with a dot-segment ID can be reliably served or fetched
+through the FEP-ef61 HTTP gateway path.
+
 Portable IDs also participate in Fedify's origin-based security model.  An
 `ap:` or `ap+ef61:` URI is owned by the DID in its authority component, and a
 DID URL such as `did:key:z...#z...` is owned by its DID component.  See the

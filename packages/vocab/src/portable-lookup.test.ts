@@ -253,6 +253,17 @@ test("lookupObject() with FEP-ef61 portable actors", {
       });
       assertInstanceOf(actor, Person);
       deepStrictEqual(actor.id, new URL(compatibleId));
+
+      const malformed = `${compatibleId}?gateways=x`;
+      const ordinaryLoader = createLoader({
+        [malformed]: person(malformed),
+      });
+      const ordinary = await lookupObject(malformed, {
+        documentLoader: ordinaryLoader,
+        contextLoader: mockDocumentLoader,
+      });
+      assertInstanceOf(ordinary, Person);
+      deepStrictEqual(ordinaryLoader.fetched, [malformed]);
     });
 
     await t.step("refuses portable IRIs changed by URL parsing", async () => {
@@ -278,6 +289,21 @@ test("lookupObject() with FEP-ef61 portable actors", {
         ),
         null,
       );
+      deepStrictEqual(documentLoader.fetched, []);
+    });
+
+    await t.step("refuses compatible IDs changed by URL parsing", async () => {
+      fetchMock.removeRoutes();
+      const dotted = compatibleId.replace("/actor", "/x/../actor");
+      const documentLoader = createLoader({ [compatibleId]: person() });
+      const options = {
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        verifyPortableObject: createVerifier(),
+      };
+      equal(await lookupObject(dotted, options), null);
+      fetchMock.get(webFingerPrefix, selfLinks(dotted));
+      equal(await lookupObject("@alice@example.com", options), null);
       deepStrictEqual(documentLoader.fetched, []);
     });
 

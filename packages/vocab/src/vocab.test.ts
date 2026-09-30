@@ -667,6 +667,31 @@ test("fromJsonLd() handles portable ActivityPub IRIs", async () => {
   );
 });
 
+test("fromJsonLd() refuses portable IDs changed by URL parsing", async () => {
+  const base = "ap://did:key:z6Mkabc";
+  for (
+    const id of [
+      `${base}/a/../b`,
+      `${base}/a/%2e%2E/b`,
+      "https://gw.example/.well-known/apgateway/did:key:z6Mkabc/a/../b",
+      "https:/gw.example/.well-known/apgateway/did:key:z6Mkabc/a/../b",
+    ]
+  ) {
+    await rejects(
+      () =>
+        Note.fromJsonLd({
+          "@context": "https://www.w3.org/ns/activitystreams",
+          type: "Note",
+          id,
+        }, {
+          documentLoader: mockDocumentLoader,
+          contextLoader: mockDocumentLoader,
+        }),
+      TypeError,
+    );
+  }
+});
+
 test("FEP-ef61: actor gateways round-trip as an ordered URI list", async () => {
   const actorClasses = [Application, Group, Organization, Person, Service];
   const gateways = [
