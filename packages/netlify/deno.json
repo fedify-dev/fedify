@@ -1,6 +1,6 @@
 {
   "name": "@fedify/netlify",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "license": "MIT",
   "imports": {
     "@netlify/async-workloads": "npm:@netlify/async-workloads@^0.0.106",

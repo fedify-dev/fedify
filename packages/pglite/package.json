@@ -1,6 +1,6 @@
 {
   "name": "@fedify/pglite",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "PGlite driver for Fedify",
   "keywords": [
     "fedify",
