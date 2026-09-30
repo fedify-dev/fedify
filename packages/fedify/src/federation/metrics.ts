@@ -411,6 +411,15 @@ export interface SignatureVerificationExtraAttributes {
    * cardinality on success rows.
    */
   failureReason?: HttpSignatureMetricFailureReason;
+  /** Bounded diagnostic shared by signature mechanisms. */
+  verificationFailureReason?:
+    | "invalidSignature"
+    | "keyFetchError"
+    | "noSignature"
+    | "signatureVerificationFailed"
+    | "uncoveredAttribution"
+    | "missingOwner"
+    | "proofPolicy";
 }
 
 /**
@@ -962,6 +971,10 @@ class FederationMetrics {
     }
     if (extra.failureReason != null) {
       attributes["http_signatures.failure_reason"] = extra.failureReason;
+    }
+    if (extra.verificationFailureReason != null) {
+      attributes["activitypub.verification.failure_reason"] =
+        extra.verificationFailureReason;
     }
     if (extra.ldType != null) {
       attributes["ld_signatures.type"] = extra.ldType;

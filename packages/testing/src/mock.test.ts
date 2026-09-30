@@ -183,6 +183,13 @@ test("reset clears sent activities", async () => {
   assertEquals(mockFederation.sentActivities.length, 0);
 });
 
+test("MockFederation accepts inbox request observation registration", () => {
+  const federation = createFederation<void>();
+  const setters = federation.setInboxListeners("/users/{identifier}/inbox");
+  assertStrictEquals(setters.onRequestFinished(() => {}), setters);
+  assertStrictEquals(setters.on(Create, () => {}), setters);
+});
+
 test("receiveActivity triggers inbox listeners", async () => {
   // Provide contextData through constructor
   const mockFederation = createFederation<{ test: string }>({

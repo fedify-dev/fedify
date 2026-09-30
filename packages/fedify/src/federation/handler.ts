@@ -1,3 +1,10 @@
+import { InboxObservation } from "./inbox-observation.ts";
+import type { InboxRequestFinishedHandler } from "./inbox-report.ts";
+import {
+  observeAttempt,
+  snapshotKey,
+  verificationObservation,
+} from "../sig/verification.ts";
 import type { AcceptSignatureParameters } from "@fedify/fedify/sig";
 import type { Recipient } from "@fedify/vocab";
 import {
@@ -1698,6 +1705,10 @@ export async function handleMediaUpload<TContextData>(
  * @template TContextData The context data to pass to the context.
  */
 export interface InboxHandlerParameters<TContextData> {
+  /** Internal ingress-owned observation. */
+  observation?: InboxObservation;
+  /** Observer for direct handleInbox callers. */
+  inboxRequestFinishedHandler?: InboxRequestFinishedHandler<TContextData>;
   recipient: string | null;
   context: RequestContext<TContextData>;
   inboxContextFactory(
@@ -1781,6 +1792,21 @@ export async function handleInbox<TContextData>(
   request: Request,
   options: InboxHandlerParameters<TContextData>,
 ): Promise<Response> {
+  if (options.observation == null) {
+    const observation = new InboxObservation({
+      kind: options.portableInbox != null
+        ? "portable"
+        : options.recipient == null
+        ? "shared"
+        : "personal",
+      recipient: options.recipient,
+    });
+    return await observation.run(
+      () => options.context,
+      options.inboxRequestFinishedHandler,
+      () => handleInbox(request, { ...options, observation }),
+    );
+  }
   const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
   const tracer = tracerProvider.getTracer(metadata.name, metadata.version);
   return await tracer.startActiveSpan(
@@ -1796,9 +1822,11 @@ export async function handleInbox<TContextData>(
       try {
         return await handleInboxInternal(request, options, span);
       } catch (e) {
+        options.observation!.hasException = true;
         span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
         throw e;
       } finally {
+        options.observation!.project(span);
         span.end();
       }
     },
@@ -1839,6 +1867,10 @@ async function handleInboxInternal<TContextData>(
     tracerProvider,
     portableInbox,
   } = parameters;
+  const observation = parameters.observation!;
+  const signatureObservation = {
+    [verificationObservation]: observation.verification,
+  };
   const logger = getLogger(["fedify", "federation", "inbox"]);
   if (actorDispatcher == null) {
     logger.error("Actor dispatcher is not set.", { recipient });
@@ -1860,6 +1892,7 @@ async function handleInboxInternal<TContextData>(
     }
   }
   if (request.bodyUsed) {
+    observation.result = { disposition: "failed", reason: "bodyUnavailable" };
     logger.error("Request body has already been read.", { recipient });
     span.setStatus({
       code: SpanStatusCode.ERROR,
@@ -1870,6 +1903,7 @@ async function handleInboxInternal<TContextData>(
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   } else if (request.body?.locked) {
+    observation.result = { disposition: "failed", reason: "bodyUnavailable" };
     logger.error("Request body is locked.", { recipient });
     span.setStatus({
       code: SpanStatusCode.ERROR,
@@ -1880,6 +1914,8 @@ async function handleInboxInternal<TContextData>(
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   }
+  observation.stage = "parse";
+  observation.result = { disposition: "rejected", reason: "invalidJson" };
   let json: unknown;
   try {
     json = JSON.parse(
@@ -1891,6 +1927,7 @@ async function handleInboxInternal<TContextData>(
     );
   } catch (error) {
     if (error instanceof BodyTooLargeError) {
+      observation.result = { disposition: "rejected", reason: "bodyTooLarge" };
       void request.body?.cancel(error).catch(() => {});
       span.setStatus({ code: SpanStatusCode.ERROR, message: String(error) });
       return new Response("Inbox body too large.", { status: 413 });
@@ -1913,6 +1950,12 @@ async function handleInboxInternal<TContextData>(
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   }
+  observation.payload = {
+    status: "parsed",
+    value: structuredClone(json) as import("./inbox-report.ts").InboxJsonValue,
+  };
+  observation.result = { disposition: "rejected", reason: "invalidActivity" };
+  observation.stage = "verify";
   const keyCache = new KvKeyCache(kv, kvPrefixes.publicKey, {
     documentLoader: ctx.documentLoader,
     contextLoader: ctx.contextLoader,
@@ -1944,6 +1987,7 @@ async function handleInboxInternal<TContextData>(
       code: SpanStatusCode.ERROR,
       message: `Failed to parse activity:\n${error}`,
     });
+    observation.result = { disposition: "rejected", reason: "invalidActivity" };
     return new Response("Invalid activity.", {
       status: 400,
       headers: { "Content-Type": "text/plain; charset=utf-8" },
@@ -1958,11 +2002,22 @@ async function handleInboxInternal<TContextData>(
     } catch (error) {
       if (isInvalidJsonLdError(error)) {
         logger.error("Failed to parse JSON-LD:\n{error}", { recipient, error });
+        observation.result = {
+          disposition: "rejected",
+          reason: "invalidJsonLd",
+        };
         return new Response("Invalid JSON-LD.", {
           status: 400,
           headers: { "Content-Type": "text/plain; charset=utf-8" },
         });
       }
+      observation.verification.attempts.push({
+        mechanism: "linkedData",
+        subject: { id: null, pointer: "" },
+        checks: [],
+        status: "error",
+        error,
+      });
       if (!canAttemptAlternateAuthAfterLdSignatureFailure) throw error;
       // The presence of a proof block or HTTP signature headers is not enough
       // to discard a transient LDS normalization failure.  Keep that error
@@ -1981,6 +2036,7 @@ async function handleInboxInternal<TContextData>(
       compactedJsonWithoutSig = detachSignature(compactedJson);
       try {
         ldSigVerified = await verifyCompactJsonLd(compactedJson, {
+          ...signatureObservation,
           contextLoader: ctx.contextLoader,
           documentLoader: ctx.documentLoader,
           keyCache,
@@ -2002,6 +2058,10 @@ async function handleInboxInternal<TContextData>(
             recipient,
             error,
           });
+          observation.result = {
+            disposition: "rejected",
+            reason: "invalidJsonLd",
+          };
           return new Response("Invalid JSON-LD.", {
             status: 400,
             headers: { "Content-Type": "text/plain; charset=utf-8" },
@@ -2030,6 +2090,10 @@ async function handleInboxInternal<TContextData>(
                 recipient,
                 error: parseError,
               });
+              observation.result = {
+                disposition: "rejected",
+                reason: "invalidJsonLd",
+              };
               return new Response("Invalid JSON-LD.", {
                 status: 400,
                 headers: { "Content-Type": "text/plain; charset=utf-8" },
@@ -2056,10 +2120,13 @@ async function handleInboxInternal<TContextData>(
   if (ldSigVerified) {
     logger.debug("Linked Data Signatures are verified.", { recipient, json });
     try {
-      activity = await Activity.fromJsonLd(compactedJsonWithoutSig, {
-        ...ctx,
-        contextLoader: getNormalizationContextLoader(ctx.contextLoader),
-      });
+      activity = observation.activity = await Activity.fromJsonLd(
+        compactedJsonWithoutSig,
+        {
+          ...ctx,
+          contextLoader: getNormalizationContextLoader(ctx.contextLoader),
+        },
+      );
     } catch (error) {
       if (
         error instanceof RangeError &&
@@ -2080,6 +2147,7 @@ async function handleInboxInternal<TContextData>(
       // made by its DID does:
       try {
         proofVerified = await verifyObject(Activity, jsonWithoutSig, {
+          ...signatureObservation,
           contextLoader: wrapContextLoaderForJsonLd(ctx.contextLoader),
           documentLoader: ctx.documentLoader,
           keyCache,
@@ -2102,6 +2170,7 @@ async function handleInboxInternal<TContextData>(
     );
     try {
       activity = await verifyObject(Activity, jsonWithoutSig, {
+        ...signatureObservation,
         contextLoader: wrapContextLoaderForJsonLd(ctx.contextLoader),
         documentLoader: ctx.documentLoader,
         keyCache,
@@ -2148,6 +2217,10 @@ async function handleInboxInternal<TContextData>(
         code: SpanStatusCode.ERROR,
         message: `Failed to parse activity:\n${error}`,
       });
+      observation.result = {
+        disposition: "rejected",
+        reason: "invalidActivity",
+      };
       return new Response("Invalid activity.", {
         status: 400,
         headers: { "Content-Type": "text/plain; charset=utf-8" },
@@ -2174,6 +2247,7 @@ async function handleInboxInternal<TContextData>(
   if (activity == null) {
     if (!skipSignatureVerification) {
       const verification = await verifyRequestDetailed(request, {
+        ...signatureObservation,
         contextLoader: ctx.contextLoader,
         documentLoader: ctx.documentLoader,
         timeWindow: signatureTimeWindow,
@@ -2184,6 +2258,14 @@ async function handleInboxInternal<TContextData>(
       });
       if (verification.verified === false) {
         if (deferredLdSignatureError != null) throw deferredLdSignatureError;
+        observation.authentication = {
+          status: "rejected",
+          reason: { type: "verificationFailed" },
+        };
+        observation.result = {
+          disposition: "rejected",
+          reason: "authentication",
+        };
         const reason = verification.reason;
         const remoteHost = "keyId" in reason && reason.keyId != null
           ? getRemoteHost(reason.keyId)
@@ -2210,7 +2292,10 @@ async function handleInboxInternal<TContextData>(
           );
         }
         try {
-          activity = await Activity.fromJsonLd(jsonWithoutSig, ctx);
+          activity = observation.activity = await Activity.fromJsonLd(
+            jsonWithoutSig,
+            ctx,
+          );
         } catch (error) {
           logger.error("Failed to parse activity:\n{error}", {
             recipient,
@@ -2225,6 +2310,10 @@ async function handleInboxInternal<TContextData>(
               { error, activity: json, recipient },
             );
           }
+          observation.result = {
+            disposition: "rejected",
+            reason: "invalidActivity",
+          };
           return new Response("Invalid activity.", {
             status: 400,
             headers: { "Content-Type": "text/plain; charset=utf-8" },
@@ -2267,6 +2356,11 @@ async function handleInboxInternal<TContextData>(
             reason,
           );
         } catch (error) {
+          observation.result = {
+            disposition: "failed",
+            reason: "listenerError",
+            error,
+          };
           logger.error(
             "An unexpected error occurred in unverified activity handler:\n" +
               "{error}",
@@ -2286,7 +2380,10 @@ async function handleInboxInternal<TContextData>(
             kvPrefixes,
           );
         }
-        if (response instanceof Response) return response;
+        if (response instanceof Response) {
+          observation.result = { disposition: "customResponse" };
+          return response;
+        }
         return await getFailedSignatureResponse(
           inboxChallengePolicy,
           kv,
@@ -2306,15 +2403,21 @@ async function handleInboxInternal<TContextData>(
       httpSigKey = verification.key;
     }
     try {
-      activity = await Activity.fromJsonLd(jsonWithoutSig, {
-        ...ctx,
-        contextLoader: wrapContextLoaderForJsonLd(ctx.contextLoader),
-      });
+      activity = observation.activity = await Activity.fromJsonLd(
+        jsonWithoutSig,
+        {
+          ...ctx,
+          contextLoader: wrapContextLoaderForJsonLd(ctx.contextLoader),
+        },
+      );
     } catch (error) {
       if (!isPermanentActivityParseError(error)) throw error;
       return await respondInvalidActivity(error);
     }
   }
+  observation.activity = activity;
+  observation.stage = "policy";
+  observation.result = { disposition: "rejected", reason: "authentication" };
   if (activity.id != null) {
     span.setAttribute("activitypub.activity.id", activity.id.href);
   }
@@ -2340,6 +2443,10 @@ async function handleInboxInternal<TContextData>(
     // This comes before the key ownership check, which cannot change the
     // outcome, so that such a request costs no further fetches:
     if (deferredLdSignatureError != null) throw deferredLdSignatureError;
+    observation.authentication = {
+      status: "rejected",
+      reason: { type: "proofPolicy", policy: "portableActor" },
+    };
     logger.error(
       "The activity {activityId} of the portable actor {actorId} is not " +
         "authenticated by a valid Object Integrity Proof.",
@@ -2374,19 +2481,42 @@ async function handleInboxInternal<TContextData>(
     // ID.  The ID of a portable activity, including a compatible identifier,
     // has to belong to the DID that signed it, which the proof policy checks
     // on the same document the proofs were verified for:
-    const rejection = await verifyPortableActivityId(
-      activity.id,
-      jsonWithoutSig,
-      {
-        contextLoader: wrapContextLoaderForJsonLd(ctx.contextLoader),
-        documentLoader: ctx.documentLoader,
-        keyCache,
-        meterProvider,
-        tracerProvider,
+    const rejection = await observeAttempt(
+      signatureObservation,
+      "objectIntegrity",
+      async (verification) => {
+        const rejection = await verifyPortableActivityId(
+          activity.id!,
+          jsonWithoutSig,
+          {
+            [verificationObservation]: verification,
+            contextLoader: wrapContextLoaderForJsonLd(ctx.contextLoader),
+            documentLoader: ctx.documentLoader,
+            keyCache,
+            meterProvider,
+            tracerProvider,
+          },
+        );
+        if (rejection != null) {
+          verification.attempt!.reason = {
+            type: "proofPolicy",
+            reason: rejection,
+          };
+        }
+        return rejection;
       },
+      (value) => value == null,
     );
     if (rejection != null) {
       if (deferredLdSignatureError != null) throw deferredLdSignatureError;
+      observation.authentication = {
+        status: "rejected",
+        reason: {
+          type: "proofPolicy",
+          policy: "portableActivity",
+          detail: rejection,
+        },
+      };
       logger.error(
         "The portable activity {activityId} is not authenticated by an " +
           "Object Integrity Proof of its own DID: {reason}",
@@ -2394,7 +2524,7 @@ async function handleInboxInternal<TContextData>(
           activity: json,
           recipient,
           activityId: activity.id.href,
-          reason: rejection,
+          reason: rejection.type,
         },
       );
       span.setStatus({
@@ -2416,6 +2546,14 @@ async function handleInboxInternal<TContextData>(
     httpSigKey != null && !await doesActorOwnKey(activity, httpSigKey, ctx)
   ) {
     if (deferredLdSignatureError != null) throw deferredLdSignatureError;
+    observation.authentication = {
+      status: "rejected",
+      reason: {
+        type: "actorKeyMismatch",
+        key: snapshotKey(httpSigKey),
+        actorIds: activity.actorIds.map((id) => new URL(id.href)),
+      },
+    };
     getFederationMetrics(parameters.meterProvider)
       .recordSignatureVerificationFailure(
         "actorKeyMismatch",
@@ -2451,17 +2589,46 @@ async function handleInboxInternal<TContextData>(
       INBOX_COMPOUND_PROOF_LIMITS,
     );
     if (compoundApplicability !== "absent") {
-      const compoundProof = await verifyCompoundPortableObjectProofs(
-        compoundJson,
-        INBOX_COMPOUND_PROOF_LIMITS,
-        {
-          documentLoader: ctx.documentLoader,
-          keyCache,
-          meterProvider,
-          tracerProvider,
+      const compoundProof = await observeAttempt(
+        signatureObservation,
+        "objectIntegrity",
+        async (verification) => {
+          const result = await verifyCompoundPortableObjectProofs(
+            compoundJson,
+            INBOX_COMPOUND_PROOF_LIMITS,
+            {
+              [verificationObservation]: verification,
+              documentLoader: ctx.documentLoader,
+              keyCache,
+              meterProvider,
+              tracerProvider,
+            },
+          );
+          if (result.status === "unsupported") {
+            verification.attempt!.reason = {
+              type: "proofPolicy",
+              reason: result.reason,
+            };
+          } else if (!result.verified) {
+            const failed = result.portableObjects.find((object) =>
+              !object.verified
+            );
+            verification.attempt!.reason = {
+              type: "proofPolicy",
+              reason: failed?.verified === false
+                ? failed.reason
+                : { type: "invalidProof" },
+            };
+          }
+          return result;
         },
+        (result) => result.status === "ok" && result.verified,
       );
       if (compoundProof.status !== "ok" || !compoundProof.verified) {
+        observation.authentication = {
+          status: "rejected",
+          reason: { type: "proofPolicy", policy: "compound" },
+        };
         logger.error(
           "Failed to verify compound portable Object Integrity Proofs.",
           {
@@ -2496,6 +2663,10 @@ async function handleInboxInternal<TContextData>(
       pendingNonceLabel,
     );
     if (!nonceValid) {
+      observation.authentication = {
+        status: "rejected",
+        reason: { type: "invalidNonce" },
+      };
       getFederationMetrics(parameters.meterProvider)
         .recordSignatureVerificationFailure(
           "invalidNonce",
@@ -2512,6 +2683,17 @@ async function handleInboxInternal<TContextData>(
       );
     }
   }
+  observation.authentication = skipSignatureVerification
+    ? { status: "skipped" }
+    : {
+      status: "verified",
+      attempts: observation.verification.attempts.filter((
+        attempt,
+      ): attempt is Extract<typeof attempt, { status: "verified" }> =>
+        attempt.status === "verified"
+      ),
+    };
+  observation.stage = "dispatch";
   const routeResult = await routeActivity({
     context: ctx,
     // Direct handleInbox() consumers may later forward the payload from the
@@ -2544,7 +2726,14 @@ async function handleInboxInternal<TContextData>(
         [rawInboxContextFactorySymbol]?: typeof inboxContextFactory;
       })[rawInboxContextFactorySymbol]
       : undefined,
-    inboxErrorHandler,
+    inboxErrorHandler: async (context, error) => {
+      observation.result = {
+        disposition: "failed",
+        reason: "listenerError",
+        error,
+      };
+      await inboxErrorHandler?.(context, error);
+    },
     kv,
     kvPrefixes,
     queue,
@@ -2618,6 +2807,7 @@ async function handleInboxInternal<TContextData>(
     }
   }
   if (routeResult === "alreadyProcessed") {
+    observation.result = { disposition: "duplicate" };
     return new Response(
       `Activity <${activity.id}> has already been processed.`,
       {
@@ -2626,16 +2816,19 @@ async function handleInboxInternal<TContextData>(
       },
     );
   } else if (routeResult === "missingActor") {
+    observation.result = { disposition: "rejected", reason: "missingActor" };
     return new Response("Missing actor.", {
       status: 400,
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   } else if (routeResult === "enqueued") {
+    observation.result = { disposition: "enqueued" };
     return new Response("Activity is enqueued.", {
       status: 202,
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   } else if (routeResult === "unsupportedActivity") {
+    observation.result = { disposition: "unhandled" };
     return new Response("", {
       status: 202,
       headers: { "Content-Type": "text/plain; charset=utf-8" },
@@ -2646,6 +2839,7 @@ async function handleInboxInternal<TContextData>(
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   } else {
+    observation.result = { disposition: "processed" };
     return new Response("", {
       status: 202,
       headers: { "Content-Type": "text/plain; charset=utf-8" },
@@ -3811,9 +4005,11 @@ async function verifyPortableActivityId(
   activityId: URL,
   jsonLd: unknown,
   options: Parameters<typeof verifyPortableObjectProofWithRoot>[1],
-): Promise<string | null> {
+): Promise<
+  import("../sig/verification.ts").InboxProofPolicyFailureReason | null
+> {
   const expectedId = getCanonicalPortableId(activityId);
-  if (expectedId == null) return "malformed portable ID";
+  if (expectedId == null) return { type: "invalidObjectId" };
   let verification: Awaited<
     ReturnType<typeof verifyPortableObjectProofWithRoot>
   >;
@@ -3821,20 +4017,20 @@ async function verifyPortableActivityId(
     verification = await verifyPortableObjectProofWithRoot(jsonLd, options);
   } catch (error) {
     if (error instanceof InvalidPortableObjectIdError) {
-      return "malformed portable ID";
+      return { type: "invalidObjectId" };
     }
     if (!isPermanentActivityParseError(error)) throw error;
-    return "malformed document";
+    return { type: "invalidDocument" };
   }
   const { result, root } = verification;
-  if (!result.verified) return result.reason.type;
+  if (!result.verified) return result.reason;
   // The proof policy has already validated the ID of a verified document:
   const rootId = root?.["@id"];
   if (
     typeof rootId !== "string" ||
     getCanonicalPortableId(parseIri(rootId)) !== expectedId
   ) {
-    return "the verified document has another ID";
+    return { type: "subjectMismatch" };
   }
   return null;
 }

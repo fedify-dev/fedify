@@ -14,6 +14,7 @@ export {
   respondWithObjectIfAcceptable,
   type RespondWithObjectOptions,
 } from "./handler.ts";
+export * from "./inbox-report.ts";
 export * from "./kv.ts";
 export {
   createFederation,

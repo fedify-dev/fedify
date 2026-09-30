@@ -105,6 +105,12 @@ To be released.
         portable inboxes only through the first gateway, so upgrade them
         before the servers that enqueue deliveries.
 
+ -  Added `onRequestFinished()` to observe every inbox delivery, including
+    rejected requests and preparation errors, with signature/proof checks,
+    actual verification keys, the final authentication decision, and the
+    processing outcome.  The callback is awaited independently of trace
+    sampling, and its errors do not change delivery results.  [[#1191], [#1201]]
+
  -  Added serving of [FEP-ef61] portable collections through the gateway
     endpoint, e.g.,
     `GET /.well-known/apgateway/did:key:z6Mk.../users/alice/outbox`, by the
@@ -873,7 +879,9 @@ To be released.
 [#1186]: https://github.com/fedify-dev/fedify/pull/1186
 [#1188]: https://github.com/fedify-dev/fedify/pull/1188
 [#1189]: https://github.com/fedify-dev/fedify/pull/1189
+[#1191]: https://github.com/fedify-dev/fedify/issues/1191
 [#1198]: https://github.com/fedify-dev/fedify/pull/1198
+[#1201]: https://github.com/fedify-dev/fedify/pull/1201
 
 ### @fedify/adonisjs
 
@@ -1185,6 +1193,9 @@ To be released.
     dispatchers, and hashlink media responses from mock federations.  Tests can
     now exercise these FEP-ef61 paths without a live gateway.
     [[#288], [#1161], [#1196]]
+ -  Added support for registering `onRequestFinished()` on mock federations so
+    applications can reuse their inbox configuration in tests.
+    [[#1191], [#1201]]
  -  Added `testKvStore()`, a conformance test suite for `KvStore`
     implementations, complementing `testMessageQueue()`.
     [[#1018], [#1020] by ChanHaeng Lee\]

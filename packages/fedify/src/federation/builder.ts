@@ -1,3 +1,4 @@
+import type { InboxRequestFinishedHandler } from "./inbox-report.ts";
 import {
   assertPath,
   type Path,
@@ -178,6 +179,8 @@ export class FederationBuilderImpl<TContextData>
   >;
   inboxListeners?: ActivityListenerSet<InboxContext<TContextData>>;
   outboxListeners?: ActivityListenerSet<OutboxContext<TContextData>>;
+  inboxRequestFinishedHandler?: InboxRequestFinishedHandler<TContextData>;
+
   inboxErrorHandler?: InboxErrorHandler<TContextData>;
   outboxListenerErrorHandler?: OutboxListenerErrorHandler<TContextData>;
   outboxAuthorizePredicate?: AuthorizePredicate<TContextData>;
@@ -281,6 +284,7 @@ export class FederationBuilderImpl<TContextData>
       : { ...this.featuredTagsCallbacks };
     f.inboxListeners = this.inboxListeners?.clone();
     f.outboxListeners = this.outboxListeners?.clone();
+    f.inboxRequestFinishedHandler = this.inboxRequestFinishedHandler;
     f.inboxErrorHandler = this.inboxErrorHandler;
     f.outboxListenerErrorHandler = this.outboxListenerErrorHandler;
     f.outboxAuthorizePredicate = this.outboxAuthorizePredicate;
@@ -1339,6 +1343,12 @@ export class FederationBuilderImpl<TContextData>
         handler: InboxErrorHandler<TContextData>,
       ): InboxListenerSetters<TContextData> => {
         this.inboxErrorHandler = handler;
+        return setters;
+      },
+      onRequestFinished: (
+        handler: InboxRequestFinishedHandler<TContextData>,
+      ): InboxListenerSetters<TContextData> => {
+        this.inboxRequestFinishedHandler = handler;
         return setters;
       },
       onUnverifiedActivity: (

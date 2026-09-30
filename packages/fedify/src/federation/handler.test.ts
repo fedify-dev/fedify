@@ -1,3 +1,4 @@
+import type { InboxRequestReport } from "./inbox-report.ts";
 import {
   createTestMeterProvider,
   createTestTracerProvider,
@@ -5604,7 +5605,11 @@ test("handleInbox() nonce replay prevention", async () => {
     if (identifier !== "someone") return null;
     return new Person({ name: "Someone" });
   };
+  let report: InboxRequestReport | undefined;
   const response = await handleInbox(signedRequest, {
+    inboxRequestFinishedHandler: (_ctx, value) => {
+      report = value;
+    },
     recipient: "someone",
     context,
     inboxContextFactory(_activity) {
@@ -5632,6 +5637,12 @@ test("handleInbox() nonce replay prevention", async () => {
     },
   });
   assertEquals(response.status, 401);
+  assert(report != null);
+  assertEquals(report.authentication, {
+    status: "rejected",
+    reason: { type: "invalidNonce" },
+  });
+  assertEquals(report.attempts.at(-1)?.status, "verified");
   // Should return a fresh challenge with a new nonce
   const acceptSig = response.headers.get("Accept-Signature");
   assert(acceptSig != null, "Must emit fresh Accept-Signature challenge");

@@ -1,3 +1,10 @@
+import {
+  observeAttempt,
+  observeCheck,
+  triedKey,
+  verificationObservation,
+  type VerificationObservationOptions,
+} from "./verification.ts";
 import { CryptographicKey } from "@fedify/vocab";
 import { type DocumentLoader, FetchError } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
@@ -756,7 +763,7 @@ const supportedHashAlgorithms: Record<string, string> = {
 /**
  * Options for {@link verifyRequest}.
  */
-export interface VerifyRequestOptions {
+export interface VerifyRequestOptions extends VerificationObservationOptions {
   /**
    * The document loader to use for fetching the public key.
    */
@@ -1015,6 +1022,23 @@ export async function verifyRequestDetailed(
   request: Request,
   options: VerifyRequestOptions = {},
 ): Promise<VerifyRequestDetailedResult> {
+  if (
+    options[verificationObservation] != null &&
+    options[verificationObservation]?.attempt == null
+  ) {
+    return await observeAttempt(options, "http", async (observation) => {
+      const result = await verifyRequestDetailed(request, {
+        ...options,
+        [verificationObservation]: observation,
+      });
+      if (!result.verified) {
+        observation.attempt!.reason = result.reason.type === "noSignature"
+          ? { type: "noSignature" }
+          : { type: "signatureVerificationFailed" };
+      }
+      return result;
+    }, (result) => result.verified);
+  }
   if (options.maxSignatures !== undefined) {
     validateMaxSignatures(options.maxSignatures, "maxSignatures");
   }
@@ -1112,6 +1136,43 @@ async function verifyRequestDraft(
   request: Request,
   span: Span,
   metricsContext: HttpSignatureMetricsContext,
+  options: VerifyRequestOptions = {},
+): Promise<VerifyRequestDetailedResult> {
+  if (options[verificationObservation]?.check != null) {
+    return await verifyRequestDraftInternal(
+      request,
+      span,
+      metricsContext,
+      options,
+    );
+  }
+  let result: VerifyRequestDetailedResult = noSignatureResult();
+  const raw = request.headers.get("Signature");
+  const declared = raw == null ? null : parseDraftSignature(raw)?.keyId ?? null;
+  if (raw == null) return result;
+  await observeCheck(
+    options,
+    { mechanism: "http", spec: "draft-cavage-http-signatures-12", label: null },
+    declared,
+    async (observation) => {
+      result = await verifyRequestDraftInternal(request, span, metricsContext, {
+        ...options,
+        [verificationObservation]: observation,
+      });
+      if (
+        !result.verified && result.reason.type === "keyFetchError" &&
+        observation.check != null
+      ) observation.check.reason = result.reason;
+      return result.verified ? result.key : null;
+    },
+  );
+  return result;
+}
+
+async function verifyRequestDraftInternal(
+  request: Request,
+  span: Span,
+  metricsContext: HttpSignatureMetricsContext,
   {
     documentLoader,
     contextLoader,
@@ -1120,6 +1181,7 @@ async function verifyRequestDraft(
     keyCache,
     meterProvider,
     tracerProvider,
+    [verificationObservation]: observation,
   }: VerifyRequestOptions = {},
 ): Promise<VerifyRequestDetailedResult> {
   const logger = getLogger(["fedify", "sig", "http"]);
@@ -1384,6 +1446,7 @@ async function verifyRequestDraft(
   const sig = decodeBase64(signature);
   span?.setAttribute("http_signatures.signature", encodeHex(sig));
   // TODO: support other than RSASSA-PKCS1-v1_5:
+  triedKey({ [verificationObservation]: observation }, key);
   const verified = await crypto.subtle.verify(
     "RSASSA-PKCS1-v1_5",
     key.publicKey,
@@ -1413,6 +1476,7 @@ async function verifyRequestDraft(
           keyCache: bypassKeyCacheReads(keyCache),
           meterProvider,
           tracerProvider,
+          [verificationObservation]: observation,
         },
       );
     }
@@ -1529,6 +1593,7 @@ async function verifyRfc9421SignatureWithKey(
   sigBytes: Uint8Array,
   key: CryptographicKey & { publicKey: CryptoKey },
   span: Span,
+  observationOptions: VerificationObservationOptions = {},
 ): Promise<Rfc9421SignatureVerification> {
   const logger = getLogger(["fedify", "sig", "http"]);
   // Map algorithm name to WebCrypto algorithm
@@ -1607,6 +1672,7 @@ async function verifyRfc9421SignatureWithKey(
   }
   let verified: boolean;
   try {
+    triedKey(observationOptions, key);
     verified = await crypto.subtle.verify(
       algorithm,
       key.publicKey,
@@ -1639,6 +1705,7 @@ async function verifyRequestRfc9421(
     currentTime,
     keyCache,
     maxSignatures = DEFAULT_MAX_RFC9421_SIGNATURES,
+    [verificationObservation]: observation,
     meterProvider,
     tracerProvider,
   }: VerifyRequestOptions = {},
@@ -1761,152 +1828,171 @@ async function verifyRequestRfc9421(
   let digestValid: boolean | null = null;
 
   for (const sigName of signatureNames) {
-    // Skip if we don't have the signature bytes
-    if (!signatures[sigName]) {
-      setFailure(
-        invalidSignatureResult(parseKeyId(signatureInputs[sigName]?.keyId)),
-      );
-      continue;
-    }
+    let winning: VerifyRequestDetailedResult | undefined;
+    await observeCheck(
+      { [verificationObservation]: observation },
+      { mechanism: "http", spec: "rfc9421", label: sigName },
+      signatureInputs[sigName]?.keyId ?? null,
+      async (candidateObservation) => {
+        // Skip if we don't have the signature bytes
+        if (!signatures[sigName]) {
+          setFailure(
+            invalidSignatureResult(parseKeyId(signatureInputs[sigName]?.keyId)),
+          );
+          return null;
+        }
 
-    const sigInput = signatureInputs[sigName];
-    const sigBytes = signatures[sigName];
-    const keyId = parseKeyId(sigInput.keyId);
+        const sigInput = signatureInputs[sigName];
+        const sigBytes = signatures[sigName];
+        const keyId = parseKeyId(sigInput.keyId);
 
-    // Validate signature input parameters
-    if (!sigInput.keyId) {
-      logger.debug(
-        "Failed to verify; missing keyId in signature {signatureName}.",
-        { signatureName: sigName, signatureInput: signatureInputHeader },
-      );
-      setFailure(invalidSignatureResult(null));
-      continue;
-    }
+        // Validate signature input parameters
+        if (!sigInput.keyId) {
+          logger.debug(
+            "Failed to verify; missing keyId in signature {signatureName}.",
+            { signatureName: sigName, signatureInput: signatureInputHeader },
+          );
+          setFailure(invalidSignatureResult(null));
+          return null;
+        }
 
-    if (!sigInput.created) {
-      logger.debug(
-        "Failed to verify; missing created timestamp in signature {signatureName}.",
-        { signatureName: sigName, signatureInput: signatureInputHeader },
-      );
-      setFailure(invalidSignatureResult(keyId));
-      continue;
-    }
+        if (!sigInput.created) {
+          logger.debug(
+            "Failed to verify; missing created timestamp in signature {signatureName}.",
+            { signatureName: sigName, signatureInput: signatureInputHeader },
+          );
+          setFailure(invalidSignatureResult(keyId));
+          return null;
+        }
 
-    // Check timestamp validity
-    const signatureCreated = Temporal.Instant.fromEpochMilliseconds(
-      sigInput.created * 1000,
+        // Check timestamp validity
+        const signatureCreated = Temporal.Instant.fromEpochMilliseconds(
+          sigInput.created * 1000,
+        );
+        const now = currentTime ?? Temporal.Now.instant();
+
+        if (timeWindow !== false) {
+          const tw: Temporal.Duration | Temporal.DurationLike = timeWindow ??
+            { hours: 1 };
+          if (Temporal.Instant.compare(signatureCreated, now.add(tw)) > 0) {
+            logger.debug(
+              "Failed to verify; signature created time is too far in the future.",
+              { created: signatureCreated.toString(), now: now.toString() },
+            );
+            setFailure(invalidSignatureResult(keyId));
+            return null;
+          } else if (
+            Temporal.Instant.compare(signatureCreated, now.subtract(tw)) < 0
+          ) {
+            logger.debug(
+              "Failed to verify; signature created time is too far in the past.",
+              { created: signatureCreated.toString(), now: now.toString() },
+            );
+            setFailure(invalidSignatureResult(keyId));
+            return null;
+          }
+        }
+
+        // Verify Content-Digest if present and required
+        if (
+          request.method !== "GET" &&
+          request.method !== "HEAD" &&
+          sigInput.components.some((c) => c.value === "content-digest")
+        ) {
+          const contentDigestHeader = request.headers.get("Content-Digest");
+          if (!contentDigestHeader) {
+            logger.debug(
+              "Failed to verify; Content-Digest header required but not found.",
+              { components: sigInput.components },
+            );
+            setFailure(invalidSignatureResult(keyId));
+            return null;
+          }
+
+          // Every signature covers the same body and Content-Digest header.
+          body ??= await request.arrayBuffer();
+          digestValid ??= await verifyRfc9421ContentDigest(
+            contentDigestHeader,
+            body,
+          );
+
+          if (!digestValid) {
+            logger.debug(
+              "Failed to verify; Content-Digest verification failed.",
+              { contentDigest: contentDigestHeader },
+            );
+            setFailure(invalidSignatureResult(keyId));
+            return null;
+          }
+        }
+
+        // Fetch the public key
+        span?.setAttribute("http_signatures.key_id", sigInput.keyId);
+        span?.setAttribute(
+          "http_signatures.created",
+          sigInput.created.toString(),
+        );
+        if (keyId == null) {
+          setFailure(invalidSignatureResult(null));
+          return null;
+        }
+
+        let lookup = keyLookups.get(keyId.href);
+        if (lookup == null) {
+          lookup = await lookUpKey(keyId, keyCache);
+          keyLookups.set(keyId.href, lookup);
+        }
+        while (true) {
+          const { key, cached, fetchError } = lookup;
+          if (fetchError != null) {
+            setFailure(keyFetchErrorResult(keyId, fetchError));
+            break;
+          }
+          if (!key) {
+            logger.debug("Failed to fetch key: {keyId}", {
+              keyId: sigInput.keyId,
+            });
+            setFailure(invalidSignatureResult(keyId));
+            break;
+          }
+          const result = await verifyRfc9421SignatureWithKey(
+            request,
+            sigInput,
+            sigBytes,
+            key,
+            span,
+            { [verificationObservation]: candidateObservation },
+          );
+          if (result.verified) {
+            metricsContext.algorithm = result.algorithm;
+            winning = { verified: true, key, signatureLabel: sigName };
+            return key;
+          }
+          if (result.mismatched && cached && !refreshedKeyIds.has(keyId.href)) {
+            // The cached key may be stale, so look it up again without the cache,
+            // but only once for each key ID, and only for this signature; the
+            // other signatures naming the same key use the fresh one:
+            logger.debug(
+              "Failed to verify with cached key {keyId}; retrying with fresh " +
+                "key...",
+              { keyId: sigInput.keyId },
+            );
+            refreshedKeyIds.add(keyId.href);
+            lookup = await lookUpKey(keyId, bypassKeyCacheReads(keyCache));
+            keyLookups.set(keyId.href, lookup);
+            continue;
+          }
+          setFailure(invalidSignatureResult(keyId), result.algorithm);
+          break;
+        }
+        if (
+          !failure.verified && failure.reason.type === "keyFetchError" &&
+          candidateObservation.check != null
+        ) candidateObservation.check.reason = failure.reason;
+        return null;
+      },
     );
-    const now = currentTime ?? Temporal.Now.instant();
-
-    if (timeWindow !== false) {
-      const tw: Temporal.Duration | Temporal.DurationLike = timeWindow ??
-        { hours: 1 };
-      if (Temporal.Instant.compare(signatureCreated, now.add(tw)) > 0) {
-        logger.debug(
-          "Failed to verify; signature created time is too far in the future.",
-          { created: signatureCreated.toString(), now: now.toString() },
-        );
-        setFailure(invalidSignatureResult(keyId));
-        continue;
-      } else if (
-        Temporal.Instant.compare(signatureCreated, now.subtract(tw)) < 0
-      ) {
-        logger.debug(
-          "Failed to verify; signature created time is too far in the past.",
-          { created: signatureCreated.toString(), now: now.toString() },
-        );
-        setFailure(invalidSignatureResult(keyId));
-        continue;
-      }
-    }
-
-    // Verify Content-Digest if present and required
-    if (
-      request.method !== "GET" &&
-      request.method !== "HEAD" &&
-      sigInput.components.some((c) => c.value === "content-digest")
-    ) {
-      const contentDigestHeader = request.headers.get("Content-Digest");
-      if (!contentDigestHeader) {
-        logger.debug(
-          "Failed to verify; Content-Digest header required but not found.",
-          { components: sigInput.components },
-        );
-        setFailure(invalidSignatureResult(keyId));
-        continue;
-      }
-
-      // Every signature covers the same body and Content-Digest header.
-      body ??= await request.arrayBuffer();
-      digestValid ??= await verifyRfc9421ContentDigest(
-        contentDigestHeader,
-        body,
-      );
-
-      if (!digestValid) {
-        logger.debug(
-          "Failed to verify; Content-Digest verification failed.",
-          { contentDigest: contentDigestHeader },
-        );
-        setFailure(invalidSignatureResult(keyId));
-        continue;
-      }
-    }
-
-    // Fetch the public key
-    span?.setAttribute("http_signatures.key_id", sigInput.keyId);
-    span?.setAttribute("http_signatures.created", sigInput.created.toString());
-    if (keyId == null) {
-      setFailure(invalidSignatureResult(null));
-      continue;
-    }
-
-    let lookup = keyLookups.get(keyId.href);
-    if (lookup == null) {
-      lookup = await lookUpKey(keyId, keyCache);
-      keyLookups.set(keyId.href, lookup);
-    }
-    while (true) {
-      const { key, cached, fetchError } = lookup;
-      if (fetchError != null) {
-        setFailure(keyFetchErrorResult(keyId, fetchError));
-        break;
-      }
-      if (!key) {
-        logger.debug("Failed to fetch key: {keyId}", {
-          keyId: sigInput.keyId,
-        });
-        setFailure(invalidSignatureResult(keyId));
-        break;
-      }
-      const result = await verifyRfc9421SignatureWithKey(
-        request,
-        sigInput,
-        sigBytes,
-        key,
-        span,
-      );
-      if (result.verified) {
-        metricsContext.algorithm = result.algorithm;
-        return { verified: true, key, signatureLabel: sigName };
-      }
-      if (result.mismatched && cached && !refreshedKeyIds.has(keyId.href)) {
-        // The cached key may be stale, so look it up again without the cache,
-        // but only once for each key ID, and only for this signature; the
-        // other signatures naming the same key use the fresh one:
-        logger.debug(
-          "Failed to verify with cached key {keyId}; retrying with fresh " +
-            "key...",
-          { keyId: sigInput.keyId },
-        );
-        refreshedKeyIds.add(keyId.href);
-        lookup = await lookUpKey(keyId, bypassKeyCacheReads(keyCache));
-        keyLookups.set(keyId.href, lookup);
-        continue;
-      }
-      setFailure(invalidSignatureResult(keyId), result.algorithm);
-      break;
-    }
+    if (winning != null) return winning;
   }
 
   metricsContext.algorithm = failureAlgorithm;

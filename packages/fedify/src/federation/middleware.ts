@@ -1,3 +1,4 @@
+import { InboxObservation } from "./inbox-observation.ts";
 import { type Path, RouterError } from "@fedify/uri-template";
 import type {
   Actor,
@@ -3215,88 +3216,97 @@ export class FederationImpl<TContextData>
           const spanCtx = span.spanContext();
           return await withContext(
             { traceId: spanCtx.traceId, spanId: spanCtx.spanId },
-            async () => {
-              const logger = getLogger(["fedify", "federation", "http"]);
-              if (span.isRecording()) {
-                for (const [k, v] of request.headers) {
-                  span.setAttribute(ATTR_HTTP_REQUEST_HEADER(k), [v]);
+            () =>
+              this.#observeInboxFetch(metricState, async () => {
+                const logger = getLogger(["fedify", "federation", "http"]);
+                if (span.isRecording()) {
+                  for (const [k, v] of request.headers) {
+                    span.setAttribute(ATTR_HTTP_REQUEST_HEADER(k), [v]);
+                  }
                 }
-              }
-              let response: Response;
-              try {
-                response = await this.#fetch(request, {
-                  ...options,
-                  span,
-                  tracer,
-                  metricState,
-                });
-                // Hashlink media responses are not negotiated, and they are
-                // sent as the application returns them, whose headers may
-                // even be immutable:
-                if (
-                  metricState.endpoint !== "hashlink_media" &&
-                  acceptsJsonLd(request)
-                ) {
-                  response.headers.set("Vary", "Accept");
-                }
-              } catch (error) {
-                this.metrics
-                  .recordHttpServerRequest(
-                    request.method,
-                    metricState.endpoint ?? "error",
-                    getDurationMs(metricStart),
-                    { routeTemplate: metricState.routeTemplate },
+                let response: Response;
+                try {
+                  response = await this.#fetch(request, {
+                    ...options,
+                    span,
+                    tracer,
+                    metricState,
+                  });
+                  if (metricState.inboxCompletion != null) {
+                    metricState.inboxCompletion.observation.stage = "respond";
+                  }
+                  // Hashlink media responses are not negotiated, and they are
+                  // sent as the application returns them, whose headers may
+                  // even be immutable:
+                  if (
+                    metricState.endpoint !== "hashlink_media" &&
+                    acceptsJsonLd(request)
+                  ) {
+                    response.headers.set("Vary", "Accept");
+                  }
+                } catch (error) {
+                  metricState.inboxCompletion?.observation.project(span, {
+                    type: "exception",
+                    stage: metricState.inboxCompletion.observation.stage,
+                    error,
+                  });
+                  this.metrics
+                    .recordHttpServerRequest(
+                      request.method,
+                      metricState.endpoint ?? "error",
+                      getDurationMs(metricStart),
+                      { routeTemplate: metricState.routeTemplate },
+                    );
+                  span.setStatus({
+                    code: SpanStatusCode.ERROR,
+                    message: `${error}`,
+                  });
+                  span.end();
+                  logger.error(
+                    "An error occurred while serving request " +
+                      "{method} {url}: {error}",
+                    { method: request.method, url: request.url, error },
                   );
-                span.setStatus({
-                  code: SpanStatusCode.ERROR,
-                  message: `${error}`,
-                });
-                span.end();
-                logger.error(
-                  "An error occurred while serving request " +
-                    "{method} {url}: {error}",
-                  { method: request.method, url: request.url, error },
-                );
-                throw error;
-              }
-              this.metrics.recordHttpServerRequest(
-                request.method,
-                metricState.endpoint ?? "error",
-                getDurationMs(metricStart),
-                {
-                  statusCode: response.status,
-                  routeTemplate: metricState.routeTemplate,
-                },
-              );
-              if (span.isRecording()) {
-                span.setAttribute(
-                  ATTR_HTTP_RESPONSE_STATUS_CODE,
-                  response.status,
-                );
-                for (const [k, v] of response.headers) {
-                  span.setAttribute(ATTR_HTTP_RESPONSE_HEADER(k), [v]);
+                  throw error;
                 }
-                span.setStatus({
-                  code: response.status >= 500
-                    ? SpanStatusCode.ERROR
-                    : SpanStatusCode.UNSET,
-                  message: response.statusText,
-                });
-              }
-              span.end();
-              const url = new URL(request.url);
-              const logTpl = "{method} {path}: {status}";
-              const values = {
-                method: request.method,
-                path: `${url.pathname}${url.search}`,
-                url: request.url,
-                status: response.status,
-              };
-              if (response.status >= 500) logger.error(logTpl, values);
-              else if (response.status >= 400) logger.warn(logTpl, values);
-              else logger.info(logTpl, values);
-              return response;
-            },
+                this.metrics.recordHttpServerRequest(
+                  request.method,
+                  metricState.endpoint ?? "error",
+                  getDurationMs(metricStart),
+                  {
+                    statusCode: response.status,
+                    routeTemplate: metricState.routeTemplate,
+                  },
+                );
+                if (span.isRecording()) {
+                  span.setAttribute(
+                    ATTR_HTTP_RESPONSE_STATUS_CODE,
+                    response.status,
+                  );
+                  for (const [k, v] of response.headers) {
+                    span.setAttribute(ATTR_HTTP_RESPONSE_HEADER(k), [v]);
+                  }
+                  span.setStatus({
+                    code: response.status >= 500
+                      ? SpanStatusCode.ERROR
+                      : SpanStatusCode.UNSET,
+                    message: response.statusText,
+                  });
+                }
+                span.end();
+                const url = new URL(request.url);
+                const logTpl = "{method} {path}: {status}";
+                const values = {
+                  method: request.method,
+                  path: `${url.pathname}${url.search}`,
+                  url: request.url,
+                  status: response.status,
+                };
+                if (response.status >= 500) logger.error(logTpl, values);
+                else if (response.status >= 400) logger.warn(logTpl, values);
+                else logger.info(logTpl, values);
+                return response;
+              }),
           );
         },
       );
@@ -3370,8 +3380,27 @@ export class FederationImpl<TContextData>
     metricState.routeTemplate = route.template;
     metricState.endpoint = getEndpointCategory(route.name);
     span.updateName(`${request.method} ${route.template}`);
-    let context = this.#createContext(request, contextData);
     const routeName = route.name.replace(/:.*$/, "");
+    let context: RequestContextImpl<TContextData>;
+    try {
+      context = this.#createContext(request, contextData);
+    } catch (error) {
+      if (
+        request.method !== "POST" ||
+        routeName !== "inbox" && routeName !== "sharedInbox"
+      ) throw error;
+      return await this.#reportInboxPreparationError(
+        request,
+        contextData,
+        {
+          kind: routeName === "inbox" ? "personal" : "shared",
+          recipient: route.values.identifier ?? null,
+        },
+        error,
+        span,
+        metricState,
+      );
+    }
 
     // Routes that aren't JSON-LD based:
     switch (routeName) {
@@ -3464,6 +3493,48 @@ export class FederationImpl<TContextData>
       }
       return response;
     }
+    if (
+      request.method === "POST" &&
+      (routeName === "inbox" || routeName === "sharedInbox")
+    ) {
+      const recipient = route.values.identifier ?? null;
+      const observation = new InboxObservation({
+        kind: routeName === "inbox" ? "personal" : "shared",
+        recipient,
+      });
+      this.#setInboxCompletion(metricState, observation, () => context);
+      return await observation.run(
+        () => context,
+        undefined,
+        async () => {
+          if (routeName === "inbox") {
+            context = this.#createContext(request, contextData, {
+              documentLoader: await context.getDocumentLoader({
+                identifier: recipient!,
+              }),
+            });
+          } else if (this.sharedInboxKeyDispatcher != null) {
+            const identity = await this.sharedInboxKeyDispatcher(context);
+            if (identity != null) {
+              context = this.#createContext(request, contextData, {
+                documentLoader:
+                  "identifier" in identity || "username" in identity
+                    ? await context.getDocumentLoader(identity)
+                    : context.getDocumentLoader(identity),
+              });
+            }
+          }
+          return await this.#handleInbox(request, {
+            recipient,
+            context,
+            contextData,
+            onNotFound,
+            observation,
+          });
+        },
+        span,
+      );
+    }
     switch (routeName) {
       case "actor":
       case "actorAlias": {
@@ -3547,14 +3618,11 @@ export class FederationImpl<TContextData>
             onNotFound,
           });
         }
-        context = this.#createContext(request, contextData, {
-          documentLoader: await context.getDocumentLoader({
-            identifier: route.values.identifier,
-          }),
-        });
-        // falls through
+        // POST deliveries are handled by the observed ingress above.
+        throw new Error("Unreachable inbox delivery.");
       case "sharedInbox": {
-        if (routeName !== "inbox" && this.sharedInboxKeyDispatcher != null) {
+        // Preserve the existing non-POST handling without reporting a delivery.
+        if (this.sharedInboxKeyDispatcher != null) {
           const identity = await this.sharedInboxKeyDispatcher(context);
           if (identity != null) {
             context = this.#createContext(request, contextData, {
@@ -3980,6 +4048,74 @@ export class FederationImpl<TContextData>
     return await onNotFound(request);
   }
 
+  #setInboxCompletion(
+    metricState: HttpMetricState,
+    observation: InboxObservation,
+    getContext: () => RequestContext<TContextData>,
+  ): void {
+    const handler = this.inboxRequestFinishedHandler;
+    metricState.inboxCompletion = {
+      observation,
+      finish: (outcome) => observation.finish(getContext(), handler, outcome),
+    };
+  }
+
+  async #observeInboxFetch(
+    metricState: HttpMetricState,
+    operation: () => Promise<Response>,
+  ): Promise<Response> {
+    let response: Response;
+    try {
+      response = await operation();
+    } catch (error) {
+      const completion = metricState.inboxCompletion;
+      if (completion != null) {
+        await completion.finish({
+          type: "exception",
+          stage: completion.observation.stage,
+          error,
+        });
+      }
+      throw error;
+    }
+    const completion = metricState.inboxCompletion;
+    if (completion != null) {
+      await completion.finish({
+        type: "response",
+        status: response.status,
+        ...completion.observation.result,
+      });
+    }
+    return response;
+  }
+
+  async #reportInboxPreparationError(
+    request: Request,
+    contextData: TContextData,
+    inbox: import("./inbox-report.ts").InboxRequestReport["inbox"],
+    error: unknown,
+    span: Span,
+    metricState: HttpMetricState,
+  ): Promise<Response> {
+    const unavailableLoader: DocumentLoader = () => Promise.reject(error);
+    const context = new RequestContextImpl({
+      url: new URL(request.url),
+      request,
+      federation: this,
+      data: contextData,
+      documentLoader: unavailableLoader,
+      contextLoader: unavailableLoader,
+    });
+    const observation = new InboxObservation(inbox);
+    this.#setInboxCompletion(metricState, observation, () => context);
+    return await observation.run(
+      () => context,
+      undefined,
+      () => Promise.reject(error),
+      span,
+    );
+  }
+
   async #handleInbox(
     request: Request,
     {
@@ -3988,12 +4124,14 @@ export class FederationImpl<TContextData>
       contextData,
       onNotFound,
       portableInbox,
+      observation,
     }: {
       recipient: string | null;
       context: RequestContextImpl<TContextData>;
       contextData: TContextData;
       onNotFound: (request: Request) => Response | Promise<Response>;
       portableInbox?: PortableInboxDelivery;
+      observation?: InboxObservation;
     },
   ): Promise<Response> {
     if (!this.manuallyStartQueue) this._startQueueInternal(contextData);
@@ -4025,6 +4163,7 @@ export class FederationImpl<TContextData>
       tracerProvider: this.tracerProvider,
       idempotencyStrategy: this.idempotencyStrategy,
       portableInbox,
+      observation,
     });
   }
 
@@ -4066,94 +4205,123 @@ export class FederationImpl<TContextData>
     metricState.endpoint = "inbox";
     span.updateName(`${request.method} ${metricState.routeTemplate}`);
     const identifier = route.values.identifier;
-    let context = this.#createContext(request, contextData);
-    // The actor is looked up only by its identifier, as for ordinary inbox
-    // deliveries, so that the identifier alone determines the recipient,
-    // also for inbox listeners and queued deliveries:
-    const actor = this.actorCallbacks?.dispatcher == null
-      ? null
-      : await this.actorCallbacks.dispatcher(context, identifier);
-    const localOrigin = context.canonicalOrigin;
-    const resolution = resolvePortableInboxRecipient(
-      actor == null || actor instanceof Tombstone ? null : actor,
-      {
-        authority: portable.portableRequest.authority,
-        canonicalInboxId: portable.canonicalId,
-        localOrigin,
-      },
-    );
-    if (resolution.status === "rejected") {
-      logger.debug(
-        "Not accepting a delivery to the portable inbox {inbox} on behalf " +
-          "of the actor {identifier}: {reason}.",
-        {
-          inbox: portable.canonicalId,
-          identifier,
-          reason: resolution.reason,
-        },
+    let context: RequestContextImpl<TContextData>;
+    try {
+      context = this.#createContext(request, contextData);
+    } catch (error) {
+      return await this.#reportInboxPreparationError(
+        request,
+        contextData,
+        { kind: "portable", recipient: identifier },
+        error,
+        span,
+        metricState,
       );
-      return await onNotFound(request);
     }
-    const { recipient } = resolution;
-    // A portable actor does not necessarily have key pairs for authorized
-    // fetch, so fall back to the default document loader without them:
-    if (this.actorCallbacks?.keyPairsDispatcher != null) {
-      context = this.#createContext(request, contextData, {
-        documentLoader: await context.getDocumentLoader({ identifier }),
-      });
-    }
-    const excludedOrigins = [localOrigin, new URL(request.url).origin];
-    return await this.#handleInbox(request, {
+    const observation = new InboxObservation({
+      kind: "portable",
       recipient: identifier,
-      context,
-      contextData,
-      onNotFound,
-      portableInbox: {
-        recipient,
-        forward: async (activity, activityId, activityType, signatures) => {
-          if (this.portableInboxForwarding.maxTargets < 1) return;
-          if (this.kv.cas == null) {
-            if (!this.#portableInboxForwardingWarned) {
-              this.#portableInboxForwardingWarned = true;
-              logger.warn(
-                "Activities delivered to FEP-ef61 portable inboxes are not " +
-                  "forwarded to the other gateways, as the key–value store " +
-                  "does not support compare-and-swap (KvStore.cas()), which " +
-                  "is needed to forward each activity at most once.",
-              );
-            }
-            return;
-          }
-          await forwardPortableInboxActivity({
-            recipient,
-            activity,
-            activityId,
-            activityType,
-            excludedOrigins,
-            baseUrl: context.origin,
-            kv: this.kv,
-            kvPrefix: this.kvPrefixes.portableInboxForwarding,
-            outboxQueue: this.outboxQueue,
-            startQueue: this.manuallyStartQueue
-              ? undefined
-              : () => this._startQueueInternal(contextData),
-            allowPrivateAddress: this.allowPrivateAddress,
-            getKeys: () =>
-              this.#getPortableGatewayKeyPairs(context, identifier, recipient),
-            specDeterminer: new KvSpecDeterminer(
-              this.kv,
-              this.kvPrefixes.httpMessageSignaturesSpec,
-              this.firstKnock,
-              { specTtl: this.httpMessageSignaturesSpecTtl },
-            ),
-            signatures,
-            options: this.portableInboxForwarding,
-            meterProvider: this.meterProvider,
-            tracerProvider: this.tracerProvider,
-          });
-        },
-      },
     });
+    this.#setInboxCompletion(metricState, observation, () => context);
+    return await observation.run(
+      () => context,
+      undefined,
+      async () => {
+        // The actor is looked up only by its identifier, as for ordinary inbox
+        // deliveries, so that the identifier alone determines the recipient,
+        // also for inbox listeners and queued deliveries:
+        const actor = this.actorCallbacks?.dispatcher == null
+          ? null
+          : await this.actorCallbacks.dispatcher(context, identifier);
+        const localOrigin = context.canonicalOrigin;
+        const resolution = resolvePortableInboxRecipient(
+          actor == null || actor instanceof Tombstone ? null : actor,
+          {
+            authority: portable.portableRequest.authority,
+            canonicalInboxId: portable.canonicalId,
+            localOrigin,
+          },
+        );
+        if (resolution.status === "rejected") {
+          logger.debug(
+            "Not accepting a delivery to the portable inbox {inbox} on behalf " +
+              "of the actor {identifier}: {reason}.",
+            {
+              inbox: portable.canonicalId,
+              identifier,
+              reason: resolution.reason,
+            },
+          );
+          return await onNotFound(request);
+        }
+        const { recipient } = resolution;
+        // A portable actor does not necessarily have key pairs for authorized
+        // fetch, so fall back to the default document loader without them:
+        if (this.actorCallbacks?.keyPairsDispatcher != null) {
+          context = this.#createContext(request, contextData, {
+            documentLoader: await context.getDocumentLoader({ identifier }),
+          });
+        }
+        const excludedOrigins = [localOrigin, new URL(request.url).origin];
+        return await this.#handleInbox(request, {
+          recipient: identifier,
+          observation,
+          context,
+          contextData,
+          onNotFound,
+          portableInbox: {
+            recipient,
+            forward: async (activity, activityId, activityType, signatures) => {
+              if (this.portableInboxForwarding.maxTargets < 1) return;
+              if (this.kv.cas == null) {
+                if (!this.#portableInboxForwardingWarned) {
+                  this.#portableInboxForwardingWarned = true;
+                  logger.warn(
+                    "Activities delivered to FEP-ef61 portable inboxes are not " +
+                      "forwarded to the other gateways, as the key–value store " +
+                      "does not support compare-and-swap (KvStore.cas()), which " +
+                      "is needed to forward each activity at most once.",
+                  );
+                }
+                return;
+              }
+              await forwardPortableInboxActivity({
+                recipient,
+                activity,
+                activityId,
+                activityType,
+                excludedOrigins,
+                baseUrl: context.origin,
+                kv: this.kv,
+                kvPrefix: this.kvPrefixes.portableInboxForwarding,
+                outboxQueue: this.outboxQueue,
+                startQueue: this.manuallyStartQueue
+                  ? undefined
+                  : () => this._startQueueInternal(contextData),
+                allowPrivateAddress: this.allowPrivateAddress,
+                getKeys: () =>
+                  this.#getPortableGatewayKeyPairs(
+                    context,
+                    identifier,
+                    recipient,
+                  ),
+                specDeterminer: new KvSpecDeterminer(
+                  this.kv,
+                  this.kvPrefixes.httpMessageSignaturesSpec,
+                  this.firstKnock,
+                  { specTtl: this.httpMessageSignaturesSpecTtl },
+                ),
+                signatures,
+                options: this.portableInboxForwarding,
+                meterProvider: this.meterProvider,
+                tracerProvider: this.tracerProvider,
+              });
+            },
+          },
+        });
+      },
+      span,
+    );
   }
 
   /**
@@ -4377,6 +4545,12 @@ type FedifyEndpoint =
   | "error";
 
 interface HttpMetricState {
+  inboxCompletion?: {
+    observation: InboxObservation;
+    finish(
+      outcome: import("./inbox-report.ts").InboxRequestOutcome,
+    ): Promise<void>;
+  };
   endpoint?: FedifyEndpoint;
   routeTemplate?: string;
 }

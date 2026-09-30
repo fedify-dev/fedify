@@ -1155,3 +1155,27 @@ test("verifyCompoundPortableObjectProofs() leaves keys at DID URLs alone", async
   assert(result.verified);
   assertEquals(result.portableObjects.map((o) => o.path), [""]);
 });
+
+test("compound proof observation does not throw for malformed subject IDs", async () => {
+  const { verificationObservation } = await import("./verification.ts");
+  const evidence = {
+    attempts: [] as import("./verification.ts").InboxVerificationAttempt[],
+  };
+  const result = await verifyCompoundPortableObjectProofs(
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/data-integrity/v1",
+      ],
+      id: "ap://did%ZZkey/objects/1",
+      type: "Note",
+      proof: {},
+    },
+    limits,
+    { ...options, [verificationObservation]: evidence },
+  );
+  assertEquals(result.status, "ok");
+  assert(result.status === "ok" && !result.verified);
+  assertEquals(evidence.attempts[0].subject.id, null);
+  assertEquals(evidence.attempts[0].subject.pointer, "");
+});

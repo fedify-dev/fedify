@@ -546,6 +546,10 @@ Fedify records the following OpenTelemetry metrics:
         with no signature header are reported as
         `activitypub.signature.result=missing` and do not carry a
         `http_signatures.failure_reason`.
+     -  `activitypub.verification.failure_reason` (Linked Data and Object
+        Integrity Proofs, on failure rows) is one of `invalidSignature`,
+        `keyFetchError`, `noSignature`, `signatureVerificationFailed`,
+        `uncoveredAttribution`, `missingOwner`, or `proofPolicy`.
      -  `ld_signatures.type` (Linked Data only) is recorded only for the
         spec-supported `RsaSignature2017` type.
      -  `object_integrity_proofs.cryptosuite` (Object Integrity Proofs
@@ -556,6 +560,17 @@ Fedify records the following OpenTelemetry metrics:
     excluded from this histogram.  They remain on the corresponding spans
     (`http_signatures.verify`, `ld_signatures.verify`,
     `object_integrity_proofs.verify`) for trace-level investigation.
+
+The [inbox request observer](./inbox.md#observing-inbox-requests) exposes the
+same verification evidence directly to application code, independently of
+trace sampling.  Actual public keys stay in the report and are not emitted as
+telemetry attributes.  Inbox spans record `activitypub.authentication.status`
+and `activitypub.inbox.disposition`.  A rejected final authentication decision
+also sets the bounded `activitypub.verification.failure_reason` attribute.
+Linked Data Signature and individual proof measurements use this common
+failure attribute as well.  A cryptographically valid proof still records
+`verified` when a later attribution or portable proof policy rejects its
+object; the rejection belongs to the object/inbox evaluation.
 
 `activitypub.signature.key_fetch.duration`
 :   `activitypub.signature.kind` is always present (same values as above).

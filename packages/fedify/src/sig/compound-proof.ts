@@ -1,3 +1,4 @@
+import { observeAttempt, verificationObservation } from "./verification.ts";
 import type { Multikey } from "@fedify/vocab";
 import { parseIri, preloadedContexts } from "@fedify/vocab-runtime";
 import jsonld from "@fedify/vocab-runtime/jsonld";
@@ -913,9 +914,37 @@ async function verifyDiscoveredProofDocuments(
           reason: { type: "missingContext" as const },
         });
       }
-      const key = await verifyMapLocalProof(
-        document.securedDocument,
-        options,
+      const inherited = options[verificationObservation];
+      let subjectId: URL | null = null;
+      if (inherited != null && document.id != null) {
+        try {
+          subjectId = parseIri(document.id);
+        } catch { /* Diagnostic metadata must not change policy handling. */ }
+      }
+      const key = await observeAttempt(
+        {
+          [verificationObservation]: inherited == null ? undefined : {
+            ...inherited,
+            attempt: undefined,
+            check: undefined,
+            subject: {
+              id: subjectId,
+              pointer: document.path,
+            },
+          },
+        },
+        "objectIntegrity",
+        (observation) =>
+          verifyMapLocalProof(
+            document.securedDocument,
+            {
+              ...options,
+              [verificationObservation]: inherited == null
+                ? undefined
+                : observation,
+            },
+          ),
+        (key) => key != null,
       );
       return key == null
         ? Object.freeze({

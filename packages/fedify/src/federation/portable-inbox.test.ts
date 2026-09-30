@@ -1,3 +1,4 @@
+import type { InboxRequestReport } from "./inbox-report.ts";
 import { mockDocumentLoader, test } from "@fedify/fixture";
 import {
   type Activity,
@@ -175,8 +176,13 @@ function setup(
       mapPortableActorId(identifier)
     );
   }
+  const reports: InboxRequestReport[] = [];
   const inboxListeners = federation
-    .setInboxListeners("/users/{identifier}/inbox", "/inbox");
+    .setInboxListeners("/users/{identifier}/inbox", "/inbox").onRequestFinished(
+      (_ctx, report) => {
+        reports.push(report);
+      },
+    );
   if (onSharedInboxKey != null) {
     inboxListeners.setSharedKeyDispatcher(() => {
       onSharedInboxKey();
@@ -197,7 +203,7 @@ function setup(
         recipient: ctx.recipient,
       });
     });
-  return { federation, received, kv, queue };
+  return { federation, received, kv, queue, reports };
 }
 
 let activityCounter = 0;
@@ -347,6 +353,59 @@ test("Federation.fetch() refuses portable inbox deliveries it does not accept", 
   await t.step("listeners are not called", () => {
     assertEquals(received.length, 0);
     assertEquals(accepting.received.length, 0);
+  });
+});
+
+test("onRequestFinished retains crypto success when a portable activity's DID mismatches", async () => {
+  const { federation, reports, received } = setup();
+  const signingKeyId = new URL(
+    `${otherDid}#${otherDid.substring("did:key:".length)}`,
+  );
+  const activity = await signObject(
+    new Follow({
+      id: parseIri(`ap+ef61://${did}/follows/mismatched-report`),
+      actor: parseIri(`ap+ef61://${otherDid}/users/bob`),
+      object: parseIri(`ap+ef61://${did}/users/alice`),
+    }),
+    otherKeyPair.privateKey,
+    signingKeyId,
+    { contextLoader: mockDocumentLoader },
+  );
+  const response = await federation.fetch(
+    post(
+      inboxUrl(),
+      await activity.toJsonLd({ contextLoader: mockDocumentLoader }),
+    ),
+    { contextData: undefined },
+  );
+  assertEquals(response.status, 401);
+  assertEquals(received.length, 0);
+  assertEquals(reports.length, 1);
+  const report = reports[0];
+  assert(report.authentication.status === "rejected");
+  assert(report.authentication.reason.type === "proofPolicy");
+  assertEquals(report.authentication.reason.policy, "portableActivity");
+  assertEquals(
+    report.authentication.reason.detail?.type,
+    "verificationMethodMismatch",
+  );
+  assert(
+    report.attempts.some((attempt) =>
+      attempt.mechanism === "objectIntegrity" &&
+      attempt.checks.some((check) => check.status === "verified")
+    ),
+  );
+  assert(
+    report.attempts.some((attempt) =>
+      attempt.status === "rejected" && attempt.reason.type === "proofPolicy" &&
+      attempt.reason.reason.type === "verificationMethodMismatch"
+    ),
+  );
+  assertEquals(report.outcome, {
+    type: "response",
+    status: 401,
+    disposition: "rejected",
+    reason: "authentication",
   });
 });
 
@@ -2171,4 +2230,53 @@ test("Federation.fetch() keeps ordinary inbox deliveries unchanged", async () =>
   assertEquals(response.status, 202);
   assertEquals(received.length, 1);
   assertEquals(queue.outbox.length, 0);
+});
+
+test("onRequestFinished covers portable ingress and recipient lookup failures", async () => {
+  const { federation, reports } = setup({
+    options: { portableInboxForwarding: { maxTargets: 0 } },
+  });
+  const response = await federation.fetch(
+    post(inboxUrl(), await signedFollow()),
+    { contextData: undefined },
+  );
+  assertEquals(response.status, 202);
+  assertEquals(reports.length, 1);
+  assertEquals(reports[0].inbox, { kind: "portable", recipient: "alice" });
+  assertEquals(reports[0].authentication.status, "verified");
+  assert(
+    reports[0].attempts.some((attempt) =>
+      attempt.subject.pointer === "" && attempt.status === "verified"
+    ),
+  );
+  const absent = setup({ actor: () => null });
+  assertEquals(
+    (await absent.federation.fetch(post(inboxUrl(), {}), {
+      contextData: undefined,
+    })).status,
+    404,
+  );
+  assertEquals(absent.reports[0].payload, { status: "unavailable" });
+  assertEquals(absent.reports[0].authentication, { status: "notDetermined" });
+  const failure = new Error("recipient lookup failed");
+  const broken = setup({
+    actor: () => {
+      throw failure;
+    },
+  });
+  let thrown: unknown;
+  try {
+    await broken.federation.fetch(post(inboxUrl(), {}), {
+      contextData: undefined,
+    });
+  } catch (error) {
+    thrown = error;
+  }
+  assertEquals(thrown, failure);
+  assertEquals(broken.reports.length, 1);
+  assertEquals(broken.reports[0].outcome, {
+    type: "exception",
+    stage: "prepare",
+    error: failure,
+  });
 });
