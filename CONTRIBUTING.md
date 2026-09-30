@@ -289,9 +289,10 @@ describe("my feature", () => {
 });
 ~~~~
 
-The `@fedify/fedify` and `@fedify/vocab` packages are exceptions.  Their
-Cloudflare Workers test harness consumes the `testDefinitions` registry from
-the private `@fedify/fixture` package, so their tests must use its `test()`
+The `@fedify/fedify` and `@fedify/vocab` packages are exceptions.  Selected
+tests from these packages and `@fedify/vocab-runtime` run in the Cloudflare
+Workers harness through the `testDefinitions` registry from the private
+`@fedify/fixture` package, so tests included there must use its `test()`
 wrapper:
 
 ~~~~ typescript

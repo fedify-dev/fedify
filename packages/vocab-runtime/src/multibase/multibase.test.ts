@@ -1,5 +1,5 @@
 import { deepStrictEqual } from "node:assert";
-import { test } from "node:test";
+import { test } from "@fedify/fixture";
 import * as constants from "./constants.ts";
 import { decodeMultibase, encodeMultibase } from "./mod.ts";
 import type { BaseName } from "./types.d.ts";
@@ -76,7 +76,7 @@ test("multibase.encode and decode", async (t) => {
   ];
 
   for (const [name, input, expectedOutput] of testCases) {
-    await t.test(`Encoding/Decoding ${name} with ${input}`, () => {
+    await t.step(`Encoding/Decoding ${name} with ${input}`, () => {
       const encoded = encodeMultibase(name, encodeText(input));
       deepStrictEqual(
         decodeText(encoded),
@@ -96,7 +96,7 @@ test("multibase.encode and decode", async (t) => {
     });
   }
 
-  await t.test("should allow base32pad full alphabet", () => {
+  await t.step("should allow base32pad full alphabet", () => {
     const encodedStr = "ctimaq4ygg2iegci7";
     const decoded = decodeMultibase(encodedStr);
     const encoded = encodeMultibase("c", decoded);
@@ -105,12 +105,12 @@ test("multibase.encode and decode", async (t) => {
 });
 
 test("constants", async (t) => {
-  await t.test("constants indexed by name", () => {
+  await t.step("constants indexed by name", () => {
     const names = constants.names;
     deepStrictEqual(Object.keys(names).length, 23);
   });
 
-  await t.test("constants indexed by code", () => {
+  await t.step("constants indexed by code", () => {
     const codes = constants.codes;
     deepStrictEqual(Object.keys(codes).length, 23);
   });
