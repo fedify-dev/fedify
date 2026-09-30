@@ -1,0 +1,31 @@
+{
+  "url": "http://127.0.0.1:18497/.well-known/apgateway/did:key:z6MkuLKdSc7GHbgu9zDC8sZEjSbhAn7GzoHKXxsgsGNPakpB/actor/inbox",
+  "method": "POST",
+  "headers": [
+    [
+      "content-digest",
+      "sha-256=:NGEDJ4axbB7yS73hitYgyz9PM1NF6ouUEbniRUZNW1I=:"
+    ],
+    [
+      "content-type",
+      "application/activity+json"
+    ],
+    [
+      "date",
+      "Wed, 30 Sep 2026 14:54:41 GMT"
+    ],
+    [
+      "host",
+      "127.0.0.1:18497"
+    ],
+    [
+      "signature",
+      "sig1=:AAAA:"
+    ],
+    [
+      "signature-input",
+      "sig1=(\"@method\" \"@target-uri\" \"@authority\" \"host\" \"date\" \"content-digest\");alg=\"rsa-v1_5-sha256\";keyid=\"https://fedify.example/.well-known/apgateway/did:key:z6MkprFq1ktAGdazKPpRaCJg11dHcRtjf8ZPXMvP3uauVw2f/actor#main-key\";created=1790780081"
+    ]
+  ],
+  "capturedAt": "2026-09-30T14:54:41.452Z"
+}

@@ -126,12 +126,32 @@ v0.25.4 does not recognize compatible actor IDs with an explicit port. Its
 inbox authenticated the activity through its proof and skipped HTTP Signature
 verification. The request carried a gateway RSA signature, but this result
 does not establish independent acceptance of that signature by tootik.
-Bidirectional Mitra interoperability and Mastodon compatibility remain
-unverified.
+
+Mitra v5.10.0 (commit `17340ef09d4a902f301acdcfde094f5778d72f35`) accepted
+a Fedify-generated portable actor registration and processed its setup
+activities. A separate portable Fedify sender, which had no registered Mitra
+account, then delivered a `Create` to the registered actor's inbox. This used
+native Fedify objects, default signing contexts, and `Context.sendActivity()`
+with `normalizeExistingProofs: true`. Mitra returned HTTP 202 on the first RFC
+9421 RSA request and its worker stored the sender's activity in the recipient's
+inbox. Corrupting the HTTP Signature returned HTTP 401. This required
+serializing `gateways` as origins without a trailing slash; Mitra rejected the
+previous spelling with `invalid gateway URL`.
+
+Gateway registration used a separate scratch client for Mitra's FEP-ae97
+endpoint; Fedify does not provide that client. Its setup `Update` used a
+compact context and Fedify's existing internal outgoing normalizer because
+Mitra's embedded-object limit rejected the default actor context. This setup
+workaround was separate from the native server-to-server delivery. The
+[Fedify to Mitra fixture] records the results and limitations, including the
+portless HTTPS gateway used for the sender because Mitra's WebFinger lookup
+drops explicit gateway ports. Mitra to
+Fedify verification remains separate work, as does Mastodon compatibility.
 
 [tootik fixture]: packages/fedify/test-vectors/fep-ef61/tootik-v0.25.4/README.md
 [tootik Follow fixture]: packages/fedify/test-vectors/fep-ef61/tootik-v0.25.4/follow/README.md
 [Fedify to tootik fixture]: packages/fedify/test-vectors/fep-ef61/tootik-v0.25.4/send/README.md
+[Fedify to Mitra fixture]: packages/fedify/test-vectors/fep-ef61/mitra-v5.10.0/send/README.md
 
 
 ActivityPub

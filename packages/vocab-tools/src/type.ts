@@ -340,10 +340,10 @@ const scalarTypes: Record<string, ScalarType> = {
       return `${v} instanceof URL && isGatewayUrl(${v})`;
     },
     encoder(v) {
-      return `{ "@id": formatIri(${v}) }`;
+      return `{ "@id": ${v}.origin }`;
     },
     compactEncoder(v) {
-      return `formatIri(${v})`;
+      return `${v}.origin`;
     },
     dataCheck(v) {
       return `${v} != null && typeof ${v} === "object" &&

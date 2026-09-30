@@ -1,0 +1,46 @@
+{
+  "implementation": "Mitra",
+  "version": "5.10.0",
+  "direction": "Fedify to Mitra",
+  "capturedAt": "2026-09-30T14:54:41.299Z",
+  "source": {
+    "repository": "https://codeberg.org/silverpill/mitra",
+    "tag": "v5.10.0",
+    "commit": "17340ef09d4a902f301acdcfde094f5778d72f35",
+    "image": "codeberg.org/silverpill/mitra@sha256:4348ddea1d819f654cd3e6be4e955b3933d1d21807c6a9a8ef64eda4333f1d0a",
+    "binaryVersion": "mitra 5.10.0"
+  },
+  "fedify": {
+    "baseCommit": "13640da6",
+    "patch": "gateway scalar encoder URL.origin, regenerated vocab.ts",
+    "actorImplementation": "native Person, no subclass",
+    "setup": "C2S registration/Update/Create use public signObject context option with compact contexts and existing private normalizeOutgoingActivityJsonLd for protocol setup; not application-level public C2S API evidence",
+    "nativeServerToServer": "default signObject contexts for Note/Create; Context.sendActivity normalizeExistingProofs:true",
+    "defaultSetupLimit": "Native default-context Person registration returned 201; embedded Update returned 400 (too many embedded objects) under Mitra's limit of 20 recursively counted JSON objects. Additional diagnostic captures are outside this fixture."
+  },
+  "sha256": {
+    "requestBody": "3461032786b16c1ef24bbde18ad620cb3f4f335345ea8b9411b9e245464d5b52",
+    "actorBody": "929d8261e6cad24c5fba8dea51d657ce2533659414f92bfa22274e3f327402e0",
+    "servedActorBody": "f24c677b3854353c272c29164342f94f420b7570aaf2999d1ea179c7c24ba4bc",
+    "baselineGatewayBody": "67d10fbd74702a45697a310830439360b3f355af370bccbeea2a09b3000016f0"
+  },
+  "actorBodyProvenance": "Exact native sender B actor callback response captured by the live harness",
+  "servedActorBodyProvenance": "Mitra-served registered recipient A actor; used as registration context, not sender B key ownership",
+  "observed": {
+    "registrationStatus": 201,
+    "nativeSendSpec": "rfc9421",
+    "nativeSendAttempts": 1,
+    "nativeSendStatus": 202,
+    "workerProcessedCreate": true,
+    "tamperedHttpSignatureStatus": 401,
+    "baselineGatewayStatus": 400,
+    "baselineGatewayError": "invalid gateway URL",
+    "distinctSender": true,
+    "senderRegisteredAtMitra": false,
+    "recipientRegisteredAtMitra": true,
+    "noteProcessedAsPost": true
+  },
+  "senderDid": "did:key:z6MkprFq1ktAGdazKPpRaCJg11dHcRtjf8ZPXMvP3uauVw2f",
+  "recipientDid": "did:key:z6MkuLKdSc7GHbgu9zDC8sZEjSbhAn7GzoHKXxsgsGNPakpB",
+  "strategy": "Unregistered distinct native Fedify Person B to registered Mitra portable recipient A; default signObject contexts; public normalizeExistingProofs:true; no JSON mutation"
+}

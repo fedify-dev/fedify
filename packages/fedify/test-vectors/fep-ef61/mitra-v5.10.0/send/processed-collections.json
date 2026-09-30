@@ -1,0 +1,13 @@
+{
+  "capturedAt": "2026-09-30T14:55:03.869598+00:00",
+  "query": "SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) FROM (SELECT c.collection_id,c.object_id,o.object_data->>'type' AS type,o.object_data->>'actor' AS actor,o.created_at FROM activitypub_collection_item c JOIN activitypub_object o USING(object_id) WHERE c.collection_id LIKE '%did:key:z6MkuLKdSc7GHbgu9zDC8sZEjSbhAn7GzoHKXxsgsGNPakpB%' AND c.object_id LIKE '%did:key:z6MkprFq1ktAGdazKPpRaCJg11dHcRtjf8ZPXMvP3uauVw2f%' ORDER BY c.collection_id,c.object_id) t",
+  "rows": [
+    {
+      "collection_id": "ap://did:key:z6MkuLKdSc7GHbgu9zDC8sZEjSbhAn7GzoHKXxsgsGNPakpB/actor/inbox",
+      "object_id": "ap://did:key:z6MkprFq1ktAGdazKPpRaCJg11dHcRtjf8ZPXMvP3uauVw2f/creates/distinct-native-inbox",
+      "type": "Create",
+      "actor": "https://fedify.example/.well-known/apgateway/did:key:z6MkprFq1ktAGdazKPpRaCJg11dHcRtjf8ZPXMvP3uauVw2f/actor",
+      "created_at": "2026-09-30T14:54:42.256068+00:00"
+    }
+  ]
+}

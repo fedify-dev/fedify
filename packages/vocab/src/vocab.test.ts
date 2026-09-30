@@ -713,12 +713,51 @@ test("FEP-ef61: actor gateways round-trip as an ordered URI list", async () => {
     });
     deepStrictEqual(actor.gateways, gateways);
 
-    const jsonLd = await actor.toJsonLd() as Record<string, unknown>;
+    const jsonLd = await actor.toJsonLd({
+      format: "compact",
+    }) as Record<string, unknown>;
     deepStrictEqual(jsonLd.type, ActorClass.name);
-    deepStrictEqual(jsonLd.gateways, gateways.map((gateway) => gateway.href));
+    deepStrictEqual(jsonLd.gateways, gateways.map((gateway) => gateway.origin));
 
     const restored = await ActorClass.fromJsonLd(jsonLd);
     deepStrictEqual(restored.gateways, gateways);
+  }
+});
+
+test("FEP-ef61: actor gateways serialize as origins", async () => {
+  const actorClasses = [Application, Group, Organization, Person, Service];
+  const gateways = [
+    new URL("https://first.example:443/"),
+    new URL("http://second.example:80/"),
+    new URL("https://third.example:8443/"),
+    new URL("http://fourth.example:8080/"),
+  ];
+  const origins = [
+    "https://first.example",
+    "http://second.example",
+    "https://third.example:8443",
+    "http://fourth.example:8080",
+  ];
+  for (const ActorClass of actorClasses) {
+    const actor = new ActorClass({
+      id: parseIri("ap://did:key:z6Mkabc/actor"),
+      gateways,
+    });
+    const compact = await actor.toJsonLd() as Record<string, unknown>;
+    deepStrictEqual(compact.gateways, origins);
+    const expanded = await actor.toJsonLd({
+      format: "expand",
+    }) as Record<string, unknown>[];
+    deepStrictEqual(expanded[0]["https://w3id.org/fep/ef61/gateways"], [
+      { "@list": origins.map((origin) => ({ "@id": origin })) },
+    ]);
+    deepStrictEqual(actor.gateways, gateways);
+    deepStrictEqual(
+      actor.gateways.map((gateway) => gateway.href),
+      origins.map((origin) => `${origin}/`),
+    );
+    deepStrictEqual((await ActorClass.fromJsonLd(compact)).gateways, gateways);
+    deepStrictEqual((await ActorClass.fromJsonLd(expanded)).gateways, gateways);
   }
 });
 
@@ -798,7 +837,7 @@ test("FEP-ef61: actor gateways preserve single, empty, and invalid cases", async
   });
   deepStrictEqual(
     (await singleGateway.toJsonLd() as Record<string, unknown>).gateways,
-    ["https://server.example/"],
+    ["https://server.example"],
   );
 
   const noGateways = new Person({

@@ -69292,7 +69292,7 @@ get gateways(): (URL)[] {
       compactItems = [];
       for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
         const item = (
-      formatIri(v)
+      v.origin
         );
         compactItems.push(item);
       }
@@ -69801,7 +69801,7 @@ get gateways(): (URL)[] {
     array = [];
     for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
       let element = (
-    { \\"@id\\": formatIri(v) }
+    { \\"@id\\": v.origin }
       );
       if (Array.isArray(element)) {
         if (element.length < 1) continue;
@@ -90390,7 +90390,7 @@ get gateways(): (URL)[] {
       compactItems = [];
       for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
         const item = (
-      formatIri(v)
+      v.origin
         );
         compactItems.push(item);
       }
@@ -90899,7 +90899,7 @@ get gateways(): (URL)[] {
     array = [];
     for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
       let element = (
-    { \\"@id\\": formatIri(v) }
+    { \\"@id\\": v.origin }
       );
       if (Array.isArray(element)) {
         if (element.length < 1) continue;
@@ -110117,7 +110117,7 @@ get gateways(): (URL)[] {
       compactItems = [];
       for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
         const item = (
-      formatIri(v)
+      v.origin
         );
         compactItems.push(item);
       }
@@ -110626,7 +110626,7 @@ get gateways(): (URL)[] {
     array = [];
     for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
       let element = (
-    { \\"@id\\": formatIri(v) }
+    { \\"@id\\": v.origin }
       );
       if (Array.isArray(element)) {
         if (element.length < 1) continue;
@@ -121140,7 +121140,7 @@ get gateways(): (URL)[] {
       compactItems = [];
       for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
         const item = (
-      formatIri(v)
+      v.origin
         );
         compactItems.push(item);
       }
@@ -121649,7 +121649,7 @@ get gateways(): (URL)[] {
     array = [];
     for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
       let element = (
-    { \\"@id\\": formatIri(v) }
+    { \\"@id\\": v.origin }
       );
       if (Array.isArray(element)) {
         if (element.length < 1) continue;
@@ -140573,7 +140573,7 @@ get gateways(): (URL)[] {
       compactItems = [];
       for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
         const item = (
-      formatIri(v)
+      v.origin
         );
         compactItems.push(item);
       }
@@ -141082,7 +141082,7 @@ get gateways(): (URL)[] {
     array = [];
     for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
       let element = (
-    { \\"@id\\": formatIri(v) }
+    { \\"@id\\": v.origin }
       );
       if (Array.isArray(element)) {
         if (element.length < 1) continue;

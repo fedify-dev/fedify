@@ -1,0 +1,34 @@
+{
+  "status": 201,
+  "headers": [
+    [
+      "access-control-expose-headers",
+      "content-type"
+    ],
+    [
+      "content-length",
+      "867"
+    ],
+    [
+      "content-security-policy",
+      "base-uri 'self'; connect-src 'self' *; default-src 'none'; frame-ancestors 'none'; img-src 'self' data:; manifest-src 'self'; media-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self'"
+    ],
+    [
+      "content-type",
+      "application/json"
+    ],
+    [
+      "date",
+      "Wed, 30 Sep 2026 14:46:57 GMT"
+    ],
+    [
+      "vary",
+      "Origin, Access-Control-Request-Method, Access-Control-Request-Headers"
+    ],
+    [
+      "x-content-type-options",
+      "nosniff"
+    ]
+  ],
+  "body": "{\"assertionMethod\":[{\"id\":\"ap://did:key:z6MkuLKdSc7GHbgu9zDC8sZEjSbhAn7GzoHKXxsgsGNPakpB/actor#main-key\",\"type\":\"Multikey\",\"controller\":\"ap://did:key:z6MkuLKdSc7GHbgu9zDC8sZEjSbhAn7GzoHKXxsgsGNPakpB/actor\",\"publicKeyMultibase\":\"z4MXj1wBzi9jUstyPQj1tJmBTCJQwSmgdEH3r3AcgJRwZBMkP3rY67NfsjsVyeRAH24e8frWsjLuhKJ3G9yRWp2R848U8Yeh8kNyR9GF2vmGEi6BHNEqhGnZMMQnAnLovqzQ7p9vfSsHUYU19yrzEwCSFumsDkk4np96HCjbkpejfNkDDAjPexavs9KSdovfFhJdb1uy4wcyG3ynZFSKsyPQyEUVFd72ufLKgG4h8j4fNHqwzvVQG1tRnqMqzFgS6uXJfftXGsAC6QVE5keYdicLvJ6n2t5UrCsVSeoMwgSuDpXVB8vXuhFkxNz4v2bKBHuHVUzA7cKWxoY5gaczcq4on1P23vsRbtxhkWUQgUA4KMenYWDLk\"},{\"id\":\"ap://did:key:z6MkuLKdSc7GHbgu9zDC8sZEjSbhAn7GzoHKXxsgsGNPakpB/actor#ed25519-key\",\"type\":\"Multikey\",\"controller\":\"ap://did:key:z6MkuLKdSc7GHbgu9zDC8sZEjSbhAn7GzoHKXxsgsGNPakpB/actor\",\"publicKeyMultibase\":\"z6MknVDBdr3PRNFK35WPFbHxy7m5g18iuoSTht4vRwzt9WKq\"}]}"
+}
