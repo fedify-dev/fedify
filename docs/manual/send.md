@@ -192,6 +192,7 @@ export interface Recipient {
   readonly endpoints?: {
     sharedInbox: URL | null;
   } | null;
+  readonly gateways?: readonly URL[];
 }
 ~~~~
 
