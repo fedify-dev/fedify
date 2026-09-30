@@ -985,11 +985,16 @@ async function getPortableActor(
 
 If the actor dispatcher returns an actor whose ID is a compatible identifier
 that is malformed, e.g., has `@gateway` location hints, or is not on the
-actor's first gateway, Fedify logs a warning.  It does not check the
-compatible identifiers of activities and objects against the first gateway,
-as it does not know their actors' `gateways`, except that it warns when
-an activity and its actor are identified by compatible identifiers on
-different gateways.
+actor's first gateway, Fedify logs a warning.  It also checks the
+compatible identifiers of objects returned by object dispatchers and of
+activities and their embedded objects sent by `Context.sendActivity()` against
+the owner's first gateway when the local actor document is available.  The
+warning does not reject or change the object.  An outgoing activity can also
+carry an embedded actor document with its gateways when the actor-dehydrating
+activity transformer is disabled; otherwise a send from a plain `Context`
+cannot check the first gateway without fetching that actor.
+Fedify still warns when an activity and its actor use compatible identifiers
+on different gateways.
 
 A WebFinger query for the compatible identifier itself does not match the
 actor dispatcher's path, so map it back to the actor's identifier through

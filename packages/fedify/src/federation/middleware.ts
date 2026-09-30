@@ -106,6 +106,7 @@ import {
   handleBenchmarkTrigger,
 } from "./bench.ts";
 import { ACTOR_ALIAS_PREFIX, FederationBuilderImpl } from "./builder.ts";
+import { warnCompatibleIdsInJson } from "./compatible-id-warning.ts";
 import type { OutboxErrorHandler } from "./callback.ts";
 import {
   CircuitBreaker,
@@ -5451,6 +5452,23 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       activityId: activity.id?.href,
       activity,
     });
+    const activityJsonLd = await activity.toJsonLd({
+      format: "compact",
+      contextLoader: this.contextLoader,
+    });
+    try {
+      await warnCompatibleIdsInJson(
+        activityJsonLd,
+        this instanceof RequestContextImpl && !this.isInActorDispatcher()
+          ? this
+          : undefined,
+      );
+    } catch (error) {
+      logger.debug(
+        "Could not check the first gateway of activity {activityId}: {error}",
+        { activityId: activity.id?.href, error },
+      );
+    }
     if (
       this.federation.fanoutQueue == null || options.immediate ||
       options.fanout === "skip" || (options.fanout ?? "auto") === "auto" &&
@@ -5458,15 +5476,12 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
     ) {
       await this.federation.sendActivity(keys, inboxes, activity, {
         ...opts,
+        activityJsonLd,
         normalizeExistingProofs: proofCreated ||
           options.normalizeExistingProofs,
       });
       return true;
     }
-    const activityJsonLd = await activity.toJsonLd({
-      format: "compact",
-      contextLoader: this.contextLoader,
-    });
     // Reject before anything is enqueued, so the caller learns about it
     // instead of the fanout worker.
     assertSupportedCompoundProofShape(activityJsonLd, activity.id?.href);
@@ -5782,6 +5797,11 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
     values: Record<string, string>;
   };
   readonly request: Request;
+
+  /** Whether a diagnostic actor lookup would re-enter the actor dispatcher. */
+  isInActorDispatcher(): boolean {
+    return this.#invokedFromActorDispatcher != null;
+  }
   // deno-lint-ignore no-explicit-any
   override readonly url: URL = undefined as any;
   // An own property, so that the contexts derived by spreading this one, e.g.,

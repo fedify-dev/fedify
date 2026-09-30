@@ -326,6 +326,11 @@ To be released.
         is a malformed compatible identifier or is not on its first gateway,
         as FEP-ef61 requires.
 
+     -  Fedify now warns when a served object, or a sent activity and its
+        embedded objects, use compatible identifiers away from the owner's
+        first gateway when that gateway is known locally.  The warning does
+        not change what is served or sent.  [[#1155], [#1188]]
+
  -  Added the `Context.getPortableActorUri()` method, which builds the
     [FEP-ef61] portable ID of an actor from its actor dispatcher's path and
     a DID, e.g., `ap+ef61://did:key:z6Mk.../users/alice`.  Like
@@ -830,6 +835,7 @@ To be released.
 [#1147]: https://github.com/fedify-dev/fedify/issues/1147
 [#1148]: https://github.com/fedify-dev/fedify/issues/1148
 [#1153]: https://github.com/fedify-dev/fedify/issues/1153
+[#1155]: https://github.com/fedify-dev/fedify/issues/1155
 [#1163]: https://github.com/fedify-dev/fedify/issues/1163
 [#1164]: https://github.com/fedify-dev/fedify/pull/1164
 [#1165]: https://github.com/fedify-dev/fedify/pull/1165
@@ -840,6 +846,7 @@ To be released.
 [#1178]: https://github.com/fedify-dev/fedify/pull/1178
 [#1180]: https://github.com/fedify-dev/fedify/pull/1180
 [#1183]: https://github.com/fedify-dev/fedify/pull/1183
+[#1188]: https://github.com/fedify-dev/fedify/pull/1188
 
 ### @fedify/adonisjs
 

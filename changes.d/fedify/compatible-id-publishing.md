@@ -2,6 +2,8 @@
 links:
   '#1106': https://github.com/fedify-dev/fedify/issues/1106
   '#1109': https://github.com/fedify-dev/fedify/pull/1109
+  '#1155': https://github.com/fedify-dev/fedify/issues/1155
+  '#1188': https://github.com/fedify-dev/fedify/pull/1188
   '#288': https://github.com/fedify-dev/fedify/issues/288
 ---
  -  Added support for publishing [FEP-ef61] portable actors and objects whose
@@ -38,5 +40,10 @@ links:
         URIs do not match the URIs that `Context` builds, but warn if its ID
         is a malformed compatible identifier or is not on its first gateway,
         as FEP-ef61 requires.
+
+     -  Fedify now warns when a served object, or a sent activity and its
+        embedded objects, use compatible identifiers away from the owner's
+        first gateway when that gateway is known locally.  The warning does
+        not change what is served or sent.  [[#1155], [#1188]]
 
 [FEP-ef61]: https://w3id.org/fep/ef61

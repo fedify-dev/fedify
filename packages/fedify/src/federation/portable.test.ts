@@ -1561,6 +1561,161 @@ async function captureWarnings(run: () => unknown): Promise<LogRecord[]> {
   return records.filter((record) => record.category[0] === "fedify");
 }
 
+test("object responses warn about compatible IDs off the owner's first gateway", async () => {
+  const federation = createTestFederation();
+  const ownerId = parseIri(`ap://${did}/users/alice`);
+  const gateways = [
+    new URL("https://primary.example"),
+    new URL("https://secondary.example"),
+  ];
+  const secondary = await sign(
+    new Note({
+      id: toCompatibleEf61Id(
+        parseIri(`ap://${did}/notes/secondary`),
+        gateways[1],
+      ),
+      attribution: ownerId,
+      to: PUBLIC_COLLECTION,
+      content: "Hello",
+    }),
+  );
+  let actorCalls = 0;
+  let actorLookupFails = false;
+  federation.setActorDispatcher("/users/{identifier}", (_ctx, identifier) => {
+    actorCalls++;
+    if (actorLookupFails) throw new Error("Actor storage unavailable");
+    return identifier === "alice"
+      ? new Person({ id: ownerId, gateways })
+      : null;
+  });
+  federation.setObjectDispatcher(Note, "/notes/{id}", async (_ctx, values) => {
+    if (values.id === "secondary") return secondary;
+    const id = values.id === "portable"
+      ? parseIri(`ap://${did}/notes/portable`)
+      : values.id === "ordinary"
+      ? new URL("https://example.com/notes/ordinary")
+      : toCompatibleEf61Id(
+        parseIri(`ap://${did}/notes/${values.id}`),
+        values.id === "secondary" || values.id === "retained"
+          ? gateways[1]
+          : gateways[0],
+      );
+    const note = new Note({
+      id,
+      attribution: ownerId,
+      to: PUBLIC_COLLECTION,
+      content: "Hello",
+    });
+    if (values.id === "retained") {
+      const signed = await sign(note);
+      const raw = await signed.toJsonLd({
+        format: "compact",
+        contextLoader: mockDocumentLoader,
+      });
+      const parsed = await Note.fromJsonLd(raw, {
+        contextLoader: mockDocumentLoader,
+        documentLoader: mockDocumentLoader,
+      });
+      parsed.id!.hostname = "primary.example";
+      return parsed;
+    }
+    return note;
+  });
+  federation.setObjectDispatcher(
+    Create,
+    "/activities/{id}",
+    (_ctx, values) =>
+      new Create({
+        id: toCompatibleEf61Id(
+          parseIri(`ap://${did}/activities/${values.id}`),
+          gateways[1],
+        ),
+        actor: ownerId,
+      }),
+  );
+  for (
+    const [id, expected] of [
+      ["secondary", 1],
+      ["retained", 1],
+      ["primary", 0],
+      ["portable", 0],
+      ["ordinary", 0],
+    ] as const
+  ) {
+    const records = await captureWarnings(async () => {
+      const response = await federation.fetch(
+        new Request(`https://example.com/notes/${id}`, {
+          headers: { Accept: ACCEPT },
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 200);
+      const body = await response.json() as { id: string; type: string };
+      assertEquals(body.type, "Note");
+      if (id === "retained") {
+        assertEquals(
+          body.id,
+          `https://secondary.example/.well-known/apgateway/${did}/notes/retained`,
+        );
+      }
+    });
+    assertEquals(
+      records.filter((r) => r.properties.kind === "object").length,
+      expected,
+      id,
+    );
+  }
+  const activityRecords = await captureWarnings(async () => {
+    const response = await federation.fetch(
+      new Request("https://example.com/activities/1", {
+        headers: { Accept: ACCEPT },
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 200);
+  });
+  assertEquals(
+    activityRecords.filter((r) => r.properties.kind === "activity").length,
+    1,
+  );
+  for (const id of ["secondary", "retained"]) {
+    const gatewayRecords = await captureWarnings(async () => {
+      const response = await federation.fetch(
+        gatewayRequest(`/notes/${id}`),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 200);
+    });
+    assertEquals(
+      gatewayRecords.filter((r) => r.properties.kind === "object").length,
+      1,
+    );
+  }
+  actorLookupFails = true;
+  const expectedBody = await secondary.toJsonLd({
+    format: "compact",
+    contextLoader: mockDocumentLoader,
+  });
+  for (
+    const request of [
+      new Request("https://example.com/notes/secondary", {
+        headers: { Accept: ACCEPT },
+      }),
+      gatewayRequest("/notes/secondary"),
+    ]
+  ) {
+    const records = await captureWarnings(async () => {
+      const response = await federation.fetch(request, {
+        contextData: undefined,
+      });
+      assertEquals(response.status, 200);
+      assertEquals(await response.json(), expectedBody);
+    });
+    assertEquals(records.filter((r) => r.properties.kind != null), []);
+  }
+  assertEquals(actorCalls, 8);
+});
+
 test("Federation.fetch() serves compatible-ID actors", async (t) => {
   const federation = createTestFederation();
   const actorGateways: Record<string, string[]> = {
