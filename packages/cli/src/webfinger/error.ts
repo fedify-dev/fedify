@@ -10,6 +10,10 @@ import { type Message, message } from "@optique/core";
 export const getErrorMessage = (resource: string, error: unknown): Message =>
   error instanceof InvalidHandleError
     ? message`Invalid handle format: ${error.handle}`
+    : error instanceof PortableActorError
+    ? message`Failed to look up the portable actor ${error.resource}, as ${error.reason}.`
+    : error instanceof UnlinkedPortableActorError
+    ? message`${error.address} does not link back to the portable actor ${error.actorId}, so it is not verified to be the actor's WebFinger address:`
     : error instanceof NotFoundError
     ? message`Resource not found: ${error.resource}`
     : error instanceof Error
@@ -43,5 +47,37 @@ export class NotFoundError extends Error {
   }
   throw(): never {
     throw this;
+  }
+}
+
+/**
+ * Custom error class for [FEP-ef61] portable actors whose WebFinger address
+ * cannot be determined.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
+ * @param resource The portable actor's ID.
+ * @param reason Why the WebFinger address cannot be determined.
+ * @extends {Error}
+ */
+export class PortableActorError extends Error {
+  constructor(public resource: string, public reason: string) {
+    super(`Failed to look up the portable actor ${resource}, as ${reason}.`);
+    this.name = "PortableActorError";
+  }
+}
+
+/**
+ * Custom error class for a WebFinger address that does not link back to
+ * the [FEP-ef61] portable actor that claims it.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
+ * @param address The WebFinger address, e.g., `acct:alice@example.com`.
+ * @param actorId The portable actor's ID.
+ * @extends {Error}
+ */
+export class UnlinkedPortableActorError extends Error {
+  constructor(public address: string, public actorId: string) {
+    super(`${address} does not link back to the portable actor ${actorId}.`);
+    this.name = "UnlinkedPortableActorError";
   }
 }

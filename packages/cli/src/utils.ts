@@ -9,6 +9,7 @@ import { spawn } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import process from "node:process";
 import util from "node:util";
+import { getIriKey } from "./portable.ts";
 
 export const colorEnabled: boolean = process.stdout.isTTY &&
   !("NO_COLOR" in process.env && process.env.NO_COLOR !== "");
@@ -29,22 +30,55 @@ export function formatObject(
   return formatted;
 }
 
+const URI_PATTERN = /^(?:https?|ap|ap\+ef61):/i;
+const HANDLE_PATTERN = /^@?[^@/\s]+@[^@/\s]+$/;
+
+/**
+ * Checks whether the actor matches any of the given actor URIs, handles, or
+ * the wildcard (`*`).  [FEP-ef61] portable actors match their `ap:` and
+ * `ap+ef61:` IDs and compatible identifiers regardless of `@gateway` location
+ * hints and the gateway of a compatible identifier.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
+ * @param actor The actor to check.
+ * @param actorList The actor URIs, handles, or wildcards.
+ * @param getHandle The function to get the actor's handle with.  It is called
+ *                  at most once, and only if the list has a handle.
+ * @returns `true` if the actor matches.
+ * @throws If the list has a handle, the actor's handle cannot be determined,
+ *         and the actor matches nothing else in the list.
+ */
 export async function matchesActor(
   actor: Actor,
   actorList: string[],
+  getHandle: (actor: Actor) => Promise<string> = getActorHandle,
 ): Promise<boolean> {
   const actorUri = actor.id;
-  let actorHandle: string | undefined = undefined;
   if (actorUri == null) return false;
-  for (let uri of actorList) {
-    if (uri == "*") return true;
-    if (uri.startsWith("http:") || uri.startsWith("https:")) {
-      uri = new URL(uri).href;
-      if (uri === actorUri.href) return true;
+  const actorKey = getIriKey(actorUri);
+  let actorHandle:
+    | Promise<{ handle: string } | { error: unknown }>
+    | undefined;
+  let handleError: { error: unknown } | undefined;
+  for (const entry of actorList) {
+    if (entry == "*") return true;
+    if (URI_PATTERN.test(entry)) {
+      const key = getIriKey(entry);
+      if (key != null && key === actorKey) return true;
+      continue;
     }
-    if (actorHandle == null) actorHandle = await getActorHandle(actor);
-    if (actorHandle === uri) return true;
+    if (!HANDLE_PATTERN.test(entry)) continue;
+    actorHandle ??= getHandle(actor).then(
+      (handle) => ({ handle }),
+      (error) => ({ error }),
+    );
+    const result = await actorHandle;
+    if ("error" in result) handleError = result;
+    else if (result.handle === entry) return true;
   }
+  // If the handle could not be determined, it is unknown whether the actor
+  // matches a handle in the list, so do not treat it as a non-match:
+  if (handleError != null) throw handleError.error;
   return false;
 }
 

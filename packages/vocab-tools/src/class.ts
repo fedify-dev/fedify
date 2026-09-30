@@ -313,6 +313,12 @@ function decodeIri(iri: string): URL {
     ? new URL("at://" + encodeURIComponent(iri.substring(5)))
     : parseIri(iri);
 }
+
+function inspectIri(iri: URL): string {
+  // Inspecting an object must not throw, even for a URL that cannot be
+  // formatted as an IRI, e.g., a malformed portable ID:
+  try { return formatIri(iri); } catch { return iri.href; }
+}
 `;
   yield `
 function isValidLanguageTag(language: string): boolean {
