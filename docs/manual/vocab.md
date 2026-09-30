@@ -613,6 +613,40 @@ SHA-256 digests and simple `hl:` URIs without metadata; malformed values,
 unsupported hash algorithms, metadata-bearing hashlinks, and legacy `?hl=`
 URLs cause a `TypeError`.
 
+Use `fetchPortableMedia()` to retrieve a portable object's external media and
+receive it only after its digest has been verified.  Supply the owner's
+gateways in their advertised order for a hashlink:
+
+~~~~ typescript twoslash
+import { Image } from "@fedify/vocab";
+import { fetchPortableMedia } from "@fedify/vocab-runtime";
+
+declare const image: Image;
+declare const ownerGateways: URL[];
+// ---cut-before---
+const response = await fetchPortableMedia(image, {
+  gateways: ownerGateways,
+});
+const verifiedBytes = new Uint8Array(await response.arrayBuffer());
+~~~~
+
+For an HTTP(S) resource, `fetchPortableMedia(image)` uses its `url` and
+`digestMultibase` directly.  A URL can also be passed with its expected digest
+in the options.  The digest is required for both HTTP(S) URLs and hashlinks;
+the hashlink's digest must agree with `digestMultibase`.  The function buffers
+at most 16 MiB by default, rejects any resource above that limit, and never
+returns bytes that fail verification.  Use `maxBytes` to choose another limit.
+It tries each gateway in order after a failed response or digest mismatch.
+
+The fetch uses the same private-address validation as document loaders by
+default, including on redirects.  `allowPrivateAddress` overrides that policy
+for trusted local deployments.  DNS resolution and the subsequent HTTP
+connection are separate operations, so this check does not fully prevent DNS
+rebinding.  Retrieval has a 10-second overall timeout and a 3-second timeout
+per gateway by default; use `timeout` and `gatewayTimeout` to change them.
+Only the verified response body and its server-provided `Content-Type` are
+returned.  The content type is metadata, not covered by the digest.
+
 
 Object IDs and remote objects
 -----------------------------

@@ -47,6 +47,11 @@ export {
   verifyHashlink,
 } from "./digest.ts";
 export { LanguageString } from "./langstr.ts";
+export {
+  fetchPortableMedia,
+  type FetchPortableMediaOptions,
+  type PortableMedia,
+} from "./portable-media.ts";
 export type {
   PortableObjectReferrer,
   PortableObjectVerification,
