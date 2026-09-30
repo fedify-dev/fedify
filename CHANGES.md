@@ -1538,6 +1538,54 @@ To be released.
 [#1035]: https://github.com/fedify-dev/fedify/pull/1035
 
 
+Version 2.3.10
+--------------
+
+Released on September 30, 2026.
+
+### @fedify/fedify
+
+ -  Fixed `Context.routeActivity()` passing the caller's unverified document to
+    inbox queues and forwarding after verifying a fetched activity.  Queued
+    listeners and forwarding now use the verified activity's document.
+    [[GHSA-39gj-rchc-q5m3]]
+ -  Fixed custom collections named with symbols so they can be served and
+    parsed, including ordered collections and pages.  Applications using
+    symbol names no longer need to replace them with strings.
+    [[#1144], [#1173]]
+
+[GHSA-39gj-rchc-q5m3]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-39gj-rchc-q5m3
+[#1144]: https://github.com/fedify-dev/fedify/issues/1144
+[#1173]: https://github.com/fedify-dev/fedify/pull/1173
+
+### @fedify/cfworkers
+
+ -  Fixed `WorkersKvStore` treating stored `null` values as missing keys when
+    reading or listing.  Applications can now store and retrieve `null`
+    without losing it.
+    [[#1175], [#1181]]
+
+[#1175]: https://github.com/fedify-dev/fedify/issues/1175
+[#1181]: https://github.com/fedify-dev/fedify/pull/1181
+
+### @fedify/denokv
+
+ -  Fixed `DenoKvStore` treating stored `null` values as missing keys when
+    reading, listing, or comparing values.  Applications can now store and
+    retrieve `null` without losing it.
+    [[#1175], [#1181]]
+
+### @fedify/lint
+
+ -  Fixed `outbox-listener-delivery-required` treating a delivery function
+    installed by an uncalled or late local setup helper as delivered.  The rule
+    now considers a direct setup call before the installed function is used.
+    [[#1126], [#1174]]
+
+[#1126]: https://github.com/fedify-dev/fedify/issues/1126
+[#1174]: https://github.com/fedify-dev/fedify/pull/1174
+
+
 Version 2.3.9
 -------------
 
@@ -2657,6 +2705,44 @@ Released on June 25, 2026.
 [#756]: https://github.com/fedify-dev/fedify/pull/756
 
 
+Version 2.2.15
+--------------
+
+Released on September 30, 2026.
+
+### @fedify/fedify
+
+ -  Fixed `Context.routeActivity()` passing the caller's unverified document to
+    inbox queues and forwarding after verifying a fetched activity.  Queued
+    listeners and forwarding now use the verified activity's document.
+    [[GHSA-39gj-rchc-q5m3]]
+ -  Fixed custom collections named with symbols so they can be served and
+    parsed, including ordered collections and pages.  Applications using
+    symbol names no longer need to replace them with strings.
+    [[#1144], [#1173]]
+
+### @fedify/cfworkers
+
+ -  Fixed `WorkersKvStore` treating stored `null` values as missing keys when
+    reading or listing.  Applications can now store and retrieve `null`
+    without losing it.
+    [[#1175], [#1181]]
+
+### @fedify/denokv
+
+ -  Fixed `DenoKvStore` treating stored `null` values as missing keys when
+    reading, listing, or comparing values.  Applications can now store and
+    retrieve `null` without losing it.
+    [[#1175], [#1181]]
+
+### @fedify/lint
+
+ -  Fixed `outbox-listener-delivery-required` treating a delivery function
+    installed by an uncalled or late local setup helper as delivered.  The rule
+    now considers a direct setup call before the installed function is used.
+    [[#1126], [#1174]]
+
+
 Version 2.2.14
 --------------
 
@@ -3515,6 +3601,37 @@ Released on April 28, 2026.
 [#706]: https://github.com/fedify-dev/fedify/issues/706
 [#715]: https://github.com/fedify-dev/fedify/pull/715
 [#722]: https://github.com/fedify-dev/fedify/pull/722
+
+
+Version 2.1.26
+--------------
+
+Released on September 30, 2026.
+
+### @fedify/fedify
+
+ -  Fixed `Context.routeActivity()` passing the caller's unverified document to
+    inbox queues and forwarding after verifying a fetched activity.  Queued
+    listeners and forwarding now use the verified activity's document.
+    [[GHSA-39gj-rchc-q5m3]]
+ -  Fixed custom collections named with symbols so they can be served and
+    parsed, including ordered collections and pages.  Applications using
+    symbol names no longer need to replace them with strings.
+    [[#1144], [#1173]]
+
+### @fedify/cfworkers
+
+ -  Fixed `WorkersKvStore` treating stored `null` values as missing keys when
+    reading or listing.  Applications can now store and retrieve `null`
+    without losing it.
+    [[#1175], [#1181]]
+
+### @fedify/denokv
+
+ -  Fixed `DenoKvStore` treating stored `null` values as missing keys when
+    reading, listing, or comparing values.  Applications can now store and
+    retrieve `null` without losing it.
+    [[#1175], [#1181]]
 
 
 Version 2.1.25
@@ -4524,6 +4641,35 @@ Released on March 24, 2026.
 [#586]: https://github.com/fedify-dev/fedify/issues/586
 [#597]: https://github.com/fedify-dev/fedify/pull/597
 [#599]: https://github.com/fedify-dev/fedify/pull/599
+
+
+Version 2.0.30
+--------------
+
+Released on September 30, 2026.
+
+### @fedify/fedify
+
+ -  Fixed `Context.routeActivity()` passing the caller's unverified document to
+    inbox queues and forwarding after verifying a fetched activity.  Queued
+    listeners and forwarding now use the verified activity's document.
+    [[GHSA-39gj-rchc-q5m3]]
+ -  Fixed custom collections named with symbols so they can be served and
+    parsed, including ordered collections and pages.  Applications using
+    symbol names no longer need to replace them with strings.
+    [[#1144], [#1173]]
+
+### @fedify/cfworkers
+
+ -  Fixed `WorkersKvStore` treating stored `null` values as missing keys when
+    reading or listing.  Applications can now store and retrieve `null`
+    without losing it.  [[#1175], [#1181]]
+
+### @fedify/denokv
+
+ -  Fixed `DenoKvStore` treating stored `null` values as missing keys when
+    reading, listing, or comparing values.  Applications can now store and
+    retrieve `null` without losing it.  [[#1175], [#1181]]
 
 
 Version 2.0.29

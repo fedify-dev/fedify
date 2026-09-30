@@ -78,16 +78,10 @@ class MockKvNamespace implements WorkersKvNamespaceLike {
     type: "json",
   ): Promise<KvGetWithMetadataResult<ExpectedValue, Metadata>>;
   getWithMetadata(key: string, type?: "json") {
-    if (type !== "json") {
-      throw new Error(
-        "MockKvNamespace only uses the JSON mode of getWithMetadata().",
-      );
-    }
-
     const entry = this.entries.get(key);
     if (entry == null) return Promise.resolve({ value: null, metadata: null });
     return Promise.resolve({
-      value: JSON.parse(entry.value),
+      value: type === "json" ? JSON.parse(entry.value) : entry.value,
       metadata: entry.metadata,
     });
   }

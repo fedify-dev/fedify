@@ -815,7 +815,8 @@ private serializeKey(key: KvKey): string {
 ### Implement `~KvStore.get()` method
 
 Retrieve the value associated with the key. Remember to handle cases where
-the key doesn't exist:
+the key doesn't exist.  Return `undefined` only for a missing key; `null` is a
+valid stored value:
 
 ~~~~ typescript twoslash
 import type { KvStore, KvKey, KvStoreSetOptions } from "@fedify/fedify";

@@ -5,6 +5,375 @@ import * as rule from "../rules/outbox-listener-delivery-required.ts";
 
 const ruleName = RULE_IDS.outboxListenerDeliveryRequired;
 
+const assignedDelivery = `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const target = { deliver: async () => {} };
+    const setup = () => {
+      target.deliver = async () => {
+        await ctx.sendActivity(
+          { identifier: ctx.identifier }, "followers", activity,
+        );
+      };
+    };
+    SETUP_AND_DELIVERY
+  });
+`;
+
+test(
+  `${ruleName}: ✅ Good - called setup installs delivery before use`,
+  lintTest({
+    code: assignedDelivery.replace(
+      "SETUP_AND_DELIVERY",
+      "setup(); await target.deliver();",
+    ),
+    rule,
+    ruleName,
+  }),
+);
+
+for (
+  const [name, code] of [
+    ["uncalled setup", "await target.deliver();"],
+    ["setup called after delivery", "await target.deliver(); setup();"],
+  ] as const
+) {
+  test(
+    `${ruleName}: ❌ Bad - ${name}`,
+    lintTest({
+      code: assignedDelivery.replace("SETUP_AND_DELIVERY", code),
+      rule,
+      ruleName,
+      expectedError:
+        "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+    }),
+  );
+}
+
+test(
+  `${ruleName}: ❌ Bad - setup writes to a shadowing object`,
+  lintTest({
+    code: assignedDelivery.replace(
+      "target.deliver = async () => {",
+      "const target = { deliver: async () => {} }; target.deliver = async () => {",
+    ).replace("SETUP_AND_DELIVERY", "setup(); await target.deliver();"),
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+for (
+  const [name, code] of [
+    ["uncalled setup with conditional assignment", "await target.deliver();"],
+    [
+      "called setup with conditional assignment",
+      "setup(); await target.deliver();",
+    ],
+  ] as const
+) {
+  test(
+    `${ruleName}: ❌ Bad - ${name}`,
+    lintTest({
+      code: assignedDelivery.replace(
+        "      target.deliver = async () => {",
+        "      if (Math.random() < 0.5) target.deliver = async () => {",
+      ).replace("SETUP_AND_DELIVERY", code),
+      rule,
+      ruleName,
+      expectedError:
+        "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+    }),
+  );
+}
+
+test(
+  `${ruleName}: ✅ Good - passed setup callback with conditional assignment`,
+  lintTest({
+    code: assignedDelivery.replace(
+      "      target.deliver = async () => {",
+      "      if (true) target.deliver = async () => {",
+    ).replace(
+      "SETUP_AND_DELIVERY",
+      "await Promise.resolve().then(setup); await target.deliver();",
+    ),
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - setup assigns a nested object method`,
+  lintTest({
+    code: assignedDelivery.replace(
+      "const target = { deliver: async () => {} };",
+      "const target = { methods: { deliver: async () => {} } };",
+    ).replaceAll("target.deliver", "target.methods.deliver").replace(
+      "SETUP_AND_DELIVERY",
+      "setup(); await target.methods.deliver();",
+    ),
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+for (
+  const [name, code] of [
+    ["returned method call", "setup(); return target.deliver();"],
+    [
+      "method call in initializer",
+      "setup(); const result = target.deliver(); await result;",
+    ],
+  ] as const
+) {
+  test(
+    `${ruleName}: ✅ Good - setup before ${name}`,
+    lintTest({
+      code: assignedDelivery.replace("SETUP_AND_DELIVERY", code),
+      rule,
+      ruleName,
+    }),
+  );
+}
+
+test(
+  `${ruleName}: ❌ Bad - installed function uses unrelated parameter`,
+  lintTest({
+    code: assignedDelivery.replace(
+      /target\.deliver = async \(\) => \{[\s\S]*?\n[ ]{6}\};/,
+      "target.deliver = async ({ sendActivity }) => { sendActivity(); };",
+    ).replace(
+      "SETUP_AND_DELIVERY",
+      "setup(); await target.deliver({ sendActivity: async () => {} });",
+    ),
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - installed function calls captured delivery alias`,
+  lintTest({
+    code: assignedDelivery.replace(
+      "    const setup = () => {",
+      "    const send = ctx.sendActivity.bind(ctx);\n    const setup = () => {",
+    ).replace(
+      /await ctx\.sendActivity\([\s\S]*?\);/,
+      'await send({ identifier: ctx.identifier }, "followers", activity);',
+    ).replace("SETUP_AND_DELIVERY", "setup(); await target.deliver();"),
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - installed function shadows context but calls captured alias`,
+  lintTest({
+    code: assignedDelivery.replace(
+      "    const setup = () => {",
+      "    const send = ctx.sendActivity.bind(ctx);\n    const setup = () => {",
+    ).replace(
+      "target.deliver = async () => {",
+      "target.deliver = async (ctx) => {",
+    ).replace(
+      /await ctx\.sendActivity\([\s\S]*?\);/,
+      'await send({ identifier: "alice" }, "followers", activity);',
+    ).replace("SETUP_AND_DELIVERY", "setup(); await target.deliver({});"),
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - setup and delivery in unconditional block`,
+  lintTest({
+    code: assignedDelivery.replace(
+      "SETUP_AND_DELIVERY",
+      "{ setup(); await target.deliver(); }",
+    ),
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - inline callback assigns unrelated function`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const recipients = ["followers"];
+    await Promise.all(recipients.map(async (recipient) => {
+      const options = { onError: () => {} };
+      options.onError = () => {};
+      await ctx.sendActivity(
+        { identifier: ctx.identifier }, recipient, activity,
+      );
+    }));
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - named callback assigns unrelated function`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const recipients = ["followers"];
+    const deliver = async (recipient) => {
+      const options = { onError: () => {} };
+      options.onError = () => {};
+      await ctx.sendActivity(
+        { identifier: ctx.identifier }, recipient, activity,
+      );
+    };
+    await Promise.all(recipients.map(deliver));
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ✅ Good - called helper inside try delivers directly`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async (ctx, activity) => {
+    const deliver = async () => {
+      const options = { onError: () => {} };
+      options.onError = () => {};
+      await ctx.sendActivity(
+        { identifier: ctx.identifier }, "followers", activity,
+      );
+    };
+    try { await deliver(); } catch (error) { console.error(error); }
+  });
+`,
+    rule,
+    ruleName,
+  }),
+);
+
+test(
+  `${ruleName}: ❌ Bad - uncalled setup with destructured context`,
+  lintTest({
+    code: `
+import { Activity } from "@fedify/vocab";
+federation.setOutboxListeners("/users/{identifier}/outbox")
+  .on(Activity, async ({ sendActivity, identifier }, activity) => {
+    const target = { deliver: async () => {} };
+    const setup = () => {
+      target.deliver = async () => {
+        await sendActivity({ identifier }, "followers", activity);
+      };
+    };
+    await target.deliver();
+  });
+`,
+    rule,
+    ruleName,
+    expectedError:
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+  }),
+);
+
+const aliasDelivery = assignedDelivery.replace(
+  /await ctx\.sendActivity\([\s\S]*?\);/,
+  'await send({ identifier: ctx.identifier }, "followers", activity);',
+);
+
+for (
+  const [name, code] of [
+    [
+      "setup-local alias",
+      aliasDelivery.replace(
+        "    const setup = () => {",
+        "    const setup = () => {\n      const send = ctx.sendActivity.bind(ctx);",
+      ).replace("SETUP_AND_DELIVERY", "setup(); await target.deliver();"),
+    ],
+    [
+      "bracketed context method alias",
+      aliasDelivery.replace(
+        "    const setup = () => {",
+        '    const send = ctx["sendActivity"].bind(ctx);\n    const setup = () => {',
+      ).replace("SETUP_AND_DELIVERY", "setup(); await target.deliver();"),
+    ],
+    [
+      "destructured context method alias",
+      aliasDelivery.replace(
+        "    const setup = () => {",
+        "    const { sendActivity: send } = ctx;\n    const setup = () => {",
+      ).replace("SETUP_AND_DELIVERY", "setup(); await target.deliver();"),
+    ],
+    [
+      "alias initialized after setup",
+      aliasDelivery.replace(
+        "SETUP_AND_DELIVERY",
+        "setup(); const send = ctx.sendActivity.bind(ctx); await target.deliver();",
+      ),
+    ],
+  ] as const
+) {
+  test(
+    `${ruleName}: ✅ Good - ${name}`,
+    lintTest({ code, rule, ruleName }),
+  );
+}
+
+test(
+  `${ruleName}: ✅ Good - called setup invokes captured alias directly`,
+  lintTest({
+    code: assignedDelivery.replace(
+      "    const setup = () => {",
+      "    const send = ctx.sendActivity.bind(ctx);\n    const setup = () => {",
+    ).replace(
+      "    };\n    SETUP_AND_DELIVERY",
+      '      send({ identifier: ctx.identifier }, "followers", activity);\n    };\n    SETUP_AND_DELIVERY',
+    ).replace("SETUP_AND_DELIVERY", "setup();"),
+    rule,
+    ruleName,
+  }),
+);
+
+for (
+  const [name, call, expectedError] of [
+    ["called setup delivers directly", "setup();", undefined],
+    [
+      "uncalled setup with direct delivery",
+      "",
+      "Outbox listeners should deliver posted activities explicitly with ctx.sendActivity() or ctx.forwardActivity().",
+    ],
+  ] as const
+) {
+  test(
+    `${ruleName}: ${name}`,
+    lintTest({
+      code: assignedDelivery.replace(
+        "    };\n    SETUP_AND_DELIVERY",
+        '      ctx.sendActivity({ identifier: ctx.identifier }, "followers", activity);\n    };\n    SETUP_AND_DELIVERY',
+      ).replace("SETUP_AND_DELIVERY", call),
+      rule,
+      ruleName,
+      expectedError,
+    }),
+  );
+}
+
 test(
   `${ruleName}: ✅ Good - direct sendActivity call`,
   lintTest({
