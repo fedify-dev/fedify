@@ -1,5 +1,5 @@
 import { test } from "@fedify/fixture";
-import { assertEquals, assertThrows } from "@std/assert";
+import { assertEquals, assertRejects, assertThrows } from "@std/assert";
 import {
   CircuitBreaker,
   normalizeCircuitBreakerOptions,
@@ -46,6 +46,70 @@ class CountingCasKvStore extends MemoryKvStore {
     return super.cas(key, expectedValue, newValue, options);
   }
 }
+
+class EncodedCasKvStore extends MemoryKvStore {
+  override async cas(
+    key: KvKey,
+    expectedValue: unknown,
+    newValue: unknown,
+    options?: KvStoreSetOptions,
+  ): Promise<boolean> {
+    const current = await this.get(key);
+    if (JSON.stringify(current) !== JSON.stringify(expectedValue)) {
+      return false;
+    }
+    if (newValue === undefined) await this.delete(key);
+    else await this.set(key, newValue, options);
+    return true;
+  }
+}
+
+test("CircuitBreaker uses raw encoded CAS expectations", async () => {
+  const kv = new EncodedCasKvStore();
+  await markCircuitBreakerLegacySweepDone(kv);
+  let now = Temporal.Instant.from("2026-05-25T00:00:00Z");
+  const circuit = new CircuitBreaker({
+    kv,
+    prefix: ["_fedify", "circuit"],
+    now: () => now,
+    options: { failureThreshold: 1, recoveryDelay: { seconds: 30 } },
+  });
+  const key = ["_fedify", "circuit", "remote.example"] as const;
+
+  await circuit.recordFailure("remote.example");
+  now = now.add({ seconds: 30 });
+  assertEquals((await circuit.beforeSend("remote.example", {})).type, "send");
+  assertEquals(
+    (await circuit.recordSuccess("remote.example"))?.newState,
+    "closed",
+  );
+
+  const oldOrder = {
+    state: "half-open",
+    failures: ["2026-05-25T00:00:00Z"],
+    opened: "2026-05-25T00:00:00Z",
+    __fedifyCircuitBreakerStateVersion: 1,
+    halfOpened: "2026-05-25T00:00:00Z",
+  };
+  await kv.set(key, oldOrder);
+  assertEquals(
+    (await circuit.recordFailure("remote.example"))?.newState,
+    "open",
+  );
+  await kv.set(key, oldOrder);
+  assertEquals(
+    (await circuit.recordSuccess("remote.example"))?.newState,
+    "closed",
+  );
+  await kv.set(key, oldOrder);
+  assertEquals((await circuit.beforeSend("remote.example", {})).type, "send");
+
+  await kv.set(key, { __fedifyDeletingCircuitBreakerLegacyState: true });
+  await assertRejects(() => circuit.recordFailure("remote.example"));
+  assertEquals(await kv.get(key), {
+    __fedifyDeletingCircuitBreakerLegacyState: true,
+  });
+});
 
 class CountingSetKvStore implements KvStore {
   #store = new MemoryKvStore();

@@ -223,7 +223,10 @@ bun add @fedify/redis
 [`RedisKvStore`] is a key–value store implementation that uses Redis as
 the backend storage. It provides scalability and high performance, making it
 suitable for production use in distributed systems. It requires a Redis
-server setup and maintenance.
+server setup and maintenance. It supports atomic `~KvStore.cas()` on
+standalone Redis and Redis Cluster. CAS compares encoded bytes, so a custom
+`Codec` must encode equal values identically; with the default JSON codec,
+object property order matters. Redis must permit the `EVAL` command for CAS.
 
 Best for
 :   Production use, distributed systems.

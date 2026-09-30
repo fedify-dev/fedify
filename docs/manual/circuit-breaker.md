@@ -182,11 +182,12 @@ const federation = createFederation<void>({
 When upgrading from Fedify 2.3.0 or 2.3.1—or from 2.3.2–2.3.4 with a custom
 `failure` policy that did not set `stateTtl`—Fedify automatically rewrites
 circuit state written without a TTL only on `KvStore` implementations that
-support `cas()`.  Stores without CAS, including `@fedify/postgres` and
-`@fedify/redis`, apply TTLs to new circuit state but cannot automatically
-clean up circuit state that was already written without a TTL.  If that old
-state matters for your deployment, remove it with a one-off cleanup script or
-add a TTL directly in your storage backend.
+support `cas()`.  Stores without CAS apply TTLs to new circuit state but
+cannot automatically clean up circuit state that was already written without
+a TTL.  Redis Cluster's key listing can cover only one node, so its automatic
+cleanup may miss old circuit state on other nodes.  If that old state matters
+for your deployment, remove it with a one-off cleanup script or add a TTL
+directly in your storage backend.
 
 
 Observability

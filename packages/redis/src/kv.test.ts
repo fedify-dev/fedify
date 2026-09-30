@@ -1,9 +1,11 @@
 import { test } from "@fedify/fixture";
 import { RedisKvStore } from "@fedify/redis/kv";
+import { testKvStore } from "@fedify/testing";
 import * as temporal from "@js-temporal/polyfill";
 import type { Redis as RedisClient, RedisKey } from "ioredis";
-import { Redis } from "ioredis";
+import { Cluster, Redis } from "ioredis";
 import assert from "node:assert/strict";
+import { Buffer } from "node:buffer";
 import process from "node:process";
 import { test as nodeTest } from "node:test";
 
@@ -11,6 +13,7 @@ const Temporal = globalThis.Temporal ?? temporal.Temporal;
 
 const redisUrl = process.env.REDIS_URL;
 const ignore = redisUrl == null;
+const clusterNodes = process.env.REDIS_CLUSTER_NODES;
 
 async function cleanupPrefixedKeys(
   redis: Redis,
@@ -85,6 +88,114 @@ test("RedisKvStore.delete()", { ignore }, async () => {
     await redis.quit();
   }
 });
+
+test("RedisKvStore.cas()", { ignore }, async () => {
+  if (ignore) return;
+  const { redis, keyPrefix, store, cleanup } = getRedis();
+  const other = new Redis(redisUrl!);
+  try {
+    const key = ["cas", "value"] as const;
+    assert.equal(await store.cas(key, "wrong", "value"), false);
+    assert.equal(await store.cas(key, undefined, null), true);
+    assert.equal(await store.cas(key, undefined, "value"), false);
+    assert.equal(await store.cas(key, null, { a: 1, b: 2 }), true);
+    assert.equal(await store.cas(key, { b: 2, a: 1 }, "wrong"), false);
+    assert.equal(await store.cas(key, { a: 1, b: 2 }, "updated"), true);
+    assert.equal(await store.cas(key, "updated", undefined), true);
+    assert.equal(await store.get(key), undefined);
+    assert.equal(await store.cas(key, undefined, undefined), true);
+
+    const ttlKey = ["cas", "ttl"] as const;
+    assert.equal(
+      await store.cas(ttlKey, undefined, "temporary", {
+        ttl: Temporal.Duration.from({ milliseconds: 500 }),
+      }),
+      true,
+    );
+    const remaining = await redis.pttl(`${keyPrefix}cas::ttl`);
+    assert(remaining > 0 && remaining <= 1000);
+    assert.equal(await store.cas(ttlKey, "temporary", "permanent"), true);
+    assert.equal(await redis.pttl(`${keyPrefix}cas::ttl`), -1);
+    assert.equal(await store.cas(ttlKey, "permanent", undefined), true);
+
+    const contenders = [store, new RedisKvStore(other, { keyPrefix })];
+    const results = await Promise.all(
+      contenders.map((candidate, i) =>
+        candidate.cas(["cas", "race"], undefined, i)
+      ),
+    );
+    assert.equal(results.filter(Boolean).length, 1);
+    const winner = await store.get(["cas", "race"]);
+    const updates = await Promise.all(
+      contenders.map((candidate, i) =>
+        candidate.cas(["cas", "race"], winner, i + 10)
+      ),
+    );
+    assert.equal(updates.filter(Boolean).length, 1);
+  } finally {
+    await cleanup();
+    await other.quit();
+    await redis.quit();
+  }
+});
+
+test("RedisKvStore conforms to KvStore", { ignore }, async () => {
+  if (ignore) return;
+  const { redis, store, cleanup } = getRedis();
+  try {
+    await testKvStore(() => store, async () => {}, { testTtl: false });
+  } finally {
+    await cleanup();
+    await redis.quit();
+  }
+});
+
+test("RedisKvStore.cas() accepts a binary key prefix", { ignore }, async () => {
+  if (ignore) return;
+  const redis = new Redis(redisUrl!);
+  const prefix = Buffer.from([
+    0,
+    255,
+    ...new TextEncoder().encode(crypto.randomUUID()),
+  ]);
+  const key = Buffer.concat([prefix, Buffer.from("cas")]);
+  const store = new RedisKvStore(redis, { keyPrefix: prefix });
+  try {
+    assert.equal(await store.cas(["cas"], undefined, "binary"), true);
+    assert.equal(await redis.get(key), '"binary"');
+    assert.equal(await store.cas(["cas"], "binary", undefined), true);
+    assert.equal(await redis.exists(key), 0);
+  } finally {
+    await redis.del(key);
+    await redis.quit();
+  }
+});
+
+test(
+  "RedisKvStore.cas() works on Redis Cluster",
+  { ignore: clusterNodes == null },
+  async () => {
+    if (clusterNodes == null) return;
+    const cluster = new Cluster(
+      clusterNodes.split(",").map((node) => {
+        const [host, port] = node.split(":");
+        return { host, port: Number(port) };
+      }),
+    );
+    const prefix = `fedify_cluster_test_${crypto.randomUUID()}::`;
+    const store = new RedisKvStore(cluster, { keyPrefix: prefix });
+    const key = ["cluster", "cas"] as const;
+    try {
+      assert.equal(await store.cas(key, undefined, "one"), true);
+      assert.equal(await store.cas(key, "one", "two"), true);
+      assert.equal(await store.cas(key, "one", "wrong"), false);
+      assert.equal(await store.cas(key, "two", undefined), true);
+    } finally {
+      await cluster.del(`${prefix}cluster::cas`);
+      cluster.disconnect();
+    }
+  },
+);
 
 test("RedisKvStore.list()", { ignore }, async () => {
   if (ignore) return; // see https://github.com/oven-sh/bun/issues/19412
@@ -181,6 +292,37 @@ function recordingRedis(): {
   };
   return { setexCalls, redis: client as unknown as RedisClient };
 }
+
+nodeTest("RedisKvStore.cas() routes one key and rounds TTL", async () => {
+  const calls: { key: RedisKey; args: unknown[] }[] = [];
+  const redis = {
+    eval(_script: string, count: number, key: RedisKey, ...args: unknown[]) {
+      assert.equal(count, 1);
+      calls.push({ key, args });
+      return Promise.resolve(1);
+    },
+  } as unknown as RedisClient;
+  const prefix = Buffer.from([0, 255]);
+  const store = new RedisKvStore(redis, { keyPrefix: prefix });
+  assert.equal(
+    await store.cas(["key"], undefined, "value", {
+      ttl: Temporal.Duration.from({ milliseconds: 500 }),
+    }),
+    true,
+  );
+  assert.deepEqual(calls[0].key, Buffer.concat([prefix, Buffer.from("key")]));
+  assert.deepEqual(calls[0].args.slice(0, 4), [
+    "1",
+    Buffer.alloc(0),
+    "0",
+    Buffer.from('"value"'),
+  ]);
+  assert.equal(calls[0].args[4], 1);
+  await store.cas(["key"], "value", undefined, {
+    ttl: Temporal.Duration.from({ seconds: -1 }),
+  });
+  assert.equal(calls[1].args[4], 1);
+});
 
 nodeTest("RedisKvStore.set() rounds a TTL up to whole seconds", async () => {
   const cases: [Temporal.Duration, number, string][] = [
