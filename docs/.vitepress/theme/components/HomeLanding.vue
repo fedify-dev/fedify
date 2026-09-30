@@ -615,11 +615,11 @@ federation.<span class="c-fn">setActorDispatcher</span>(
               <line x1="220" y1="220" x2="330" y2="320" />
               <line x1="220" y1="220" x2="120" y2="350" />
               <line x1="220" y1="220" x2="78" y2="170" />
-              <circle class="node n1" cx="220" cy="70" r="13" />
-              <circle class="node n2" cx="350" cy="160" r="11" />
-              <circle class="node n3" cx="330" cy="320" r="14" />
-              <circle class="node n4" cx="120" cy="350" r="10" />
-              <circle class="node n5" cx="78" cy="170" r="12" />
+              <circle class="node" cx="220" cy="70" r="13" />
+              <circle class="node" cx="350" cy="160" r="11" />
+              <circle class="node" cx="330" cy="320" r="14" />
+              <circle class="node" cx="120" cy="350" r="10" />
+              <circle class="node" cx="78" cy="170" r="12" />
             </g>
           </svg>
           <img class="lp-net-logo" src="/logo.svg" alt="" />
@@ -1328,14 +1328,10 @@ federation.<span class="c-fn">setActorDispatcher</span>(
   stroke-dasharray: 4 6;
 }
 .lp-net .node {
+  fill: var(--vp-c-brand-3);
   stroke: var(--vp-c-bg);
   stroke-width: 3;
 }
-.lp-net .n1 { fill: #00a3ff; }
-.lp-net .n2 { fill: #0ea5e9; }
-.lp-net .n3 { fill: #9500ff; }
-.lp-net .n4 { fill: #ffca00; }
-.lp-net .n5 { fill: #38bdf8; }
 .lp-net-logo {
   position: absolute;
   top: 50%;
