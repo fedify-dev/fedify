@@ -1201,8 +1201,8 @@ federation.<span class="c-fn">setActorDispatcher</span>(
   font-family: var(--vp-font-family-display);
   font-size: clamp(2.4rem, 5.2vw, 4rem);
   line-height: 1.05;
-  letter-spacing: -0.03em;
-  font-weight: 800;
+  letter-spacing: -0.01em;
+  font-weight: 600;
   margin: 0;
   color: var(--vp-c-text-1);
 }
@@ -1456,8 +1456,8 @@ federation.<span class="c-fn">setActorDispatcher</span>(
   font-family: var(--vp-font-family-display);
   font-size: clamp(1.7rem, 3.2vw, 2.4rem);
   line-height: 1.18;
-  letter-spacing: -0.02em;
-  font-weight: 800;
+  letter-spacing: -0.01em;
+  font-weight: 600;
   margin: 0;
   color: var(--vp-c-text-1);
 }
@@ -1655,8 +1655,8 @@ a.lp-stack-name::after {
 .lp-byo-title {
   font-family: var(--vp-font-family-display);
   font-size: 1.3rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-weight: 600;
+  letter-spacing: 0;
   margin: 0;
   color: var(--vp-c-text-1);
 }
@@ -1713,8 +1713,8 @@ a.lp-stack-name::after {
 .lp-point-title {
   font-family: var(--vp-font-family-display);
   font-size: 1.1rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-weight: 600;
+  letter-spacing: 0;
   margin: 1rem 0 0.45rem;
   color: var(--vp-c-text-1);
 }
@@ -2065,8 +2065,8 @@ a.lp-stack-name::after {
 .lp-cta-title {
   font-family: var(--vp-font-family-display);
   font-size: clamp(1.9rem, 4vw, 2.8rem);
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   margin: 0;
   color: var(--vp-c-text-1);
 }

@@ -34,7 +34,7 @@
     "@fedify/vocab-runtime": "workspace:^",
     "@fedify/vocab": "workspace:^",
     "@fedify/webfinger": "workspace:^",
-    "@fontsource-variable/bricolage-grotesque": "^5.2.10",
+    "@fontsource-variable/source-serif-4": "^5.3.0",
     "@hackmd/markdown-it-task-lists": "^2.1.4",
     "@hono/node-server": "^1.13.7",
     "@logtape/file": "catalog:",

@@ -36,8 +36,7 @@
 
 :root {
   --vp-font-family-display:
-    "Bricolage Grotesque Variable", "Bricolage Grotesque",
-    var(--vp-font-family-base);
+    "Source Serif 4 Variable", "Source Serif 4", ui-serif, Georgia, serif;
 }
 
 .vp-doc h1,
@@ -45,11 +44,7 @@
 .vp-doc h3 {
   font-family: var(--vp-font-family-display);
   font-optical-sizing: auto;
-}
-
-.vp-doc h1,
-.vp-doc h2 {
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 /* ------------------------------------------------------------------ *
