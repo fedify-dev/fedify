@@ -282,4 +282,74 @@ test("KvKeyCache.compatibleKeyScope() ignores malformed entries", async () => {
     undefined,
   );
   assertEquals(await kv.get(entryKey), undefined);
+  // An expiration that is no time at all:
+  const httpEntryKey = [
+    "pk",
+    "__compatible",
+    "httpSignature",
+    keyId.href,
+  ] as const;
+  await kv.set(httpEntryKey, {
+    key: await new CryptographicKey({ id: keyId }).toJsonLd(),
+    expires: 1e300,
+  });
+  assertEquals(
+    await cache.compatibleKeyScope("httpSignature").get(keyId),
+    undefined,
+  );
+  assertEquals(await kv.get(httpEntryKey), undefined);
+});
+
+test("KvKeyCache.compatibleKeyScope() keeps the owners of keys", async () => {
+  const kv = new MemoryKvStore();
+  const now = Temporal.Instant.fromEpochMilliseconds(0);
+  const cache = new KvKeyCache(kv, ["pk"], {
+    now: () => now,
+    keyTtl: Temporal.Duration.from({ minutes: 5 }),
+  });
+  const scope = cache.compatibleKeyScope("httpSignature");
+  const keyId = new URL("https://gw.example/.well-known/apgateway/did:key:z/a");
+  const owner = { "@id": "ap://did:key:z/a", "@type": ["urn:example:Actor"] };
+  // The configured TTL is shorter than the proof is valid, so it decides when
+  // the entry expires:
+  assertEquals(
+    await scope.set(keyId, new CryptographicKey({ id: keyId }), {
+      expires: now.add({ hours: 1 }),
+      owner,
+    }),
+    now.add({ minutes: 5 }),
+  );
+  const entry = await scope.getEntry(keyId);
+  assertInstanceOf(entry?.key, CryptographicKey);
+  assertEquals(entry?.owner, owner);
+  assertEquals(entry?.expires, now.add({ minutes: 5 }));
+  // Stored entries survive a round trip through JSON:
+  const entryKey = ["pk", "__compatible", "httpSignature", keyId.href] as const;
+  await kv.set(entryKey, JSON.parse(JSON.stringify(await kv.get(entryKey))));
+  assertEquals((await scope.getEntry(keyId))?.owner, owner);
+  // A malformed owner costs the key only its owner:
+  await kv.set(entryKey, { ...await kv.get(entryKey) ?? {}, owner: "bogus" });
+  const malformed = await scope.getEntry(keyId);
+  assertInstanceOf(malformed?.key, CryptographicKey);
+  assertEquals(malformed?.owner, undefined);
+  // An owner too large for some stores is not stored:
+  await scope.set(keyId, new CryptographicKey({ id: keyId }), {
+    owner: { ...owner, "urn:example:padding": "x".repeat(64 * 1024) },
+  });
+  const oversized = await scope.getEntry(keyId);
+  assertInstanceOf(oversized?.key, CryptographicKey);
+  assertEquals(oversized?.owner, undefined);
+  // Invalid keys have neither owners nor expirations to tell:
+  assertEquals(await scope.set(keyId, null, { owner }), undefined);
+  assertEquals(await kv.get(entryKey), { key: null, expires: 600000 });
+  assertEquals(await scope.getEntry(keyId), null);
+  // Nor is anything stored with an expired proof:
+  assertEquals(
+    await scope.set(keyId, new CryptographicKey({ id: keyId }), {
+      expires: now,
+      owner,
+    }),
+    undefined,
+  );
+  assertEquals(await scope.getEntry(keyId), undefined);
 });

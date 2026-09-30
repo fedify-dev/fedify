@@ -16,6 +16,10 @@ import {
 import metadata from "../../deno.json" with { type: "json" };
 import { exportJwk, fetchActorDocument, verifyKeyOwnership } from "./key.ts";
 import {
+  getVerifiedKeyOwnerEvidence,
+  parseKeyOwnerEvidence,
+} from "./key-owner-evidence.ts";
+import {
   fetchPortableGatewayKey,
   resolvePortableActorKey,
 } from "./portable-key.ts";
@@ -90,6 +94,21 @@ export async function doesActorOwnKey(
           span.setAttribute("activitypub.key_ownership.verified", false);
           span.setAttribute("activitypub.key_ownership.method", "none");
           return false;
+        }
+        const evidence = getVerifiedKeyOwnerEvidence(key);
+        if (evidence != null) {
+          // HTTP Signature verification returned this very key, having
+          // verified the signed document of its portable actor, so there is
+          // no need to fetch and verify the document again:
+          const verified = getCanonicalPortableId(actorId) === evidence.ownerId;
+          span.setAttribute("activitypub.key_ownership.verified", verified);
+          span.setAttribute(
+            "activitypub.key_ownership.method",
+            key.id != null && isPortableUri(key.id)
+              ? "portable_actor_key"
+              : "portable_gateway_key",
+          );
+          return verified;
         }
         if (key.id != null && isPortableUri(key.id)) {
           // A key of a portable actor at an ap: key ID, whose owner only
@@ -268,6 +287,16 @@ export async function getKeyOwner(
   const documentLoader = options.documentLoader ?? getDocumentLoader();
   const contextLoader = options.contextLoader ?? getDocumentLoader();
   const fetchOptions = { documentLoader, contextLoader, tracerProvider };
+  if (keyId instanceof CryptographicKey) {
+    const evidence = getVerifiedKeyOwnerEvidence(keyId);
+    if (evidence != null) {
+      // HTTP Signature verification returned this very key, having verified
+      // the signed document of its portable actor, so the actor is taken
+      // from that document instead of fetching and verifying it again:
+      const owner = await parseKeyOwnerEvidence(evidence, fetchOptions);
+      if (owner != null) return owner;
+    }
+  }
   const id = keyId instanceof CryptographicKey ? keyId.id : keyId;
   if (id != null && isPortableUri(id)) {
     return await getPortableActorKeyOwner(keyId, fetchOptions);

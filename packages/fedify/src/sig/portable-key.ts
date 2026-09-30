@@ -54,6 +54,11 @@ export type PortableGatewayKeyResolution =
     readonly actor: Actor;
     readonly key: CryptographicKey & { publicKey: CryptoKey };
     /**
+     * The expanded root node of the actor's document whose proof was
+     * verified, from which {@link actor} was parsed.
+     */
+    readonly document: Record<string, unknown>;
+    /**
      * When the proof of the actor's document expires, if it does.  The
      * document does not vouch for the key after that.
      */
@@ -331,6 +336,7 @@ async function verifyPortableKeyDocument(
     type: "verified",
     actor,
     key,
+    document: root,
     ...(expires == null ? {} : { expires }),
   };
 }

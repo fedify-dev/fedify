@@ -34,6 +34,10 @@ import {
   isPortableUri,
   parseKeyIdString,
 } from "./portable-key-id.ts";
+import {
+  attachKeyOwnerEvidence,
+  MAX_PORTABLE_KEY_TTL,
+} from "./key-owner-evidence.ts";
 import type {
   PortableActorKeyResolution,
   PortableGatewayKeyResolution,
@@ -516,6 +520,25 @@ export interface CompatibleKeyCacheSetOptions {
    * the proof of the document that vouches for the key expires.
    */
   readonly expires?: Temporal.Instant;
+
+  /**
+   * The expanded root node of the verified document of the portable actor
+   * that owns the key, which is stored along with the key so that the owner
+   * does not have to be fetched and verified again.
+   */
+  readonly owner?: Record<string, unknown>;
+}
+
+/**
+ * An entry of a {@link CompatibleKeyCache}.
+ * @internal
+ */
+export interface CompatibleKeyCacheEntry {
+  readonly key: CryptographicKey | Multikey;
+  /** See {@link CompatibleKeyCacheSetOptions.owner}. */
+  readonly owner?: Record<string, unknown>;
+  /** When the entry must not be used anymore. */
+  readonly expires: Temporal.Instant;
 }
 
 /**
@@ -528,11 +551,23 @@ export interface CompatibleKeyCacheSetOptions {
  */
 export interface CompatibleKeyCache {
   get(keyId: URL): Promise<CryptographicKey | Multikey | null | undefined>;
+
+  /**
+   * Same as {@link get}, but a key comes with the rest of its entry, read
+   * together with it.
+   */
+  getEntry?(keyId: URL): Promise<CompatibleKeyCacheEntry | null | undefined>;
+
+  /**
+   * Caches a key, or the fact that it is invalid for the purpose.
+   * @returns When the entry expires, if a key was cached.
+   */
   set(
     keyId: URL,
     key: CryptographicKey | Multikey | null,
     options?: CompatibleKeyCacheSetOptions,
-  ): Promise<void>;
+  ): Promise<Temporal.Instant | undefined | void>;
+
   delete(keyId: URL): Promise<void>;
 }
 
@@ -583,6 +618,7 @@ export function bypassKeyCacheReads(keyCache?: KeyCache): KeyCache {
       const scoped = cache.compatibleKeyScope!(scope);
       return {
         get: () => Promise.resolve(undefined),
+        getEntry: () => Promise.resolve(undefined),
         set: async (keyId, key, options) =>
           await scoped.set(keyId, key, options),
         delete: async (keyId) => await scoped.delete(keyId),
@@ -815,6 +851,83 @@ function checkCachedKeyHit<T extends CryptographicKey | Multikey>(
   return null;
 }
 
+/**
+ * Looks up a key at a compatible identifier, or at an `ap:` or `ap+ef61:`
+ * URI, in the cache namespace of a purpose, like {@link getCachedFetchKey}.
+ * A key that the verified document of its portable actor was cached with
+ * gets the actor's evidence attached from the same entry; see
+ * {@link attachKeyOwnerEvidence}.
+ */
+async function getCachedCompatibleKey<T extends CryptographicKey | Multikey>(
+  cacheKey: URL,
+  keyId: string,
+  cls: FetchableKeyClass<T>,
+  scopedCache: CompatibleKeyCache | undefined,
+  logger: ReturnType<typeof getLogger>,
+): Promise<FetchKeyResult<T> | null> {
+  if (scopedCache?.getEntry == null) {
+    return await getCachedFetchKey(
+      cacheKey,
+      keyId,
+      cls,
+      // Only get() is used, whose signature is the same:
+      scopedCache as KeyCache | undefined,
+      logger,
+    );
+  }
+  const entry = await scopedCache.getEntry(cacheKey);
+  if (entry === undefined) return null;
+  if (entry === null) {
+    logger.debug(
+      "Entry {keyId} found in cache, but it is unavailable.",
+      { keyId },
+    );
+    return { key: null, cached: true };
+  }
+  const hit = checkCachedKeyHit(entry.key, keyId, cls, logger);
+  if (hit?.key instanceof CryptographicKey && entry.owner != null) {
+    // The cache is trusted with the owner as much as with the key itself:
+    // both were stored together, once the owner's document vouched for
+    // the key:
+    attachKeyOwnerEvidence(hit.key, entry.owner, entry.expires);
+  }
+  return hit;
+}
+
+/**
+ * Attaches the evidence of the portable actor whose document has just
+ * vouched for a key to the key.  The evidence expires with the cache entry
+ * of the key, so that it is never trusted longer than the key is cached.
+ * Without a cache, it expires with the proof of the document, but no later
+ * than {@link MAX_PORTABLE_KEY_TTL}, as a cache entry would.
+ * @param resolution The resolution of the key.
+ * @param scopedCache The cache namespace the key was stored in, if any.
+ * @param cached When the cache entry expires, if the cache stored one.
+ */
+function attachResolvedKeyOwnerEvidence(
+  resolution: Extract<PortableGatewayKeyResolution, { type: "verified" }>,
+  scopedCache: CompatibleKeyCache | undefined,
+  cached: Temporal.Instant | undefined | void,
+): void {
+  let expires: Temporal.Instant | undefined;
+  if (scopedCache != null) {
+    // A cache that did not tell when its entry expires, or that did not store
+    // one at all, e.g., because the proof has already expired, leaves no
+    // deadline to trust the evidence until:
+    if (cached == null) return;
+    expires = cached;
+  } else {
+    expires = Temporal.Now.instant().add(MAX_PORTABLE_KEY_TTL);
+    if (
+      resolution.expires != null &&
+      Temporal.Instant.compare(resolution.expires, expires) < 0
+    ) {
+      expires = resolution.expires;
+    }
+  }
+  attachKeyOwnerEvidence(resolution.key, resolution.document, expires);
+}
+
 async function clearFetchErrorMetadata(
   keyId: URL,
   keyCache: KeyCache | undefined,
@@ -1000,9 +1113,11 @@ async function resolveFetchedKey<T extends CryptographicKey | Multikey>(
     }
     // The key is only as good as the proof of the document that vouches for
     // it, so it must not outlive the proof:
-    await scopedCache?.set(cacheKey, resolution.key, {
+    const expires = await scopedCache?.set(cacheKey, resolution.key, {
       expires: resolution.expires,
+      owner: resolution.document,
     });
+    attachResolvedKeyOwnerEvidence(resolution, scopedCache, expires);
     return {
       key: resolution.key as unknown as T & { publicKey: CryptoKey },
       cached: false,
@@ -1381,7 +1496,7 @@ async function fetchCompatibleKey<
     getCompatibleKeyScope(cls, options),
   );
   // What this purpose resolved takes precedence over the shared namespace:
-  const cached = await getCachedFetchKey(
+  const cached = await getCachedCompatibleKey(
     cacheKey,
     keyId,
     cls,
@@ -1437,7 +1552,9 @@ async function fetchCompatibleKey<
     // Only the namespace of this purpose is written, and a successful fetch
     // does not clear the shared fetch failure metadata, which has to stay
     // paired with the shared entry that nothing can delete:
-    { ...options, keyCache: scopedCache },
+    // What set() returns is only for resolveFetchedKey(), which knows it is
+    // the namespace of this purpose:
+    { ...options, keyCache: scopedCache as KeyCache | undefined },
     logger,
   );
   return {
@@ -1502,7 +1619,7 @@ async function fetchPortableActorKey<
   const sharedCache = options.keyCache as FetchErrorMetadataCache | undefined;
   const scopedCache = sharedCache?.compatibleKeyScope?.("httpSignature");
   // What HTTP Signatures resolved takes precedence over the shared namespace:
-  const cached = await getCachedFetchKey(
+  const cached = await getCachedCompatibleKey(
     cacheKey,
     keyId,
     cls,
@@ -1529,9 +1646,11 @@ async function fetchPortableActorKey<
   if (resolution.type === "verified") {
     // The key is only as good as the proof of the document that vouches for
     // it, so it must not outlive the proof:
-    await scopedCache?.set(cacheKey, resolution.key, {
+    const expires = await scopedCache?.set(cacheKey, resolution.key, {
       expires: resolution.expires,
+      owner: resolution.document,
     });
+    attachResolvedKeyOwnerEvidence(resolution, scopedCache, expires);
     return {
       result: {
         key: resolution.key as unknown as T & { publicKey: CryptoKey },
