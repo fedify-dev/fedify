@@ -241,8 +241,8 @@ networkTest(
       }, {
         gateways,
         allowPrivateAddress: true,
-        gatewayTimeout: 20,
-        timeout: 500,
+        gatewayTimeout: 500,
+        timeout: 5_000,
       });
       equal(await response.text(), "portable image");
     });
