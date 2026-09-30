@@ -673,6 +673,12 @@ passed as an argument.  Helpers may call other helpers; recursive calls do not
 cause the analysis to loop.  Declaring a module-level delivery helper without
 calling it does not satisfy the rule.
 
+A directly called local setup helper can replace a method on an enclosing
+object with a delivery function before the listener calls that method.  The
+rule checks that the setup call comes first and that both references name the
+same object.  A helper that is not called, or that runs after the method call,
+does not count as delivery.
+
 This analysis does not follow imports or use type information.  A listener that
 only calls a helper imported from another file still receives a warning.
 Indirect calls through higher-order callbacks, class instances, and dynamically
