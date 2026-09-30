@@ -63,6 +63,9 @@ export const config = {
     },
     { source: "/.well-known/nodeinfo" },
     { source: "/.well-known/x-nodeinfo2" },
+    // FEP-ef61 gateway requests such as hashlink media, which clients fetch
+    // without the federation media types, e.g., with "Accept: image/*":
+    { source: "/.well-known/apgateway/:path*" },
   ],
 };
 ~~~~

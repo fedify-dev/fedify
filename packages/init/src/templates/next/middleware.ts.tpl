@@ -13,8 +13,12 @@ export default fedifyWith(federation)(
 */
 );
 
-// This config needs because middleware process only requests with the
-// "Accept" header matching the federation accept regex.
+// This config makes the middleware run only for requests that may be
+// federation requests: requests whose "Accept" or "Content-Type" header
+// has a federation media type, NodeInfo requests, and FEP-ef61 gateway
+// requests such as hashlink media, which clients fetch with, e.g.,
+// "Accept: image/*".  fedifyWith() then decides which of them Fedify
+// handles.
 // More details: https://nextjs.org/docs/app/api-reference/file-conventions/middleware#config-object-optional
 export const config = {
   runtime: "nodejs",
@@ -41,5 +45,6 @@ export const config = {
     },
     { source: "/.well-known/nodeinfo" },
     { source: "/.well-known/x-nodeinfo2" },
+    { source: "/.well-known/apgateway/:path*" },
   ],
 };
