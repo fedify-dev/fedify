@@ -1269,6 +1269,12 @@ To be released.
     `esnext.temporal` lib reference.
     [[#823], [#925]]
 
+ -  Added a `gateways` option to `lookupObject()` and
+    `Context.lookupObject()`, so applications can look up a bare
+    [FEP-ef61] portable object ID without constructing location hints or
+    providing a custom document loader.  The listed gateways are tried in
+    order in place of any `@gateway` hints.  [[#288], [#1158], [#1194]]
+
  -  Added the optional `Recipient.gateways` property, the [FEP-ef61] gateways
     of a portable actor, through which Fedify delivers activities to its
     `ap:` or `ap+ef61:` inbox.  Every actor class already has it, so
@@ -1438,8 +1444,10 @@ To be released.
 [#1091]: https://github.com/fedify-dev/fedify/pull/1091
 [#1129]: https://github.com/fedify-dev/fedify/issues/1129
 [#1137]: https://github.com/fedify-dev/fedify/pull/1137
+[#1158]: https://github.com/fedify-dev/fedify/issues/1158
 [#1160]: https://github.com/fedify-dev/fedify/issues/1160
 [#1184]: https://github.com/fedify-dev/fedify/pull/1184
+[#1194]: https://github.com/fedify-dev/fedify/pull/1194
 
 ### @fedify/vocab-runtime
 

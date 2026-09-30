@@ -1521,6 +1521,13 @@ test("Federation.fetch() serves portable actors through WebFinger", async () => 
     await ctx.lookupObject(compatibleId, { documentLoader }),
     Person,
   );
+  assertInstanceOf(
+    await ctx.lookupObject(`ap://${did}/actors/alice`, {
+      documentLoader,
+      gateways: ["https://example.com"],
+    }),
+    Person,
+  );
   const unsigned = {
     "@context": "https://www.w3.org/ns/activitystreams",
     id: `ap://${did}/actors/alice`,
