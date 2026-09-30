@@ -721,6 +721,13 @@ as [dereferencing accessors](./vocab.md#dereferencing-portable-references):
  -  A portable ID is fetched through the gateways in its `@gateway` location
     hints, e.g.,
     `ap://did:key:z6Mk.../actor?@gateway=https%3A%2F%2Fexample.com`.
+ -  For a bare portable ID, pass gateway origins explicitly, e.g.,
+    `ctx.lookupObject(id, { gateways: ["https://server.example"] })`.
+    They are tried in order and replace `@gateway` hints, even if the list is
+    empty.  Each gateway must be an
+    HTTP(S) origin without a path, query, or fragment; an invalid one throws
+    a `TypeError`.  A custom document loader can still handle a bare ID when
+    the list is empty.
  -  A compatible identifier, e.g.,
     `https://example.com/.well-known/apgateway/did:key:z6Mk.../actor`, is
     fetched through the gateway it names.
@@ -728,7 +735,9 @@ as [dereferencing accessors](./vocab.md#dereferencing-portable-references):
     actor](./actor.md#portable-actors-and-webfinger) is looked up, the `self`
     link of the WebFinger response can be either of them.  A portable ID is
     fetched through the WebFinger server first, as it is the actor's first
-    gateway, and then through the location hints.
+    gateway, and then through the location hints unless explicit gateways
+    were given.  For compatible IDs and WebFinger, that inferred gateway is
+    tried before the explicit list.
 
 In every case, the fetched object is returned only if its `@id` identifies the
 requested portable object and it has a valid [Object Integrity
@@ -745,7 +754,8 @@ properties (see [*Default verifiers*](./vocab.md#default-verifiers)).  If
 a gateway returns an object that fails these checks, the next candidate is
 tried; `crossOrigin: "throw"` makes the method throw an error instead, and
 `crossOrigin: "trust"` does not skip the checks.  To limit the number of
-servers a single lookup reaches, the method asks at most five gateways.
+servers a single lookup reaches, the method asks at most five gateways,
+including those passed explicitly.
 
 The same checks apply to a document looked up by an ordinary HTTP(S) URL if it
 turns out to be a portable object: if it is served from a compatible

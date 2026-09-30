@@ -186,6 +186,19 @@ export interface LookupObjectOptions {
   signal?: AbortSignal;
 
   /**
+   * The [FEP-ef61] gateways to try when looking up a portable
+   * (`ap:`/`ap+ef61:`) object, in order.  Each must be an HTTP(S) origin.
+   * An explicit list replaces `@gateway` location hints, including when
+   * it is empty.  The gateway named by a compatible identifier or the
+   * WebFinger server is still tried first.  At most five gateways are
+   * requested per lookup, including those given here.
+   *
+   * [FEP-ef61]: https://w3id.org/fep/ef61
+   * @since 2.4.0
+   */
+  gateways?: readonly (string | URL)[];
+
+  /**
    * The [FEP-ef61] policy to apply to portable objects, typically
    * `verifyPortableObject()` from `@fedify/fedify`, which
    * `Context.lookupObject()` uses by default.
@@ -252,7 +265,9 @@ const MAX_PORTABLE_ATTEMPTS = 5;
  *
  * [FEP-ef61] portable objects, including portable actors found through
  * WebFinger, are looked up only if the `verifyPortableObject` option is
- * given; see {@link LookupObjectOptions.verifyPortableObject}.
+ * given; see {@link LookupObjectOptions.verifyPortableObject}.  Pass
+ * {@link LookupObjectOptions.gateways} to look up a portable ID without
+ * `@gateway` location hints.
  *
  * [FEP-ef61]: https://w3id.org/fep/ef61
  *
@@ -414,7 +429,9 @@ async function lookupObjectInternal(
         const candidate = parsePortableCandidate(l.href);
         if (candidate == null) continue;
         const gateways = webFingerGateway == null ? [] : [webFingerGateway];
-        gateways.push(...getPortableGatewayCandidates(candidate));
+        if (options.gateways == null) {
+          gateways.push(...getPortableGatewayCandidates(candidate));
+        }
         const object = await lookupPortableObject(
           portable,
           candidate,
@@ -490,10 +507,14 @@ async function lookupObjectInternal(
         );
         return null;
       } else if (claim != null) {
-        return await dereference(portable, claim.id, claim.inferredGateways, {
-          response: remoteDoc,
-          contextLoader: snapshot.loader,
-        });
+        const explicit = getExplicitGateways(portable, claim.id);
+        return await dereference(
+          portable,
+          claim.id,
+          claim.inferredGateways,
+          explicit,
+          { response: remoteDoc, contextLoader: snapshot.loader },
+        );
       }
     }
     if (
@@ -536,6 +557,19 @@ interface PortableLookup {
   readonly attempted: Set<string>;
   /** The number of gateway requests left for this lookup. */
   remaining: number;
+  /** Validated only when the lookup reaches a portable object. */
+  explicitGateways?: URL[];
+}
+
+function getExplicitGateways(
+  lookup: PortableLookup,
+  id: URL,
+): URL[] | undefined {
+  if (lookup.options.gateways == null) return undefined;
+  return lookup.explicitGateways ??= getPortableGatewayCandidates(
+    id,
+    lookup.options.gateways,
+  );
 }
 
 /**
@@ -606,17 +640,18 @@ function getWebFingerGateway(identifier: URL): URL | undefined {
 
 /**
  * Looks up a portable object through FEP-ef61 gateways.
- * @param gateways The gateways to ask in order.  If omitted, the location
- *                 hints in the IRI are used, and if there are none, the
- *                 portable IRI itself is passed to the document loader.
+ * @param inferredGateways Gateways inferred from a compatible identifier or
+ *                         WebFinger.  If omitted, location hints in the IRI
+ *                         are used unless explicit gateways were given.
  */
 async function lookupPortableObject(
   lookup: PortableLookup,
   id: URL,
-  gateways: readonly URL[] | undefined,
+  inferredGateways: readonly URL[] | undefined,
 ): Promise<Object | null> {
   const { options } = lookup;
   const iri = formatIri(id);
+  const explicitGateways = getExplicitGateways(lookup, id);
   if (options.verifyPortableObject == null) {
     logger.debug(
       "Cannot look up the portable object {iri}, as the " +
@@ -626,20 +661,27 @@ async function lookupPortableObject(
     return null;
   }
   const canonicalId = canonicalizePortableUri(iri);
-  let candidates: URL[];
-  if (gateways == null) {
-    candidates = getPortableGatewayCandidates(id);
-    if (candidates.length < 1) {
-      // No gateway to ask; a custom document loader may know how to
-      // retrieve the portable IRI itself:
-      const key = `${canonicalId} `;
-      if (lookup.remaining < 1 || lookup.attempted.has(key)) return null;
-      lookup.attempted.add(key);
-      lookup.remaining--;
-      return await dereference(lookup, id, []);
+  const inferred = inferredGateways ??
+    (explicitGateways == null ? getPortableGatewayCandidates(id) : []);
+  const candidates = [...inferred];
+  for (const gateway of explicitGateways ?? []) {
+    if (!candidates.some((candidate) => candidate.href === gateway.href)) {
+      candidates.push(gateway);
     }
-  } else {
-    candidates = [...gateways];
+  }
+  if (candidates.length < 1 && inferredGateways == null) {
+    // No gateway to ask; a custom document loader may know how to
+    // retrieve the portable IRI itself:
+    const key = `${canonicalId} `;
+    if (lookup.remaining < 1 || lookup.attempted.has(key)) return null;
+    lookup.attempted.add(key);
+    lookup.remaining--;
+    return await dereference(
+      lookup,
+      id,
+      [],
+      explicitGateways == null ? undefined : [],
+    );
   }
   const selected: URL[] = [];
   for (const gateway of candidates) {
@@ -651,13 +693,25 @@ async function lookupPortableObject(
   }
   if (selected.length < 1) return null;
   lookup.remaining -= selected.length;
-  return await dereference(lookup, id, selected);
+  const selectedInferred = selected.filter((candidate) =>
+    inferred.some((gateway) => gateway.href === candidate.href)
+  );
+  const selectedExplicit = explicitGateways?.filter((gateway) =>
+    selected.some((candidate) => candidate.href === gateway.href)
+  );
+  return await dereference(
+    lookup,
+    id,
+    selectedInferred,
+    selectedExplicit,
+  );
 }
 
 async function dereference(
   { options, documentLoader }: PortableLookup,
   id: URL,
-  gateways: readonly URL[],
+  inferredGateways: readonly URL[],
+  gateways?: readonly URL[],
   extra: { response?: RemoteDocument; contextLoader?: DocumentLoader } = {},
 ): Promise<Object | null> {
   const tracerProvider = options.tracerProvider ?? trace.getTracerProvider();
@@ -667,10 +721,9 @@ async function dereference(
       contextLoader: extra.contextLoader ?? options.contextLoader ??
         getDocumentLoader({ userAgent: options.userAgent }),
       tracerProvider,
-      // Gateways are inferred from the identifier, WebFinger, or location
-      // hints, rather than given by the caller, so they are reported to the
-      // verifier as hints:
-      inferredGateways: gateways,
+      // Preserve where the gateways came from for the verifier:
+      inferredGateways,
+      ...(gateways == null ? {} : { gateways }),
       response: extra.response,
       verifyPortableObject: options.verifyPortableObject,
       crossOrigin: options.crossOrigin === "throw" ? "throw" : "ignore",

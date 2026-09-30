@@ -125,6 +125,48 @@ test("lookupObject() with FEP-ef61 portable actors", {
       },
     );
 
+    await t.step("explicit gateways replace WebFinger hints", async () => {
+      fetchMock.removeRoutes();
+      fetchMock.get(
+        webFingerPrefix,
+        selfLinks(
+          `ap://${did}/actor?@gateway=https%3A%2F%2Fhint.example`,
+        ),
+      );
+      const second = `https://second.example${gatewayPath}`;
+      const documentLoader = createLoader({ [second]: person() });
+      const actor = await lookupObject("@alice@example.com", {
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        verifyPortableObject: createVerifier(),
+        gateways: ["https://second.example"],
+      });
+      assertInstanceOf(actor, Person);
+      deepStrictEqual(documentLoader.fetched, [compatibleId, second]);
+    });
+
+    await t.step("WebFinger host counts toward the five attempts", async () => {
+      fetchMock.removeRoutes();
+      fetchMock.get(webFingerPrefix, selfLinks(`ap://${did}/actor`));
+      const documentLoader = createLoader({});
+      equal(
+        await lookupObject("@alice@example.com", {
+          documentLoader,
+          contextLoader: mockDocumentLoader,
+          verifyPortableObject: createVerifier(),
+          gateways: Array.from(
+            { length: 6 },
+            (_, i) => `https://g${i}.example`,
+          ),
+        }),
+        null,
+      );
+      deepStrictEqual(documentLoader.fetched, [
+        compatibleId,
+        ...[0, 1, 2, 3].map((i) => `https://g${i}.example${gatewayPath}`),
+      ]);
+    });
+
     await t.step("tries the next self link after a failure", async () => {
       fetchMock.removeRoutes();
       const other = `https://other.example${gatewayPath}`;
@@ -413,6 +455,107 @@ test("lookupObject() looks up portable identifiers directly", async () => {
   deepStrictEqual(documentLoader.fetched.length, 5);
 });
 
+test("lookupObject() uses explicit gateways for portable IDs", async (t) => {
+  const first = `https://first.example${gatewayPath}`;
+  const second = `https://second.example${gatewayPath}`;
+  const hint = `https://hint.example${gatewayPath}`;
+  const options = {
+    contextLoader: mockDocumentLoader,
+    verifyPortableObject: createVerifier(),
+  };
+
+  await t.step("bare ap: ID and one gateway", async () => {
+    const documentLoader = createLoader({ [first]: person() });
+    assertInstanceOf(
+      await lookupObject(`ap://${did}/actor`, {
+        ...options,
+        documentLoader,
+        gateways: ["https://first.example"],
+      }),
+      Person,
+    );
+    deepStrictEqual(documentLoader.fetched, [first]);
+  });
+
+  await t.step("tries several gateways in order", async () => {
+    const documentLoader = createLoader({ [second]: person() });
+    assertInstanceOf(
+      await lookupObject(actorId, {
+        ...options,
+        documentLoader,
+        gateways: ["https://first.example", new URL("https://second.example")],
+      }),
+      Person,
+    );
+    deepStrictEqual(documentLoader.fetched, [first, second]);
+  });
+
+  await t.step("explicit gateways replace location hints", async () => {
+    const documentLoader = createLoader({
+      [second]: person(),
+      [hint]: person(),
+    });
+    assertInstanceOf(
+      await lookupObject(
+        `ap://${did}/actor?@gateway=https%3A%2F%2Fhint.example`,
+        {
+          ...options,
+          documentLoader,
+          gateways: ["https://first.example", "https://second.example"],
+        },
+      ),
+      Person,
+    );
+    deepStrictEqual(documentLoader.fetched, [first, second]);
+  });
+
+  await t.step("empty list uses a custom document loader", async () => {
+    const hintedId = `ap://${did}/actor?@gateway=https%3A%2F%2Fhint.example`;
+    const canonicalHintedId = `${actorId}?@gateway=https%3A%2F%2Fhint.example`;
+    const documentLoader = createLoader({
+      [canonicalHintedId]: person(),
+      [hint]: person(),
+    });
+    const actor = await lookupObject(hintedId, {
+      ...options,
+      documentLoader,
+      gateways: [],
+    });
+    deepStrictEqual(documentLoader.fetched, [canonicalHintedId]);
+    assertInstanceOf(actor, Person);
+  });
+
+  await t.step("invalid gateway throws before fetching", async () => {
+    const documentLoader = createLoader({});
+    for (const verifyPortableObject of [undefined, createVerifier()]) {
+      await rejects(
+        () =>
+          lookupObject(actorId, {
+            documentLoader,
+            contextLoader: mockDocumentLoader,
+            verifyPortableObject,
+            gateways: ["https://bad.example/path"],
+          }),
+        TypeError,
+      );
+    }
+    deepStrictEqual(documentLoader.fetched, []);
+  });
+
+  await t.step("a malformed portable ID is refused first", async () => {
+    const documentLoader = createLoader({});
+    equal(
+      await lookupObject(`ap://${did}/x/../actor`, {
+        ...options,
+        documentLoader,
+        gateways: ["https://bad.example/path"],
+      }),
+      null,
+    );
+    deepStrictEqual(documentLoader.fetched, []);
+  });
+});
+
 test("getActorHandle() with FEP-ef61 portable actors", {
   sanitizeResources: false,
   sanitizeOps: false,
@@ -525,6 +668,77 @@ test("lookupObject() reports inferred gateways as hints", async () => {
   deepStrictEqual(calls[0].gatewayHints, [new URL("https://example.com")]);
 });
 
+test("lookupObject() reports explicit gateways to the verifier", async (t) => {
+  const calls: PortableObjectVerifierOptions[] = [];
+  // deno-lint-ignore require-await
+  const verifyPortableObject: PortableObjectVerifier = async (_, options) => {
+    calls.push(options);
+    return { verified: true };
+  };
+
+  await t.step("bare ID with a limited explicit list", async () => {
+    const fifth = `https://g4.example${gatewayPath}`;
+    const documentLoader = createLoader({ [fifth]: person() });
+    assertInstanceOf(
+      await lookupObject(actorId, {
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        verifyPortableObject,
+        gateways: Array.from({ length: 6 }, (_, i) => `https://g${i}.example`),
+      }),
+      Person,
+    );
+    deepStrictEqual(
+      documentLoader.fetched,
+      [0, 1, 2, 3, 4].map((i) => `https://g${i}.example${gatewayPath}`),
+    );
+    deepStrictEqual(
+      calls.at(-1)?.gateways,
+      [0, 1, 2, 3, 4].map((i) => new URL(`https://g${i}.example`)),
+    );
+    equal(calls.at(-1)?.gatewayHints, undefined);
+  });
+
+  await t.step(
+    "compatible origin stays first and is deduplicated",
+    async () => {
+      const second = `https://second.example${gatewayPath}`;
+      const documentLoader = createLoader({ [second]: person() });
+      assertInstanceOf(
+        await lookupObject(compatibleId, {
+          documentLoader,
+          contextLoader: mockDocumentLoader,
+          verifyPortableObject,
+          gateways: ["https://example.com", "https://second.example"],
+        }),
+        Person,
+      );
+      deepStrictEqual(documentLoader.fetched, [compatibleId, second]);
+      deepStrictEqual(calls.at(-1)?.gateways, [
+        new URL("https://example.com"),
+        new URL("https://second.example"),
+      ]);
+      equal(calls.at(-1)?.gatewayHints, undefined);
+    },
+  );
+
+  await t.step("empty list keeps the compatible origin", async () => {
+    const documentLoader = createLoader({ [compatibleId]: person() });
+    assertInstanceOf(
+      await lookupObject(compatibleId, {
+        documentLoader,
+        contextLoader: mockDocumentLoader,
+        verifyPortableObject,
+        gateways: [],
+      }),
+      Person,
+    );
+    deepStrictEqual(documentLoader.fetched, [compatibleId]);
+    deepStrictEqual(calls.at(-1)?.gateways, []);
+    equal(calls.at(-1)?.gatewayHints, undefined);
+  });
+});
+
 test("lookupObject() verifies fetched documents that stand for portable objects", async (t) => {
   const plainUrl = "https://example.com/users/alice";
   const redirectingLoader = (
@@ -566,6 +780,32 @@ test("lookupObject() verifies fetched documents that stand for portable objects"
     deepStrictEqual(calls.length, 1);
     deepStrictEqual(calls[0].documentUrl, new URL(compatibleId));
     deepStrictEqual(calls[0].gatewayHints, [new URL("https://example.com")]);
+    const explicitCalls: PortableObjectVerifierOptions[] = [];
+    const explicitActor = await lookupObject(plainUrl, {
+      documentLoader,
+      contextLoader: mockDocumentLoader,
+      gateways: ["https://other.example"],
+      // deno-lint-ignore require-await
+      verifyPortableObject: async (_, options) => {
+        explicitCalls.push(options);
+        return { verified: true };
+      },
+    });
+    assertInstanceOf(explicitActor, Person);
+    deepStrictEqual(explicitCalls[0].gateways, [
+      new URL("https://other.example"),
+    ]);
+    equal(explicitCalls[0].gatewayHints, undefined);
+    await rejects(
+      () =>
+        lookupObject(plainUrl, {
+          documentLoader,
+          contextLoader: mockDocumentLoader,
+          verifyPortableObject: createVerifier(),
+          gateways: ["https://bad.example/path"],
+        }),
+      TypeError,
+    );
     equal(
       await lookupObject(plainUrl, {
         documentLoader,
