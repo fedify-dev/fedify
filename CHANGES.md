@@ -1390,6 +1390,12 @@ To be released.
     content type, rather than generic JSON parser crashes.
     [[#912], [#913]]
 
+ -  Added `fetchPortableMedia()` to retrieve [FEP-ef61] hashlink media through
+    an actor's gateways or HTTP(S) media directly, and return the resource only
+    after verifying its `digestMultibase`.  It rejects missing or mismatched
+    digests, limits response size, and checks private network addresses by
+    default.  [[#288], [#1152], [#1182]]
+
  -  Added <https://w3id.org/fep/22cd> to preloaded JSON-LD contexts.
     [[#1037], [#1038]]
 
@@ -1450,6 +1456,8 @@ To be released.
 [#924]: https://github.com/fedify-dev/fedify/pull/924
 [#935]: https://github.com/fedify-dev/fedify/pull/935
 [#1074]: https://github.com/fedify-dev/fedify/pull/1074
+[#1152]: https://github.com/fedify-dev/fedify/issues/1152
+[#1182]: https://github.com/fedify-dev/fedify/pull/1182
 
 ### @fedify/vocab-tools
 
