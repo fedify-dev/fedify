@@ -910,10 +910,16 @@ To be released.
     default.  The `-T`/`--timeout` option now also limits how long
     a request waits for a DNS lookup, though it cannot stop the lookup
     itself.  [[#1131], [#1169]]
+ -  Updated Optique to 1.3.2.  This fixes several command-line parsing
+    issues, so options with attached values such as `--timeout=30` are
+    handled consistently, typo suggestions for mistyped options are more
+    accurate, and errors for known options are no longer hidden by
+    positional arguments before `--`.  [[#1197]]
 
 [#892]: https://github.com/fedify-dev/fedify/issues/892
 [#940]: https://github.com/fedify-dev/fedify/pull/940
 [#971]: https://github.com/fedify-dev/fedify/pull/971
+[#1197]: https://github.com/fedify-dev/fedify/pull/1197
 
 ### @fedify/debugger
 

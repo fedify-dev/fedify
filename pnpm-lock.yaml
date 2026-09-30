@@ -79,17 +79,17 @@ catalogs:
       specifier: ^1.40.0
       version: 1.40.0
     '@optique/config':
-      specifier: ^1.1.0
-      version: 1.1.0
+      specifier: ^1.3.2
+      version: 1.3.2
     '@optique/core':
-      specifier: ^1.1.0
-      version: 1.1.0
+      specifier: ^1.3.2
+      version: 1.3.2
     '@optique/discover':
-      specifier: ^1.1.0
-      version: 1.1.0
+      specifier: ^1.3.2
+      version: 1.3.2
     '@optique/run':
-      specifier: ^1.1.0
-      version: 1.1.0
+      specifier: ^1.3.2
+      version: 1.3.2
     '@standard-schema/spec':
       specifier: ^1.1.0
       version: 1.1.0
@@ -1166,16 +1166,16 @@ importers:
         version: 2.2.0
       '@optique/config':
         specifier: 'catalog:'
-        version: 1.1.0(@standard-schema/spec@1.1.0)
+        version: 1.3.2(@standard-schema/spec@1.1.0)
       '@optique/core':
         specifier: 'catalog:'
-        version: 1.1.0
+        version: 1.3.2
       '@optique/discover':
         specifier: 'catalog:'
-        version: 1.1.0
+        version: 1.3.2
       '@optique/run':
         specifier: 'catalog:'
-        version: 1.1.0
+        version: 1.3.2
       '@poppanator/http-constants':
         specifier: ^1.1.1
         version: 1.1.1
@@ -1269,10 +1269,10 @@ importers:
         version: link:../init
       '@optique/core':
         specifier: 'catalog:'
-        version: 1.1.0
+        version: 1.3.2
       '@optique/run':
         specifier: 'catalog:'
-        version: 1.1.0
+        version: 1.3.2
       es-toolkit:
         specifier: 'catalog:'
         version: 1.46.1
@@ -1563,10 +1563,10 @@ importers:
         version: 2.2.0
       '@optique/core':
         specifier: 'catalog:'
-        version: 1.1.0
+        version: 1.3.2
       '@optique/run':
         specifier: 'catalog:'
-        version: 1.1.0
+        version: 1.3.2
       chalk:
         specifier: 'catalog:'
         version: 5.6.2
@@ -6668,22 +6668,23 @@ packages:
     peerDependencies:
       '@opentelemetry/api': ^1.1.0
 
-  '@optique/config@1.1.0':
-    resolution: {integrity: sha512-pl9xi0xbqVpDYM4rFcIaL8FDM5d1+rX0dWYl69Z/pAIVBG4JJBqucy0O5thXzKY/zW73i70D598jQ5lPThMcJw==}
+  '@optique/config@1.3.2':
+    resolution: {integrity: sha512-lcGwbjHhWi3GkzGA18HP0nRqnzQoLPCY1iZUigt7VetgbzkG9sBCiP6gp48TQy2fUuIAtpUjDfjZTdOx3okJ1g==}
     engines: {bun: '>=1.2.0', deno: '>=2.3.0', node: '>=20.0.0'}
     peerDependencies:
       '@standard-schema/spec': ^1.1.0
 
-  '@optique/core@1.1.0':
-    resolution: {integrity: sha512-eBqai76tHiFDoShlTNXN9AAPs9XznCJRrk4qmGhjZUSMmePCF9o1XU3okUHxHdDXXCHj4auKoIvCN79KNKErxA==}
+  '@optique/core@1.3.2':
+    resolution: {integrity: sha512-YVdAuhx7l2UcnoeAsAuRgQ5LDGlixwQ6LuSmhiNPwZt29PU4rCkbTgo8P2o+OmF8MHKCJkaApYhKY6+QYhVWiw==}
     engines: {bun: '>=1.2.0', deno: '>=2.3.0', node: '>=20.0.0'}
 
-  '@optique/discover@1.1.0':
-    resolution: {integrity: sha512-yyhBNS7CRxckZw14Hjw4qnvv8sOfcpM6uA7hhHr7IC4bWoIoLI3F6G2WhSpAuS/cIDXK7TfEoOHw03kC2ogrPg==}
+  '@optique/discover@1.3.2':
+    resolution: {integrity: sha512-1Tu8vvJnuR+yZ3F5cDKTBKUP5ek5+XMvcE2d+2fnD2HZWJ4swJdIsaneJ9PtWlb1cdjk4y/yKJUa3shG2AUc8Q==}
     engines: {bun: '>=1.2.0', deno: '>=2.3.0', node: '>=20.0.0'}
+    hasBin: true
 
-  '@optique/run@1.1.0':
-    resolution: {integrity: sha512-dcuqqqU1Cpm9CLGEkCkpT/cpJ6H6a+hs0rP+iD8Tgwb+CPPZtX/hCfdIrqYyZ2RtYLxgc3S6KqC81AZAwEUPew==}
+  '@optique/run@1.3.2':
+    resolution: {integrity: sha512-9Dovp3LHLmUZok7Eyzx0NAY+gh3tr/VA9cOmBuWDxioBayZGAStszLUHh1y9o9zuv31mNdeFgDUW9vY1vwJ/Ag==}
     engines: {bun: '>=1.2.0', deno: '>=2.3.0', node: '>=20.0.0'}
 
   '@oslojs/encoding@1.1.0':
@@ -24917,21 +24918,21 @@ snapshots:
       '@opentelemetry/api': 1.9.1
       '@opentelemetry/core': 1.30.1(@opentelemetry/api@1.9.1)
 
-  '@optique/config@1.1.0(@standard-schema/spec@1.1.0)':
+  '@optique/config@1.3.2(@standard-schema/spec@1.1.0)':
     dependencies:
-      '@optique/core': 1.1.0
+      '@optique/core': 1.3.2
       '@standard-schema/spec': 1.1.0
 
-  '@optique/core@1.1.0': {}
+  '@optique/core@1.3.2': {}
 
-  '@optique/discover@1.1.0':
+  '@optique/discover@1.3.2':
     dependencies:
-      '@optique/core': 1.1.0
-      '@optique/run': 1.1.0
+      '@optique/core': 1.3.2
+      '@optique/run': 1.3.2
 
-  '@optique/run@1.1.0':
+  '@optique/run@1.3.2':
     dependencies:
-      '@optique/core': 1.1.0
+      '@optique/core': 1.3.2
 
   '@oslojs/encoding@1.1.0': {}
 
@@ -26068,7 +26069,7 @@ snapshots:
       - react-native-b4a
       - supports-color
 
-  '@stackbit/cms-contentful@0.4.56(debug@4.4.1)(graphql@16.14.2)':
+  '@stackbit/cms-contentful@0.4.56(debug@4.4.1)':
     dependencies:
       '@contentful/rich-text-types': 15.15.1
       '@stackbit/cms-core': 2.0.1(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)
@@ -26082,7 +26083,6 @@ snapshots:
       - bare-buffer
       - debug
       - encoding
-      - graphql
       - react-native-b4a
       - supports-color
 
@@ -26158,33 +26158,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@stackbit/cms-git@0.4.18(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)':
-    dependencies:
-      '@stackbit/artisanal-names': 1.0.1
-      '@stackbit/cms-core': 2.0.1(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)
-      '@stackbit/sdk': 2.0.1
-      '@stackbit/types': 1.0.1
-      '@stackbit/utils': 0.4.19
-      axios: 0.24.0(debug@4.4.1)
-      fs-extra: 11.3.6
-      git-url-parse: 13.1.1
-      lodash: 4.18.1
-      micromatch: 4.0.8
-      slugify: 1.6.9
-    transitivePeerDependencies:
-      - '@types/react'
-      - bare-abort-controller
-      - bare-buffer
-      - bufferutil
-      - canvas
-      - debug
-      - encoding
-      - graphql
-      - react-native-b4a
-      - supports-color
-      - utf-8-validate
-
-  '@stackbit/cms-git@0.4.18(@types/react@19.1.8)(graphql@16.14.2)':
+  '@stackbit/cms-git@0.4.18':
     dependencies:
       '@stackbit/artisanal-names': 1.0.1
       '@stackbit/cms-core': 2.0.1(@types/react@19.1.8)(graphql@16.14.2)
@@ -26198,17 +26172,33 @@ snapshots:
       micromatch: 4.0.8
       slugify: 1.6.9
     transitivePeerDependencies:
-      - '@types/react'
       - bare-abort-controller
       - bare-buffer
-      - bufferutil
-      - canvas
       - debug
       - encoding
-      - graphql
       - react-native-b4a
       - supports-color
-      - utf-8-validate
+
+  '@stackbit/cms-git@0.4.18(debug@4.4.1)':
+    dependencies:
+      '@stackbit/artisanal-names': 1.0.1
+      '@stackbit/cms-core': 2.0.1(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)
+      '@stackbit/sdk': 2.0.1
+      '@stackbit/types': 1.0.1
+      '@stackbit/utils': 0.4.19
+      axios: 0.24.0(debug@4.4.1)
+      fs-extra: 11.3.6
+      git-url-parse: 13.1.1
+      lodash: 4.18.1
+      micromatch: 4.0.8
+      slugify: 1.6.9
+    transitivePeerDependencies:
+      - bare-abort-controller
+      - bare-buffer
+      - debug
+      - encoding
+      - react-native-b4a
+      - supports-color
 
   '@stackbit/cms-sanity@0.2.56(@types/react@19.1.8)':
     dependencies:
@@ -26237,7 +26227,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@stackbit/cms-sanity@0.2.56(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)':
+  '@stackbit/cms-sanity@0.2.56(@types/react@19.1.8)(debug@4.4.1)':
     dependencies:
       '@sanity/block-tools': 2.36.6
       '@sanity/client': 3.4.1
@@ -26260,7 +26250,6 @@ snapshots:
       - canvas
       - debug
       - encoding
-      - graphql
       - react-native-b4a
       - supports-color
       - utf-8-validate
@@ -26271,7 +26260,7 @@ snapshots:
       '@stackbit/artisanal-names': 1.0.1
       '@stackbit/cms-contentful': 0.4.56
       '@stackbit/cms-core': 2.0.1(@types/react@19.1.8)(graphql@16.14.2)
-      '@stackbit/cms-git': 0.4.18(@types/react@19.1.8)(graphql@16.14.2)
+      '@stackbit/cms-git': 0.4.18
       '@stackbit/cms-sanity': 0.2.56(@types/react@19.1.8)
       '@stackbit/sdk': 2.0.1
       '@stackbit/types': 1.0.1
@@ -26305,14 +26294,14 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@stackbit/dev-common@0.5.51(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)':
+  '@stackbit/dev-common@0.5.51(@types/react@19.1.8)(debug@4.4.1)':
     dependencies:
       '@iarna/toml': 2.2.5
       '@stackbit/artisanal-names': 1.0.1
-      '@stackbit/cms-contentful': 0.4.56(debug@4.4.1)(graphql@16.14.2)
+      '@stackbit/cms-contentful': 0.4.56(debug@4.4.1)
       '@stackbit/cms-core': 2.0.1(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)
-      '@stackbit/cms-git': 0.4.18(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)
-      '@stackbit/cms-sanity': 0.2.56(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)
+      '@stackbit/cms-git': 0.4.18(debug@4.4.1)
+      '@stackbit/cms-sanity': 0.2.56(@types/react@19.1.8)(debug@4.4.1)
       '@stackbit/sdk': 2.0.1
       '@stackbit/types': 1.0.1
       '@stackbit/utils': 0.4.19
@@ -26341,7 +26330,6 @@ snapshots:
       - canvas
       - debug
       - encoding
-      - graphql
       - react-native-b4a
       - supports-color
       - utf-8-validate
@@ -26349,8 +26337,8 @@ snapshots:
   '@stackbit/dev@1.0.35(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)':
     dependencies:
       '@stackbit/cms-core': 2.0.1(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)
-      '@stackbit/cms-git': 0.4.18(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)
-      '@stackbit/dev-common': 0.5.51(@types/react@19.1.8)(debug@4.4.1)(graphql@16.14.2)
+      '@stackbit/cms-git': 0.4.18(debug@4.4.1)
+      '@stackbit/dev-common': 0.5.51(@types/react@19.1.8)(debug@4.4.1)
       '@stackbit/sdk': 2.0.1
       axios: 0.25.0(debug@4.4.1)
       chalk: 4.1.2
@@ -26384,7 +26372,7 @@ snapshots:
   '@stackbit/dev@1.0.35(@types/react@19.1.8)(graphql@16.14.2)':
     dependencies:
       '@stackbit/cms-core': 2.0.1(@types/react@19.1.8)(graphql@16.14.2)
-      '@stackbit/cms-git': 0.4.18(@types/react@19.1.8)(graphql@16.14.2)
+      '@stackbit/cms-git': 0.4.18
       '@stackbit/dev-common': 0.5.51(@types/react@19.1.8)
       '@stackbit/sdk': 2.0.1
       axios: 0.25.0
