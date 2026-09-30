@@ -540,7 +540,6 @@ federation.<span class="c-fn">setActorDispatcher</span>(
     <section class="lp-hero">
       <div class="wrap lp-hero-grid">
         <div class="lp-hero-copy">
-          <p class="lp-eyebrow">TypeScript · ActivityPub · Open source</p>
           <h1 class="lp-title">
             Build for the
             <em class="lp-em">fediverse</em>,<br />
@@ -1116,15 +1115,6 @@ federation.<span class="c-fn">setActorDispatcher</span>(
   grid-template-columns: 1.05fr 0.95fr;
   align-items: center;
   gap: 3rem;
-}
-
-.lp-eyebrow {
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--vp-c-brand-1);
-  margin: 0 0 1rem;
 }
 
 .lp-title {
@@ -2055,7 +2045,6 @@ a.lp-stack-name::after {
   .lp-hero-copy > * {
     animation: lp-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
-  .lp-eyebrow { animation-delay: 0.02s; }
   .lp-title { animation-delay: 0.1s; }
   .lp-lede { animation-delay: 0.2s; }
   .lp-cta { animation-delay: 0.3s; }
