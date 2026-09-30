@@ -1,7 +1,7 @@
-import assert from "node:assert/strict";
-import { test } from "node:test";
 import { Chalk } from "chalk";
 import fetchMock from "fetch-mock";
+import assert from "node:assert/strict";
+import { afterEach, test } from "node:test";
 import {
   getAsciiArt,
   getFaviconUrl,
@@ -9,6 +9,10 @@ import {
   readImage,
   rgbTo256Color,
 } from "./nodeinfo.ts";
+
+afterEach(() => {
+  fetchMock.hardReset();
+});
 
 const HTML_WITH_SMALL_ICON = `
 <!DOCTYPE html>
@@ -133,6 +137,105 @@ test("getFaviconUrl - uppercase svg icons with query and hash fall back to /favi
 
   const result = await getFaviconUrl("https://example.com/");
   assert.equal(result.href, "https://example.com/favicon.ico");
+
+  fetchMock.hardReset();
+});
+
+const HTML_WITH_SVG_TYPE_ONLY = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Site</title>
+  <link rel="icon" href="/icon" type="image/svg+xml">
+  </head>
+<body>Test</body>
+</html>
+`;
+
+test("getFaviconUrl - svg icons with type attribute only falls back to /favicon.ico", async () => {
+  fetchMock.spyGlobal();
+
+  fetchMock.get("https://example.com/", {
+    body: HTML_WITH_SVG_TYPE_ONLY,
+    headers: { "Content-Type": "text/html" },
+  });
+
+  const result = await getFaviconUrl("https://example.com/");
+  assert.equal(result.href, "https://example.com/favicon.ico");
+});
+
+const HTML_WITH_SIZES_ANY_ICON = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Site</title>
+  <link rel="icon" href="/favicon.png" sizes="any"/>
+  </head>
+<body>Test</body>
+</html>
+`;
+
+test("getFaviconUrl - icons with sizes='any' is selected", async () => {
+  fetchMock.spyGlobal();
+
+  fetchMock.get("https://example.com/", {
+    body: HTML_WITH_SIZES_ANY_ICON,
+    headers: { "Content-Type": "text/html" },
+  });
+
+  const result = await getFaviconUrl("https://example.com/");
+  assert.equal(result.href, "https://example.com/favicon.png");
+
+  fetchMock.hardReset();
+});
+
+const HTML_WITH_PREFERRED_BITMAP_ICON = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Site</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.png">
+  </head>
+<body>Test</body>
+</html>
+`;
+
+test("getFaviconUrl - prefer bitmap icons", async () => {
+  fetchMock.spyGlobal();
+
+  fetchMock.get("https://example.com/", {
+    body: HTML_WITH_PREFERRED_BITMAP_ICON,
+    headers: { "Content-Type": "text/html" },
+  });
+
+  const result = await getFaviconUrl("https://example.com/");
+  assert.equal(result.href, "https://example.com/favicon.png");
+
+  fetchMock.hardReset();
+});
+
+const HTML_WITH_MULTIPLE_REL_TOKENS = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Site</title>
+  <link rel="alternate icon" href="/favicon.png" sizes="64x64">
+  </head>
+<body>Test</body>
+</html>
+`;
+
+test("getFaviconUrl - icon with multiple rel tokens", async () => {
+  fetchMock.spyGlobal();
+
+  fetchMock.get("https://example.com/", {
+    body: HTML_WITH_MULTIPLE_REL_TOKENS,
+    headers: { "Content-Type": "text/html" },
+  });
+
+  const result = await getFaviconUrl("https://example.com/");
+  assert.equal(result.href, "https://example.com/favicon.png");
 
   fetchMock.hardReset();
 });
