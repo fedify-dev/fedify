@@ -339,6 +339,65 @@ function createBindingIndex() {
 
 type BindingIndex = ReturnType<typeof createBindingIndex>;
 
+const position = (node: Node): number =>
+  (node as Node & { range?: [number, number]; start?: number }).range?.[0] ??
+    (node as Node & { start?: number }).start ?? -1;
+
+const endPosition = (node: Node): number =>
+  (node as Node & { range?: [number, number]; end?: number }).range?.[1] ??
+    (node as Node & { end?: number }).end ?? -1;
+
+const enclosingFunction = (node: Node): FunctionLikeNode | null => {
+  for (
+    let parent = getParent(node);
+    parent != null;
+    parent = getParent(parent)
+  ) {
+    if (isFunctionLike(parent)) return parent;
+  }
+  return null;
+};
+
+const isInside = (node: Node, ancestor: Node): boolean => {
+  for (
+    let current: Node | null = node;
+    current != null;
+    current = getParent(current)
+  ) {
+    if (current === ancestor) return true;
+  }
+  return false;
+};
+
+// Only unconditional statements in a function body establish call order.
+const isDirectStatement = (node: Node, fn: FunctionLikeNode): boolean => {
+  let current = node;
+  while (getParent(current) !== fn.body) {
+    const parent = getParent(current);
+    if (
+      parent == null ||
+      ![
+        "AwaitExpression",
+        "ExpressionStatement",
+        "ReturnStatement",
+        "VariableDeclarator",
+        "VariableDeclaration",
+        "BlockStatement",
+      ].includes(parent.type)
+    ) {
+      return false;
+    }
+    current = parent;
+  }
+  return [
+    "ExpressionStatement",
+    "ReturnStatement",
+    "VariableDeclaration",
+    "BlockStatement",
+  ]
+    .includes(current.type);
+};
+
 const resolveBindingValue = (
   expr: Node,
   bindings: BindingIndex,
@@ -388,11 +447,88 @@ function unwrapArgument(node: Node): Node {
   return node;
 }
 
+function ignoredLocalSetupFunctions(
+  listener: FunctionLikeNode,
+  bindings: BindingIndex,
+  calls: readonly CallExpression[],
+  assignments: readonly Node[],
+): FunctionLikeNode[] {
+  const ignored: FunctionLikeNode[] = [];
+  const directCalls = calls.filter((call) =>
+    enclosingFunction(call as Node) === listener &&
+    isDirectStatement(call as Node, listener)
+  );
+
+  for (const assignment of assignments) {
+    if (
+      assignment.type !== "AssignmentExpression" ||
+      assignment.operator !== "=" ||
+      assignment.left.type !== "MemberExpression" ||
+      assignment.left.object.type !== "Identifier" ||
+      !isFunction(assignment.right as Expression)
+    ) continue;
+    const setup = enclosingFunction(assignment as Node);
+    if (
+      setup == null || setup === listener || !isInside(setup, listener) ||
+      !isDirectStatement(assignment as Node, setup)
+    ) continue;
+    const setupParent = getParent(setup);
+    const namedLocalSetup = enclosingFunction(setup) === listener &&
+      (setup.type === "FunctionDeclaration" ||
+        (setupParent?.type === "VariableDeclarator" &&
+          setupParent.init === setup && setupParent.id.type === "Identifier"));
+    const passedToCall = calls.some((call) =>
+      call.arguments.some((argument) =>
+        argument.type !== "SpreadElement" &&
+        resolveListenerReference(argument as Expression, bindings) === setup
+      )
+    );
+    if (!namedLocalSetup || passedToCall) continue;
+    const property = getMemberPropertyName(assignment.left);
+    if (property == null) continue;
+
+    const setupCalls = directCalls.filter((call) =>
+      resolveListenerReference(call.callee as Expression, bindings) === setup
+    );
+    if (setupCalls.length === 0) {
+      const called = calls.some((call) =>
+        resolveListenerReference(call.callee as Expression, bindings) === setup
+      );
+      ignored.push(called ? assignment.right as FunctionLikeNode : setup);
+      continue;
+    }
+
+    const objectBinding = bindings.lookup(
+      assignment.left.object as Node,
+      assignment.left.object.name,
+    );
+    const installed = assignment.right as FunctionLikeNode;
+    const deliveryCalls = directCalls.filter((call) => {
+      const callee = call.callee;
+      return callee.type === "MemberExpression" &&
+        callee.object.type === "Identifier" &&
+        getMemberPropertyName(callee) === property &&
+        bindings.lookup(callee.object as Node, callee.object.name) ===
+          objectBinding;
+    });
+    const installedBeforeUse = objectBinding != null &&
+      setupCalls.some((setupCall) =>
+        deliveryCalls.some((deliveryCall) =>
+          position(setupCall as Node) >= 0 &&
+          position(setupCall as Node) < position(deliveryCall as Node)
+        )
+      );
+    if (!installedBeforeUse) ignored.push(installed);
+  }
+  return ignored;
+}
+
 function functionCallsDelivery(
   sourceCode: { getText(node: unknown): string },
   listener: FunctionLikeNode,
   bindings: BindingIndex,
   calls: readonly CallExpression[],
+  assignments: readonly Node[],
   contextIndex = 0,
   visited = new Map<FunctionLikeNode, Set<number>>(),
 ): boolean {
@@ -400,7 +536,15 @@ function functionCallsDelivery(
   if (indices?.has(contextIndex)) return false;
   if (indices == null) visited.set(listener, indices = new Set());
   indices.add(contextIndex);
-  if (listenerCallsDeliveryMethod(sourceCode, listener, contextIndex)) {
+  const ignored = ignoredLocalSetupFunctions(
+    listener,
+    bindings,
+    calls,
+    assignments,
+  );
+  if (
+    listenerCallsDeliveryMethod(sourceCode, listener, contextIndex, ignored)
+  ) {
     return true;
   }
 
@@ -444,6 +588,7 @@ function functionCallsDelivery(
           helper,
           bindings,
           calls,
+          assignments,
           index,
           visited,
         )
@@ -457,8 +602,17 @@ const listenerCallsDeliveryMethod = (
   sourceCode: { getText(node: unknown): string },
   listener: FunctionLikeNode,
   contextIndex = 0,
+  ignored: readonly FunctionLikeNode[] = [],
 ): boolean => {
-  const code = stripCommentsAndStrings(sourceCode.getText(listener));
+  let text = sourceCode.getText(listener);
+  const start = position(listener);
+  for (const fn of ignored) {
+    const from = position(fn) - start;
+    const to = endPosition(fn) - start;
+    if (from < 0 || to > text.length || to < from) continue;
+    text = text.slice(0, from) + " ".repeat(to - from) + text.slice(to);
+  }
+  const code = stripCommentsAndStrings(text);
   const aliases = new Set<string>();
   const contextParam = unwrapContextParam(
     listener.params[contextIndex] as Node | undefined,
@@ -534,6 +688,7 @@ function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
     const federationTracker = trackFederationVariables();
     const bindings = createBindingIndex();
     const pendingCalls: CallExpression[] = [];
+    const pendingAssignments: Node[] = [];
     const sourceCode =
       (context as { sourceCode: { getText(node: unknown): string } })
         .sourceCode;
@@ -568,6 +723,7 @@ function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
           resolvedListener,
           bindings,
           pendingCalls,
+          pendingAssignments,
         )
       ) return;
 
@@ -620,6 +776,10 @@ function createRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
 
       CallExpression(node: CallExpression): void {
         pendingCalls.push(node);
+      },
+
+      AssignmentExpression(node: Node): void {
+        pendingAssignments.push(node);
       },
 
       "Program:exit"(): void {
