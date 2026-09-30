@@ -769,19 +769,22 @@ test("getAuthenticatedDocumentLoader() times out", async (t) => {
     fetchMock.mockGlobal();
     const url = "https://example.com/double-knock";
     let requests = 0;
+    // Each knock takes 200 ms, so the timeout of 300 ms is reached during
+    // the second knock only if both share it.  The margins of about 100 ms
+    // on both sides leave room for signing the requests on a busy runner:
     fetchMock.get(url, async () => {
       requests++;
-      await delay(80);
+      await delay(200);
       return new Response(null, { status: 401 });
     });
     try {
       const loader = getAuthenticatedDocumentLoader(identity, {
         allowPrivateAddress: true,
-        timeout: 120,
+        timeout: 300,
       });
       await rejects(loader(url), (e) => assertTimeoutFetchError(e, url));
       deepStrictEqual(requests, 2);
-      await delay(100);
+      await delay(250);
       deepStrictEqual(requests, 2);
     } finally {
       fetchMock.hardReset();
