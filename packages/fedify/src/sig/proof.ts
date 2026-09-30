@@ -711,7 +711,11 @@ async function verifyProofWithMessageDigestCache(
       proof,
       {
         ...options,
-        [verificationObservation]: { attempts: [], attempt: { checks: [] } },
+        [verificationObservation]: {
+          attempts: [],
+          attempt: { checks: [] },
+          captureRawKeyIds: false,
+        },
       },
       messageDigestCache,
       rawProofCandidate,
@@ -1165,7 +1169,10 @@ async function parseRawProofCandidates(
   const candidates: RawProofCandidate[] = [];
   for (const value of values) {
     let parsed: DataIntegrityProof | null = null;
-    const contexts = recordProofContexts(documentLoader);
+    const contexts = options[verificationObservation] != null &&
+        options[verificationObservation]?.captureRawKeyIds !== false
+      ? recordProofContexts(documentLoader)
+      : undefined;
     if (isJsonLdNode(value)) {
       const proofJsonLd = value["@context"] == null &&
           jsonLd["@context"] != null
@@ -1174,7 +1181,7 @@ async function parseRawProofCandidates(
       try {
         parsed = await DataIntegrityProof.fromJsonLd(
           proofJsonLd,
-          { ...options, contextLoader: contexts.loader },
+          { ...options, contextLoader: contexts?.loader ?? documentLoader },
         );
       } catch {
         // Malformed sibling proofs cannot match a typed proof.
@@ -1184,11 +1191,13 @@ async function parseRawProofCandidates(
       value,
       proof: parsed,
       reference: getRawProofReference(value) ?? parsed?.id?.href,
-      declaredKeyId: await getAliasedDeclaredProofKeyId(
-        value,
-        jsonLd["@context"],
-        contexts.replay,
-      ),
+      declaredKeyId: contexts == null
+        ? undefined
+        : await getAliasedDeclaredProofKeyId(
+          value,
+          jsonLd["@context"],
+          contexts.replay,
+        ),
     });
   }
   return candidates;
@@ -2422,7 +2431,7 @@ export async function verifyObject<T extends Object>(
     const observedOptions = {
       ...options,
       [verificationObservation]: options[verificationObservation] ??
-        { attempts: [] },
+        { attempts: [], captureRawKeyIds: false },
     };
     const tracer = (options.tracerProvider ?? trace.getTracerProvider())
       .getTracer(metadata.name, metadata.version);
@@ -2524,13 +2533,16 @@ export async function verifyObject<T extends Object>(
     if (candidateIndex >= 0) {
       hydratedCandidates.add(candidateIndex);
       let parsed: DataIntegrityProof | null = null;
-      const contexts = recordProofContexts(proofContextLoader);
+      const contexts = options[verificationObservation] != null &&
+          options[verificationObservation]?.captureRawKeyIds !== false
+        ? recordProofContexts(proofContextLoader)
+        : undefined;
       try {
         parsed = await DataIntegrityProof.fromJsonLd(
           remoteDocument.document,
           {
             documentLoader: baseDocumentLoader,
-            contextLoader: contexts.loader,
+            contextLoader: contexts?.loader ?? proofContextLoader,
             tracerProvider: options.tracerProvider,
             baseUrl: parseIri(remoteDocument.documentUrl),
           },
@@ -2542,11 +2554,13 @@ export async function verifyObject<T extends Object>(
         value: structuredClone(remoteDocument.document),
         proof: parsed,
         reference,
-        declaredKeyId: await getAliasedDeclaredProofKeyId(
-          remoteDocument.document,
-          undefined,
-          contexts.replay,
-        ),
+        declaredKeyId: contexts == null
+          ? undefined
+          : await getAliasedDeclaredProofKeyId(
+            remoteDocument.document,
+            undefined,
+            contexts.replay,
+          ),
       };
     }
     return remoteDocument;

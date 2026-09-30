@@ -145,6 +145,8 @@ export interface VerificationObservationOptions {
 }
 export interface VerificationObservation {
   readonly attempts: InboxVerificationAttempt[];
+  /** False for internal telemetry collectors; observers capture raw IDs by default. */
+  readonly captureRawKeyIds?: boolean;
   readonly parsedObject?: (object: unknown) => void;
   readonly subject?: { id: URL | null; pointer: string | null };
   readonly attempt?: AttemptBuilder;
