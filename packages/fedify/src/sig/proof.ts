@@ -12,6 +12,7 @@ import {
   fromCompatibleEf61Id,
   getDocumentLoader,
   getFe34Origin,
+  parseGatewayUrl,
   parseIri,
   type PortableObjectVerifier,
   type RemoteDocument,
@@ -530,6 +531,15 @@ export type VerifyPortableObjectProofFailureReason =
   | {
     /** A portable actor, activity, or object has no proof. */
     readonly type: "missingProof";
+  }
+  | {
+    /**
+     * A portable actor's `gateways` is missing or empty, or has an item that
+     * is not an HTTP(S) URI with an empty path, query, and fragment.
+     * The document is rejected before its proofs are verified, so this
+     * reason does not mean that the proofs are valid.
+     */
+    readonly type: "invalidGateways";
   }
   | {
     /** The proof is malformed, unsupported, or cryptographically invalid. */
@@ -1580,6 +1590,7 @@ const FEP_2277_COLLECTION_PROPERTIES = [
   "prev",
   "current",
 ].map((property) => AS_NAMESPACE + property);
+const FEP_EF61_GATEWAYS = "https://w3id.org/fep/ef61/gateways";
 const PORTABLE_OBJECT_ID_PATTERN = /^ap(?:\+ef61)?:\/\//i;
 const FUNCTIONAL_PROOF_PROPERTIES = [
   `${SECURITY_NAMESPACE}cryptosuite`,
@@ -1616,6 +1627,38 @@ function hasValidPortableProofShape(proofValue: unknown): boolean {
         values.length === 1 &&
         !(isJsonLdNode(values[0]) && "@list" in values[0]);
     });
+}
+
+/**
+ * Checks whether an expanded portable actor node has the `gateways` that
+ * FEP-ef61 requires: a non-empty list whose items are all HTTP(S) URIs with
+ * an empty path, query, and fragment.  Like the generated vocabulary decoder,
+ * this also tolerates a plain set of values instead of a `@list`, and gateway
+ * strings given as `@value`s instead of `@id`s.
+ */
+function hasValidPortableActorGateways(node: Record<string, unknown>): boolean {
+  const values = node[FEP_EF61_GATEWAYS];
+  if (!Array.isArray(values)) return false;
+  let items: unknown = values;
+  if (values.some((value) => isJsonLdNode(value) && "@list" in value)) {
+    if (values.length !== 1) return false;
+    items = values[0]["@list"];
+  }
+  if (!Array.isArray(items) || items.length < 1) return false;
+  return items.every((item) => {
+    if (!isJsonLdNode(item)) return false;
+    const gateway = typeof item["@id"] === "string"
+      ? item["@id"]
+      : item["@value"];
+    if (typeof gateway !== "string") return false;
+    try {
+      parseGatewayUrl(gateway);
+    } catch (error) {
+      if (error instanceof TypeError) return false;
+      throw error;
+    }
+    return true;
+  });
 }
 
 /**
@@ -1905,6 +1948,21 @@ async function preparePortableObjectProof(
     }
   }
 
+  // FEP-ef61 requires a portable actor to list where it can be retrieved.
+  // This is checked before any key is resolved, since the document is
+  // rejected whether or not its proofs are valid:
+  if (objectType === "actor" && !hasValidPortableActorGateways(root)) {
+    return {
+      prepared: false,
+      root,
+      objectType,
+      result: {
+        verified: false,
+        reason: { type: "invalidGateways" },
+      },
+    };
+  }
+
   return {
     prepared: true,
     root,
@@ -1985,7 +2043,10 @@ export async function verifyPortableObjectProofPolicy(
  *
  * Every proof must use a DID URL whose DID matches the portable object's
  * authority, i.e., the DID of its canonical portable ID, and every proof must
- * pass {@link verifyProof}.  The proofs are verified over the document as
+ * pass {@link verifyProof}.  A portable actor must also have a non-empty
+ * `gateways` list whose items are all HTTP(S) URIs with an empty path, query,
+ * and fragment; otherwise, it is rejected with the `invalidGateways` reason
+ * before its proofs are verified.  The proofs are verified over the document as
  * given; a compatible identifier is never rewritten into a portable ID.
  *
  * [FEP-ef61]: https://w3id.org/fep/ef61

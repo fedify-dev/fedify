@@ -176,7 +176,7 @@ function isInvalidJsonLdError(error: unknown): error is Error {
 
 function isValidationTypeError(error: unknown): error is TypeError {
   return error instanceof TypeError &&
-    (/^(Invalid JSON-LD:|Invalid type:|Unexpected type:|Invalid @id:)/
+    (/^(Invalid JSON-LD:|Invalid type:|Unexpected type:|Invalid @id:|Invalid FEP-ef61 gateway:)/
       .test(error.message) ||
       isInvalidUrlTypeError(error));
 }
@@ -440,13 +440,23 @@ export async function handlePortableObject<TContextData>(
         result.reason.type !== "unsupportedObjectType"
       )
     ) {
-      logger.error(
-        "Refusing to serve the portable object {portableId}, as it does not " +
-          "satisfy the FEP-ef61 proof policy: {reason}.  Portable actors, " +
-          "activities, objects, and tombstones need an Object Integrity " +
-          "Proof made with a key of the DID in their ID.",
-        { portableId: canonicalId, reason: result.reason.type },
-      );
+      if (result.reason.type === "invalidGateways") {
+        logger.error(
+          "Refusing to serve the portable actor {portableId}, as its " +
+            "gateways property is missing, empty, or has an item that is " +
+            "not an HTTP(S) origin.  FEP-ef61 requires a portable actor to " +
+            "list at least one gateway where it can be retrieved.",
+          { portableId: canonicalId, reason: result.reason.type },
+        );
+      } else {
+        logger.error(
+          "Refusing to serve the portable object {portableId}, as it does " +
+            "not satisfy the FEP-ef61 proof policy: {reason}.  Portable " +
+            "actors, activities, objects, and tombstones need an Object " +
+            "Integrity Proof made with a key of the DID in their ID.",
+          { portableId: canonicalId, reason: result.reason.type },
+        );
+      }
       return portableObjectInternalServerError(request);
     }
   }

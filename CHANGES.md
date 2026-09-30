@@ -353,6 +353,19 @@ To be released.
     acting on the result.  Without the option, `parseUri()` behaves as
     before.  [[#288], [#1143], [#1145]]
 
+ -  Added validation of the `gateways` of [FEP-ef61] portable actors, which
+    FEP-ef61 requires to be a non-empty list of HTTP(S) URIs with an empty
+    path, query, and fragment.  `verifyPortableObjectProof()` and
+    `verifyPortableObject()` now reject a portable actor whose `gateways` is
+    missing or empty, or has any other item, with the new `invalidGateways`
+    reason, even if its proofs are valid, so such an actor is no longer looked
+    up, accepted in an inbox, or served through the gateway endpoint.  If an
+    actor dispatcher returns a portable actor with such `gateways`, Fedify
+    logs a warning.  An incoming activity that embeds an actor with a gateway
+    that has a path, query, or fragment is now rejected with
+    `400 Bad Request` as malformed, instead of failing with an error.
+    [[#288], [#1148], [#1178]]
+
  -  Added `verifyPortableObject()`, which applies the [FEP-ef61] trust policy
     to portable objects fetched through gateways.  It verifies Object
     Integrity Proofs like `verifyPortableObjectProof()`, and also accepts
@@ -766,6 +779,7 @@ To be released.
 [#1143]: https://github.com/fedify-dev/fedify/issues/1143
 [#1145]: https://github.com/fedify-dev/fedify/pull/1145
 [#1146]: https://github.com/fedify-dev/fedify/issues/1146
+[#1148]: https://github.com/fedify-dev/fedify/issues/1148
 [#1163]: https://github.com/fedify-dev/fedify/issues/1163
 [#1164]: https://github.com/fedify-dev/fedify/pull/1164
 [#1165]: https://github.com/fedify-dev/fedify/pull/1165
@@ -773,6 +787,7 @@ To be released.
 [#1167]: https://github.com/fedify-dev/fedify/pull/1167
 [#1169]: https://github.com/fedify-dev/fedify/pull/1169
 [#1171]: https://github.com/fedify-dev/fedify/pull/1171
+[#1178]: https://github.com/fedify-dev/fedify/pull/1178
 
 ### @fedify/adonisjs
 

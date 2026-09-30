@@ -659,7 +659,13 @@ test("parseGatewayUrl() accepts only HTTP(S) base URIs", () => {
       "https://server.example/#fragment",
     ]
   ) {
-    throws(() => parseGatewayUrl(url), TypeError);
+    // Inboxes tell a malformed gateway from other errors by this prefix:
+    throws(
+      () => parseGatewayUrl(url),
+      (error) =>
+        error instanceof TypeError &&
+        error.message.startsWith("Invalid FEP-ef61 gateway: "),
+    );
     ok(!isGatewayUrl(new URL(url)));
   }
 });

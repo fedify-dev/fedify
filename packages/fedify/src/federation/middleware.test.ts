@@ -6844,6 +6844,64 @@ test("FederationImpl.processQueuedTask()", async (t) => {
   );
 
   await t.step(
+    "malformed FEP-ef61 gateways are permanent queued inbox parse errors",
+    async () => {
+      const queuedMessages: Message[] = [];
+      const queue: MessageQueue = {
+        enqueue(message, _options) {
+          queuedMessages.push(message);
+          return Promise.resolve();
+        },
+        listen(_handler, _options) {
+          return Promise.resolve();
+        },
+      };
+      const kv = new MemoryKvStore();
+      let errorCount = 0;
+      const federation = new FederationImpl<void>({
+        kv,
+        queue,
+      });
+      federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+        .on(Create, () => {
+          throw new Error("listener should not run");
+        })
+        .onError(() => {
+          errorCount++;
+        });
+      await federation.processQueuedTask(
+        undefined,
+        {
+          type: "inbox",
+          id: crypto.randomUUID(),
+          baseUrl: "https://example.com",
+          activity: {
+            "@context": [
+              "https://www.w3.org/ns/activitystreams",
+              "https://w3id.org/fep/ef61",
+            ],
+            id: "https://remote.example/activities/invalid-gateway",
+            type: "Create",
+            actor: "https://remote.example/users/alice",
+            // A gateway must not have a path:
+            object: {
+              id: "https://remote.example/users/bob",
+              type: "Person",
+              gateways: ["https://gw.example/path"],
+            },
+          },
+          started: new Date().toISOString(),
+          attempt: 0,
+          identifier: null,
+          traceContext: {},
+        } satisfies InboxMessage,
+      );
+      assertEquals(errorCount, 1);
+      assertEquals(queuedMessages, []);
+    },
+  );
+
+  await t.step(
     "legacy raw LDS inbox messages with network-path context ids retry",
     async () => {
       const queue: MessageQueue = {

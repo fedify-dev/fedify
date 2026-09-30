@@ -1106,9 +1106,12 @@ For received portable objects, use `verifyPortableObjectProof()`.  It keeps
 `verifyProof()` focused on cryptographic verification while also enforcing the
 [FEP-ef61] policy: a portable actor, activity, or object must have proofs, every
 proof must use a DID URL, and that DID must match the authority of the portable
-object ID.  The detailed result distinguishes documents outside the policy,
-missing or invalid proofs, unsupported verification methods, DID mismatches,
-and successful verification:
+object ID.  A portable actor must also have a non-empty `gateways` list whose
+items are all HTTP(S) URIs with an empty path, query, and fragment; this is
+checked before the proofs, so the `invalidGateways` reason does not mean that
+the proofs are valid.  The detailed result distinguishes documents outside the
+policy, missing or invalid proofs, actors without valid gateways, unsupported
+verification methods, DID mismatches, and successful verification:
 
 ~~~~ typescript
 import { verifyPortableObjectProof } from "@fedify/fedify";
