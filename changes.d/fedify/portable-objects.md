@@ -166,7 +166,9 @@ links:
         through the gateway endpoint, e.g.,
         `GET /.well-known/apgateway/did:key:z6Mk.../users/alice/outbox`, if
         the actor is a portable actor under the requested DID whose
-        corresponding property refers to the collection.  Added
+        corresponding property refers to the collection.  A collection that
+        is not paginated always has `totalItems`, so that consumers can tell
+        an empty one from other objects.  Added
         the `CustomCollectionCallbackSetters.mapPortableOwner()` method and
         the `PortableCollectionOwnerMapper` type, which tie a custom
         collection to its portable owner.  [[#1111], [#1142]]

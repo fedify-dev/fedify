@@ -22,7 +22,7 @@ import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 import { verifyServedPortableObjects } from "../sig/compound-proof.ts";
 import { verifyPortableObject } from "../sig/portable-collection.ts";
-import { signObject } from "../sig/proof.ts";
+import { signObject, verifyPortableObjectProof } from "../sig/proof.ts";
 import { ed25519PrivateKey, ed25519PublicKey } from "../testing/keys.ts";
 import type { Context } from "./context.ts";
 import type { Federation } from "./federation.ts";
@@ -921,6 +921,54 @@ test("Fedify traverses portable collections that Fedify serves", async () => {
   const actor2 = await lookupObject(actorUri(evil), evilOptions);
   assert(actor2 instanceof Person);
   assertEquals(await actor2.getOutbox(evilOptions), null);
+});
+
+test("Fedify accepts empty portable collections that Fedify serves", async () => {
+  // The inbox dispatcher returns no items and has no counter, so without
+  // totalItems nothing would tell that the document is a collection:
+  const federation = createTestFederation();
+  const [response, json] = await fetchJson(
+    federation,
+    gatewayUrl("/users/alice/inbox"),
+  );
+  assertEquals(response.status, 200);
+  assertEquals(json?.totalItems, 0);
+  assertEquals(
+    await verifyPortableObjectProof(json, {
+      contextLoader: mockDocumentLoader,
+    }),
+    { verified: false, reason: { type: "unsecuredCollection" } },
+  );
+
+  const documentLoader: DocumentLoader = async (url) => {
+    const target = new URL(url);
+    const response = await federation.fetch(
+      new Request(new URL(target.pathname + target.search, ORIGIN), {
+        headers: { Accept: ACCEPT },
+      }),
+      { contextData: undefined },
+    );
+    if (!response.ok) {
+      throw new FetchError(url, `HTTP ${response.status}`, response);
+    }
+    return {
+      contextUrl: null,
+      documentUrl: url,
+      document: await response.json(),
+    };
+  };
+  const options = {
+    documentLoader,
+    contextLoader: mockDocumentLoader,
+    gateways: [ORIGIN],
+    verifyPortableObject,
+  };
+  const actor = await lookupObject(portableId("/users/alice"), options);
+  assert(actor instanceof Person);
+  const inbox = await actor.getInbox(options);
+  assert(inbox instanceof OrderedCollection);
+  assertEquals(inbox.totalItems, 0);
+  assertEquals(await Array.fromAsync(traverseCollection(inbox, options)), []);
 });
 
 test("verifyServedPortableObjects() classifies unsigned maps under their effective contexts", async () => {

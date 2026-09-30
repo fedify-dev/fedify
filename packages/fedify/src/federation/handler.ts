@@ -992,7 +992,13 @@ export async function handleCollection<
         collection = new OrderedCollection({
           id: baseUri,
           attribution,
-          totalItems: totalItemCount ?? null,
+          // A portable collection is served without a proof, so consumers tell
+          // it from other objects by its collection properties (FEP-2277).
+          // Without a counter, an empty one would have none of them, but
+          // the dispatcher has returned all the items, so their number is
+          // the total:
+          totalItems: totalItemCount ??
+            (portable == null ? null : itemsOrResponse.length),
           items: itemsOrResponse,
         });
       } else {
