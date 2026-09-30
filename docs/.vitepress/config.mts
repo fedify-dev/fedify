@@ -148,6 +148,7 @@ const MANUAL = {
     { text: "Object dispatcher", link: "/manual/object.md" },
     { text: "Access control", link: "/manual/access-control.md" },
     { text: "Interaction controls", link: "/manual/interaction-controls.md" },
+    { text: "Portable objects", link: "/manual/portable.md" },
     { text: "WebFinger", link: "/manual/webfinger.md" },
     { text: "NodeInfo", link: "/manual/nodeinfo.md" },
     { text: "URI Template", link: "/manual/uri-template.md" },

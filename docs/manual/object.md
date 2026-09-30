@@ -475,12 +475,14 @@ its deletion.  So send a `Delete` activity signed by the DID as well, and
 create the signed tombstone while the key is still available, if you are
 going to discard the key.
 
-Note that only object dispatchers and the actor dispatcher (see the
+Note that besides object dispatchers, the actor dispatcher (see the
 [*Portable actors and WebFinger*
-section](./actor.md#portable-actors-and-webfinger)) serve portable objects for
-now.  Collection dispatchers are not reachable through the gateway endpoint,
-whereas deliveries to portable inboxes are handled by inbox listeners (see the
-[*Portable inboxes* section](./inbox.md#portable-inboxes)).
+section](./actor.md#portable-actors-and-webfinger)) and collection dispatchers
+(see the [*Portable collections*
+section](./collections.md#portable-collections)) serve portable actors and
+collections through the gateway endpoint, whereas deliveries to portable
+inboxes are handled by inbox listeners (see the [*Portable inboxes*
+section](./inbox.md#portable-inboxes)).
 Also, a route of your own that matches the `/.well-known/apgateway/...` path,
 e.g., `/{+path}`, takes precedence over the gateway endpoint.
 

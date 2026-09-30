@@ -764,6 +764,13 @@ To be released.
     for their actors, which Mitra serves under `ap:` URIs.
     [[#288], [#938], [#1041], [#1094], [#1102], [#1133], [#1138]]
 
+    The map-local profile is Fedify's interim interpretation, since neither
+    FEP-8b32 nor Verifiable Credential Data Integrity defines the boundaries
+    of embedded proofs yet, and may change in Fedify 3.0.  The new
+    [*Portable objects*] chapter of the manual describes
+    the [FEP-ef61] profile that Fedify supports, including this and the parts
+    of FEP-ef61 that Fedify does not implement.  [[#288], [#1151], [#1198]]
+
 [FEP-ef61]: https://w3id.org/fep/ef61
 [FEP-fe34]: https://w3id.org/fep/fe34
 [key–value store guide]: https://fedify.dev/manual/kv
@@ -771,6 +778,7 @@ To be released.
 [ActivityPub Media Upload extension]: https://www.w3.org/wiki/SocialCG/ActivityPub/MediaUpload
 [Standard Schema]: https://standardschema.dev/
 [FEP-ae97]: https://w3id.org/fep/ae97
+[*Portable objects*]: https://fedify.dev/manual/portable
 [#206]: https://github.com/fedify-dev/fedify/issues/206
 [#288]: https://github.com/fedify-dev/fedify/issues/288
 [#754]: https://github.com/fedify-dev/fedify/issues/754
@@ -847,6 +855,7 @@ To be released.
 [#1146]: https://github.com/fedify-dev/fedify/issues/1146
 [#1147]: https://github.com/fedify-dev/fedify/issues/1147
 [#1148]: https://github.com/fedify-dev/fedify/issues/1148
+[#1151]: https://github.com/fedify-dev/fedify/issues/1151
 [#1153]: https://github.com/fedify-dev/fedify/issues/1153
 [#1154]: https://github.com/fedify-dev/fedify/issues/1154
 [#1155]: https://github.com/fedify-dev/fedify/issues/1155
@@ -864,6 +873,7 @@ To be released.
 [#1186]: https://github.com/fedify-dev/fedify/pull/1186
 [#1188]: https://github.com/fedify-dev/fedify/pull/1188
 [#1189]: https://github.com/fedify-dev/fedify/pull/1189
+[#1198]: https://github.com/fedify-dev/fedify/pull/1198
 
 ### @fedify/adonisjs
 
@@ -1487,6 +1497,13 @@ To be released.
     authorities, normalize them to `ap+ef61:`, and ignore query hints such as
     `gateways` during comparison.
     [[#828], [#924]]
+
+    Canonicalizing to `ap+ef61:` rather than `ap:`, which FEP-ef61 currently
+    recommends, is a deliberate choice of Fedify's that may change in
+    Fedify 3.0.  Compare portable IDs with `arePortableUrisEqual()` rather
+    than as strings.  See the [*Portable objects*] chapter
+    of the manual for the FEP-ef61 profile that Fedify supports.
+    [[#288], [#1151], [#1198]]
 
  -  Added the [FEP-7aa9] JSON-LD context to the preloaded context registry so
     FEP-7aa9 documents can be compacted and expanded without fetching the

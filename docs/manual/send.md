@@ -1244,6 +1244,11 @@ verified in isolation even if the parent's active context causes the embedded
 JSON-LD to expand differently.  Proof success does not establish that the
 isolated and embedded expansions are equivalent.
 
+This profile is Fedify's interim interpretation, and may change in Fedify 3.0.
+See the [*Map-local compound proofs*
+section](./portable.md#map-local-compound-proofs) of the *Portable objects*
+chapter.
+
 #### Producing a compound document
 
 `signObject()` captures the secured JSON document that the proof it creates

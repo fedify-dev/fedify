@@ -220,7 +220,9 @@ the `ap:` and `ap+ef61:` schemes are accepted.  DID delimiters in the authority
 can be percent-encoded for URL-safe input, as in
 `ap+ef61://did%3Akey%3A.../actor`.  Fedify stores these IRIs as `URL` objects
 with a URL-safe authority internally, and serializes them as canonical
-`ap+ef61:` IRIs with the decoded DID authority.
+`ap+ef61:` IRIs with the decoded DID authority.  This is one of the deliberate
+choices of the FEP-ef61 profile that Fedify supports; see the [*Portable
+objects* chapter](./portable.md) for the profile as a whole.
 
 When comparing portable object IDs, use `canonicalizePortableUri()` or
 `arePortableUrisEqual()` from `@fedify/vocab-runtime`; these helpers remove
@@ -662,6 +664,8 @@ an `@id` on its own, and drop embedded objects without an `@id`.
 >     such as the `replies` of a portable object, are rejected.
 >  -  The owner's `gateways` are taken from whichever validly signed actor
 >     document is retrieved, which might be older than the latest one.
+
+### Portable media
 
 Links and media/document objects expose `digestMultibase` for the integrity
 digest required when portable objects reference external resources.  Use

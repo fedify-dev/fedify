@@ -41,6 +41,7 @@ Supported FEPs
  -  [FEP-22cd][]: Attributing translations
  -  [FEP-0837][]: Federated Marketplace
  -  [FEP-ae0c][]: Fediverse Relay Protocols: Mastodon and LitePub
+ -  [FEP-ef61][]: Portable Objects (partial; see [below][FEP-ef61 section])
 
 [FEP-67ff]: https://w3id.org/fep/67ff
 [FEP-f228]: https://w3id.org/fep/f228
@@ -59,6 +60,35 @@ Supported FEPs
 [FEP-22cd]: https://w3id.org/fep/22cd
 [FEP-0837]: https://w3id.org/fep/0837
 [FEP-ae0c]: https://w3id.org/fep/ae0c
+[FEP-ef61]: https://w3id.org/fep/ef61
+[FEP-ef61 section]: #fep-ef61
+
+
+FEP-ef61
+--------
+
+Fedify supports a profile of [FEP-ef61] portable objects: it accepts `ap:`
+and `ap+ef61:` IDs with `did:key` DIDs of Ed25519 keys, verifies their
+[FEP-8b32] proofs, dereferences them through gateways, and acts as a gateway
+that serves portable actors, objects, collections, and hashlink media and
+accepts deliveries to portable inboxes.  It deliberately differs from the
+current FEP text in two ways, which may change in Fedify 3.0:
+
+ -  Fedify canonicalizes and serializes portable IDs with the `ap+ef61:`
+    scheme instead of `ap:`, but accepts both and compares them as equal.
+ -  Fedify verifies proofs nested in compound documents, such as a signed
+    `Note` in a signed `Create`, with a map-local profile of its own, since
+    FEP-8b32 does not define the boundaries of embedded proofs yet.
+
+Fedify does not implement the [FEP-ae97] gateway endpoints, gateway
+discovery, synchronization across gateways, key rotation, built-in
+resolution of DID methods other than `did:key`, or gateways with paths.
+Interoperability with other implementations is still being tested.  See the
+[*Portable objects* chapter][portable objects] of the manual for the full
+profile.
+
+[FEP-ae97]: https://w3id.org/fep/ae97
+[portable objects]: https://fedify.dev/manual/portable
 
 
 ActivityPub
