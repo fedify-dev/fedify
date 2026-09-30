@@ -5,6 +5,8 @@ links:
   '#1102': https://github.com/fedify-dev/fedify/pull/1102
   '#1133': https://github.com/fedify-dev/fedify/issues/1133
   '#1138': https://github.com/fedify-dev/fedify/pull/1138
+  '#1151': https://github.com/fedify-dev/fedify/issues/1151
+  '#1198': https://github.com/fedify-dev/fedify/pull/1198
   '#288': https://github.com/fedify-dev/fedify/issues/288
   '#938': https://github.com/fedify-dev/fedify/issues/938
 ---
@@ -23,4 +25,13 @@ links:
     for their actors, which Mitra serves under `ap:` URIs.
     [[#288], [#938], [#1041], [#1094], [#1102], [#1133], [#1138]]
 
+    The map-local profile is Fedify's interim interpretation, since neither
+    FEP-8b32 nor Verifiable Credential Data Integrity defines the boundaries
+    of embedded proofs yet, and may change in Fedify 3.0.  The new
+    [*Portable objects*][portable objects] chapter of the manual describes
+    the [FEP-ef61] profile that Fedify supports, including this and the parts
+    of FEP-ef61 that Fedify does not implement.  [[#288], [#1151], [#1198]]
+
 [FEP-ae97]: https://w3id.org/fep/ae97
+[portable objects]: https://fedify.dev/manual/portable
+[FEP-ef61]: https://w3id.org/fep/ef61

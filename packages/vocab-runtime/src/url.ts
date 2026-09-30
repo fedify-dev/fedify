@@ -125,6 +125,13 @@ export function parseIri(iri: string | URL, base?: string | URL): URL {
  * Portable URI and FEP-ef61 compatible identifier strings with dot segments
  * throw a `TypeError` because their paths cannot be represented by JavaScript
  * `URL` without normalization.
+ *
+ * Portable IRIs are formatted with the `ap+ef61:` scheme and a decoded DID
+ * authority, even if they were parsed from `ap:` IRIs.  FEP-ef61 currently
+ * recommends the `ap:` scheme, so a future major version of Fedify may change
+ * the scheme this function produces.  Do not compare its results as strings to
+ * tell whether two portable IRIs identify the same object; use
+ * `arePortableUrisEqual()` instead.
  */
 export function formatIri(iri: string | URL): string {
   if (typeof iri === "string") assertPortablePathCanBeParsed(iri);
@@ -148,6 +155,12 @@ export function formatIri(iri: string | URL): string {
  * scheme, a decoded DID authority, and no query component.  Pass the raw URI
  * string, not a `URL` object, because JavaScript `URL` normalizes opaque path
  * segments before Fedify can compare them.
+ *
+ * The `ap+ef61:` scheme of the result is a choice of Fedify's, whereas
+ * FEP-ef61 currently canonicalizes portable URIs with the `ap:` scheme.
+ * A future major version of Fedify may change the scheme of the result, so
+ * do not persist the result as the only copy of an identifier; keep the
+ * original URI, and canonicalize it again when comparing.
  *
  * @param input The raw portable ActivityPub URI string to canonicalize.
  * @returns The canonical portable ActivityPub URI string.
