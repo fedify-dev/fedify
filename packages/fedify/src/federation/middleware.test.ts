@@ -5211,6 +5211,97 @@ test({
   },
 });
 
+for (const queued of [false, true]) {
+  test(`ContextImpl.routeActivity() routes the fetched document (queued: ${queued})`, async () => {
+    const id = new URL("https://example.com/verified-create");
+    const genuine = new Create({
+      id,
+      actor: new URL("https://example.com/person"),
+      object: new vocab.Note({ content: "Genuine content" }),
+      to: new URL("https://example.com/recipient"),
+    });
+    const genuineJson = await genuine.toJsonLd({
+      contextLoader: mockDocumentLoader,
+    });
+    const forged = new Create({
+      id,
+      actor: new URL("https://victim.example/actor"),
+      object: new vocab.Note({ content: "Forged content" }),
+      to: new URL("https://attacker.example/recipient"),
+    });
+    const messages: Message[] = [];
+    const queue: MessageQueue = {
+      enqueue(message) {
+        messages.push(message as Message);
+        return Promise.resolve();
+      },
+      async listen() {},
+    };
+    const federation = createFederation<void>({
+      kv: new MemoryKvStore(),
+      documentLoaderFactory: () => async (url, options) =>
+        url === id.href
+          ? { document: genuineJson, documentUrl: id.href, contextUrl: null }
+          : await mockDocumentLoader(url, options),
+      contextLoaderFactory: () => mockDocumentLoader,
+      queue: { inbox: queued ? queue : undefined, outbox: queue },
+      manuallyStartQueue: true,
+    });
+    const received: unknown[] = [];
+    const contextDocuments: unknown[] = [];
+    federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      .on(Create, async (ctx, activity) => {
+        received.push(
+          await activity.toJsonLd({
+            contextLoader: mockDocumentLoader,
+          }),
+        );
+        assertInstanceOf(ctx, InboxContextImpl);
+        contextDocuments.push(ctx.activity);
+        await ctx.forwardActivity(
+          { privateKey: ed25519PrivateKey, keyId: ed25519Multikey.id! },
+          {
+            id: new URL("https://example.com/recipient"),
+            inboxId: new URL("https://example.com/inbox"),
+          },
+        );
+      });
+    const ctx = federation.createContext(new URL("https://local.example/"));
+    async function processInbox() {
+      const inboxMessages = messages.filter((message) =>
+        message.type === "inbox"
+      );
+      for (const message of inboxMessages) {
+        await federation.processQueuedTask(undefined, message);
+      }
+    }
+
+    assert(await ctx.routeActivity(null, forged));
+    if (queued) {
+      assertEquals(received, []);
+      assertEquals(messages.length, 1);
+      assertEquals(messages[0].activity, genuineJson);
+      await processInbox();
+    }
+    assertEquals(received, [genuineJson]);
+    assertEquals(contextDocuments, [genuineJson]);
+    const forwarded = messages.filter((message) => message.type === "outbox");
+    assertEquals(forwarded.length, 1);
+    assertEquals(forwarded[0].activity, genuineJson);
+
+    // The forged input has already caused the genuine document to be
+    // processed, so routing the genuine activity later is a safe duplicate.
+    assert(await ctx.routeActivity(null, genuine));
+    if (queued) await processInbox();
+    assertEquals(received, [genuineJson]);
+    assertEquals(contextDocuments, [genuineJson]);
+    assertEquals(
+      messages.filter((message) => message.type === "outbox").length,
+      1,
+    );
+  });
+}
+
 test("ContextImpl.routeActivity() marks queued signed activities as non-LDS", async () => {
   let queuedMessage: InboxMessage | null = null;
   const queue: MessageQueue = {

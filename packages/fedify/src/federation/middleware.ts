@@ -2783,7 +2783,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   ): Promise<boolean> {
     const logger = getLogger(["fedify", "federation", "inbox"]);
     const contextLoader = options.contextLoader ?? this.contextLoader;
-    const json = await activity.toJsonLd({ contextLoader });
+    let json = await activity.toJsonLd({ contextLoader });
     const keyCache = new KvKeyCache(
       this.federation.kv,
       this.federation.kvPrefixes.publicKey,
@@ -2853,6 +2853,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           "ignore the original activity and use the fetched one, which is trustworthy.",
       );
       activity = fetched;
+      json = await fetched.toJsonLd({ contextLoader });
     } else {
       logger.debug(
         "Object Integrity Proofs are verified.",
