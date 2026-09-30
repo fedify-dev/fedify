@@ -763,7 +763,9 @@ test("FEP-ef61: actor gateways must be HTTP(S) base URIs", async () => {
       "https://user@server.example/",
       "https://server.example/path",
       "https://server.example/?x=1",
+      "https://server.example/?",
       "https://server.example/#fragment",
+      "https://server.example/#",
     ]
   ) {
     throws(

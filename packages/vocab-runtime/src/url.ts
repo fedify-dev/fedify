@@ -339,11 +339,11 @@ function parseAtUri(uri: string): URL {
 
 /**
  * Checks whether the URL is an FEP-ef61 gateway base URI.
+ * @since 2.4.0
  */
 export function isGatewayUrl(url: URL): boolean {
   return (url.protocol === "http:" || url.protocol === "https:") &&
-    url.username === "" && url.password === "" &&
-    url.pathname === "/" && url.search === "" && url.hash === "";
+    url.href === `${url.origin}/`;
 }
 
 /**
@@ -352,6 +352,7 @@ export function isGatewayUrl(url: URL): boolean {
  *                     with no credentials, path, query, or fragment.  In the
  *                     latter case, the message starts with
  *                     `Invalid FEP-ef61 gateway:`.
+ * @since 2.4.0
  */
 export function parseGatewayUrl(url: string): URL {
   const parsed = parseIri(url);
@@ -550,12 +551,7 @@ function parseCompatibleEf61Gateway(gateway: string | URL): URL {
     : typeof gateway === "string" && URL.canParse(gateway)
     ? new URL(gateway)
     : null;
-  // Comparing href with the origin also rejects credentials, a path, and
-  // query and fragment components, including empty ? and # delimiters.
-  if (
-    url == null || (url.protocol !== "http:" && url.protocol !== "https:") ||
-    url.href !== `${url.origin}/`
-  ) {
+  if (url == null || !isGatewayUrl(url)) {
     throw new TypeError(
       "FEP-ef61 gateways for compatible identifiers must be HTTP(S) origins " +
         "with no credentials, path, query, or fragment.",

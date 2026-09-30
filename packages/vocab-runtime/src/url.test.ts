@@ -644,7 +644,13 @@ test("parseIri() preserves encoded percent signs while decoding delimiters", () 
 });
 
 test("parseGatewayUrl() accepts only HTTP(S) base URIs", () => {
-  for (const url of ["https://server.example/", "http://server.example/"]) {
+  for (
+    const url of [
+      "https://server.example",
+      "https://server.example/",
+      "http://server.example/",
+    ]
+  ) {
     deepStrictEqual(parseGatewayUrl(url), new URL(url));
     ok(isGatewayUrl(new URL(url)));
   }
@@ -656,7 +662,9 @@ test("parseGatewayUrl() accepts only HTTP(S) base URIs", () => {
       "https://user@server.example/",
       "https://server.example/path",
       "https://server.example/?x=1",
+      "https://server.example/?",
       "https://server.example/#fragment",
+      "https://server.example/#",
     ]
   ) {
     // Inboxes tell a malformed gateway from other errors by this prefix:
@@ -668,6 +676,13 @@ test("parseGatewayUrl() accepts only HTTP(S) base URIs", () => {
     );
     ok(!isGatewayUrl(new URL(url)));
   }
+
+  const mutated = new URL("https://server.example/");
+  mutated.search = "?";
+  ok(!isGatewayUrl(mutated));
+  mutated.search = "";
+  mutated.hash = "#";
+  ok(!isGatewayUrl(mutated));
 });
 
 test("fromCompatibleEf61Id() converts compatible identifiers", () => {
