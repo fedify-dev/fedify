@@ -859,7 +859,7 @@ test("processQueuedTask() with portable inbox gateways", async (t) => {
     strictEqual(queued.length, 0);
   });
 
-  await t.step("keeps the longest Retry-After", async () => {
+  await t.step("retries when the first gateway is due", async () => {
     mockGateways({
       "https://gw1.example": new Response(null, {
         status: 429,
@@ -882,7 +882,31 @@ test("processQueuedTask() with portable inbox gateways", async (t) => {
       Object.keys(retry.gatewayNotBefore ?? {}),
       [inboxOn("https://gw1.example"), inboxOn("https://gw2.example")],
     );
-    strictEqual(Math.round(queued[0].options!.delay!.total("second")), 3600);
+    strictEqual(Math.round(queued[0].options!.delay!.total("second")), 60);
+  });
+
+  await t.step("does not wait for Retry-After of every gateway", async () => {
+    mockGateways({
+      "https://gw1.example": new Response(null, {
+        status: 429,
+        headers: { "Retry-After": "3600" },
+      }),
+      "https://gw2.example": 500,
+    });
+    const { federation, queued } = setup({
+      outboxRetryPolicy: () => Temporal.Duration.from({ seconds: 30 }),
+    });
+    await federation.processQueuedTask(
+      undefined,
+      createMessage(["https://gw1.example", "https://gw2.example"]),
+    );
+    strictEqual(queued.length, 1);
+    const retry = queued[0].message as OutboxMessage;
+    deepStrictEqual(
+      Object.keys(retry.gatewayNotBefore ?? {}),
+      [inboxOn("https://gw1.example")],
+    );
+    strictEqual(Math.round(queued[0].options!.delay!.total("second")), 30);
   });
 
   await t.step("ignores a Retry-After too long to honor", async () => {

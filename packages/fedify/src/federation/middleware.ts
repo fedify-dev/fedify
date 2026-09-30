@@ -2284,16 +2284,11 @@ export class FederationImpl<TContextData>
       );
       return;
     }
-    let retryAfter: Temporal.Duration | undefined;
-    for (const { retryAfter: d } of survivors) {
-      if (d != null) {
-        retryAfter = retryAfter == null ? d : maxDelay(retryAfter, d);
-      }
-    }
+    const hasRetryAfter = survivors.some((s) => s.retryAfter != null);
     // A natively retrying queue replays the original message, so it is left
     // to the queue only if no gateway has to be excluded from the retry:
     if (
-      outboxQueue?.nativeRetrial && retryAfter == null &&
+      outboxQueue?.nativeRetrial && !hasRetryAfter &&
       survivors.length === message.gatewayInboxes.length &&
       globalThis.Object.keys(gatewayNotBefore).length < 1
     ) {
@@ -2317,6 +2312,11 @@ export class FederationImpl<TContextData>
       );
       return;
     }
+    // The next round is due as soon as any gateway can be tried again; the
+    // others are skipped then until their own time comes:
+    const delay = survivors
+      .map((s) => s.holdDelay ?? s.retryAfter ?? policyDelay)
+      .reduce((a, b) => Temporal.Duration.compare(a, b) <= 0 ? a : b);
     const retryMessage = {
       ...nextMessage,
       attempt: message.attempt + 1,
@@ -2327,7 +2327,7 @@ export class FederationImpl<TContextData>
       { ...logData, portableInbox: message.portableInbox, error: lastError },
     );
     await outboxQueue.enqueue(retryMessage, {
-      delay: clampNegativeDelay(retryAfter ?? policyDelay),
+      delay: clampNegativeDelay(delay),
       orderingKey: message.orderingKey,
     });
     this.metrics.recordQueueTaskEnqueued(
