@@ -378,6 +378,7 @@ export async function getFaviconUrl(
     if ("href" in attrs) {
       const parsedUrl = new URL(attrs.href, response.url);
       if (parsedUrl.pathname.toLowerCase().endsWith(".svg")) continue;
+      if (attrs.type?.toLowerCase()?.trim() === "image/svg+xml") continue;
       return parsedUrl;
     }
   }
