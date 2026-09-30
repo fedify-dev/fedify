@@ -558,7 +558,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
               Get started
               <span class="btn-arrow">→</span>
             </a>
-            <a class="btn btn-ghost" href="/why">Why Fedify?</a>
+            <a class="btn btn-text" href="/why">Why Fedify?</a>
           </div>
           <div class="lp-install">
             <div class="lp-install-tabs" role="tablist">
@@ -1027,8 +1027,8 @@ federation.<span class="c-fn">setActorDispatcher</span>(
           <a class="btn btn-primary" href="/install">
             Start building <span class="btn-arrow">→</span>
           </a>
-          <a class="btn btn-ghost" href="/manual/federation">Browse the manual</a>
-          <a class="btn btn-ghost" href="https://github.com/fedify-dev/fedify">
+          <a class="btn btn-text" href="/manual/federation">Browse the manual</a>
+          <a class="btn btn-text" href="https://github.com/fedify-dev/fedify">
             GitHub
           </a>
         </div>
@@ -1164,24 +1164,23 @@ federation.<span class="c-fn">setActorDispatcher</span>(
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.7rem 1.4rem;
-  border-radius: 999px;
+  padding: 0.7rem 1.25rem;
+  border-radius: 6px;
   font-weight: 600;
   font-size: 0.97rem;
   transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
     background-color 0.2s ease,
-    border-color 0.2s ease;
+    color 0.2s ease,
+    text-decoration-color 0.2s ease;
 }
+/* Fixed sky-700/800 rather than the brand tokens: the dark-mode tokens are
+   light blues that cannot carry white text at AA contrast. */
 .btn-primary {
   color: #fff;
-  background: linear-gradient(120deg, #0ea5e9, #0369a1);
-  box-shadow: 0 10px 24px -10px rgba(2, 132, 199, 0.7);
+  background-color: #0369a1;
 }
 .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 16px 30px -12px rgba(2, 132, 199, 0.8);
+  background-color: #075985;
 }
 .btn-arrow {
   transition: transform 0.2s ease;
@@ -1189,15 +1188,17 @@ federation.<span class="c-fn">setActorDispatcher</span>(
 .btn-primary:hover .btn-arrow {
   transform: translateX(3px);
 }
-.btn-ghost {
+.btn-text {
+  padding-inline: 0.5rem;
   color: var(--vp-c-text-1);
-  background: var(--vp-c-bg-soft);
-  border: 1px solid var(--vp-c-divider);
+  text-decoration: underline;
+  text-decoration-color: var(--vp-c-divider);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.3em;
 }
-.btn-ghost:hover {
-  border-color: var(--vp-c-brand-1);
+.btn-text:hover {
   color: var(--vp-c-brand-1);
-  transform: translateY(-2px);
+  text-decoration-color: currentColor;
 }
 
 .lp-install {
