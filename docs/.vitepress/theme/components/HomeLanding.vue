@@ -538,13 +538,6 @@ federation.<span class="c-fn">setActorDispatcher</span>(
   <div class="lp">
     <!-- ============================ HERO ============================ -->
     <section class="lp-hero">
-      <div class="lp-hero-bg" aria-hidden="true">
-        <span class="orb orb-cyan" />
-        <span class="orb orb-violet" />
-        <span class="orb orb-gold" />
-        <span class="grid" />
-      </div>
-
       <div class="wrap lp-hero-grid">
         <div class="lp-hero-copy">
           <p class="lp-eyebrow">TypeScript · ActivityPub · Open source</p>
@@ -1025,11 +1018,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
 
     <!-- ======================= FINAL CTA ============================ -->
     <section class="lp-cta-band">
-      <div class="lp-cta-bg" aria-hidden="true">
-        <span class="orb orb-cyan" />
-        <span class="orb orb-violet" />
-      </div>
-      <div class="wrap lp-cta-inner">
+      <div class="wrap">
         <h2 class="lp-cta-title">Ready to join the fediverse?</h2>
         <p class="lp-cta-sub">
           Install Fedify and have a federated actor running in minutes.
@@ -1122,66 +1111,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
   overflow: clip;
 }
 
-.lp-hero-bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-}
-
-.lp-hero-bg .grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(to right, rgba(2, 132, 199, 0.06) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(2, 132, 199, 0.06) 1px, transparent 1px);
-  background-size: 54px 54px;
-  -webkit-mask-image: radial-gradient(120% 70% at 50% 0%, #000, transparent 72%);
-  mask-image: radial-gradient(120% 70% at 50% 0%, #000, transparent 72%);
-}
-
-.dark .lp-hero-bg .grid {
-  background-image:
-    linear-gradient(to right, rgba(125, 211, 252, 0.07) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(125, 211, 252, 0.07) 1px, transparent 1px);
-}
-
-.orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(60px);
-}
-.lp-hero-bg .orb-cyan {
-  width: 38vw;
-  max-width: 540px;
-  aspect-ratio: 1;
-  top: -6%;
-  left: -6%;
-  background: radial-gradient(circle, #00a3ff 0%, transparent 68%);
-  opacity: 0.4;
-}
-.lp-hero-bg .orb-violet {
-  width: 34vw;
-  max-width: 480px;
-  aspect-ratio: 1;
-  top: -10%;
-  right: -8%;
-  background: radial-gradient(circle, #9500ff 0%, transparent 68%);
-  opacity: 0.32;
-}
-.lp-hero-bg .orb-gold {
-  width: 24vw;
-  max-width: 340px;
-  aspect-ratio: 1;
-  top: 30%;
-  right: 12%;
-  background: radial-gradient(circle, #ffca00 0%, transparent 70%);
-  opacity: 0.22;
-}
-
 .lp-hero-grid {
-  position: relative;
-  z-index: 1;
   display: grid;
   grid-template-columns: 1.05fr 0.95fr;
   align-items: center;
@@ -2023,35 +1953,6 @@ a.lp-stack-name::after {
   text-align: center;
   overflow: clip;
   border-top: 1px solid var(--vp-c-divider);
-}
-.lp-cta-bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-}
-.lp-cta-bg .orb-cyan {
-  width: 50vw;
-  max-width: 680px;
-  aspect-ratio: 1;
-  left: 50%;
-  top: -30%;
-  transform: translateX(-50%);
-  background: radial-gradient(circle, #0ea5e9 0%, transparent 68%);
-  opacity: 0.18;
-}
-.lp-cta-bg .orb-violet {
-  width: 30vw;
-  max-width: 420px;
-  aspect-ratio: 1;
-  right: 8%;
-  bottom: -20%;
-  background: radial-gradient(circle, #9500ff 0%, transparent 70%);
-  opacity: 0.16;
-}
-.lp-cta-inner {
-  position: relative;
-  z-index: 1;
 }
 .lp-cta-title {
   font-family: var(--vp-font-family-display);
