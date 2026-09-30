@@ -48,8 +48,12 @@ type ErrorHandlers = Omit<FederationFetchOptions<unknown>, "contextData">;
  *   }
  * )
  *
- * // This config makes middleware process only requests with the
- * // "Accept" header matching the federation accept regex.
+ * // This config makes the middleware run only for requests that may be
+ * // federation requests: requests whose "Accept" or "Content-Type" header
+ * // has a federation media type, NodeInfo requests, and FEP-ef61 gateway
+ * // requests such as hashlink media, which clients fetch with, e.g.,
+ * // "Accept: image/*".  fedifyWith() then decides which of them Fedify
+ * // handles.
  * // More details: https://nextjs.org/docs/app/api-reference/file-conventions/middleware#config-object-optional.
  * export const config = {
  *   runtime: "nodejs",
@@ -76,6 +80,7 @@ type ErrorHandlers = Omit<FederationFetchOptions<unknown>, "contextData">;
  *     },
  *     { source: "/.well-known/nodeinfo" },
  *     { source: "/.well-known/x-nodeinfo2" },
+ *     { source: "/.well-known/apgateway/:path*" },
  *   ],
  * };
  * ```
@@ -100,11 +105,25 @@ async (request: Request) => {
   return await middleware(request);
 };
 
+/**
+ * Check if the request should be handled by the {@link Federation} object.
+ * A request is considered a federation request if any of the following
+ * conditions is met:
+ *
+ * - Its `Accept` or `Content-Type` header has an ActivityPub, JSON-LD, JRD,
+ *   or XRD media type.
+ * - It is a NodeInfo request (see {@link isNodeInfoRequest}).
+ * - It is an FEP-ef61 hashlink media request
+ *   (see {@link isHashlinkMediaRequest}).
+ * @param request The request to check.
+ * @returns `true` if the request is a federation request, `false` otherwise.
+ */
 export const isFederationRequest = (request: Request): boolean =>
   [
     hasFederationHeader("accept"),
     hasFederationHeader("content-type"),
     isNodeInfoRequest,
+    isHashlinkMediaRequest,
   ].some((f) => f(request));
 
 /**
@@ -130,6 +149,34 @@ const NODEINFO_PATHS = [
   "/.well-known/nodeinfo",
   "/.well-known/x-nodeinfo2",
 ];
+
+/**
+ * Check if the request is an [FEP-ef61] gateway request for a resource
+ * addressed by a hashlink, e.g.,
+ * `GET /.well-known/apgateway/hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n`.
+ *
+ * Such requests need not carry a federation media type in their `Accept`
+ * header, as clients fetch media with, e.g., `Accept: image/*`, so they are
+ * recognized by their path alone.  This only checks whether the path looks
+ * like a hashlink request; it does not check whether the hashlink is valid
+ * nor whether a hashlink media dispatcher is registered, which
+ * {@link Federation.fetch} takes care of.
+ *
+ * [FEP-ef61]: https://w3id.org/fep/ef61
+ * @param request The request to check.
+ * @returns `true` if the request is a hashlink media request,
+ *          `false` otherwise.
+ * @since 2.4.0
+ */
+export const isHashlinkMediaRequest = (request: Request): boolean => {
+  const { pathname } = new URL(request.url);
+  return pathname.startsWith(GATEWAY_PATH_PREFIX) &&
+    HASHLINK_SCHEME_PATTERN.test(pathname.slice(GATEWAY_PATH_PREFIX.length));
+};
+
+// These follow how Federation.fetch() recognizes hashlink media requests:
+const GATEWAY_PATH_PREFIX = "/.well-known/apgateway/";
+const HASHLINK_SCHEME_PATTERN = /^hl(?::|%3A)/i;
 
 const FEDERATION_ACCEPT_REGEX =
   /.*application\/((jrd|activity|ld)\+json|xrd\+xml).*/;

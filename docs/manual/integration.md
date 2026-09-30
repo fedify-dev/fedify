@@ -919,8 +919,12 @@ export default fedifyWith(federation)(
 */
 )
 
-// This config needs because middleware process only requests with the
-// "Accept" header matching the federation accept regex.
+// This config makes the middleware run only for requests that may be
+// federation requests: requests whose "Accept" or "Content-Type" header
+// has a federation media type, NodeInfo requests, and FEP-ef61 gateway
+// requests such as hashlink media, which clients fetch with, e.g.,
+// "Accept: image/*".  fedifyWith() then decides which of them Fedify
+// handles.
 // More details: https://nextjs.org/docs/app/api-reference/file-conventions/middleware#config-object-optional
 export const config = {
   runtime: "nodejs",
@@ -947,6 +951,7 @@ export const config = {
     },
     { source: "/.well-known/nodeinfo" },
     { source: "/.well-known/x-nodeinfo2" },
+    { source: "/.well-known/apgateway/:path*" },
   ],
 };
 ~~~~
@@ -954,14 +959,41 @@ export const config = {
 As you can see in the comment, you can handle other requests besides
 federation requests in the middleware.  If you handle only federation requests
 in the middleware, you can omit the function argument of `fedifyWith()`.
-The `config` object is necessary to let Next.js know that the middleware
-should process requests with the [`Accept`] header matching the federation
-accept regex.  This is because Next.js middleware processes only requests
-with the [`Accept`] header matching the regex by default.  More details can be
-found in the Next.js official documentation [`config` in *middleware.js*].
+Requests go through two stages.  First, the `matcher` in the `config` object
+decides whether Next.js runs the middleware at all.  Then, `fedifyWith()`
+decides whether Fedify handles the request, or the function you passed to it
+does (by default, the request goes on to your Next.js app).  Fedify handles
+a request if its [`Accept`] or [`Content-Type`] header has an ActivityPub,
+JSON-LD, JRD, or XRD media type, if it is a NodeInfo request, or if it is
+an [FEP-ef61] hashlink media request, e.g.,
+`GET /.well-known/apgateway/hl:zQm…`.  NodeInfo and hashlink media requests
+are matched by their paths alone, since clients send them without
+the federation media types, e.g., with `Accept: image/*` for media.
+More details about `matcher` can be found in the Next.js official
+documentation [`config` in *middleware.js*].
+
+The `/.well-known/apgateway/:path*` matcher makes the middleware run for every
+FEP-ef61 gateway request, but only hashlink media requests are handled by
+Fedify regardless of their headers; other gateway requests without
+the federation media types, e.g., browsers visiting a compatible identifier,
+still go to the function you passed to `fedifyWith()`.  Hashlink media
+requests are handled by Fedify even if no hashlink media dispatcher is
+registered, in which case they get the `onNotFound` response (`404 Not Found`
+by default), so serve such media with
+a [hashlink media dispatcher](./object.md#serving-hashlink-media) rather than
+a Next.js route handler.
+
+> [!NOTE]
+> If you set up the middleware with the `matcher` shown in the documentation
+> before Fedify 2.4.0, add `{ source: "/.well-known/apgateway/:path*" }` to
+> your `matcher` as well as upgrading *@fedify/next*; otherwise, hashlink
+> media requests without the federation media types in their headers never
+> reach Fedify.
 
 [Fedify repository]: https://github.com/fedify-dev/fedify
 [Next.js]: https://nextjs.org/
+[`Content-Type`]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Type
+[FEP-ef61]: https://w3id.org/fep/ef61
 [`config` in *middleware.js*]: https://nextjs.org/docs/app/api-reference/file-conventions/middleware#config-object-optional
 
 
