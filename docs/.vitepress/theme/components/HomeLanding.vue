@@ -1500,7 +1500,7 @@ a.lp-stack-name::after {
   overflow: clip;
   background: #0b1622;
   border: 1px solid #1e3a52;
-  box-shadow: 0 30px 60px -30px rgba(2, 132, 199, 0.5);
+  box-shadow: 0 26px 52px -28px rgba(2, 132, 199, 0.35);
 }
 .lp-code-bar {
   display: flex;
@@ -1710,7 +1710,7 @@ a.lp-stack-name::after {
   overflow: clip;
   background: var(--vp-c-bg);
   border: 1px solid var(--vp-c-divider);
-  box-shadow: 0 24px 50px -28px rgba(2, 132, 199, 0.45);
+  box-shadow: 0 20px 44px -26px rgba(2, 132, 199, 0.32);
 }
 .lp-trace-bar {
   display: flex;
@@ -1809,7 +1809,7 @@ a.lp-stack-name::after {
   overflow: clip;
   background: #0b1622;
   border: 1px solid #1e3a52;
-  box-shadow: 0 30px 60px -30px rgba(2, 132, 199, 0.5);
+  box-shadow: 0 26px 52px -28px rgba(2, 132, 199, 0.35);
 }
 .lp-term-bar {
   display: flex;
