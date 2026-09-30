@@ -41,6 +41,7 @@ import {
     createSnapshotContextLoader,
     dereferencePortableIri,
     getPortableResponseClaim,
+    getReferrerGateways,
     isPortableIri,
     isPortableMode,
     isUnsecuredPortableObject,
@@ -2373,7 +2374,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -2819,7 +2829,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -3453,7 +3472,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -4054,7 +4082,16 @@ get contents(): ((string | LanguageString))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -4531,7 +4568,16 @@ get names(): ((string | LanguageString))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -4960,7 +5006,16 @@ get names(): ((string | LanguageString))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -5556,7 +5611,16 @@ get names(): ((string | LanguageString))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -6152,7 +6216,16 @@ get names(): ((string | LanguageString))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -6739,7 +6812,16 @@ get names(): ((string | LanguageString))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -7326,7 +7408,16 @@ get names(): ((string | LanguageString))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -7924,7 +8015,16 @@ get names(): ((string | LanguageString))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -8334,7 +8434,16 @@ get names(): ((string | LanguageString))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -8750,7 +8859,16 @@ get names(): ((string | LanguageString))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -9166,7 +9284,16 @@ get names(): ((string | LanguageString))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -9616,7 +9743,16 @@ get summaries(): ((string | LanguageString))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -10082,7 +10218,16 @@ get urls(): ((URL | Link))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -10654,7 +10799,16 @@ get urls(): ((URL | Link))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -11226,7 +11380,16 @@ get urls(): ((URL | Link))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -11798,7 +11961,16 @@ get urls(): ((URL | Link))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -12434,7 +12606,16 @@ get urls(): ((URL | Link))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -13043,7 +13224,16 @@ get urls(): ((URL | Link))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -13453,7 +13643,16 @@ get urls(): ((URL | Link))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -13863,7 +14062,16 @@ get urls(): ((URL | Link))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -19478,7 +19686,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -19912,7 +20129,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -21574,7 +21800,16 @@ instruments?: (Object | URL)[];}
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -22208,7 +22443,16 @@ instruments?: (Object | URL)[];}
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -22782,7 +23026,16 @@ instruments?: (Object | URL)[];}
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -23362,7 +23615,16 @@ instruments?: (Object | URL)[];}
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -23936,7 +24198,16 @@ instruments?: (Object | URL)[];}
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -24512,7 +24783,16 @@ instruments?: (Object | URL)[];}
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -28106,7 +28386,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -28516,7 +28805,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -31913,7 +32211,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -32323,7 +32630,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -33843,7 +34159,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -34253,7 +34578,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -35773,7 +36107,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -36182,7 +36525,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -37985,7 +38337,16 @@ urls?: ((URL | Link))[];}
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -39753,7 +40114,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -40161,7 +40531,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -42020,7 +42399,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -42430,7 +42818,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -42840,7 +43237,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -43250,7 +43656,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -43680,7 +44095,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -44089,7 +44513,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -44498,7 +44931,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -44907,7 +45349,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -45316,7 +45767,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -45725,7 +46185,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -46134,7 +46603,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -46543,7 +47021,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -48745,7 +49232,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -50456,7 +50952,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -50864,7 +51369,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -53102,7 +53616,16 @@ cryptosuite?: \\"eddsa-jcs-2022\\" | null;verificationMethod?: Multikey | URL | 
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -54406,7 +54929,16 @@ owner?: Application | Group | Organization | Person | Service | URL | null;publi
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -55634,7 +56166,16 @@ controller?: Application | Group | Organization | Person | Service | URL | null;
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -62536,7 +63077,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -63104,7 +63654,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -63726,7 +64285,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -64162,7 +64730,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -64595,7 +65172,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -65008,7 +65594,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -65424,7 +66019,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -65838,7 +66442,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -66250,7 +66863,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -66662,7 +67284,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -67071,7 +67702,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -67560,7 +68200,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -68028,7 +68677,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -68664,7 +69322,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -73032,7 +73699,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -73466,7 +74142,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -76778,7 +77463,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -77188,7 +77882,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -77596,7 +78299,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -83634,7 +84346,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -84202,7 +84923,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -84824,7 +85554,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -85260,7 +85999,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -85693,7 +86441,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -86106,7 +86863,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -86522,7 +87288,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -86936,7 +87711,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -87348,7 +88132,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -87760,7 +88553,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -88169,7 +88971,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -88658,7 +89469,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -89126,7 +89946,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -89762,7 +90591,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -93766,7 +94604,16 @@ get names(): ((string | LanguageString))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -99614,7 +100461,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -100048,7 +100904,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -101261,7 +102126,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -103361,7 +104235,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -103929,7 +104812,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -104551,7 +105443,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -104987,7 +105888,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -105420,7 +106330,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -105833,7 +106752,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -106249,7 +107177,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -106663,7 +107600,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -107075,7 +108021,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -107487,7 +108442,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -107896,7 +108860,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -108385,7 +109358,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -108853,7 +109835,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -109489,7 +110480,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -114384,7 +115384,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -114952,7 +115961,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -115574,7 +116592,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -116010,7 +117037,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -116443,7 +117479,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -116856,7 +117901,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -117272,7 +118326,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -117686,7 +118749,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -118098,7 +119170,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -118510,7 +119591,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -118919,7 +120009,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -119408,7 +120507,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -119876,7 +120984,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -120512,7 +121629,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -125188,7 +126314,16 @@ proofs?: (DataIntegrityProof | URL)[];interactionPolicy?: InteractionPolicy | nu
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -126362,7 +127497,16 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -126778,7 +127922,16 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -127224,7 +128377,16 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -127658,7 +128820,16 @@ instruments?: (Object | URL)[];exclusiveOptions?: (Object | URL)[];inclusiveOpti
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -130075,7 +131246,16 @@ relationships?: (Object | URL)[];}
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -130487,7 +131667,16 @@ relationships?: (Object | URL)[];}
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -131057,7 +132246,16 @@ relationships?: (Object | URL)[];}
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -133817,7 +135015,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -134385,7 +135592,16 @@ get preferredUsernames(): ((string | LanguageString))[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -135007,7 +136223,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -135443,7 +136668,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -135876,7 +137110,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -136289,7 +137532,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -136705,7 +137957,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -137119,7 +138380,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -137531,7 +138801,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -137943,7 +139222,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -138352,7 +139640,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -138841,7 +140138,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -139309,7 +140615,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {
@@ -139945,7 +141260,16 @@ get gateways(): (URL)[] {
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {

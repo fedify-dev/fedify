@@ -923,6 +923,47 @@ test("Fedify traverses portable collections that Fedify serves", async () => {
   assertEquals(await actor2.getOutbox(evilOptions), null);
 });
 
+test("Fedify traverses portable collections through their owners' gateways", async () => {
+  const federation = createTestFederation();
+  const requests: string[] = [];
+  const documentLoader: DocumentLoader = async (url) => {
+    requests.push(url);
+    if (!/^https?:/.test(url)) throw new Error(`Not found: ${url}`);
+    const target = new URL(url);
+    const response = await federation.fetch(
+      new Request(new URL(target.pathname + target.search, ORIGIN), {
+        headers: { Accept: ACCEPT },
+      }),
+      { contextData: undefined },
+    );
+    if (!response.ok) {
+      throw new FetchError(url, `HTTP ${response.status}`, response);
+    }
+    return {
+      contextUrl: null,
+      documentUrl: url,
+      document: await response.json(),
+    };
+  };
+  const options = {
+    documentLoader,
+    contextLoader: mockDocumentLoader,
+    verifyPortableObject,
+  };
+  const actor = await lookupObject(portableId("/users/alice"), {
+    ...options,
+    gateways: [ORIGIN],
+  });
+  assert(actor instanceof Person);
+  // Neither the actor's outbox nor its pages have location hints, and no
+  // gateways are given, so the actor's own gateways are used:
+  const outbox = await actor.getOutbox(options);
+  assert(outbox instanceof OrderedCollection);
+  const items = await Array.fromAsync(traverseCollection(outbox, options));
+  assertEquals(items.length, PAGES.length * NOTES_PER_PAGE);
+  assert(requests.every((url) => url.startsWith(`${ORIGIN}/`)));
+});
+
 test("Fedify accepts empty portable collections that Fedify serves", async () => {
   // The inbox dispatcher returns no items and has no counter, so without
   // totalItems nothing would tell that the document is a collection:

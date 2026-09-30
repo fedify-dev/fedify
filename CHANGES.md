@@ -1022,14 +1022,16 @@ To be released.
 
      -  Property accessors such as `Create.getObject()` now fetch portable
         references through gateways: those in the new `gateways` option, or
-        else those in the `@gateway` location hints of the reference.
-        A fetched object is returned only if its `@id` identifies the referenced
-        portable object and the verifier given as the new
-        `verifyPortableObject` option accepts it, typically
+        else those in the `@gateway` location hints of the reference.  A
+        reference without hints that has the same DID as a portable actor it
+        was reached from, e.g., the actor's `outbox`, is fetched through that
+        actor's `gateways`. A fetched object is returned only if its `@id`
+        identifies the referenced portable object and the verifier given as the
+        new `verifyPortableObject` option accepts it, typically
         `verifyPortableObject()` from `@fedify/fedify`, or a `Context` passed
-        as the options.  Portable references cannot be dereferenced
-        without the option, and `crossOrigin: "trust"` does not skip these
-        checks.  [[#834], [#1077], [#1093], [#1105]]
+        as the options.  Portable references cannot be dereferenced without the
+        option, and `crossOrigin: "trust"` does not skip these checks.
+        [[#834], [#1077], [#1093], [#1105]]
 
      -  Property accessors tell the `verifyPortableObject` function where
         a portable object was retrieved from and which objects led to it, so

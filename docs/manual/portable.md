@@ -488,25 +488,19 @@ objects obtained elsewhere, pass a `Context` as the options of an accessor,
 e.g., `await create.getObject(ctx)`, to verify them.
 
 A portable actor's own collections, such as its outbox, have no location
-hints, and accessors do not take the actor's `gateways` by themselves, so
-pass them along with the context's verifier:
+hints, so accessors fetch them, and the objects under the same DID that they
+lead to, through the actor's `gateways`:
 
 ~~~~ typescript twoslash
 import type { Context } from "@fedify/fedify";
-import { isActor, traverseCollection } from "@fedify/vocab";
+import { isActor } from "@fedify/vocab";
 const ctx = null as unknown as Context<void>;
 // ---cut-before---
 const actor = await ctx.lookupObject("@alice@example.com");
 if (isActor(actor)) {
-  const options = {
-    documentLoader: ctx.documentLoader,
-    contextLoader: ctx.contextLoader,
-    verifyPortableObject: ctx.verifyPortableObject,
-    gateways: actor.gateways,
-  };
-  const outbox = await actor.getOutbox(options);
+  const outbox = await actor.getOutbox(ctx);
   if (outbox != null) {
-    for await (const item of traverseCollection(outbox, options)) {
+    for await (const item of ctx.traverseCollection(outbox)) {
       console.log(item.id?.href);
     }
   }
