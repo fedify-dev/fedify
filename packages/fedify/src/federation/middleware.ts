@@ -1897,7 +1897,7 @@ export class FederationImpl<TContextData>
           onNotFound,
         });
       case "collection": {
-        const name = route.name.replace(/^collection:/, "");
+        const name = this.getCollectionName(route.name);
         const callbacks = this.collectionCallbacks[name];
         return await handleCustomCollection<
           URL | Object | Link | Recipient,
@@ -1905,7 +1905,7 @@ export class FederationImpl<TContextData>
           RequestContext<TContextData>,
           TContextData
         >(request, {
-          name,
+          name: String(name),
           context,
           values: route.values,
           collectionCallbacks: callbacks,
@@ -1915,7 +1915,7 @@ export class FederationImpl<TContextData>
         });
       }
       case "orderedCollection": {
-        const name = route.name.replace(/^orderedCollection:/, "");
+        const name = this.getCollectionName(route.name);
         const callbacks = this.collectionCallbacks[name];
         return await handleOrderedCollection<
           URL | Object | Link | Recipient,
@@ -1923,7 +1923,7 @@ export class FederationImpl<TContextData>
           RequestContext<TContextData>,
           TContextData
         >(request, {
-          name,
+          name: String(name),
           context,
           values: route.values,
           collectionCallbacks: callbacks,
@@ -2267,8 +2267,10 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
       string,
     ];
     if (match !== null) {
-      const [, type, name] = match;
+      const [, type] = match;
+      const name = this.federation.getCollectionName(route.name);
       const cls = this.federation.collectionTypeIds[name];
+      if (cls == null) return null;
       return {
         type,
         name,
@@ -2873,7 +2875,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
   ): Promise<boolean> {
     const logger = getLogger(["fedify", "federation", "inbox"]);
     const contextLoader = options.contextLoader ?? this.contextLoader;
-    const json = await activity.toJsonLd({ contextLoader });
+    let json = await activity.toJsonLd({ contextLoader });
     const keyCache = new KvKeyCache(
       this.federation.kv,
       this.federation.kvPrefixes.publicKey,
@@ -2943,6 +2945,7 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           "ignore the original activity and use the fetched one, which is trustworthy.",
       );
       activity = fetched;
+      json = await fetched.toJsonLd({ contextLoader });
     } else {
       logger.debug(
         "Object Integrity Proofs are verified.",

@@ -1,6 +1,11 @@
 import { test } from "@fedify/fixture";
 import { Activity, Note, Person } from "@fedify/vocab";
-import { assertEquals, assertExists, assertThrows } from "@std/assert";
+import {
+  assertEquals,
+  assertExists,
+  assertStrictEquals,
+  assertThrows,
+} from "@std/assert";
 import type { Protocol } from "../nodeinfo/types.ts";
 import { createFederationBuilder } from "./builder.ts";
 import type {
@@ -428,6 +433,72 @@ test("FederationBuilder", async (t) => {
         { contextData: undefined },
       );
       assertEquals(response.status, 200);
+    },
+  );
+
+  await t.step(
+    "preserves symbol-named collections through build()",
+    async () => {
+      const builder = createFederationBuilder<void>();
+      const collection = Symbol("saved");
+      const ordered = Symbol("saved");
+      builder.setCollectionDispatcher(
+        collection,
+        Note,
+        "/users/{identifier}/saved",
+        () => ({ items: [] }),
+      );
+      builder.setOrderedCollectionDispatcher(
+        ordered,
+        Note,
+        "/users/{identifier}/ordered-saved",
+        () => ({ items: [] }),
+      );
+
+      for (let build = 0; build < 2; build++) {
+        const federation = await builder.build({ kv: new MemoryKvStore() });
+        const ctx = federation.createContext(new URL("https://example.com/"));
+        for (
+          const [name, path, type] of [
+            [collection, "/users/alice/saved", "collection"],
+            [ordered, "/users/alice/ordered-saved", "orderedCollection"],
+          ] as const
+        ) {
+          const uri = ctx.getCollectionUri(name, { identifier: "alice" });
+          assertEquals(uri.pathname, path);
+          const parsed = ctx.parseUri(uri);
+          assertEquals(parsed?.type, type);
+          if (
+            parsed?.type !== "collection" &&
+            parsed?.type !== "orderedCollection"
+          ) {
+            throw new Error("Expected a custom collection URI");
+          }
+          assertStrictEquals(parsed.name, name);
+          assertStrictEquals(parsed.class, Note);
+          assertEquals(parsed.values, { identifier: "alice" });
+
+          for (const cursor of [null, "next"]) {
+            const pageUri = new URL(uri);
+            if (cursor != null) pageUri.searchParams.set("cursor", cursor);
+            const response = await federation.fetch(
+              new Request(pageUri, {
+                headers: { accept: "application/activity+json" },
+              }),
+              { contextData: undefined },
+            );
+            assertEquals(response.status, 200);
+          }
+        }
+        assertThrows(() =>
+          federation.setCollectionDispatcher(
+            collection,
+            Note,
+            "/users/{identifier}/duplicate",
+            () => ({ items: [] }),
+          )
+        );
+      }
     },
   );
 });

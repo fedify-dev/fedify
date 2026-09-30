@@ -16,6 +16,25 @@ Deno.test("DenoKvStore", async (t) => {
     assertEquals((await kv.get<string>(["foo", "baz"])).value, "baz");
   });
 
+  await t.step("stored null is distinct from a missing key", async () => {
+    const key = ["null-value"] as const;
+    const child = ["null-value", "child"] as const;
+    await store.set(key, null);
+    await store.set(child, null);
+    assertEquals(await store.get(key), null);
+    assertEquals(await store.get(["missing"]), undefined);
+    assertEquals(
+      await Array.fromAsync(store.list(key)),
+      [{ key, value: null }, { key: child, value: null }],
+    );
+    assertEquals(await store.cas(key, undefined, "wrong"), false);
+    assertEquals(await store.cas(key, null, "replaced"), true);
+    assertEquals(await store.get(key), "replaced");
+    assertEquals(await store.cas(["missing"], null, "wrong"), false);
+    await store.delete(key);
+    await store.delete(child);
+  });
+
   await t.step("delete()", async () => {
     await store.delete(["foo", "baz"]);
     assertEquals((await kv.get<string>(["foo", "baz"])).value, null);
