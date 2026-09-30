@@ -5311,6 +5311,71 @@ test("ContextImpl.getCollectionUri()", () => {
   assertThrows(() => ctx.getCollectionUri(Symbol.for(notReg), values));
 });
 
+test("symbol-named custom collections are served and parsed", async () => {
+  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+  const names = [Symbol("bookmarks"), Symbol("bookmarks")];
+  const paths = ["bookmarks", "ordered-bookmarks"];
+  const calls: Array<[number, string | null]> = [];
+
+  federation.setCollectionDispatcher(
+    names[0],
+    vocab.Object,
+    "/users/{identifier}/bookmarks",
+    (_ctx, _values, cursor) => {
+      calls.push([0, cursor]);
+      return { items: [] };
+    },
+  );
+  federation.setOrderedCollectionDispatcher(
+    names[1],
+    vocab.Object,
+    "/users/{identifier}/ordered-bookmarks",
+    (_ctx, _values, cursor) => {
+      calls.push([1, cursor]);
+      return { items: [] };
+    },
+  );
+
+  const ctx = federation.createContext(new URL("https://example.com/"));
+  for (const [index, name] of names.entries()) {
+    const uri = ctx.getCollectionUri(name, { identifier: "alice" });
+    assertEquals(uri.pathname, `/users/alice/${paths[index]}`);
+    const parsed = ctx.parseUri(uri);
+    assertEquals(
+      parsed?.type,
+      index === 0 ? "collection" : "orderedCollection",
+    );
+    if (parsed?.type !== "collection" && parsed?.type !== "orderedCollection") {
+      throw new Error("Expected a custom collection URI");
+    }
+    assertStrictEquals(parsed.name, name);
+    assertStrictEquals(parsed.class, vocab.Object);
+    assertEquals(parsed.typeId, vocab.Object.typeId);
+    assertEquals(parsed.values, { identifier: "alice" });
+
+    for (const cursor of [null, "next"]) {
+      const pageUri = new URL(uri);
+      if (cursor != null) pageUri.searchParams.set("cursor", cursor);
+      const response = await federation.fetch(
+        new Request(pageUri, {
+          headers: { accept: "application/activity+json" },
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 200);
+      const body = await response.json();
+      assert(body !== null && typeof body === "object" && "type" in body);
+      assertEquals(
+        body.type,
+        `${index === 0 ? "Collection" : "OrderedCollection"}${
+          cursor == null ? "" : "Page"
+        }`,
+      );
+    }
+  }
+  assertEquals(calls, [[0, null], [0, "next"], [1, null], [1, "next"]]);
+});
+
 test("InboxContextImpl.forwardActivity()", async (t) => {
   fetchMock.spyGlobal();
 
