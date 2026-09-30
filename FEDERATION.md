@@ -84,9 +84,9 @@ current FEP text in two ways, which may change in Fedify 3.0:
 Fedify does not implement the [FEP-ae97] gateway endpoints, gateway
 discovery, synchronization across gateways, key rotation, built-in
 resolution of DID methods other than `did:key`, or gateways with paths.
-Interoperability with other implementations is still being tested.  See the
-[*Portable objects* chapter][portable objects] of the manual for the full
-profile.
+Its interoperability with other implementations is described in the next
+section.  See the [*Portable objects* chapter][portable objects] of the manual
+for the full profile.
 
 [FEP-ae97]: https://w3id.org/fep/ae97
 [portable objects]: https://fedify.dev/manual/portable

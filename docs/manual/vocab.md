@@ -266,13 +266,13 @@ const actor = new Person({
 
 Each gateway must be an HTTP(S) base URI with no path, query, or fragment.
 Newly serialized gateway lists use origins without a trailing slash, while
-the in-memory `URL` values retain their root path. A parsed actor's default
-JSON output can retain the cached spelling of its gateways. Keep the received
+the in-memory `URL` values retain their root path.  A parsed actor's default
+JSON output can retain the cached spelling of its gateways.  Keep the received
 JSON when verifying existing proofs.
 
 For portable actors with inbox and outbox properties, Fedify also reads an
 unmapped `gateways` term under the ActivityStreams context, as emitted by
-tootik v0.25.4. Explicit JSON-LD mappings take precedence. Parsing this list
+tootik v0.25.4.  Explicit JSON-LD mappings take precedence.  Parsing this list
 does not authenticate it; use portable object verification before trusting
 the actor or its gateways.
 
@@ -539,7 +539,7 @@ instead.  The option applies to that call only; it is not passed on.
 Objects that Fedify parses for you already
 have `~Context.verifyPortableObject` as their default: activities that inboxes
 receive, including queued ones, objects that `~Context.lookupObject()` returns,
-and the activities passed to the `onOutboxError` callback. So
+and the activities passed to the `onOutboxError` callback.  So
 `create.getObject()` in an inbox listener verifies portable objects even
 without options.  A clone does not inherit the default; pass
 `verifyPortableObject` to `clone()` if you need it.

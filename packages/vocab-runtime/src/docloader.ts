@@ -62,6 +62,7 @@ export interface DocumentLoaderOptions {
    * Whether to lower error-level logs for recoverable document loading
    * failures to warning-level logs.  The loader still throws the error.
    * @default `false`
+   * @since 2.4.0
    */
   suppressError?: boolean;
 }

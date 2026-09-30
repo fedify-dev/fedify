@@ -81,7 +81,14 @@ function assertCompatiblePathCanBeParsed(raw: string, parsed: URL): void {
 }
 
 /**
- * Parses a JSON-LD `@id` value as an IRI.
+ * Parses a JSON-LD `@id` value as an IRI, including FEP-ef61 portable
+ * ActivityPub IRIs.  See {@link parseIri} for how IRIs are parsed.
+ * @param id The `@id` value.
+ * @param base The base IRI to resolve a relative `@id` against.
+ * @returns The parsed IRI, or `undefined` if `id` is missing or a blank node
+ *          identifier.
+ * @throws {TypeError} If `id` is not a valid IRI.
+ * @since 2.4.0
  */
 export function parseJsonLdId(
   id: string | undefined,
@@ -103,6 +110,16 @@ export function parseJsonLdId(
  * This also applies to compatible identifier strings used as relative bases.
  * A `URL` argument may already have lost such segments before this function
  * receives it.
+ *
+ * Portable IRIs, e.g., `ap://did:key:z6Mk.../actor`, cannot be represented by
+ * JavaScript `URL` as they are, so the returned `URL` keeps the DID authority
+ * percent-encoded, e.g., `ap+ef61://did%3Akey%3Az6Mk.../actor`.  Use
+ * {@link formatIri} to get the canonical string back.
+ * @param iri The IRI to parse.
+ * @param base The base IRI to resolve a relative IRI against.
+ * @returns The parsed IRI.
+ * @throws {TypeError} If the IRI is malformed.
+ * @since 2.4.0
  */
 export function parseIri(iri: string | URL, base?: string | URL): URL {
   if (iri instanceof URL) {
@@ -132,6 +149,12 @@ export function parseIri(iri: string | URL, base?: string | URL): URL {
  * the scheme this function produces.  Do not compare its results as strings to
  * tell whether two portable IRIs identify the same object; use
  * `arePortableUrisEqual()` instead.
+ * @param iri The IRI to format.
+ * @returns The formatted IRI.  A string that cannot be parsed as a URL at all
+ *          is returned unchanged.
+ * @throws {TypeError} If the IRI is a malformed portable IRI or FEP-ef61
+ *                     compatible identifier, e.g., one with dot segments.
+ * @since 2.4.0
  */
 export function formatIri(iri: string | URL): string {
   if (typeof iri === "string") assertPortablePathCanBeParsed(iri);
@@ -271,7 +294,20 @@ export function haveSameFe34Origin(
 }
 
 /**
- * Checks whether two IRIs have the same origin.
+ * Checks whether two IRIs have the same origin.  Unlike comparing
+ * `URL.origin`, which is `"null"` for URLs with non-special schemes, this
+ * compares FEP-ef61 portable ActivityPub IRIs by their schemes and DIDs, so
+ * that `ap:` and `ap+ef61:` IRIs of the same DID with decoded or
+ * percent-encoded authorities have the same origin.  Other IRIs with
+ * a non-special scheme and a host are compared by their schemes and hosts.
+ *
+ * This is not an FEP-fe34 origin check: an `ap+ef61:` IRI and the `did:key`
+ * verification method of the same DID have different origins here.  Use
+ * {@link haveSameFe34Origin} for that.
+ * @param left The first IRI.
+ * @param right The second IRI.
+ * @returns `true` if the IRIs have the same origin.
+ * @since 2.4.0
  */
 export function haveSameIriOrigin(left: URL, right: URL): boolean {
   return getComparableIriOrigin(left) === getComparableIriOrigin(right);
@@ -417,7 +453,16 @@ function parseAtUri(uri: string): URL {
 }
 
 /**
- * Checks whether the URL is an FEP-ef61 gateway base URI.
+ * Checks whether the URL is an FEP-ef61 gateway base URI, i.e., an HTTP(S)
+ * URI with no credentials, path, query, or fragment, such as
+ * `https://example.com/`.  FEP-ef61 requires every item of a portable actor's
+ * `gateways` to be such a URI.  A URI with an empty query or fragment
+ * delimiter, such as `https://example.com/?`, is not a gateway base URI.
+ *
+ * Note that the `URL` class normalizes `https://example.com` to
+ * `https://example.com/`, so both are gateway base URIs.
+ * @param url The URL to check.
+ * @returns `true` if the URL is an FEP-ef61 gateway base URI.
  * @since 2.4.0
  */
 export function isGatewayUrl(url: URL): boolean {
@@ -426,7 +471,11 @@ export function isGatewayUrl(url: URL): boolean {
 }
 
 /**
- * Parses and validates an FEP-ef61 gateway base URI.
+ * Parses and validates an FEP-ef61 gateway base URI, i.e., an HTTP(S) URI with
+ * no credentials, path, query, or fragment, such as `https://example.com`.
+ * See {@link isGatewayUrl} for the rules.
+ * @param url The gateway base URI to parse.
+ * @returns The parsed gateway base URI, whose path is `/`.
  * @throws {TypeError} If the URI is malformed, or is not an HTTP(S) base URI
  *                     with no credentials, path, query, or fragment.  In the
  *                     latter case, the message starts with
