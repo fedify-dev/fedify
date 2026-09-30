@@ -867,8 +867,9 @@ test("getDocumentLoader() logs DNS failures as such", async (t) => {
     "Deno" in globalThis &&
     (await Deno.permissions.query({ name: "net" })).state !== "granted"
   ) {
-    console.warn("Skipping network test without Deno net permission.");
-    return;
+    throw new Error(
+      "This DNS test requires Deno network permission (--allow-net).",
+    );
   }
   const loader = getDocumentLoader();
   for (const result of ["throws", "empty", "private"] as const) {
@@ -1318,8 +1319,9 @@ test("getDocumentLoader() bounds DNS lookups that ignore the timeout", async () 
     "Deno" in globalThis &&
     (await Deno.permissions.query({ name: "net" })).state !== "granted"
   ) {
-    console.warn("Skipping network test without Deno net permission.");
-    return;
+    throw new Error(
+      "This DNS test requires Deno network permission (--allow-net).",
+    );
   }
   fetchMock.mockGlobal();
   let requests = 0;
