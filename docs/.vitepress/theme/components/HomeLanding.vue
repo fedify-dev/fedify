@@ -696,7 +696,6 @@ federation.<span class="c-fn">setActorDispatcher</span>(
         </div>
         <div class="lp-code-window">
           <div class="lp-code-bar" aria-hidden="true">
-            <span class="dot" /><span class="dot" /><span class="dot" />
             <span class="lp-code-file">federation.ts</span>
           </div>
           <pre class="lp-code"><code v-html="code" /></pre>
@@ -731,14 +730,12 @@ federation.<span class="c-fn">setActorDispatcher</span>(
         <div class="lp-vocab-demos">
           <div class="lp-code-window">
             <div class="lp-code-bar" aria-hidden="true">
-              <span class="dot" /><span class="dot" /><span class="dot" />
               <span class="lp-code-file">recipients.ts</span>
             </div>
             <pre class="lp-code"><code v-html="vocabCode" /></pre>
           </div>
           <div class="lp-code-window">
             <div class="lp-code-bar" aria-hidden="true">
-              <span class="dot" /><span class="dot" /><span class="dot" />
               <span class="lp-code-file">actor.ts</span>
             </div>
             <pre class="lp-code"><code v-html="accessorCode" /></pre>
@@ -836,7 +833,6 @@ federation.<span class="c-fn">setActorDispatcher</span>(
           </div>
           <div class="lp-code-window lp-byo-window">
             <div class="lp-code-bar" aria-hidden="true">
-              <span class="dot" /><span class="dot" /><span class="dot" />
               <span class="lp-code-file">middleware.ts</span>
             </div>
             <pre class="lp-code"><code v-html="byoCode" /></pre>
@@ -919,7 +915,6 @@ federation.<span class="c-fn">setActorDispatcher</span>(
         </div>
         <div class="lp-term" aria-hidden="true">
           <div class="lp-term-bar">
-            <span class="dot" /><span class="dot" /><span class="dot" />
             <span class="lp-term-title">zsh — fedify</span>
           </div>
           <pre class="lp-term-body"><code v-html="cliTerminal" /></pre>
@@ -955,7 +950,6 @@ federation.<span class="c-fn">setActorDispatcher</span>(
         </div>
         <div class="lp-trace" aria-hidden="true">
           <div class="lp-trace-bar">
-            <span class="dot" /><span class="dot" /><span class="dot" />
             <span class="lp-trace-title">trace · activitypub.inbox</span>
           </div>
           <div class="lp-trace-body">
@@ -1007,7 +1001,6 @@ federation.<span class="c-fn">setActorDispatcher</span>(
         </div>
         <div class="lp-code-window lp-c2s-window">
           <div class="lp-code-bar" aria-hidden="true">
-            <span class="dot" /><span class="dot" /><span class="dot" />
             <span class="lp-code-file">outbox.ts</span>
           </div>
           <pre class="lp-code"><code v-html="outboxCode" /></pre>
@@ -1517,17 +1510,7 @@ a.lp-stack-name::after {
   background: #0d1b2a;
   border-bottom: 1px solid #1e3a52;
 }
-.lp-code-bar .dot {
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: #1e3a52;
-}
-.lp-code-bar .dot:nth-child(1) { background: #f87171; }
-.lp-code-bar .dot:nth-child(2) { background: #fbbf24; }
-.lp-code-bar .dot:nth-child(3) { background: #34d399; }
 .lp-code-file {
-  margin-left: 0.6rem;
   font-family: var(--vp-font-family-mono);
   font-size: 0.8rem;
   color: #7c93a8;
@@ -1737,17 +1720,7 @@ a.lp-stack-name::after {
   background: var(--vp-c-bg-soft);
   border-bottom: 1px solid var(--vp-c-divider);
 }
-.lp-trace-bar .dot {
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: var(--vp-c-divider);
-}
-.lp-trace-bar .dot:nth-child(1) { background: #f87171; }
-.lp-trace-bar .dot:nth-child(2) { background: #fbbf24; }
-.lp-trace-bar .dot:nth-child(3) { background: #34d399; }
 .lp-trace-title {
-  margin-left: 0.6rem;
   font-family: var(--vp-font-family-mono);
   font-size: 0.8rem;
   color: var(--vp-c-text-2);
@@ -1846,17 +1819,7 @@ a.lp-stack-name::after {
   background: #0d1b2a;
   border-bottom: 1px solid #1e3a52;
 }
-.lp-term-bar .dot {
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: #1e3a52;
-}
-.lp-term-bar .dot:nth-child(1) { background: #f87171; }
-.lp-term-bar .dot:nth-child(2) { background: #fbbf24; }
-.lp-term-bar .dot:nth-child(3) { background: #34d399; }
 .lp-term-title {
-  margin-left: 0.6rem;
   font-family: var(--vp-font-family-mono);
   font-size: 0.8rem;
   color: #7c93a8;
