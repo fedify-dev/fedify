@@ -138,7 +138,7 @@ function getDocumentId(document: unknown): string | undefined {
   if (document == null || typeof document !== "object") return undefined;
   const record = document as Record<string, unknown>;
   const id = record.id ?? record["@id"];
-  return typeof id === "string" ? id : undefined;
+  return typeof id === "string" ? formatIdentifier(id) : undefined;
 }
 
 interface LookupResult {

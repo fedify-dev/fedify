@@ -480,7 +480,13 @@ test("fedify lookup rejects portable objects with invalid proofs", async () => {
   try {
     await serveFixtures(gateway);
     const note = gateway.documents.get("/note") as Record<string, unknown>;
-    gateway.documents.set("/note", { ...note, content: "Tampered" });
+    // The rejected ID is printed in its canonical form even if the gateway
+    // serves it percent-encoded:
+    gateway.documents.set("/note", {
+      ...note,
+      id: `ap://${encodeURIComponent(did)}/note`,
+      content: "Tampered",
+    });
     const { code, output, stderr } = await lookup({
       urls: [`ap://${did}/note`],
       gateways: [gateway.url],
