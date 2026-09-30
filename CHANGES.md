@@ -387,6 +387,18 @@ To be released.
         that return tombstones to be served with `410 Gone` instead of
         `200 OK`.
 
+ -  Changed `Context.routeActivity()` to compare an activity that has no
+    valid proof with its actors by their [FEP-fe34] origins once it has
+    dereferenced the activity, where the origin of an [FEP-ef61] portable ID,
+    i.e., an `ap:` or `ap+ef61:` URI or a compatible identifier, is its DID
+    rather than the gateway that serves it.  Previously, it compared their web
+    origins, so a portable activity was routed even if its actors had other
+    DIDs.  Now a portable activity is routed only if all of its actors have
+    the same DID as the activity itself, and an activity with an ordinary
+    HTTP(S) ID is not routed if any of its actors has a portable ID.
+    A portable activity dereferenced through a compatible identifier also
+    matches its `ap:` ID, and vice versa.  [[#288], [#1146], [#1171]]
+
  -  Changed `Context.sendActivity()` so that an activity containing
     [FEP-ef61] portable objects gets at most one Object Integrity Proof.
     Previously Fedify signed every outgoing activity once for each Ed25519
@@ -674,9 +686,9 @@ To be released.
     [[#288], [#938], [#1041], [#1094], [#1102], [#1133], [#1138]]
 
 [FEP-ef61]: https://w3id.org/fep/ef61
+[FEP-fe34]: https://w3id.org/fep/fe34
 [key–value store guide]: https://fedify.dev/manual/kv
 [FEP-8b32]: https://w3id.org/fep/8b32
-[FEP-fe34]: https://w3id.org/fep/fe34
 [ActivityPub Media Upload extension]: https://www.w3.org/wiki/SocialCG/ActivityPub/MediaUpload
 [Standard Schema]: https://standardschema.dev/
 [FEP-ae97]: https://w3id.org/fep/ae97
@@ -753,12 +765,14 @@ To be released.
 [#1142]: https://github.com/fedify-dev/fedify/pull/1142
 [#1143]: https://github.com/fedify-dev/fedify/issues/1143
 [#1145]: https://github.com/fedify-dev/fedify/pull/1145
+[#1146]: https://github.com/fedify-dev/fedify/issues/1146
 [#1163]: https://github.com/fedify-dev/fedify/issues/1163
 [#1164]: https://github.com/fedify-dev/fedify/pull/1164
 [#1165]: https://github.com/fedify-dev/fedify/pull/1165
 [#1166]: https://github.com/fedify-dev/fedify/pull/1166
 [#1167]: https://github.com/fedify-dev/fedify/pull/1167
 [#1169]: https://github.com/fedify-dev/fedify/pull/1169
+[#1171]: https://github.com/fedify-dev/fedify/pull/1171
 
 ### @fedify/adonisjs
 

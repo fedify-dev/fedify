@@ -1097,7 +1097,10 @@ for await (const item of context.traverseCollection(collection)) {
 >     by its actor.
 >
 >  -  The `Activity` is dereferenceable by its `~Object.id` and
->     the dereferenced object has an actor that belongs to the same origin
->     as the `Activity` object.
+>     the dereferenced object has actors that all belong to the same origin
+>     as the `Activity` object.  For [FEP-ef61] portable IDs, i.e., `ap:`
+>     and `ap+ef61:` URIs and compatible identifiers, the origin is the DID
+>     rather than the gateway, so a portable `Activity` has to be performed by
+>     actors of its own DID.
 
 <!-- cSpell: ignore cavage -->

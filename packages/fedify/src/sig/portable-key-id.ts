@@ -118,6 +118,52 @@ export function getCanonicalPortableId(id: URL): string | null {
 }
 
 /**
+ * Gets the [FEP-fe34] origin of an ID for same-origin checks.  The origin of
+ * an `ap:` or `ap+ef61:` URI, or of a compatible identifier on any gateway,
+ * is the DID of its canonical portable ID, as FEP-ef61 treats a compatible
+ * identifier as the portable ID it stands for; unlike `getFe34Origin()`,
+ * which gives a compatible identifier the web origin of its gateway.  The
+ * origin of any other HTTP(S) URL is its web origin, and that of a DID URL
+ * is its DID.
+ *
+ * Only the parsed `URL` is validated, so dot segments that URL parsing has
+ * already resolved cannot be detected here.
+ *
+ * [FEP-fe34]: https://w3id.org/fep/fe34
+ * @returns The origin, or `null` if the ID has none that is supported, or is
+ *          a malformed portable ID or compatible identifier.
+ * @internal
+ */
+export function getAuthenticationOrigin(id: URL): string | null {
+  try {
+    if (isPortableId(id)) {
+      const canonical = getCanonicalPortableId(id);
+      return canonical == null ? null : getFe34Origin(canonical);
+    }
+    return getFe34Origin(id);
+  } catch (error) {
+    if (error instanceof TypeError) return null;
+    throw error;
+  }
+}
+
+/**
+ * Checks whether two IDs identify the same object.  Two portable IDs, i.e.,
+ * `ap:` or `ap+ef61:` URIs or compatible identifiers, are compared by their
+ * canonical portable IDs, so that the same object on different gateways and
+ * with different location hints matches.  Other IDs have to be equal as
+ * they are.
+ * @internal
+ */
+export function isSameObjectId(a: URL, b: URL): boolean {
+  const aPortable = isPortableId(a);
+  if (aPortable !== isPortableId(b)) return false;
+  if (!aPortable) return a.href === b.href;
+  const canonical = getCanonicalPortableId(a);
+  return canonical != null && canonical === getCanonicalPortableId(b);
+}
+
+/**
  * Gets the canonical portable ID of an `ap:` or `ap+ef61:` URI or
  * a compatible identifier as it is written, before any URL parsing.
  * Parsing an ID into a `URL` resolves dot segments in its path, which would
