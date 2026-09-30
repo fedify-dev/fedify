@@ -18,10 +18,10 @@ import {
   Follow,
   Image,
   isActor,
-  lookupObject,
   PUBLIC_COLLECTION,
   type Recipient,
 } from "@fedify/vocab";
+import { formatIri } from "@fedify/vocab-runtime";
 import { getLogger } from "@logtape/logtape";
 import type { InferValue } from "@optique/core";
 import Table from "cli-table3";
@@ -35,6 +35,7 @@ import type { ActivityEntry } from "./inbox/entry.ts";
 import { ActivityEntryPage, ActivityListPage } from "./inbox/view.tsx";
 import { configureLogging, recordingSink } from "./log.ts";
 import type { GlobalOptions } from "./options.ts";
+import { getPortableLookupProblem } from "./portable.ts";
 import { tableStyle } from "./table.ts";
 import { spawnTemporaryServer, type TemporaryServer } from "./tempserver.ts";
 import { colors, matchesActor } from "./utils.ts";
@@ -182,19 +183,22 @@ export async function runInbox(
         const accepts = await matchesActor(follower, acceptFollows);
         if (!accepts || activity.id == null) {
           logger.debug("Does not accept follow from {actor}.", {
-            actor: follower.id?.href,
+            actor: follower.id == null ? null : formatIri(follower.id),
           });
           return;
         }
         logger.debug("Accepting follow from {actor}.", {
-          actor: follower.id?.href,
+          actor: follower.id == null ? null : formatIri(follower.id),
         });
         followers[activity.id.href] = follower;
         await ctx.sendActivity(
           { identifier },
           follower,
           new Accept({
-            id: new URL(`#accepts/${follower.id?.href}`, ctx.getActorUri("i")),
+            id: new URL(
+              `#accepts/${follower.id == null ? "" : formatIri(follower.id)}`,
+              ctx.getActorUri("i"),
+            ),
             actor: ctx.getActorUri(identifier),
             object: activity.id,
           }),
@@ -309,9 +313,27 @@ export async function runInbox(
     const documentLoader = await fedCtx.getDocumentLoader({
       identifier: "i",
     });
+    const gateways = command.gateways.length > 0
+      ? { gateways: command.gateways }
+      : {};
     for (const uri of command.follow) {
       spinner.text = `Following ${colors.green(uri)}...`;
-      const actor = await lookupObject(uri, { documentLoader });
+      const problem = getPortableLookupProblem(uri, command.gateways);
+      if (problem != null) {
+        spinner.fail(
+          problem === "malformed"
+            ? `Invalid portable ID: ${colors.red(uri)}`
+            : `The portable ID ${
+              colors.red(uri)
+            } has no @gateway location hints.  Use the --gateway option to follow it.`,
+        );
+        spinner.start();
+        continue;
+      }
+      const actor = await fedCtx.lookupObject(uri, {
+        documentLoader,
+        ...gateways,
+      });
       if (!isActor(actor)) {
         spinner.fail(`Not an actor: ${colors.red(uri)}`);
         spinner.start();
@@ -322,7 +344,10 @@ export async function runInbox(
         { identifier: "i" },
         actor,
         new Follow({
-          id: new URL(`#follows/${actor.id?.href}`, fedCtx.getActorUri("i")),
+          id: new URL(
+            `#follows/${actor.id == null ? "" : formatIri(actor.id)}`,
+            fedCtx.getActorUri("i"),
+          ),
           actor: fedCtx.getActorUri("i"),
           object: actor.id,
         }),

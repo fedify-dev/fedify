@@ -525,6 +525,58 @@ As you can see, the outputs are separated by `----` by default.  You can change
 the separator by using the [`-s`/`--separator`](#s-separator-output-separator)
 option.
 
+### Looking up portable objects
+
+*This feature is available since Fedify 2.4.0.*
+
+The `fedify lookup` command also looks up [FEP-ef61] portable objects, whose
+IDs are `ap:` or `ap+ef61:` URIs with a [DID] instead of a host.  A portable
+object is not served from its ID but from *gateways*, so the command needs to
+know where to fetch it from:
+
+ -  A portable ID with `@gateway` location hints is fetched through the
+    gateways in the hints:
+
+    ~~~~ sh
+    fedify lookup 'ap://did:key:z6Mk.../actor?@gateway=https%3A%2F%2Fexample.com'
+    ~~~~
+
+ -  A bare portable ID needs the
+    [`--gateway`](#gateway-gateways-of-portable-objects) option:
+
+    ~~~~ sh
+    fedify lookup --gateway https://example.com 'ap://did:key:z6Mk.../actor'
+    ~~~~
+
+ -  A compatible identifier, i.e., a gateway URL of a portable object, is
+    fetched through the gateway it names:
+
+    ~~~~ sh
+    fedify lookup 'https://example.com/.well-known/apgateway/did:key:z6Mk.../actor'
+    ~~~~
+
+ -  The handle of a portable actor is looked up through WebFinger as usual.
+
+In any case, a portable object is accepted only if it has a valid [Object
+Integrity Proof](./manual/send.md#object-integrity-proofs) made by the DID in
+its ID, since it belongs to its DID rather than to the server that serves it.
+A portable collection without a proof is accepted only if it is served by
+a gateway that its owner lists.  If no gateway returns an acceptable object,
+the command tells why, e.g.:
+
+~~~~
+✖ Failed to fetch ap://did:key:z6Mk.../note
+Rejected the portable object ap+ef61://did:key:z6Mk.../note, as its integrity proof is invalid.
+~~~~
+
+Portable IDs are printed in their canonical form, e.g.,
+`ap+ef61://did:key:z6Mk.../actor`, without percent-encoding the DID.  See also
+the [*Portable objects* section](./manual/context.md#portable-objects) of the
+manual.
+
+[FEP-ef61]: https://w3id.org/fep/ef61
+[DID]: https://www.w3.org/TR/did-core/
+
 ### `-t`/`--traverse`: Traverse the collection
 
 *This option is available since Fedify 0.14.0.*
@@ -1062,6 +1114,33 @@ fedify lookup --traverse --allow-private-address http://localhost:8000/users/ali
 fedify lookup --recurse=replyTarget --allow-private-address http://localhost:8000/notes/1
 ~~~~
 
+### `--gateway`: Gateways of portable objects
+
+*This option is available since Fedify 2.4.0.*
+
+The `--gateway` option specifies an [FEP-ef61] gateway to look up the portable
+objects given on the command line from, instead of the gateways in their
+`@gateway` location hints.  A gateway is an HTTP(S) origin without a path,
+query, or fragment.  This option can be specified multiple times, and the
+gateways are tried in order:
+
+~~~~ sh
+fedify lookup --gateway https://a.example --gateway https://b.example 'ap://did:key:z6Mk.../actor'
+~~~~
+
+With [`-t`/`--traverse`](#t-traverse-traverse-the-collection), the gateways are
+also used for the pages and items of the collection.  With
+[`--recurse`](#recurse-recurse-through-object-relationships), they are used for
+a linked portable object only if it has no `@gateway` location hints of its
+own.
+
+Note that the documents a gateway returns are still verified; a gateway given
+by this option is not trusted more than others.  Documents that the command
+discovers while verifying a portable object, such as the owner of a portable
+collection, follow the
+[`-p`/`--allow-private-address`](#p-allow-private-address-allow-private-ip-addresses)
+option like other discovered URLs.
+
 ### `-s`/`--separator`: Output separator
 
 *This option is available since Fedify 1.3.0.*
@@ -1189,6 +1268,16 @@ handle *@john@doe.com* and *@jane@doe.com*, run the below command:
 fedify inbox -f @john@doe.com -f @jane@doe.com
 ~~~~
 
+Since Fedify 2.4.0, you can also follow an [FEP-ef61] portable actor by its
+`ap:` or `ap+ef61:` ID or its compatible identifier, in the same way as
+[`fedify lookup`](#looking-up-portable-objects) looks it up.  For a portable ID
+without `@gateway` location hints, specify its gateways with the `--gateway`
+option:
+
+~~~~ sh
+fedify inbox -f 'ap://did:key:z6Mk.../actor' --gateway https://example.com
+~~~~
+
 > [!NOTE]
 > Although `-f`/`--follow` option sends `Follow` activities to the specified
 > actors, it does not guarantee that they will accept the follow requests.
@@ -1225,6 +1314,15 @@ When the follow requests are received from the specified actors, the server
 will immediately send the `Accept` activities to them.  Otherwise, the server
 will just log the `Follow` activities to the console without sending the
 `Accept` activities.
+
+Since Fedify 2.4.0, an [FEP-ef61] portable actor can also be specified by its
+`ap:` or `ap+ef61:` ID or its compatible identifier.  Any of them matches the
+actor regardless of `@gateway` location hints and the gateway of a compatible
+identifier:
+
+~~~~ sh
+fedify inbox -a 'ap://did:key:z6Mk.../actor'
+~~~~
 
 ### `-T`/`--no-tunnel`: Local server without tunneling
 
@@ -1462,7 +1560,10 @@ fedify relay -p mastodon -n "My Relay"
 The `-a`/`--accept-follow` option specifies which actors' follow requests to
 accept.  The argument can be either an actor URI, a handle, or a wildcard (`*`).
 This option can be specified multiple times.  If a wildcard is specified, all
-follow requests will be accepted.
+follow requests will be accepted.  Since Fedify 2.4.0, an actor URI can also be
+an [FEP-ef61] portable ID or a compatible identifier, which matches the actor
+regardless of `@gateway` location hints and the gateway of a compatible
+identifier.
 
 ~~~~ sh
 fedify relay -p mastodon -a @john@doe.com -a @jane@doe.com
@@ -1473,7 +1574,9 @@ fedify relay -p mastodon -a @john@doe.com -a @jane@doe.com
 The `-r`/`--reject-follow` option specifies which actors' follow requests to
 reject.  The argument can be either an actor URI, a handle, or a wildcard (`*`).
 This option can be specified multiple times.  If a wildcard is specified, all
-follow requests will be rejected.
+follow requests will be rejected.  As with `-a`/`--accept-follow`, an actor URI
+can also be an [FEP-ef61] portable ID or a compatible identifier since Fedify
+2.4.0.
 
 ~~~~ sh
 fedify relay -p mastodon -r @spammer@example.com
@@ -1627,6 +1730,32 @@ indicating which resource was found.
 
 [WebFinger]: https://tools.ietf.org/html/rfc7033
 
+### Looking up portable actors
+
+*This feature is available since Fedify 2.4.0.*
+
+An [FEP-ef61] portable actor's ID, i.e., an `ap:` or `ap+ef61:` URI or
+a compatible identifier, does not tell which server to ask for its WebFinger
+resource.  Instead, the portable actor's WebFinger address consists of its
+`preferredUsername` and the host of the first gateway in its `gateways`.  So
+when a portable actor's ID is given, the command looks up the actor first, in
+the same way as [`fedify lookup`](#looking-up-portable-objects) does, and then
+looks up that WebFinger address:
+
+~~~~ sh
+fedify webfinger 'ap://did:key:z6Mk.../actor?@gateway=https%3A%2F%2Fexample.com'
+fedify webfinger --gateway https://example.com 'ap://did:key:z6Mk.../actor'
+~~~~
+
+Since a portable actor could claim any WebFinger address, the command checks
+whether the first ActivityStreams `self` link of the WebFinger response points
+back to the actor.  If it does not, the command reports it as a failure, but
+still prints the response for debugging.
+
+The `--gateway` option specifies an FEP-ef61 gateway to look up a portable
+actor from, instead of the gateways in its `@gateway` location hints.  It can
+be specified multiple times.
+
 ### `-a`/`--user-agent`: Custom `User-Agent` header
 
 By default, the `fedify webfinger` command sends the `User-Agent` header with
@@ -1654,6 +1783,8 @@ Mostly useful for testing purposes.  *Do not use this in production.*
 
 The `--max-redirection` option is used to control the maximum number of
 redirections allowed during WebFinger lookups.  By default, it is set to 5.
+It does not apply to looking up a [portable actor](#looking-up-portable-actors)
+itself.
 If you want to set a custom limit, run the below command:
 
 ~~~~ sh

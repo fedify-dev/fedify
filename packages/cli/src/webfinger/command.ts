@@ -16,6 +16,7 @@ import {
 } from "@optique/core";
 import { configContext } from "../config.ts";
 import { userAgentOption } from "../options.ts";
+import { gatewayUrl } from "../portable.ts";
 
 const allowPrivateAddresses = bindConfig(
   flag("-p", "--allow-private-address", {
@@ -56,6 +57,13 @@ export const webFingerOptions = merge(
     ),
     allowPrivateAddresses,
     maxRedirection,
+    gateways: multiple(
+      option("--gateway", gatewayUrl(), {
+        description: message`An FEP-ef61 gateway to look up the given \
+portable actors from, instead of their ${"@gateway"} location hints.  Can \
+be specified multiple times.`,
+      }),
+    ),
   }),
   userAgentOption,
 );
@@ -64,7 +72,9 @@ export const webFingerMetadata = {
   brief: message`Look up WebFinger resources.`,
   description: message`Look up WebFinger resources.
 
-The argument can be multiple.`,
+The argument can be multiple.  For an FEP-ef61 portable actor ID, the actor \
+is looked up first, and the WebFinger address derived from its first gateway \
+is looked up.`,
 };
 
 export const webFingerCommand = command(

@@ -81,7 +81,7 @@ export const relayOptions = merge(
       multiple(
         option("-a", "--accept-follow", string({ metavar: "URI" }), {
           description:
-            message`Accept follow requests from the given actor. The argument can be either an actor URI or a handle, or a wildcard (${"*"}). Can be specified multiple times. If a wildcard is specified, all follow requests will be accepted.`,
+            message`Accept follow requests from the given actor. The argument can be either an actor URI (including an FEP-ef61 portable ID) or a handle, or a wildcard (${"*"}). Can be specified multiple times. If a wildcard is specified, all follow requests will be accepted.`,
         }),
       ),
       {
@@ -94,7 +94,7 @@ export const relayOptions = merge(
       multiple(
         option("-r", "--reject-follow", string({ metavar: "URI" }), {
           description:
-            message`Reject follow requests from the given actor. The argument can be either an actor URI or a handle, or a wildcard (${"*"}). Can be specified multiple times. If a wildcard is specified, all follow requests will be rejected.`,
+            message`Reject follow requests from the given actor. The argument can be either an actor URI (including an FEP-ef61 portable ID) or a handle, or a wildcard (${"*"}). Can be specified multiple times. If a wildcard is specified, all follow requests will be rejected.`,
         }),
       ),
       {

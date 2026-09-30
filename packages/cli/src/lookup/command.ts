@@ -22,6 +22,7 @@ import {
 import { path } from "@optique/run";
 import { configContext } from "../config.ts";
 import { createTunnelServiceOption, userAgentOption } from "../options.ts";
+import { gatewayUrl } from "../portable.ts";
 
 export const IN_REPLY_TO_IRI =
   "https://www.w3.org/ns/activitystreams#inReplyTo";
@@ -175,6 +176,14 @@ export const lookupOptions = merge(
     "Network options",
     userAgentOption,
     object({
+      gateways: multiple(
+        option("--gateway", gatewayUrl(), {
+          description: message`An FEP-ef61 gateway to look up the given \
+portable objects from, instead of their ${"@gateway"} location hints.  Also \
+used for linked portable objects without location hints.  Can be specified \
+multiple times.`,
+        }),
+      ),
       allowPrivateAddress: allowPrivateAddressOption,
       timeout: optional(
         bindConfig(

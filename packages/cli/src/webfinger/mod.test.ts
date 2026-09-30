@@ -49,6 +49,7 @@ test("Test webFingerCommand - with all options", () => {
         resources: RESOURCES,
         allowPrivateAddresses: true,
         maxRedirection,
+        gateways: [],
         userAgent: USER_AGENT,
       },
     },

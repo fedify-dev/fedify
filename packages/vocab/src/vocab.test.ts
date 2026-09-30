@@ -6,6 +6,7 @@ import {
   getDocumentLoader,
   LanguageString,
   parseDecimal,
+  parseIri,
   type RemoteDocument,
 } from "@fedify/vocab-runtime";
 import {
@@ -24,6 +25,7 @@ import {
   rejects,
   throws,
 } from "node:assert/strict";
+import { inspect } from "node:util";
 import { assertInstanceOf } from "./utils.ts";
 import * as vocab from "./vocab.ts";
 import {
@@ -2210,6 +2212,26 @@ test({
           "}",
     );
   },
+});
+
+test("inspecting an object prints portable IRIs in their canonical form", () => {
+  const did = "did:key:z6MkrJVnaZkeFzdQyMZu1cgjg7k1pZZ6pvBQ7XJPt4swbTQ2";
+  const obj = new Object({
+    id: parseIri(`ap://${did}/note`),
+    attribution: parseIri(`ap://${did}/actor`),
+  });
+  const inspected = [inspect(obj, { colors: false })];
+  if ("Deno" in globalThis) {
+    inspected.push(Deno.inspect(obj, { colors: false }));
+  }
+  for (const text of inspected) {
+    ok(text.includes(`ap+ef61://${did}/note`), text);
+    ok(text.includes(`ap+ef61://${did}/actor`), text);
+    ok(!text.includes("%3A"), text);
+  }
+  // A URL that cannot be formatted as an IRI does not break inspection:
+  const malformed = new Object({ id: new URL("ap://not-a-did/note") });
+  ok(inspect(malformed).includes("ap://not-a-did/note"));
 });
 
 test("Person.fromJsonLd()", async () => {

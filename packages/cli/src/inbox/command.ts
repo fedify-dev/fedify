@@ -12,6 +12,7 @@ import {
 } from "@optique/core";
 import { configContext } from "../config.ts";
 import { createTunnelOption } from "../options.ts";
+import { gatewayUrl } from "../portable.ts";
 
 const DEFAULT_EPHEMERAL_INBOX_NAME = "Fedify Ephemeral Inbox";
 const DEFAULT_EPHEMERAL_INBOX_SUMMARY =
@@ -24,7 +25,7 @@ export const inboxOptions = merge(
       multiple(
         option("-f", "--follow", string({ metavar: "URI" }), {
           description:
-            message`Follow the given actor. The argument can be either an actor URI or a handle. Can be specified multiple times.`,
+            message`Follow the given actor. The argument can be either an actor URI (including an FEP-ef61 portable ID) or a handle. Can be specified multiple times.`,
         }),
       ),
       {
@@ -33,11 +34,18 @@ export const inboxOptions = merge(
         default: [],
       },
     ),
+    gateways: multiple(
+      option("--gateway", gatewayUrl(), {
+        description: message`An FEP-ef61 gateway to look up the portable \
+actors to follow from, instead of their ${"@gateway"} location hints.  Can \
+be specified multiple times.`,
+      }),
+    ),
     acceptFollow: bindConfig(
       multiple(
         option("-a", "--accept-follow", string({ metavar: "URI" }), {
           description:
-            message`Accept follow requests from the given actor. The argument can be either an actor URI or a handle, or a wildcard (${"*"}). Can be specified multiple times. If a wildcard is specified, all follow requests will be accepted.`,
+            message`Accept follow requests from the given actor. The argument can be either an actor URI (including an FEP-ef61 portable ID) or a handle, or a wildcard (${"*"}). Can be specified multiple times. If a wildcard is specified, all follow requests will be accepted.`,
         }),
       ),
       {

@@ -914,6 +914,38 @@ To be released.
  -  Switched the CLI's Temporal runtime dependency from
     `@js-temporal/polyfill` to `temporal-polyfill`.
     [[#823], [#925]]
+ -  Added support for [FEP-ef61] portable objects to `fedify lookup`.  It now
+    looks up portable objects by their `ap:` and `ap+ef61:` IDs, compatible
+    identifiers, and the WebFinger handles of portable actors, and verifies
+    their Object Integrity Proofs.  Previously,
+    it failed to look up portable IDs, and refused portable objects found
+    through compatible identifiers as cross-origin objects.  The same applies
+    to the collections that `-t`/`--traverse` traverses and the objects that
+    `--recurse` follows.  When no gateway returns an acceptable object, the
+    command tells why, e.g., that the object's proof is invalid.
+    [[#288], [#1156], [#1199]]
+ -  Added the `--gateway` option to `fedify lookup`, `fedify inbox`, and
+    `fedify webfinger`, which specifies the FEP-ef61 gateways to look up
+    portable objects from, e.g., for portable IDs without `@gateway` location
+    hints.  [[#288], [#1156], [#1199]]
+ -  Changed `fedify inbox -f`/`--follow` to follow FEP-ef61 portable actors,
+    and changed the `-a`/`--accept-follow` option of `fedify inbox` and the
+    `-a`/`--accept-follow` and `-r`/`--reject-follow` options of `fedify relay`
+    to accept portable IDs and compatible identifiers, which match the actor
+    regardless of `@gateway` location hints and the gateway of a compatible
+    identifier.  [[#288], [#1156], [#1199]]
+ -  Changed `fedify webfinger` to accept FEP-ef61 portable actor IDs.  As such
+    an ID does not tell which server to ask, the command looks up the actor and
+    then its WebFinger address, which consists of its `preferredUsername` and
+    the host of its first gateway, and reports whether the response links back
+    to the actor.  [[#288], [#1156], [#1199]]
+ -  Fixed `fedify lookup --recurse` reporting a timeout or another network
+    failure of the first object or of a linked object as a possibly private
+    object, suggesting the `-a`/`--authorized-fetch` option.  It now reports
+    the actual cause, e.g., “Request timed out after 10 seconds,” like the
+    other modes of `fedify lookup` do.  [[#1156], [#1199]]
+ -  Fixed the `-p`/`--allow-private-address` option of `fedify webfinger`
+    being ignored.  [[#1156], [#1199]]
  -  Changed `fedify lookup` to time out each request after 10 seconds when
     the `-T`/`--timeout` option is not given, since the document loaders it
     uses now have a default timeout.  Previously, there was no timeout by
@@ -929,7 +961,9 @@ To be released.
 [#892]: https://github.com/fedify-dev/fedify/issues/892
 [#940]: https://github.com/fedify-dev/fedify/pull/940
 [#971]: https://github.com/fedify-dev/fedify/pull/971
+[#1156]: https://github.com/fedify-dev/fedify/issues/1156
 [#1197]: https://github.com/fedify-dev/fedify/pull/1197
+[#1199]: https://github.com/fedify-dev/fedify/pull/1199
 
 ### @fedify/debugger
 
@@ -1354,6 +1388,12 @@ To be released.
     under the parent's context.  `clone()` never carries the retained
     representation, because a clone may differ from the document the proof
     covers.  [[#288], [#1044], [#1051]]
+
+ -  Changed the inspection of vocabulary objects, e.g., with `console.log()`,
+    `util.inspect()`, or `Deno.inspect()`, to show [FEP-ef61] portable IDs
+    in their canonical form, e.g., `ap+ef61://did:key:z6Mk.../actor`, instead
+    of the percent-encoded form of the `URL` objects that represent them,
+    e.g., `ap+ef61://did%3Akey%3Az6Mk.../actor`.  [[#288], [#1156], [#1199]]
 
  -  Exported portable object verifier types from `@fedify/vocab`, so callers
     can type custom verifiers without importing `@fedify/vocab-runtime`.

@@ -21,12 +21,12 @@ export async function* generateInspector(
         [Symbol.for("Deno.customInspect")]: (
           inspect: typeof Deno.inspect,
           options: Deno.InspectOptions,
-        ): string => "URL " + inspect(this.id!.href, options),
+        ): string => "URL " + inspect(inspectIri(this.id!), options),
         [Symbol.for("nodejs.util.inspect.custom")]: (
           _depth: number,
           options: unknown,
           inspect: (value: unknown, options: unknown) => string,
-        ): string => "URL " + inspect(this.id!.href, options),
+        ): string => "URL " + inspect(inspectIri(this.id!), options),
       };
     }
     `;
@@ -44,12 +44,12 @@ export async function* generateInspector(
               [Symbol.for("Deno.customInspect")]: (
                 inspect: typeof Deno.inspect,
                 options: Deno.InspectOptions,
-              ): string => "URL " + inspect(v.href, options),
+              ): string => "URL " + inspect(inspectIri(v), options),
               [Symbol.for("nodejs.util.inspect.custom")]: (
                 _depth: number,
                 options: unknown,
                 inspect: (value: unknown, options: unknown) => string,
-              ): string => "URL " + inspect(v.href, options),
+              ): string => "URL " + inspect(inspectIri(v), options),
             }
           : v);
     `;

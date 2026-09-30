@@ -1110,6 +1110,7 @@ function createLookupRunCommand(
     firstKnock: undefined,
     tunnelService: undefined,
     userAgent: "FedifyTest/1.0",
+    gateways: [],
     allowPrivateAddress: true,
     timeout: undefined,
     reverse: false,
