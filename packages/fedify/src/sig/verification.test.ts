@@ -25,6 +25,32 @@ function observation(): VerificationObservation {
   return { attempts: [] };
 }
 
+test("LDS evidence has no checks for absent or malformed signatures", async () => {
+  const json = await new Create({ actor: rsaPublicKey2.ownerId }).toJsonLd(
+    loaders,
+  );
+  for (const signature of [undefined, null, "invalid", [], {}]) {
+    const evidence = observation();
+    const value = signature === undefined
+      ? json
+      : { ...json as Record<string, unknown>, signature };
+    strictEqual(
+      await verifyJsonLd(value, {
+        ...loaders,
+        [verificationObservation]: evidence,
+      }),
+      false,
+    );
+    const attempt = evidence.attempts[0];
+    ok(attempt.status === "rejected");
+    strictEqual(
+      attempt.reason.type,
+      signature === undefined ? "noSignature" : "signatureVerificationFailed",
+    );
+    deepStrictEqual(attempt.checks, []);
+  }
+});
+
 test("signature evidence preserves stale and fresh HTTP keys for both specs", async () => {
   for (const spec of ["draft-cavage-http-signatures-12", "rfc9421"] as const) {
     const evidence = observation();

@@ -942,6 +942,7 @@ export async function verifySignature(
   jsonLd: unknown,
   options: VerifySignatureOptions = {},
 ): Promise<CryptographicKey | null> {
+  if (!hasSignature(jsonLd)) return null;
   if (
     options[verificationObservation]?.attempt != null &&
     options[verificationObservation]?.check == null
@@ -958,7 +959,6 @@ export async function verifySignature(
         }),
     );
   }
-  if (!hasSignature(jsonLd)) return null;
   const sig = jsonLd.signature;
   let signature: Uint8Array;
   try {
