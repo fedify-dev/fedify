@@ -151,7 +151,16 @@ async function* generateProperty(
             span.end();
           }
         };
-        if (isPortableIri(url)) return await dereferencePortable(url);
+        if (isPortableIri(url)) {
+          // A reference in a portable actor's own document, e.g., its outbox,
+          // has no location hints, so the actor's gateways are used instead:
+          return await dereferencePortable(
+            url,
+            options.gateways == null
+              ? { inferredGateways: getReferrerGateways(this, url) }
+              : {},
+          );
+        }
         const lookupUrl = formatIri(url);
         const portableMode = isPortableMode(this, options);
         if (portableMode) {

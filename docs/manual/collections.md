@@ -1758,6 +1758,10 @@ section](./inbox.md#portable-inboxes)).
 
 The served collection has the same ID as the actor's property, whether it is
 a portable ID or a compatible identifier, and its `attributedTo` is the actor.
+A collection that is not paginated always has `totalItems`, which is the number
+of items the dispatcher returns if no counter is set, so that consumers can
+tell an empty collection, which has no other collection properties, from other
+objects, as [FEP-2277] does.
 Its pages are identified by the collection's ID with the `cursor` query
 parameter, e.g., `ap+ef61://did:key:z6Mk.../users/alice/outbox?cursor=abc`,
 and their `first`, `last`, `prev`, `next`, and `partOf` stay under the same
@@ -1822,3 +1826,4 @@ federation
 > custom portable collections may not be usable by others yet.
 
 [FEP-ef61]: https://w3id.org/fep/ef61
+[FEP-2277]: https://w3id.org/fep/2277

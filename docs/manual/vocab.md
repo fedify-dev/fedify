@@ -266,13 +266,13 @@ const actor = new Person({
 
 Each gateway must be an HTTP(S) base URI with no path, query, or fragment.
 Newly serialized gateway lists use origins without a trailing slash, while
-the in-memory `URL` values retain their root path. A parsed actor's default
-JSON output can retain the cached spelling of its gateways. Keep the received
+the in-memory `URL` values retain their root path.  A parsed actor's default
+JSON output can retain the cached spelling of its gateways.  Keep the received
 JSON when verifying existing proofs.
 
 For portable actors with inbox and outbox properties, Fedify also reads an
 unmapped `gateways` term under the ActivityStreams context, as emitted by
-tootik v0.25.4. Explicit JSON-LD mappings take precedence. Parsing this list
+tootik v0.25.4.  Explicit JSON-LD mappings take precedence.  Parsing this list
 does not authenticate it; use portable object verification before trusting
 the actor or its gateways.
 
@@ -444,11 +444,15 @@ gateways with a path are not supported.  If you omit it, the accessor uses
 the `@gateway` location hints in the reference, e.g.,
 `ap://did:key:z6Mk.../actor?@gateway=https%3A%2F%2Fserver1.example`.  Since
 hints come from the document that contains the reference, only the first five
-are used.  An explicit `gateways` list replaces the hints, and an empty list
-turns them off.  When there is no gateway to try, the accessor passes the
-portable ID itself to the document loader, which lets a custom document loader
-retrieve portable objects in its own way.  The two checks above apply in that
-case as well.
+are used.  A reference without hints that has the same DID as a portable
+actor it was reached from, e.g., the actor's `outbox`, or a page of the outbox,
+is fetched through the first five valid gateways in that actor's `gateways`
+instead, since references in a portable actor's own document do not need
+hints.  An explicit `gateways` list replaces the hints and the actor's
+gateways, and an empty list turns them off.  When there is no gateway to try,
+the accessor passes the portable ID itself to the document loader, which lets a
+custom document loader retrieve portable objects in its own way.  The two
+checks above apply in that case as well.
 
 Requests to gateways go through the document loader, so an authenticated
 document loader signs them, which lets you fetch non-public portable objects
@@ -539,7 +543,7 @@ instead.  The option applies to that call only; it is not passed on.
 Objects that Fedify parses for you already
 have `~Context.verifyPortableObject` as their default: activities that inboxes
 receive, including queued ones, objects that `~Context.lookupObject()` returns,
-and the activities passed to the `onOutboxError` callback. So
+and the activities passed to the `onOutboxError` callback.  So
 `create.getObject()` in an inbox listener verifies portable objects even
 without options.  A clone does not inherit the default; pass
 `verifyPortableObject` to `clone()` if you need it.
@@ -622,8 +626,8 @@ without a proof, and accepts it only if all of the following hold:
     its `inbox`, `outbox`, `followers`, `following`, or `liked`.  If you
     dereferenced the collection from an actor that was itself fetched and
     verified through gateways, that actor document is used; otherwise the
-    owner is fetched through the same `gateways` option (or its location
-    hints).
+    owner is fetched through the same `gateways` option, or else its location
+    hints or the gateways that the collection was fetched through.
  -  The gateway that served the collection is one of the owner's `gateways`.
 
 A collection with a proof is verified by its proof instead, and a collection

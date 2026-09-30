@@ -539,6 +539,73 @@ export function getPortableGatewayCandidates(
 }
 
 /**
+ * Gets the gateways through which a portable reference without location hints
+ * can be dereferenced, from the portable actor that the reference belongs to.
+ *
+ * The references in a portable actor's own document, such as its `outbox`,
+ * usually have no `@gateway` hints, as they are not needed there, since
+ * the actor's `gateways` already tells where to retrieve them.  So this walks
+ * from the object whose property is being dereferenced up through the objects
+ * it was obtained from, e.g., from a collection page to the collection and
+ * then to the actor, and returns the `gateways` of the first object that has
+ * any, but only if that object has the same DID as the reference.  The
+ * gateways only tell where to look; whatever they serve is still verified.
+ *
+ * @param object The object whose property is being dereferenced.
+ * @param url The portable IRI to dereference.
+ * @returns Up to {@link MAX_GATEWAY_HINTS} valid gateways, or `undefined` if
+ *          the IRI has valid `@gateway` hints or no such object is found.
+ * @internal Technically exported for generated vocabulary classes, but not
+ * part of the public API contract.  This is not considered public API for
+ * Semantic Versioning decisions.
+ */
+export function getReferrerGateways(
+  object: object,
+  url: URL,
+): URL[] | undefined {
+  if (getPortableGatewayCandidates(url).length > 0) return undefined;
+  const visited = new Set<object>();
+  let current: object | undefined = object;
+  while (current != null && !visited.has(current)) {
+    visited.add(current);
+    const gateways: unknown = "gateways" in current
+      ? current.gateways
+      : undefined;
+    if (Array.isArray(gateways) && gateways.length > 0) {
+      const id = getObjectId(current);
+      const portableId = id == null
+        ? null
+        : isPortableIri(id)
+        ? id
+        : getCompatibleEf61Target(id);
+      if (portableId == null || !haveSameFe34Origin(portableId, url)) {
+        return undefined;
+      }
+      const candidates: URL[] = [];
+      for (const gateway of gateways) {
+        if (candidates.length >= MAX_GATEWAY_HINTS) break;
+        if (typeof gateway !== "string" && !(gateway instanceof URL)) continue;
+        const parsed = parseGatewayOrigin(gateway);
+        if (parsed == null) continue;
+        if (candidates.some((c) => c.href === parsed.href)) continue;
+        candidates.push(parsed);
+      }
+      return candidates.length > 0 ? candidates : undefined;
+    }
+    current = provenances.get(current)?.referrer?.object;
+  }
+  return undefined;
+}
+
+function getCompatibleEf61Target(id: URL): URL | null {
+  try {
+    return fromCompatibleEf61Id(id);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Creates a context loader that returns the same context documents for the
  * whole dereference operation, so that the identity check, the proof
  * verifier, and the parser interpret the fetched document identically even

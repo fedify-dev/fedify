@@ -10,434 +10,300 @@ To be released.
 
 ### @fedify/fedify
 
- -  Added WebFinger support for [FEP-ef61] portable actors.  When an actor
-    dispatcher returns an actor whose ID is an `ap:` or `ap+ef61:` URI, the
-    WebFinger response takes the domain of the actor's `acct:` URI from the
-    first gateway in its `gateways`, as FEP-ef61 requires, and its `self`
-    link is the actor's compatible identifier based on that gateway, e.g.,
-    `https://example.com/.well-known/apgateway/did:key:z6Mk.../actor`, so
-    that software without portable ID support can fetch it.  A portable
-    actor without a valid first gateway is not found.  Existing
-    `mapHandle()` and `mapAlias()` callbacks work as before, and WebFinger
-    resources can now be `ap:` or `ap+ef61:` URIs, which are passed to
-    `mapAlias()`.  To serve the actor itself at its compatible identifier,
-    register an object dispatcher for it.  [[#288], [#837], [#1082]]
-
- -  `Context.lookupObject()` now uses `verifyPortableObjectProof()` as its
-    new `verifyPortableObject` option by default, so it looks up
-    [FEP-ef61] portable objects, including portable actors found through
-    WebFinger, through their gateways and returns them only if they have
-    valid Object Integrity Proofs made by the DIDs in their IDs.
-    [[#288], [#837], [#1082]]
-
- -  Actor dispatchers no longer log warnings that a portable actor's ID or
-    collection URIs do not match the URIs that `Context` builds, such as
-    `Context.getActorUri()`.  [[#288], [#837], [#1082]]
-
- -  Added delivery to [FEP-ef61] portable inboxes through the gateway endpoint,
-    e.g., `POST /.well-known/apgateway/did:key:z6Mk.../users/alice/inbox`.
-    Existing inbox listeners handle such a delivery with the path after the
-    DID, so the inbox path `/users/{identifier}/inbox` also receives
-    deliveries to the portable inbox
-    `ap+ef61://did:key:z6Mk.../users/alice/inbox`.  Fedify accepts a delivery
-    only if the actor dispatcher returns, for the identifier, a portable actor
-    with the same DID whose `inbox` is the requested portable inbox and whose
-    `gateways` include this server; otherwise, it responds with
-    `404 Not Found`.  Applications without portable actors are unaffected.
-    [[#288], [#839], [#1092]]
-
- -  Fedify now forwards an activity delivered to a portable inbox to the same
-    inbox on the actor's other gateways, as FEP-ef61 recommends, if the
-    activity is authenticated by its own Object Integrity Proof or Linked Data
-    Signature.  Each activity is forwarded to each gateway at most once, which
-    requires a `KvStore` that supports `cas()`; with other stores, Fedify logs
-    a warning and does not forward.  Forwarded requests are signed with HTTP
-    Signatures by this server's gateway key for the actor if
-    `mapPortableActorId()` maps the recipient to the same portable actor and
-    the key pairs dispatcher returns an RSA key pair for it, and are sent
-    unsigned otherwise.  An activity is not forwarded back to the gateway that
-    forwarded it if the delivery is signed by that gateway with its gateway
-    key for the actor, which costs fetching the actor document from that
-    gateway.  Configure the `origin` option on gateways so that Fedify can
-    tell which gateway it is regardless of the `Host` header.
-    [[#288], [#839], [#1092], [#1100], [#1101], [#1104], [#1110]]
-
- -  Added the `Context.getPortableInboxUri()` method, which builds the portable
-    inbox ID of an actor from the inbox path and a DID.  Custom
-    implementations of the `Context` interface need to implement the new
-    method.  [[#288], [#839], [#1092]]
-
- -  Added the `FederationOptions.portableInboxForwarding` option, whose
-    `maxTargets`, `ttl`, and `deadline` properties change how many gateways
-    a delivery is forwarded to (10 by default; `0` turns off forwarding), how
-    long forwarded activities are remembered (30 days by default), and how
-    long a delivery waits for forwarding without an outbox queue, and for
-    identifying the gateway that forwarded it (10 seconds by default).
-    [[#288], [#839], [#1092], [#1101], [#1110]]
-
- -  Added the `FederationKvPrefixes.portableInboxForwarding` option, the key
-    prefix for remembering forwarded activities, which defaults to
-    `["_fedify", "portableInboxForwarding"]`.  [[#288], [#839], [#1092]]
-
- -  Added delivery to [FEP-ef61] portable inboxes, i.e., `ap:` and `ap+ef61:`
-    URIs, to `Context.sendActivity()` and `InboxContext.forwardActivity()`.
-    They deliver an activity to the compatible identifier of such an inbox
-    on one of the recipient's gateways, e.g.,
-    `https://gateway.example/.well-known/apgateway/did:key:z6Mk.../actor/inbox`.
-    The gateways are taken from the recipient's `gateways`, or, if it has no
-    valid gateway, from the `@gateway` location hints of the inbox URI, and
-    at most five of them are tried one after another until one accepts the
-    activity.  Previously, such a delivery failed with
-    `UrlError: Unsupported protocol: ap+ef61:`.  A recipient with no gateway
-    to deliver through is skipped with a warning.  [[#288], [#1147], [#1180]]
-
-     -  A gateway that fails with a permanent failure status, such as
-        `404 Not Found`, is not tried again for the activity.  If no gateway
-        accepts the activity, the whole round of gateways counts as one
-        attempt of the retry policy.
-
-     -  The `preferSharedInbox` option is ignored for recipients with portable
-        inboxes, the `excludeBaseUris` option is compared with the origins of
-        their gateways, and deliveries to a portable inbox are ordered by the
-        actor's DID when the `orderingKey` option is given.
-
-     -  Queue workers of older Fedify versions deliver queued activities to
-        portable inboxes only through the first gateway, so upgrade them
-        before the servers that enqueue deliveries.
-
  -  Added `onRequestFinished()` to observe every inbox delivery, including
     rejected requests and preparation errors, with signature/proof checks,
     actual verification keys, the final authentication decision, and the
     processing outcome.  The callback is awaited independently of trace
     sampling, and its errors do not change delivery results.  [[#1191], [#1201]]
 
- -  Added serving of [FEP-ef61] portable collections through the gateway
-    endpoint, e.g.,
-    `GET /.well-known/apgateway/did:key:z6Mk.../users/alice/outbox`, by the
-    existing collection dispatchers, including the inbox collection, so that a
-    portable actor's outbox and other collections are no longer tied to a
-    single server.  Fedify serves such a collection only if the actor whose
-    identifier is in its path is a portable actor under the requested DID whose
-    corresponding property, e.g., `outbox`, refers to the collection; otherwise
-    it responds with `404 Not Found`.  The collection and its pages keep the
-    actor's form of the ID, a portable ID or a compatible identifier, identify
-    pages with the `cursor` query parameter, and have `attributedTo` set to the
-    actor.  The collection's `authorize()` predicate is applied before anything
-    is dispatched.  The collection itself is served without an Object Integrity
-    Proof, as FEP-ef61 allows, but it is refused with
-    `500 Internal Server Error` if it embeds a portable actor, activity, or
-    object without a valid proof made with a key of the DID in its ID.
-    Applications without portable actors are unaffected, except that their
-    actor dispatchers may be called for such requests.
-    [[#288], [#1111], [#1142]]
+ -  Added support for [FEP-ef61] portable objects, whose IDs are `ap:` or
+    `ap+ef61:` URIs with a DID instead of a host, e.g.,
+    `ap://did:key:z6Mk.../actor`.  A Fedify server can now act as a gateway for
+    portable actors: it serves their actor documents, objects, collections, and
+    hashlink media, accepts deliveries to their inboxes, and sends their
+    activities.  It can also consume the portable objects of others.  The new
+    [*Portable objects*] chapter of the manual walks through
+    running portable actors, and describes the FEP-ef61 profile that Fedify
+    supports, including where it deliberately differs from the FEP and what it
+    does not implement.  Applications without portable actors are unaffected,
+    except that their dispatchers may be called for requests to the gateway
+    endpoint, */.well-known/apgateway/*, and that `Context.sendActivity()` may
+    reject activities that embed others' portable objects (see below).
+    [[#288], [#1151], [#1198]]
 
- -  Added the `Context.getPortableOutboxUri()`,
-    `Context.getPortableFollowingUri()`, `Context.getPortableFollowersUri()`,
-    `Context.getPortableLikedUri()`, `Context.getPortableFeaturedUri()`,
-    `Context.getPortableFeaturedTagsUri()`, and
-    `Context.getPortableCollectionUri()` methods, which build the portable IDs
-    of an actor's collections and of custom collections from the same paths
-    as their non-portable counterparts and a DID.  On a `RequestContext`, the
-    DID defaults to the one in the gateway request.  Custom implementations of
-    the `Context` interface need to implement the new methods.
-    [[#288], [#1111], [#1142]]
+     -  Added `verifyPortableObjectProof()`, which enforces the FEP-ef61 proof
+        policy: a portable actor, activity, or object needs an [FEP-8b32]
+        Object Integrity Proof whose `verificationMethod` is a DID URL of
+        the DID in its ID, and a portable actor needs a non-empty `gateways`
+        list of HTTP(S) origins.  A document whose ID is a compatible
+        identifier, e.g.,
+        `https://gw.example/.well-known/apgateway/did:key:z6Mk.../actor`, is
+        verified against the DID in it.  Its detailed result distinguishes
+        documents outside the policy, unsecured collections, missing or invalid
+        proofs, invalid gateways, unsupported verification methods, and DID
+        mismatches.  [[#832], [#968], [#1093], [#1105], [#1148], [#1178]]
 
- -  Added the `CustomCollectionCallbackSetters.mapPortableOwner()` method and
-    the `PortableCollectionOwnerMapper` type.  A custom collection is served
-    through the FEP-ef61 gateway endpoint only if this callback maps it to
-    a portable actor under the requested DID.  [[#288], [#1111], [#1142]]
+     -  Added `verifyPortableObject()`, which verifies proofs like
+        `verifyPortableObjectProof()`, and also accepts an actor's `inbox`,
+        `outbox`, `followers`, `following`, or `liked` collection without
+        a proof if a gateway that the actor lists served it, as FEP-ef61
+        allows.  The `VerifyPortableObjectOptions`,
+        `VerifyPortableObjectResult`, and `VerifyPortableObjectFailureReason`
+        types describe it.  [[#836], [#1084], [#1093], [#1105]]
 
- -  Changed the actor dispatcher to warn when a portable actor's collection
-    property is a portable ID or a compatible identifier that does not match
-    the one that the corresponding `Context.getPortable*Uri()` method builds,
-    as the gateway endpoint would not serve the collection.
-    [[#288], [#1111], [#1142]]
+     -  Added the `Context.verifyPortableObject` property, which is
+        `verifyPortableObject()` with the context's loaders.  Since it has
+        the same name as the option of property accessors, passing a context
+        as their options, e.g., `await create.getObject(ctx)`, verifies
+        portable objects.  Inboxes use it as the default verifier of received
+        activities, as do `Context.lookupObject()`,
+        `Context.traverseCollection()`, and the `onOutboxError` callback.
+        Added the `verifyPortableObject` option to `VerifyObjectOptions`.
+        [[#1107], [#1120]]
 
- -  Added serving of [FEP-ef61] portable objects through the gateway endpoint,
-    e.g., `GET /.well-known/apgateway/did:key:z6Mk.../notes/123`.  Existing
-    object dispatchers serve such a request with the path after the DID, so
-    the object dispatcher registered for `/notes/{id}` serves the portable
-    object `ap+ef61://did:key:z6Mk.../notes/123`.  Fedify responds with
-    `404 Not Found` unless the dispatcher returns an object with that ID, and
-    refuses to serve a portable actor, activity, or object that does not have
-    an Object Integrity Proof made with a key of the DID.  As FEP-ef61
-    forbids gateways to serve a non-public object to anyone but its intended
-    audience, and a gateway may store objects that it did not create, Fedify
-    also responds with `404 Not Found` unless the object is publicly
-    addressed, i.e., its `to`, `cc`, `bto`, `bcc`, or `audience` has
-    the public collection, or is an actor.  To serve non-public portable
-    objects to their audience, set an authorization predicate on the object
-    dispatcher, e.g., one that checks the request with the new
-    `RequestContext.isSignedByAudience()` method; the predicate then decides
-    who may retrieve the dispatcher's portable objects, and Fedify responds to
-    the requests that it allows with `Cache-Control: private`.  Applications
-    that do not serve portable objects are unaffected, except that their
-    object dispatchers may be called for such requests.
-    [[#288], [#835], [#1076], [#1153], [#1183]]
+     -  `verifyProof()` now resolves Ed25519 `did:key` verification methods,
+        e.g., `did:key:z6Mk...#z6Mk...`, locally without fetching them, and
+        `verifyObject()` accepts a proof made by a DID as authenticating
+        an actor or attribution whose portable ID or compatible identifier
+        has that DID.  [[#827], [#829], [#915], [#926], [#1093], [#1105]]
 
- -  Added the `RequestContext.isSignedByAudience()` method, which checks
-    whether the request is signed by an actor in the audience of an object,
-    comparing [FEP-ef61] portable IDs canonically, and the
-    `IsSignedByAudienceOptions` interface.  Its `isMember` option checks
-    the members of collections such as followers, which Fedify cannot tell
-    by itself.  Custom implementations of the `RequestContext` interface need
-    to implement the new method.  [[#288], [#1153], [#1183]]
+     -  Added the `Context.getPortableActorUri()`,
+        `Context.getPortableObjectUri()`, `Context.getPortableInboxUri()`,
+        `Context.getPortableOutboxUri()`, `Context.getPortableFollowingUri()`,
+        `Context.getPortableFollowersUri()`, `Context.getPortableLikedUri()`,
+        `Context.getPortableFeaturedUri()`,
+        `Context.getPortableFeaturedTagsUri()`, and
+        `Context.getPortableCollectionUri()` methods, which build portable IDs
+        from the paths of the corresponding dispatchers and a DID.  Custom
+        implementations of the `Context` interface need to implement them.
+        [[#835], [#839], [#841], [#1076], [#1092], [#1111], [#1114], [#1142]]
+        They throw a `TypeError` for a `did:key` DID that is not encoded in
+        base58-btc, as FEP-ef61 requires, or for an identifier that has
+        a `.` or `..` path segment.  [[#841], [#1114], [#1154], [#1186]]
 
- -  Added the `Context.getPortableObjectUri()` method, which builds the
-    portable ID of an object from its object dispatcher's path and a DID,
-    and the `RequestContext.portableRequest` property, which tells an object
-    dispatcher the DID and ID of the requested portable object.  Custom
-    implementations of the `Context` interface need to implement the new
-    method.  [[#288], [#835], [#1076]]
+     -  Added the `portable` option to `Context.parseUri()` and
+        the `ParseUriOptions` interface.  With `{ portable: true }`,
+        the method also recognizes portable IDs and their compatible
+        identifiers, and the result has the DID in its new `authority`
+        property.  [[#1143], [#1145]]
 
- -  Added serving of tombstones of [FEP-ef61] portable objects and actors
-    through the gateway endpoint with `410 Gone`, as for ordinary objects,
-    so that other gateways and consumers can tell a deleted portable object
-    from one that the gateway never stored.  A `Tombstone` that an object
-    dispatcher or the actor dispatcher returns for such a request is served
-    with `410 Gone` if its ID is the requested portable ID and it has
-    an Object Integrity Proof made with a key of the DID, and with
-    `404 Not Found` if it has no proof.  Like other portable objects,
-    a tombstone from an object dispatcher without an authorization predicate
-    needs public addressing to be served.
-    [[#288], [#1113], [#1124], [#1153], [#1183]]
+     -  Object dispatchers and the actor dispatcher now serve portable objects
+        and actors through the gateway endpoint, e.g.,
+        `GET /.well-known/apgateway/did:key:z6Mk.../notes/123`, with the path
+        after the DID.  An object is served only if its ID canonically equals
+        the requested portable ID and it has a proof made with a key of
+        the DID.  A non-public object is served only if the dispatcher has
+        an authorization predicate, as FEP-ef61 forbids gateways to serve it
+        to anyone but its audience.  Signed tombstones are served with
+        `410 Gone`.  Added the `RequestContext.portableRequest` property,
+        which tells the dispatcher the requested DID and ID.
+        [[#835], [#841], [#1076], [#1113], [#1114], [#1124], [#1153], [#1183]]
 
- -  Added serving of resources addressed by [FEP-ef61] hashlinks, such as
-    media attached to portable objects, through the gateway endpoint, e.g.,
-    `GET /.well-known/apgateway/hl:zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n`.
-    Register a dispatcher with the new
-    `Federatable.setHashlinkMediaDispatcher()` method; it receives the parsed
-    hashlink and its SHA-256 digest as a `HashlinkMediaRequest` object and
-    returns a `Response`, which Fedify sends as is so that it can be streamed,
-    or `null` for `404 Not Found`.  Fedify responds with `400 Bad Request` to
-    malformed hashlinks without calling the dispatcher, and does not verify the
-    response body, so the dispatcher must serve only the resource whose bytes
-    hash to the requested digest.  Applications that do not register the
-    dispatcher are unaffected.  [[#288], [#838]]
+     -  Added the `RequestContext.isSignedByAudience()` method and
+        the `IsSignedByAudienceOptions` interface, which check whether
+        a request is signed by an actor in the audience of an object, e.g.,
+        in the authorization predicate of an object dispatcher.  Custom
+        implementations of the `RequestContext` interface need to implement
+        the method.  [[#1153], [#1183]]
 
- -  Added `hashlink_media` to the values of the `fedify.endpoint` metric
-    attribute, used for requests to the hashlink media endpoint.
-    [[#288], [#838], [#1080]]
+     -  Collection dispatchers now serve the collections of portable actors
+        through the gateway endpoint, e.g.,
+        `GET /.well-known/apgateway/did:key:z6Mk.../users/alice/outbox`, if
+        the actor is a portable actor under the requested DID whose
+        corresponding property refers to the collection.  A collection that
+        is not paginated always has `totalItems`, so that consumers can tell
+        an empty one from other objects.  Added
+        the `CustomCollectionCallbackSetters.mapPortableOwner()` method and
+        the `PortableCollectionOwnerMapper` type, which tie a custom
+        collection to its portable owner.  [[#1111], [#1142]]
 
- -  Added support for HTTP Signature keys that gateways use on behalf of
-    [FEP-ef61] portable actors, which Fedify calls *gateway keys*.  Register
-    the new `ActorCallbackSetters.mapPortableActorId()` callback to tell
-    Fedify which actors are portable, and `Context.getActorKeyPairs()` then
-    identifies their dispatched key pairs by the actor's compatible identifier
-    on this server, e.g.,
-    `https://example.com/.well-known/apgateway/did:key:z6Mk.../actors/alice#main-key`,
-    with the portable actor as their owner, and with the same IDs for their
-    `CryptographicKey` and `Multikey` forms so that they can be listed in the
-    actor's `assertionMethods` as FEP-ef61 requires.  Requests made on behalf
-    of such actors, including activity deliveries and signed fetches, are
-    signed with these keys.  The new `PortableActorIdMapper` type describes the
-    callback.  [[#288], [#840], [#1099]]
+     -  Added `Federatable.setHashlinkMediaDispatcher()` and
+        the `HashlinkMediaRequest` interface, which serve resources that
+        portable objects refer to with SHA-256 hashlinks, e.g.,
+        `GET /.well-known/apgateway/hl:zQm...`.  Fedify does not verify the
+        dispatcher's response against the digest.  Added `hashlink_media` to
+        the values of the `fedify.endpoint` metric attribute.
+        [[#838], [#1080]]
 
- -  Changed HTTP Signature verification to accept a gateway key of a portable
-    actor if the actor's document, fetched from the key ID, has a valid Object
-    Integrity Proof made by the actor's DID, embeds the key in its
-    `assertionMethod`, and lists the gateway in its `gateways`.  Such a key is
-    owned by the portable actor, so `RequestContext.getSignedKeyOwner()`,
-    `getKeyOwner()`, and `doesActorOwnKey()` return or match the portable
-    actor.  Given the very key that HTTP Signature verification returned,
-    they take the actor from the document it verified rather than fetching
-    and verifying the document again.  The document may list the key under
-    the key ID itself or under the `ap:` URI with the same canonical ID, as
-    Mitra does, but not under both, nor under a compatible identifier on
-    another gateway.  Previously, no gateway key of a portable actor could be
-    verified.  [[#288], [#840], [#1096], [#1099], [#1123], [#1134], [#1164]]
+     -  Inbox listeners now accept deliveries to portable inboxes through
+        the gateway endpoint, e.g.,
+        `POST /.well-known/apgateway/did:key:z6Mk.../users/alice/inbox`, if
+        the actor dispatcher returns a portable actor whose `inbox` is
+        the requested inbox and whose `gateways` include this server.
+        [[#839], [#1092]]
 
- -  Changed HTTP Signature verification to accept a key of a portable actor
-    itself whose ID is an `ap:` or `ap+ef61:` URI, e.g.,
-    `ap://did:key:z6Mk.../actor?@gateway=https%3A%2F%2Fexample.com#main-key`.
-    Fedify fetches the actor's document from the gateways in the key ID's
-    `@gateway` location hints, or, without them, asks the document loader for
-    the `ap:` URI itself, and accepts the key if the document has a valid
-    Object Integrity Proof made by the actor's DID, embeds the key under
-    the `ap:` URI, and has a valid gateway.  Since the signer chooses the
-    hints, only the first three are followed, and all the gateways share
-    a timeout of ten seconds; a lookup that runs out of time is reported as
-    a `keyFetchError` without an HTTP status.  Such a key is used only for
-    HTTP Signatures, and is owned by the portable actor like a gateway key.
-    Keys at `ap:` URIs are never used to make Object Integrity Proofs or
-    Linked Data Signatures either.  [[#288], [#1096], [#1132], [#1134], [#1165]]
+     -  Fedify now forwards an activity delivered to a portable inbox to
+        the actor's other gateways at most once, as FEP-ef61 recommends, if
+        the activity is authenticated by its own proof or Linked Data
+        Signature and the `KvStore` supports `cas()`.  Forwarded requests are
+        signed with this server's RSA gateway key for the actor if the key
+        pairs dispatcher returns one, and are sent unsigned otherwise.  An
+        activity is not forwarded back to the gateway that forwarded it if
+        Fedify can identify that gateway by its gateway key signature on the
+        delivery.  Added the `FederationOptions.portableInboxForwarding` and
+        `FederationKvPrefixes.portableInboxForwarding` options.
+        [[#839], [#1092], [#1100], [#1101], [#1104], [#1110]]
 
- -  Changed inboxes to reject activities of portable actors that do not have
-    a valid Object Integrity Proof made by the actor's DID with
-    `401 Unauthorized`, even if the request has a valid HTTP Signature or the
-    activity has a valid Linked Data Signature.  [[#288], [#840], [#1099]]
+     -  `Context.sendActivity()` and `InboxContext.forwardActivity()` now
+        deliver to portable inboxes through the recipient's gateways, or else
+        the `@gateway` location hints of the inbox, trying at most five of
+        them until one accepts the activity.  Previously, such a delivery
+        failed with `UrlError: Unsupported protocol: ap+ef61:`.  Queue
+        workers of older Fedify versions deliver such queued activities only
+        through the first gateway, so upgrade them before the servers that
+        enqueue deliveries.  [[#1147], [#1180]]
 
- -  Changed `Context.sendActivity()` so that keys whose IDs are FEP-ef61
-    compatible identifiers, such as gateway keys, never make Object Integrity
-    Proofs or Linked Data Signatures; they only sign HTTP requests.  Also,
-    activities of portable actors never get Linked Data Signatures, and have
-    to have portable IDs of the actors' DIDs, and an unsigned portable
-    activity is signed only by a key whose ID is a DID URL for its DID, even
-    if it is the only Ed25519 key.  In these cases `sendActivity()` rejects
-    with a `TypeError` before anything is delivered or queued.  Sign
-    portable activities with `signObject()` beforehand, or pass the DID's key
-    as an explicit sender key.  [[#288], [#840], [#1099]]
+     -  Added the `ActorCallbackSetters.mapPortableActorId()` method and
+        the `PortableActorIdMapper` type.  For an actor that the callback
+        maps to a portable ID, `Context.getActorKeyPairs()` identifies its key
+        pairs by the actor's compatible identifier on this server, e.g.,
+        `https://example.com/.well-known/apgateway/did:key:z6Mk.../users/alice#main-key`,
+        so that they serve as this server's *gateway keys* for the actor, which
+        sign HTTP requests made on behalf of the actor, but never make Object
+        Integrity Proofs or Linked Data Signatures.  [[#840], [#1099]]
 
- -  Changed key lookups so that keys whose IDs are FEP-ef61 compatible
-    identifiers are cached apart for each purpose, as whether such a key is
-    valid depends on what it is used for: a gateway key cached for an HTTP
-    Signature is never used for an Object Integrity Proof or a Linked Data
-    Signature, and a key rejected for one of them is not rejected for
-    the others.  A failure to fetch such a key, e.g., a network error or
-    `404 Not Found`, fails every purpose alike and is cached like that of any
-    other key.  A gateway key is cached for an hour at most, and never
-    beyond the expiration of the proof on the actor's document, since
-    the actor can drop the gateway from its document at any time.
-    `fetchKey()` and `fetchKeyDetailed()` do not resolve gateway keys of
-    portable actors.
-    [[#288], [#840], [#1095], [#1099], [#1119]]
+     -  HTTP Signature verification now accepts a gateway key of a portable
+        actor if the actor document at the key ID has a valid proof by
+        the actor's DID, embeds the key in its `assertionMethod`, or else in
+        its `publicKey`, and lists the gateway in its `gateways`.  Such a key
+        is owned by the portable actor, so
+        `RequestContext.getSignedKeyOwner()`, `getKeyOwner()`, and
+        `doesActorOwnKey()` return or match the actor.  Keys at compatible
+        identifiers are cached apart for each purpose, for an hour at most.
+        [[#840], [#1095], [#1099], [#1105], [#1119], [#1123], [#1164]]
+        A key at an `ap:` key ID is accepted likewise if an actor document
+        fetched through the key ID's location hints vouches for it.
+        [[#1096], [#1132], [#1134], [#1165]]
 
-     -  Only the key cache that Fedify's inbox uses caches keys at compatible
-        identifiers apart for each purpose.  A custom `KeyCache` passed to
-        `verifyRequest()`, `fetchKey()`, and the like caches only the
-        failures to fetch them.
+     -  Inboxes accept an activity of a portable actor, or an activity with
+        a portable ID, only if it has a valid proof made by the DID of that
+        ID; an HTTP Signature or a Linked Data Signature does not
+        authenticate it, and such an activity is rejected with
+        `401 Unauthorized`.  [[#840], [#1099]]
 
- -  Added support for publishing [FEP-ef61] portable actors and objects whose
-    IDs are compatible identifiers, such as
-    `https://example.com/.well-known/apgateway/did:key:z6Mk.../actor`, for
-    interoperability with software that cannot handle `ap:` URIs.  Fedify now
-    treats such an actor or object as portable wherever it publishes one, as
-    it already did for those with `ap:` or `ap+ef61:` IDs.  Build compatible
-    identifiers with `toCompatibleEf61Id()` and the first gateway of the
-    actor before signing the documents; portable IDs remain the recommended
-    form.  [[#288], [#1106], [#1109]]
+     -  Inboxes independently verify each portable actor, activity, and
+        object embedded in a compound document, e.g., the `Note` in
+        a `Create`, against its own proof before dispatch, following Fedify's
+        interim *map-local* profile, since neither FEP-8b32 nor Verifiable
+        Credential Data Integrity defines the boundaries of embedded proofs
+        yet.  A valid outer proof does not authenticate an unsigned or invalid
+        embedded portable object.  Documents with proof sets, or that exceed
+        the traversal limits, are rejected.  A key embedded in a verified
+        portable actor needs no proof of its own if the key's ID is the actor's
+        ID plus a fragment.  This profile may change in Fedify 3.0.
+        [[#938], [#1041], [#1094], [#1102], [#1133], [#1138]]
 
-     -  `Context.sendActivity()` now requires an activity of an actor whose
-        ID is a compatible identifier to have an `ap:` or `ap+ef61:` ID or
-        a compatible identifier of the actor's DID, and signs an unsigned one
-        only with the key whose ID is a DID URL for that DID, instead of
-        sending activities that FEP-ef61 receivers reject.  A malformed
-        compatible actor or activity ID, e.g., one with `@gateway` location
-        hints, is rejected with a `TypeError`.
+     -  `Context.sendActivity()` gives an activity that contains portable
+        objects at most one proof: an activity that already has one is sent
+        as is, and a portable activity is signed only by the key whose ID is
+        a DID URL for its DID.  An activity of a portable actor has to have
+        a portable ID or a compatible identifier of the actor's DID, and never
+        gets a Linked Data Signature.  Otherwise, `sendActivity()` rejects with
+        a `TypeError` before anything is delivered or queued.  So does a
+        non-portable activity that embeds portable objects, including ones with
+        compatible identifiers, when several Ed25519 keys are available, and an
+        activity with portable objects in which any map carries a proof set, or
+        an embedded map carries a proof but not its own `@context`, e.g.,
+        a received signed `Follow` embedded in an `Accept`, which Fedify
+        inboxes would reject; refer to such an object by its ID instead.
+        Sign portable activities with `signObject()` beforehand, or pass the
+        DID's key as an explicit sender key.
+        [[#840], [#1041], [#1045], [#1073], [#1099]]
 
-     -  The FEP-ef61 gateway endpoint now serves an object whose ID is
-        a compatible identifier of the requested portable object, on any
-        gateway, instead of responding with `404 Not Found`.
+     -  Your portable actors and objects may have compatible identifiers as
+        their IDs, e.g.,
+        `https://example.com/.well-known/apgateway/did:key:z6Mk.../actor`,
+        for interoperability with software that cannot handle portable IDs.
+        Fedify treats them as portable wherever it serves or sends them, and
+        warns if such an ID is malformed or is not on the owner's first
+        gateway, as FEP-ef61 requires.  Build them with `toCompatibleEf61Id()`
+        before signing the documents.  [[#1106], [#1109], [#1155], [#1188]]
 
-     -  Portable inboxes now accept deliveries on behalf of actors whose IDs
-        or inboxes are compatible identifiers, and forward each activity to
-        the other gateways at most once whether its ID is an `ap:` URI or
-        a compatible identifier.
+     -  The WebFinger endpoint now serves portable actors: the domain of
+        the actor's address comes from the first gateway in its `gateways`,
+        and its `self` link is its compatible identifier on that gateway.
+        WebFinger resources can be portable IDs, which are passed to
+        `mapAlias()`.  `Context.lookupObject()` resolves the handles of
+        portable actors on other servers.  [[#837], [#1082], [#1106], [#1109]]
 
-     -  WebFinger now takes the domain of such an actor's address from its
-        first gateway, and uses its ID as the `self` link.
+     -  Fedify logs a warning if an actor dispatcher returns a portable actor
+        whose `gateways` are invalid, or whose collections are not the
+        portable IDs or compatible identifiers that the corresponding
+        `Context.getPortable*Uri()` methods build, instead of warning that
+        a portable actor's ID or collections do not match the URIs that
+        `Context.getActorUri()` and the like build.
+        [[#837], [#1082], [#1111], [#1142], [#1148], [#1178]]
 
-     -  Actor dispatchers no longer warn that such an actor's ID or collection
-        URIs do not match the URIs that `Context` builds, but warn if its ID
-        is a malformed compatible identifier or is not on its first gateway,
-        as FEP-ef61 requires.
+     -  `Context.routeActivity()` routes a portable activity that has no
+        valid proof only if all of its actors have the same DID as
+        the activity, comparing [FEP-fe34] origins, where the origin of
+        a portable ID or a compatible identifier is its DID.  [[#1146], [#1171]]
 
-     -  Fedify now warns when a served object, or a sent activity and its
-        embedded objects, use compatible identifiers away from the owner's
-        first gateway when that gateway is known locally.  The warning does
-        not change what is served or sent.  [[#1155], [#1188]]
+     -  Outbox listeners compare the `actor` of a posted activity with
+        a portable outbox owner by their canonical portable IDs, so that
+        the actor can be referred to with `@gateway` location hints, another
+        URI scheme, or as a compatible identifier on another gateway.
+        [[#1159], [#1189]]
 
- -  Added the `Context.getPortableActorUri()` method, which builds the
-    [FEP-ef61] portable ID of an actor from its actor dispatcher's path and
-    a DID, e.g., `ap+ef61://did:key:z6Mk.../users/alice`.  Like
-    `Context.getPortableObjectUri()`, the DID can be omitted while handling
-    a gateway request, in which case the DID in the request path is used.
-    Custom implementations of the `Context` interface need to implement the
-    new method.  [[#288], [#841], [#1114]]
+ -  Changed Fedify to treat documents whose IDs are [FEP-ef61] compatible
+    identifiers, such as
+    `https://gw.example/.well-known/apgateway/did:key:z6Mk.../actor`, as
+    the portable objects they stand for, as FEP-ef61 requires, instead of
+    trusting them by the web origin that served them.  Previously, any server
+    could act as
+    `https://evil.example/.well-known/apgateway/did:key:z6MkAlice/actor`
+    without a proof by Alice's DID.  Some implementations, e.g., tootik,
+    identify their portable actors this way.  [[#288], [#1093], [#1105]]
 
- -  The actor dispatcher now serves portable actors through the FEP-ef61
-    gateway endpoint, e.g.,
-    `GET /.well-known/apgateway/did:key:z6Mk.../users/alice`, the same way
-    object dispatchers serve portable objects, so a portable actor whose ID
-    `Context.getPortableActorUri()` builds can be fetched at its compatible
-    identifier without registering an extra object dispatcher.  The actor is
-    served only if its ID canonically equals the requested portable ID and it
-    has an Object Integrity Proof made with a key of the DID, and
-    `RequestContext.portableRequest` is set for such requests.  Applications
-    that do not have portable actors are unaffected, except that their actor
-    dispatchers may be called for such requests.  [[#288], [#841], [#1114]]
+     -  Inboxes now reject an activity of an actor whose ID is a compatible
+        identifier with `401 Unauthorized` unless it has a valid Object
+        Integrity Proof made by the actor's DID.  Activities of actors that
+        publish compatible identifiers without signing them, or whose DIDs
+        use key types Fedify does not support, are no longer accepted.
 
- -  `Context.getPortableActorUri()`, `Context.getPortableObjectUri()`, and
-    `Context.getPortableInboxUri()` now throw a `TypeError` if the DID is
-    a `did:key` DID that is not encoded in base58-btc, as FEP-ef61 requires,
-    so that the same key does not yield two different portable IDs.  Use
-    `exportDidKey()` from `@fedify/vocab-runtime` to make such DIDs.
-    Likewise, the gateway endpoint responds with `400 Bad Request` to
-    requests whose path has such a DID.  [[#288], [#841], [#1114]]
+     -  `verifyObject()` never authenticates an attribution or actor whose ID
+        is a compatible identifier by a key at an ordinary URL.
 
- -  Added the `Context.verifyPortableObject` property, the [FEP-ef61]
-    portable object policy of the context: `verifyPortableObject()` with the
-    context's document loader and context loader.  Since it has the same name
-    as the `verifyPortableObject` option of property accessors, passing
-    a context as their options, e.g., `await create.getObject(ctx)`, now
-    verifies portable objects that they dereference.  Previously,
-    `create.getObject(ctx)` on an activity whose ID is a compatible
-    identifier, such as one from tootik, fetched the object it refers to as
-    an ordinary HTTP(S) URL and trusted it because of its origin.  Note that
-    this also applies to objects with ordinary HTTP(S) IDs: their references
-    to compatible identifiers are now verified as portable objects when you
-    pass a context.  [[#288], [#1107], [#1120]]
+     -  HTTP Signature verification rejects a key at a compatible identifier
+        unless the actor document has a valid proof by the actor's DID and
+        vouches for the key.  A key at an ordinary URL that claims a portable
+        actor as its owner or controller is no longer that actor's key, and
+        `getKeyOwner()` and `doesActorOwnKey()` no longer resolve portable
+        actors by web origin.
 
- -  Inboxes now parse received activities with `Context.verifyPortableObject`
-    as their default verifier, so accessors called without options in inbox
-    listeners, e.g., `await create.getObject()`, verify portable objects
-    too, including for queued activities and for activities authenticated
-    by Object Integrity Proofs.  The activities passed to the
-    `onOutboxError` callback have the default as well.
-    [[#288], [#1107], [#1120]]
+ -  Changed property accessors to verify the [FEP-ef61] portable objects that
+    they dereference when a `Context` is passed as their options, e.g.,
+    `await create.getObject(ctx)`, since the new `Context.verifyPortableObject`
+    property has the same name as their `verifyPortableObject` option.  This
+    also applies to objects with ordinary HTTP(S) IDs: their references to
+    compatible identifiers are now verified as portable objects instead of
+    being trusted because of their origin.  In inbox listeners, accessors do
+    so even without options.  [[#288], [#1107], [#1120]]
 
- -  Changed `Context.lookupObject()` to use `Context.verifyPortableObject`
-    instead of `verifyPortableObjectProof()` as the default
-    `verifyPortableObject` option, so that it also accepts an unsecured
-    portable collection served by a gateway that its owner lists, as
-    accessors do.  Pass `verifyPortableObject: verifyPortableObjectProof` to
-    accept only objects with proofs.  The returned object uses the policy by
-    default for its property accessors.  `Context.traverseCollection()` also
-    uses `Context.verifyPortableObject` by default.  [[#288], [#1107], [#1120]]
+ -  Fixed `signObject()` so that a signed object keeps verifying after it is
+    assigned to a typed parent and the parent is serialized.  `signObject()`
+    now captures the secured JSON document its proof covers, and nested
+    serialization embeds that document verbatim instead of rebuilding the
+    child under the parent's JSON-LD context.  Producing a compound document,
+    such as a signed `Note` in a signed [FEP-ef61] portable `Create`, with
+    `signObject()` no longer requires assembling the JSON by hand.
+    [[#288], [#1041], [#1044], [#1051]]
 
- -  Added the `verifyPortableObject` option to `VerifyObjectOptions`.  It is
-    not used to verify the given object; the returned object uses it by
-    default for its property accessors.  [[#288], [#1107], [#1120]]
-
- -  Added the `portable` option to `Context.parseUri()`, and the
-    `ParseUriOptions` interface.  With `{ portable: true }`, the method also
-    recognizes [FEP-ef61] portable IDs, e.g.,
-    `ap+ef61://did:key:z6Mk.../users/alice`, and their compatible identifiers
-    on any gateway by the same paths through which the gateway endpoint serves
-    them, so that an inbox listener can tell that an activity is about one of
-    its portable actors, objects, or collections.  The result then has the DID
-    of the ID in its new `authority` property.  Since anyone can make
-    a portable ID with the same path under another DID, check that
-    `authority` is the DID that you store for the actor or object before
-    acting on the result.  Without the option, `parseUri()` behaves as
-    before.  [[#288], [#1143], [#1145]]
-
- -  Added validation of the `gateways` of [FEP-ef61] portable actors, which
-    FEP-ef61 requires to be a non-empty list of HTTP(S) URIs with an empty
-    path, query, and fragment.  `verifyPortableObjectProof()` and
-    `verifyPortableObject()` now reject a portable actor whose `gateways` is
-    missing or empty, or has any other item, with the new `invalidGateways`
-    reason, even if its proofs are valid, so such an actor is no longer looked
-    up, accepted in an inbox, or served through the gateway endpoint.  If an
-    actor dispatcher returns a portable actor with such `gateways`, Fedify
-    logs a warning.  An incoming activity that embeds an actor with a gateway
-    that has a path, query, or fragment is now rejected with
-    `400 Bad Request` as malformed, instead of failing with an error.
-    [[#288], [#1148], [#1178]]
-
- -  Added `verifyPortableObject()`, which applies the [FEP-ef61] trust policy
-    to portable objects fetched through gateways.  It verifies Object
-    Integrity Proofs like `verifyPortableObjectProof()`, and also accepts
-    a portable collection or collection page without a proof if it was
-    served by a gateway listed in the `gateways` of the actor that owns it.
-    The owner must be the actor whose `inbox`, `outbox`, `followers`,
-    `following`, or `liked` it is, as confirmed by the owner's signed actor
-    document.  Pass it as the `verifyPortableObject` option of property
-    accessors and `traverseCollection()` instead of
-    `verifyPortableObjectProof()` to read portable actors' collections, such
-    as their outboxes.  The new `VerifyPortableObjectOptions`,
-    `VerifyPortableObjectResult`, and `VerifyPortableObjectFailureReason`
-    types describe it.  [[#288], [#836], [#1084]]
+     -  The captured document is a snapshot: `clone()` does not carry it, and
+        mutating a signed object in place does not change it.  Sign a clone
+        again when it has to be embedded as a secured child.
+     -  Serialization falls back to the previous behavior for objects parsed
+        with `fromJsonLd()`, objects that already carried a proof, and
+        `toJsonLd()` calls whose `context` option could hide the internal
+        placeholder.
+     -  Outgoing JSON-LD compatibility normalization now leaves a nested
+        self-contained secured document untouched while signing and sending,
+        so it cannot rewrite bytes that the child's own proof covers.
+        Inbound verification is unaffected.
+     -  Fanout delivery now reuses the document the activity was already
+        serialized into instead of reparsing and reserializing it, which
+        previously invalidated an embedded signed child and the outer proof
+        that covered it.
 
  -  Allowed object dispatchers to return `Tombstone` for deleted objects, as
     actor dispatchers already can.  Fedify now serves such object URIs with
@@ -458,98 +324,6 @@ To be released.
      -  Changed object dispatchers registered for `Tombstone` or `Object`
         that return tombstones to be served with `410 Gone` instead of
         `200 OK`.
-
- -  Changed `Context.routeActivity()` to compare an activity that has no
-    valid proof with its actors by their [FEP-fe34] origins once it has
-    dereferenced the activity, where the origin of an [FEP-ef61] portable ID,
-    i.e., an `ap:` or `ap+ef61:` URI or a compatible identifier, is its DID
-    rather than the gateway that serves it.  Previously, it compared their web
-    origins, so a portable activity was routed even if its actors had other
-    DIDs.  Now a portable activity is routed only if all of its actors have
-    the same DID as the activity itself, and an activity with an ordinary
-    HTTP(S) ID is not routed if any of its actors has a portable ID.
-    A portable activity dereferenced through a compatible identifier also
-    matches its `ap:` ID, and vice versa.  [[#288], [#1146], [#1171]]
-
- -  Changed `Context.sendActivity()` so that an activity containing
-    [FEP-ef61] portable objects gets at most one Object Integrity Proof.
-    Previously Fedify signed every outgoing activity once for each Ed25519
-    key, which produced a proof set that Fedify's own inbox rejects in a
-    compound portable document.  [[#288], [#1041], [#1045], [#1073]]
-
-     -  An activity that already carries a proof is sent as is.
-     -  With several Ed25519 keys, a portable activity is signed only by the
-        key whose ID is a DID URL for the activity's DID.
-     -  If no single key qualifies, or a non-portable activity that embeds
-        portable objects has several Ed25519 keys, `sendActivity()` rejects
-        with a `TypeError` before anything is delivered or queued.  Pass
-        explicit sender keys with exactly one Ed25519 key, or sign the
-        activity with `signObject()` beforehand.
-     -  An activity with portable objects in which any map carries a proof
-        set is rejected the same way.
-     -  Activities without portable objects are signed as before.
-
- -  Changed Fedify to treat documents whose IDs are [FEP-ef61] compatible
-    identifiers, such as
-    `https://gw.example/.well-known/apgateway/did:key:z6Mk.../actor`, as the
-    portable objects they stand for, as FEP-ef61 requires.  Some
-    implementations, e.g., tootik, identify their portable actors this way.
-    Previously, Fedify trusted such documents by the web origin that served
-    them, so any server could act as
-    `https://evil.example/.well-known/apgateway/did:key:z6MkAlice/actor`
-    without a proof by Alice's DID.  [[#288], [#1093], [#1105]]
-
-     -  `verifyPortableObjectProof()` now verifies a document whose `@id` is
-        a compatible identifier against the DID in it, instead of reporting
-        it as `notPortableObject`.  The proof is verified over the document
-        as is.
-
-     -  Inboxes now reject an activity of an actor whose ID is a compatible
-        identifier with `401 Unauthorized` unless it has a valid Object
-        Integrity Proof made by the actor's DID, as they already did for
-        actors with `ap:` IDs.  Likewise, an activity whose own ID is an
-        `ap:` URI or a compatible identifier is rejected unless its proof is
-        made by the DID of that ID, and embedded maps with compatible
-        identifiers need their own proofs as embedded portable objects do.
-        The exception is a key embedded in the `publicKey` or
-        `assertionMethod` of a verified portable actor, such as a gateway
-        key, whose ID is the actor's compatible identifier plus a fragment;
-        the actor's proof covers it.
-        Activities of actors that publish compatible identifiers without
-        signing them, or whose DIDs use key types Fedify does not support,
-        are no longer accepted.
-
-     -  `verifyObject()` now accepts an Object Integrity Proof made by a DID
-        as authenticating an attribution or actor whose compatible identifier
-        has that DID, and never authenticates such an attribution by a key at
-        an ordinary URL.
-
-     -  HTTP Signature verification now resolves a gateway key whose actor
-        document has a compatible identifier as its ID the same way as for
-        actors with `ap:` IDs, and rejects the key if the document does not
-        have a valid proof by the actor's DID, instead of trusting the
-        gateway's web origin.  A key at an ordinary URL that claims
-        a portable actor as its owner or controller is no longer that actor's
-        key, and `getKeyOwner()` and `doesActorOwnKey()` no longer resolve
-        portable actors by web origin.
-
-     -  `Context.sendActivity()` now applies the compound-proof key selection
-        to activities that embed objects with compatible identifiers, as it
-        does for embedded objects with `ap:` IDs, so that Fedify inboxes
-        accept what it sends.
-
- -  Changed HTTP Signature verification to accept a gateway key of a portable
-    actor that the actor's signed document embeds only in its `publicKey`,
-    with the actor as its `owner`, when no `assertionMethod` entry has the
-    key ID.  Some publishers, e.g., tootik, list their RSA keys only there.
-    A document that has more than one entry with the key ID in either
-    property is rejected.  [[#288], [#1093], [#1105]]
-
- -  Changed the gateway trust policy for unsecured portable collections in
-    `verifyPortableObject()` to accept collections and owners identified by
-    compatible identifiers.  An owner with a compatible identifier is fetched
-    through the gateway that the identifier names first, unless the
-    `gateways` option is given.  [[#288], [#1093], [#1105]]
 
  -  Changed HTTP Signature verification to verify at most the first three
     RFC 9421 signatures of a request, in the order of its `Signature-Input`
@@ -621,68 +395,12 @@ To be released.
     store compares encoded values.  Existing half-open states can now recover
     after switching to a CAS-capable store.  [[#1163], [#1167]]
 
- -  Fixed outbox listeners rejecting a posted activity with
-    `400 Bad Request` when its `actor` referred to an [FEP-ef61] portable
-    outbox owner in another form than the owner's ID, e.g., with `@gateway`
-    location hints, another URI scheme or DID encoding, or as a compatible
-    identifier on another gateway.  Portable actor IDs are now compared by
-    their canonical forms, while other actor IDs still have to match exactly.
-    [[#288], [#1159], [#1189]]
-
- -  Fixed portable actor and object URI helpers so a dispatcher identifier
-    containing a `.` or `..` path segment raises a `TypeError` instead of
-    silently producing another object's ID.  Use identifiers without such
-    segments.  [[#288], [#1154], [#1186]]
-
- -  Fixed `signObject()` so that a signed object keeps verifying after it is
-    assigned to a typed parent and the parent is serialized.  `signObject()`
-    now captures the secured JSON document its proof covers, and nested
-    serialization embeds that document verbatim instead of rebuilding the
-    child under the parent's JSON-LD context.  Producing a [FEP-ef61] compound
-    document with `signObject()` no longer requires assembling the JSON by
-    hand.  [[#288], [#1041], [#1044], [#1051]]
-
-     -  The captured document is a snapshot: `clone()` does not carry it, and
-        mutating a signed object in place does not change it.  Sign a clone
-        again when it has to be embedded as a secured child.
-     -  An object parsed with `fromJsonLd()`, an object that already carried a
-        proof, and a `toJsonLd()` `context` option that could hide the
-        internal placeholder all fall back to the previous behavior.
-     -  Outgoing JSON-LD compatibility normalization now leaves a nested
-        self-contained secured document untouched while signing and sending,
-        so it cannot rewrite bytes that the child's own proof covers.
-        Inbound verification is unaffected.
-     -  Fanout delivery now reuses the document the activity was already
-        serialized into instead of reparsing and reserializing it, which
-        previously invalidated an embedded signed child and the outer proof
-        that covered it.
-
  -  Fixed `verifyProof()` so Ed25519 JCS proofs authenticate every received
     proof option except `proofValue`, including `expires`, `domain`,
     `challenge`, `nonce`, and extension options.  It now rejects expired or
     malformed proof options, and callers can provide expected `domain` and
     `challenge` values through `VerifyProofOptions` to prevent cross-domain or
     replay use.  [[#968]]
-
- -  Added `verifyPortableObjectProof()` to enforce the [FEP-ef61] proof policy
-    for portable actors, activities, objects, and signed collections.  Its
-    detailed result distinguishes documents outside the policy, unsecured
-    collections, missing or invalid [FEP-8b32] proofs, unsupported verification
-    methods, DID authority mismatches, and successful verification.
-    [[#832], [#968]]
-
- -  Updated `verifyObject()` so [FEP-8b32] proofs signed by `did:key`
-    verification methods can authenticate portable objects whose owner is an
-    `ap:` or `ap+ef61:` URI with the same [FEP-fe34] cryptographic origin.
-    [[#829], [#926]]
-
- -  Added local `did:key` verification method resolution for
-    [FEP-8b32] Object Integrity Proofs.  `verifyProof()` can now verify
-    Ed25519 `eddsa-jcs-2022` proofs whose `verificationMethod` is a
-    `did:key:z...#z...` DID URL without fetching the verification method
-    as a remote JSON-LD document, which is required for [FEP-ef61]
-    portable objects.
-    [[#827], [#915]]
 
  -  Added support for the [ActivityPub Media Upload extension] so that servers
     can accept client-to-server media uploads:
@@ -755,36 +473,13 @@ To be released.
     `esnext.temporal` lib reference.
     [[#823], [#925]]
 
- -  Security: Inbox processing now independently verifies each portable actor,
-    activity, and object in a compound JSON document against its own map-local
-    Object Integrity Proof before dispatch.  A valid outer proof no longer
-    authenticates an unsigned or invalid nested portable object.
-    Portable documents with proof sets or which exceed the inbox compound
-    traversal limits are rejected as unsupported.  The top-level Linked
-    Data Signature of an activity is not part of any proof input, so an
-    activity that carries both proofs and a Linked Data Signature is
-    accepted.  An unsigned key embedded in the `publicKey` or
-    `assertionMethod` of a verified portable actor needs no proof of its own
-    if its ID is the actor's compatible identifier or `ap:` or `ap+ef61:` URI
-    plus a non-empty fragment, as with the keys that [FEP-ae97] clients make
-    for their actors, which Mitra serves under `ap:` URIs.
-    [[#288], [#938], [#1041], [#1094], [#1102], [#1133], [#1138]]
-
-    The map-local profile is Fedify's interim interpretation, since neither
-    FEP-8b32 nor Verifiable Credential Data Integrity defines the boundaries
-    of embedded proofs yet, and may change in Fedify 3.0.  The new
-    [*Portable objects*] chapter of the manual describes
-    the [FEP-ef61] profile that Fedify supports, including this and the parts
-    of FEP-ef61 that Fedify does not implement.  [[#288], [#1151], [#1198]]
-
 [FEP-ef61]: https://w3id.org/fep/ef61
+[*Portable objects*]: https://fedify.dev/manual/portable
+[FEP-8b32]: https://w3id.org/fep/8b32
 [FEP-fe34]: https://w3id.org/fep/fe34
 [key–value store guide]: https://fedify.dev/manual/kv
-[FEP-8b32]: https://w3id.org/fep/8b32
 [ActivityPub Media Upload extension]: https://www.w3.org/wiki/SocialCG/ActivityPub/MediaUpload
 [Standard Schema]: https://standardschema.dev/
-[FEP-ae97]: https://w3id.org/fep/ae97
-[*Portable objects*]: https://fedify.dev/manual/portable
 [#206]: https://github.com/fedify-dev/fedify/issues/206
 [#288]: https://github.com/fedify-dev/fedify/issues/288
 [#754]: https://github.com/fedify-dev/fedify/issues/754
@@ -913,53 +608,66 @@ To be released.
  -  Added \[SvelteKit\] option to `fedify init` command. This option allows
     users to initialize a new Fedify project with SvelteKit integration.
     [[#892], [#971] by Jang Hanarae\]
+
  -  Added `fedify.com.es` as a tunneling service.  The CLI pins the service's
     SSH host key and rejects a mismatched server before exposing a local port.
     [[#940]]
+
  -  Removed `localhost.run` as a tunneling service.  The service is no longer
     available, and the CLI now rejects attempts to use it.
     [[#940]]
+
  -  Switched the CLI's Temporal runtime dependency from
     `@js-temporal/polyfill` to `temporal-polyfill`.
     [[#823], [#925]]
- -  Added support for [FEP-ef61] portable objects to `fedify lookup`.  It now
-    looks up portable objects by their `ap:` and `ap+ef61:` IDs, compatible
-    identifiers, and the WebFinger handles of portable actors, and verifies
-    their Object Integrity Proofs.  Previously,
-    it failed to look up portable IDs, and refused portable objects found
-    through compatible identifiers as cross-origin objects.  The same applies
-    to the collections that `-t`/`--traverse` traverses and the objects that
-    `--recurse` follows.  When no gateway returns an acceptable object, the
-    command tells why, e.g., that the object's proof is invalid.
+
+ -  Added support for [FEP-ef61] portable objects to the `fedify` command.
     [[#288], [#1156], [#1199]]
- -  Added the `--gateway` option to `fedify lookup`, `fedify inbox`, and
-    `fedify webfinger`, which specifies the FEP-ef61 gateways to look up
-    portable objects from, e.g., for portable IDs without `@gateway` location
-    hints.  [[#288], [#1156], [#1199]]
- -  Changed `fedify inbox -f`/`--follow` to follow FEP-ef61 portable actors,
-    and changed the `-a`/`--accept-follow` option of `fedify inbox` and the
-    `-a`/`--accept-follow` and `-r`/`--reject-follow` options of `fedify relay`
-    to accept portable IDs and compatible identifiers, which match the actor
-    regardless of `@gateway` location hints and the gateway of a compatible
-    identifier.  [[#288], [#1156], [#1199]]
- -  Changed `fedify webfinger` to accept FEP-ef61 portable actor IDs.  As such
-    an ID does not tell which server to ask, the command looks up the actor and
-    then its WebFinger address, which consists of its `preferredUsername` and
-    the host of its first gateway, and reports whether the response links back
-    to the actor.  [[#288], [#1156], [#1199]]
+
+     -  `fedify lookup` now looks up portable objects by their `ap:` and
+        `ap+ef61:` IDs, compatible identifiers, and the WebFinger handles of
+        portable actors, and verifies their Object Integrity Proofs.
+        Previously, it failed to look up portable IDs, and refused portable
+        objects found through compatible identifiers as cross-origin objects.
+        The same applies to the collections that `-t`/`--traverse` traverses
+        and the objects that `--recurse` follows.  When no gateway returns
+        an acceptable object, the command tells why, e.g., that the object's
+        proof is invalid.
+
+     -  Added the `--gateway` option to `fedify lookup`, `fedify inbox`, and
+        `fedify webfinger`, which specifies the gateways to look up portable
+        objects from, e.g., for portable IDs without `@gateway` location
+        hints.
+
+     -  `fedify inbox -f`/`--follow` now follows portable actors, and
+        the `-a`/`--accept-follow` option of `fedify inbox` and
+        the `-a`/`--accept-follow` and `-r`/`--reject-follow` options of
+        `fedify relay` accept portable IDs and compatible identifiers, which
+        match the actor regardless of `@gateway` location hints and
+        the gateway of a compatible identifier.
+
+     -  `fedify webfinger` now accepts portable actor IDs.  As such an ID
+        does not tell which server to ask, the command looks up the actor
+        and then its WebFinger address, which consists of its
+        `preferredUsername` and the host of its first gateway, and reports
+        whether the response links back to the actor.
+
  -  Fixed `fedify lookup --recurse` reporting a timeout or another network
     failure of the first object or of a linked object as a possibly private
     object, suggesting the `-a`/`--authorized-fetch` option.  It now reports
     the actual cause, e.g., “Request timed out after 10 seconds,” like the
     other modes of `fedify lookup` do.  [[#1156], [#1199]]
+
  -  Fixed the `-p`/`--allow-private-address` option of `fedify webfinger`
     being ignored.  [[#1156], [#1199]]
+
  -  Changed `fedify lookup` to time out each request after 10 seconds when
     the `-T`/`--timeout` option is not given, since the document loaders it
     uses now have a default timeout.  Previously, there was no timeout by
     default.  The `-T`/`--timeout` option now also limits how long
     a request waits for a DNS lookup, though it cannot stop the lookup
     itself.  [[#1131], [#1169]]
+
  -  Updated Optique to 1.3.2.  This fixes several command-line parsing
     issues, so options with attached values such as `--timeout=30` are
     handled consistently, typo suggestions for mistyped options are more
@@ -1070,10 +778,11 @@ To be released.
     counts wherever it is passed.
     [[#900], [#1050] by Jae-Hyuk-Jang\]
 
- -  Fixed actor URI mismatch rules reporting portable actor and collection
-    URIs, including gateway-compatible IDs built from them.  Applications can
-    use the `getPortable*Uri()` helpers in actor dispatchers without disabling
-    these rules.  [[#1157], [#1179]]
+ -  Changed the actor URI mismatch rules to accept the [FEP-ef61] portable
+    IDs of actors and collections, and the compatible identifiers built from
+    them, so that applications can use the `getPortable*Uri()` methods of
+    `Context` in actor dispatchers without disabling these rules.
+    [[#288], [#1157], [#1179]]
 
  -  Fixed `outbox-listener-delivery-required` and
     `outbox-listener-delivery-not-awaited` (`@fedify/lint`) losing track of
@@ -1146,7 +855,7 @@ To be released.
     `isFederationRequest()` now recognizes them by their paths regardless of
     their headers.  To make Next.js run the middleware for them, add
     `{ source: "/.well-known/apgateway/:path*" }` to the `matcher` of your
-    *middleware.ts* or *proxy.ts* file. [[#288], [#1149], [#1170]]
+    *middleware.ts* or *proxy.ts* file.  [[#288], [#1149], [#1170]]
  -  Added `isHashlinkMediaRequest()` function.  [[#288], [#1149], [#1170]]
 
 [#1149]: https://github.com/fedify-dev/fedify/issues/1149
@@ -1222,105 +931,197 @@ To be released.
 
 ### @fedify/testing
 
- -  Added fixture document loaders and portable-object verification to mock
-    context lookups, explicit portable gateway request information for mock
-    dispatchers, and hashlink media responses from mock federations.  Tests can
-    now exercise these FEP-ef61 paths without a live gateway.
-    [[#288], [#1161], [#1196]]
+ -  Added support for [FEP-ef61] portable objects to the mock federation and
+    contexts, following the new APIs of `@fedify/fedify`, so that tests can
+    exercise portable objects without a live gateway.  [[#288]]
+
+     -  Added the `getPortableActorUri()`, `getPortableObjectUri()`,
+        `getPortableInboxUri()`, `getPortableOutboxUri()`,
+        `getPortableFollowingUri()`, `getPortableFollowersUri()`,
+        `getPortableLikedUri()`, `getPortableFeaturedUri()`,
+        `getPortableFeaturedTagsUri()`, and `getPortableCollectionUri()`
+        methods to the mock contexts.  They reject `did:key` DIDs that are
+        not encoded in base58-btc.
+        [[#835], [#839], [#841], [#1092], [#1111], [#1114], [#1142]]
+
+     -  Added the `portable` option to `parseUri()` of the mock contexts.
+        Without it, `parseUri()` no longer recognizes a portable ID or
+        compatible identifier whose path starts with `/users/`; with it,
+        the result has the DID in its `authority` property.  It also returns
+        `null` for `null`.  [[#1143], [#1145]]
+
+     -  The mock contexts that `createContext()` creates keep
+        the `verifyPortableObject` property given to them, and their
+        `lookupObject()` and `traverseCollection()` pass it on.
+        `createFederation()` accepts a fixture `documentLoader`,
+        a `contextLoader`, and `verifyPortableObject`, which mock context
+        lookups use for portable IDs.  [[#1107], [#1120], [#1161], [#1196]]
+
+     -  Added the `isSignedByAudience()` method to the mock request contexts,
+        which checks the audience against the actor that
+        `getSignedKeyOwner()` returns.  [[#1153], [#1183]]
+
+     -  `federation.createContext()` accepts an explicit `portableRequest`
+        for a request context, which dispatchers can inspect.
+        [[#1161], [#1196]]
+
+     -  Added the `mapPortableActorId()` method to the setters that
+        `MockFederation.setActorDispatcher()` returns, the
+        `mapPortableOwner()` method to the mock custom collection setters,
+        and the `setHashlinkMediaDispatcher()` method to the mock federation,
+        which serves hashlink media responses.
+        [[#838], [#840], [#1080], [#1099], [#1111], [#1142], [#1161], [#1196]]
+
  -  Added support for registering `onRequestFinished()` on mock federations so
     applications can reuse their inbox configuration in tests.
     [[#1191], [#1201]]
+
  -  Added `testKvStore()`, a conformance test suite for `KvStore`
     implementations, complementing `testMessageQueue()`.
     [[#1018], [#1020] by ChanHaeng Lee\]
- -  Added the `getPortableActorUri()` method to the mock contexts that
-    `createFederation()`, `createContext()`, `createRequestContext()`,
-    `createInboxContext()`, and `createOutboxContext()` create, following
-    the new `Context.getPortableActorUri()` method of `@fedify/fedify`.
-    The mock contexts' portable ID methods now also reject `did:key` DIDs
-    that are not encoded in base58-btc.  [[#288], [#841], [#1114]]
- -  Added the `getPortableInboxUri()` method to the mock contexts that
-    `createFederation()`, `createContext()`, `createRequestContext()`,
-    `createInboxContext()`, and `createOutboxContext()` create, following
-    the new `Context.getPortableInboxUri()` method of `@fedify/fedify`.
-    [[#288], [#839], [#1092]]
- -  Added the `getPortableOutboxUri()`, `getPortableFollowingUri()`,
-    `getPortableFollowersUri()`, `getPortableLikedUri()`,
-    `getPortableFeaturedUri()`, `getPortableFeaturedTagsUri()`, and
-    `getPortableCollectionUri()` methods to the mock contexts, and
-    the `mapPortableOwner()` method to the mock custom collection setters,
-    following the new APIs of `@fedify/fedify`.  [[#288], [#1111], [#1142]]
- -  Added the `isSignedByAudience()` method to the mock contexts that
-    `createFederation()` and `createRequestContext()` create, following
-    the new `RequestContext.isSignedByAudience()` method of `@fedify/fedify`.
-    It checks the audience against the actor that `getSignedKeyOwner()`
-    returns.  [[#288], [#1153], [#1183]]
- -  Added the `mapPortableActorId()` method to the setters that
-    `MockFederation.setActorDispatcher()` returns, which `ActorCallbackSetters`
-    gained for [FEP-ef61] portable actors.  [[#288], [#840], [#1099]]
- -  Added the `setHashlinkMediaDispatcher()` method to the `Federation`
-    object returned by `createFederation()`, following the new
-    `Federatable.setHashlinkMediaDispatcher()` method of `@fedify/fedify`.
-    [[#288], [#838], [#1080]]
+
  -  Changed `getObject()` of the mock context that `createFederation()`
     creates to follow `RequestContext.getObject()` of `@fedify/fedify`: it
     now returns `null` for a `Tombstone` that the object dispatcher returns,
     unless the tombstone is an instance of the requested class or
     `{ tombstone: "passthrough" }` is given.  [[#1112], [#1117]]
- -  Changed `parseUri()` of the mock contexts to accept the `portable` option,
-    following `Context.parseUri()` of `@fedify/fedify`.  It no longer
-    recognizes an FEP-ef61 portable ID or compatible identifier whose path
-    starts with `/users/` unless the option is enabled, in which case the
-    result has the DID in its `authority` property.  It also returns `null`
-    for `null`.  [[#288], [#1143], [#1145]]
+
  -  Fixed the CommonJS testing utilities build so it no longer requires
     `@js-temporal/polyfill` at runtime.  The build now bundles
     `temporal-polyfill`, while type declarations rely on the standard
     `esnext.temporal` lib reference.
     [[#823], [#925]]
- -  The mock contexts that `createContext()` creates now keep the
-    `verifyPortableObject` property given to them, following the new
-    `Context.verifyPortableObject` property of `@fedify/fedify`, and their
-    default `lookupObject()` and `traverseCollection()` methods pass it and
-    a `verifyPortableObject` option given to them on.
-    [[#288], [#1107], [#1120]]
 
 [#1161]: https://github.com/fedify-dev/fedify/issues/1161
 [#1196]: https://github.com/fedify-dev/fedify/pull/1196
 
 ### @fedify/vocab
 
- -  Added [FEP-ef61] gateway dereferencing to property accessors such as
-    `Create.getObject()`.  Accessors now fetch `ap:` and `ap+ef61:`
-    references through the gateways given by the new `gateways` option, or
-    through the `@gateway` location hints in the reference when the option is
-    omitted, trying each gateway in order until one serves a valid object.
-    A fetched object is returned only if its `@id` canonically matches the
-    reference and the new `verifyPortableObject` option, typically
-    `verifyPortableObjectProof()` from `@fedify/fedify`, accepts it.  Portable
-    references can no longer be dereferenced without `verifyPortableObject`,
-    and the `crossOrigin: "trust"` option does not skip these checks.
-    HTTP(S) references are fetched as before.  [[#288], [#834], [#1077]]
+ -  Added support for [FEP-ef61] portable objects, whose IDs are `ap:` or
+    `ap+ef61:` URIs with a DID instead of a host, e.g.,
+    `ap://did:key:z6Mk.../actor`, and which are retrieved through the
+    servers listed in their actors' `gateways`.  See the
+    [*Portable objects*] chapter of the manual for the
+    FEP-ef61 profile that Fedify supports.  [[#288]]
 
- -  Added [FEP-ef61] vocabulary terms for portable ActivityPub objects.
-    Actor classes now expose ordered `gateways` lists, and `Link` plus
-    document/media classes expose `digestMultibase` for external resource
-    integrity metadata.
-    [[#830], [#928]]
+     -  Generated vocabulary classes now accept portable IDs with decoded or
+        percent-encoded DID authorities wherever an IRI is expected, and
+        serialize them as canonical `ap+ef61:` IRIs with decoded DID
+        authorities.  Inspecting vocabulary objects, e.g., with
+        `console.log()`, also shows them in this form.
+        [[#826], [#850], [#1156], [#1199]]
 
- -  Updated [FEP-fe34] cross-origin checks to understand cryptographic origins
-    for [FEP-ef61] portable ActivityPub IDs and DID URLs.  Generated property
-    accessors and `lookupObject()` now treat `ap:`/`ap+ef61:` IDs and matching
-    `did:key` verification method IDs as same-origin when their DID components
-    match.
-    [[#829], [#926]]
+     -  Added the `gateways` property to actor classes, and the
+        `digestMultibase` property to `Link` and document and media classes.
+        Gateways are serialized as origins without a trailing slash.
+        A portable actor that uses the `gateways` term without mapping it in
+        its JSON-LD context, as tootik does, is also read.
+        [[#830], [#928], [#1097], [#1202]]
 
- -  Added support for [FEP-ef61] portable ActivityPub IRIs in generated
-    vocabulary codecs.  `ap:` and `ap+ef61:` values with decoded or
-    percent-encoded DID authorities now parse as `URL` objects, and JSON-LD
-    serialization emits canonical `ap+ef61:` values with decoded DID
-    authorities.
-    [[#826], [#850]]
+     -  Added the optional `Recipient.gateways` property, through which Fedify
+        delivers activities to portable inboxes.  Applications that build
+        `Recipient` objects by hand, e.g., in followers collection
+        dispatchers, need to set it for portable actors.  [[#1147], [#1180]]
+
+     -  Property accessors such as `Create.getObject()` now fetch portable
+        references through gateways: those in the new `gateways` option, or
+        else those in the `@gateway` location hints of the reference.  A
+        reference without hints that has the same DID as a portable actor it
+        was reached from, e.g., the actor's `outbox`, is fetched through that
+        actor's `gateways`. A fetched object is returned only if its `@id`
+        identifies the referenced portable object and the verifier given as the
+        new `verifyPortableObject` option accepts it, typically
+        `verifyPortableObject()` from `@fedify/fedify`, or a `Context` passed
+        as the options.  Portable references cannot be dereferenced without the
+        option, and `crossOrigin: "trust"` does not skip these checks.
+        [[#834], [#1077], [#1093], [#1105]]
+
+     -  Property accessors tell the `verifyPortableObject` function where
+        a portable object was retrieved from and which objects led to it, so
+        that it can accept a portable collection without a proof if a gateway
+        that its owner lists served it.  Objects embedded in such a collection
+        are fetched and verified one by one.  Added the `crossOrigin`,
+        `gateways`, and `verifyPortableObject` options to
+        `TraverseCollectionOptions` as well.  [[#836], [#1084]]
+
+     -  Added the `verifyPortableObject` option to the constructors,
+        the `fromJsonLd()` methods, and the `clone()` methods of vocabulary
+        classes, which sets the verifier that the object's property accessors
+        use by default.  Objects embedded in the parsed document, and objects
+        that accessors and `traverseCollection()` fetch, get the verifier of
+        the call or of their parent by default, so that, e.g.,
+        `(await create.getObject(ctx))?.getAttribution()` verifies portable
+        objects without passing `ctx` again.  Having a default verifier does
+        not mean that an object was verified.  Added
+        the `inheritPortableObjectVerifier` option to property accessors and
+        `TraverseCollectionOptions` to limit a verifier to a single call.
+        [[#1107], [#1120], [#1129], [#1137]]
+
+     -  Added the `verifyPortableObject` and `gateways` options to
+        `LookupObjectOptions`.  With the former, `lookupObject()` looks up
+        portable IDs through their `@gateway` location hints or the gateways
+        given by the latter, compatible identifiers through the gateways they
+        name, and the handles of portable actors through their WebFinger
+        responses, trying at most five gateways per lookup.  The gateways
+        that it infers from compatible identifiers, WebFinger responses, and
+        location hints are passed to the `verifyPortableObject` function as
+        `gatewayHints`, while `gateways` has the ones given explicitly.
+        [[#837], [#1082], [#1090], [#1091], [#1158], [#1194]]
+
+     -  `getActorHandle()` now supports portable actors.  It takes the domain
+        of a portable actor's handle from the first gateway in its `gateways`,
+        and returns the handle only if its WebFinger response links back to
+        the actor.  [[#837], [#1082]]
+
+     -  Exported the portable object verifier types and other types used in
+        vocabulary API signatures from `@fedify/vocab`, so that custom
+        verifiers can be typed without importing `@fedify/vocab-runtime`.
+        [[#1160], [#1184]]
+
+ -  Changed property accessors and `lookupObject()` so that they no longer
+    trust [FEP-ef61] compatible identifiers, i.e., HTTP(S) URLs under
+    a gateway's */.well-known/apgateway/* path such as
+    `https://gw.example/.well-known/apgateway/did:key:z6Mk.../actor`, because
+    of the origin that serves them.  Anyone can serve a compatible identifier
+    for any DID, so previously anyone could serve an unsigned object that
+    claimed to be someone else's portable object.
+    [[#288], [#837], [#1082], [#1090], [#1091], [#1107], [#1120]]
+
+     -  With the `verifyPortableObject` option, a compatible identifier is
+        dereferenced as the portable object it stands for: through the
+        gateway that it names and then the gateways in the `gateways` option,
+        only if the option accepts the object.  A document fetched from
+        an ordinary HTTP(S) URL is verified the same way if its final URL is
+        a compatible identifier or its `@id` is a portable ID.  Malformed
+        compatible identifiers are rejected without a request.
+
+     -  Without the option, accessors keep fetching compatible identifiers as
+        ordinary HTTP(S) URLs, but no longer cache the results in the parent
+        objects, so that a later call with the option verifies them.
+        However, accessors of an object whose ID is a portable ID or
+        a compatible identifier now throw a `TypeError` (or return `null` with
+        `suppressError: true`) for such references without the option, as
+        for portable IDs.
+
+     -  Accessors no longer trust an embedded object whose `@id` is
+        a compatible identifier, or a portable ID with a DID other than its
+        parent's, even with `crossOrigin: "trust"`; they dereference and
+        verify it on its own.  Likewise, `crossOrigin: "trust"` no longer
+        makes `lookupObject()` return an object with a portable `@id` from
+        a document URL of another origin.
+
+ -  Updated [FEP-fe34] cross-origin checks to understand the cryptographic
+    origins of [FEP-ef61] portable IDs and DID URLs.  Property accessors and
+    `lookupObject()` now treat `ap:` and `ap+ef61:` IDs and `did:key`
+    verification method IDs as the same origin when their DIDs match.
+    [[#288], [#829], [#926]]
+
+ -  Changed nested serialization so that an object carrying the signed
+    JSON-LD representation that `signObject()` retains is embedded with that
+    exact representation, including its own `@context`, rather than being
+    rebuilt under the parent's context, so that its proof keeps verifying.
+    `clone()` never carries the retained representation, because a clone may
+    differ from the document the proof covers.  [[#288], [#1044], [#1051]]
 
  -  Added vocabulary support for [FEP-7aa9], including
     `FeaturedCollection`, `FeaturedItem`, `FeatureRequest`, and
@@ -1338,47 +1139,6 @@ To be released.
     `esnext.temporal` lib reference.
     [[#823], [#925]]
 
- -  Added a `gateways` option to `lookupObject()` and
-    `Context.lookupObject()`, so applications can look up a bare
-    [FEP-ef61] portable object ID without constructing location hints or
-    providing a custom document loader.  The listed gateways are tried in
-    order in place of any `@gateway` hints.  [[#288], [#1158], [#1194]]
-
- -  Added the optional `Recipient.gateways` property, the [FEP-ef61] gateways
-    of a portable actor, through which Fedify delivers activities to its
-    `ap:` or `ap+ef61:` inbox.  Every actor class already has it, so
-    applications that build `Recipient` objects by hand, e.g., in followers
-    collection dispatchers, need to set it only for portable actors.
-    [[#288], [#1147], [#1180]]
-
- -  Added the `verifyPortableObject` option to `LookupObjectOptions`.  With
-    it, `lookupObject()` looks up [FEP-ef61] portable objects: `ap:` and
-    `ap+ef61:` URIs through their `@gateway` location hints, compatible
-    identifiers through the gateways they name, and portable actors'
-    handles through the `self` links of their WebFinger responses, which
-    can be either of them.  A fetched object is returned only if its `@id`
-    identifies the requested portable object and the option accepts it;
-    otherwise, the next candidate is tried, at most five gateways per
-    lookup.  `crossOrigin: "throw"` makes a rejected object throw an error,
-    and `crossOrigin: "trust"` does not skip the checks.
-    [[#288], [#837], [#1082]]
-
- -  `crossOrigin: "trust"` no longer makes `lookupObject()` return an object
-    whose `@id` is an `ap:` or `ap+ef61:` URI from a document URL of another
-    origin, such as a compatible identifier fetched as an ordinary HTTP(S)
-    URL, since a portable object is authenticated by its proofs, not by the
-    server that serves it.  Look such objects up with the
-    `verifyPortableObject` option instead.  [[#288], [#837], [#1082]]
-
- -  `getActorHandle()` now supports [FEP-ef61] portable actors.  It takes the
-    domain of a portable actor's handle from the first gateway in its
-    `gateways` instead of its ID, and returns the handle only if its
-    WebFinger response links back to the actor, either by its portable ID
-    or by a compatible identifier, since the gateways are claimed by the
-    actor itself.  It throws a `TypeError` otherwise, including when the
-    WebFinger lookup fails, and for a portable actor without `gateways` or
-    `preferredUsername` or a portable actor URI.  [[#288], [#837], [#1082]]
-
  -  Added vocabulary support for the [FEP-22cd] draft, associating each
     translated version with its translators, source object, and optional source
     review timestamp.  [[#1037], [#1038]]
@@ -1393,117 +1153,6 @@ To be released.
         `Note`, and other object types, for per-language translation
         metadata without creating separate posts.
 
- -  Changed nested serialization so that an object carrying a signed JSON-LD
-    representation retained by `signObject()` is embedded with that exact
-    representation, including its own `@context`, rather than being rebuilt
-    under the parent's context.  `clone()` never carries the retained
-    representation, because a clone may differ from the document the proof
-    covers.  [[#288], [#1044], [#1051]]
-
- -  Changed the inspection of vocabulary objects, e.g., with `console.log()`,
-    `util.inspect()`, or `Deno.inspect()`, to show [FEP-ef61] portable IDs
-    in their canonical form, e.g., `ap+ef61://did:key:z6Mk.../actor`, instead
-    of the percent-encoded form of the `URL` objects that represent them,
-    e.g., `ap+ef61://did%3Akey%3Az6Mk.../actor`.  [[#288], [#1156], [#1199]]
-
- -  Exported portable object verifier types from `@fedify/vocab`, so callers
-    can type custom verifiers without importing `@fedify/vocab-runtime`.
-    Also exported other types used in vocabulary API signatures.
-    [[#288], [#1160], [#1184]]
-
- -  Property accessors and `lookupObject()` with the `verifyPortableObject`
-    option now accept a portable object whose `@id` is an [FEP-ef61]
-    compatible identifier of the requested portable object, e.g., one on the
-    gateway that served it, and pass it to `verifyPortableObject`, keeping its
-    own `@id`.  Previously, such documents, which some implementations such
-    as tootik publish, were rejected as objects with a mismatching ID.
-    [[#288], [#1093], [#1105]]
-
- -  Property accessors now tell the `verifyPortableObject` function where
-    a portable object was retrieved from and which objects led to it, so
-    that it can apply the [FEP-ef61] trust policy for portable collections
-    served without proofs.  Accessors of such an unsecured collection do not
-    trust the objects embedded in it, even with `crossOrigin: "trust"`;
-    they fetch and verify each of them on its own, and drop the ones without
-    an `@id`.  [[#288], [#836], [#1084], [#1090], [#1091]]
-
- -  Added `crossOrigin`, `gateways`, and `verifyPortableObject` options to
-    `TraverseCollectionOptions`, so that `traverseCollection()` can traverse
-    [FEP-ef61] portable collections through gateways.
-    [[#288], [#836], [#1084], [#1090], [#1091]]
-
- -  Property accessors of objects whose IDs are [FEP-ef61] compatible
-    identifiers, e.g.,
-    `https://gw.example/.well-known/apgateway/did:key:z6Mk.../activities/1`,
-    now dereference their references as portable objects, as those of objects
-    with `ap:` IDs do.  Previously, such an accessor fetched a compatible
-    identifier as an ordinary HTTP(S) URL and trusted the result because of
-    its origin, so anyone could serve an unsigned object at the reference.
-    Without the `verifyPortableObject` option, such an accessor now throws
-    a `TypeError` (or returns `null` with `suppressError: true`) for
-    a portable reference or a compatible identifier; pass a `Context` from
-    `@fedify/fedify`, which carries a verifier, or use a default verifier
-    (see below).  An object whose ID is a malformed compatible identifier is
-    handled the same way.  Having such an ID does not make an object
-    verified.  [[#288], [#1107], [#1120]]
-
- -  Added the `verifyPortableObject` option to the constructors, the
-    `fromJsonLd()` methods, and the `clone()` methods of vocabulary
-    classes.  The object uses it by default when its property accessors are
-    called without the option.  Objects embedded in the JSON-LD document it
-    was parsed from inherit it.  `lookupObject()` passes its
-    `verifyPortableObject` option to the object it returns.
-    [[#288], [#1107], [#1120]]
-
- -  Objects that property accessors and `traverseCollection()` fetch now use
-    the `verifyPortableObject` option of that call, or else the default of
-    the object they were obtained from, as their default verifier.  So
-    `(await create.getObject(ctx))?.getAttribution()` verifies portable
-    objects without passing `ctx` again.  Objects already cached in their
-    parent keep the default they got when they were fetched.  Having
-    a default verifier does not mean that an object was verified.
-    [[#288], [#1129], [#1137]]
-
- -  Added the `inheritPortableObjectVerifier` option to property accessors
-    and `TraverseCollectionOptions`.  Set it to `false` to keep
-    a `verifyPortableObject` option to that call only, e.g., for a verifier
-    that accepts everything; fetched objects then use the default of the
-    object they were obtained from, if any.  [[#288], [#1129], [#1137]]
-
- -  Property accessors such as `Create.getObject()` now dereference
-    [FEP-ef61] compatible identifiers, i.e., HTTP(S) URLs under a gateway's
-    */.well-known/apgateway/* path, as the portable objects they stand for
-    when the `verifyPortableObject` option is given or the parent object is
-    portable.  Previously, they fetched such a reference as an ordinary
-    HTTP(S) URL and trusted the result because of its origin, so anyone could
-    serve an unsigned object that claimed to be someone else's portable
-    object.  Now the accessor asks the gateway that the identifier names
-    first, and then the gateways in the `gateways` option, and returns the
-    object only if its `@id` identifies the same portable object and
-    `verifyPortableObject` accepts it, including the gateway trust policy for
-    unsecured collections.  Malformed compatible identifiers are rejected
-    without a request.  [[#288], [#1090], [#1091]]
-
- -  Property accessors and `lookupObject()` with the `verifyPortableObject`
-    option now verify a document fetched from an ordinary HTTP(S) URL as
-    a portable object if its final URL is a compatible identifier or its
-    `@id` is an `ap:`/`ap+ef61:` URI, instead of trusting it because of its
-    origin.  Likewise, accessors no longer trust an embedded object whose
-    `@id` is a compatible identifier, or a portable ID with a DID other than
-    its parent's, even with `crossOrigin: "trust"`; they dereference and
-    verify it on its own.  [[#288], [#1090], [#1091]]
-
- -  Without the `verifyPortableObject` option, property accessors keep
-    fetching compatible identifiers from ordinary objects as HTTP(S) URLs,
-    but no longer cache the results in the parent objects, so that a later
-    call with the option verifies them.  [[#288], [#1090], [#1091]]
-
- -  The gateways that `lookupObject()` infers from compatible identifiers,
-    WebFinger responses, and location hints are now passed to the
-    `verifyPortableObject` function as `gatewayHints` instead of `gateways`,
-    which are reserved for gateways that the caller gives explicitly.
-    [[#288], [#1090], [#1091]]
-
 [FEP-22cd]: https://w3id.org/fep/22cd
 [#810]: https://github.com/fedify-dev/fedify/issues/810
 [#826]: https://github.com/fedify-dev/fedify/issues/826
@@ -1517,56 +1166,113 @@ To be released.
 [#1077]: https://github.com/fedify-dev/fedify/pull/1077
 [#1090]: https://github.com/fedify-dev/fedify/issues/1090
 [#1091]: https://github.com/fedify-dev/fedify/pull/1091
+[#1097]: https://github.com/fedify-dev/fedify/issues/1097
 [#1129]: https://github.com/fedify-dev/fedify/issues/1129
 [#1137]: https://github.com/fedify-dev/fedify/pull/1137
 [#1158]: https://github.com/fedify-dev/fedify/issues/1158
 [#1160]: https://github.com/fedify-dev/fedify/issues/1160
 [#1184]: https://github.com/fedify-dev/fedify/pull/1184
 [#1194]: https://github.com/fedify-dev/fedify/pull/1194
+[#1202]: https://github.com/fedify-dev/fedify/pull/1202
 
 ### @fedify/vocab-runtime
 
- -  Added SHA-256 `digestMultibase` and simple `hl:` hashlink helpers for
-    computing, parsing, creating, and verifying portable media resource
-    digests as required by [FEP-ef61].
-    [[#831], [#935]]
+ -  Added <https://w3id.org/fep/22cd> to preloaded JSON-LD contexts.
+    [[#1037], [#1038]]
 
- -  Added the [FEP-ef61] JSON-LD context to the preloaded context registry so
-    portable actor and media documents can compact and expand `gateways` and
-    `digestMultibase` without fetching the context remotely.
-    [[#830], [#928]]
+ -  Added support for [FEP-ef61] portable objects, whose IDs are `ap:` or
+    `ap+ef61:` URIs with a DID instead of a host, e.g.,
+    `ap://did:key:z6Mk.../actor`.  See the
+    [*Portable objects*] chapter of the manual for the
+    FEP-ef61 profile that Fedify supports.  [[#288]]
 
- -  Added `getFe34Origin()` and `haveSameFe34Origin()` for comparing ordinary
-    web origins and [FEP-ef61] cryptographic origins with one shared
-    [FEP-fe34] helper.  HTTP(S) URLs keep web-origin semantics, while
-    `ap:`/`ap+ef61:` URIs and DID URLs use their DID component as the origin.
-    [[#829], [#926]]
+     -  Added `parseIri()`, `formatIri()`, `parseJsonLdId()`, and
+        `haveSameIriOrigin()`, which parse, format, and compare IRIs,
+        including portable IDs with decoded or percent-encoded DID
+        authorities.  The `URL` objects that represent portable IDs keep
+        their DIDs percent-encoded, and `formatIri()` formats them in their
+        canonical form, e.g., `ap+ef61://did:key:z6Mk.../actor`.  Portable
+        IDs and compatible identifiers whose paths have `.` or `..`
+        segments, which the `URL` class would remove, are rejected with
+        a `TypeError`.  [[#826], [#850], [#1154], [#1186]]
 
- -  Added `canonicalizePortableUri()` and `arePortableUrisEqual()` for
-    comparing [FEP-ef61] portable ActivityPub URI strings.  The helpers accept
-    `ap:` and `ap+ef61:` values with decoded or percent-encoded DID
-    authorities, normalize them to `ap+ef61:`, and ignore query hints such as
-    `gateways` during comparison.
-    [[#828], [#924]]
+     -  Added `canonicalizePortableUri()` and `arePortableUrisEqual()` for
+        comparing portable IDs.  They accept both schemes with decoded or
+        percent-encoded DID authorities, normalize them to `ap+ef61:`, and
+        ignore the query, including `@gateway` location hints.
+        Fedify deliberately canonicalizes to `ap+ef61:` rather than `ap:`,
+        which FEP-ef61 currently recommends, and this may change in
+        Fedify 3.0, so compare portable IDs with
+        `arePortableUrisEqual()` rather than as strings.
+        [[#828], [#924], [#1151], [#1198]]
 
-    Canonicalizing to `ap+ef61:` rather than `ap:`, which FEP-ef61 currently
-    recommends, is a deliberate choice of Fedify's that may change in
-    Fedify 3.0.  Compare portable IDs with `arePortableUrisEqual()` rather
-    than as strings.  See the [*Portable objects*] chapter
-    of the manual for the FEP-ef61 profile that Fedify supports.
-    [[#288], [#1151], [#1198]]
+     -  Added `getFe34Origin()` and `haveSameFe34Origin()`, which compare
+        [FEP-fe34] origins: HTTP(S) URLs have their web origins, while
+        portable IDs and DID URLs have their DIDs as their cryptographic
+        origins.  [[#829], [#926]]
+
+     -  Added `exportDidKey()`, `importDidKey()`, and
+        `parseDidKeyVerificationMethod()` for Ed25519 `did:key` DIDs and
+        their verification method DID URLs.  `exportDidKey()` always
+        encodes DIDs in base58-btc, as FEP-ef61 requires.  [[#827], [#915]]
+
+     -  Added `toCompatibleEf61Id()` and `fromCompatibleEf61Id()` for
+        converting between portable IDs and compatible identifiers, i.e.,
+        HTTP(S) URLs under a gateway's */.well-known/apgateway/* path such as
+        `https://example.com/.well-known/apgateway/did:key:z6Mk.../actor`,
+        which software without portable ID support can use.
+        `fromCompatibleEf61Id()` returns `null` for URLs that are not
+        compatible identifiers, and throws a `TypeError` for malformed ones,
+        including those with location hints.  Converting a compatible
+        identifier does not authenticate it.  [[#833], [#1074]]
+
+     -  Added `isGatewayUrl()` and `parseGatewayUrl()`, which check that
+        a gateway is an HTTP(S) origin without credentials, a path, a query,
+        or a fragment, as FEP-ef61 requires.
+        [[#830], [#928], [#1176], [#1190]]
+
+     -  Added `withGatewayHints()`, `withoutGatewayHints()`, and
+        `getGatewayHints()` to add, remove, and read the `@gateway` location
+        hints of portable IDs, which tell consumers where to retrieve
+        a referenced portable actor.  [[#1159], [#1189]]
+
+     -  Added SHA-256 `digestMultibase` and `hl:` hashlink helpers:
+        `computeDigestMultibase()`, `parseDigestMultibase()`,
+        `verifyDigestMultibase()`, `createHashlink()`, `parseHashlink()`,
+        and `verifyHashlink()`.  [[#831], [#935]]
+
+     -  Added `fetchPortableMedia()`, which retrieves the media of a portable
+        object through its owner's gateways, or an HTTP(S) resource directly,
+        and returns it only after verifying its `digestMultibase`.
+        It limits the response size and rejects private network addresses by
+        default.  [[#1152], [#1182]]
+
+     -  Added the FEP-ef61 JSON-LD context to the preloaded contexts, so that
+        `gateways` and `digestMultibase` can be compacted and expanded
+        without fetching the context.  [[#830], [#928]]
+
+     -  Added the `PortableObjectVerifier`, `PortableObjectVerifierOptions`,
+        `PortableObjectVerification`, and `PortableObjectReferrer` types,
+        which describe the `verifyPortableObject` option of property
+        accessors.  A verifier receives a fetched document along with its
+        final URL, the gateways used, and the chain of objects that referred
+        to it, and can accept a collection without a proof as `unsecured`.
+        [[#834], [#836], [#1077], [#1084]]
+
+     -  Added the `verifyPortableObject` property to
+        `PropertyPreprocessorContext`, the default verifier that objects
+        returned by a property preprocessor should use.  [[#1107], [#1120]]
+
+ -  Changed the `Accept` header that document loaders send when fetching
+    ActivityPub objects to
+    `application/activity+json, application/ld+json; profile="https://www.w3.org/ns/activitystreams"`,
+    as ActivityPub and [FEP-ef61] gateways require.  Previously, the JSON-LD
+    media type lacked the ActivityStreams profile.  [[#288], [#834], [#1077]]
 
  -  Added the [FEP-7aa9] JSON-LD context to the preloaded context registry so
     FEP-7aa9 documents can be compacted and expanded without fetching the
     context remotely.
     [[#810], [#914]]
-
- -  Added helpers for Ed25519 `did:key` DIDs and verification method DID
-    URLs: `exportDidKey()` exports public keys to base58-btc `did:key` DIDs,
-    `importDidKey()` imports supported DIDs back to `CryptoKey`, and
-    `parseDidKeyVerificationMethod()` validates `did:key:z...#z...`
-    verification methods.
-    [[#827], [#915]]
 
  -  Changed `getDocumentLoader()` to reject HTML and XHTML responses that do
     not advertise an ActivityPub alternate document with a `FetchError`
@@ -1574,51 +1280,6 @@ To be released.
     error pages surface as document loading failures with the response URL and
     content type, rather than generic JSON parser crashes.
     [[#912], [#913]]
-
- -  Added `fetchPortableMedia()` to retrieve [FEP-ef61] hashlink media through
-    an actor's gateways or HTTP(S) media directly, and return the resource only
-    after verifying its `digestMultibase`.  It rejects missing or mismatched
-    digests, limits response size, and checks private network addresses by
-    default.  [[#288], [#1152], [#1182]]
-
- -  Added <https://w3id.org/fep/22cd> to preloaded JSON-LD contexts.
-    [[#1037], [#1038]]
-
- -  Added the `PortableObjectVerifier`, `PortableObjectVerifierOptions`,
-    `PortableObjectVerification`, and `PortableObjectReferrer` types, which
-    describe the `verifyPortableObject` option of property accessors for
-    [FEP-ef61] portable references.  A verifier receives the fetched
-    document along with its final URL, the gateways used, and the chain of
-    objects that referred to it, and can accept a document without an
-    integrity proof as `unsecured`.  `verifyPortableObject()` and
-    `verifyPortableObjectProof()` from `@fedify/fedify` satisfy
-    `PortableObjectVerifier`.  [[#288], [#834], [#836], [#1077], [#1084]]
-
- -  Added the `verifyPortableObject` property to
-    `PropertyPreprocessorContext`, the default [FEP-ef61] portable object
-    verifier that objects returned by a property preprocessor should use for
-    their property accessors.  [[#288], [#1107], [#1120]]
-
- -  Added `toCompatibleEf61Id()` and `fromCompatibleEf61Id()` for converting
-    between [FEP-ef61] portable IDs and compatible identifiers, which are
-    HTTP(S) URLs under a gateway's fixed `/.well-known/apgateway/` path that
-    software without portable IRI support can use.  `toCompatibleEf61Id()`
-    removes location hints (`@gateway` query parameters, and the legacy
-    `gateways` parameter), and `fromCompatibleEf61Id()` returns
-    `null` for URLs that are not compatible identifiers and throws a
-    `TypeError` for malformed ones, including those with location hints.
-    Converting a compatible identifier does not authenticate it; the object's
-    proof still has to be verified against its DID.  [[#288], [#833], [#1074]]
-
- -  Added `withGatewayHints()`, `withoutGatewayHints()`, and
-    `getGatewayHints()` to add, remove, and read the [FEP-ef61] `@gateway`
-    location hints of portable IDs, which tell consumers where to retrieve
-    a referenced portable actor.  Use `withGatewayHints()` when referring to
-    a portable actor, e.g., in `attributedTo` or `to`, instead of editing
-    the query by hand; it writes each gateway's URI-encoded origin as
-    FEP-ef61 requires, replaces existing hints, and keeps the other query
-    parameters.  Do not add hints to an object's own `id`.
-    [[#288], [#1159], [#1189]]
 
  -  Changed `getDocumentLoader()` to time out each call after 10 seconds by
     default.  The time limit covers the whole call, including every redirect
@@ -1637,18 +1298,6 @@ To be released.
     byte, or only the status and headers if the body is larger than that.
     [[#1131], [#1169]]
 
- -  Changed the `Accept` header that document loaders send when fetching
-    ActivityPub objects to
-    `application/activity+json, application/ld+json; profile="https://www.w3.org/ns/activitystreams"`,
-    as ActivityPub and [FEP-ef61] gateways require.  Previously, the JSON-LD
-    media type lacked the ActivityStreams profile.  [[#288], [#834], [#1077]]
-
- -  Fixed portable and gateway-compatible ID strings with `.` or `..` path
-    segments being interpreted as different IDs after URL parsing.  Fedify now
-    rejects these strings because the segments cannot be preserved by its
-    URL-based APIs.  Raw portable ID strings can still be compared without
-    losing their paths.  [[#288], [#1154], [#1186]]
-
 [#828]: https://github.com/fedify-dev/fedify/issues/828
 [#831]: https://github.com/fedify-dev/fedify/issues/831
 [#833]: https://github.com/fedify-dev/fedify/issues/833
@@ -1658,7 +1307,9 @@ To be released.
 [#935]: https://github.com/fedify-dev/fedify/pull/935
 [#1074]: https://github.com/fedify-dev/fedify/pull/1074
 [#1152]: https://github.com/fedify-dev/fedify/issues/1152
+[#1176]: https://github.com/fedify-dev/fedify/issues/1176
 [#1182]: https://github.com/fedify-dev/fedify/pull/1182
+[#1190]: https://github.com/fedify-dev/fedify/pull/1190
 
 ### @fedify/vocab-tools
 

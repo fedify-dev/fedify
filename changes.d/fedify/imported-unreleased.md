@@ -9,13 +9,8 @@ links:
   '#806': https://github.com/fedify-dev/fedify/pull/806
   '#812': https://github.com/fedify-dev/fedify/pull/812
   '#823': https://github.com/fedify-dev/fedify/issues/823
-  '#827': https://github.com/fedify-dev/fedify/issues/827
-  '#829': https://github.com/fedify-dev/fedify/issues/829
-  '#832': https://github.com/fedify-dev/fedify/issues/832
-  '#915': https://github.com/fedify-dev/fedify/pull/915
   '#923': https://github.com/fedify-dev/fedify/pull/923
   '#925': https://github.com/fedify-dev/fedify/pull/925
-  '#926': https://github.com/fedify-dev/fedify/pull/926
   '#927': https://github.com/fedify-dev/fedify/pull/927
   '#930': https://github.com/fedify-dev/fedify/issues/930
   '#934': https://github.com/fedify-dev/fedify/pull/934
@@ -27,26 +22,6 @@ links:
     malformed proof options, and callers can provide expected `domain` and
     `challenge` values through `VerifyProofOptions` to prevent cross-domain or
     replay use.  [[#968]]
-
- -  Added `verifyPortableObjectProof()` to enforce the [FEP-ef61] proof policy
-    for portable actors, activities, objects, and signed collections.  Its
-    detailed result distinguishes documents outside the policy, unsecured
-    collections, missing or invalid [FEP-8b32] proofs, unsupported verification
-    methods, DID authority mismatches, and successful verification.
-    [[#832], [#968]]
-
- -  Updated `verifyObject()` so [FEP-8b32] proofs signed by `did:key`
-    verification methods can authenticate portable objects whose owner is an
-    `ap:` or `ap+ef61:` URI with the same [FEP-fe34] cryptographic origin.
-    [[#829], [#926]]
-
- -  Added local `did:key` verification method resolution for
-    [FEP-8b32] Object Integrity Proofs.  `verifyProof()` can now verify
-    Ed25519 `eddsa-jcs-2022` proofs whose `verificationMethod` is a
-    `did:key:z...#z...` DID URL without fetching the verification method
-    as a remote JSON-LD document, which is required for [FEP-ef61]
-    portable objects.
-    [[#827], [#915]]
 
  -  Added support for the [ActivityPub Media Upload extension] so that servers
     can accept client-to-server media uploads:
@@ -119,8 +94,5 @@ links:
     `esnext.temporal` lib reference.
     [[#823], [#925]]
 
-[FEP-ef61]: https://w3id.org/fep/ef61
-[FEP-8b32]: https://w3id.org/fep/8b32
-[FEP-fe34]: https://w3id.org/fep/fe34
 [ActivityPub Media Upload extension]: https://www.w3.org/wiki/SocialCG/ActivityPub/MediaUpload
 [Standard Schema]: https://standardschema.dev/

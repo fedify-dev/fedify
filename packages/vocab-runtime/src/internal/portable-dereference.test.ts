@@ -6,7 +6,9 @@ import { createScopedContextLoader } from "./jsonld-cache.ts";
 import {
   createSnapshotContextLoader,
   getPortableGatewayCandidates,
+  getReferrerGateways,
   isPortableIri,
+  recordPortableReferrer,
 } from "./portable-dereference.ts";
 
 const hrefs = (urls: URL[]) => urls.map((url) => url.href);
@@ -88,6 +90,66 @@ test("getPortableGatewayCandidates() reads hints from withGatewayHints()", () =>
       withGatewayHints("ap://did:key:z6Mkabc/actor?page=1", gateways),
     )),
     [0, 1, 2, 3, 4].map((i) => `https://g${i}.example/`),
+  );
+});
+
+test("getReferrerGateways() takes gateways from the owner", () => {
+  const actor = {
+    id: parseIri("ap://did:key:z6Mkabc/actor"),
+    gateways: [
+      new URL("https://a.example"),
+      new URL("https://a.example/"),
+      new URL("https://b.example/path"),
+      new URL("https://c.example"),
+    ],
+  };
+  const outbox = { id: parseIri("ap://did:key:z6Mkabc/actor/outbox") };
+  recordPortableReferrer(actor, outbox, "outbox");
+  const page = parseIri("ap://did:key:z6Mkabc/actor/outbox?cursor=1");
+
+  // From the actor itself, and from an object obtained from it; duplicate and
+  // invalid gateways are dropped:
+  deepStrictEqual(
+    hrefs(getReferrerGateways(actor, outbox.id) ?? []),
+    ["https://a.example/", "https://c.example/"],
+  );
+  deepStrictEqual(
+    hrefs(getReferrerGateways(outbox, page) ?? []),
+    ["https://a.example/", "https://c.example/"],
+  );
+
+  // Location hints take precedence:
+  deepStrictEqual(
+    getReferrerGateways(
+      outbox,
+      withGatewayHints(page, [new URL("https://hint.example")]),
+    ),
+    undefined,
+  );
+
+  // A reference under another DID does not belong to the actor:
+  deepStrictEqual(
+    getReferrerGateways(outbox, parseIri("ap://did:key:z6Mkdef/notes/1")),
+    undefined,
+  );
+
+  // An actor with a compatible identifier works the same way:
+  const compatible = {
+    id: new URL(
+      "https://a.example/.well-known/apgateway/did:key:z6Mkabc/actor",
+    ),
+    gateways: [new URL("https://a.example")],
+  };
+  deepStrictEqual(
+    hrefs(getReferrerGateways(compatible, outbox.id) ?? []),
+    ["https://a.example/"],
+  );
+
+  // Objects that no portable actor leads to have no gateways to offer:
+  deepStrictEqual(getReferrerGateways({}, page), undefined);
+  deepStrictEqual(
+    getReferrerGateways({ id: actor.id, gateways: [] }, page),
+    undefined,
   );
 });
 

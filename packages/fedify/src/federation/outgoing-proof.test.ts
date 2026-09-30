@@ -1,5 +1,5 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
-import { Announce, Create, Note, Person } from "@fedify/vocab";
+import { Accept, Announce, Create, Follow, Note, Person } from "@fedify/vocab";
 import { exportDidKey, parseIri } from "@fedify/vocab-runtime";
 import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { assert, assertEquals, assertRejects } from "@std/assert";
@@ -474,6 +474,80 @@ test("a proof set on an embedded map is not delivered either", async () => {
   assertEquals(bodies.length, 0);
 });
 
+test("a received signed object rebuilt inside a portable activity is not delivered", async () => {
+  // A Follow that a Fedify server signed with an Object Integrity Proof, as
+  // Fedify does by default, parsed as an inbox listener receives it:
+  const followerKey = await didKey();
+  const signedFollow = await signObject(
+    new Follow({
+      id: new URL("https://example.com/follows/1"),
+      actor: new URL("https://example.com/users/bob"),
+      object: parseIri("ap+ef61://did:key:z6Mkabc/actor"),
+    }),
+    followerKey.privateKey,
+    new URL("https://example.com/users/bob#key"),
+    { ...options, created },
+  );
+  const follow = await Follow.fromJsonLd(
+    await signedFollow.toJsonLd({ format: "compact", ...options }),
+    options,
+  );
+  const owner = await didKey();
+  const accept = (object: Follow | URL) =>
+    new Accept({
+      id: parseIri(`ap+ef61://${owner.did}/accepts/${crypto.randomUUID()}`),
+      actor: parseIri(`ap+ef61://${owner.did}/actor`),
+      object,
+    });
+
+  // Embedding the parsed Follow rebuilds it under the Accept's context, so its
+  // proof cannot verify on its own, and Fedify inboxes would reject
+  // the Accept for it.  Whether signed here or beforehand, it is rejected:
+  const unsigned = accept(follow);
+  const presigned = await signObject(
+    accept(follow),
+    owner.privateKey,
+    owner.keyId,
+    { ...options, created },
+  );
+  const cases: [Accept, SenderKeyPair[]][] = [
+    [unsigned, [rsaKey, sender(owner)]],
+    [presigned, [rsaKey]],
+  ];
+  for (const [activity, keys] of cases) {
+    const immediate = await capture(() =>
+      assertRejects(
+        () =>
+          createTestFederation().createContext(
+            new URL("https://example.com/"),
+          ).sendActivity(keys, recipient, activity),
+        TypeError,
+        'JSON Pointer "/object"',
+      )
+    );
+    assertEquals(immediate.bodies.length, 0);
+    const fanout = createQueue();
+    await assertRejects(
+      () =>
+        createTestFederation(fanout.queue).createContext(
+          new URL("https://example.com/"),
+        ).sendActivity(keys, recipient, activity, { fanout: "force" }),
+      TypeError,
+      'JSON Pointer "/object"',
+    );
+    assertEquals(fanout.queued.length, 0);
+  }
+
+  // Referring to the Follow by its ID works:
+  const { bodies } = await capture(() =>
+    createTestFederation().createContext(
+      new URL("https://example.com/"),
+    ).sendActivity([rsaKey, sender(owner)], recipient, accept(follow.id!))
+  );
+  assertEquals(bodies.length, 1);
+  await assertCompoundVerifies(bodies[0]);
+});
+
 test("forced fanout selects the DID-matching key before enqueueing", async () => {
   const owner = await didKey();
   const childOwner = await didKey();
@@ -510,9 +584,8 @@ test("forced fanout selects the DID-matching key before enqueueing", async () =>
 test("the fanout worker selects one key for an unsigned portable activity", async () => {
   const owner = await didKey();
   const child = await signedChild(await didKey());
-  const activity = portableCreate(owner, child);
   const federation = createTestFederation();
-  const message: FanoutMessage = {
+  const message = async (activity: Create): Promise<FanoutMessage> => ({
     type: "fanout",
     id: crypto.randomUUID(),
     baseUrl: "https://example.com",
@@ -532,12 +605,32 @@ test("the fanout worker selects one key for an unsigned portable activity", asyn
     activityId: activity.id!.href,
     activityType: "https://www.w3.org/ns/activitystreams#Create",
     traceContext: {},
-  };
-  const { bodies } = await capture(() =>
-    federation.processQueuedTask(undefined, message)
+  });
+  const byId = new Create({
+    id: parseIri(`ap+ef61://${owner.did}/activities/${crypto.randomUUID()}`),
+    actor: parseIri(`ap+ef61://${owner.did}/actor`),
+    object: child.id,
+  });
+  const { bodies } = await capture(async () =>
+    federation.processQueuedTask(undefined, await message(byId))
   );
   assertEquals(bodies.length, 1);
   assertEquals(proofOf(bodies[0]).verificationMethod, owner.keyId.href);
+  await assertCompoundVerifies(bodies[0]);
+
+  // Current senders sign an activity before enqueueing it, so the worker
+  // delivers the queued document as is.  An unsigned one, e.g., queued by an
+  // older version, is parsed and serialized again, which rebuilds a signed
+  // child, so it is refused rather than delivered for inboxes to reject:
+  const embedded = await message(portableCreate(owner, child));
+  const refused = await capture(() =>
+    assertRejects(
+      () => federation.processQueuedTask(undefined, embedded),
+      TypeError,
+      'JSON Pointer "/object"',
+    )
+  );
+  assertEquals(refused.bodies.length, 0);
 });
 
 test("actor key pairs follow the compound-proof key selection too", async () => {

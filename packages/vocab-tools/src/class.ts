@@ -25,6 +25,7 @@ const PORTABLE_DEREFERENCE_IMPORTS = [
   "createSnapshotContextLoader",
   "dereferencePortableIri",
   "getPortableResponseClaim",
+  "getReferrerGateways",
   "isPortableIri",
   "isPortableMode",
   "isUnsecuredPortableObject",

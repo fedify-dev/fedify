@@ -823,6 +823,36 @@ export function findUnsupportedCompoundProofShape(
 }
 
 /**
+ * Finds the first embedded map that carries a direct `proof` but not its own
+ * `@context`.  The map-local compound-proof profile verifies each proof-bearing
+ * map as a self-contained document, so the inbox rejects such a map with
+ * `missingContext` whatever its proof.  An object embedded with its captured
+ * signed representation, e.g., by {@link signObject}, always keeps its own
+ * `@context`; one rebuilt under its parent's context, e.g., an object parsed
+ * from a received document, never does, and its proof no longer covers what
+ * it has become anyway.
+ *
+ * The input must be a finite, already-materialized JSON tree; see
+ * {@link containsCompoundPortableObject}.
+ *
+ * @returns The RFC 6901 JSON Pointer to the map, or `null` if every embedded
+ *          proof-bearing map has its own `@context`.
+ * @internal
+ */
+export function findEmbeddedProofWithoutContext(
+  json: unknown,
+): string | null {
+  return findInJsonMaps(
+    json,
+    (map, path) =>
+      path !== "" && Object.hasOwn(map, "proof") &&
+        !Object.hasOwn(map, "@context")
+        ? path
+        : undefined,
+  ) ?? null;
+}
+
+/**
  * Discovers direct literal proof-bearing maps in an immutable JSON snapshot.
  *
  * Discovery is bounded and atomic.  Unsupported proof shapes, non-JSON input,

@@ -1169,14 +1169,14 @@ proof must use a DID URL, and that DID must match the authority of the portable
 object ID.  A portable actor must also have a non-empty `gateways` list whose
 items are all HTTP(S) URIs with an empty path, query, and fragment; this is
 checked before the proofs, so the `invalidGateways` reason does not mean that
-the proofs are valid. When a portable actor omits the JSON-LD mapping for
+the proofs are valid.  When a portable actor omits the JSON-LD mapping for
 `gateways`, as tootik v0.25.4 does, Fedify accepts the otherwise unmapped
-ActivityStreams term only if every proof uses `eddsa-jcs-2022`. These proofs
+ActivityStreams term only if every proof uses `eddsa-jcs-2022`.  These proofs
 authenticate the original JSON, including the gateway list.
 
-The detailed result distinguishes documents outside the
-policy, missing or invalid proofs, actors without valid gateways, unsupported
-verification methods, DID mismatches, and successful verification:
+The detailed result distinguishes documents outside the policy, missing or
+invalid proofs, actors without valid gateways, unsupported verification
+methods, DID mismatches, and successful verification:
 
 ~~~~ typescript
 import { verifyPortableObjectProof } from "@fedify/fedify";
@@ -1239,9 +1239,9 @@ the `publicKey` or `assertionMethod` of a portable actor, such as a gateway
 key, whose ID is the actor's compatible identifier plus a fragment; the
 actor's proof covers it.  Fedify verifies each map against an immutable copy of
 the received JSON and applies the FEP-ef61 portable-ID and controlling-DID
-policy to that map. It does not copy a parent's context into a child, try
+policy to that map.  It does not copy a parent's context into a child, try
 several proof-removal rules, or fetch an unpinned context from the live
-network. Inputs that exceed the traversal limits are rejected.  Fedify does not
+network.  Inputs that exceed the traversal limits are rejected.  Fedify does not
 return authentication results for only part of a compound document.
 
 This profile authenticates JSON snapshots.  A child proof may be valid when
@@ -1265,9 +1265,10 @@ differ from the parent's:
 ~~~~ typescript twoslash
 import { signObject } from "@fedify/fedify";
 import { Create, Note } from "@fedify/vocab";
-const noteId = new URL("ap://did:key:z6Mkabc/objects/1");
-const activityId = new URL("ap://did:key:z6Mkabc/activities/1");
-const actorId = new URL("ap://did:key:z6Mkabc/actor");
+import { parseIri } from "@fedify/vocab-runtime";
+const noteId = parseIri("ap://did:key:z6Mkabc/objects/1");
+const activityId = parseIri("ap://did:key:z6Mkabc/activities/1");
+const actorId = parseIri("ap://did:key:z6Mkabc/actor");
 const key = null as unknown as CryptoKey;
 const keyId = new URL("did:key:z6Mkabc#z6Mkabc");
 const portableContext = [
@@ -1387,7 +1388,16 @@ keys or pre-sign it instead.
 Fedify also refuses to send an activity with portable objects if any map in it
 already carries a proof set, which happens, for example, when `signObject()`
 is called twice on the same object.  The error names the JSON Pointer of the
-offending `proof`.  These checks only prevent unsupported proof shapes.  They
+offending `proof`.  For the same reason, it refuses to send one in which an
+embedded map carries a proof but not its own `@context`, which Fedify inboxes
+reject however valid the proof is.  An object that you signed with
+`signObject()` is embedded with its own `@context`, but one parsed from
+a received document is rebuilt under the activity's context, so its proof no
+longer covers it (see the warning below).  This typically happens to
+an `Accept` that embeds the `Follow` it accepts, as Fedify signs activities
+with Object Integrity Proofs by default, so refer to such an object by its ID
+instead, e.g., `new Accept({ object: follow.id })`.  These checks only prevent
+unsupported proof shapes.  They
 do not otherwise validate a proof created with a single key.
 
 > [!WARNING]

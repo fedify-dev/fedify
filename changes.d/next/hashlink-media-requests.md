@@ -12,7 +12,7 @@ links:
     `isFederationRequest()` now recognizes them by their paths regardless of
     their headers.  To make Next.js run the middleware for them, add
     `{ source: "/.well-known/apgateway/:path*" }` to the `matcher` of your
-    *middleware.ts* or *proxy.ts* file. [[#288], [#1149], [#1170]]
+    *middleware.ts* or *proxy.ts* file.  [[#288], [#1149], [#1170]]
 
  -  Added `isHashlinkMediaRequest()` function.  [[#288], [#1149], [#1170]]
 
