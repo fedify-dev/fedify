@@ -86,10 +86,12 @@ import {
 } from "../sig/ld.ts";
 import { getKeyOwner, type GetKeyOwnerOptions } from "../sig/owner.ts";
 import {
+  getAuthenticationOrigin,
   getCanonicalPortableId,
   getGatewayKeyBase,
   hasPortableActor,
   isPortableKeyId,
+  isSameObjectId,
 } from "../sig/portable-key-id.ts";
 import { verifyPortableObject } from "../sig/portable-collection.ts";
 import { hasProofLike, verifyObject } from "../sig/proof.ts";
@@ -5162,7 +5164,9 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
           { recipient, activity: await fetched.toJsonLd({ contextLoader }) },
         );
         return false;
-      } else if (fetched.id?.href !== activity.id.href) {
+      } else if (
+        fetched.id == null || !isSameObjectId(fetched.id, activity.id)
+      ) {
         logger.debug(
           "Fetched activity object has a different ID; failed to verify.",
           { recipient, activity: await fetched.toJsonLd({ contextLoader }) },
@@ -5175,9 +5179,15 @@ export class ContextImpl<TContextData> implements Context<TContextData> {
         );
         return false;
       }
-      const activityId = fetched.id;
+      // A portable activity and its actors are compared by their DIDs, as
+      // FEP-ef61 requires; a compatible identifier's gateway does not count,
+      // since the activity's proof is made only by the DID of its own ID:
+      const activityOrigin = getAuthenticationOrigin(fetched.id);
       if (
-        !fetched.actorIds.every((actor) => actor.origin === activityId.origin)
+        activityOrigin == null ||
+        !fetched.actorIds.every((actor) =>
+          getAuthenticationOrigin(actor) === activityOrigin
+        )
       ) {
         logger.debug(
           "Fetched activity object has actors from different origins; " +
