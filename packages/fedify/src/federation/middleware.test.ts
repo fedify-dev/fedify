@@ -10225,6 +10225,97 @@ test({
   },
 });
 
+for (const queued of [false, true]) {
+  test(`ContextImpl.routeActivity() routes the fetched document (queued: ${queued})`, async () => {
+    const id = new URL("https://example.com/verified-create");
+    const genuine = new Create({
+      id,
+      actor: new URL("https://example.com/person"),
+      object: new vocab.Note({ content: "Genuine content" }),
+      to: new URL("https://example.com/recipient"),
+    });
+    const genuineJson = await genuine.toJsonLd({
+      contextLoader: mockDocumentLoader,
+    });
+    const forged = new Create({
+      id,
+      actor: new URL("https://victim.example/actor"),
+      object: new vocab.Note({ content: "Forged content" }),
+      to: new URL("https://attacker.example/recipient"),
+    });
+    const messages: Message[] = [];
+    const queue: MessageQueue = {
+      enqueue(message) {
+        messages.push(message as Message);
+        return Promise.resolve();
+      },
+      async listen() {},
+    };
+    const federation = createFederation<void>({
+      kv: new MemoryKvStore(),
+      documentLoaderFactory: () => async (url, options) =>
+        url === id.href
+          ? { document: genuineJson, documentUrl: id.href, contextUrl: null }
+          : await mockDocumentLoader(url, options),
+      contextLoaderFactory: () => mockDocumentLoader,
+      queue: { inbox: queued ? queue : undefined, outbox: queue },
+      manuallyStartQueue: true,
+    });
+    const received: unknown[] = [];
+    const contextDocuments: unknown[] = [];
+    federation.setInboxListeners("/users/{identifier}/inbox", "/inbox")
+      .on(Create, async (ctx, activity) => {
+        received.push(
+          await activity.toJsonLd({
+            contextLoader: mockDocumentLoader,
+          }),
+        );
+        assertInstanceOf(ctx, InboxContextImpl);
+        contextDocuments.push(ctx.activity);
+        await ctx.forwardActivity(
+          { privateKey: ed25519PrivateKey, keyId: ed25519Multikey.id! },
+          {
+            id: new URL("https://example.com/recipient"),
+            inboxId: new URL("https://example.com/inbox"),
+          },
+        );
+      });
+    const ctx = federation.createContext(new URL("https://local.example/"));
+    async function processInbox() {
+      const inboxMessages = messages.filter((message) =>
+        message.type === "inbox"
+      );
+      for (const message of inboxMessages) {
+        await federation.processQueuedTask(undefined, message);
+      }
+    }
+
+    assert(await ctx.routeActivity(null, forged));
+    if (queued) {
+      assertEquals(received, []);
+      assertEquals(messages.length, 1);
+      assertEquals(messages[0].activity, genuineJson);
+      await processInbox();
+    }
+    assertEquals(received, [genuineJson]);
+    assertEquals(contextDocuments, [genuineJson]);
+    const forwarded = messages.filter((message) => message.type === "outbox");
+    assertEquals(forwarded.length, 1);
+    assertEquals(forwarded[0].activity, genuineJson);
+
+    // The forged input has already caused the genuine document to be
+    // processed, so routing the genuine activity later is a safe duplicate.
+    assert(await ctx.routeActivity(null, genuine));
+    if (queued) await processInbox();
+    assertEquals(received, [genuineJson]);
+    assertEquals(contextDocuments, [genuineJson]);
+    assertEquals(
+      messages.filter((message) => message.type === "outbox").length,
+      1,
+    );
+  });
+}
+
 test("ContextImpl.routeActivity() marks queued signed activities as non-LDS", async () => {
   let queuedMessage: InboxMessage | null = null;
   const queue: MessageQueue = {
@@ -10323,6 +10414,71 @@ test("ContextImpl.getCollectionUri()", () => {
   assertThrows(() => ctx.getCollectionUri(notReg, values));
   assertThrows(() => ctx.getCollectionUri(Symbol(notReg), values));
   assertThrows(() => ctx.getCollectionUri(Symbol.for(notReg), values));
+});
+
+test("symbol-named custom collections are served and parsed", async () => {
+  const federation = createFederation<void>({ kv: new MemoryKvStore() });
+  const names = [Symbol("bookmarks"), Symbol("bookmarks")];
+  const paths = ["bookmarks", "ordered-bookmarks"];
+  const calls: Array<[number, string | null]> = [];
+
+  federation.setCollectionDispatcher(
+    names[0],
+    vocab.Object,
+    "/users/{identifier}/bookmarks",
+    (_ctx, _values, cursor) => {
+      calls.push([0, cursor]);
+      return { items: [] };
+    },
+  );
+  federation.setOrderedCollectionDispatcher(
+    names[1],
+    vocab.Object,
+    "/users/{identifier}/ordered-bookmarks",
+    (_ctx, _values, cursor) => {
+      calls.push([1, cursor]);
+      return { items: [] };
+    },
+  );
+
+  const ctx = federation.createContext(new URL("https://example.com/"));
+  for (const [index, name] of names.entries()) {
+    const uri = ctx.getCollectionUri(name, { identifier: "alice" });
+    assertEquals(uri.pathname, `/users/alice/${paths[index]}`);
+    const parsed = ctx.parseUri(uri);
+    assertEquals(
+      parsed?.type,
+      index === 0 ? "collection" : "orderedCollection",
+    );
+    if (parsed?.type !== "collection" && parsed?.type !== "orderedCollection") {
+      throw new Error("Expected a custom collection URI");
+    }
+    assertStrictEquals(parsed.name, name);
+    assertStrictEquals(parsed.class, vocab.Object);
+    assertEquals(parsed.typeId, vocab.Object.typeId);
+    assertEquals(parsed.values, { identifier: "alice" });
+
+    for (const cursor of [null, "next"]) {
+      const pageUri = new URL(uri);
+      if (cursor != null) pageUri.searchParams.set("cursor", cursor);
+      const response = await federation.fetch(
+        new Request(pageUri, {
+          headers: { accept: "application/activity+json" },
+        }),
+        { contextData: undefined },
+      );
+      assertEquals(response.status, 200);
+      const body = await response.json();
+      assert(body !== null && typeof body === "object" && "type" in body);
+      assertEquals(
+        body.type,
+        `${index === 0 ? "Collection" : "OrderedCollection"}${
+          cursor == null ? "" : "Page"
+        }`,
+      );
+    }
+  }
+  assertEquals(calls, [[0, null], [0, "next"], [1, null], [1, "next"]]);
 });
 
 test("InboxContextImpl.forwardActivity()", async (t) => {

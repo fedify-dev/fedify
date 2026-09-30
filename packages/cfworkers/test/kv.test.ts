@@ -20,6 +20,27 @@ describe("WorkersKvStore", () => {
     expect(await store.get(["foo"])).toBeUndefined();
   });
 
+  it("keeps stored null distinct from a missing key", async () => {
+    const store = new WorkersKvStore(env.KV1);
+    const key = ["null-value"] as const;
+    const child = ["null-value", "child"] as const;
+    await store.set(key, null);
+    await store.set(child, null, {
+      ttl: mockDuration(3600) as Temporal.Duration,
+    });
+
+    expect(await store.get(key)).toBeNull();
+    expect(await store.get(child)).toBeNull();
+    expect(await store.get(["missing-null-value"])).toBeUndefined();
+    const entries = [];
+    for await (const entry of store.list(key)) entries.push(entry);
+    expect(entries).toEqual([{ key, value: null }, { key: child, value: null }]);
+
+    await store.delete(key);
+    await store.delete(child);
+    expect(await store.get(key)).toBeUndefined();
+  });
+
   it("set() with TTL stores expiration metadata", async () => {
     const store = new WorkersKvStore(env.KV1);
 

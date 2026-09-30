@@ -151,17 +151,13 @@ export class WorkersKvStore implements KvStore {
   async get<T = unknown>(key: KvKey): Promise<T | undefined> {
     const encodedKey = this.#encodeKey(key);
     const { value, metadata } = await this.#namespace.getWithMetadata<
-      T,
       KvMetadata
-    >(
-      encodedKey,
-      "json",
-    );
+    >(encodedKey);
     if (value == null) return undefined;
     if (metadata?.expires != null && metadata.expires < Date.now()) {
       return undefined;
     }
-    return value;
+    return JSON.parse(value) as T;
   }
 
   async set(
@@ -212,7 +208,6 @@ export class WorkersKvStore implements KvStore {
     if (exactKey != null) {
       const { value, metadata } = await this.#namespace.getWithMetadata(
         exactKey,
-        "json",
       );
       if (
         value != null &&
@@ -221,7 +216,7 @@ export class WorkersKvStore implements KvStore {
       ) {
         yield {
           key: prefix!,
-          value,
+          value: JSON.parse(value),
         };
       }
     }
@@ -241,12 +236,12 @@ export class WorkersKvStore implements KvStore {
           continue;
         }
 
-        const value = await this.#namespace.get(keyInfo.name, "json");
+        const value = await this.#namespace.get(keyInfo.name);
         if (value == null) continue;
 
         yield {
           key: JSON.parse(keyInfo.name) as KvKey,
-          value,
+          value: JSON.parse(value),
         };
       }
     } while (cursor != null);

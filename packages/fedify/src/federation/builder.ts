@@ -186,6 +186,7 @@ export class FederationBuilderImpl<TContextData>
    * Symbol registry for unique identification of unnamed symbols.
    */
   #symbolRegistry = new Map<symbol, string>();
+  #collectionNames = new Map<string, string | symbol>();
 
   constructor() {
     this.router = new Router();
@@ -228,6 +229,8 @@ export class FederationBuilderImpl<TContextData>
     f.objectTypeIds = { ...this.objectTypeIds };
     f.collectionCallbacks = { ...this.collectionCallbacks };
     f.collectionTypeIds = { ...this.collectionTypeIds };
+    f.#symbolRegistry = new Map(this.#symbolRegistry);
+    f.#collectionNames = new Map(this.#collectionNames);
     f.inboxPath = this.inboxPath;
     f.outboxPath = this.outboxPath;
     f.inboxCallbacks = this.inboxCallbacks == null
@@ -1330,6 +1333,7 @@ export class FederationBuilderImpl<TContextData>
         "Path for collection dispatcher must have at least one variable.",
       );
     }
+    this.#collectionNames.set(routeName, name);
 
     this.router.add(path, routeName);
 
@@ -1409,6 +1413,12 @@ export class FederationBuilderImpl<TContextData>
     const path = this.router.build(`collection:${routeName}`, values) ??
       this.router.build(`orderedCollection:${routeName}`, values);
     return path;
+  }
+
+  /** Resolves a custom collection route to its original name. */
+  getCollectionName(routeName: string): string | symbol {
+    return this.#collectionNames.get(routeName) ??
+      routeName.replace(/^(collection|orderedCollection):/, "");
   }
 
   setOutboxPermanentFailureHandler(
