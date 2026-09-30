@@ -538,19 +538,11 @@ federation.<span class="c-fn">setActorDispatcher</span>(
   <div class="lp">
     <!-- ============================ HERO ============================ -->
     <section class="lp-hero">
-      <div class="lp-hero-bg" aria-hidden="true">
-        <span class="orb orb-cyan" />
-        <span class="orb orb-violet" />
-        <span class="orb orb-gold" />
-        <span class="grid" />
-      </div>
-
       <div class="wrap lp-hero-grid">
         <div class="lp-hero-copy">
-          <p class="lp-eyebrow">TypeScript · ActivityPub · Open source</p>
           <h1 class="lp-title">
             Build for the
-            <span class="lp-grad">fediverse</span>,<br />
+            <em class="lp-em">fediverse</em>,<br />
             skip the boilerplate.
           </h1>
           <p class="lp-lede">
@@ -565,7 +557,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
               Get started
               <span class="btn-arrow">→</span>
             </a>
-            <a class="btn btn-ghost" href="/why">Why Fedify?</a>
+            <a class="btn btn-text" href="/why">Why Fedify?</a>
           </div>
           <div class="lp-install">
             <div class="lp-install-tabs" role="tablist">
@@ -623,11 +615,11 @@ federation.<span class="c-fn">setActorDispatcher</span>(
               <line x1="220" y1="220" x2="330" y2="320" />
               <line x1="220" y1="220" x2="120" y2="350" />
               <line x1="220" y1="220" x2="78" y2="170" />
-              <circle class="node n1" cx="220" cy="70" r="13" />
-              <circle class="node n2" cx="350" cy="160" r="11" />
-              <circle class="node n3" cx="330" cy="320" r="14" />
-              <circle class="node n4" cx="120" cy="350" r="10" />
-              <circle class="node n5" cx="78" cy="170" r="12" />
+              <circle class="node" cx="220" cy="70" r="13" />
+              <circle class="node" cx="350" cy="160" r="11" />
+              <circle class="node" cx="330" cy="320" r="14" />
+              <circle class="node" cx="120" cy="350" r="10" />
+              <circle class="node" cx="78" cy="170" r="12" />
             </g>
           </svg>
           <img class="lp-net-logo" src="/logo.svg" alt="" />
@@ -704,7 +696,6 @@ federation.<span class="c-fn">setActorDispatcher</span>(
         </div>
         <div class="lp-code-window">
           <div class="lp-code-bar" aria-hidden="true">
-            <span class="dot" /><span class="dot" /><span class="dot" />
             <span class="lp-code-file">federation.ts</span>
           </div>
           <pre class="lp-code"><code v-html="code" /></pre>
@@ -739,14 +730,12 @@ federation.<span class="c-fn">setActorDispatcher</span>(
         <div class="lp-vocab-demos">
           <div class="lp-code-window">
             <div class="lp-code-bar" aria-hidden="true">
-              <span class="dot" /><span class="dot" /><span class="dot" />
               <span class="lp-code-file">recipients.ts</span>
             </div>
             <pre class="lp-code"><code v-html="vocabCode" /></pre>
           </div>
           <div class="lp-code-window">
             <div class="lp-code-bar" aria-hidden="true">
-              <span class="dot" /><span class="dot" /><span class="dot" />
               <span class="lp-code-file">actor.ts</span>
             </div>
             <pre class="lp-code"><code v-html="accessorCode" /></pre>
@@ -844,7 +833,6 @@ federation.<span class="c-fn">setActorDispatcher</span>(
           </div>
           <div class="lp-code-window lp-byo-window">
             <div class="lp-code-bar" aria-hidden="true">
-              <span class="dot" /><span class="dot" /><span class="dot" />
               <span class="lp-code-file">middleware.ts</span>
             </div>
             <pre class="lp-code"><code v-html="byoCode" /></pre>
@@ -927,7 +915,6 @@ federation.<span class="c-fn">setActorDispatcher</span>(
         </div>
         <div class="lp-term" aria-hidden="true">
           <div class="lp-term-bar">
-            <span class="dot" /><span class="dot" /><span class="dot" />
             <span class="lp-term-title">zsh — fedify</span>
           </div>
           <pre class="lp-term-body"><code v-html="cliTerminal" /></pre>
@@ -963,7 +950,6 @@ federation.<span class="c-fn">setActorDispatcher</span>(
         </div>
         <div class="lp-trace" aria-hidden="true">
           <div class="lp-trace-bar">
-            <span class="dot" /><span class="dot" /><span class="dot" />
             <span class="lp-trace-title">trace · activitypub.inbox</span>
           </div>
           <div class="lp-trace-body">
@@ -1015,7 +1001,6 @@ federation.<span class="c-fn">setActorDispatcher</span>(
         </div>
         <div class="lp-code-window lp-c2s-window">
           <div class="lp-code-bar" aria-hidden="true">
-            <span class="dot" /><span class="dot" /><span class="dot" />
             <span class="lp-code-file">outbox.ts</span>
           </div>
           <pre class="lp-code"><code v-html="outboxCode" /></pre>
@@ -1025,11 +1010,7 @@ federation.<span class="c-fn">setActorDispatcher</span>(
 
     <!-- ======================= FINAL CTA ============================ -->
     <section class="lp-cta-band">
-      <div class="lp-cta-bg" aria-hidden="true">
-        <span class="orb orb-cyan" />
-        <span class="orb orb-violet" />
-      </div>
-      <div class="wrap lp-cta-inner">
+      <div class="wrap">
         <h2 class="lp-cta-title">Ready to join the fediverse?</h2>
         <p class="lp-cta-sub">
           Install Fedify and have a federated actor running in minutes.
@@ -1038,8 +1019,8 @@ federation.<span class="c-fn">setActorDispatcher</span>(
           <a class="btn btn-primary" href="/install">
             Start building <span class="btn-arrow">→</span>
           </a>
-          <a class="btn btn-ghost" href="/manual/federation">Browse the manual</a>
-          <a class="btn btn-ghost" href="https://github.com/fedify-dev/fedify">
+          <a class="btn btn-text" href="/manual/federation">Browse the manual</a>
+          <a class="btn btn-text" href="https://github.com/fedify-dev/fedify">
             GitHub
           </a>
         </div>
@@ -1122,103 +1103,26 @@ federation.<span class="c-fn">setActorDispatcher</span>(
   overflow: clip;
 }
 
-.lp-hero-bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-}
-
-.lp-hero-bg .grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(to right, rgba(2, 132, 199, 0.06) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(2, 132, 199, 0.06) 1px, transparent 1px);
-  background-size: 54px 54px;
-  -webkit-mask-image: radial-gradient(120% 70% at 50% 0%, #000, transparent 72%);
-  mask-image: radial-gradient(120% 70% at 50% 0%, #000, transparent 72%);
-}
-
-.dark .lp-hero-bg .grid {
-  background-image:
-    linear-gradient(to right, rgba(125, 211, 252, 0.07) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(125, 211, 252, 0.07) 1px, transparent 1px);
-}
-
-.orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(60px);
-}
-.lp-hero-bg .orb-cyan {
-  width: 38vw;
-  max-width: 540px;
-  aspect-ratio: 1;
-  top: -6%;
-  left: -6%;
-  background: radial-gradient(circle, #00a3ff 0%, transparent 68%);
-  opacity: 0.4;
-}
-.lp-hero-bg .orb-violet {
-  width: 34vw;
-  max-width: 480px;
-  aspect-ratio: 1;
-  top: -10%;
-  right: -8%;
-  background: radial-gradient(circle, #9500ff 0%, transparent 68%);
-  opacity: 0.32;
-}
-.lp-hero-bg .orb-gold {
-  width: 24vw;
-  max-width: 340px;
-  aspect-ratio: 1;
-  top: 30%;
-  right: 12%;
-  background: radial-gradient(circle, #ffca00 0%, transparent 70%);
-  opacity: 0.22;
-}
-
 .lp-hero-grid {
-  position: relative;
-  z-index: 1;
   display: grid;
   grid-template-columns: 1.05fr 0.95fr;
   align-items: center;
   gap: 3rem;
 }
 
-.lp-eyebrow {
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--vp-c-brand-1);
-  margin: 0 0 1rem;
-}
-
 .lp-title {
   font-family: var(--vp-font-family-display);
   font-size: clamp(2.4rem, 5.2vw, 4rem);
   line-height: 1.05;
-  letter-spacing: -0.03em;
-  font-weight: 800;
+  letter-spacing: -0.01em;
+  font-weight: 600;
   margin: 0;
   color: var(--vp-c-text-1);
 }
 
-.lp-grad {
-  background: linear-gradient(120deg, #0ea5e9, #6d28d9 92%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-}
-.dark .lp-grad {
-  background: linear-gradient(120deg, #7dd3fc, #c084fc 92%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+.lp-em {
+  font-style: italic;
+  color: var(--vp-c-brand-1);
 }
 
 .lp-lede {
@@ -1243,24 +1147,23 @@ federation.<span class="c-fn">setActorDispatcher</span>(
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.7rem 1.4rem;
-  border-radius: 999px;
+  padding: 0.7rem 1.25rem;
+  border-radius: 6px;
   font-weight: 600;
   font-size: 0.97rem;
   transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
     background-color 0.2s ease,
-    border-color 0.2s ease;
+    color 0.2s ease,
+    text-decoration-color 0.2s ease;
 }
+/* Fixed sky-700/800 rather than the brand tokens: the dark-mode tokens are
+   light blues that cannot carry white text at AA contrast. */
 .btn-primary {
   color: #fff;
-  background: linear-gradient(120deg, #0ea5e9, #0369a1);
-  box-shadow: 0 10px 24px -10px rgba(2, 132, 199, 0.7);
+  background-color: #0369a1;
 }
 .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 16px 30px -12px rgba(2, 132, 199, 0.8);
+  background-color: #075985;
 }
 .btn-arrow {
   transition: transform 0.2s ease;
@@ -1268,15 +1171,17 @@ federation.<span class="c-fn">setActorDispatcher</span>(
 .btn-primary:hover .btn-arrow {
   transform: translateX(3px);
 }
-.btn-ghost {
+.btn-text {
+  padding-inline: 0.5rem;
   color: var(--vp-c-text-1);
-  background: var(--vp-c-bg-soft);
-  border: 1px solid var(--vp-c-divider);
+  text-decoration: underline;
+  text-decoration-color: var(--vp-c-divider);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.3em;
 }
-.btn-ghost:hover {
-  border-color: var(--vp-c-brand-1);
+.btn-text:hover {
   color: var(--vp-c-brand-1);
-  transform: translateY(-2px);
+  text-decoration-color: currentColor;
 }
 
 .lp-install {
@@ -1416,14 +1321,10 @@ federation.<span class="c-fn">setActorDispatcher</span>(
   stroke-dasharray: 4 6;
 }
 .lp-net .node {
+  fill: var(--vp-c-brand-3);
   stroke: var(--vp-c-bg);
   stroke-width: 3;
 }
-.lp-net .n1 { fill: #00a3ff; }
-.lp-net .n2 { fill: #0ea5e9; }
-.lp-net .n3 { fill: #9500ff; }
-.lp-net .n4 { fill: #ffca00; }
-.lp-net .n5 { fill: #38bdf8; }
 .lp-net-logo {
   position: absolute;
   top: 50%;
@@ -1456,8 +1357,8 @@ federation.<span class="c-fn">setActorDispatcher</span>(
   font-family: var(--vp-font-family-display);
   font-size: clamp(1.7rem, 3.2vw, 2.4rem);
   line-height: 1.18;
-  letter-spacing: -0.02em;
-  font-weight: 800;
+  letter-spacing: -0.01em;
+  font-weight: 600;
   margin: 0;
   color: var(--vp-c-text-1);
 }
@@ -1599,7 +1500,7 @@ a.lp-stack-name::after {
   overflow: clip;
   background: #0b1622;
   border: 1px solid #1e3a52;
-  box-shadow: 0 30px 60px -30px rgba(2, 132, 199, 0.5);
+  box-shadow: 0 26px 52px -28px rgba(2, 132, 199, 0.35);
 }
 .lp-code-bar {
   display: flex;
@@ -1609,17 +1510,7 @@ a.lp-stack-name::after {
   background: #0d1b2a;
   border-bottom: 1px solid #1e3a52;
 }
-.lp-code-bar .dot {
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: #1e3a52;
-}
-.lp-code-bar .dot:nth-child(1) { background: #f87171; }
-.lp-code-bar .dot:nth-child(2) { background: #fbbf24; }
-.lp-code-bar .dot:nth-child(3) { background: #34d399; }
 .lp-code-file {
-  margin-left: 0.6rem;
   font-family: var(--vp-font-family-mono);
   font-size: 0.8rem;
   color: #7c93a8;
@@ -1655,8 +1546,8 @@ a.lp-stack-name::after {
 .lp-byo-title {
   font-family: var(--vp-font-family-display);
   font-size: 1.3rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-weight: 600;
+  letter-spacing: 0;
   margin: 0;
   color: var(--vp-c-text-1);
 }
@@ -1713,8 +1604,8 @@ a.lp-stack-name::after {
 .lp-point-title {
   font-family: var(--vp-font-family-display);
   font-size: 1.1rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-weight: 600;
+  letter-spacing: 0;
   margin: 1rem 0 0.45rem;
   color: var(--vp-c-text-1);
 }
@@ -1819,7 +1710,7 @@ a.lp-stack-name::after {
   overflow: clip;
   background: var(--vp-c-bg);
   border: 1px solid var(--vp-c-divider);
-  box-shadow: 0 24px 50px -28px rgba(2, 132, 199, 0.45);
+  box-shadow: 0 20px 44px -26px rgba(2, 132, 199, 0.32);
 }
 .lp-trace-bar {
   display: flex;
@@ -1829,17 +1720,7 @@ a.lp-stack-name::after {
   background: var(--vp-c-bg-soft);
   border-bottom: 1px solid var(--vp-c-divider);
 }
-.lp-trace-bar .dot {
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: var(--vp-c-divider);
-}
-.lp-trace-bar .dot:nth-child(1) { background: #f87171; }
-.lp-trace-bar .dot:nth-child(2) { background: #fbbf24; }
-.lp-trace-bar .dot:nth-child(3) { background: #34d399; }
 .lp-trace-title {
-  margin-left: 0.6rem;
   font-family: var(--vp-font-family-mono);
   font-size: 0.8rem;
   color: var(--vp-c-text-2);
@@ -1928,7 +1809,7 @@ a.lp-stack-name::after {
   overflow: clip;
   background: #0b1622;
   border: 1px solid #1e3a52;
-  box-shadow: 0 30px 60px -30px rgba(2, 132, 199, 0.5);
+  box-shadow: 0 26px 52px -28px rgba(2, 132, 199, 0.35);
 }
 .lp-term-bar {
   display: flex;
@@ -1938,17 +1819,7 @@ a.lp-stack-name::after {
   background: #0d1b2a;
   border-bottom: 1px solid #1e3a52;
 }
-.lp-term-bar .dot {
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: #1e3a52;
-}
-.lp-term-bar .dot:nth-child(1) { background: #f87171; }
-.lp-term-bar .dot:nth-child(2) { background: #fbbf24; }
-.lp-term-bar .dot:nth-child(3) { background: #34d399; }
 .lp-term-title {
-  margin-left: 0.6rem;
   font-family: var(--vp-font-family-mono);
   font-size: 0.8rem;
   color: #7c93a8;
@@ -2033,40 +1904,11 @@ a.lp-stack-name::after {
   overflow: clip;
   border-top: 1px solid var(--vp-c-divider);
 }
-.lp-cta-bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-}
-.lp-cta-bg .orb-cyan {
-  width: 50vw;
-  max-width: 680px;
-  aspect-ratio: 1;
-  left: 50%;
-  top: -30%;
-  transform: translateX(-50%);
-  background: radial-gradient(circle, #0ea5e9 0%, transparent 68%);
-  opacity: 0.18;
-}
-.lp-cta-bg .orb-violet {
-  width: 30vw;
-  max-width: 420px;
-  aspect-ratio: 1;
-  right: 8%;
-  bottom: -20%;
-  background: radial-gradient(circle, #9500ff 0%, transparent 70%);
-  opacity: 0.16;
-}
-.lp-cta-inner {
-  position: relative;
-  z-index: 1;
-}
 .lp-cta-title {
   font-family: var(--vp-font-family-display);
   font-size: clamp(1.9rem, 4vw, 2.8rem);
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   margin: 0;
   color: var(--vp-c-text-1);
 }
@@ -2162,7 +2004,6 @@ a.lp-stack-name::after {
   .lp-hero-copy > * {
     animation: lp-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
-  .lp-eyebrow { animation-delay: 0.02s; }
   .lp-title { animation-delay: 0.1s; }
   .lp-lede { animation-delay: 0.2s; }
   .lp-cta { animation-delay: 0.3s; }

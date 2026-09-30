@@ -336,9 +336,9 @@ importers:
       '@fedify/webfinger':
         specifier: workspace:^
         version: link:../packages/webfinger
-      '@fontsource-variable/bricolage-grotesque':
-        specifier: ^5.2.10
-        version: 5.2.10
+      '@fontsource-variable/source-serif-4':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@hackmd/markdown-it-task-lists':
         specifier: ^2.1.4
         version: 2.1.4
@@ -4267,8 +4267,8 @@ packages:
   '@floating-ui/utils@0.2.10':
     resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
 
-  '@fontsource-variable/bricolage-grotesque@5.2.10':
-    resolution: {integrity: sha512-5EDsCqgGpKVcJWE4sg9ydli+t5WM97mISYw5lla/Ev4z71FwXh1oN0YUU8xjkRW9+wBCGD9R+ntAvI8G4bUFJg==}
+  '@fontsource-variable/source-serif-4@5.3.0':
+    resolution: {integrity: sha512-9vch9WqxjaaA+1o9Ur8pOgIGbCYLjRReOUel23A6lOpD1syptgjtkORevvNmldJ5kGXQL29onQUqI5Ltz0s3bQ==}
 
   '@fullstory/browser@2.0.8':
     resolution: {integrity: sha512-MOylRaBAs7y7xFLvBQo446/xbTZ9MbPZSn3B4go4+eXI1o/uY7F+30ow6CA1i8fVoE4ScXDYpRtffDBBFsd8CQ==}
@@ -20623,7 +20623,7 @@ snapshots:
 
   '@floating-ui/utils@0.2.10': {}
 
-  '@fontsource-variable/bricolage-grotesque@5.2.10': {}
+  '@fontsource-variable/source-serif-4@5.3.0': {}
 
   '@fullstory/browser@2.0.8':
     dependencies:
