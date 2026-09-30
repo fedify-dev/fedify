@@ -10,9 +10,15 @@ import {
   Note,
   Object as ASObject,
   Person,
+  PUBLIC_COLLECTION,
   Tombstone,
 } from "@fedify/vocab";
-import { exportDidKey, formatIri, parseIri } from "@fedify/vocab-runtime";
+import {
+  exportDidKey,
+  formatIri,
+  parseIri,
+  toCompatibleEf61Id,
+} from "@fedify/vocab-runtime";
 import {
   assertEquals,
   assertInstanceOf,
@@ -25,7 +31,11 @@ import {
   rsaPrivateKey3,
   rsaPublicKey3,
 } from "../../fedify/src/testing/keys.ts";
-import { createFederation, createOutboxContext } from "./mock.ts";
+import {
+  createFederation,
+  createOutboxContext,
+  createRequestContext,
+} from "./mock.ts";
 
 test("MockFederation actor setters support chaining in any order", () => {
   const federation = createFederation<void>();
@@ -2150,4 +2160,79 @@ test("MockFederation custom collection setters chain mapPortableOwner()", () => 
       .mapPortableOwner(() => null),
     ordered,
   );
+});
+
+test("RequestContext.isSignedByAudience() in test contexts", async (t) => {
+  const did = await exportDidKey(ed25519PublicKey.publicKey);
+  const portableId = parseIri(`ap+ef61://${did}/actor`);
+  const signer = new Person({
+    id: toCompatibleEf61Id(portableId, "https://other.example"),
+  });
+  const followers = new URL("https://example.com/followers");
+  const federation = createFederation<void>();
+  const url = new URL("https://example.com/");
+
+  await t.step("createRequestContext()", async () => {
+    const unsigned = createRequestContext<void>({
+      url,
+      data: undefined,
+      federation,
+    });
+    assertEquals(
+      await unsigned.isSignedByAudience(new Note({ to: PUBLIC_COLLECTION })),
+      true,
+    );
+    assertEquals(
+      await unsigned.isSignedByAudience(new Note({ to: portableId })),
+      false,
+    );
+    const signed = createRequestContext<void>({
+      url,
+      data: undefined,
+      federation,
+      getSignedKeyOwner: () => Promise.resolve(signer),
+    });
+    assertEquals(
+      await signed.isSignedByAudience(new Note({ to: portableId })),
+      true,
+    );
+    // Malformed portable IDs are skipped rather than thrown on:
+    assertEquals(
+      await signed.isSignedByAudience(
+        new Note({
+          tos: [
+            new URL(
+              `https://example.com/.well-known/apgateway/${did}/actor` +
+                "?@gateway=https%3A%2F%2Fexample.com",
+            ),
+            new URL("ap+ef61://bad/actor"),
+            portableId,
+          ],
+        }),
+      ),
+      true,
+    );
+    assertEquals(
+      await signed.isSignedByAudience(new Note({ cc: followers })),
+      false,
+    );
+    assertEquals(
+      await signed.isSignedByAudience(new Note({ cc: followers }), {
+        isMember: (addressee) => addressee.href === followers.href,
+      }),
+      true,
+    );
+  });
+
+  await t.step("MockContext", async () => {
+    const context = federation.createContext(url, undefined);
+    assertEquals(
+      await context.isSignedByAudience(new Note({ cc: PUBLIC_COLLECTION })),
+      true,
+    );
+    assertEquals(
+      await context.isSignedByAudience(new Note({ to: portableId })),
+      false,
+    );
+  });
 });

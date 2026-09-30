@@ -33,6 +33,7 @@ import {
   createInboxContext,
   createOutboxContext,
   createRequestContext,
+  isSignedByAudience,
 } from "./context.ts";
 
 // Re-export for public API
@@ -280,6 +281,7 @@ interface TestContext<TContextData>
       | "getObject"
       | "getSignedKey"
       | "getSignedKeyOwner"
+      | "isSignedByAudience"
       | "sendActivity"
       | "routeActivity"
     > {
@@ -1134,6 +1136,14 @@ class MockContext<TContextData> implements Context<TContextData> {
 
   getSignedKeyOwner(): Promise<any> {
     return Promise.resolve(null);
+  }
+
+  isSignedByAudience(object: any, options?: any): Promise<boolean> {
+    return isSignedByAudience(
+      () => this.getSignedKeyOwner(),
+      object,
+      options?.isMember,
+    );
   }
 
   #resolveTaskDefinition(task: any): any {

@@ -6,6 +6,7 @@ import {
   Object as ASObject,
   OrderedCollection,
   Person,
+  PUBLIC_COLLECTION,
   Tombstone,
   traverseCollection,
 } from "@fedify/vocab";
@@ -122,6 +123,7 @@ function createTestFederation(options: TestFederationOptions = {}) {
       note = await sign(
         new Note({
           id: ctx.getPortableObjectUri(Note, { id }, authority),
+          to: PUBLIC_COLLECTION,
           content: `Note ${id}`,
         }),
         authority === did ? ed25519PrivateKey : otherKeyPair.privateKey,
@@ -195,6 +197,7 @@ function createTestFederation(options: TestFederationOptions = {}) {
         new Create({
           id: ctx.getPortableObjectUri(Create, { id }, authority),
           actor: ctx.getPortableActorUri("alice", authority),
+          to: PUBLIC_COLLECTION,
           object: await getNote(ctx, id, authority),
         }),
         authority === did ? ed25519PrivateKey : otherKeyPair.privateKey,

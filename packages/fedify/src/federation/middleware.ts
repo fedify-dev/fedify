@@ -97,6 +97,7 @@ import { verifyPortableObject } from "../sig/portable-collection.ts";
 import { hasProofLike, verifyObject } from "../sig/proof.ts";
 import { getAuthenticatedDocumentLoader } from "../utils/docloader.ts";
 import { kvCache } from "../utils/kv-cache.ts";
+import { isInAudience } from "./audience.ts";
 import {
   type BenchmarkMetricReader,
   type BenchmarkTriggerOptions,
@@ -121,6 +122,7 @@ import type {
   GetObjectOptions,
   GetSignedKeyOptions,
   InboxContext,
+  IsSignedByAudienceOptions,
   OutboxContext,
   ParseUriOptions,
   ParseUriResult,
@@ -3780,6 +3782,7 @@ export class FederationImpl<TContextData>
           ? undefined
           : (ctx) => authorizePredicate(ctx, identifier),
         canonicalId: portable.canonicalId,
+        kind: "actor",
         onUnauthorized,
         onNotFound,
       });
@@ -3797,6 +3800,7 @@ export class FederationImpl<TContextData>
       objectDispatcher: callbacks?.dispatcher,
       authorizePredicate: callbacks?.authorizePredicate,
       canonicalId: portable.canonicalId,
+      kind: "object",
       onUnauthorized,
       onNotFound,
     });
@@ -6053,6 +6057,18 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
       }
       throw error;
     }
+  }
+
+  async isSignedByAudience(
+    object: Object,
+    options: IsSignedByAudienceOptions = {},
+  ): Promise<boolean> {
+    return await isInAudience(object, null) ||
+      await isInAudience(
+        object,
+        await this.getSignedKeyOwner(options),
+        options,
+      );
   }
 }
 
