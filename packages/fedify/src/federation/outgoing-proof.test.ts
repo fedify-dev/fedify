@@ -1,5 +1,5 @@
 import { mockDocumentLoader, test } from "@fedify/fixture";
-import { Create, Note, Person } from "@fedify/vocab";
+import { Announce, Create, Note, Person } from "@fedify/vocab";
 import { exportDidKey, parseIri } from "@fedify/vocab-runtime";
 import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { assert, assertEquals, assertRejects } from "@std/assert";
@@ -15,6 +15,11 @@ import { detachSignature } from "../sig/ld.ts";
 import { signObject } from "../sig/proof.ts";
 import { exportJwk } from "../sig/key.ts";
 import { MemoryKvStore } from "./kv.ts";
+import {
+  getCompactRootId,
+  getEmbeddedFirstGateway,
+  warnCompatibleIdsInJson,
+} from "./compatible-id-warning.ts";
 import { createFederation, FederationImpl } from "./middleware.ts";
 import type { MessageQueue } from "./mq.ts";
 import { assertPortableActorActivity } from "./outgoing-proof.ts";
@@ -947,6 +952,462 @@ async function captureLogs(run: () => unknown): Promise<LogRecord[]> {
   }
   return records.filter((record) => record.category[0] === "fedify");
 }
+
+test("sendActivity warns for compatible IDs off the actor's first gateway", async () => {
+  const owner = await didKey();
+  const ownerId = parseIri(`ap://${owner.did}/users/alice`);
+  const federation = createTestFederation();
+  let actorCalls = 0;
+  federation.setActorDispatcher("/users/{identifier}", (_ctx, identifier) => {
+    actorCalls++;
+    return identifier === "alice"
+      ? new Person({
+        id: ownerId,
+        gateways: [
+          new URL("https://primary.example"),
+          new URL("https://secondary.example"),
+        ],
+      })
+      : null;
+  });
+  const ctx = federation.createContext(
+    new Request("https://example.com/"),
+    undefined,
+  );
+  const child = await signObject(
+    new Note({
+      id: compatibleId(owner.did, "/notes/1", "https://secondary.example"),
+      attribution: ownerId,
+      content: "Hello",
+    }),
+    owner.privateKey,
+    owner.keyId,
+    { ...options, context: childContext, created },
+  );
+  const activity = new Create({
+    id: compatibleId(owner.did, "/activities/1", "https://secondary.example"),
+    actor: ownerId,
+    object: child,
+  });
+  const records = await captureLogs(async () => {
+    const { bodies } = await capture(() =>
+      ctx.sendActivity([rsaKey, sender(owner)], recipient, activity)
+    );
+    assertEquals(bodies.length, 1);
+    assertEquals(bodies[0].id, activity.id?.href);
+  });
+  assertEquals(
+    records.filter((r) => r.properties.kind === "activity").length,
+    1,
+  );
+  assertEquals(
+    records.filter((r) => r.properties.kind === "object").length,
+    1,
+  );
+  assertEquals(actorCalls, 1);
+});
+
+test("sendActivity skips first-gateway and portable IDs", async () => {
+  const owner = await didKey();
+  const ownerId = parseIri(`ap://${owner.did}/users/alice`);
+  const federation = createTestFederation();
+  federation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) =>
+      identifier === "alice"
+        ? new Person({
+          id: ownerId,
+          gateways: [new URL("https://primary.example")],
+        })
+        : null,
+  );
+  const ctx = federation.createContext(
+    new Request("https://example.com/"),
+    undefined,
+  );
+  for (
+    const id of [
+      compatibleId(owner.did, "/activities/first", "https://primary.example"),
+      parseIri(`ap://${owner.did}/activities/portable`),
+    ]
+  ) {
+    const records = await captureLogs(() =>
+      capture(() =>
+        ctx.sendActivity(
+          [rsaKey, sender(owner)],
+          recipient,
+          new Create({ id, actor: ownerId }),
+        )
+      )
+    );
+    assertEquals(records.filter((r) => r.properties.kind != null), []);
+  }
+  const plain = federation.createContext(new URL("https://example.com/"));
+  const records = await captureLogs(() =>
+    capture(() =>
+      plain.sendActivity(
+        [rsaKey, sender(owner)],
+        recipient,
+        new Create({
+          id: compatibleId(
+            owner.did,
+            "/activities/unknown-gateway",
+            "https://secondary.example",
+          ),
+          actor: ownerId,
+        }),
+      )
+    )
+  );
+  assertEquals(records.filter((r) => r.properties.kind != null), []);
+});
+
+test("fanout warns once before enqueueing a compatible activity", async () => {
+  const owner = await didKey();
+  const ownerId = parseIri(`ap://${owner.did}/users/alice`);
+  const { queue, queued } = createQueue();
+  const federation = createTestFederation(queue);
+  federation.setActorDispatcher("/users/{identifier}", () =>
+    new Person({
+      id: ownerId,
+      gateways: [new URL("https://primary.example")],
+    }));
+  const ctx = federation.createContext(
+    new Request("https://example.com/"),
+    undefined,
+  );
+  const records = await captureLogs(() =>
+    capture(async () => {
+      await ctx.sendActivity(
+        [rsaKey, sender(owner)],
+        recipient,
+        new Create({
+          id: compatibleId(
+            owner.did,
+            "/activities/fanout",
+            "https://secondary.example",
+          ),
+          actor: ownerId,
+        }),
+        { fanout: "force" },
+      );
+      assertEquals(queued.length, 1);
+      for (let i = 0; i < queued.length; i++) {
+        await federation.processQueuedTask(undefined, queued[i]);
+      }
+    })
+  );
+  assertEquals(
+    records.filter((r) => r.properties.kind === "activity").length,
+    1,
+  );
+});
+
+test("an embedded actor supplies gateways to a plain send context", async () => {
+  const owner = await didKey();
+  const ownerId = parseIri(`ap://${owner.did}/users/alice`);
+  const federation = new FederationImpl<void>({
+    kv: new MemoryKvStore(),
+    contextLoaderFactory: () => mockDocumentLoader,
+    documentLoaderFactory: () => mockDocumentLoader,
+    activityTransformers: [],
+  });
+  const ctx = federation.createContext(new URL("https://example.com/"));
+  const activity = await signObject(
+    new Create({
+      id: compatibleId(
+        owner.did,
+        "/activities/embedded-actor",
+        "https://secondary.example",
+      ),
+      actor: new Person({
+        id: ownerId,
+        gateways: [new URL("https://primary.example")],
+      }),
+    }),
+    owner.privateKey,
+    owner.keyId,
+    { ...options, created },
+  );
+  assertEquals(
+    getEmbeddedFirstGateway(
+      await activity.toJsonLd({
+        format: "compact",
+        contextLoader: mockDocumentLoader,
+      }),
+      ownerId,
+      owner.did,
+    )?.origin,
+    "https://primary.example",
+  );
+  const records = await captureLogs(() =>
+    capture(() =>
+      ctx.sendActivity(
+        [rsaKey, sender(owner)],
+        recipient,
+        activity,
+      )
+    )
+  );
+  assertEquals(
+    records.filter((r) => r.properties.kind === "activity").length,
+    1,
+  );
+});
+
+test("sendActivity checks a locally owned embedded object independently", async () => {
+  const alice = await didKey();
+  const bob = await didKey();
+  const aliceId = parseIri(`ap://${alice.did}/users/alice`);
+  const bobId = parseIri(`ap://${bob.did}/users/bob`);
+  const federation = createTestFederation();
+  federation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) =>
+      identifier === "alice"
+        ? new Person({
+          id: aliceId,
+          gateways: [new URL("https://primary.example")],
+        })
+        : identifier === "bob"
+        ? new Person({ id: bobId, gateways: [new URL("https://bob.example")] })
+        : null,
+  );
+  const child = await signObject(
+    new Note({
+      id: compatibleId(bob.did, "/notes/1", "https://secondary.example"),
+      attribution: bobId,
+      content: "Bob's note",
+    }),
+    bob.privateKey,
+    bob.keyId,
+    { ...options, context: childContext, created },
+  );
+  const ctx = federation.createContext(
+    new Request("https://example.com/"),
+    undefined,
+  );
+  const records = await captureLogs(() =>
+    capture(() =>
+      ctx.sendActivity(
+        [rsaKey, sender(alice)],
+        recipient,
+        new Announce({
+          id: parseIri(`ap://${alice.did}/activities/announce`),
+          actor: aliceId,
+          object: child,
+        }),
+      )
+    )
+  );
+  assertEquals(
+    records.filter((r) => r.properties.kind === "object").map((r) =>
+      r.properties.id
+    ),
+    [child.id?.href],
+  );
+});
+
+test("sendActivity in an actor dispatcher does not re-enter it", async () => {
+  const owner = await didKey();
+  const ownerId = parseIri(`ap://${owner.did}/users/alice`);
+  const federation = createTestFederation();
+  let calls = 0;
+  federation.setActorDispatcher("/users/{identifier}", async (ctx) => {
+    calls++;
+    await ctx.sendActivity(
+      [rsaKey, sender(owner)],
+      recipient,
+      new Create({
+        id: compatibleId(
+          owner.did,
+          "/activities/from-dispatcher",
+          "https://secondary.example",
+        ),
+        actor: ownerId,
+      }),
+    );
+    return new Person({
+      id: ownerId,
+      gateways: [new URL("https://primary.example")],
+    });
+  });
+  await capture(async () => {
+    const response = await federation.fetch(
+      new Request("https://example.com/users/alice", {
+        headers: { Accept: "application/activity+json" },
+      }),
+      { contextData: undefined },
+    );
+    assertEquals(response.status, 200);
+  });
+  assertEquals(calls, 1);
+});
+
+test("sendActivity still delivers when the diagnostic actor lookup fails", async () => {
+  const owner = await didKey();
+  const ownerId = parseIri(`ap://${owner.did}/users/alice`);
+  const federation = createTestFederation();
+  federation.setActorDispatcher("/users/{identifier}", () => {
+    throw new Error("Actor storage unavailable");
+  });
+  const ctx = federation.createContext(
+    new Request("https://example.com/"),
+    undefined,
+  );
+  const id = compatibleId(
+    owner.did,
+    "/activities/lookup-fails",
+    "https://secondary.example",
+  );
+  const records = await captureLogs(async () => {
+    const { bodies } = await capture(() =>
+      ctx.sendActivity(
+        [rsaKey, sender(owner)],
+        recipient,
+        new Create({ id, actor: ownerId }),
+      )
+    );
+    assertEquals(bodies.length, 1);
+    assertEquals(bodies[0].id, id.href);
+  });
+  assertEquals(records.filter((r) => r.properties.kind != null), []);
+});
+
+test("warning checks later local actors when the first is missing", async () => {
+  const owner = await didKey();
+  const missing = parseIri(`ap://${owner.did}/users/missing`);
+  const alice = parseIri(`ap://${owner.did}/users/alice`);
+  const federation = createTestFederation();
+  federation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) =>
+      identifier === "alice"
+        ? new Person({
+          id: alice,
+          gateways: [new URL("https://primary.example")],
+        })
+        : null,
+  );
+  const ctx = federation.createContext(
+    new Request("https://example.com/"),
+    undefined,
+  );
+  const records = await captureLogs(() =>
+    warnCompatibleIdsInJson({
+      id: compatibleId(
+        owner.did,
+        "/activities/multi",
+        "https://secondary.example",
+      ).href,
+      type: "Create",
+      actor: [missing.href, alice.href],
+    }, ctx)
+  );
+  assertEquals(
+    records.filter((r) => r.properties.kind === "activity").length,
+    1,
+  );
+});
+
+test("warning ignores an embedded gateway key", async () => {
+  const owner = await didKey();
+  const actorId = parseIri(`ap://${owner.did}/users/alice`);
+  const records = await captureLogs(() =>
+    warnCompatibleIdsInJson({
+      id: compatibleId(owner.did, "/activities/1", "https://secondary.example")
+        .href,
+      type: "Create",
+      actor: {
+        id: actorId.href,
+        type: "Person",
+        gateways: ["https://primary.example"],
+        publicKey: [
+          {
+            id: compatibleId(
+              owner.did,
+              "/users/alice/keys/1",
+              "https://secondary.example",
+            ).href,
+            type: ["CryptographicKey"],
+          },
+          {
+            id: compatibleId(
+              owner.did,
+              "/users/alice/keys/2",
+              "https://secondary.example",
+            ).href,
+            type: "sec:Key",
+          },
+        ],
+      },
+    })
+  );
+  assertEquals(
+    records.filter((r) => r.properties.kind === "activity").length,
+    1,
+  );
+  assertEquals(records.filter((r) => r.properties.kind === "object"), []);
+});
+
+test("warning resolves a signed child's local ownership alias", async () => {
+  const alice = await didKey();
+  const bob = await didKey();
+  const aliceId = parseIri(`ap://${alice.did}/users/alice`);
+  const bobId = parseIri(`ap://${bob.did}/users/bob`);
+  const federation = createTestFederation();
+  federation.setActorDispatcher(
+    "/users/{identifier}",
+    (_ctx, identifier) =>
+      identifier === "bob"
+        ? new Person({
+          id: bobId,
+          gateways: [new URL("https://primary.example")],
+        })
+        : null,
+  );
+  const ctx = federation.createContext(
+    new Request("https://example.com/"),
+    undefined,
+  );
+  const records = await captureLogs(() =>
+    warnCompatibleIdsInJson({
+      id: parseIri(`ap://${alice.did}/activities/announce`).href,
+      type: "Announce",
+      actor: aliceId.href,
+      object: {
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          {
+            by: { "@id": "as:attributedTo", "@type": "@id" },
+            identifier: "@id",
+          },
+        ],
+        identifier:
+          compatibleId(bob.did, "/notes/1", "https://secondary.example").href,
+        type: "Note",
+        by: bobId.href,
+      },
+    }, ctx)
+  );
+  assertEquals(records.filter((r) => r.properties.kind === "object").length, 1);
+});
+
+test("warning reads an inline alias of the serialized root ID", async () => {
+  const owner = await didKey();
+  const id = compatibleId(owner.did, "/notes/1", "https://secondary.example");
+  assertEquals(
+    getCompactRootId({
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        { identifier: "@id" },
+      ],
+      identifier: id.href,
+      type: "Note",
+    })?.href,
+    id.href,
+  );
+});
 
 test("an activity on another gateway than its compatible-ID actor is warned about", async () => {
   const owner = await didKey();

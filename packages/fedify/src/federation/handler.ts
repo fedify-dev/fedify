@@ -18,6 +18,7 @@ import {
   type DocumentLoader,
   parseIri,
 } from "@fedify/vocab-runtime";
+import { isCompatibleEf61Iri } from "@fedify/vocab-runtime/internal/portable-dereference";
 import {
   BodyTooLargeError,
   MAX_BODY_SIZE,
@@ -61,10 +62,16 @@ import {
 import { doesActorOwnKey } from "../sig/owner.ts";
 import {
   getCanonicalPortableId,
+  getPortableDid,
   hasPortableActor,
   isPortableId,
   isPortableKeyId,
 } from "../sig/portable-key-id.ts";
+import {
+  getCompactRootId,
+  getLocalFirstGateway,
+  warnCompatibleId,
+} from "./compatible-id-warning.ts";
 import {
   InvalidPortableObjectIdError,
   verifyObject,
@@ -324,6 +331,7 @@ export async function handleObject<TContextData>(
       },
     );
   }
+  await warnServedCompatibleObject(context, object, getCompactRootId(jsonLd));
   return new Response(JSON.stringify(jsonLd), {
     headers: {
       "Content-Type": "application/activity+json",
@@ -513,6 +521,7 @@ export async function handlePortableObject<TContextData>(
       return portableObjectInternalServerError(request);
     }
   }
+  if (!tombstone) await warnServedCompatibleObject(context, object, servedId);
   const headers = new Headers({
     "Content-Type": PORTABLE_OBJECT_CONTENT_TYPE,
     Vary: "Accept",
@@ -524,6 +533,43 @@ export async function handlePortableObject<TContextData>(
     request.method === "HEAD" ? null : JSON.stringify(jsonLd),
     { status: tombstone ? 410 : 200, headers },
   );
+}
+
+async function warnServedCompatibleObject<TContextData>(
+  context: RequestContext<TContextData>,
+  object: Object,
+  serializedId: string | URL | null,
+): Promise<void> {
+  try {
+    // Actor dispatchers already check their own compatible IDs.
+    if (isActor(object)) return;
+    const id = typeof serializedId === "string"
+      ? parseIri(serializedId)
+      : serializedId ?? object.id;
+    if (id == null || !isCompatibleEf61Iri(id)) return;
+    const did = getPortableDid(id);
+    if (did == null) return;
+    const ownerIds = object instanceof Activity
+      ? object.actorIds
+      : object.attributionIds;
+    for (const ownerId of ownerIds) {
+      if (getPortableDid(ownerId) !== did) continue;
+      const gateway = await getLocalFirstGateway(context, ownerId, did);
+      if (gateway == null) continue;
+      warnCompatibleId(
+        id,
+        did,
+        gateway,
+        object instanceof Activity ? "activity" : "object",
+      );
+      break;
+    }
+  } catch (error) {
+    getLogger(["fedify", "federation", "object"]).debug(
+      "Could not check the first gateway of {objectId}: {error}",
+      { objectId: object.id?.href, error },
+    );
+  }
 }
 
 function isRequestedPortableObject(
