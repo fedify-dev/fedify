@@ -1113,12 +1113,13 @@ fedify lookup -o actors.json @fedify@hollo.social @hongminhee@fosstodon.org
 *This option is available since Fedify 1.9.0.*
 
 You can specify the request timeout duration by using the `-T`/`--timeout`
-option. The duration should be an integer in seconds.  By default, there is no
-timeout.  For example, to set the request timeout to 10 seconds, run the below
-command:
+option. The duration should be a number in seconds.  The timeout applies to
+each request, including the redirects it follows.  By default, a request
+times out after 10 seconds (since Fedify 2.4.0; there was no timeout before).
+For example, to set the request timeout to 30 seconds, run the below command:
 
 ~~~~ sh
-fedify lookup --timeout 10 @fedify@hollo.social
+fedify lookup --timeout 30 @fedify@hollo.social
 ~~~~
 
 

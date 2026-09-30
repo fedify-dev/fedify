@@ -1,13 +1,22 @@
 import { configure, type LogRecord, reset } from "@logtape/logtape";
 import fetchMock from "fetch-mock";
-import { deepStrictEqual, ok, rejects } from "node:assert";
+import { deepStrictEqual, ok, rejects, throws } from "node:assert";
 import dns from "node:dns/promises";
 import { test } from "node:test";
-import { createServer } from "node:http";
+import {
+  createServer,
+  type IncomingMessage,
+  type ServerResponse,
+} from "node:http";
 import { gzipSync } from "node:zlib";
 import preloadedContexts from "./contexts.ts";
 import cidV1Context from "./contexts/cid-v1.json" with { type: "json" };
-import { getDocumentLoader, getRemoteDocument } from "./docloader.ts";
+import {
+  getDocumentLoader,
+  getRemoteDocument,
+  resolveDocumentLoaderTimeout,
+  withDocumentLoaderTimeout,
+} from "./docloader.ts";
 import { FetchError } from "./request.ts";
 import { UrlError } from "./url.ts";
 
@@ -1117,4 +1126,333 @@ test("getDocumentLoader() rejects cancellation before fetching", async () => {
   } finally {
     fetchMock.hardReset();
   }
+});
+
+async function withServer<T>(
+  handler: (request: IncomingMessage, response: ServerResponse) => void,
+  callback: (baseUrl: string) => Promise<T>,
+): Promise<T> {
+  const server = createServer(handler);
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  try {
+    const address = server.address();
+    ok(address != null && typeof address !== "string");
+    return await callback(`http://127.0.0.1:${address.port}`);
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => error == null ? resolve() : reject(error));
+      server.closeAllConnections();
+    });
+  }
+}
+
+function isTimeoutFetchError(error: unknown, url: string): boolean {
+  ok(error instanceof FetchError, String(error));
+  deepStrictEqual(error.url.href, url);
+  deepStrictEqual(error.response, undefined);
+  ok(error.cause instanceof DOMException);
+  deepStrictEqual(error.cause.name, "TimeoutError");
+  return true;
+}
+
+test("resolveDocumentLoaderTimeout() validates timeouts", () => {
+  deepStrictEqual(resolveDocumentLoaderTimeout(undefined), 10_000);
+  deepStrictEqual(resolveDocumentLoaderTimeout(null), null);
+  deepStrictEqual(resolveDocumentLoaderTimeout(1500), 1500);
+  deepStrictEqual(resolveDocumentLoaderTimeout(0.5), 1);
+  deepStrictEqual(resolveDocumentLoaderTimeout(2_147_483_647), 2_147_483_647);
+  for (const invalid of [0, -1, NaN, Infinity, 2_147_483_648]) {
+    throws(() => resolveDocumentLoaderTimeout(invalid), RangeError);
+  }
+  throws(() => getDocumentLoader({ timeout: 0 }), RangeError);
+});
+
+test("getDocumentLoader() times out a request without a response", async () => {
+  await withServer(() => {
+    // Never respond.
+  }, async (baseUrl) => {
+    const url = `${baseUrl}/hang`;
+    const loader = getDocumentLoader({
+      allowPrivateAddress: true,
+      timeout: 100,
+    });
+    await rejects(loader(url), (e) => isTimeoutFetchError(e, url));
+  });
+});
+
+test("getDocumentLoader() times out a stalled response body", async () => {
+  for (const status of [200, 404]) {
+    await withServer((_, response) => {
+      response.writeHead(status, {
+        "Content-Type": "application/activity+json",
+      });
+      response.write('{"id":');
+      // Never finish the body.
+    }, async (baseUrl) => {
+      const url = `${baseUrl}/stalled`;
+      const loader = getDocumentLoader({
+        allowPrivateAddress: true,
+        timeout: 200,
+      });
+      await rejects(loader(url), (e) => isTimeoutFetchError(e, url));
+    });
+  }
+});
+
+test("getDocumentLoader() shares the timeout across redirects", async () => {
+  let requests = 0;
+  await withServer((request, response) => {
+    requests++;
+    const index = Number(request.url?.split("/").at(-1));
+    setTimeout(() => {
+      if (index >= 15) {
+        response.writeHead(200, {
+          "Content-Type": "application/activity+json",
+        });
+        response.end('{"done":true}');
+        return;
+      }
+      response.writeHead(302, { Location: `/redirect/${index + 1}` });
+      response.end();
+    }, 50);
+  }, async (baseUrl) => {
+    const url = `${baseUrl}/redirect/0`;
+    // Each hop is well within the timeout, but the whole chain is not:
+    const loader = getDocumentLoader({
+      allowPrivateAddress: true,
+      timeout: 300,
+    });
+    await rejects(loader(url), (e) => isTimeoutFetchError(e, url));
+    ok(requests < 16, `requests: ${requests}`);
+    // Without a timeout, the chain completes:
+    const unbounded = getDocumentLoader({
+      allowPrivateAddress: true,
+      timeout: null,
+    });
+    deepStrictEqual((await unbounded(url)).document, { done: true });
+  });
+});
+
+test("getDocumentLoader() shares the timeout across alternates", async (t) => {
+  for (const html of [false, true]) {
+    await t.test(html ? "HTML" : "Link header", async () => {
+      await withServer((request, response) => {
+        const index = Number(request.url?.split("/").at(-1));
+        setTimeout(() => {
+          if (index >= 15) {
+            response.writeHead(200, {
+              "Content-Type": "application/activity+json",
+            });
+            response.end('{"done":true}');
+            return;
+          }
+          const next = `/alternate/${index + 1}`;
+          response.writeHead(
+            200,
+            html ? { "Content-Type": "text/html" } : {
+              "Content-Type": "text/plain",
+              Link:
+                `<${next}>; rel="alternate"; type="application/activity+json"`,
+            },
+          );
+          response.end(
+            html
+              ? `<link rel="alternate" type="application/activity+json" href="${next}">`
+              : "not JSON",
+          );
+        }, 50);
+      }, async (baseUrl) => {
+        const url = `${baseUrl}/alternate/0`;
+        const loader = getDocumentLoader({
+          allowPrivateAddress: true,
+          timeout: 300,
+        });
+        await rejects(loader(url), (e) => isTimeoutFetchError(e, url));
+      });
+    });
+  }
+});
+
+test("getDocumentLoader() lets the caller's signal abort a request", async () => {
+  await withServer(() => {
+    // Never respond.
+  }, async (baseUrl) => {
+    const url = `${baseUrl}/hang`;
+    for (const timeout of [undefined, 60_000, null]) {
+      const loader = getDocumentLoader({ allowPrivateAddress: true, timeout });
+      const controller = new AbortController();
+      const reason = new Error("Canceled by the caller");
+      setTimeout(() => controller.abort(reason), 50);
+      await rejects(loader(url, { signal: controller.signal }), (e) => {
+        deepStrictEqual(e, reason);
+        return true;
+      });
+    }
+    // The caller's signal wins even if the timeout fires too:
+    const loader = getDocumentLoader({
+      allowPrivateAddress: true,
+      timeout: 50,
+    });
+    const controller = new AbortController();
+    const reason = new Error("Canceled by the caller");
+    controller.abort(reason);
+    await rejects(loader(url, { signal: controller.signal }), (e) => {
+      deepStrictEqual(e, reason);
+      return true;
+    });
+  });
+});
+
+test("getDocumentLoader() bounds DNS lookups that ignore the timeout", async (t) => {
+  // The validator skips DNS when Deno has no network permission.
+  if (
+    "Deno" in globalThis &&
+    (await Deno.permissions.query({ name: "net" })).state !== "granted"
+  ) {
+    t.skip("requires the net permission");
+    return;
+  }
+  fetchMock.mockGlobal();
+  let requests = 0;
+  const url = "https://slow-dns.example/object";
+  fetchMock.get(url, () => {
+    requests++;
+    return Response.json({ id: url });
+  });
+  // Stubbing works only because url.ts uses the default node:dns/promises
+  // import; see the FIXME there.
+  const originalLookup = dns.lookup;
+  let resolveLookup: () => void = () => {};
+  const lookedUp = new Promise<void>((resolve) => resolveLookup = resolve);
+  dns.lookup = (() =>
+    new Promise((resolve) =>
+      setTimeout(() => {
+        resolve([{ address: "93.184.215.14", family: 4 }]);
+        resolveLookup();
+      }, 200)
+    )) as typeof dns.lookup;
+  try {
+    const loader = getDocumentLoader({ timeout: 50 });
+    await rejects(loader(url), (e) => isTimeoutFetchError(e, url));
+    // A late DNS answer must not start the request anymore:
+    await lookedUp;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    deepStrictEqual(requests, 0);
+  } finally {
+    dns.lookup = originalLookup;
+    fetchMock.hardReset();
+  }
+});
+
+test("withDocumentLoaderTimeout() cleans up after each call", async () => {
+  const signals: AbortSignal[] = [];
+  const loader = withDocumentLoaderTimeout((url, options) => {
+    signals.push(options!.signal!);
+    return Promise.resolve({
+      contextUrl: null,
+      document: {},
+      documentUrl: url,
+    });
+  }, 50);
+  const results = await Promise.all([
+    loader("https://example.com/a"),
+    loader("https://example.com/b"),
+  ]);
+  deepStrictEqual(results.map((r) => r.documentUrl), [
+    "https://example.com/a",
+    "https://example.com/b",
+  ]);
+  ok(signals[0] !== signals[1]);
+  // The timers are cleared, so the signals are never aborted:
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  ok(signals.every((signal) => !signal.aborted));
+  // A loader that is given no timeout is returned as is:
+  const inner = () => Promise.reject(new Error("unused"));
+  ok(withDocumentLoaderTimeout(inner, null) === inner);
+});
+
+test("getRemoteDocument() keeps error bodies byte for byte", async () => {
+  const bytes = new Uint8Array([0xef, 0xbb, 0xbf, 0x4e, 0x6f, 0xff, 0xfe]);
+  const url = "https://example.com/error";
+  let error: unknown;
+  await rejects(
+    getRemoteDocument(
+      url,
+      new Response(bytes, { status: 404 }),
+      () => Promise.reject(new Error("unused")),
+    ),
+    (e) => {
+      error = e;
+      return true;
+    },
+  );
+  ok(error instanceof FetchError);
+  ok(error.response != null);
+  deepStrictEqual(error.response.status, 404);
+  deepStrictEqual(new Uint8Array(await error.response.arrayBuffer()), bytes);
+});
+
+test("getRemoteDocument() keeps metadata of bodiless or large errors", async () => {
+  const url = "https://example.com/error";
+  for (
+    const response of [
+      new Response(null, { status: 304, headers: { ETag: '"a"' } }),
+      new Response(new Uint8Array(1024 * 1024 + 1), {
+        status: 500,
+        headers: { ETag: '"a"' },
+      }),
+    ]
+  ) {
+    await rejects(
+      getRemoteDocument(
+        url,
+        response,
+        () => Promise.reject(new Error("unused")),
+      ),
+      (e) => {
+        ok(e instanceof FetchError);
+        ok(e.response != null);
+        deepStrictEqual(e.response.status, response.status);
+        deepStrictEqual(e.response.headers.get("ETag"), '"a"');
+        deepStrictEqual(e.response.body, null);
+        return true;
+      },
+    );
+  }
+});
+
+test("getDocumentLoader() reports statuses that Response cannot hold", async () => {
+  await withServer((_, response) => {
+    response.writeHead(999);
+    response.end("Request denied");
+  }, async (baseUrl) => {
+    const url = `${baseUrl}/denied`;
+    const loader = getDocumentLoader({ allowPrivateAddress: true });
+    let error: unknown;
+    await rejects(loader(url), (e) => {
+      error = e;
+      return true;
+    });
+    ok(error instanceof FetchError, String(error));
+    deepStrictEqual(error.response?.status, 999);
+    deepStrictEqual(await error.response.text(), "Request denied");
+  });
+});
+
+test("getDocumentLoader() times out a stalled body of such a status", async () => {
+  await withServer((_, response) => {
+    response.writeHead(999);
+    response.write("Request");
+    // Never finish the body.
+  }, async (baseUrl) => {
+    const url = `${baseUrl}/stalled-denied`;
+    const loader = getDocumentLoader({
+      allowPrivateAddress: true,
+      timeout: 200,
+    });
+    await rejects(loader(url), (e) => isTimeoutFetchError(e, url));
+  });
 });

@@ -1,7 +1,12 @@
 import { getLogger } from "@logtape/logtape";
 import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
 import metadata from "../deno.json" with { type: "json" };
-import { BodyTooLargeError, MAX_BODY_SIZE, readBoundedText } from "./body.ts";
+import {
+  BodyTooLargeError,
+  MAX_BODY_SIZE,
+  readBoundedBytes,
+  readBoundedText,
+} from "./body.ts";
 import preloadedContexts from "./contexts.ts";
 import { HttpHeaderLink } from "./link.ts";
 import {
@@ -15,6 +20,11 @@ import { UrlError, validatePublicUrl } from "./url.ts";
 const logger = getLogger(["fedify", "runtime", "docloader"]);
 const DEFAULT_MAX_REDIRECTION = 20;
 const MAX_HTML_SIZE = 1024 * 1024; // 1MB
+const MAX_ERROR_BODY_SIZE = 1024 * 1024; // 1MB
+const DEFAULT_TIMEOUT = 10_000; // 10 seconds
+// The maximum delay setTimeout() accepts; larger values fire immediately
+// on some runtimes:
+const MAX_TIMEOUT = 2_147_483_647;
 
 /**
  * A remote JSON-LD document and its context fetched by
@@ -104,6 +114,29 @@ export interface DocumentLoaderFactoryOptions {
    * @since 2.2.0
    */
   maxRedirection?: number;
+
+  /**
+   * The timeout in milliseconds for each call of the created document
+   * loader.  The timeout is shared by all the steps of a call, including
+   * URL validation, every HTTP redirect and alternate document link it
+   * follows, retries, and reading the response body; it does not restart
+   * for each of them.  It does not interrupt synchronous work such as
+   * parsing a document that has already been received.
+   *
+   * When a call times out, the loader throws a {@link FetchError} without
+   * a {@link FetchError.response}, whose `cause` is a `DOMException` named
+   * `"TimeoutError"`.  An `AbortSignal` passed through
+   * {@link DocumentLoaderOptions.signal} still cancels a call; in that case
+   * the loader throws the signal's reason as before.
+   *
+   * Fractional values are rounded up.  Set it to `null` to turn off the
+   * timeout.
+   * @default `10000` (10 seconds)
+   * @throws {RangeError} If the value is not a positive finite number or is
+   *                      greater than 2,147,483,647 (about 24.8 days).
+   * @since 2.4.0
+   */
+  timeout?: number | null;
 }
 
 /**
@@ -123,6 +156,61 @@ export type AuthenticatedDocumentLoaderFactory = (
 
 function createResponseMetadata(response: Response): Response {
   return new Response(null, {
+    headers: response.headers,
+    status: response.status,
+    statusText: response.statusText,
+  });
+}
+
+const NULL_BODY_STATUSES: ReadonlySet<number> = new Set([204, 205, 304]);
+
+/**
+ * Reads the body of an error response while the document loader is still
+ * running, so that its timeout and `AbortSignal` also bound the read, and
+ * nothing reading {@link FetchError.response} later waits on the network.
+ * The body is kept byte for byte, unless it is too large or cannot be read;
+ * then only the status and headers are kept.  A response whose status
+ * the `Response` constructor does not accept (e.g., 999) is kept as a clone
+ * whose body has been read in full; if its body is too large or cannot be
+ * read, no response is kept at all.
+ */
+async function bufferErrorResponse(
+  response: Response,
+  url: string,
+  signal?: AbortSignal,
+): Promise<Response | undefined> {
+  if (response.status < 200 || response.status > 599) {
+    // Such a response cannot be rebuilt, so keep a clone instead, and read
+    // the original to the end so that the clone's body is buffered too:
+    const clone = response.clone();
+    try {
+      await readBoundedBytes(response, MAX_ERROR_BODY_SIZE, url);
+    } catch (error) {
+      await clone.body?.cancel().catch(() => {});
+      if (signal?.aborted) throw error;
+      logger.debug(
+        "Failed to read the error response body from {url}: {error}",
+        { url, error },
+      );
+      return undefined;
+    }
+    return clone;
+  }
+  if (response.body == null || NULL_BODY_STATUSES.has(response.status)) {
+    return createResponseMetadata(response);
+  }
+  let body: Uint8Array<ArrayBuffer>;
+  try {
+    body = await readBoundedBytes(response, MAX_ERROR_BODY_SIZE, url);
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    logger.debug(
+      "Failed to read the error response body from {url}: {error}",
+      { url, error },
+    );
+    return createResponseMetadata(response);
+  }
+  return new Response(body, {
     headers: response.headers,
     status: response.status,
     statusText: response.statusText,
@@ -174,7 +262,7 @@ export async function getRemoteDocument(
     throw new FetchError(
       documentUrl,
       `HTTP ${response.status}: ${documentUrl}`,
-      response.clone(),
+      await bufferErrorResponse(response, documentUrl, options?.signal),
     );
   }
   const contentType = response.headers.get("Content-Type");
@@ -312,6 +400,104 @@ export async function getRemoteDocument(
 }
 
 /**
+ * Resolves {@link DocumentLoaderFactoryOptions.timeout} into milliseconds.
+ * @param timeout The timeout option.  `undefined` means the default timeout,
+ *                and `null` means no timeout.
+ * @returns The timeout in milliseconds, or `null` if it is turned off.
+ * @throws {RangeError} If the timeout is invalid.
+ * @internal
+ */
+export function resolveDocumentLoaderTimeout(
+  timeout: number | null | undefined,
+): number | null {
+  if (timeout === undefined) return DEFAULT_TIMEOUT;
+  if (timeout === null) return null;
+  if (
+    typeof timeout !== "number" || !Number.isFinite(timeout) || timeout <= 0
+  ) {
+    throw new RangeError(
+      `The document loader timeout must be a positive finite number of ` +
+        `milliseconds, but got ${String(timeout)}.`,
+    );
+  }
+  const ms = Math.ceil(timeout);
+  if (ms > MAX_TIMEOUT) {
+    throw new RangeError(
+      `The document loader timeout must not be greater than ${MAX_TIMEOUT} ` +
+        `milliseconds, but got ${timeout}.`,
+    );
+  }
+  return ms;
+}
+
+/**
+ * Bounds each call of the given document loader by the given timeout.
+ * The timeout is combined with the caller's `signal`, and the combined
+ * signal is passed to the loader.  The call settles no later than the
+ * timeout even if the loader is stuck in a step that cannot be aborted,
+ * e.g., a DNS lookup.
+ *
+ * A timed-out call throws a {@link FetchError} without a response, whose
+ * `cause` is a `DOMException` named `"TimeoutError"`.  If the caller's
+ * signal is aborted, its reason is thrown instead.
+ * @param loader The document loader to bound.
+ * @param timeout The timeout in milliseconds, or `null` for no timeout.
+ *                It is assumed to have been resolved by
+ *                {@link resolveDocumentLoaderTimeout}.
+ * @returns The bounded document loader.
+ * @internal
+ */
+export function withDocumentLoaderTimeout(
+  loader: DocumentLoader,
+  timeout: number | null,
+): DocumentLoader {
+  if (timeout == null) return loader;
+  return async (url, options) => {
+    const callerSignal = options?.signal;
+    callerSignal?.throwIfAborted();
+    const controller = new AbortController();
+    const timeoutReason = new DOMException(
+      `The document loader timed out after ${timeout} ms.`,
+      "TimeoutError",
+    );
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort(timeoutReason);
+    }, timeout);
+    const onCallerAbort = () => controller.abort(callerSignal?.reason);
+    callerSignal?.addEventListener("abort", onCallerAbort, { once: true });
+    let onAbort: (() => void) | undefined;
+    const aborted = new Promise<never>((_, reject) => {
+      onAbort = () => reject(controller.signal.reason);
+      controller.signal.addEventListener("abort", onAbort, { once: true });
+    });
+    const loading = loader(url, { ...options, signal: controller.signal });
+    // If the abort wins the race, the loader's late rejection is ignored:
+    loading.catch(() => {});
+    try {
+      return await Promise.race([loading, aborted]);
+    } catch (error) {
+      if (callerSignal?.aborted) throw callerSignal.reason;
+      if (!timedOut) throw error;
+      logger[options?.suppressError ? "warn" : "error"](
+        "Timed out after {timeout} ms while fetching document: {url}",
+        { timeout, url },
+      );
+      const fetchError = new FetchError(url, `Timed out after ${timeout} ms`);
+      fetchError.cause = timeoutReason;
+      throw fetchError;
+    } finally {
+      clearTimeout(timer);
+      callerSignal?.removeEventListener("abort", onCallerAbort);
+      if (onAbort != null) {
+        controller.signal.removeEventListener("abort", onAbort);
+      }
+    }
+  };
+}
+
+/**
  * Options for {@link getDocumentLoader}.
  * @since 1.3.0
  */
@@ -326,6 +512,8 @@ export interface GetDocumentLoaderOptions extends DocumentLoaderFactoryOptions {
  * Creates a JSON-LD document loader that utilizes the browser's `fetch` API.
  * At most 20 HTTP redirects and alternate document links are followed in total
  * per call.  Revisiting a URL within that chain throws a {@link FetchError}.
+ * Each call times out after 10 seconds by default; see
+ * {@link DocumentLoaderFactoryOptions.timeout}.
  *
  * The created loader preloads the below frequently used contexts by default
  * (unless `options.skipPreloadedContexts` is set to `true`):
@@ -346,9 +534,15 @@ export interface GetDocumentLoaderOptions extends DocumentLoaderFactoryOptions {
  * @since 1.3.0
  */
 export function getDocumentLoader(
-  { allowPrivateAddress, maxRedirection, skipPreloadedContexts, userAgent }:
-    GetDocumentLoaderOptions = {},
+  {
+    allowPrivateAddress,
+    maxRedirection,
+    skipPreloadedContexts,
+    timeout,
+    userAgent,
+  }: GetDocumentLoaderOptions = {},
 ): DocumentLoader {
+  const resolvedTimeout = resolveDocumentLoaderTimeout(timeout);
   const tracerProvider = trace.getTracerProvider();
   const tracer = tracerProvider.getTracer(metadata.name, metadata.version);
   const maximumRedirection = maxRedirection ?? DEFAULT_MAX_REDIRECTION;
@@ -391,6 +585,9 @@ export function getDocumentLoader(
         }
         throw error;
       }
+      // The DNS lookup cannot be aborted, so do not go on if the call was
+      // aborted or timed out in the meantime:
+      options?.signal?.throwIfAborted();
     }
     visited.add(currentUrl);
 
@@ -488,5 +685,8 @@ export function getDocumentLoader(
       },
     );
   }
-  return (url, options) => load(url, options);
+  return withDocumentLoaderTimeout(
+    (url, options) => load(url, options),
+    resolvedTimeout,
+  );
 }

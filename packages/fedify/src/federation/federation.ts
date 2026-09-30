@@ -1180,6 +1180,36 @@ export interface FederationOptions<TContextData> {
   userAgent?: GetUserAgentOptions | string;
 
   /**
+   * The timeout for each call of the built-in document loader, context
+   * loader, and authenticated document loader, e.g., when Fedify fetches
+   * a key to verify a signature.  The timeout is shared by all the steps of
+   * a call, including every redirect it follows, retries, and reading the
+   * response body.  It does not cover the time spent reading from or
+   * writing to the cache.
+   *
+   * A timed-out call throws a `FetchError` without a response, whose
+   * `cause` is a `DOMException` named `"TimeoutError"`, so that, e.g.,
+   * a key fetch that times out is reported as a `keyFetchError` and cached
+   * like other failures to fetch a key.
+   *
+   * It does not affect loaders made by
+   * {@link FederationOptions.documentLoaderFactory},
+   * {@link FederationOptions.contextLoaderFactory}, or
+   * {@link FederationOptions.authenticatedDocumentLoaderFactory}.
+   * Note that if only {@link FederationOptions.documentLoaderFactory} is
+   * set, it also makes context loaders.
+   *
+   * Set it to `null` to turn off the timeout.
+   *
+   * 10 seconds by default.
+   * @throws {RangeError} If the duration is not positive, is longer than
+   *                      about 24.8 days, or is given in calendar units
+   *                      such as months.
+   * @since 2.4.0
+   */
+  documentLoaderTimeout?: Temporal.Duration | Temporal.DurationLike | null;
+
+  /**
    * A callback that handles errors during outbox processing.  Note that this
    * callback can be called multiple times for the same activity, because
    * the delivery is retried according to the backoff schedule until it

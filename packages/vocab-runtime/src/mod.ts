@@ -15,6 +15,8 @@ export {
   type GetDocumentLoaderOptions,
   getRemoteDocument,
   type RemoteDocument,
+  resolveDocumentLoaderTimeout,
+  withDocumentLoaderTimeout,
 } from "./docloader.ts";
 export {
   type DidKeyVerificationMethod,

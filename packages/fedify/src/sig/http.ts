@@ -2141,12 +2141,14 @@ async function doubleKnockInternal(
   visited = new Set<string>(),
 ): Promise<Response> {
   const { specDeterminer, log, tracerProvider, signal } = options;
+  signal?.throwIfAborted();
   const maximumRedirection = options.maxRedirection ?? DEFAULT_MAX_REDIRECTION;
   visited.add(request.url);
   const origin = new URL(request.url).origin;
   const firstTrySpec: HttpMessageSignaturesSpec = specDeterminer == null
     ? "rfc9421"
     : await specDeterminer.determineSpec(origin);
+  signal?.throwIfAborted();
 
   // Get the request body once at the top level to avoid multiple clones
   const body = options.body !== undefined
@@ -2161,6 +2163,7 @@ async function doubleKnockInternal(
     identity.keyId,
     { spec: firstTrySpec, tracerProvider, body },
   );
+  signal?.throwIfAborted();
   log?.(signedRequest);
   let response = await fetchDoubleKnockRequest(request, signedRequest, signal);
   // Follow redirects manually to get the final URL:
@@ -2222,6 +2225,7 @@ async function doubleKnockInternal(
       let fulfilled = false;
       let challengeRequest: Request | undefined;
       for (const entry of entries) {
+        signal?.throwIfAborted();
         const rfc9421 = fulfillAcceptSignature(entry, localKeyId, localAlg);
         if (rfc9421 == null) continue;
         logger.debug(
@@ -2253,6 +2257,7 @@ async function doubleKnockInternal(
         }
       }
       if (fulfilled && challengeRequest != null) {
+        signal?.throwIfAborted();
         signedRequest = challengeRequest;
         log?.(signedRequest);
         response = await fetch(signedRequest, { redirect: "manual", signal });
@@ -2301,12 +2306,14 @@ async function doubleKnockInternal(
         statusText: response.statusText,
       },
     );
+    signal?.throwIfAborted();
     signedRequest = await signRequest(
       request,
       identity.privateKey,
       identity.keyId,
       { spec, tracerProvider, body },
     );
+    signal?.throwIfAborted();
     log?.(signedRequest);
     response = await fetchDoubleKnockRequest(request, signedRequest, signal);
     // Follow redirects manually to get the final URL:
