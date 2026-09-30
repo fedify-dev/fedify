@@ -1,0 +1,28 @@
+{
+  "implementation": "Mitra",
+  "version": "5.10.0",
+  "direction": "Mitra gateway to Fedify",
+  "capturedAt": "2026-09-30T14:47:04.185Z",
+  "source": {
+    "repository": "https://codeberg.org/silverpill/mitra",
+    "tag": "v5.10.0",
+    "commit": "17340ef09d4a902f301acdcfde094f5778d72f35",
+    "image": "codeberg.org/silverpill/mitra@sha256:4348ddea1d819f654cd3e6be4e955b3933d1d21807c6a9a8ef64eda4333f1d0a",
+    "binaryVersion": "mitra 5.10.0"
+  },
+  "httpKeyId": "http://127.0.0.1:18497/.well-known/apgateway/did:key:z6MkuLKdSc7GHbgu9zDC8sZEjSbhAn7GzoHKXxsgsGNPakpB/actor#main-key",
+  "sha256": {
+    "requestBody": "775a330bd8b4af20d4fffc12b0c033c3dc03febe47374b62e70a2f8d44aa37c9",
+    "actorBody": "f24c677b3854353c272c29164342f94f420b7570aaf2999d1ea179c7c24ba4bc"
+  },
+  "proofProvenance": "The portable actor, Create, and Note DID proofs were produced by the Fedify C2S client; Mitra forwarded the activity and added its own gateway HTTP Signature. This does not demonstrate a Mitra-authored DID proof.",
+  "observed": {
+    "independentHttpSignatureVerified": true,
+    "fedifyInboxStatus": 202,
+    "fedifyListenerType": "Create"
+  },
+  "replay": {
+    "httpTime": "Capture timestamp with normal verification time window",
+    "inboxTime": "HTTP timestamp disabled only for offline fixture replay; valid activity proofs bypass inbox HTTP signature verification"
+  }
+}

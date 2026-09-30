@@ -145,13 +145,23 @@ Mitra's embedded-object limit rejected the default actor context. This setup
 workaround was separate from the native server-to-server delivery. The
 [Fedify to Mitra fixture] records the results and limitations, including the
 portless HTTPS gateway used for the sender because Mitra's WebFinger lookup
-drops explicit gateway ports. Mitra to
-Fedify verification remains separate work, as does Mastodon compatibility.
+drops explicit gateway ports.
+
+In the other direction, Mitra forwarded a portable `Create` submitted to its
+gateway outbox by the Fedify client. Mitra signed the HTTP request with its
+Cavage RSA gateway key; the activity and embedded note retained the client's
+DID proofs. Fedify separately verified the HTTP Signature with the normal
+current-time freshness check, returned HTTP 202 from its proof-authenticated
+inbox, and dispatched the `Create` listener. The [Mitra to Fedify fixture]
+records this delivery. It tests Mitra's gateway transport of client-signed
+objects, rather than independent generation of DID proofs by Mitra.
+Mastodon compatibility remains unverified.
 
 [tootik fixture]: packages/fedify/test-vectors/fep-ef61/tootik-v0.25.4/README.md
 [tootik Follow fixture]: packages/fedify/test-vectors/fep-ef61/tootik-v0.25.4/follow/README.md
 [Fedify to tootik fixture]: packages/fedify/test-vectors/fep-ef61/tootik-v0.25.4/send/README.md
 [Fedify to Mitra fixture]: packages/fedify/test-vectors/fep-ef61/mitra-v5.10.0/send/README.md
+[Mitra to Fedify fixture]: packages/fedify/test-vectors/fep-ef61/mitra-v5.10.0/receive/README.md
 
 
 ActivityPub
