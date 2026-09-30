@@ -1,0 +1,13 @@
+{
+  "did": "did:key:z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN",
+  "actorId": "https://fedify.example/.well-known/apgateway/did:key:z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN/actor",
+  "proofId": "did:key:z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN#z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN",
+  "rsaId": "https://fedify.example/.well-known/apgateway/did:key:z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN/actor#main-key",
+  "edId": "https://fedify.example/.well-known/apgateway/did:key:z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN/actor#ed25519-key",
+  "noteId": "https://fedify.example/.well-known/apgateway/did:key:z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN/notes/native-inbox",
+  "createId": "https://fedify.example/.well-known/apgateway/did:key:z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN/creates/native-inbox",
+  "gateway": "https://fedify.example",
+  "recipient": "https://tootik.example/.well-known/apgateway/did:key:z6MkqoM6ybQGmFBWcwsDGbD927SQrnLGTHGJxTABHtWk7DVg/actor",
+  "startedAt": "2026-09-30T14:16:34.862Z",
+  "strategy": "Native default signObject contexts and Context.sendActivity normalizeExistingProofs:true; compatible HTTPS portable identifiers; transport-only remap with original Host"
+}

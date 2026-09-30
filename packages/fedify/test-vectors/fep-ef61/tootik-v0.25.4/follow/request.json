@@ -1,0 +1,39 @@
+{
+  "url": "https://fedify.example:18444/users/alice/inbox",
+  "method": "POST",
+  "headers": [
+    [
+      "accept-encoding",
+      "gzip"
+    ],
+    [
+      "content-length",
+      "1033"
+    ],
+    [
+      "content-type",
+      "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""
+    ],
+    [
+      "date",
+      "Wed, 30 Sep 2026 13:30:43 GMT"
+    ],
+    [
+      "digest",
+      "SHA-256=ZlDZCndYkYcCvPMpFmRZJE+QT1SVtwope+KPaV5U/r8="
+    ],
+    [
+      "host",
+      "fedify.example:18444"
+    ],
+    [
+      "signature",
+      "keyId=\"https://tootik.example/.well-known/apgateway/did:key:z6MkpWqhz4YAuBfC4ddjU49mGfs6CAuYcm243K5hW2YEGAyR/actor#main-key\",algorithm=\"rsa-sha256\",headers=\"(request-target) host date content-type digest\",signature=\"Rqd+mtn7knlPY5SXUE2Zz93ICDgBeamFu5v8SagsII8vYcBTX1gan+S0oded4+f4gLB0cs+xdlaqeAUBj3BtWYBJ/cEcCWDFp+bB0xhq/grE/xt4fkdgCCfXWSU2EnJuFCEmUoB1zRemNvTOHwZV4wDrkLVwQsIxrUIjPbMFTVGyMjnpY71Ydta3rdia7VW0VWK3gEC4FJ6YweFxV52dmcOTmA3Qj1h0riHHVEZXs5UOzPJLL6FJQoz8ezyjE7LanxSoXpeOSHa5K1fAo9i35eJr1/eQdFpHt7ftabpv3+6u6MhCFAt2lJs3XJbJZL8DYNkYwJNAYi9fqmH8JOVuMw==\""
+    ],
+    [
+      "user-agent",
+      "tootik/0.25.4"
+    ]
+  ],
+  "capturedAt": "2026-09-30T13:30:43.325Z"
+}

@@ -1,0 +1,18 @@
+{
+  "status": 401,
+  "headers": [
+    [
+      "content-length",
+      "174"
+    ],
+    [
+      "content-type",
+      "application/json"
+    ],
+    [
+      "date",
+      "Wed, 30 Sep 2026 14:16:35 GMT"
+    ]
+  ],
+  "body": "{\"error\":\"failed to verify proof using did:key:z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN#z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN: proof verification failed\"}\n"
+}

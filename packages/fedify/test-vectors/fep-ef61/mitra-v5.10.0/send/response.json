@@ -1,0 +1,26 @@
+{
+  "status": 202,
+  "headers": [
+    [
+      "content-length",
+      "0"
+    ],
+    [
+      "content-security-policy",
+      "base-uri 'self'; connect-src 'self' *; default-src 'none'; frame-ancestors 'none'; img-src 'self' data:; manifest-src 'self'; media-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self'"
+    ],
+    [
+      "date",
+      "Wed, 30 Sep 2026 14:54:41 GMT"
+    ],
+    [
+      "vary",
+      "Origin, Access-Control-Request-Method, Access-Control-Request-Headers"
+    ],
+    [
+      "x-content-type-options",
+      "nosniff"
+    ]
+  ],
+  "body": ""
+}

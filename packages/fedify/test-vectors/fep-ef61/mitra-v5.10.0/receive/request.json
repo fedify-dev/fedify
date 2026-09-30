@@ -1,0 +1,21 @@
+{
+  "url": "https://fedify.example:18444/users/alice/inbox",
+  "method": "POST",
+  "headers": [
+    ["accept", "*/*"],
+    ["content-length", "2409"],
+    [
+      "content-type",
+      "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""
+    ],
+    ["date", "Wed, 30 Sep 2026 14:47:04 GMT"],
+    ["digest", "SHA-256=d1ozC9i0ryDU//wSsMAzw9wD/r5HN0ti5wovjUSqN8k="],
+    ["host", "fedify.example:18444"],
+    [
+      "signature",
+      "keyId=\"http://127.0.0.1:18497/.well-known/apgateway/did:key:z6MkuLKdSc7GHbgu9zDC8sZEjSbhAn7GzoHKXxsgsGNPakpB/actor#main-key\",algorithm=\"rsa-sha256\",headers=\"(request-target) host date digest\",signature=\"PQHhIZUyBNsH779V+IB0Q08Pw8fsgq9RflyLExtYqNWwd/DXRyddBG1Y0RRCKrzigwFnW74rvuZpjU35gZzPaQA+TFxQvl8wBcPKLrYuc+NkIwGrCIpnFkUCglG6JagZ3cJfSqIB7DU7RIEvYfPjK9IchHug8ZghLnWhwLTE9UpKmtH/nJrU2Pd3n2Dn+EkfcYFe+n2KZxS7cjgPiRDRgei31WaCIIDRK4x7PvKq0VmrLwsNSKJzFsUp+KxiwoOHT1Ad9d6BPAJI8p+HqvWu0b2rMu4EK/nqHNwDYB7uYcundCYeQNI8wHmt2qxHxC2JuCuuV99WJxvXMSTbfUfgWg==\""
+    ],
+    ["user-agent", "Mitra 5.10.0; http://127.0.0.1:18497"]
+  ],
+  "capturedAt": "2026-09-30T14:47:04.185Z"
+}

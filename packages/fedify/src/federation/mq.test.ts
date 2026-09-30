@@ -158,7 +158,7 @@ function captureTimers(enqueue: () => Promise<void>): {
   globalThis.setTimeout = ((callback: () => void, delay?: number) => {
     timers.push({ callback, delay });
     return 0;
-  }) as typeof globalThis.setTimeout;
+  }) as unknown as typeof globalThis.setTimeout;
   try {
     return { timers, enqueued: enqueue() };
   } finally {

@@ -1,0 +1,129 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/activitystreams",
+    "https://w3id.org/fep/ef61",
+    "https://w3id.org/security/v1",
+    "https://w3id.org/security/data-integrity/v1",
+    "https://www.w3.org/ns/did/v1",
+    "https://w3id.org/security/multikey/v1",
+    "https://gotosocial.org/ns",
+    "https://w3id.org/fep/7aa9",
+    {
+      "alsoKnownAs": {
+        "@id": "as:alsoKnownAs",
+        "@type": "@id"
+      },
+      "featuredCollections": {
+        "@id": "https://w3id.org/fep/7aa9#featuredCollections",
+        "@type": "@id"
+      },
+      "manuallyApprovesFollowers": "as:manuallyApprovesFollowers",
+      "movedTo": {
+        "@id": "as:movedTo",
+        "@type": "@id"
+      },
+      "toot": "http://joinmastodon.org/ns#",
+      "Emoji": "toot:Emoji",
+      "featured": {
+        "@id": "toot:featured",
+        "@type": "@id"
+      },
+      "featuredTags": {
+        "@id": "toot:featuredTags",
+        "@type": "@id"
+      },
+      "discoverable": "toot:discoverable",
+      "suspended": "toot:suspended",
+      "memorial": "toot:memorial",
+      "indexable": "toot:indexable",
+      "schema": "http://schema.org#",
+      "PropertyValue": "schema:PropertyValue",
+      "value": "schema:value",
+      "misskey": "https://misskey-hub.net/ns#",
+      "_misskey_followedMessage": "misskey:_misskey_followedMessage",
+      "isCat": "misskey:isCat"
+    }
+  ],
+  "id": "https://fedify.example/.well-known/apgateway/did:key:z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN/actor",
+  "type": "Person",
+  "inbox": "https://fedify.example/.well-known/apgateway/did:key:z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN/actor/inbox",
+  "gateways": [
+    "https://fedify.example/"
+  ],
+  "assertionMethod": [
+    {
+      "id": "https://fedify.example/.well-known/apgateway/did:key:z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN/actor#ed25519-key",
+      "type": "Multikey",
+      "controller": "https://fedify.example/.well-known/apgateway/did:key:z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN/actor",
+      "publicKeyMultibase": "z6MkoHdcDxRg36BmHgY8riW5xW8NbZdbgKBMmXUoyDAN9LEX"
+    },
+    {
+      "id": "https://fedify.example/.well-known/apgateway/did:key:z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN/actor#main-key",
+      "type": "Multikey",
+      "controller": "https://fedify.example/.well-known/apgateway/did:key:z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN/actor",
+      "publicKeyMultibase": "zgghBUVkqmWS8e1j5pNkit2HZTY7551YeVnqt4nok9y5j6Qj4zHfHAiTCUWeiSfvfgC8cuknF4312kUZa79gAAwCyoXqA3PZppMxsGmdwRprmxYkGrZkfvmmLfzCvw6faQrsph6hiMvYtFEQUZTwd2n6CG9j7ZqiXA5NGN9WRu5MNqucWNpMTQZFSdPnow2GgMnGy7G5fDhg7BQtSPLCYdEWEipFWJuy6nKwmySnffKYnZQZQRzNysFg2xJ91ZceWVrAjFxHwjekyUe2CrkNM1vYq829SnCoXUfPBsA31ujzVuYBwjDZhCDXmJ87fbWFmDg6zmwyXLdGLRmGY3nbkU8Jwt4iyRNqCpjirKjEx54JQj2wahyxL6r2BBjMnuoisDXNi6vjztoE7WbmHDoMVoz9qGUv5s2b6VVvn7vNgHYjjvKjYLbrj2fhe6ccwycxphU5vphepKWTRCNa3DsC8HpCjBjq3YZ9da8P8JorDKWyZLRAUn6piCn1LMJpHDDbeun1YgdXw3sDhDk5bHfBUJ7y5Lgnob8HpVBcjDA7ttbBEtFJ1RYb7XFYJJcaersNhWAoiZtLaQucHdNoRWJF8ByRJPRp5wz9rk2tkzTQoA5PFdomjbgYhqdq77d9VMuUPHJ97117xGVffGjGFipt5ZEuNazcVfes8Z21XzHBR7D39GyYvGAs1aiFx4wmyLiCw21ATd6Uq2kN6EcHex"
+    }
+  ],
+  "proof": {
+    "type": "DataIntegrityProof",
+    "created": "2026-09-30T14:16:34.822909912Z",
+    "cryptosuite": "eddsa-jcs-2022",
+    "proofPurpose": "assertionMethod",
+    "proofValue": "z2qzHQQ9yWvvfJdZvcWRKU8gYBnKNNMzppy7J6pcr7tqWevY3PFr3RUAVrnK9yuCPh9oP27XWPXrmQjaPDEkJm6Yx",
+    "verificationMethod": "did:key:z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN#z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN",
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/fep/ef61",
+      "https://w3id.org/security/v1",
+      "https://w3id.org/security/data-integrity/v1",
+      "https://www.w3.org/ns/did/v1",
+      "https://w3id.org/security/multikey/v1",
+      "https://gotosocial.org/ns",
+      "https://w3id.org/fep/7aa9",
+      {
+        "alsoKnownAs": {
+          "@id": "as:alsoKnownAs",
+          "@type": "@id"
+        },
+        "featuredCollections": {
+          "@id": "https://w3id.org/fep/7aa9#featuredCollections",
+          "@type": "@id"
+        },
+        "manuallyApprovesFollowers": "as:manuallyApprovesFollowers",
+        "movedTo": {
+          "@id": "as:movedTo",
+          "@type": "@id"
+        },
+        "toot": "http://joinmastodon.org/ns#",
+        "Emoji": "toot:Emoji",
+        "featured": {
+          "@id": "toot:featured",
+          "@type": "@id"
+        },
+        "featuredTags": {
+          "@id": "toot:featuredTags",
+          "@type": "@id"
+        },
+        "discoverable": "toot:discoverable",
+        "suspended": "toot:suspended",
+        "memorial": "toot:memorial",
+        "indexable": "toot:indexable",
+        "schema": "http://schema.org#",
+        "PropertyValue": "schema:PropertyValue",
+        "value": "schema:value",
+        "misskey": "https://misskey-hub.net/ns#",
+        "_misskey_followedMessage": "misskey:_misskey_followedMessage",
+        "isCat": "misskey:isCat"
+      }
+    ]
+  },
+  "publicKey": {
+    "id": "https://fedify.example/.well-known/apgateway/did:key:z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN/actor#main-key",
+    "type": "CryptographicKey",
+    "owner": "https://fedify.example/.well-known/apgateway/did:key:z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN/actor",
+    "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA5PRU4GP79WfFGwBvSJ4V\ntAmtreYrzQuLY/whIprIZScL7t5lvvdyu8qX6odu0LsBozosQ1A/oyaCv00jyhjj\nupQdtJXhzW+WG9AuZT4rH4Z0r9u1bpGJT67msalb4ffDxS1d8Ipb1Xe/Hfs6Uu+d\niyINnR3S4qj1bOXLBfNt4lI1wfycFwFtmtqOsxLKqY0VMZ2d9yeYnAUYAOh/C82t\ng69nuXkeyyRJUNSBaY7ej6jnSPbJCpSsnYHzL/bE5h37vo0DUClV5ZPUGzFggDYK\nYC6py31LOEXIn94AV4xVSVpKrQEPeBHrcx4ejJuUVpA9s9L5OoLMcUyZS5OSs8ek\nM8Mj+LjCkakzsZWCusWstyebsszYNz1zq/yiXBiJJ0ypcbraYkltLJ5Ui8KSdH6e\n2r5zC951YifyJZp8p+qK+Z52ZGjbMsWlfwHAynZEn8F5Bqzd4Xlo4s8/mgYtJBIk\nKC4t4HgPXZSCH866wyOOJZz1m7jS5XwopX5s/ST7XzLVw9WpTqd2hqRGpAvCGR42\nM8JOcPqHCAi/KjN4Nyhj9e3TzkoETYYqzQvxCy0LeDi/dHr8EDbT7tF5rCAeglc9\nWWSBqpOnromClOWxX9HgklXvUmid4CkstoQzFb5H+uovtbLrPzMY9kokEXnG69UD\nVkq6SwoNVm0551D8M2smtf0CAwEAAQ==\n-----END PUBLIC KEY-----\n"
+  },
+  "name": "Native Fedify portable sender",
+  "outbox": "https://fedify.example/.well-known/apgateway/did:key:z6MkuVzJw5PGsWVBkEtE7k2vsNqCgWwnBm9iBFAVGmzfCjwN/actor/outbox",
+  "preferredUsername": "fedifyreverse"
+}

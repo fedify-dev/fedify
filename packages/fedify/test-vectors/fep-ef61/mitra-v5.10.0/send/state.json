@@ -1,0 +1,16 @@
+{
+  "senderDid": "did:key:z6MkprFq1ktAGdazKPpRaCJg11dHcRtjf8ZPXMvP3uauVw2f",
+  "recipientDid": "did:key:z6MkuLKdSc7GHbgu9zDC8sZEjSbhAn7GzoHKXxsgsGNPakpB",
+  "actorId": "https://fedify.example/.well-known/apgateway/did:key:z6MkprFq1ktAGdazKPpRaCJg11dHcRtjf8ZPXMvP3uauVw2f/actor",
+  "recipientId": "ap+ef61://did%3Akey%3Az6MkuLKdSc7GHbgu9zDC8sZEjSbhAn7GzoHKXxsgsGNPakpB/actor",
+  "inbox": "http://127.0.0.1:18497/.well-known/apgateway/did:key:z6MkuLKdSc7GHbgu9zDC8sZEjSbhAn7GzoHKXxsgsGNPakpB/actor/inbox",
+  "proofId": "did:key:z6MkprFq1ktAGdazKPpRaCJg11dHcRtjf8ZPXMvP3uauVw2f#z6MkprFq1ktAGdazKPpRaCJg11dHcRtjf8ZPXMvP3uauVw2f",
+  "rsaId": "https://fedify.example/.well-known/apgateway/did:key:z6MkprFq1ktAGdazKPpRaCJg11dHcRtjf8ZPXMvP3uauVw2f/actor#main-key",
+  "edId": "https://fedify.example/.well-known/apgateway/did:key:z6MkprFq1ktAGdazKPpRaCJg11dHcRtjf8ZPXMvP3uauVw2f/actor#ed25519-key",
+  "noteId": "https://fedify.example/.well-known/apgateway/did:key:z6MkprFq1ktAGdazKPpRaCJg11dHcRtjf8ZPXMvP3uauVw2f/notes/distinct-native-inbox",
+  "createId": "https://fedify.example/.well-known/apgateway/did:key:z6MkprFq1ktAGdazKPpRaCJg11dHcRtjf8ZPXMvP3uauVw2f/creates/distinct-native-inbox",
+  "gateway": "https://fedify.example",
+  "mitra": "http://127.0.0.1:18497",
+  "startedAt": "2026-09-30T14:54:41.273Z",
+  "strategy": "Unregistered distinct native Fedify Person B to registered Mitra portable recipient A; default signObject contexts; public normalizeExistingProofs:true; no JSON mutation"
+}

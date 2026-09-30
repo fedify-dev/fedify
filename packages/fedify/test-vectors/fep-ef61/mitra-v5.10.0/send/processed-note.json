@@ -1,0 +1,92 @@
+{
+  "capturedAt": "2026-09-30T14:55:52.028305+00:00",
+  "query": "SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) FROM (SELECT object_id,object_data,post_id IS NOT NULL AS has_processed_post,created_at FROM activitypub_object WHERE object_id = 'ap://did:key:z6MkprFq1ktAGdazKPpRaCJg11dHcRtjf8ZPXMvP3uauVw2f/notes/distinct-native-inbox') t",
+  "rows": [
+    {
+      "object_id": "ap://did:key:z6MkprFq1ktAGdazKPpRaCJg11dHcRtjf8ZPXMvP3uauVw2f/notes/distinct-native-inbox",
+      "object_data": {
+        "id": "https://fedify.example/.well-known/apgateway/did:key:z6MkprFq1ktAGdazKPpRaCJg11dHcRtjf8ZPXMvP3uauVw2f/notes/distinct-native-inbox",
+        "to": [
+          "https://www.w3.org/ns/activitystreams#Public",
+          "ap+ef61://did:key:z6MkuLKdSc7GHbgu9zDC8sZEjSbhAn7GzoHKXxsgsGNPakpB/actor"
+        ],
+        "tag": {
+          "href": "http://127.0.0.1:18497/.well-known/apgateway/did:key:z6MkuLKdSc7GHbgu9zDC8sZEjSbhAn7GzoHKXxsgsGNPakpB/actor",
+          "name": "@recipient",
+          "type": "Mention"
+        },
+        "type": "Note",
+        "proof": {
+          "type": "DataIntegrityProof",
+          "created": "2026-09-30T14:54:41.259099121Z",
+          "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            "https://w3id.org/security/data-integrity/v1",
+            "https://gotosocial.org/ns",
+            {
+              "toot": "http://joinmastodon.org/ns#",
+              "Emoji": "toot:Emoji",
+              "quote": {
+                "@id": "https://w3id.org/fep/044f#quote",
+                "@type": "@id"
+              },
+              "Hashtag": "as:Hashtag",
+              "misskey": "https://misskey-hub.net/ns#",
+              "fedibird": "http://fedibird.com/ns#",
+              "quoteUri": "fedibird:quoteUri",
+              "quoteUrl": "as:quoteUrl",
+              "sensitive": "as:sensitive",
+              "_misskey_quote": "misskey:_misskey_quote",
+              "emojiReactions": {
+                "@id": "fedibird:emojiReactions",
+                "@type": "@id"
+              },
+              "QuoteAuthorization": "https://w3id.org/fep/044f#QuoteAuthorization",
+              "quoteAuthorization": {
+                "@id": "https://w3id.org/fep/044f#quoteAuthorization",
+                "@type": "@id"
+              }
+            }
+          ],
+          "proofValue": "z3R9SJKwgDrpPUeiiLNP9gkQStLfpLSoyFAPAi3NF17Pk6nqJGrs3ZrprA9gcd8eWQkmrYXc5Cry2tFqDgHtDL3Ru",
+          "cryptosuite": "eddsa-jcs-2022",
+          "proofPurpose": "assertionMethod",
+          "verificationMethod": "did:key:z6MkprFq1ktAGdazKPpRaCJg11dHcRtjf8ZPXMvP3uauVw2f#z6MkprFq1ktAGdazKPpRaCJg11dHcRtjf8ZPXMvP3uauVw2f"
+        },
+        "content": "<p>Distinct Fedify portable actor to live Mitra recipient.</p>",
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          "https://w3id.org/security/data-integrity/v1",
+          "https://gotosocial.org/ns",
+          {
+            "toot": "http://joinmastodon.org/ns#",
+            "Emoji": "toot:Emoji",
+            "quote": {
+              "@id": "https://w3id.org/fep/044f#quote",
+              "@type": "@id"
+            },
+            "Hashtag": "as:Hashtag",
+            "misskey": "https://misskey-hub.net/ns#",
+            "fedibird": "http://fedibird.com/ns#",
+            "quoteUri": "fedibird:quoteUri",
+            "quoteUrl": "as:quoteUrl",
+            "sensitive": "as:sensitive",
+            "_misskey_quote": "misskey:_misskey_quote",
+            "emojiReactions": {
+              "@id": "fedibird:emojiReactions",
+              "@type": "@id"
+            },
+            "QuoteAuthorization": "https://w3id.org/fep/044f#QuoteAuthorization",
+            "quoteAuthorization": {
+              "@id": "https://w3id.org/fep/044f#quoteAuthorization",
+              "@type": "@id"
+            }
+          }
+        ],
+        "attributedTo": "https://fedify.example/.well-known/apgateway/did:key:z6MkprFq1ktAGdazKPpRaCJg11dHcRtjf8ZPXMvP3uauVw2f/actor"
+      },
+      "has_processed_post": true,
+      "created_at": "2026-09-30T14:54:42.251223+00:00"
+    }
+  ]
+}

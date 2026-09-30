@@ -1,0 +1,26 @@
+{
+  "status": 400,
+  "headers": [
+    [
+      "content-length",
+      "19"
+    ],
+    [
+      "content-security-policy",
+      "base-uri 'self'; connect-src 'self' *; default-src 'none'; frame-ancestors 'none'; img-src 'self' data:; manifest-src 'self'; media-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self'"
+    ],
+    [
+      "date",
+      "Wed, 30 Sep 2026 13:36:30 GMT"
+    ],
+    [
+      "vary",
+      "Origin, Access-Control-Request-Method, Access-Control-Request-Headers"
+    ],
+    [
+      "x-content-type-options",
+      "nosniff"
+    ]
+  ],
+  "body": "invalid gateway URL"
+}

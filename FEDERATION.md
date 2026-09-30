@@ -30,6 +30,7 @@ Supported FEPs
  -  [FEP-9091][]: Export Actor Service Endpoint
  -  [FEP-f1d5][]: NodeInfo in Fediverse Software
  -  [FEP-8b32][]: Object Integrity Proofs
+ -  [FEP-ef61][]: Portable objects
  -  [FEP-521a][]: Representing actor's public keys
  -  [FEP-5feb][]: Search indexing consent for actors
  -  [FEP-fe34][]: Origin-based security model
@@ -49,6 +50,7 @@ Supported FEPs
 [FEP-9091]: https://w3id.org/fep/9091
 [FEP-f1d5]: https://w3id.org/fep/f1d5
 [FEP-8b32]: https://w3id.org/fep/8b32
+[FEP-ef61]: https://w3id.org/fep/ef61
 [FEP-521a]: https://w3id.org/fep/521a
 [FEP-5feb]: https://w3id.org/fep/5feb
 [FEP-fe34]: https://w3id.org/fep/fe34
@@ -60,7 +62,6 @@ Supported FEPs
 [FEP-22cd]: https://w3id.org/fep/22cd
 [FEP-0837]: https://w3id.org/fep/0837
 [FEP-ae0c]: https://w3id.org/fep/ae0c
-[FEP-ef61]: https://w3id.org/fep/ef61
 [FEP-ef61 section]: #fep-ef61
 
 
@@ -89,6 +90,78 @@ profile.
 
 [FEP-ae97]: https://w3id.org/fep/ae97
 [portable objects]: https://fedify.dev/manual/portable
+
+
+FEP-ef61 interoperability
+-------------------------
+
+Fedify accepts the portable `Application` actor captured from tootik v0.25.4
+(commit `5ce4b7fe074d7c385808be387ffcda7040842a19`), including its HTTPS
+compatible identifier and `eddsa-jcs-2022` Object Integrity Proof. The actor
+omits the JSON-LD mapping for `gateways`; Fedify reads that list and requires
+JCS proofs to authenticate the original JSON. The unchanged response and
+capture procedure are recorded in the [tootik fixture].
+
+In a separate local HTTPS test, a freshly registered portable tootik `Person`
+sent a `Follow` to a Fedify inbox. Fedify independently verified the original
+Cavage RSA HTTP Signature, returned HTTP 202, and dispatched the activity to
+the `Follow` listener. The inbox authenticated the activity's original
+`eddsa-jcs-2022` proof; proof-authenticated delivery does not itself check the
+HTTP Signature. The exact request, actor response, and procedure are recorded
+in the [tootik Follow fixture]. Offline replay uses the captured time to check
+the HTTP Signature's freshness; the live request used the normal current-time
+check.
+
+In the reverse direction, tootik v0.25.4 accepted a Fedify-generated portable
+`Create` and stored its embedded `Note` with the expected ID, author, and
+content. Fedify generated the actor and object proofs and sent the activity
+through `Context.sendActivity()`. The first request received HTTP 401 with
+`actor is too young`; the automatic retry received HTTP 202, followed by
+database confirmation of processing. Changing the embedded note's content
+without updating its proofs received HTTP 401. The [Fedify to tootik fixture]
+records the original output, responses, and stored note.
+
+This reverse test used HTTPS gateway origins without explicit ports: tootik
+v0.25.4 does not recognize compatible actor IDs with an explicit port. Its
+inbox authenticated the activity through its proof and skipped HTTP Signature
+verification. The request carried a gateway RSA signature, but this result
+does not establish independent acceptance of that signature by tootik.
+
+Mitra v5.10.0 (commit `17340ef09d4a902f301acdcfde094f5778d72f35`) accepted
+a Fedify-generated portable actor registration and processed its setup
+activities. A separate portable Fedify sender, which had no registered Mitra
+account, then delivered a `Create` to the registered actor's inbox. This used
+native Fedify objects, default signing contexts, and `Context.sendActivity()`
+with `normalizeExistingProofs: true`. Mitra returned HTTP 202 on the first RFC
+9421 RSA request and its worker stored the sender's activity in the recipient's
+inbox. Corrupting the HTTP Signature returned HTTP 401. This required
+serializing `gateways` as origins without a trailing slash; Mitra rejected the
+previous spelling with `invalid gateway URL`.
+
+Gateway registration used a separate scratch client for Mitra's FEP-ae97
+endpoint; Fedify does not provide that client. Its setup `Update` used a
+compact context and Fedify's existing internal outgoing normalizer because
+Mitra's embedded-object limit rejected the default actor context. This setup
+workaround was separate from the native server-to-server delivery. The
+[Fedify to Mitra fixture] records the results and limitations, including the
+portless HTTPS gateway used for the sender because Mitra's WebFinger lookup
+drops explicit gateway ports.
+
+In the other direction, Mitra forwarded a portable `Create` submitted to its
+gateway outbox by the Fedify client. Mitra signed the HTTP request with its
+Cavage RSA gateway key; the activity and embedded note retained the client's
+DID proofs. Fedify separately verified the HTTP Signature with the normal
+current-time freshness check, returned HTTP 202 from its proof-authenticated
+inbox, and dispatched the `Create` listener. The [Mitra to Fedify fixture]
+records this delivery. It tests Mitra's gateway transport of client-signed
+objects, rather than independent generation of DID proofs by Mitra.
+Mastodon compatibility remains unverified.
+
+[tootik fixture]: packages/fedify/test-vectors/fep-ef61/tootik-v0.25.4/README.md
+[tootik Follow fixture]: packages/fedify/test-vectors/fep-ef61/tootik-v0.25.4/follow/README.md
+[Fedify to tootik fixture]: packages/fedify/test-vectors/fep-ef61/tootik-v0.25.4/send/README.md
+[Fedify to Mitra fixture]: packages/fedify/test-vectors/fep-ef61/mitra-v5.10.0/send/README.md
+[Mitra to Fedify fixture]: packages/fedify/test-vectors/fep-ef61/mitra-v5.10.0/receive/README.md
 
 
 ActivityPub

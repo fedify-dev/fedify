@@ -1,0 +1,16 @@
+{
+  "capturedAt": "2026-09-30T14:55:03.982205+00:00",
+  "query": "SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) FROM (SELECT actor_id,identity_key,portable_user_id IS NOT NULL AS has_portable_account FROM actor_profile WHERE identity_key IN ('did:key:z6MkprFq1ktAGdazKPpRaCJg11dHcRtjf8ZPXMvP3uauVw2f','did:key:z6MkuLKdSc7GHbgu9zDC8sZEjSbhAn7GzoHKXxsgsGNPakpB') OR actor_id LIKE '%did:key:z6MkprFq1ktAGdazKPpRaCJg11dHcRtjf8ZPXMvP3uauVw2f%' OR actor_id LIKE '%did:key:z6MkuLKdSc7GHbgu9zDC8sZEjSbhAn7GzoHKXxsgsGNPakpB%') t",
+  "rows": [
+    {
+      "actor_id": "ap://did:key:z6MkuLKdSc7GHbgu9zDC8sZEjSbhAn7GzoHKXxsgsGNPakpB/actor",
+      "identity_key": null,
+      "has_portable_account": true
+    },
+    {
+      "actor_id": "ap://did:key:z6MkprFq1ktAGdazKPpRaCJg11dHcRtjf8ZPXMvP3uauVw2f/actor",
+      "identity_key": null,
+      "has_portable_account": false
+    }
+  ]
+}

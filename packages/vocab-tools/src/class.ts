@@ -16,6 +16,7 @@ const INTERNAL_RUNTIME_IMPORTS = [
   "compactJsonLdCache",
   "createScopedContextLoader",
   "getJsonLdContext",
+  "getPortableActorGateways",
   "isTrustedIriOrigin",
   "normalizeJsonLdIris",
 ].join(",\n    ");

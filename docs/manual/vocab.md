@@ -265,6 +265,16 @@ const actor = new Person({
 ~~~~
 
 Each gateway must be an HTTP(S) base URI with no path, query, or fragment.
+Newly serialized gateway lists use origins without a trailing slash, while
+the in-memory `URL` values retain their root path. A parsed actor's default
+JSON output can retain the cached spelling of its gateways. Keep the received
+JSON when verifying existing proofs.
+
+For portable actors with inbox and outbox properties, Fedify also reads an
+unmapped `gateways` term under the ActivityStreams context, as emitted by
+tootik v0.25.4. Explicit JSON-LD mappings take precedence. Parsing this list
+does not authenticate it; use portable object verification before trusting
+the actor or its gateways.
 
 Software that does not understand portable IRIs can still refer to portable
 objects through *compatible identifiers*: HTTP(S) URLs under a gateway's

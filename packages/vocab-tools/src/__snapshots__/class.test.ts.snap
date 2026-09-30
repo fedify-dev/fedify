@@ -32,6 +32,7 @@ import {
     compactJsonLdCache,
     createScopedContextLoader,
     getJsonLdContext,
+    getPortableActorGateways,
     isTrustedIriOrigin,
     normalizeJsonLdIris
 } from "@fedify/vocab-runtime/internal/jsonld-cache";
@@ -69291,7 +69292,7 @@ get gateways(): (URL)[] {
       compactItems = [];
       for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
         const item = (
-      formatIri(v)
+      v.origin
         );
         compactItems.push(item);
       }
@@ -69800,7 +69801,7 @@ get gateways(): (URL)[] {
     array = [];
     for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
       let element = (
-    { "@id": formatIri(v) }
+    { "@id": v.origin }
       );
       if (Array.isArray(element)) {
         if (element.length < 1) continue;
@@ -70539,7 +70540,7 @@ get gateways(): (URL)[] {
     instance.#_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod = _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod;
     const _hQiaHhZP8hqxckxTBrpsGNs57E3: (URL)[] = [];
 
-    let _hQiaHhZP8hqxckxTBrpsGNs57E3__array = values["https://w3id.org/fep/ef61/gateways"];
+    let _hQiaHhZP8hqxckxTBrpsGNs57E3__array = getPortableActorGateways(values) as typeof values[string];
     
     for (
       const v of _hQiaHhZP8hqxckxTBrpsGNs57E3__array == null
@@ -90389,7 +90390,7 @@ get gateways(): (URL)[] {
       compactItems = [];
       for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
         const item = (
-      formatIri(v)
+      v.origin
         );
         compactItems.push(item);
       }
@@ -90898,7 +90899,7 @@ get gateways(): (URL)[] {
     array = [];
     for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
       let element = (
-    { "@id": formatIri(v) }
+    { "@id": v.origin }
       );
       if (Array.isArray(element)) {
         if (element.length < 1) continue;
@@ -91637,7 +91638,7 @@ get gateways(): (URL)[] {
     instance.#_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod = _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod;
     const _hQiaHhZP8hqxckxTBrpsGNs57E3: (URL)[] = [];
 
-    let _hQiaHhZP8hqxckxTBrpsGNs57E3__array = values["https://w3id.org/fep/ef61/gateways"];
+    let _hQiaHhZP8hqxckxTBrpsGNs57E3__array = getPortableActorGateways(values) as typeof values[string];
     
     for (
       const v of _hQiaHhZP8hqxckxTBrpsGNs57E3__array == null
@@ -110116,7 +110117,7 @@ get gateways(): (URL)[] {
       compactItems = [];
       for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
         const item = (
-      formatIri(v)
+      v.origin
         );
         compactItems.push(item);
       }
@@ -110625,7 +110626,7 @@ get gateways(): (URL)[] {
     array = [];
     for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
       let element = (
-    { "@id": formatIri(v) }
+    { "@id": v.origin }
       );
       if (Array.isArray(element)) {
         if (element.length < 1) continue;
@@ -111364,7 +111365,7 @@ get gateways(): (URL)[] {
     instance.#_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod = _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod;
     const _hQiaHhZP8hqxckxTBrpsGNs57E3: (URL)[] = [];
 
-    let _hQiaHhZP8hqxckxTBrpsGNs57E3__array = values["https://w3id.org/fep/ef61/gateways"];
+    let _hQiaHhZP8hqxckxTBrpsGNs57E3__array = getPortableActorGateways(values) as typeof values[string];
     
     for (
       const v of _hQiaHhZP8hqxckxTBrpsGNs57E3__array == null
@@ -121139,7 +121140,7 @@ get gateways(): (URL)[] {
       compactItems = [];
       for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
         const item = (
-      formatIri(v)
+      v.origin
         );
         compactItems.push(item);
       }
@@ -121648,7 +121649,7 @@ get gateways(): (URL)[] {
     array = [];
     for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
       let element = (
-    { "@id": formatIri(v) }
+    { "@id": v.origin }
       );
       if (Array.isArray(element)) {
         if (element.length < 1) continue;
@@ -122387,7 +122388,7 @@ get gateways(): (URL)[] {
     instance.#_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod = _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod;
     const _hQiaHhZP8hqxckxTBrpsGNs57E3: (URL)[] = [];
 
-    let _hQiaHhZP8hqxckxTBrpsGNs57E3__array = values["https://w3id.org/fep/ef61/gateways"];
+    let _hQiaHhZP8hqxckxTBrpsGNs57E3__array = getPortableActorGateways(values) as typeof values[string];
     
     for (
       const v of _hQiaHhZP8hqxckxTBrpsGNs57E3__array == null
@@ -140572,7 +140573,7 @@ get gateways(): (URL)[] {
       compactItems = [];
       for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
         const item = (
-      formatIri(v)
+      v.origin
         );
         compactItems.push(item);
       }
@@ -141081,7 +141082,7 @@ get gateways(): (URL)[] {
     array = [];
     for (const v of this.#_hQiaHhZP8hqxckxTBrpsGNs57E3) {
       let element = (
-    { "@id": formatIri(v) }
+    { "@id": v.origin }
       );
       if (Array.isArray(element)) {
         if (element.length < 1) continue;
@@ -141820,7 +141821,7 @@ get gateways(): (URL)[] {
     instance.#_4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod = _4EHQFWZSz1k1d4LmPrQiMba2GbP3_assertionMethod;
     const _hQiaHhZP8hqxckxTBrpsGNs57E3: (URL)[] = [];
 
-    let _hQiaHhZP8hqxckxTBrpsGNs57E3__array = values["https://w3id.org/fep/ef61/gateways"];
+    let _hQiaHhZP8hqxckxTBrpsGNs57E3__array = getPortableActorGateways(values) as typeof values[string];
     
     for (
       const v of _hQiaHhZP8hqxckxTBrpsGNs57E3__array == null

@@ -3,11 +3,100 @@ import { test } from "node:test";
 import {
   compactJsonLdCache,
   getJsonLdContext,
+  getPortableActorGateways,
   isTrustedIriOrigin,
   normalizeJsonLdIris,
 } from "./internal/jsonld-cache.ts";
 import jsonld from "./jsonld.ts";
 import { parseIri } from "./url.ts";
+
+test("getPortableActorGateways() preserves unmapped portable actor gateways", () => {
+  const gateways = [
+    { "@value": "https://second.example" },
+    { "@value": "https://first.example" },
+    { "@value": "not a valid gateway" },
+  ];
+  const ids = [
+    "ap://did:key:z6Mkabc/actor",
+    "ap+ef61://did:key:z6Mkabc/actor",
+    "https://gateway.example/.well-known/apgateway/did:key:z6Mkabc/actor",
+  ];
+  for (const id of ids) {
+    const node = {
+      "@id": id,
+      "http://www.w3.org/ns/ldp#inbox": [{ "@id": `${id}/inbox` }],
+      "https://www.w3.org/ns/activitystreams#outbox": [
+        { "@id": `${id}/outbox` },
+      ],
+      "_:gateways": gateways,
+    };
+    const original = structuredClone(node);
+    strictEqual(getPortableActorGateways(node), gateways, id);
+    strictEqual(getPortableActorGateways(node, false), undefined, id);
+    deepStrictEqual(node, original);
+  }
+});
+
+test("getPortableActorGateways() gives mapped gateways precedence", () => {
+  const canonical = "https://w3id.org/fep/ef61/gateways";
+  const gateways = [{ "@list": [{ "@id": "https://gateway.example" }] }];
+  const node: Record<string, unknown> = {
+    "@id": "ap://did:key:z6Mkabc/actor",
+    "http://www.w3.org/ns/ldp#inbox": [],
+    "https://www.w3.org/ns/activitystreams#outbox": [],
+    "_:gateways": [{ "@value": "https://other.example" }],
+    [canonical]: gateways,
+  };
+  strictEqual(getPortableActorGateways(node), gateways);
+  strictEqual(getPortableActorGateways(node, false), gateways);
+  for (const value of [undefined, null, {}, "https://gateway.example", []]) {
+    node[canonical] = value;
+    strictEqual(
+      getPortableActorGateways(node),
+      Array.isArray(value) ? value : undefined,
+    );
+  }
+});
+
+test("getPortableActorGateways() limits unmapped terms to portable actors", () => {
+  const node: Record<string, unknown> = {
+    "@id": "ap://did:key:z6Mkabc/actor",
+    "http://www.w3.org/ns/ldp#inbox": [],
+    "https://www.w3.org/ns/activitystreams#outbox": [],
+    "_:gateways": [{ "@value": "https://gateway.example" }],
+  };
+  for (
+    const id of [
+      undefined,
+      1,
+      "not an IRI",
+      "https://ordinary.example/actor",
+      "https://gateway.example/.well-known/apgateway/not-a-did/actor",
+      "https://user@gateway.example/.well-known/apgateway/did:key:z6Mkabc/actor",
+    ]
+  ) {
+    strictEqual(getPortableActorGateways({ ...node, "@id": id }), undefined);
+  }
+  for (
+    const property of [
+      "http://www.w3.org/ns/ldp#inbox",
+      "https://www.w3.org/ns/activitystreams#outbox",
+    ]
+  ) {
+    const nonActor = { ...node };
+    delete nonActor[property];
+    strictEqual(getPortableActorGateways(nonActor), undefined);
+  }
+  strictEqual(
+    getPortableActorGateways({ ...node, "_:gateways": null }),
+    undefined,
+  );
+  const empty: unknown[] = [];
+  strictEqual(
+    getPortableActorGateways({ ...node, "_:gateways": empty }),
+    empty,
+  );
+});
 
 test("isTrustedIriOrigin() trusts same portable IRI origins", () => {
   ok(isTrustedIriOrigin(

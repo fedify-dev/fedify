@@ -1,0 +1,70 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/activitystreams",
+    "https://w3id.org/security/data-integrity/v1",
+    "https://w3id.org/security/v1"
+  ],
+  "id": "https://tootik.example/.well-known/apgateway/did:key:z6MkqoM6ybQGmFBWcwsDGbD927SQrnLGTHGJxTABHtWk7DVg/actor",
+  "type": "Application",
+  "inbox": "https://tootik.example/.well-known/apgateway/did:key:z6MkqoM6ybQGmFBWcwsDGbD927SQrnLGTHGJxTABHtWk7DVg/actor/inbox",
+  "outbox": "https://tootik.example/.well-known/apgateway/did:key:z6MkqoM6ybQGmFBWcwsDGbD927SQrnLGTHGJxTABHtWk7DVg/actor/outbox",
+  "preferredUsername": "actor",
+  "followers": "https://tootik.example/.well-known/apgateway/did:key:z6MkqoM6ybQGmFBWcwsDGbD927SQrnLGTHGJxTABHtWk7DVg/actor/followers",
+  "publicKey": {
+    "id": "https://tootik.example/.well-known/apgateway/did:key:z6MkqoM6ybQGmFBWcwsDGbD927SQrnLGTHGJxTABHtWk7DVg/actor#main-key",
+    "owner": "https://tootik.example/.well-known/apgateway/did:key:z6MkqoM6ybQGmFBWcwsDGbD927SQrnLGTHGJxTABHtWk7DVg/actor",
+    "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvOrxaDyQG0jyLQ6OlLYi\n5GabA3ieKKQi5Z3fS/yVDxV9WEyu79FzCC+uTZQXXXqzljI4ziTA4GmaITRHwGcU\nji5bYK2y/fvfAQLhwhJotbZF4u4ZeWtyXN8Ds7IQ+Dr67ci7K/htsMNSysAMF/+u\n5witcW5hdJrWSAIZEg/17UVQO+0EbuPXL5o6fRHm/t1GLchvFCo1pcyV3G+y3q2E\nOx8FQTIkVPDwPNBzfX21YbBOIDo6AlbqSjB9tWKZePkUymX/JX4FARK3aVJvstUt\neOX7hPxp8TvjGjA7nzLDf0E6kntFYzjaMG0qumjXftAQZUFZHL7eGCGOaIAgm68Z\nAQIDAQAB\n-----END PUBLIC KEY-----\n"
+  },
+  "icon": [
+    {
+      "type": "Image",
+      "mediaType": "image/gif",
+      "url": "https://tootik.example/.well-known/apgateway/did:key:z6MkqoM6ybQGmFBWcwsDGbD927SQrnLGTHGJxTABHtWk7DVg/actor/icon.gif"
+    }
+  ],
+  "manuallyApprovesFollowers": false,
+  "assertionMethod": [
+    {
+      "id": "https://tootik.example/.well-known/apgateway/did:key:z6MkqoM6ybQGmFBWcwsDGbD927SQrnLGTHGJxTABHtWk7DVg/actor#ed25519-key",
+      "type": "Multikey",
+      "controller": "https://tootik.example/.well-known/apgateway/did:key:z6MkqoM6ybQGmFBWcwsDGbD927SQrnLGTHGJxTABHtWk7DVg/actor",
+      "publicKeyMultibase": "z6MkqoM6ybQGmFBWcwsDGbD927SQrnLGTHGJxTABHtWk7DVg"
+    },
+    {
+      "id": "https://tootik.example/.well-known/apgateway/did:key:z6MkqoM6ybQGmFBWcwsDGbD927SQrnLGTHGJxTABHtWk7DVg/actor#ml-dsa-44-key",
+      "type": "Multikey",
+      "controller": "https://tootik.example/.well-known/apgateway/did:key:z6MkqoM6ybQGmFBWcwsDGbD927SQrnLGTHGJxTABHtWk7DVg/actor",
+      "publicKeyMultibase": "ukCTy_ExYm-3IjZfDghrCf0O1P76JI3iS6sOVeu0WISMvS0w-0cLogJ9RK_cZivJFOHadKtTHT2IUGufuhLpPnxhymkQnmagnryXEexIvK-Vpl4Q4CV6jldBib_yXSYIZJnIofLK-BfB8itzLns95VMAFI3j_aqpoj4-02sSvcIfW7dQzmk__73LVux8HchjzvumnVhhJtNwnM2IeS60Yo6XQqqDrFfaOJ6-7dEIfabzwGwiJTYjtpn6pwjlg7uvP4b1rEyBosb9jgpuH2tBBxjbTceARNdnndrj6n5LnAPh0V5Zs2cs2Hc097lB_exY_ICOEzZ9Go654IKy9AGcKwDxaLl_BMvIo7YYDSlK8h86q2K6pBVOa1MPx2ixFCrA9HdlNPeqSs5giI_yWmkxR2_Tsm_0WbQ6ZOR7j7Ra4srqJVPGTAIvBpW2hlsOriiL73xjuOMptoQq3-23epnF-hIKVTa5vjSer_7V_UR-qoXHqWfMgAaGXIviMM8CGc4-_12ktGZPA-Okvqf5f3K6_0tIjOCh3zZN1CHblH-rstgXMk5tH7lK22wV2IfUz_i7o98Wd4hm10yUrFu_-cPrL7unhRBpiDVeKtIJ2F4t6xuXypRjV-bN282U1Zve5daiMvT0xb07T6Yfn34l01_HkklxywcgOKVZ8bpXJEaEg9lfozqTTvp2DuvkMlYqIvzoiLa5YbUKQb0g8Bio049_i79R3KDfl6K8aIqLPNtzS3q06BdpP4jflfpm6JXzInV_SX-WnM4xQ2eJJj7N7hsnDV9Tt1oWs5yzQyoi7v0pJSbJpPsnzdlNYyqJPrH8jHXuaq74T0kxX7wGLDNFMAVnOWiW8aIiqRthKOrQ7fxZGBWiREmjOWDtwjmWmay3JFkG6D0nby78zPMnTROPU9I6ZeGIjdZRsi5Mc1eXqpUiqnncuXtaOa1nzUAU5MmMEvj441R8lPk1ax2F0XYbxHWCmUSg3y4K8JQwbn2DBryvBV8KT9EcDibqdSZ9hz158uIXJtJuK70RiQw1JC3iI6tB5A_rnprpt8ooyPXUsLNYyS-dXN_oyrv8eWAWrVh4v3XAwhwajkq9jknzY0V-TNpX37KWWVfPg_z7t9qGwIx_RHND2FjLjrrnm0t-q7dAdWjeVBHXzpaU3eLIzCJRORbPFCsjkbSiiBKnCurBOxXUe4tp-vxzIDkICfKn93vJrs09WpELN93B1CaauiwWEstcjrvcB_2cz_7Z3KmRoOhErJ08G4lxApru4Xuwp4GvPys1uxO7ntBONLzkHsWXd6jwwC0jQwRc8J2lrlljYTeRIhYKiRIjwo47VigHnr3Od4drnMXwr2PJw6QqKhmWvmRvZBWDoncbtEKd7oOEoPE7gA5z-P9Q1ZxkcjVNBd3zniwLUORVCrm9dgChHRy9wpQzRoQX-fPRjVUSm8sS3KLFH7JU74UoUaJfn7eOzUfydz_Ad6peDqpSFWEaWLFUMnr_fsSaNaZRNWaLfvZmskWYq5YGBrPYPdh6rx7P1XctYzBG2chqDKdDblmsWSKKZBJlUxAAas1C-AYC3j_PsZo58MBRhNgxS-UaKDkh73JSYNLGSt7T9WdUSKul5l8mXJSjzxrnIFHmvBozVMcxfHMMe8Ii9h5MogAN5hyTOyN2Ug0QDG47_w9ylz3ljNzzavRGWT49KCk1x3tqlxaf8_Ghx4sKY3B6s1c77YCX_Rne_MO96JA4xDLN11hqai39cVfNfyJoz"
+    }
+  ],
+  "implements": [
+    {
+      "href": "https://datatracker.ietf.org/doc/html/rfc9421",
+      "name": "RFC-9421: HTTP Message Signatures"
+    },
+    {
+      "href": "https://datatracker.ietf.org/doc/html/rfc9421#name-eddsa-using-curve-edwards25",
+      "name": "RFC-9421 signatures using the Ed25519 algorithm"
+    },
+    {
+      "href": "https://c2sp.org/httpsig-pq@v1.0.0#ml-dsa-44",
+      "name": "RFC-9421 signatures using the ml-dsa-44 algorithm"
+    }
+  ],
+  "gateways": [
+    "https://tootik.example"
+  ],
+  "proof": {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/data-integrity/v1",
+      "https://w3id.org/security/v1"
+    ],
+    "type": "DataIntegrityProof",
+    "cryptosuite": "eddsa-jcs-2022",
+    "verificationMethod": "did:key:z6MkqoM6ybQGmFBWcwsDGbD927SQrnLGTHGJxTABHtWk7DVg#z6MkqoM6ybQGmFBWcwsDGbD927SQrnLGTHGJxTABHtWk7DVg",
+    "proofPurpose": "assertionMethod",
+    "proofValue": "z4dTmsRsKvgqVBBHJnrkxfZUA44bzZxotkkjNwQtx62h77vpGbwA7X3KNNZwaYcT8zTiwCmXCDurPwEdZax9p8oQQ",
+    "created": "2026-09-30T13:23:34Z"
+  }
+}

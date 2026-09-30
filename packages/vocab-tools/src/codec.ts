@@ -538,8 +538,11 @@ export async function* generateDecoder(
     const variable = await getFieldName(property.uri, "");
     yield await generateField(property, types, "const ");
     const arrayVariable = `${variable}__array`;
+    const propertyValues = property.uri === "https://w3id.org/fep/ef61/gateways"
+      ? "getPortableActorGateways(values) as typeof values[string]"
+      : `values[${JSON.stringify(property.uri)}]`;
     yield `
-    let ${arrayVariable} = values[${JSON.stringify(property.uri)}];
+    let ${arrayVariable} = ${propertyValues};
     `;
     if (property.functional && property.redundantProperties != null) {
       for (const prop of property.redundantProperties) {

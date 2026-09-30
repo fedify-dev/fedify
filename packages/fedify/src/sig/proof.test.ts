@@ -1675,6 +1675,138 @@ test("verifyPortableObjectProof()", async (t) => {
     );
   });
 
+  await t.step(
+    "verifies JCS-signed actors with unmapped gateways",
+    async () => {
+      for (
+        const id of [
+          `ap+ef61://${portableDid}/actor`,
+          `https://gateway.example/.well-known/apgateway/${portableDid}/actor`,
+        ]
+      ) {
+        const actor = {
+          "@context": portableContext,
+          id,
+          type: "Person",
+          inbox: `${id}/inbox`,
+          outbox: `${id}/outbox`,
+          gateways: ["https://gateway.example", "https://other.example"],
+        };
+        const signed = await signPortableJsonLd(actor);
+        const original = structuredClone(signed);
+        assert((await verifyPortableObjectProof(signed, options)).verified);
+        assertEquals(signed, original);
+        assertEquals(
+          await verifyPortableObjectProof({
+            ...signed,
+            gateways: ["https://attacker.example"],
+          }, options),
+          { verified: false, reason: { type: "invalidProof", proofIndex: 0 } },
+        );
+      }
+    },
+  );
+
+  await t.step("rejects malformed unmapped actor gateways", async () => {
+    const id = `ap+ef61://${portableDid}/actor`;
+    for (
+      const gateways of [
+        [],
+        ["https://gateway.example", 42],
+        [{ bad: "https://gateway.example" }],
+        ["ftp://gateway.example"],
+        ["https://gateway.example/path"],
+        ["https://gateway.example/?query"],
+        ["https://gateway.example/#fragment"],
+        ["https://user:password@gateway.example"],
+      ]
+    ) {
+      assertEquals(
+        await verifyPortableObjectProof(
+          await signPortableJsonLd({
+            "@context": portableContext,
+            id,
+            type: "Person",
+            inbox: `${id}/inbox`,
+            outbox: `${id}/outbox`,
+            gateways,
+          }),
+          options,
+        ),
+        { verified: false, reason: { type: "invalidGateways" } },
+        JSON.stringify(gateways),
+      );
+    }
+  });
+
+  await t.step(
+    "does not replace context-defined gateway semantics",
+    async () => {
+      const id = `ap+ef61://${portableDid}/actor`;
+      const actor = {
+        "@context": portableContext,
+        id,
+        type: "Person",
+        inbox: `${id}/inbox`,
+        outbox: `${id}/outbox`,
+        gateways: ["https://gateway.example"],
+      };
+      const property = "https://w3id.org/fep/ef61/gateways";
+      for (
+        const extra of [
+          { [property]: { "@list": [] } },
+          { [property]: { "@list": [{ "@id": "https://bad.example/path" }] } },
+          { "@context": [...portableContext, { gateways: null }] },
+          {
+            "@context": [
+              ...portableContext,
+              { gateways: "https://other.example/gateways" },
+            ],
+          },
+          {
+            "@context": [
+              ...portableContext,
+              {
+                Person: {
+                  "@id": "https://www.w3.org/ns/activitystreams#Person",
+                  "@context": { gateways: null },
+                },
+              },
+            ],
+          },
+        ]
+      ) {
+        assertEquals(
+          await verifyPortableObjectProof(
+            await signPortableJsonLd({ ...actor, ...extra }),
+            options,
+          ),
+          { verified: false, reason: { type: "invalidGateways" } },
+          JSON.stringify(extra),
+        );
+      }
+      assert(
+        (await verifyPortableObjectProof(
+          await signPortableJsonLd({
+            ...actor,
+            gateways: ["https://bad.example/path"],
+            [property]: { "@list": [{ "@id": "https://canonical.example" }] },
+          }),
+          options,
+        )).verified,
+      );
+      assertEquals(
+        await verifyPortableObjectProof(
+          await signPortableJsonLd(actor, {
+            proofOptions: { cryptosuite: "eddsa-rdfc-2022" },
+          }),
+          options,
+        ),
+        { verified: false, reason: { type: "invalidGateways" } },
+      );
+    },
+  );
+
   await t.step("checks gateways only for FEP-2277 actors", async () => {
     // Without an outbox, a Person is not an actor by FEP-2277:
     const result = await verifyPortableObjectProof(

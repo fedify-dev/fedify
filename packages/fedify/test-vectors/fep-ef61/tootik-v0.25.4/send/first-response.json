@@ -1,0 +1,18 @@
+{
+  "status": 401,
+  "headers": [
+    [
+      "content-length",
+      "31"
+    ],
+    [
+      "content-type",
+      "application/json"
+    ],
+    [
+      "date",
+      "Wed, 30 Sep 2026 14:16:35 GMT"
+    ]
+  ],
+  "body": "{\"error\":\"actor is too young\"}\n"
+}
