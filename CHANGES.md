@@ -936,6 +936,11 @@ To be released.
     counts wherever it is passed.
     [[#900], [#1050] by Jae-Hyuk-Jang\]
 
+ -  Fixed actor URI mismatch rules reporting portable actor and collection
+    URIs, including gateway-compatible IDs built from them.  Applications can
+    use the `getPortable*Uri()` helpers in actor dispatchers without disabling
+    these rules.  [[#1157], [#1179]]
+
  -  Fixed `outbox-listener-delivery-required` and
     `outbox-listener-delivery-not-awaited` (`@fedify/lint`) losing track of
     the functions an object already holds when a nested helper in the
@@ -969,6 +974,8 @@ To be released.
 [#1088]: https://github.com/fedify-dev/fedify/pull/1088
 [#1125]: https://github.com/fedify-dev/fedify/issues/1125
 [#1140]: https://github.com/fedify-dev/fedify/pull/1140
+[#1157]: https://github.com/fedify-dev/fedify/issues/1157
+[#1179]: https://github.com/fedify-dev/fedify/pull/1179
 
 ### @fedify/mysql
 

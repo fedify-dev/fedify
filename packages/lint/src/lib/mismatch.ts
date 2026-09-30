@@ -43,6 +43,7 @@ const isExpectedMethodCall = (
     methodName,
     requiresIdentifier,
   }: MethodCallContext,
+  identifierFirst = false,
 ) =>
 (node: Node): boolean => {
   if (
@@ -53,11 +54,28 @@ const isExpectedMethodCall = (
   ) return false;
 
   if (!requiresIdentifier) return isEmpty(node.arguments);
+  if (identifierFirst) {
+    return node.arguments.length > 0 &&
+      isIdentifierWithName(idName)(node.arguments[0]);
+  }
   return allOf<typeof node.arguments>(
     negate(isEmpty),
     some(isIdentifierWithName(idName)),
   )(node.arguments);
 };
+
+/** Accepts an inline compatible ID built from the matching portable URI. */
+const isCompatiblePortableMethodCall = (
+  context: MethodCallContext,
+  portableGetter: string,
+) =>
+(node: Node): boolean =>
+  isNodeType("CallExpression")(node) &&
+  isIdentifierWithName("toCompatibleEf61Id")(node.callee) &&
+  node.arguments.length > 0 &&
+  isExpectedMethodCall({ ...context, methodName: portableGetter }, true)(
+    node.arguments[0],
+  );
 
 /**
  * Extracts parameter names from a function.
@@ -125,8 +143,18 @@ function createMismatchRule<Context = Deno.lint.RuleContext | Rule.RuleContext>(
         if (!hasProperty) return;
 
         // Property exists, now check if the value is correct
-        const propertyChecker = createPropertyChecker(
-          isExpectedMethodCall(methodCallContext),
+        const propertyChecker = createPropertyChecker((value) =>
+          isExpectedMethodCall(methodCallContext)(value) ||
+          (config.portableGetter != null && (
+            isExpectedMethodCall({
+              ...methodCallContext,
+              methodName: config.portableGetter,
+            }, true)(value) ||
+            isCompatiblePortableMethodCall(
+              methodCallContext,
+              config.portableGetter,
+            )(value)
+          ))
         )(config.path);
         const propertySearcher = createPropertySearcher(
           propertyChecker,

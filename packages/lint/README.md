@@ -132,6 +132,12 @@ federation code:
  -  **`actor-upload-media-property-mismatch`**: Validates endpoints.uploadMedia
     URI from `getMediaUploaderUri`
 
+The mismatch rules for actor `id`, `inbox`, `outbox`, `followers`, `following`,
+`liked`, `featured`, and `featuredTags` also accept the corresponding
+`getPortable*Uri()` method.  They accept an inline
+`toCompatibleEf61Id(ctx.getPortable*Uri(identifier, did), gateway)` call for
+gateway-compatible IDs.
+
 ### Other rules
 
  -  **`collection-filtering-not-implemented`**: Warns about missing collection

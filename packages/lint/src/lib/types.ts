@@ -88,6 +88,8 @@ export interface PropertyConfig {
   path: readonly string[];
   /** Context method name to get the URI (e.g., "getActorUri", "getInboxUri") */
   getter?: string;
+  /** Portable counterpart of the getter, when the property supports one. */
+  portableGetter?: string;
   /**
    * Dispatcher/Listener method name
    * (e.g., "setActorDispatcher", "setInboxListeners")
