@@ -36,6 +36,6 @@
   },
   "tasks": {
     "check": "deno fmt --check && deno lint && deno check src/*.ts",
-    "test": "deno test"
+    "test": "deno test --allow-net"
   }
 }
