@@ -9,9 +9,21 @@ import { Layout } from "./layout.tsx";
  */
 export interface TracesListPageProps {
   /**
-   * The list of trace summaries to display.
+   * The list of trace summaries to display, already filtered by
+   * {@link selectedTypes} when it is non-empty.
    */
   traces: TraceSummary[];
+
+  /**
+   * The distinct activity types available to filter by, derived from the
+   * unfiltered trace set.
+   */
+  availableTypes: readonly string[];
+
+  /**
+   * The activity types currently selected in the filter form.
+   */
+  selectedTypes: readonly string[];
 
   /**
    * The path prefix for the debug dashboard.
@@ -23,16 +35,45 @@ export interface TracesListPageProps {
  * The traces list page of the debug dashboard.
  */
 export const TracesListPage: FC<TracesListPageProps> = (
-  { traces, pathPrefix },
+  { traces, availableTypes, selectedTypes, pathPrefix },
 ) => {
+  const filtered = selectedTypes.length > 0;
   return (
     <Layout pathPrefix={pathPrefix}>
+      {availableTypes.length > 0 && (
+        <form class="filter-form" method="get" action={`${pathPrefix}/`}>
+          <fieldset>
+            <legend>Filter by activity type</legend>
+            {availableTypes.map((type) => (
+              <label key={type}>
+                <input
+                  type="checkbox"
+                  name="type"
+                  value={type}
+                  checked={selectedTypes.includes(type)}
+                />
+                {type}
+              </label>
+            ))}
+          </fieldset>
+          <div class="filter-actions">
+            <button type="submit">Filter</button>
+            {filtered && <a href={`${pathPrefix}/`}>Clear filters</a>}
+          </div>
+        </form>
+      )}
       <p>
         Showing <strong>{traces.length}</strong>{" "}
         trace{traces.length !== 1 ? "s" : ""}.
       </p>
       {traces.length === 0
-        ? <p class="empty">No traces captured yet.</p>
+        ? (
+          <p class="empty">
+            {filtered
+              ? "No traces match the selected filters."
+              : "No traces captured yet."}
+          </p>
+        )
         : (
           <table>
             <thead>
@@ -79,7 +120,7 @@ export const TracesListPage: FC<TracesListPageProps> = (
   var interval = setInterval(function() {
     fetch(${
             JSON.stringify(pathPrefix).replace(/</g, "\\u003c")
-          } + "/api/traces")
+          } + "/api/traces" + location.search)
       .then(function(r) { return r.json(); })
       .then(function(data) {
         var countEl = document.querySelector("strong");

@@ -5,6 +5,9 @@ import type { TraceActivityRecord } from "@fedify/fedify/otel";
 import type { SerializedLogRecord } from "../mod.tsx";
 import { Layout } from "./layout.tsx";
 
+/** The fixed set of log levels the filter form offers, in severity order. */
+const LOG_LEVELS = ["debug", "info", "warning", "error", "fatal"] as const;
+
 /**
  * Safely formats a timestamp (milliseconds since epoch) as an ISO string.
  * Returns `"(invalid)"` if the timestamp is not a finite number or produces
@@ -34,9 +37,32 @@ export interface TraceDetailPageProps {
   activities: TraceActivityRecord[];
 
   /**
-   * The list of log records for this trace.
+   * The list of log records for this trace, already filtered by
+   * {@link selectedCategory}, {@link selectedLevel}, and
+   * {@link selectedQuery} when any of them is set.
    */
   logs: readonly SerializedLogRecord[];
+
+  /**
+   * The distinct log categories available to filter by, derived from the
+   * unfiltered log set for this trace.
+   */
+  availableCategories: readonly string[];
+
+  /**
+   * The category currently selected in the filter form, if any.
+   */
+  selectedCategory?: string;
+
+  /**
+   * The log level currently selected in the filter form, if any.
+   */
+  selectedLevel?: string;
+
+  /**
+   * The free-text search term currently entered in the filter form, if any.
+   */
+  selectedQuery?: string;
 
   /**
    * The path prefix for the debug dashboard.
@@ -48,8 +74,19 @@ export interface TraceDetailPageProps {
  * The trace detail page of the debug dashboard.
  */
 export const TraceDetailPage: FC<TraceDetailPageProps> = (
-  { traceId, activities, logs, pathPrefix },
+  {
+    traceId,
+    activities,
+    logs,
+    availableCategories,
+    selectedCategory,
+    selectedLevel,
+    selectedQuery,
+    pathPrefix,
+  },
 ) => {
+  const filtered = Boolean(selectedCategory) || Boolean(selectedLevel) ||
+    Boolean(selectedQuery);
   return (
     <Layout pathPrefix={pathPrefix} title={`Trace ${traceId.slice(0, 8)}`}>
       <nav>
@@ -179,8 +216,67 @@ export const TraceDetailPage: FC<TraceDetailPageProps> = (
         )}
 
       <h2>Logs</h2>
+      {availableCategories.length > 0 && (
+        <form
+          class="filter-form"
+          method="get"
+          action={`${pathPrefix}/traces/${traceId}`}
+        >
+          <label>
+            Category
+            <select name="category">
+              <option value="">All categories</option>
+              {availableCategories.map((category) => (
+                <option
+                  key={category}
+                  value={category}
+                  selected={category === selectedCategory}
+                >
+                  {category}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Level
+            <select name="level">
+              <option value="">All levels</option>
+              {LOG_LEVELS.map((level) => (
+                <option
+                  key={level}
+                  value={level}
+                  selected={level === selectedLevel}
+                >
+                  {level}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Search
+            <input
+              type="text"
+              name="q"
+              value={selectedQuery ?? ""}
+              placeholder="Search message…"
+            />
+          </label>
+          <div class="filter-actions">
+            <button type="submit">Filter</button>
+            {filtered && (
+              <a href={`${pathPrefix}/traces/${traceId}`}>Clear filters</a>
+            )}
+          </div>
+        </form>
+      )}
       {logs.length === 0
-        ? <p class="empty">No logs captured for this trace.</p>
+        ? (
+          <p class="empty">
+            {filtered
+              ? "No logs match the selected filters."
+              : "No logs captured for this trace."}
+          </p>
+        )
         : (
           <table class="log-table">
             <thead>
