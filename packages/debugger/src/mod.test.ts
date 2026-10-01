@@ -1463,6 +1463,53 @@ test("trace detail page log filter form retains selected values", async () => {
   ok(html.includes("Clear filters"));
 });
 
+test("JSON logs API filters by category, level, and text search", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
+  sinkTwoDistinctLogs(dbg, traceId);
+
+  const request = new Request(
+    `https://example.com/__debug__/api/logs/${traceId}?level=error`,
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  const body = (await response.json()) as SerializedLogRecord[];
+  strictEqual(body.length, 1);
+  strictEqual(body[0].message, "boom happened");
+});
+
+test("JSON logs API returns everything when no filter is given", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
+  sinkTwoDistinctLogs(dbg, traceId);
+
+  const request = new Request(
+    `https://example.com/__debug__/api/logs/${traceId}`,
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  const body = (await response.json()) as SerializedLogRecord[];
+  strictEqual(body.length, 2);
+});
+
+test("trace detail page shows the filtered count alongside the total", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
+  sinkTwoDistinctLogs(dbg, traceId);
+
+  const request = new Request(
+    `https://example.com/__debug__/traces/${traceId}?level=error`,
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  const html = await response.text();
+  ok(html.includes("<strong>1</strong> of"));
+  ok(html.includes("<strong>2</strong>"));
+});
+
 test("trace detail page escapes a malicious search query in the filter form", async () => {
   const { federation } = createMockFederation();
   const { exporter, kv } = createMockExporter();

@@ -208,7 +208,12 @@ export function createDebugApp(
     const traceId = c.req.param("traceId");
     await logStore.flush();
     const logs = await logStore.get(traceId);
-    return c.json(logs);
+    const logFilter: LogFilter = {
+      category: c.req.query("category"),
+      level: c.req.query("level"),
+      q: c.req.query("q"),
+    };
+    return c.json(filterLogs(logs, logFilter));
   });
 
   app.get("/traces/:traceId", async (c) => {
@@ -226,6 +231,7 @@ export function createDebugApp(
         traceId={traceId}
         activities={activities}
         logs={filterLogs(logs, logFilter)}
+        totalLogCount={logs.length}
         availableCategories={distinctLogCategories(logs)}
         selectedCategory={logFilter.category}
         selectedLevel={logFilter.level}
