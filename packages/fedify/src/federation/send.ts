@@ -1,6 +1,6 @@
 import type { Recipient } from "@fedify/vocab";
 import { FetchError, UrlError, validatePublicUrl } from "@fedify/vocab-runtime";
-import { getLogger } from "@logtape/logtape";
+import { getLogger, withContext } from "@logtape/logtape";
 import {
   type Attributes,
   type MeterProvider,
@@ -294,8 +294,17 @@ export function sendActivity(
       if (options.activityType != null) {
         span.setAttribute("activitypub.activity.type", options.activityType);
       }
+      const spanContext = span.spanContext();
       try {
-        await sendActivityInternal({ ...options, tracerProvider }, span);
+        // Scope the LogTape context to this delivery attempt's own span so
+        // that logs emitted while it's active carry the same traceId/spanId
+        // as the TraceActivityRecord derived from this span, rather than the
+        // enclosing queue worker's.  AsyncLocalStorage-backed withContext()
+        // restores the outer context once this callback settles.
+        await withContext(
+          { traceId: spanContext.traceId, spanId: spanContext.spanId },
+          () => sendActivityInternal({ ...options, tracerProvider }, span),
+        );
       } catch (e) {
         span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
         throw e;
