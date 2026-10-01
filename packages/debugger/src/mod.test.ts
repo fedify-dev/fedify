@@ -1353,6 +1353,144 @@ test("JSON traces API filters by type", async () => {
   strictEqual(body[0].traceId, "b".repeat(32));
 });
 
+// ---------- Poll script tests ----------
+
+/** Pulls the inline `<script>` body out of a rendered traces list page. */
+function extractPollScript(html: string): string {
+  const match = html.match(/<script>([\s\S]*?)<\/script>/);
+  if (match == null) throw new Error("poll script not found in the page");
+  return match[1];
+}
+
+/**
+ * Runs the extracted poll script in a sandbox, feeding it one page of
+ * `/api/traces` JSON per simulated tick, and reports whether `location
+ * .reload()` was ever called.
+ */
+async function runPollScript(
+  scriptBody: string,
+  ticks: readonly TraceSummary[][],
+): Promise<{ reloaded: boolean }> {
+  let reloaded = false;
+  let tickIndex = 0;
+  const fakeFetch = () => {
+    const data = ticks[tickIndex];
+    return Promise.resolve({ json: () => Promise.resolve(data) });
+  };
+  let onTick: (() => void) | undefined;
+  const fakeSetInterval = (fn: () => void) => {
+    onTick = fn;
+    return 1;
+  };
+  const fakeLocation = {
+    reload: () => {
+      reloaded = true;
+    },
+  };
+  const run = new Function(
+    "window",
+    "location",
+    "fetch",
+    "setInterval",
+    "clearInterval",
+    scriptBody,
+  ) as (
+    windowArg: unknown,
+    locationArg: unknown,
+    fetchArg: unknown,
+    setIntervalArg: unknown,
+    clearIntervalArg: unknown,
+  ) => void;
+  run(
+    { addEventListener: () => {} },
+    fakeLocation,
+    fakeFetch,
+    fakeSetInterval,
+    () => {},
+  );
+  if (onTick == null) throw new Error("setInterval was never called");
+  for (; tickIndex < ticks.length; tickIndex++) {
+    onTick();
+    // Flush the fetch/json/then microtask chain before the next tick.
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  }
+  return { reloaded };
+}
+
+test("poll script does not reload across unchanged ticks", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter(threeTypedTraces());
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const response = await dbg.fetch(
+    new Request("https://example.com/__debug__/"),
+    { contextData: undefined },
+  );
+  const script = extractPollScript(await response.text());
+  const same = threeTypedTraces();
+  const { reloaded } = await runPollScript(script, [same, same, same]);
+  strictEqual(reloaded, false);
+});
+
+test("poll script reloads when a new activity type appears", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter(threeTypedTraces());
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  // A filter is active, matching only the "Create" trace: a newly captured
+  // "Follow" trace would not change what's visible, but its checkbox should
+  // still appear once the page reloads.
+  const response = await dbg.fetch(
+    new Request("https://example.com/__debug__/?type=Create"),
+    { contextData: undefined },
+  );
+  const script = extractPollScript(await response.text());
+  const before: TraceSummary[] = [
+    {
+      traceId: "a".repeat(32),
+      timestamp: "2026-01-01T00:00:00Z",
+      activityCount: 1,
+      activityTypes: ["Create"],
+    },
+  ];
+  const after: TraceSummary[] = [
+    ...before,
+    {
+      traceId: "b".repeat(32),
+      timestamp: "2026-01-02T00:00:00Z",
+      activityCount: 1,
+      activityTypes: ["Follow"],
+    },
+  ];
+  const { reloaded } = await runPollScript(script, [before, after]);
+  strictEqual(reloaded, true);
+});
+
+test("poll script reloads when an existing trace gains a new activity type", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter(threeTypedTraces());
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const response = await dbg.fetch(
+    new Request("https://example.com/__debug__/"),
+    { contextData: undefined },
+  );
+  const script = extractPollScript(await response.text());
+  // The trace count never changes here—only the one trace's own
+  // activityTypes grows, the way FedifySpanExporter updates an existing
+  // summary in place. A count-only comparison would miss this.
+  const before: TraceSummary[] = [
+    {
+      traceId: "a".repeat(32),
+      timestamp: "2026-01-01T00:00:00Z",
+      activityCount: 1,
+      activityTypes: ["Create"],
+    },
+  ];
+  const after: TraceSummary[] = [
+    { ...before[0], activityCount: 2, activityTypes: ["Create", "Update"] },
+  ];
+  const { reloaded } = await runPollScript(script, [before, after]);
+  strictEqual(reloaded, true);
+});
+
 // ---------- Log filtering tests ----------
 
 function sinkTwoDistinctLogs(
