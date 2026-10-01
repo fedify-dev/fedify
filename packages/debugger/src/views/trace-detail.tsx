@@ -44,6 +44,11 @@ export interface TraceDetailPageProps {
   logs: readonly SerializedLogRecord[];
 
   /**
+   * The total number of log records for this trace, before filtering.
+   */
+  totalLogCount: number;
+
+  /**
    * The distinct log categories available to filter by, derived from the
    * unfiltered log set for this trace.
    */
@@ -78,6 +83,7 @@ export const TraceDetailPage: FC<TraceDetailPageProps> = (
     traceId,
     activities,
     logs,
+    totalLogCount,
     availableCategories,
     selectedCategory,
     selectedLevel,
@@ -99,8 +105,20 @@ export const TraceDetailPage: FC<TraceDetailPageProps> = (
       <p>
         Full ID: <code>{traceId}</code> &mdash;{" "}
         <strong>{activities.length}</strong>{" "}
-        activit{activities.length !== 1 ? "ies" : "y"},{" "}
-        <strong>{logs.length}</strong> log record{logs.length !== 1 ? "s" : ""}
+        activit{activities.length !== 1 ? "ies" : "y"}, {filtered
+          ? (
+            <span>
+              <strong>{logs.length}</strong> of <strong>{totalLogCount}</strong>
+              {" "}
+              log record{totalLogCount !== 1 ? "s" : ""}
+            </span>
+          )
+          : (
+            <span>
+              <strong>{logs.length}</strong>{" "}
+              log record{logs.length !== 1 ? "s" : ""}
+            </span>
+          )}
       </p>
 
       {activities.length === 0
