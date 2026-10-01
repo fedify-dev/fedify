@@ -2,11 +2,9 @@
 /** @jsxImportSource hono/jsx */
 import type { FC } from "hono/jsx";
 import type { TraceActivityRecord } from "@fedify/fedify/otel";
+import { getLogLevels } from "@logtape/logtape";
 import type { SerializedLogRecord } from "../mod.tsx";
 import { Layout } from "./layout.tsx";
-
-/** The fixed set of log levels the filter form offers, in severity order. */
-const LOG_LEVELS = ["debug", "info", "warning", "error", "fatal"] as const;
 
 /**
  * Safely formats a timestamp (milliseconds since epoch) as an ISO string.
@@ -259,7 +257,7 @@ export const TraceDetailPage: FC<TraceDetailPageProps> = (
             Level
             <select name="level">
               <option value="">All levels</option>
-              {LOG_LEVELS.map((level) => (
+              {getLogLevels().map((level) => (
                 <option
                   key={level}
                   value={level}
