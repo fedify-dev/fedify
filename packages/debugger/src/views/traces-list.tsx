@@ -117,18 +117,31 @@ export const TracesListPage: FC<TracesListPageProps> = (
         dangerouslySetInnerHTML={{
           __html: `
 (function() {
+  var prevSnapshot = null;
+  function snapshotOf(data) {
+    var types = [];
+    for (var i = 0; i < data.length; i++) {
+      var activityTypes = data[i].activityTypes || [];
+      for (var j = 0; j < activityTypes.length; j++) {
+        if (types.indexOf(activityTypes[j]) === -1) types.push(activityTypes[j]);
+      }
+    }
+    types.sort();
+    return data.length + "|" + types.join(",");
+  }
   var interval = setInterval(function() {
     fetch(${
             JSON.stringify(pathPrefix).replace(/</g, "\\u003c")
-          } + "/api/traces" + location.search)
+          } + "/api/traces")
       .then(function(r) { return r.json(); })
       .then(function(data) {
-        var countEl = document.querySelector("strong");
-        if (countEl) {
-          var current = parseInt(countEl.textContent, 10);
-          if (data.length !== current) {
-            location.reload();
-          }
+        var snapshot = snapshotOf(data);
+        if (prevSnapshot === null) {
+          prevSnapshot = snapshot;
+          return;
+        }
+        if (snapshot !== prevSnapshot) {
+          location.reload();
         }
       })
       .catch(function() {});
