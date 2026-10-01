@@ -3,4 +3,4 @@
     narrowed down by category, level, or a free-text search of the message.
     This makes it easier to find one failed activity or one noisy log
     category once a federated app has produced more than a few traces.
-    [[#896]]
+    [[#896], [#1204]]
