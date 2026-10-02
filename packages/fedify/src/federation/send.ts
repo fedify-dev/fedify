@@ -1,6 +1,6 @@
 import type { Recipient } from "@fedify/vocab";
 import { FetchError, UrlError, validatePublicUrl } from "@fedify/vocab-runtime";
-import { getLogger } from "@logtape/logtape";
+import { getLogger, withContext } from "@logtape/logtape";
 import {
   type Attributes,
   type MeterProvider,
@@ -294,8 +294,12 @@ export function sendActivity(
       if (options.activityType != null) {
         span.setAttribute("activitypub.activity.type", options.activityType);
       }
+      const spanContext = span.spanContext();
       try {
-        await sendActivityInternal({ ...options, tracerProvider }, span);
+        await withContext(
+          { traceId: spanContext.traceId, spanId: spanContext.spanId },
+          () => sendActivityInternal({ ...options, tracerProvider }, span),
+        );
       } catch (e) {
         span.setStatus({ code: SpanStatusCode.ERROR, message: String(e) });
         throw e;
