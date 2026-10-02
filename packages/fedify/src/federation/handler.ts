@@ -1827,11 +1827,6 @@ export async function handleInbox<TContextData>(
       }
       const spanContext = span.spanContext();
       try {
-        // Scope the LogTape context to this inbox span so that logs emitted
-        // while it's active carry the same traceId/spanId as the
-        // TraceActivityRecord derived from this span, rather than the
-        // enclosing HTTP request's.  AsyncLocalStorage-backed withContext()
-        // restores the outer context once this callback settles.
         return await withContext(
           { traceId: spanContext.traceId, spanId: spanContext.spanId },
           () => handleInboxInternal(request, options, span),

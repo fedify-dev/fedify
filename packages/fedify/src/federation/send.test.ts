@@ -618,12 +618,6 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
       contextLocalStorage: new AsyncLocalStorage(),
     });
 
-    // A sentinel outer context standing in for whatever span/context an
-    // enclosing queue worker (e.g. #runWorkerSpan's own withContext()) would
-    // already have established. Using an arbitrary, unmistakable value --
-    // rather than just asserting "not equal to the inner span's ID" --
-    // proves the outer context is restored to its *actual* prior value, not
-    // merely cleared.
     const outerContext = {
       requestId: "outer-request",
       traceId: "outer0000000000000000000000sentinel",
@@ -637,10 +631,6 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
         fetchMock.post("https://example.com/inbox-warn", { status: 202 });
 
         await withContext({ requestId: "outer-request-warn" }, async () => {
-          // A non-RSA-only key set makes sendActivityInternal() log a
-          // warning ("No supported key found to sign...") but still
-          // complete the delivery, which is exactly the "warning beside a
-          // successful activity record" case #902 wants to surface.
           await sendActivity({
             ...deliveryParams(
               "https://example.com/activity/warn",
@@ -658,9 +648,6 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
         assert(span != null);
         const { traceId, spanId } = span.spanContext();
 
-        // Feed the real captured span through the real exporter so the
-        // comparison is against the actual TraceActivityRecord that would be
-        // persisted for a debugger to read, not a hand-matched ID.
         const kv = new MemoryKvStore();
         const fedifyExporter = new FedifySpanExporter(kv);
         await new Promise<void>((resolve) => {
@@ -677,8 +664,6 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
         assert(warnLog != null);
         assertEquals(warnLog.properties.spanId, record.spanId);
         assertEquals(warnLog.properties.traceId, record.traceId);
-        // Properties set by an enclosing withContext() must survive the
-        // inner one scoped to the delivery span.
         assertEquals(warnLog.properties.requestId, "outer-request-warn");
 
         exporter.clear();
@@ -709,8 +694,6 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
               ),
             SendActivityError,
           );
-          // Logged right after the rejected promise settles, i.e. once
-          // sendActivity()'s own span has already ended.
           getLogger(["fedify", "federation", "send.test"]).info(
             "after failure",
           );
@@ -720,12 +703,6 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
         assert(span != null);
         const { traceId, spanId } = span.spanContext();
 
-        // A delivery that never succeeds never gets a persisted
-        // TraceActivityRecord (FedifySpanExporter only extracts one from the
-        // "activitypub.activity.sent" event, which is added on success only).
-        // The fix must still scope the failure log to this span's own ID
-        // -- the same ID a record derived from it would carry -- rather than
-        // the enclosing worker's.
         const kv = new MemoryKvStore();
         const fedifyExporter = new FedifySpanExporter(kv);
         await new Promise<void>((resolve) => {
@@ -741,8 +718,6 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
         assert(failureLog != null);
         assertEquals(failureLog.properties.spanId, spanId);
         assertEquals(failureLog.properties.traceId, traceId);
-        // Properties set by an enclosing withContext() must survive the
-        // inner one scoped to the delivery span.
         assertEquals(failureLog.properties.requestId, outerContext.requestId);
 
         const afterLog = records.find((r) => r.rawMessage === "after failure");
@@ -802,9 +777,6 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
         const gate = new Promise<void>((resolve) => {
           release = resolve;
         });
-        // Each handler blocks until both requests have actually arrived, so
-        // the two sendActivity() calls are genuinely in flight at once
-        // instead of merely racing a timer.
         const handler = () => async () => {
           arrived++;
           if (arrived >= 2) release();

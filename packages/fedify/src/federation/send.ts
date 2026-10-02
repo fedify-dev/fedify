@@ -296,11 +296,6 @@ export function sendActivity(
       }
       const spanContext = span.spanContext();
       try {
-        // Scope the LogTape context to this delivery attempt's own span so
-        // that logs emitted while it's active carry the same traceId/spanId
-        // as the TraceActivityRecord derived from this span, rather than the
-        // enclosing queue worker's.  AsyncLocalStorage-backed withContext()
-        // restores the outer context once this callback settles.
         await withContext(
           { traceId: spanContext.traceId, spanId: spanContext.spanId },
           () => sendActivityInternal({ ...options, tracerProvider }, span),

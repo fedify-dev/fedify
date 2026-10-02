@@ -8471,7 +8471,6 @@ test(
         const federation = new FederationImpl<void>({
           kv: new MemoryKvStore(),
           queue,
-          // This test's delivery target is a mocked, unresolvable host.
           allowPrivateAddress: true,
           tracerProvider,
         });
@@ -8497,15 +8496,10 @@ test(
           traceContext: {},
         } satisfies OutboxMessage;
 
-        // Simulates logging context an application might have already
-        // established (e.g. a batch ID) around the queue callback, on top
-        // of the messageId that processQueuedTask() itself sets.
         await withContext({ batchId: "outer-batch" }, async () => {
           await federation.processQueuedTask(undefined, message);
         });
 
-        // Retried once, same as the existing "500 does not permanently
-        // fail" behavior -- this fix must not change that.
         assertEquals(queuedMessages.length, 1);
 
         const deliverySpan = exporter.getSpan("activitypub.send_activity");
@@ -8518,8 +8512,6 @@ test(
 
         assertNotEquals(deliveryCtx.spanId, workerCtx.spanId);
 
-        // Logged by sendActivityInternal() while the delivery span (a
-        // child of the outbox worker span) is active.
         const deliveryLog = records.find((r) =>
           String(r.rawMessage).startsWith(
             "Failed to send activity {activityId} to {inbox} ({status}",
@@ -8531,9 +8523,6 @@ test(
         assertEquals(deliveryLog.properties.messageId, message.id);
         assertEquals(deliveryLog.properties.batchId, "outer-batch");
 
-        // Logged by the outbox worker's own retry handling, after
-        // sendActivity()'s span has already ended -- it must keep the
-        // worker's own span, not the delivery attempt's.
         const retryLog = records.find((r) =>
           String(r.rawMessage).startsWith(
             "Failed to send activity {activityId} to {inbox} (attempt",

@@ -5033,12 +5033,6 @@ test("handleInbox() aligns the LogTape context with its own span", async (t) => 
       contextLocalStorage: new AsyncLocalStorage(),
     });
 
-    // A sentinel outer context standing in for whatever span/context an
-    // enclosing HTTP request (e.g. Federation.fetch()'s own withContext() at
-    // the "request.method" span) would already have established. Using an
-    // arbitrary, unmistakable value -- rather than just asserting
-    // "not equal to the inner span's ID" -- proves the outer context is
-    // restored to its *actual* prior value, not merely cleared.
     const outerContext = {
       requestId: "outer-request",
       traceId: "outer0000000000000000000000sentinel",
@@ -5070,8 +5064,6 @@ test("handleInbox() aligns the LogTape context with its own span", async (t) => 
             listeners,
             signed,
           );
-          // The listener's error is caught and logged internally, so
-          // handleInbox() still resolves (with a 500) instead of rejecting.
           assertEquals(response.status, 500);
           getLogger(["fedify", "federation", "handler.test"]).info(
             "after handled failure",
@@ -5082,13 +5074,6 @@ test("handleInbox() aligns the LogTape context with its own span", async (t) => 
         assert(span != null);
         const { traceId, spanId } = span.spanContext();
 
-        // The HTTP Signature verification event is recorded on this span
-        // *before* routeActivity() dispatches to the listener, so a
-        // TraceActivityRecord is persisted for it regardless of whether the
-        // listener later throws -- unlike a delivery that never succeeds.
-        // Feed the real captured span through the real exporter so the
-        // comparison is against the actual persisted record, not a
-        // hand-matched ID.
         const fedifyExporter = new FedifySpanExporter(new MemoryKvStore());
         await new Promise<void>((resolve) => {
           fedifyExporter.export([span], () => resolve());
@@ -5098,9 +5083,6 @@ test("handleInbox() aligns the LogTape context with its own span", async (t) => 
         assertEquals(record.direction, "inbound");
         assertEquals(record.spanId, spanId);
 
-        // Logged by routeActivity()'s own "activitypub.dispatch_inbox_listener"
-        // child span, which doesn't scope its own LogTape context -- it must
-        // inherit the "activitypub.inbox" span's context set by handleInbox().
         const failureLog = records.find((r) =>
           String(r.rawMessage).startsWith(
             "Failed to process the incoming activity",
