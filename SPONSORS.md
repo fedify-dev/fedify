@@ -24,8 +24,8 @@ Corporate sponsors
 Supporters
 ----------
 
-- [tkgka](https://opencollective.com/tkgka)
 - [Blaine](https://opencollective.com/blaine)
+- [tkgka](https://opencollective.com/tkgka)
 - [Erick González Aguilar](https://opencollective.com/erick-gonzalez-aguilar)
 - [Daniel Supernault](https://pixelfed.org/)
 
