@@ -17,9 +17,10 @@ To be released.
     of the `TraceActivityRecord` that operation produces (as exposed by
     `@fedify/fedify/otel`), including when the operation runs inside a
     background queue worker, which makes it possible to correlate a failure
-    log with the specific activity it belongs to.  [[#1030] by u-zzn\]
+    log with the specific activity it belongs to.  [[#1030], [#1205] by u-zzn\]
 
 [#1030]: https://github.com/fedify-dev/fedify/issues/1030
+[#1205]: https://github.com/fedify-dev/fedify/issues/1205
 
 
 Version 2.4.0
