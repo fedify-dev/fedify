@@ -6211,6 +6211,18 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
     options: GetSignedKeyOptions = {},
   ): Promise<CryptographicKey | null> {
     if (this.#signedKey != null) return this.#signedKey;
+
+    const keyCache = new KvKeyCache(
+      this.federation.kv,
+      this.federation.kvPrefixes.publicKey,
+      {
+        documentLoader: options.documentLoader ?? this.documentLoader,
+        contextLoader: options.contextLoader ?? this.contextLoader,
+        tracerProvider: options.tracerProvider ?? this.tracerProvider,
+        keyTtl: this.federation.publicKeyTtl,
+      },
+    );
+
     return this.#signedKey = await verifyRequest(this.request, {
       ...this,
       contextLoader: options.contextLoader ?? this.contextLoader,
@@ -6219,6 +6231,7 @@ class RequestContextImpl<TContextData> extends ContextImpl<TContextData>
       maxSignatures: this.federation.maxHttpSignatures,
       meterProvider: this.meterProvider,
       tracerProvider: options.tracerProvider ?? this.tracerProvider,
+      keyCache,
     });
   }
 
