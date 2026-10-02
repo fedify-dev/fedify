@@ -1601,7 +1601,7 @@ test("trace detail page log filter form retains selected values", async () => {
   ok(html.includes("Clear filters"));
 });
 
-test("JSON logs API filters by category, level, and text search", async () => {
+test("JSON logs API filters by level", async () => {
   const { federation } = createMockFederation();
   const { exporter, kv } = createMockExporter();
   const dbg = createFederationDebugger(federation, { exporter, kv });
@@ -1615,6 +1615,55 @@ test("JSON logs API filters by category, level, and text search", async () => {
   const body = (await response.json()) as SerializedLogRecord[];
   strictEqual(body.length, 1);
   strictEqual(body[0].message, "boom happened");
+});
+
+test("JSON logs API filters by category", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
+  sinkTwoDistinctLogs(dbg, traceId);
+
+  const request = new Request(
+    `https://example.com/__debug__/api/logs/${traceId}?category=fedify.federation`,
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  const body = (await response.json()) as SerializedLogRecord[];
+  strictEqual(body.length, 1);
+  strictEqual(body[0].message, "hello world");
+});
+
+test("JSON logs API filters by a case-insensitive text search", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
+  sinkTwoDistinctLogs(dbg, traceId);
+
+  const request = new Request(
+    `https://example.com/__debug__/api/logs/${traceId}?q=BOOM`,
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  const body = (await response.json()) as SerializedLogRecord[];
+  strictEqual(body.length, 1);
+  strictEqual(body[0].message, "boom happened");
+});
+
+test("JSON logs API combines filters with AND semantics", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
+  sinkTwoDistinctLogs(dbg, traceId);
+
+  // "hello world" is level info, not error, so this combination matches none.
+  const request = new Request(
+    `https://example.com/__debug__/api/logs/${traceId}` +
+      "?category=fedify.federation&level=error",
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  const body = (await response.json()) as SerializedLogRecord[];
+  strictEqual(body.length, 0);
 });
 
 test("JSON logs API returns everything when no filter is given", async () => {
