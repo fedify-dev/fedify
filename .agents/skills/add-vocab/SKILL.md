@@ -204,7 +204,8 @@ Generates `get<PluralName>()` async iterable and optionally a singular accessor.
 Required: `pluralName`, `singularName`, `uri`, `description`, `range`
 
 Optional: `singularAccessor` (default `false`), `compactName`, `subpropertyOf`,
-`container` (`"graph"` or `"list"`), `embedContext`, `untyped`
+`container` (`"graph"` or `"list"`), `embedContext`, `untyped`,
+`redundantProperties`, `redundantPropertiesWrite`
 
 ### Functional property (exactly one value)
 
@@ -223,13 +224,21 @@ Generates a single `get<SingularName>()` / `<singularName>` accessor.
 Required: `singularName`, `functional: true`, `uri`, `description`, `range`
 
 Optional: `compactName`, `subpropertyOf`, `redundantProperties`, `untyped`,
-`embedContext`
+`embedContext`, `redundantPropertiesWrite`
 
-### Redundant properties (functional only)
+### Redundant properties
 
 When a property has equivalent URIs from multiple vocabularies, use
-`redundantProperties` to write all aliases on serialization and try them in
-order on deserialization:
+`redundantProperties` on functional or non-functional properties.  Reading
+selects the first non-empty raw value set, starting with the canonical property
+and then aliases in declaration order, before decoding values and containers.
+It never merges aliases or retries invalid values.  Writing defaults to all
+aliases; set `redundantPropertiesWrite: canonical` to write only the canonical
+property.  An alias without `compactName` uses the JSON-LD processor, as do
+writable list and graph aliases.  IRI-valued compact terms need
+`"@type": "@id"` in the context.
+
+For example:
 
 ~~~~ yaml
 - singularName: quoteUrl

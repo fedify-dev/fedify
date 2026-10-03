@@ -60,6 +60,9 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "@fedify/vocab-runtime": "workspace:^",
+    "@logtape/logtape": "catalog:",
+    "@opentelemetry/api": "catalog:",
     "@types/node": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"

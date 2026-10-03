@@ -1,8 +1,13 @@
-import { deepStrictEqual, ok, throws } from "node:assert";
+import { deepStrictEqual, ok, rejects, throws } from "node:assert";
 import { test } from "node:test";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { stringify } from "yaml";
 import {
   hasSingularAccessor,
   isNonFunctionalProperty,
+  loadSchemaFiles,
   type PropertySchema,
   type TypeSchema,
   type TypeUri,
@@ -243,4 +248,72 @@ test("validateTypeSchemas() rejects mixed fedify:vocabEntityType ranges", () => 
       return true;
     },
   );
+});
+
+test("loadSchemaFiles validates redundant properties on both property kinds", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fedify-schema-"));
+  try {
+    for (const functional of [false, true]) {
+      const property = {
+        singularName: "value",
+        ...(functional ? { functional: true } : { pluralName: "values" }),
+        uri: "https://example.com/value",
+        description: "A value.",
+        range: ["http://www.w3.org/2001/XMLSchema#string"],
+        redundantProperties: [{ uri: "https://example.com/alias" }],
+      };
+      const type = {
+        name: "Fixture",
+        uri: "https://example.com/Fixture",
+        entity: false,
+        description: "A fixture.",
+        defaultContext: {},
+        properties: [property],
+      };
+      for (const policy of [undefined, "all", "canonical"]) {
+        await writeFile(
+          join(dir, "fixture.yaml"),
+          stringify({
+            ...type,
+            properties: [{ ...property, redundantPropertiesWrite: policy }],
+          }),
+        );
+        const types = await loadSchemaFiles(dir);
+        deepStrictEqual(
+          types[type.uri].properties[0].redundantProperties,
+          property.redundantProperties,
+        );
+        deepStrictEqual(
+          types[type.uri].properties[0].redundantPropertiesWrite,
+          policy,
+        );
+      }
+      for (
+        const invalid of [
+          { redundantPropertiesWrite: "merge" },
+          { redundantPropertiesWrite: 42 },
+          { redundantProperties: "alias" },
+          { redundantProperties: [{}] },
+          { redundantProperties: [{ uri: 42 }] },
+          {
+            redundantProperties: [{
+              uri: "https://example.com/alias",
+              compactName: 42,
+            }],
+          },
+        ]
+      ) {
+        await writeFile(
+          join(dir, "fixture.yaml"),
+          stringify({
+            ...type,
+            properties: [{ ...property, ...invalid }],
+          }),
+        );
+        await rejects(loadSchemaFiles(dir), AggregateError);
+      }
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });

@@ -86,6 +86,27 @@ export interface TypeSchema {
 
 export interface PropertySchemaBase {
   /**
+   * Synonyms read after the canonical property, in declaration order.
+   * Deserialization selects the first non-empty raw value set before decoding
+   * its values and containers; it never merges synonyms or retries invalid
+   * values.  Serialization writes all synonyms by default.
+   */
+  redundantProperties?: {
+    /** The qualified URI of the synonym. */
+    uri: string;
+
+    /** The synonym's key in the default compact JSON-LD context. */
+    compactName?: string;
+  }[];
+
+  /**
+   * Whether serialization writes every synonym or only the canonical property.
+   * Defaults to `"all"`.  This does not change deserialization precedence or
+   * the existing cache of parsed JSON-LD documents.
+   */
+  redundantPropertiesWrite?: "all" | "canonical";
+
+  /**
    * A context URL added to the default serialization context when this
    * property's expanded IRI appears in the compacted document.  Explicit
    * caller contexts are unchanged.  Populated properties with this option
@@ -229,25 +250,6 @@ export type PropertySchema =
      * and `singularAccessor` should not be specified.
      */
     functional: true;
-
-    /**
-     * If it's present, those redundant properties are also filled with
-     * the same value altogether when the object is serialized into
-     * JSON-LD.  When it's deserialized from JSON-LD, it tries to
-     * parse the values of the specified properties in order.
-     */
-    redundantProperties?: {
-      /**
-       * The qualified URI of the property.
-       */
-      uri: string;
-
-      /**
-       * The property name used in the compacted JSON-LD document.  It is used
-       * as the key of the property.
-       */
-      compactName?: string;
-    }[];
   };
 
 /**
