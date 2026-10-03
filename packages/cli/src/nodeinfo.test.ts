@@ -36,8 +36,6 @@ test("getFaviconUrl - small favicon.ico and apple-touch-icon.png", async () => {
 
   const result = await getFaviconUrl("https://example.com/");
   assert.equal(result.href, "https://example.com/apple-touch-icon.png");
-
-  fetchMock.hardReset();
 });
 
 const HTML_WITH_ICON = `
@@ -62,8 +60,6 @@ test("getFaviconUrl - favicon.ico and apple-touch-icon.png", async () => {
 
   const result = await getFaviconUrl("https://example.com/");
   assert.equal(result.href, "https://example.com/favicon.ico");
-
-  fetchMock.hardReset();
 });
 
 const HTML_WITH_SVG_ONLY = `
@@ -87,8 +83,6 @@ test("getFaviconUrl - svg icons only falls back to /favicon.ico", async () => {
 
   const result = await getFaviconUrl("https://example.com/");
   assert.equal(result.href, "https://example.com/favicon.ico");
-
-  fetchMock.hardReset();
 });
 
 const HTML_WITH_UPPERCASE_SVG_ONLY = `
@@ -112,8 +106,6 @@ test("getFaviconUrl - uppercase svg icons only falls back to /favicon.ico", asyn
 
   const result = await getFaviconUrl("https://example.com/");
   assert.equal(result.href, "https://example.com/favicon.ico");
-
-  fetchMock.hardReset();
 });
 
 const HTML_WITH_UPPERCASE_SVG_WITH_QUERY = `
@@ -137,8 +129,6 @@ test("getFaviconUrl - uppercase svg icons with query and hash fall back to /favi
 
   const result = await getFaviconUrl("https://example.com/");
   assert.equal(result.href, "https://example.com/favicon.ico");
-
-  fetchMock.hardReset();
 });
 
 const HTML_WITH_SVG_TYPE_ONLY = `
@@ -185,8 +175,6 @@ test("getFaviconUrl - icons with sizes='any' is selected", async () => {
 
   const result = await getFaviconUrl("https://example.com/");
   assert.equal(result.href, "https://example.com/favicon.png");
-
-  fetchMock.hardReset();
 });
 
 const HTML_WITH_PREFERRED_BITMAP_ICON = `
@@ -211,8 +199,6 @@ test("getFaviconUrl - prefer bitmap icons", async () => {
 
   const result = await getFaviconUrl("https://example.com/");
   assert.equal(result.href, "https://example.com/favicon.png");
-
-  fetchMock.hardReset();
 });
 
 const HTML_WITH_MULTIPLE_REL_TOKENS = `
@@ -236,8 +222,6 @@ test("getFaviconUrl - icon with multiple rel tokens", async () => {
 
   const result = await getFaviconUrl("https://example.com/");
   assert.equal(result.href, "https://example.com/favicon.png");
-
-  fetchMock.hardReset();
 });
 
 const HTML_WITHOUT_ICON = `
@@ -260,8 +244,6 @@ test("getFaviconUrl - falls back to /favicon.ico", async () => {
 
   const result = await getFaviconUrl("https://example.com/");
   assert.equal(result.href, "https://example.com/favicon.ico");
-
-  fetchMock.hardReset();
 });
 
 test("rgbTo256Color - check RGB cube", () => {
