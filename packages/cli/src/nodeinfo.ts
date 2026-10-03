@@ -371,10 +371,13 @@ export async function getFaviconUrl(
     }
     const rel = attrs.rel?.toLowerCase()?.trim()?.split(/\s+/) ?? [];
     if (!rel.includes("icon") && !rel.includes("apple-touch-icon")) continue;
-    if ("sizes" in attrs && attrs.sizes.match(/\d+x\d+/)) {
-      const [w, h] = attrs.sizes.split("x").map((v) => Number.parseInt(v));
-      if (w < 38 || h < 19) continue;
-    }
+    const tokens = attrs.sizes?.match(/\d+x\d+/g);
+    if (
+      tokens != null && !tokens.some((token) => {
+        const [w, h] = token.split("x").map((v) => Number.parseInt(v));
+        return w >= 38 && h >= 19;
+      })
+    ) continue;
     if ("href" in attrs) {
       const parsedUrl = new URL(attrs.href, response.url);
       if (parsedUrl.pathname.toLowerCase().endsWith(".svg")) continue;
