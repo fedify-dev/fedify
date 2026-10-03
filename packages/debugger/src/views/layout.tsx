@@ -57,6 +57,13 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = (
           pre { background: #f6f8fa; padding: 1rem; overflow-x: auto; border-radius: 6px; font-size: 0.8125rem; }
           .empty { color: #888; font-style: italic; }
           nav a { margin-right: 0.5rem; }
+          .filter-form { border: 1px solid #ddd; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1rem; }
+          .filter-form fieldset { border: none; padding: 0; margin: 0; }
+          .filter-form legend { font-size: 0.8125rem; color: #666; padding: 0; margin-bottom: 0.5rem; }
+          .filter-form label { display: inline-flex; align-items: center; gap: 0.3rem; margin: 0 1rem 0.5rem 0; font-size: 0.875rem; }
+          .filter-form select, .filter-form input[type="text"] { font-size: 0.875rem; padding: 0.25rem 0.4rem; }
+          .filter-actions { display: flex; align-items: center; gap: 1rem; margin-top: 0.25rem; }
+          .filter-actions button { font-size: 0.8125rem; padding: 0.3rem 0.75rem; cursor: pointer; }
           .log-table td { font-size: 0.8125rem; vertical-align: top; }
           .log-table time { font-family: monospace; white-space: nowrap; }
           .badge-debug { background: #e8e8e8; color: #666; }
@@ -80,6 +87,8 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = (
             .detail-section h2 { border-bottom-color: #21262d; }
             pre { background: #161b22; }
             .empty { color: #9198a1; }
+            .filter-form { border-color: #30363d; }
+            .filter-form legend { color: #9198a1; }
             .badge-debug { background: #21262d; color: #9198a1; }
             .badge-info { background: #122d42; color: #58a6ff; }
             .badge-warning { background: #2e2a1f; color: #d29922; }

@@ -17,6 +17,7 @@ import type {
   TraceActivityRecord,
   TraceSummary,
 } from "@fedify/fedify/otel";
+import type { Sink } from "@logtape/logtape";
 import { trace } from "@opentelemetry/api";
 
 function createMockExporter(
@@ -1250,4 +1251,467 @@ test("trace detail page shows empty log message", async () => {
   strictEqual(response.status, 200);
   const html = await response.text();
   ok(html.includes("No logs captured for this trace."));
+});
+
+// ---------- Trace list filtering tests ----------
+
+function threeTypedTraces(): TraceSummary[] {
+  return [
+    {
+      traceId: "a".repeat(32),
+      timestamp: "2026-01-01T00:00:00Z",
+      activityCount: 1,
+      activityTypes: ["Create"],
+    },
+    {
+      traceId: "b".repeat(32),
+      timestamp: "2026-01-02T00:00:00Z",
+      activityCount: 1,
+      activityTypes: ["Follow"],
+    },
+    {
+      traceId: "c".repeat(32),
+      timestamp: "2026-01-03T00:00:00Z",
+      activityCount: 1,
+      activityTypes: ["Like"],
+    },
+  ];
+}
+
+test("traces list page filters by a single activity type", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter(threeTypedTraces());
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const request = new Request("https://example.com/__debug__/?type=Follow");
+  const response = await dbg.fetch(request, { contextData: undefined });
+  const html = await response.text();
+  ok(html.includes("<strong>1</strong>"));
+  ok(html.includes("bbbbbbbb"));
+  ok(!html.includes("aaaaaaaa"));
+  ok(!html.includes("cccccccc"));
+});
+
+test("traces list page filters by multiple activity types with OR semantics", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter(threeTypedTraces());
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const request = new Request(
+    "https://example.com/__debug__/?type=Create&type=Like",
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  const html = await response.text();
+  ok(html.includes("<strong>2</strong>"));
+  ok(html.includes("aaaaaaaa"));
+  ok(html.includes("cccccccc"));
+  ok(!html.includes("bbbbbbbb"));
+});
+
+test("traces list page shows filter-specific empty message when nothing matches", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter(threeTypedTraces());
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const request = new Request("https://example.com/__debug__/?type=Nope");
+  const response = await dbg.fetch(request, { contextData: undefined });
+  const html = await response.text();
+  ok(html.includes("No traces match the selected filters."));
+  ok(!html.includes("No traces captured yet."));
+});
+
+test("traces list page filter form retains the selected checkbox and shows a clear link", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter(threeTypedTraces());
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const request = new Request("https://example.com/__debug__/?type=Follow");
+  const response = await dbg.fetch(request, { contextData: undefined });
+  const html = await response.text();
+  ok(html.includes('value="Follow" checked'));
+  ok(!html.includes('value="Create" checked'));
+  ok(!html.includes('value="Like" checked'));
+  ok(html.includes("Clear filters"));
+});
+
+test("traces list page filter form has no clear link when nothing is selected", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter(threeTypedTraces());
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const request = new Request("https://example.com/__debug__/");
+  const response = await dbg.fetch(request, { contextData: undefined });
+  const html = await response.text();
+  ok(!html.includes("Clear filters"));
+});
+
+test("JSON traces API filters by type", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter(threeTypedTraces());
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const request = new Request(
+    "https://example.com/__debug__/api/traces?type=Follow",
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  const body = (await response.json()) as TraceSummary[];
+  strictEqual(body.length, 1);
+  strictEqual(body[0].traceId, "b".repeat(32));
+});
+
+// ---------- Poll script tests ----------
+
+/** Pulls the inline `<script>` body out of a rendered traces list page. */
+function extractPollScript(html: string): string {
+  const match = html.match(/<script>([\s\S]*?)<\/script>/);
+  if (match == null) throw new Error("poll script not found in the page");
+  return match[1];
+}
+
+/**
+ * Runs the extracted poll script in a sandbox, feeding it one page of
+ * `/api/traces` JSON per simulated tick, and reports whether `location
+ * .reload()` was ever called.
+ */
+async function runPollScript(
+  scriptBody: string,
+  ticks: readonly TraceSummary[][],
+): Promise<{ reloaded: boolean }> {
+  let reloaded = false;
+  let tickIndex = 0;
+  const fakeFetch = () => {
+    const data = ticks[tickIndex];
+    return Promise.resolve({ json: () => Promise.resolve(data) });
+  };
+  let onTick: (() => void) | undefined;
+  const fakeSetInterval = (fn: () => void) => {
+    onTick = fn;
+    return 1;
+  };
+  const fakeLocation = {
+    reload: () => {
+      reloaded = true;
+    },
+  };
+  const run = new Function(
+    "window",
+    "location",
+    "fetch",
+    "setInterval",
+    "clearInterval",
+    scriptBody,
+  ) as (
+    windowArg: unknown,
+    locationArg: unknown,
+    fetchArg: unknown,
+    setIntervalArg: unknown,
+    clearIntervalArg: unknown,
+  ) => void;
+  run(
+    { addEventListener: () => {} },
+    fakeLocation,
+    fakeFetch,
+    fakeSetInterval,
+    () => {},
+  );
+  if (onTick == null) throw new Error("setInterval was never called");
+  for (; tickIndex < ticks.length; tickIndex++) {
+    onTick();
+    // Flush the fetch/json/then microtask chain before the next tick.
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  }
+  return { reloaded };
+}
+
+test("poll script does not reload across unchanged ticks", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter(threeTypedTraces());
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const response = await dbg.fetch(
+    new Request("https://example.com/__debug__/"),
+    { contextData: undefined },
+  );
+  const script = extractPollScript(await response.text());
+  const same = threeTypedTraces();
+  const { reloaded } = await runPollScript(script, [same, same, same]);
+  strictEqual(reloaded, false);
+});
+
+test("poll script reloads when a new activity type appears", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter(threeTypedTraces());
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  // A filter is active, matching only the "Create" trace: a newly captured
+  // "Follow" trace would not change what's visible, but its checkbox should
+  // still appear once the page reloads.
+  const response = await dbg.fetch(
+    new Request("https://example.com/__debug__/?type=Create"),
+    { contextData: undefined },
+  );
+  const script = extractPollScript(await response.text());
+  const before: TraceSummary[] = [
+    {
+      traceId: "a".repeat(32),
+      timestamp: "2026-01-01T00:00:00Z",
+      activityCount: 1,
+      activityTypes: ["Create"],
+    },
+  ];
+  const after: TraceSummary[] = [
+    ...before,
+    {
+      traceId: "b".repeat(32),
+      timestamp: "2026-01-02T00:00:00Z",
+      activityCount: 1,
+      activityTypes: ["Follow"],
+    },
+  ];
+  const { reloaded } = await runPollScript(script, [before, after]);
+  strictEqual(reloaded, true);
+});
+
+test("poll script reloads when an existing trace gains a new activity type", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter(threeTypedTraces());
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const response = await dbg.fetch(
+    new Request("https://example.com/__debug__/"),
+    { contextData: undefined },
+  );
+  const script = extractPollScript(await response.text());
+  // The trace count never changes here—only the one trace's own
+  // activityTypes grows, the way FedifySpanExporter updates an existing
+  // summary in place. A count-only comparison would miss this.
+  const before: TraceSummary[] = [
+    {
+      traceId: "a".repeat(32),
+      timestamp: "2026-01-01T00:00:00Z",
+      activityCount: 1,
+      activityTypes: ["Create"],
+    },
+  ];
+  const after: TraceSummary[] = [
+    { ...before[0], activityCount: 2, activityTypes: ["Create", "Update"] },
+  ];
+  const { reloaded } = await runPollScript(script, [before, after]);
+  strictEqual(reloaded, true);
+});
+
+// ---------- Log filtering tests ----------
+
+function sinkTwoDistinctLogs(
+  dbg: Federation<void> & { sink: Sink },
+  traceId: string,
+): void {
+  dbg.sink({
+    category: ["fedify", "federation"],
+    level: "info",
+    message: ["hello world"],
+    rawMessage: "hello world",
+    timestamp: Date.now(),
+    properties: { traceId, spanId: "1".repeat(16) },
+  });
+  dbg.sink({
+    category: ["fedify", "outbox"],
+    level: "error",
+    message: ["boom happened"],
+    rawMessage: "boom happened",
+    timestamp: Date.now(),
+    properties: { traceId, spanId: "2".repeat(16) },
+  });
+}
+
+test("trace detail page filters logs by category", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
+  sinkTwoDistinctLogs(dbg, traceId);
+
+  const request = new Request(
+    `https://example.com/__debug__/traces/${traceId}?category=fedify.federation`,
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  const html = await response.text();
+  ok(html.includes("hello world"));
+  ok(!html.includes("boom happened"));
+});
+
+test("trace detail page filters logs by level", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
+  sinkTwoDistinctLogs(dbg, traceId);
+
+  const request = new Request(
+    `https://example.com/__debug__/traces/${traceId}?level=error`,
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  const html = await response.text();
+  ok(html.includes("boom happened"));
+  ok(!html.includes("hello world"));
+});
+
+test("trace detail page filters logs by a case-insensitive text search", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
+  sinkTwoDistinctLogs(dbg, traceId);
+
+  const request = new Request(
+    `https://example.com/__debug__/traces/${traceId}?q=BOOM`,
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  const html = await response.text();
+  ok(html.includes("boom happened"));
+  ok(!html.includes("hello world"));
+});
+
+test("trace detail page combines log filters with AND semantics", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
+  sinkTwoDistinctLogs(dbg, traceId);
+
+  // "hello world" is level info, not error, so this combination matches none.
+  const request = new Request(
+    `https://example.com/__debug__/traces/${traceId}` +
+      "?category=fedify.federation&level=error",
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  const html = await response.text();
+  ok(!html.includes("hello world"));
+  ok(!html.includes("boom happened"));
+  ok(html.includes("No logs match the selected filters."));
+});
+
+test("trace detail page log filter form retains selected values", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
+  sinkTwoDistinctLogs(dbg, traceId);
+
+  const request = new Request(
+    `https://example.com/__debug__/traces/${traceId}` +
+      "?category=fedify.federation&level=info&q=hello",
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  const html = await response.text();
+  ok(html.includes('value="fedify.federation" selected'));
+  ok(html.includes('value="info" selected'));
+  ok(html.includes('value="hello"'));
+  ok(html.includes("Clear filters"));
+});
+
+test("JSON logs API filters by level", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
+  sinkTwoDistinctLogs(dbg, traceId);
+
+  const request = new Request(
+    `https://example.com/__debug__/api/logs/${traceId}?level=error`,
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  const body = (await response.json()) as SerializedLogRecord[];
+  strictEqual(body.length, 1);
+  strictEqual(body[0].message, "boom happened");
+});
+
+test("JSON logs API filters by category", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
+  sinkTwoDistinctLogs(dbg, traceId);
+
+  const request = new Request(
+    `https://example.com/__debug__/api/logs/${traceId}?category=fedify.federation`,
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  const body = (await response.json()) as SerializedLogRecord[];
+  strictEqual(body.length, 1);
+  strictEqual(body[0].message, "hello world");
+});
+
+test("JSON logs API filters by a case-insensitive text search", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
+  sinkTwoDistinctLogs(dbg, traceId);
+
+  const request = new Request(
+    `https://example.com/__debug__/api/logs/${traceId}?q=BOOM`,
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  const body = (await response.json()) as SerializedLogRecord[];
+  strictEqual(body.length, 1);
+  strictEqual(body[0].message, "boom happened");
+});
+
+test("JSON logs API combines filters with AND semantics", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
+  sinkTwoDistinctLogs(dbg, traceId);
+
+  // "hello world" is level info, not error, so this combination matches none.
+  const request = new Request(
+    `https://example.com/__debug__/api/logs/${traceId}` +
+      "?category=fedify.federation&level=error",
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  const body = (await response.json()) as SerializedLogRecord[];
+  strictEqual(body.length, 0);
+});
+
+test("JSON logs API returns everything when no filter is given", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
+  sinkTwoDistinctLogs(dbg, traceId);
+
+  const request = new Request(
+    `https://example.com/__debug__/api/logs/${traceId}`,
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  const body = (await response.json()) as SerializedLogRecord[];
+  strictEqual(body.length, 2);
+});
+
+test("trace detail page shows the filtered count alongside the total", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
+  sinkTwoDistinctLogs(dbg, traceId);
+
+  const request = new Request(
+    `https://example.com/__debug__/traces/${traceId}?level=error`,
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  const html = await response.text();
+  ok(html.includes("<strong>1</strong> of"));
+  ok(html.includes("<strong>2</strong>"));
+});
+
+test("trace detail page escapes a malicious search query in the filter form", async () => {
+  const { federation } = createMockFederation();
+  const { exporter, kv } = createMockExporter();
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const traceId = "aaaa1111bbbb2222cccc3333dddd4444";
+  sinkTwoDistinctLogs(dbg, traceId);
+
+  const malicious = '"><script>alert(1)</script>';
+  const request = new Request(
+    `https://example.com/__debug__/traces/${traceId}?q=${
+      encodeURIComponent(malicious)
+    }`,
+  );
+  const response = await dbg.fetch(request, { contextData: undefined });
+  const html = await response.text();
+  ok(!html.includes("<script>alert(1)</script>"));
+  ok(html.includes("&lt;script&gt;"));
 });
