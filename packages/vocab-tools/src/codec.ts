@@ -162,8 +162,13 @@ export async function* generateEncoder(
           ? compactItems
           : compactItems[0];
         `;
-        if (property.functional && property.redundantProperties != null) {
+        if (
+          property.redundantPropertiesWrite !== "canonical" &&
+          property.redundantProperties != null &&
+          !(isNonFunctionalProperty(property) && property.container != null)
+        ) {
           for (const prop of property.redundantProperties) {
+            if (prop.compactName == null) continue;
             yield `
             result[${JSON.stringify(prop.compactName)}]
               = compactItems.length > 1
@@ -255,7 +260,10 @@ export async function* generateEncoder(
       );
       values[${JSON.stringify(property.uri)}] = propValue;
     `;
-    if (property.functional && property.redundantProperties != null) {
+    if (
+      property.redundantPropertiesWrite !== "canonical" &&
+      property.redundantProperties != null
+    ) {
       for (const prop of property.redundantProperties) {
         yield `
         values[${JSON.stringify(prop.uri)}] = propValue;
@@ -348,6 +356,11 @@ export async function* generateEncoder(
   for (const property of type.properties) {
     if (
       property.extraContext != null ||
+      (property.redundantPropertiesWrite !== "canonical" &&
+        property.redundantProperties != null &&
+        property.redundantProperties.length > 0 &&
+        (property.redundantProperties.some((p) => p.compactName == null) ||
+          (isNonFunctionalProperty(property) && property.container != null))) ||
       !property.range.every((r) => isCompactableType(r, types))
     ) {
       yield `
@@ -544,7 +557,7 @@ export async function* generateDecoder(
     yield `
     let ${arrayVariable} = ${propertyValues};
     `;
-    if (property.functional && property.redundantProperties != null) {
+    if (property.redundantProperties != null) {
       for (const prop of property.redundantProperties) {
         yield `
         if (${arrayVariable} == null || ${arrayVariable}.length < 1) {
