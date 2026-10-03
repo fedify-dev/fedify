@@ -3,6 +3,7 @@
 // cSpell: disable
 
 import cidV1Context from "./contexts/cid-v1.json" with { type: "json" };
+import fep6757 from "./contexts/fep-6757.json" with { type: "json" };
 import fep7aa9 from "./contexts/fep-7aa9.json" with { type: "json" };
 import fepEf61 from "./contexts/fep-ef61.json" with { type: "json" };
 import joinLemmyContext from "./contexts/join-lemmy.json" with { type: "json" };
@@ -4344,6 +4345,13 @@ const preloadedContexts: Record<string, unknown> = {
   // See: https://w3id.org/fep/7aa9
   //      https://github.com/fedify-dev/fedify/issues/1078
   "https://w3id.org/fep/7aa9": fep7aa9,
+
+  // The FEP-6757 context is hosted on Codeberg Pages, whose outages can
+  // prevent documents with license metadata from being parsed.  Resolve it
+  // locally so parsing does not depend on the remote context server.
+  // See: https://w3id.org/fep/6757
+  //      https://github.com/fedify-dev/fedify/issues/1211
+  "https://w3id.org/fep/6757": fep6757,
 
   // Lemmy's context document is served as application/json without the JSON-LD
   // context Link header.  The default document loader treats that as a regular
