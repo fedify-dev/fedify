@@ -8,6 +8,7 @@ import { RouterError } from "@fedify/uri-template";
 import * as vocab from "@fedify/vocab";
 import {
   Create,
+  CryptographicKey,
   getTypeId,
   lookupObject,
   Note,
@@ -1730,6 +1731,157 @@ test({
       assertStrictEquals(clone.contextLoader, ctx.contextLoader);
       assertStrictEquals(clone.federation, ctx.federation);
     });
+
+    await t.step(
+      "getSignedKey() uses the key cache",
+      async () => {
+        const kv = new MemoryKvStore();
+        const keyId = rsaPublicKey2.id!;
+        let keyFetches = 0;
+
+        const documentLoader = async (url: string) => {
+          if (url === keyId.href) keyFetches++;
+          return await mockDocumentLoader(url);
+        };
+
+        const federation = createFederation<number>({
+          kv,
+          documentLoaderFactory: () => documentLoader,
+          contextLoaderFactory: () => mockDocumentLoader,
+          publicKeyTtl: { days: 7 },
+        });
+
+        const request1 = await signRequest(
+          new Request("https://example.com/"),
+          rsaPrivateKey2,
+          keyId,
+        );
+        const request2 = await signRequest(
+          new Request("https://example.com/"),
+          rsaPrivateKey2,
+          keyId,
+        );
+
+        const ctx1 = federation.createContext(request1, 1);
+        const ctx2 = federation.createContext(request2, 2);
+
+        assertEquals(await ctx1.getSignedKey(), rsaPublicKey2);
+        assertEquals(keyFetches, 1);
+
+        assertEquals(await ctx2.getSignedKey(), rsaPublicKey2);
+        assertEquals(keyFetches, 1);
+      },
+    );
+
+    await t.step(
+      "getSignedKey() caches unavailable keys",
+      async () => {
+        const kv = new MemoryKvStore();
+        const keyId = new URL("https://example.com/keys/missing");
+        let keyFetches = 0;
+
+        const documentLoader = async (url: string) => {
+          if (url === keyId.href) keyFetches++;
+          return await mockDocumentLoader(url);
+        };
+
+        const federation = createFederation<number>({
+          kv,
+          documentLoaderFactory: () => documentLoader,
+          contextLoaderFactory: () => mockDocumentLoader,
+        });
+
+        const request1 = await signRequest(
+          new Request("https://example.com/"),
+          rsaPrivateKey2,
+          keyId,
+        );
+        const request2 = await signRequest(
+          new Request("https://example.com/"),
+          rsaPrivateKey2,
+          keyId,
+        );
+
+        const ctx1 = federation.createContext(request1, 1);
+        const ctx2 = federation.createContext(request2, 2);
+
+        assertEquals(await ctx1.getSignedKey(), null);
+        assertEquals(keyFetches, 1);
+
+        assertEquals(await ctx2.getSignedKey(), null);
+        assertEquals(keyFetches, 1);
+      },
+    );
+
+    await t.step(
+      "getSignedKey() refetches a key that no longer verifies",
+      async () => {
+        const kv = new MemoryKvStore();
+        const keyId = rsaPublicKey2.id!;
+        let keyFetches = 0;
+
+        const rotatedPublicKey = new CryptographicKey({
+          id: keyId,
+          publicKey: rsaPublicKey3.publicKey,
+        });
+
+        const documentLoader = async (url: string) => {
+          if (url !== keyId.href) return await mockDocumentLoader(url);
+
+          keyFetches++;
+
+          if (keyFetches === 1) {
+            return await mockDocumentLoader(url);
+          }
+
+          return {
+            contextUrl: null,
+            documentUrl: url,
+            document: await rotatedPublicKey.toJsonLd({
+              contextLoader: mockDocumentLoader,
+            }),
+          };
+        };
+
+        const federation = createFederation<number>({
+          kv,
+          documentLoaderFactory: () => documentLoader,
+          contextLoaderFactory: () => mockDocumentLoader,
+        });
+
+        const request1 = await signRequest(
+          new Request("https://example.com/"),
+          rsaPrivateKey2,
+          keyId,
+        );
+        const request2 = await signRequest(
+          new Request("https://example.com/"),
+          rsaPrivateKey3,
+          keyId,
+        );
+
+        const request3 = await signRequest(
+          new Request("https://example.com/"),
+          rsaPrivateKey3,
+          keyId,
+        );
+
+        const ctx1 = federation.createContext(request1, 1);
+        const ctx2 = federation.createContext(request2, 2);
+
+        const ctx3 = federation.createContext(request3, 3);
+
+        assertEquals(await ctx1.getSignedKey(), rsaPublicKey2);
+        assertEquals(keyFetches, 1);
+
+        assertEquals(await ctx2.getSignedKey(), rotatedPublicKey);
+        assertEquals(keyFetches, 2);
+
+        assertEquals(await ctx3.getSignedKey(), rotatedPublicKey);
+        // The refreshed key was cached, so it is not fetched again:
+        assertEquals(keyFetches, 2);
+      },
+    );
 
     fetchMock.hardReset();
   },
