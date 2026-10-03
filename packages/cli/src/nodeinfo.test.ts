@@ -177,6 +177,30 @@ test("getFaviconUrl - icons with sizes='any' is selected", async () => {
   assert.equal(result.href, "https://example.com/favicon.png");
 });
 
+const HTML_WITH_MULTI_SIZE_ICON = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Site</title>
+  <link rel="alternate icon" type="image/x-icon" href="/favicon.ico" sizes="16x16 32x32 48x48 256x256">
+  <link rel="apple-touch-icon" href="/apple-icon-180.png">
+  </head>
+<body>Test</body>
+</html>
+`;
+
+test("getFaviconUrl - icons with multiple sizes", async () => {
+  fetchMock.spyGlobal();
+
+  fetchMock.get("https://example.com/", {
+    body: HTML_WITH_MULTI_SIZE_ICON,
+    headers: { "Content-Type": "text/html" },
+  });
+
+  const result = await getFaviconUrl("https://example.com/");
+  assert.equal(result.href, "https://example.com/favicon.ico");
+});
+
 const HTML_WITH_PREFERRED_BITMAP_ICON = `
 <!DOCTYPE html>
 <html>
