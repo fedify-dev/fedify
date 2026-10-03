@@ -8,6 +8,23 @@ Version 2.0.31
 
 To be released.
 
+### @fedify/vocab
+
+ -  Fixed shared property arrays in vocabulary objects so dereferencing a
+    clone no longer changes its source's properties or serialization.
+    Constructors and `clone()` also copy supplied plural-value arrays,
+    allowing frozen arrays and preventing changes to the caller's arrays.
+    Nested objects and URLs retain their identity.  [[#1207], [#1208]]
+
+[#1207]: https://github.com/fedify-dev/fedify/issues/1207
+[#1208]: https://github.com/fedify-dev/fedify/pull/1208
+
+### @fedify/vocab-tools
+
+ -  Fixed generated constructors and `clone()` methods to copy property
+    arrays, preventing a clone's remote lookups from changing its source and
+    preserving arrays supplied by callers.  [[#1207], [#1208]]
+
 
 Version 2.0.30
 --------------
