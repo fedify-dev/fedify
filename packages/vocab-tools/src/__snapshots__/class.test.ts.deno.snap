@@ -16,6 +16,7 @@ import {
     importMultibaseKey,
     importPem,
     LanguageString,
+    normalizeLanguageTag,
     type RemoteDocument,
 } from \\"@fedify/vocab-runtime\\";
 import {
@@ -35,7 +36,7 @@ function decodeIri(iri: string): URL {
 
 function isValidLanguageTag(language: string): boolean {
   try {
-    new Intl.Locale(language);
+    new Intl.Locale(normalizeLanguageTag(language));
     return true;
   } catch (error) {
     if (error instanceof RangeError) return false;
@@ -49346,7 +49347,7 @@ get names(): ((string | LanguageString))[] {
       if (v == null) continue;
     
       const decoded =
-    new Intl.Locale(v[\\"@value\\"])
+    new Intl.Locale(normalizeLanguageTag(v[\\"@value\\"]))
       ;
     
       if (!this._shouldCacheDecodedJsonLd(decoded)) {

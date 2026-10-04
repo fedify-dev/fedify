@@ -305,6 +305,77 @@ test("Note.fromJsonLd() ignores malformed language tags in nested objects", asyn
   deepStrictEqual(attachment.nameMap, { en: "Valid" });
 });
 
+test("Note.fromJsonLd() normalizes extlang language tags", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Note",
+    content: "<p>早晨</p>",
+    contentMap: {
+      "zh-YUE": "<p>早晨</p>",
+      "yue": "<p>早晨呀</p>",
+    },
+  };
+  const note = await Note.fromJsonLd(json);
+  // JSON-LD expansion sorts language map keys, so yue comes before zh-yue:
+  deepStrictEqual(note.contents, [
+    "<p>早晨</p>",
+    new LanguageString("<p>早晨呀</p>", "yue"),
+    new LanguageString("<p>早晨</p>", "yue"),
+  ]);
+  deepStrictEqual(
+    note.contents.map((c) => typeof c === "string" ? null : c.locale.baseName),
+    [null, "yue", "yue"],
+  );
+
+  // The unmodified object is serialized from the cached original document:
+  deepStrictEqual(await note.toJsonLd(), json);
+  const compact = await note.toJsonLd({ format: "compact" }) as Record<
+    string,
+    unknown
+  >;
+  deepStrictEqual(compact.contentMap, {
+    yue: ["<p>早晨呀</p>", "<p>早晨</p>"],
+  });
+  const expanded = await note.toJsonLd({ format: "expand" });
+  deepStrictEqual(
+    (expanded as Record<string, unknown>[])[0][
+      "https://www.w3.org/ns/activitystreams#content"
+    ],
+    [
+      { "@value": "<p>早晨</p>" },
+      { "@value": "<p>早晨呀</p>", "@language": "yue" },
+      { "@value": "<p>早晨</p>", "@language": "yue" },
+    ],
+  );
+
+  const expandedNote = await Note.fromJsonLd({
+    "@type": ["https://www.w3.org/ns/activitystreams#Note"],
+    "https://www.w3.org/ns/activitystreams#name": [
+      { "@value": "早晨", "@language": "zh-yue-HK" },
+    ],
+  });
+  deepStrictEqual(expandedNote.names, [new LanguageString("早晨", "yue-HK")]);
+  deepStrictEqual(
+    (expandedNote.names[0] as LanguageString).locale.baseName,
+    "yue-HK",
+  );
+});
+
+test("Note.fromJsonLd() caches original language tags", async () => {
+  const json = {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Note",
+    contentMap: { "EN-us": "Hello" },
+  };
+  const note = await Note.fromJsonLd(json);
+  deepStrictEqual(note.contents, [new LanguageString("Hello", "en-US")]);
+  deepStrictEqual(
+    (note.contents[0] as LanguageString).locale.baseName,
+    "en-US",
+  );
+  deepStrictEqual(await note.toJsonLd(), json);
+});
+
 test("Note.toJsonLd()", async () => {
   const note = new Note({
     tags: [
@@ -1149,6 +1220,29 @@ test("Link.fromJsonLd()", async () => {
     link3.href,
     new URL("at://did%3Aplc%3Aia76kvnndjutgedggx2ibrem"),
   );
+});
+
+test("Link.fromJsonLd() normalizes extlang hreflang", async () => {
+  const link = await Link.fromJsonLd({
+    "@context": "https://www.w3.org/ns/activitystreams",
+    type: "Link",
+    href: "https://example.com/yue",
+    hreflang: "zh-YUE",
+  });
+  deepStrictEqual(link.language?.baseName, "yue");
+  const compact = await link.toJsonLd({ format: "compact" }) as Record<
+    string,
+    unknown
+  >;
+  deepStrictEqual(compact.hreflang, "yue");
+
+  await rejects(() =>
+    Link.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Link",
+      href: "https://example.com/en",
+      hreflang: "en-USA",
+    }), RangeError);
 });
 
 test("Person.fromJsonLd() with relative URLs", async () => {

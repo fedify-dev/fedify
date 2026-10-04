@@ -25,6 +25,7 @@ export {
   importSpki,
 } from "./key.ts";
 export { LanguageString } from "./langstr.ts";
+export { normalizeLanguageTag } from "./langtag.ts";
 export {
   decodeMultibase,
   encodeMultibase,

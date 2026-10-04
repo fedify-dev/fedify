@@ -147,6 +147,7 @@ export async function* generateClasses(
     importMultibaseKey,
     importPem,
     LanguageString,
+    normalizeLanguageTag,
     type RemoteDocument,
 } from "@fedify/vocab-runtime";\n`;
   yield `import {
@@ -167,7 +168,7 @@ function decodeIri(iri: string): URL {
   yield `
 function isValidLanguageTag(language: string): boolean {
   try {
-    new Intl.Locale(language);
+    new Intl.Locale(normalizeLanguageTag(language));
     return true;
   } catch (error) {
     if (error instanceof RangeError) return false;
