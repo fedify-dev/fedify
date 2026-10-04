@@ -47,23 +47,32 @@ function filterTracesByTypes(
 
 /**
  * Computes a string that changes whenever the trace corpus changes in a
- * way the traces list page's live-poll script needs to react to: the
- * total trace count, the distinct activity types available to filter by,
- * and how many traces currently match `selectedTypes`.  The page embeds
- * this as the poll script's starting point, so the very first poll tick
- * is compared against the data the page was actually rendered with,
- * rather than treating whatever that first tick happens to see as the
- * baseline.
+ * way the traces list page's live-poll script needs to react to.  Rather
+ * than comparing a handful of hand-picked summary fields—which has missed
+ * a real change each time a new one turned up—this serializes every trace
+ * that currently matches `selectedTypes` as `id:types:activityCount`, so
+ * a trace being replaced, an existing trace's activity count going up, or
+ * its activity types growing are all covered by the same comparison.  The
+ * distinct activity types across *all* traces are tracked separately,
+ * since a type that does not match the active filter still needs to make
+ * its checkbox appear.  The page embeds this as the poll script's
+ * starting point, so the very first poll tick is compared against the
+ * data the page was actually rendered with, rather than treating
+ * whatever that first tick happens to see as the baseline.
  */
 function snapshotOf(
   traces: readonly TraceSummary[],
   selectedTypes: readonly string[],
 ): string {
   const types = distinctActivityTypes(traces);
-  const filteredCount = selectedTypes.length === 0
-    ? traces.length
-    : filterTracesByTypes(traces, selectedTypes).length;
-  return `${traces.length}|${types.join(",")}|${filteredCount}`;
+  const rows = filterTracesByTypes(traces, selectedTypes)
+    .map((trace) =>
+      `${trace.traceId}:${
+        [...trace.activityTypes].sort().join("+")
+      }:${trace.activityCount}`
+    )
+    .sort();
+  return `${types.join(",")}|${rows.join(";")}`;
 }
 
 /** Collects the distinct dot-joined log categories, sorted. */

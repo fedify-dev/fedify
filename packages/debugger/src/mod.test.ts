@@ -1575,6 +1575,65 @@ test("poll script reloads when an existing trace starts matching the active filt
   strictEqual(reloadedAtTick, 1);
 });
 
+test("poll script reloads when a matching trace is replaced by a different one", async () => {
+  const { federation } = createMockFederation();
+  const original: TraceSummary = {
+    traceId: "a".repeat(32),
+    timestamp: "2026-01-01T00:00:00Z",
+    activityCount: 1,
+    activityTypes: ["Create"],
+  };
+  const before = [original];
+  const { exporter, kv } = createMockExporter(before);
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const response = await dbg.fetch(
+    new Request("https://example.com/__debug__/"),
+    { contextData: undefined },
+  );
+  const script = extractPollScript(await response.text());
+  // `original` expired (e.g. its TTL ran out) and a different trace of the
+  // same type took its place. The total count, the type union, and how
+  // many traces match (no filter here, so all of them) stay identical to
+  // `before`—only the trace's identity changed.
+  const replacement: TraceSummary = {
+    traceId: "b".repeat(32),
+    timestamp: "2026-01-02T00:00:00Z",
+    activityCount: 1,
+    activityTypes: ["Create"],
+  };
+  const after = [replacement];
+  const { reloadedAtTick } = await runPollScript(script, [before, after]);
+  strictEqual(reloadedAtTick, 1);
+});
+
+test("poll script reloads when a trace's activity count grows without its types changing", async () => {
+  const { federation } = createMockFederation();
+  const before: TraceSummary[] = [
+    {
+      traceId: "a".repeat(32),
+      timestamp: "2026-01-01T00:00:00Z",
+      activityCount: 1,
+      activityTypes: ["Create"],
+    },
+  ];
+  const { exporter, kv } = createMockExporter(before);
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const response = await dbg.fetch(
+    new Request("https://example.com/__debug__/"),
+    { contextData: undefined },
+  );
+  const script = extractPollScript(await response.text());
+  // A second Create activity landed on the same trace: the trace ID, its
+  // activity types, the total count, and the type union are all
+  // unchanged—only activityCount goes up, which the "Activities" column
+  // displays.
+  const after: TraceSummary[] = [
+    { ...before[0], activityCount: 2 },
+  ];
+  const { reloadedAtTick } = await runPollScript(script, [before, after]);
+  strictEqual(reloadedAtTick, 1);
+});
+
 // ---------- Log filtering tests ----------
 
 function sinkTwoDistinctLogs(

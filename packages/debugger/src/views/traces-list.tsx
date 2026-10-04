@@ -129,9 +129,9 @@ export const TracesListPage: FC<TracesListPageProps> = (
   var selectedTypes = new URLSearchParams(location.search).getAll("type");
   function snapshotOf(data) {
     var types = [];
-    var filteredCount = 0;
+    var rows = [];
     for (var i = 0; i < data.length; i++) {
-      var activityTypes = data[i].activityTypes || [];
+      var activityTypes = (data[i].activityTypes || []).slice().sort();
       var matchesFilter = selectedTypes.length === 0;
       for (var j = 0; j < activityTypes.length; j++) {
         if (types.indexOf(activityTypes[j]) === -1) types.push(activityTypes[j]);
@@ -139,10 +139,16 @@ export const TracesListPage: FC<TracesListPageProps> = (
           matchesFilter = true;
         }
       }
-      if (matchesFilter) filteredCount++;
+      if (matchesFilter) {
+        rows.push(
+          data[i].traceId + ":" + activityTypes.join("+") + ":" +
+            data[i].activityCount,
+        );
+      }
     }
     types.sort();
-    return data.length + "|" + types.join(",") + "|" + filteredCount;
+    rows.sort();
+    return types.join(",") + "|" + rows.join(";");
   }
   var prevSnapshot = ${
             JSON.stringify(initialSnapshot).replace(/</g, "\\u003c")
