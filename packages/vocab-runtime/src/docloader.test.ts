@@ -8,6 +8,7 @@ import { gzipSync } from "node:zlib";
 import preloadedContexts from "./contexts.ts";
 import cidV1Context from "./contexts/cid-v1.json" with { type: "json" };
 import { getDocumentLoader, getRemoteDocument } from "./docloader.ts";
+import jsonld from "./jsonld.ts";
 import { FetchError } from "./request.ts";
 import { UrlError } from "./url.ts";
 
@@ -364,6 +365,47 @@ test("getDocumentLoader()", async (t) => {
         },
       },
     });
+    deepStrictEqual(fetchMock.callHistory.calls(url).length, 0);
+  });
+
+  // A Codeberg Pages outage must not prevent loading or expanding FEP-6757.
+  // See: https://github.com/fedify-dev/fedify/issues/1211
+  fetchMock.get("https://w3id.org/fep/6757", { status: 502 });
+  await t.test("preloaded FEP-6757 context", async () => {
+    const url = "https://w3id.org/fep/6757";
+    deepStrictEqual(await fetchDocumentLoader(url), {
+      contextUrl: null,
+      documentUrl: url,
+      document: {
+        "@context": {
+          license: {
+            "@id": "http://purl.org/dc/terms/license",
+            "@type": "@id",
+          },
+          preferredLicense: {
+            "@id": "https://w3id.org/fep/6757#preferredLicense",
+            "@type": "@id",
+          },
+        },
+      },
+    });
+    deepStrictEqual(
+      await jsonld.expand({
+        "@context": ["https://www.w3.org/ns/activitystreams", url],
+        type: "Person",
+        license: "https://creativecommons.org/licenses/by/4.0/",
+        preferredLicense: "https://creativecommons.org/licenses/by-nc/4.0/",
+      }, { documentLoader: fetchDocumentLoader }),
+      [{
+        "@type": ["https://www.w3.org/ns/activitystreams#Person"],
+        "http://purl.org/dc/terms/license": [{
+          "@id": "https://creativecommons.org/licenses/by/4.0/",
+        }],
+        "https://w3id.org/fep/6757#preferredLicense": [{
+          "@id": "https://creativecommons.org/licenses/by-nc/4.0/",
+        }],
+      }],
+    );
     deepStrictEqual(fetchMock.callHistory.calls(url).length, 0);
   });
 
