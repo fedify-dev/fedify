@@ -85,6 +85,19 @@ async function spawnBenchmarkTarget(usernames: string[] = ["alice"]) {
   };
 }
 
+// A clock that jumps straight to each scheduled arrival, so open-loop runs
+// make a fixed number of attempts no matter how slow the deliveries are.
+function createFakeClock(): Clock {
+  let now = 0;
+  return {
+    now: () => now,
+    sleepUntil: (timeMs) => {
+      now = Math.max(now, timeMs);
+      return Promise.resolve();
+    },
+  };
+}
+
 test("inboxRunner - signed deliveries verify against a benchmarkMode target", async () => {
   const target = await spawnBenchmarkTarget();
   let fleet: Awaited<ReturnType<typeof spawnSyntheticServer>> | undefined;
@@ -144,55 +157,72 @@ test("inboxRunner - signed deliveries verify against a benchmarkMode target", as
   }
 });
 
-test("inboxRunner - reports server metrics scoped past the warm-up", async () => {
-  const target = await spawnBenchmarkTarget();
-  let fleet: Awaited<ReturnType<typeof spawnSyntheticServer>> | undefined;
-  try {
-    fleet = await spawnSyntheticServer(
-      await buildFleet([{
-        count: 1,
-        signatureStandards: ["draft-cavage-http-signatures-12"],
-      }]),
-    );
-    const suite: Suite = {
-      version: 1,
-      target: target.url.href,
-      scenarios: [{
-        name: "inbox-warmup",
-        type: "inbox",
-        recipient: new URL("/users/alice", target.url).href,
-        inbox: "shared",
-        load: { concurrency: 2 },
-        // A non-zero warm-up exercises the measured-window baseline snapshot.
-        warmup: "120ms",
-        duration: "400ms",
-      }],
-    };
-    const scenario = normalizeSuite(suite).scenarios[0];
-    const measurement = await inboxRunner.run({
-      scenario,
-      target: target.url,
-      documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
-      contextLoader: await getContextLoader({ allowPrivateAddress: true }),
-      allowPrivateAddress: true,
-      fleet,
-    });
-
-    assert.strictEqual(measurement.requests.successRate, 1);
-    // The measured window verified signatures, so server metrics survive the
-    // baseline diff rather than being cancelled out by warm-up traffic.
-    assert.ok(
-      measurement.server?.signatureVerificationMs != null,
-      "expected windowed server signature-verification metrics",
-    );
-  } finally {
+test(
+  "inboxRunner - reports server metrics scoped past the warm-up",
+  { timeout: 60_000 },
+  async () => {
+    const target = await spawnBenchmarkTarget();
+    let fleet: Awaited<ReturnType<typeof spawnSyntheticServer>> | undefined;
     try {
-      await fleet?.close();
+      fleet = await spawnSyntheticServer(
+        await buildFleet([{
+          count: 1,
+          signatureStandards: ["draft-cavage-http-signatures-12"],
+        }]),
+      );
+      const suite: Suite = {
+        version: 1,
+        target: target.url.href,
+        scenarios: [{
+          name: "inbox-warmup",
+          type: "inbox",
+          recipient: new URL("/users/alice", target.url).href,
+          inbox: "shared",
+          // 10/s over 400ms schedules exactly four arrivals: two inside the
+          // warm-up (0 and 100ms) and two measured (200 and 300ms), so the
+          // measured-window baseline snapshot is always taken.
+          load: { rate: 10, arrival: "constant", maxInFlight: 2 },
+          warmup: "120ms",
+          duration: "400ms",
+        }],
+      };
+      const scenario = normalizeSuite(suite).scenarios[0];
+      const measurement = await inboxRunner.run({
+        scenario,
+        target: target.url,
+        documentLoader: await getDocumentLoader({ allowPrivateAddress: true }),
+        contextLoader: await getContextLoader({ allowPrivateAddress: true }),
+        allowPrivateAddress: true,
+        fleet,
+        clock: createFakeClock(),
+      });
+
+      // Only the two measured deliveries are counted client-side, although all
+      // four, warm-up included, reached the inbox listener.
+      assert.strictEqual(measurement.requests.total, 2);
+      assert.strictEqual(
+        measurement.requests.successRate,
+        1,
+        `expected all deliveries to succeed; errors: ${
+          JSON.stringify(measurement.errors)
+        }`,
+      );
+      assert.strictEqual(target.receivedCount(), 4);
+      // The measured window verified signatures, so server metrics survive the
+      // baseline diff rather than being cancelled out by warm-up traffic.
+      assert.ok(
+        measurement.server?.signatureVerificationMs != null,
+        "expected windowed server signature-verification metrics",
+      );
     } finally {
-      await target.close();
+      try {
+        await fleet?.close();
+      } finally {
+        await target.close();
+      }
     }
-  }
-});
+  },
+);
 
 // Recipients are allocated round-robin by signing index, so the run makes a
 // fixed number of attempts rather than however many fit in a real-time window:
@@ -230,14 +260,6 @@ async function assertAllocatesAcrossRecipients(
       }],
     };
     const scenario = normalizeSuite(suite).scenarios[0];
-    let now = 0;
-    const clock: Clock = {
-      now: () => now,
-      sleepUntil: (timeMs) => {
-        now = Math.max(now, timeMs);
-        return Promise.resolve();
-      },
-    };
     const measurement = await inboxRunner.run({
       scenario,
       target: target.url,
@@ -245,7 +267,7 @@ async function assertAllocatesAcrossRecipients(
       contextLoader: await getContextLoader({ allowPrivateAddress: true }),
       allowPrivateAddress: true,
       fleet,
-      clock,
+      clock: createFakeClock(),
     });
 
     assert.strictEqual(measurement.requests.total, 4);
