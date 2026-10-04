@@ -18,7 +18,7 @@ To be released.
     [[#893], [#1187] by Lee Jeongmin\]
 
 [#893]: https://github.com/fedify-dev/fedify/issues/893
-[#1187]: https://github.com/fedify-dev/fedify/issues/1187
+[#1187]: https://github.com/fedify-dev/fedify/pull/1187
 
 
 Version 2.4.0
