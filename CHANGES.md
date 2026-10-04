@@ -21,14 +21,22 @@ To be released.
 
 ### @fedify/vocab-runtime
 
+ -  Added the [FEP-22cd] context to the preloaded JSON-LD contexts.  The default
+    document loader now resolves <https://w3id.org/fep/22cd> locally, so
+    transient Codeberg Pages outages no longer prevent otherwise valid inbound
+    documents with translation metadata from being parsed or verified.
+    [[#1214], [#1227]]
  -  Added the [FEP-6757] context to the preloaded JSON-LD contexts.  The default
     document loader now resolves <https://w3id.org/fep/6757> locally, so
     transient Codeberg Pages outages no longer prevent otherwise valid inbound
     documents from being parsed or verified.  [[#1211], [#1216]]
 
+[FEP-22cd]: https://w3id.org/fep/22cd
 [FEP-6757]: https://w3id.org/fep/6757
 [#1211]: https://github.com/fedify-dev/fedify/issues/1211
+[#1214]: https://github.com/fedify-dev/fedify/issues/1214
 [#1216]: https://github.com/fedify-dev/fedify/pull/1216
+[#1227]: https://github.com/fedify-dev/fedify/pull/1227
 
 ### @fedify/vocab-tools
 
