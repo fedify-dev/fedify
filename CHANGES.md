@@ -11,9 +11,10 @@ To be released.
 ### @fedify/init
 
  -  Migrate the initialization template script to SvelteKit version 3, by
-    replacing the `$lib` syntax to `#lib`. [[#1222] by Jungmin Yoon\]
+    replacing the `$lib` syntax to `#lib`. [[#1222], [#1224] by Jungmin Yoon\]
 
 [#1222]: https://github.com/fedify-dev/fedify/issues/1222
+[#1224]: https://github.com/fedify-dev/fedify/issues/1224
 
 
 Version 2.4.1
