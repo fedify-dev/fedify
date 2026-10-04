@@ -27,9 +27,10 @@ To be released.
     narrowed down by category, level, or a free-text search of the message.
     This makes it easier to find one failed activity or one noisy log
     category once a federated app has produced more than a few traces.
-    [[#896]]
+    [[#896], [#1204]]
 
 [#896]: https://github.com/fedify-dev/fedify/issues/896
+[#1204]: https://github.com/fedify-dev/fedify/issues/1204
 
 
 Version 2.4.0
