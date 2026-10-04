@@ -182,7 +182,7 @@ const HTML_WITH_MULTI_SIZE_ICON = `
 <html>
 <head>
   <title>Test Site</title>
-  <link rel="alternate icon" type="image/x-icon" href="/favicon.ico" sizes="16x16 32x32 48x48 256x256">
+  <link rel="alternate icon" type="image/x-icon" href="/multi-size-icon.ico" sizes="16x16 32x32 48x48 256x256">
   <link rel="apple-touch-icon" href="/apple-icon-180.png">
   </head>
 <body>Test</body>
@@ -198,7 +198,7 @@ test("getFaviconUrl - icons with multiple sizes", async () => {
   });
 
   const result = await getFaviconUrl("https://example.com/");
-  assert.equal(result.href, "https://example.com/favicon.ico");
+  assert.equal(result.href, "https://example.com/multi-size-icon.ico");
 });
 
 const HTML_WITH_PREFERRED_BITMAP_ICON = `
