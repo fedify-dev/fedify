@@ -607,6 +607,13 @@ Assisted-by: AGENT_NAME:MODEL_VERSION
 
 Use one trailer for each tool.  Do not use `Co-authored-by` for AI assistance.
 
+For `MODEL_VERSION`, identify the model actually used and look up its official
+identifier in the model maker's documentation, using a web search if needed.
+Use that identifier, or the documented name of that model if no identifier is
+available, including any variant or version needed to distinguish the model.
+Do not invent an identifier or guess it from the tool's name, a model family,
+or an old example.
+
 ### Changelog entries
 
 Fedify uses [Sacho] to build *CHANGES.md* from Markdown fragments under
