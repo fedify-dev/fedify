@@ -1,5 +1,10 @@
+import { createFederation, MemoryKvStore } from "@fedify/fedify";
 import type { Request as ERequest, Response as EResponse } from "express";
+import express from "express";
+import { strict as assert } from "node:assert";
+import type { AddressInfo } from "node:net";
 import { describe, test } from "node:test";
+import { integrateFederation } from "./index.ts";
 
 interface MockFederation {
   fetch(request: Request, options: unknown): Promise<Response>;
@@ -19,8 +24,15 @@ function createMockResponse(): {
   response: EResponse;
   ended: Promise<void>;
   getBody(): string;
+  getHeader(
+    name: string,
+  ): string | number | readonly string[] | undefined;
 } {
   let body = "";
+  const headers = new Map<
+    string,
+    string | number | readonly string[]
+  >();
   let resolveEnded: () => void;
   const ended = new Promise<void>((resolve) => {
     resolveEnded = resolve;
@@ -31,7 +43,11 @@ function createMockResponse(): {
       response.statusCode = code;
       return response;
     },
-    setHeader() {
+    setHeader(
+      name: string,
+      value: string | number | readonly string[],
+    ) {
+      headers.set(name.toLowerCase(), value);
       return response;
     },
     write(chunk: Buffer | string) {
@@ -47,6 +63,7 @@ function createMockResponse(): {
     response: response as unknown as EResponse,
     ended,
     getBody: () => body,
+    getHeader: (name) => headers.get(name.toLowerCase()),
   };
 }
 
@@ -113,12 +130,45 @@ describe("integrateFederation()", () => {
     await ended;
     assert.strictEqual(response.statusCode, 406);
   });
+
+  test("forwards the Fedify response status, headers, and streamed body to the Express response", async () => {
+    const encoder = new TextEncoder();
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode("Hello "));
+        controller.enqueue(encoder.encode("World"));
+        controller.close();
+      },
+    });
+
+    const mockFederation: MockFederation = {
+      fetch() {
+        return Promise.resolve(
+          new Response(body, {
+            status: 201,
+            headers: {
+              "Header-Test": "yes",
+            },
+          }),
+        );
+      },
+    };
+
+    const middleware = integrateFederation(
+      mockFederation as never,
+      () => undefined,
+    );
+
+    const req = createMockRequest();
+    const { response, ended, getBody, getHeader } = createMockResponse();
+
+    middleware(req, response, () => {});
+    await ended;
+    assert.strictEqual(response.statusCode, 201);
+    assert.strictEqual(getHeader("Header-Test"), "yes");
+    assert.strictEqual(getBody(), "Hello World");
+  });
 });
-import { createFederation, MemoryKvStore } from "@fedify/fedify";
-import express from "express";
-import { strict as assert } from "node:assert";
-import type { AddressInfo } from "node:net";
-import { integrateFederation } from "./index.ts";
 
 // Large enough to fill the stream buffers that used to stall; see
 // <https://github.com/fedify-dev/fedify/issues/1059>.
