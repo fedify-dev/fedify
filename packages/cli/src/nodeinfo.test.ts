@@ -90,7 +90,7 @@ const HTML_WITH_UPPERCASE_SVG_ONLY = `
 <html>
 <head>
   <title>Test Site</title>
-  <link rel="icon" href="/icon.SVG" type="image/svg+xml">
+  <link rel="icon" href="/icon.SVG">
   </head>
 <body>Test</body>
 </html>
@@ -113,7 +113,7 @@ const HTML_WITH_UPPERCASE_SVG_WITH_QUERY = `
 <html>
 <head>
   <title>Test Site</title>
-  <link rel="icon" href="/icon.SVG?v=1#icon" type="image/svg+xml">
+  <link rel="icon" href="/icon.SVG?v=1#icon">
   </head>
 <body>Test</body>
 </html>
