@@ -534,8 +534,9 @@ A bug-fix pull request should include:
 
  -  A regression test that fails without the patch and passes with it.
  -  The fix.
- -  A Sacho changelog fragment with the issue, pull request, and contributor
-    name, unless the contributor wants to remain anonymous.
+ -  A Sacho changelog fragment for a user-visible change, with both issue and
+    pull request references and the external contributor's name.  See
+    “Changelog entries” below for the requirements.
 
 Link the accepted issue in the pull request.
 
@@ -618,8 +619,21 @@ or an old example.
 
 Fedify uses [Sacho] to build *CHANGES.md* from Markdown fragments under
 *changes.d/*.  Do not edit the unreleased part of *CHANGES.md* directly.
-Create a fragment for each user-visible change, selecting the affected package
-and using a topic-based name rather than an issue or pull request number:
+
+#### When to add a fragment
+
+Add a fragment only when Fedify users can observe a change, for example through
+the public API or CLI.  Internal refactoring, fixes to test code, and tests
+added for coverage must not have changelog entries unless the same change also
+affects behavior users can observe.  For changes with no user-visible effect,
+omit the fragment and add this trailer to the commit message:
+
+~~~~
+Changelog: none
+~~~~
+
+For each user-visible change, create a fragment for the affected package using
+a topic-based name rather than an issue or pull request number:
 
 ~~~~ bash
 sacho add --section @fedify/fedify clearer-errors
@@ -633,17 +647,60 @@ development history out of the entry.  If the change evolves before release,
 update the existing fragment so that it describes only the behavior users will
 receive.
 
-Add issue and pull request references at the end of the first paragraph using
-shortcut links.  Include the accepted issue when available, and add the pull
-request number before merging:
+#### Issue and pull request links
+
+Every changelog entry must include both the accepted issue number and the pull
+request number at the end of its first paragraph, using shortcut links:
 
 ~~~~ markdown
- -  Fixed a bug where foo would bar.  [[#123]]
+ -  Fixed a bug where foo would bar.  [[#123], [#456] by John Doe]
 ~~~~
 
-For an external contributor, add their name after the marker, for example
-`[[#123] by John Doe]`, unless they want to remain anonymous.  Sacho generates
-the corresponding link definitions.
+Before opening a pull request, its number is not yet known.  Use either of
+these workflows:
+
+1.  Predict the number if you will open the pull request immediately.  Find
+    the highest issue, pull request, or discussion number in
+    `fedify-dev/fedify` and add one.  First save the fragment with only the
+    issue reference and run `sacho resolve-links` to create its `links`
+    frontmatter.  Then manually add the predicted PR number to both that
+    metadata and the entry's trailing references.  Use
+    `https://github.com/fedify-dev/fedify/pull/<number>` for the predicted URL.
+    For example, if the issue is #123 and the predicted PR is #456:
+
+    ~~~~ yaml
+    links:
+      '#123': https://github.com/fedify-dev/fedify/issues/123
+      '#456': https://github.com/fedify-dev/fedify/pull/456
+    ~~~~
+
+    Open the PR, verify its actual number, and correct both the metadata and
+    the entry if the prediction was wrong.  Another contributor may have
+    taken the predicted number in the meantime.
+
+2.  Open the pull request with only the issue reference in the fragment.
+    Then add the actual PR number to the entry and run `sacho resolve-links`
+    to record its URL in the `links` frontmatter.  Amend the commit with the
+    updated fragment and push the amended commit to the PR branch with
+    `--force-with-lease`.
+
+`sacho resolve-links` pins reference URLs so that Sacho can generate the
+corresponding link definitions.  Review its diff, including any changes to
+other fragments and the generated *CHANGES.md*.  Whichever workflow you use,
+both references must be present before merging.
+
+#### Contributor names
+
+External contributors must include their name after the references, as in
+`[[#123], [#456] by John Doe]`.  Maintainers may also include their name.
+Prefer your real name, or a close rendering of it in Latin letters, rather
+than copying your GitHub handle.  A pseudonym is welcome if that is how you
+want to be credited.  Normally capitalize the first letter of each part of
+the name, as in “John Doe.”  These naming conventions are guidelines; use
+your preferred spelling and capitalization if you have a deliberate
+preference.
+
+#### Checking fragments
 
 Keep the fragment on the same branch and in the same commit series as the
 change.  Format it, preview the compiled section, and check it before
@@ -653,14 +710,6 @@ committing:
 mise run fmt
 sacho preview --section @fedify/fedify
 sacho check
-~~~~
-
-Changes with no user-visible effect, such as internal refactoring or test-only
-work, do not need a fragment.  If Sacho's changed-path check requires one, add
-this trailer to the commit message:
-
-~~~~
-Changelog: none
 ~~~~
 
 [Sacho]: https://sacho.dev/guide/everyday-workflow
