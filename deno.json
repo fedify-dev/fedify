@@ -86,7 +86,8 @@
   },
   "fmt": {
     "exclude": [
-      "**/*.md"
+      "**/*.md",
+      "packages/vocab-runtime/src/contexts/fep-22cd.json"
     ]
   },
   "nodeModulesDir": "auto",
