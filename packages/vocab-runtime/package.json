@@ -63,7 +63,9 @@
     "prepack": "pnpm build",
     "prepublish": "pnpm build",
     "pretest": "pnpm build",
-    "test": "cd dist/tests && node --test"
+    "test": "cd dist/tests && node --test",
+    "pretest:bun": "pnpm build",
+    "test:bun": "node scripts/test-bun.mjs"
   },
   "keywords": [
     "Fedify",
@@ -77,6 +79,7 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "@fedify/fixture": "workspace:*",
     "@types/node": "^24.2.1",
     "fetch-mock": "catalog:",
     "tsdown": "catalog:",
