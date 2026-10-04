@@ -168,6 +168,41 @@ describe("integrateFederation()", () => {
     assert.strictEqual(getHeader("Header-Test"), "yes");
     assert.strictEqual(getBody(), "Hello World");
   });
+
+  test("calls next() when onNotFound is used", async () => {
+    let resolveOnNotFound!: () => void;
+    const onNotFoundUsed = new Promise<void>((resolve) => {
+      resolveOnNotFound = resolve;
+    });
+
+    const mockFederation: MockFederation = {
+      fetch(_request, options) {
+        const { onNotFound } = options as {
+          onNotFound: () => Response;
+        };
+        const response = onNotFound();
+        resolveOnNotFound();
+        return Promise.resolve(response);
+      },
+    };
+
+    let nextCalled = false;
+
+    const middleware = integrateFederation(
+      mockFederation as never,
+      () => undefined,
+    );
+
+    const req = createMockRequest();
+    const { response } = createMockResponse();
+
+    middleware(req, response, () => {
+      nextCalled = true;
+    });
+
+    await onNotFoundUsed;
+    assert.strictEqual(nextCalled, true);
+  });
 });
 
 // Large enough to fill the stream buffers that used to stall; see
