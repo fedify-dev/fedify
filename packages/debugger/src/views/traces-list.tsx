@@ -26,6 +26,15 @@ export interface TracesListPageProps {
   selectedTypes: readonly string[];
 
   /**
+   * The same snapshot string the live-poll script computes from a fresh
+   * `/api/traces` fetch, computed here from the data this page was
+   * actually rendered with.  The script starts comparing from this value
+   * instead of from whatever its first poll happens to see, so a change
+   * that landed between the render and the first poll is still caught.
+   */
+  initialSnapshot: string;
+
+  /**
    * The path prefix for the debug dashboard.
    */
   pathPrefix: string;
@@ -35,7 +44,7 @@ export interface TracesListPageProps {
  * The traces list page of the debug dashboard.
  */
 export const TracesListPage: FC<TracesListPageProps> = (
-  { traces, availableTypes, selectedTypes, pathPrefix },
+  { traces, availableTypes, selectedTypes, initialSnapshot, pathPrefix },
 ) => {
   const filtered = selectedTypes.length > 0;
   return (
@@ -117,18 +126,27 @@ export const TracesListPage: FC<TracesListPageProps> = (
         dangerouslySetInnerHTML={{
           __html: `
 (function() {
-  var prevSnapshot = null;
+  var selectedTypes = new URLSearchParams(location.search).getAll("type");
   function snapshotOf(data) {
     var types = [];
+    var filteredCount = 0;
     for (var i = 0; i < data.length; i++) {
       var activityTypes = data[i].activityTypes || [];
+      var matchesFilter = selectedTypes.length === 0;
       for (var j = 0; j < activityTypes.length; j++) {
         if (types.indexOf(activityTypes[j]) === -1) types.push(activityTypes[j]);
+        if (!matchesFilter && selectedTypes.indexOf(activityTypes[j]) !== -1) {
+          matchesFilter = true;
+        }
       }
+      if (matchesFilter) filteredCount++;
     }
     types.sort();
-    return data.length + "|" + types.join(",");
+    return data.length + "|" + types.join(",") + "|" + filteredCount;
   }
+  var prevSnapshot = ${
+            JSON.stringify(initialSnapshot).replace(/</g, "\\u003c")
+          };
   var interval = setInterval(function() {
     fetch(${
             JSON.stringify(pathPrefix).replace(/</g, "\\u003c")
@@ -136,13 +154,10 @@ export const TracesListPage: FC<TracesListPageProps> = (
       .then(function(r) { return r.json(); })
       .then(function(data) {
         var snapshot = snapshotOf(data);
-        if (prevSnapshot === null) {
-          prevSnapshot = snapshot;
-          return;
-        }
         if (snapshot !== prevSnapshot) {
           location.reload();
         }
+        prevSnapshot = snapshot;
       })
       .catch(function() {});
   }, 3000);

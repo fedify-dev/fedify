@@ -1364,14 +1364,17 @@ function extractPollScript(html: string): string {
 
 /**
  * Runs the extracted poll script in a sandbox, feeding it one page of
- * `/api/traces` JSON per simulated tick, and reports whether `location
- * .reload()` was ever called.
+ * `/api/traces` JSON per simulated tick, and reports the index of the
+ * first tick that called `location.reload()`, or `null` if none did.
+ * `locationSearch` should match the query string the page was actually
+ * rendered with, since the script reads it back via `location.search`.
  */
 async function runPollScript(
   scriptBody: string,
   ticks: readonly TraceSummary[][],
-): Promise<{ reloaded: boolean }> {
-  let reloaded = false;
+  locationSearch = "",
+): Promise<{ reloadedAtTick: number | null }> {
+  let reloadedAtTick: number | null = null;
   let tickIndex = 0;
   const fakeFetch = () => {
     const data = ticks[tickIndex];
@@ -1383,8 +1386,9 @@ async function runPollScript(
     return 1;
   };
   const fakeLocation = {
+    search: locationSearch,
     reload: () => {
-      reloaded = true;
+      if (reloadedAtTick === null) reloadedAtTick = tickIndex;
     },
   };
   const run = new Function(
@@ -1414,7 +1418,7 @@ async function runPollScript(
     // Flush the fetch/json/then microtask chain before the next tick.
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
   }
-  return { reloaded };
+  return { reloadedAtTick };
 }
 
 test("poll script does not reload across unchanged ticks", async () => {
@@ -1427,22 +1431,12 @@ test("poll script does not reload across unchanged ticks", async () => {
   );
   const script = extractPollScript(await response.text());
   const same = threeTypedTraces();
-  const { reloaded } = await runPollScript(script, [same, same, same]);
-  strictEqual(reloaded, false);
+  const { reloadedAtTick } = await runPollScript(script, [same, same, same]);
+  strictEqual(reloadedAtTick, null);
 });
 
 test("poll script reloads when a new activity type appears", async () => {
   const { federation } = createMockFederation();
-  const { exporter, kv } = createMockExporter(threeTypedTraces());
-  const dbg = createFederationDebugger(federation, { exporter, kv });
-  // A filter is active, matching only the "Create" trace: a newly captured
-  // "Follow" trace would not change what's visible, but its checkbox should
-  // still appear once the page reloads.
-  const response = await dbg.fetch(
-    new Request("https://example.com/__debug__/?type=Create"),
-    { contextData: undefined },
-  );
-  const script = extractPollScript(await response.text());
   const before: TraceSummary[] = [
     {
       traceId: "a".repeat(32),
@@ -1451,6 +1445,17 @@ test("poll script reloads when a new activity type appears", async () => {
       activityTypes: ["Create"],
     },
   ];
+  const { exporter, kv } = createMockExporter(before);
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  // A filter is active, matching only the "Create" trace: a newly captured
+  // "Follow" trace would not change what's visible, but its checkbox should
+  // still appear once the page reloads. The render and the first tick both
+  // see `before`, so the first tick must not reload on its own.
+  const response = await dbg.fetch(
+    new Request("https://example.com/__debug__/?type=Create"),
+    { contextData: undefined },
+  );
+  const script = extractPollScript(await response.text());
   const after: TraceSummary[] = [
     ...before,
     {
@@ -1460,19 +1465,16 @@ test("poll script reloads when a new activity type appears", async () => {
       activityTypes: ["Follow"],
     },
   ];
-  const { reloaded } = await runPollScript(script, [before, after]);
-  strictEqual(reloaded, true);
+  const { reloadedAtTick } = await runPollScript(
+    script,
+    [before, after],
+    "?type=Create",
+  );
+  strictEqual(reloadedAtTick, 1);
 });
 
 test("poll script reloads when an existing trace gains a new activity type", async () => {
   const { federation } = createMockFederation();
-  const { exporter, kv } = createMockExporter(threeTypedTraces());
-  const dbg = createFederationDebugger(federation, { exporter, kv });
-  const response = await dbg.fetch(
-    new Request("https://example.com/__debug__/"),
-    { contextData: undefined },
-  );
-  const script = extractPollScript(await response.text());
   // The trace count never changes here—only the one trace's own
   // activityTypes grows, the way FedifySpanExporter updates an existing
   // summary in place. A count-only comparison would miss this.
@@ -1484,11 +1486,93 @@ test("poll script reloads when an existing trace gains a new activity type", asy
       activityTypes: ["Create"],
     },
   ];
+  const { exporter, kv } = createMockExporter(before);
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const response = await dbg.fetch(
+    new Request("https://example.com/__debug__/"),
+    { contextData: undefined },
+  );
+  const script = extractPollScript(await response.text());
   const after: TraceSummary[] = [
     { ...before[0], activityCount: 2, activityTypes: ["Create", "Update"] },
   ];
-  const { reloaded } = await runPollScript(script, [before, after]);
-  strictEqual(reloaded, true);
+  const { reloadedAtTick } = await runPollScript(script, [before, after]);
+  strictEqual(reloadedAtTick, 1);
+});
+
+test("poll script reloads on the first tick when data already changed before it", async () => {
+  const { federation } = createMockFederation();
+  const atRenderTime: TraceSummary[] = [
+    {
+      traceId: "a".repeat(32),
+      timestamp: "2026-01-01T00:00:00Z",
+      activityCount: 1,
+      activityTypes: ["Create"],
+    },
+  ];
+  const { exporter, kv } = createMockExporter(atRenderTime);
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  const response = await dbg.fetch(
+    new Request("https://example.com/__debug__/"),
+    { contextData: undefined },
+  );
+  const script = extractPollScript(await response.text());
+  // A Follow trace arrives in the gap between the page rendering and the
+  // first 3-second poll, so the very first fetch already differs from
+  // what the page was rendered with. Without an initial snapshot computed
+  // from the render-time data, that first response would be taken as the
+  // new baseline instead of being compared against it.
+  const firstPollResult: TraceSummary[] = [
+    ...atRenderTime,
+    {
+      traceId: "b".repeat(32),
+      timestamp: "2026-01-02T00:00:00Z",
+      activityCount: 1,
+      activityTypes: ["Follow"],
+    },
+  ];
+  const { reloadedAtTick } = await runPollScript(script, [firstPollResult]);
+  strictEqual(reloadedAtTick, 0);
+});
+
+test("poll script reloads when an existing trace starts matching the active filter", async () => {
+  const { federation } = createMockFederation();
+  const createTrace: TraceSummary = {
+    traceId: "a".repeat(32),
+    timestamp: "2026-01-01T00:00:00Z",
+    activityCount: 1,
+    activityTypes: ["Create"],
+  };
+  const followTrace: TraceSummary = {
+    traceId: "b".repeat(32),
+    timestamp: "2026-01-02T00:00:00Z",
+    activityCount: 1,
+    activityTypes: ["Follow"],
+  };
+  const before = [createTrace, followTrace];
+  const { exporter, kv } = createMockExporter(before);
+  const dbg = createFederationDebugger(federation, { exporter, kv });
+  // Filtered to "Follow": only followTrace matches, so the page renders
+  // with one visible row.
+  const response = await dbg.fetch(
+    new Request("https://example.com/__debug__/?type=Follow"),
+    { contextData: undefined },
+  );
+  const script = extractPollScript(await response.text());
+  // createTrace now also has a Follow activity. The total trace count (2)
+  // and the global type set ({Create, Follow}, already present via
+  // followTrace) both stay the same—only the filtered result changes,
+  // from one match to two.
+  const after = [
+    { ...createTrace, activityCount: 2, activityTypes: ["Create", "Follow"] },
+    followTrace,
+  ];
+  const { reloadedAtTick } = await runPollScript(
+    script,
+    [before, after],
+    "?type=Follow",
+  );
+  strictEqual(reloadedAtTick, 1);
 });
 
 // ---------- Log filtering tests ----------

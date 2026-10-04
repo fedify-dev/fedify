@@ -45,6 +45,27 @@ function filterTracesByTypes(
   );
 }
 
+/**
+ * Computes a string that changes whenever the trace corpus changes in a
+ * way the traces list page's live-poll script needs to react to: the
+ * total trace count, the distinct activity types available to filter by,
+ * and how many traces currently match `selectedTypes`.  The page embeds
+ * this as the poll script's starting point, so the very first poll tick
+ * is compared against the data the page was actually rendered with,
+ * rather than treating whatever that first tick happens to see as the
+ * baseline.
+ */
+function snapshotOf(
+  traces: readonly TraceSummary[],
+  selectedTypes: readonly string[],
+): string {
+  const types = distinctActivityTypes(traces);
+  const filteredCount = selectedTypes.length === 0
+    ? traces.length
+    : filterTracesByTypes(traces, selectedTypes).length;
+  return `${traces.length}|${types.join(",")}|${filteredCount}`;
+}
+
 /** Collects the distinct dot-joined log categories, sorted. */
 function distinctLogCategories(
   logs: readonly SerializedLogRecord[],
@@ -249,6 +270,7 @@ export function createDebugApp(
         traces={filterTracesByTypes(traces, selectedTypes)}
         availableTypes={distinctActivityTypes(traces)}
         selectedTypes={selectedTypes}
+        initialSnapshot={snapshotOf(traces, selectedTypes)}
         pathPrefix={pathPrefix}
       />,
     );
