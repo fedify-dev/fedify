@@ -5044,65 +5044,69 @@ test("handleInbox() aligns the LogTape context with its own span", async (t) => 
         "and the outer context is restored afterward",
       async () => {
         const [tracerProvider, exporter] = createTestTracerProvider();
-        const kv = new MemoryKvStore();
-        const federation = createFederation<void>({ kv, tracerProvider });
-        const listeners = new ActivityListenerSet<InboxContext<void>>();
-        listeners.add(Create, () => {
-          throw new Error("listener boom");
-        });
+        try {
+          const kv = new MemoryKvStore();
+          const federation = createFederation<void>({ kv, tracerProvider });
+          const listeners = new ActivityListenerSet<InboxContext<void>>();
+          listeners.add(Create, () => {
+            throw new Error("listener boom");
+          });
 
-        const signed = await buildSignedRequest(
-          "https://example.com/activity/listener-failure",
-          "https://example.com/note/listener-failure",
-        );
-
-        await withContext(outerContext, async () => {
-          const response = await callHandleInbox(
-            federation,
-            kv,
-            tracerProvider,
-            listeners,
-            signed,
+          const signed = await buildSignedRequest(
+            "https://example.com/activity/listener-failure",
+            "https://example.com/note/listener-failure",
           );
-          assertEquals(response.status, 500);
-          getLogger(["fedify", "federation", "handler.test"]).info(
-            "after handled failure",
+
+          await withContext(outerContext, async () => {
+            const response = await callHandleInbox(
+              federation,
+              kv,
+              tracerProvider,
+              listeners,
+              signed,
+            );
+            assertEquals(response.status, 500);
+            getLogger(["fedify", "federation", "handler.test"]).info(
+              "after handled failure",
+            );
+          });
+
+          const span = exporter.getSpan("activitypub.inbox");
+          assert(span != null);
+          const { traceId, spanId } = span.spanContext();
+
+          const fedifyExporter = new FedifySpanExporter(new MemoryKvStore());
+          await new Promise<void>((resolve) => {
+            fedifyExporter.export([span], () => resolve());
+          });
+          const [record] = await fedifyExporter.getActivitiesByTraceId(
+            traceId,
           );
-        });
+          assert(record != null);
+          assertEquals(record.direction, "inbound");
+          assertEquals(record.spanId, spanId);
 
-        const span = exporter.getSpan("activitypub.inbox");
-        assert(span != null);
-        const { traceId, spanId } = span.spanContext();
+          const failureLog = records.find((r) =>
+            String(r.rawMessage).startsWith(
+              "Failed to process the incoming activity",
+            )
+          );
+          assert(failureLog != null);
+          assertEquals(failureLog.properties.spanId, record.spanId);
+          assertEquals(failureLog.properties.traceId, record.traceId);
+          assertEquals(failureLog.properties.requestId, "outer-request");
 
-        const fedifyExporter = new FedifySpanExporter(new MemoryKvStore());
-        await new Promise<void>((resolve) => {
-          fedifyExporter.export([span], () => resolve());
-        });
-        const [record] = await fedifyExporter.getActivitiesByTraceId(traceId);
-        assert(record != null);
-        assertEquals(record.direction, "inbound");
-        assertEquals(record.spanId, spanId);
-
-        const failureLog = records.find((r) =>
-          String(r.rawMessage).startsWith(
-            "Failed to process the incoming activity",
-          )
-        );
-        assert(failureLog != null);
-        assertEquals(failureLog.properties.spanId, record.spanId);
-        assertEquals(failureLog.properties.traceId, record.traceId);
-        assertEquals(failureLog.properties.requestId, "outer-request");
-
-        const afterLog = records.find((r) =>
-          r.rawMessage === "after handled failure"
-        );
-        assert(afterLog != null);
-        assertEquals(afterLog.properties.requestId, outerContext.requestId);
-        assertEquals(afterLog.properties.traceId, outerContext.traceId);
-        assertEquals(afterLog.properties.spanId, outerContext.spanId);
-
-        exporter.clear();
-        records.length = 0;
+          const afterLog = records.find((r) =>
+            r.rawMessage === "after handled failure"
+          );
+          assert(afterLog != null);
+          assertEquals(afterLog.properties.requestId, outerContext.requestId);
+          assertEquals(afterLog.properties.traceId, outerContext.traceId);
+          assertEquals(afterLog.properties.spanId, outerContext.spanId);
+        } finally {
+          exporter.clear();
+          records.length = 0;
+        }
       },
     );
 
@@ -5110,47 +5114,51 @@ test("handleInbox() aligns the LogTape context with its own span", async (t) => 
       "outer context is restored after successful inbox processing",
       async () => {
         const [tracerProvider, exporter] = createTestTracerProvider();
-        const kv = new MemoryKvStore();
-        const federation = createFederation<void>({ kv, tracerProvider });
-        const listeners = new ActivityListenerSet<InboxContext<void>>();
-        let received: Activity | null = null;
-        listeners.add(Create, (_ctx, activity) => {
-          received = activity;
-        });
+        try {
+          const kv = new MemoryKvStore();
+          const federation = createFederation<void>({ kv, tracerProvider });
+          const listeners = new ActivityListenerSet<InboxContext<void>>();
+          let received: Activity | null = null;
+          listeners.add(Create, (_ctx, activity) => {
+            received = activity;
+          });
 
-        const signed = await buildSignedRequest(
-          "https://example.com/activity/listener-success",
-          "https://example.com/note/listener-success",
-        );
-
-        await withContext(outerContext, async () => {
-          const response = await callHandleInbox(
-            federation,
-            kv,
-            tracerProvider,
-            listeners,
-            signed,
+          const signed = await buildSignedRequest(
+            "https://example.com/activity/listener-success",
+            "https://example.com/note/listener-success",
           );
-          assertEquals(response.status, 202);
-          getLogger(["fedify", "federation", "handler.test"]).info(
-            "after success",
+
+          await withContext(outerContext, async () => {
+            const response = await callHandleInbox(
+              federation,
+              kv,
+              tracerProvider,
+              listeners,
+              signed,
+            );
+            assertEquals(response.status, 202);
+            getLogger(["fedify", "federation", "handler.test"]).info(
+              "after success",
+            );
+          });
+          assert(received != null);
+
+          const span = exporter.getSpan("activitypub.inbox");
+          assert(span != null);
+          const { spanId } = span.spanContext();
+
+          const afterLog = records.find((r) =>
+            r.rawMessage === "after success"
           );
-        });
-        assert(received != null);
-
-        const span = exporter.getSpan("activitypub.inbox");
-        assert(span != null);
-        const { spanId } = span.spanContext();
-
-        const afterLog = records.find((r) => r.rawMessage === "after success");
-        assert(afterLog != null);
-        assertNotEquals(afterLog.properties.spanId, spanId);
-        assertEquals(afterLog.properties.requestId, outerContext.requestId);
-        assertEquals(afterLog.properties.traceId, outerContext.traceId);
-        assertEquals(afterLog.properties.spanId, outerContext.spanId);
-
-        exporter.clear();
-        records.length = 0;
+          assert(afterLog != null);
+          assertNotEquals(afterLog.properties.spanId, spanId);
+          assertEquals(afterLog.properties.requestId, outerContext.requestId);
+          assertEquals(afterLog.properties.traceId, outerContext.traceId);
+          assertEquals(afterLog.properties.spanId, outerContext.spanId);
+        } finally {
+          exporter.clear();
+          records.length = 0;
+        }
       },
     );
 
@@ -5158,77 +5166,91 @@ test("handleInbox() aligns the LogTape context with its own span", async (t) => 
       "concurrent inbox requests do not leak context into each other",
       async () => {
         const [tracerProvider, exporter] = createTestTracerProvider();
-        const kv = new MemoryKvStore();
-        const federation = createFederation<void>({ kv, tracerProvider });
+        try {
+          const kv = new MemoryKvStore();
+          const federation = createFederation<void>({ kv, tracerProvider });
 
-        let arrived = 0;
-        let release: () => void;
-        const gate = new Promise<void>((resolve) => {
-          release = resolve;
-        });
-        const listeners = new ActivityListenerSet<InboxContext<void>>();
-        listeners.add(Create, async () => {
-          arrived++;
-          if (arrived >= 2) release();
-          await gate;
-          throw new Error("listener boom");
-        });
+          let arrived = 0;
+          let release: () => void;
+          const gate = new Promise<void>((resolve) => {
+            release = resolve;
+          });
+          const listeners = new ActivityListenerSet<InboxContext<void>>();
+          listeners.add(Create, async () => {
+            arrived++;
+            if (arrived >= 2) release();
+            await gate;
+            throw new Error("listener boom");
+          });
 
-        const [signedA, signedB] = await Promise.all([
-          buildSignedRequest(
-            "https://example.com/activity/concurrent-a",
-            "https://example.com/note/concurrent-a",
-          ),
-          buildSignedRequest(
-            "https://example.com/activity/concurrent-b",
-            "https://example.com/note/concurrent-b",
-          ),
-        ]);
+          const [signedA, signedB] = await Promise.all([
+            buildSignedRequest(
+              "https://example.com/activity/concurrent-a",
+              "https://example.com/note/concurrent-a",
+            ),
+            buildSignedRequest(
+              "https://example.com/activity/concurrent-b",
+              "https://example.com/note/concurrent-b",
+            ),
+          ]);
 
-        const [responseA, responseB] = await Promise.all([
-          callHandleInbox(federation, kv, tracerProvider, listeners, signedA),
-          callHandleInbox(federation, kv, tracerProvider, listeners, signedB),
-        ]);
-        assertEquals(responseA.status, 500);
-        assertEquals(responseB.status, 500);
+          const [responseA, responseB] = await Promise.all([
+            callHandleInbox(
+              federation,
+              kv,
+              tracerProvider,
+              listeners,
+              signedA,
+            ),
+            callHandleInbox(
+              federation,
+              kv,
+              tracerProvider,
+              listeners,
+              signedB,
+            ),
+          ]);
+          assertEquals(responseA.status, 500);
+          assertEquals(responseB.status, 500);
 
-        const spans = exporter.getSpans("activitypub.inbox");
-        assertEquals(spans.length, 2);
-        const spanA = spans.find((s) =>
-          s.attributes["activitypub.activity.id"] ===
-            "https://example.com/activity/concurrent-a"
-        );
-        const spanB = spans.find((s) =>
-          s.attributes["activitypub.activity.id"] ===
-            "https://example.com/activity/concurrent-b"
-        );
-        assert(spanA != null && spanB != null);
-        assertNotEquals(
-          spanA.spanContext().spanId,
-          spanB.spanContext().spanId,
-        );
+          const spans = exporter.getSpans("activitypub.inbox");
+          assertEquals(spans.length, 2);
+          const spanA = spans.find((s) =>
+            s.attributes["activitypub.activity.id"] ===
+              "https://example.com/activity/concurrent-a"
+          );
+          const spanB = spans.find((s) =>
+            s.attributes["activitypub.activity.id"] ===
+              "https://example.com/activity/concurrent-b"
+          );
+          assert(spanA != null && spanB != null);
+          assertNotEquals(
+            spanA.spanContext().spanId,
+            spanB.spanContext().spanId,
+          );
 
-        const logA = records.find((r) =>
-          r.properties.activityId ===
-            "https://example.com/activity/concurrent-a" &&
-          String(r.rawMessage).startsWith(
-            "Failed to process the incoming activity",
-          )
-        );
-        const logB = records.find((r) =>
-          r.properties.activityId ===
-            "https://example.com/activity/concurrent-b" &&
-          String(r.rawMessage).startsWith(
-            "Failed to process the incoming activity",
-          )
-        );
-        assert(logA != null && logB != null);
-        assertEquals(logA.properties.spanId, spanA.spanContext().spanId);
-        assertEquals(logB.properties.spanId, spanB.spanContext().spanId);
-        assertNotEquals(logA.properties.spanId, logB.properties.spanId);
-
-        exporter.clear();
-        records.length = 0;
+          const logA = records.find((r) =>
+            r.properties.activityId ===
+              "https://example.com/activity/concurrent-a" &&
+            String(r.rawMessage).startsWith(
+              "Failed to process the incoming activity",
+            )
+          );
+          const logB = records.find((r) =>
+            r.properties.activityId ===
+              "https://example.com/activity/concurrent-b" &&
+            String(r.rawMessage).startsWith(
+              "Failed to process the incoming activity",
+            )
+          );
+          assert(logA != null && logB != null);
+          assertEquals(logA.properties.spanId, spanA.spanContext().spanId);
+          assertEquals(logB.properties.spanId, spanB.spanContext().spanId);
+          assertNotEquals(logA.properties.spanId, logB.properties.spanId);
+        } finally {
+          exporter.clear();
+          records.length = 0;
+        }
       },
     );
   } finally {
