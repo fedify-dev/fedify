@@ -6,7 +6,7 @@ Fedify changelog
 Version 2.0.31
 --------------
 
-To be released.
+Released on October 5, 2026.
 
 ### @fedify/vocab
 
