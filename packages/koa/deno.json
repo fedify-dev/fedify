@@ -1,6 +1,6 @@
 {
   "name": "@fedify/koa",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "license": "MIT",
   "exports": {
     ".": "./src/index.ts"
