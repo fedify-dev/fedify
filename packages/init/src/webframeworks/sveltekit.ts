@@ -23,7 +23,7 @@ const sveltekitDescription: WebFrameworkDescription = {
     },
     devDependencies: {
       ...defaultDevDependencies,
-      "typescript": deps["npm:typescript"],
+      "typescript": deps["npm:typescript@6"],
       "@types/node": deps["npm:@types/node@25"],
       ...(pmToRt(pm) === "deno"
         ? {}

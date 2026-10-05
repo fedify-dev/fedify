@@ -33,6 +33,7 @@
   "npm:solid-js": "^1.9.14",
   "npm:tsx": "^4.23.1",
   "npm:typescript": "^5.9.3",
+  "npm:typescript@6": "^6.0.0",
   "npm:vinxi": "^0.5.11",
   "npm:x-forwarded-fetch": "^0.2.0"
 }
