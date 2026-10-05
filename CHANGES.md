@@ -8,6 +8,14 @@ Version 2.1.27
 
 To be released.
 
+### @fedify/fedify
+
+ -  Fixed cached signing-key fetch failures losing their error types, URLs,
+    failure reasons, and cause details, so applications can classify failures
+    consistently before and after caching.  [[#1168] by Junghoon Ban\]
+
+[#1168]: https://github.com/fedify-dev/fedify/issues/1168
+
 
 Version 2.1.26
 --------------
