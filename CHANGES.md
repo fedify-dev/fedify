@@ -41,6 +41,10 @@ To be released.
  -  Fixed the `LanguageString` constructor throwing a `RangeError` for
     language tags with extended language subtags, such as `zh-YUE`.  It now
     stores their canonical form (`yue`) as its `locale`.  [[#1229], [#1231]]
+ -  Fixed the preloaded Mastodon context treating `attributionDomains` values
+    as IRIs instead of plain domain name strings.  Values now expand as string
+    literals and remain arrays when compacted, matching Mastodon's context.
+    [[#1233], [#1235]]
 
 [FEP-22cd]: https://w3id.org/fep/22cd
 [FEP-6757]: https://w3id.org/fep/6757
@@ -48,6 +52,8 @@ To be released.
 [#1214]: https://github.com/fedify-dev/fedify/issues/1214
 [#1216]: https://github.com/fedify-dev/fedify/pull/1216
 [#1227]: https://github.com/fedify-dev/fedify/pull/1227
+[#1233]: https://github.com/fedify-dev/fedify/issues/1233
+[#1235]: https://github.com/fedify-dev/fedify/pull/1235
 
 ### @fedify/vocab-tools
 

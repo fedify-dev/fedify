@@ -78,10 +78,12 @@ jobs:
         reporter: jest-junit
       continue-on-error: true
     - if: '!cancelled()'
-      uses: codecov/test-results-action@v1
+      uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: .test-report.xml
+        report_type: test_results
+      continue-on-error: true
     - run: deno coverage --lcov .cov > .cov.lcov
       continue-on-error: true
     - uses: codecov/codecov-action@v5

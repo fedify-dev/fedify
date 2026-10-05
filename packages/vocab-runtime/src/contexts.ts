@@ -4403,7 +4403,7 @@ const preloadedContexts: Record<string, unknown> = {
       "suspended": "toot:suspended",
       "attributionDomains": {
         "@id": "toot:attributionDomains",
-        "@type": "@id",
+        "@container": "@set",
       },
     },
   },

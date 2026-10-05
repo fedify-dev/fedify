@@ -291,6 +291,30 @@ test("getDocumentLoader()", async (t) => {
     }
   });
 
+  await t.step("preloaded Mastodon attribution domains", async () => {
+    const context = [
+      "https://www.w3.org/ns/activitystreams",
+      "http://joinmastodon.org/ns",
+    ];
+    const expanded = await jsonld.expand({
+      "@context": context,
+      id: "https://social.example/users/alice",
+      type: "Person",
+      attributionDomains: ["blog.example"],
+    }, { documentLoader: fetchDocumentLoader });
+    deepStrictEqual(expanded, [{
+      "@id": "https://social.example/users/alice",
+      "@type": ["https://www.w3.org/ns/activitystreams#Person"],
+      "http://joinmastodon.org/ns#attributionDomains": [
+        { "@value": "blog.example" },
+      ],
+    }]);
+    const compacted = await jsonld.compact(expanded, context, {
+      documentLoader: fetchDocumentLoader,
+    });
+    deepStrictEqual(compacted.attributionDomains, ["blog.example"]);
+  });
+
   // Controlled Identifiers v1.0 requires JSON-LD processors to treat this
   // context URL as already resolved.  A temporary W3C outage must not prevent
   // an otherwise valid document from being processed.
