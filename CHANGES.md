@@ -32,6 +32,29 @@ To be released.
 [#896]: https://github.com/fedify-dev/fedify/issues/896
 [#1204]: https://github.com/fedify-dev/fedify/issues/1204
 
+### @fedify/vocab
+
+ -  Added vocabulary support for the [FEP-6757] draft, which marks
+    ActivityPub content with explicit copyright license URIs.
+    [[#1212], [#1241]]
+
+     -  Added `Object.licenses` and `Link.licenses` properties for the
+        alternative licenses of an object or a link.  They write the Dublin
+        Core `license` property and also read the Schema.org and Creative
+        Commons `license` properties when it is absent.  Values that are not
+        absolute URIs, such as license names or SPDX short identifiers, are
+        skipped.
+     -  Added `preferredLicense` property to `Application`, `Group`,
+        `Organization`, `Person`, and `Service` for the license an actor
+        prefers for its new objects.  It is not a fallback for objects without
+        their own license.
+     -  Fedify does not fill in a default license for objects without license
+        metadata and never fetches a license URI.
+
+[FEP-6757]: https://w3id.org/fep/6757
+[#1212]: https://github.com/fedify-dev/fedify/issues/1212
+[#1241]: https://github.com/fedify-dev/fedify/pull/1241
+
 ### @fedify/vocab-runtime
 
  -  Added `normalizeLanguageTag()` function, which replaces a language tag
@@ -51,6 +74,16 @@ To be released.
     only the canonical property while accepting synonyms.  Fixed serialization
     of synonyms without a compact name and validation of synonym definitions.
     [[#1210], [#1215]]
+ -  Added the `fedify:absoluteIri` range for URLs written as IRI references
+    that also accept string literals when read.  Unlike
+    `http://www.w3.org/2001/XMLSchema#anyURI`, it never resolves a value
+    against the object's ID, and skips values that are not absolute instead of
+    failing the whole object.  [[#1212], [#1241]]
+ -  Changed `extraContext` to add its context when the property is populated
+    even if the default context defines a matching prefix, such as `dc` in
+    `https://w3id.org/identity/v1`.  Previously, such a property compacted to
+    a prefixed name like `dc:license` without the extra context.
+    [[#1212], [#1241]]
 
 [#1210]: https://github.com/fedify-dev/fedify/issues/1210
 [#1215]: https://github.com/fedify-dev/fedify/pull/1215
@@ -106,7 +139,6 @@ Released on October 5, 2026.
     literals and remain arrays when compacted, matching Mastodon's context.
     [[#1233], [#1235]]
 
-[FEP-6757]: https://w3id.org/fep/6757
 [#1211]: https://github.com/fedify-dev/fedify/issues/1211
 [#1216]: https://github.com/fedify-dev/fedify/pull/1216
 [#1233]: https://github.com/fedify-dev/fedify/issues/1233

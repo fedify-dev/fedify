@@ -112,3 +112,28 @@ properties:
   range:
   - "https://www.w3.org/ns/activitystreams#Link"
   - "https://www.w3.org/ns/activitystreams#Object"
+
+- pluralName: licenses
+  singularName: license
+  compactName: license
+  uri: "http://purl.org/dc/terms/license"
+  extraContext: "https://w3id.org/fep/6757"
+  redundantProperties:
+  - uri: "https://schema.org/license"
+  - uri: "http://creativecommons.org/ns#license"
+  redundantPropertiesWrite: canonical
+  description: |
+    The copyright licenses for the linked resource, as defined by
+    [FEP-6757](https://w3id.org/fep/6757).  Each license is identified by its
+    URI, such as <https://creativecommons.org/publicdomain/mark/1.0/>; license
+    names and SPDX short identifiers are not license URIs.  Multiple values are
+    alternatives that a consumer may choose from; their order has no meaning.
+
+    An empty list means the link carries no license metadata.  Fedify does not
+    synthesize a default license for it.
+
+    The `https://schema.org/license` and
+    `http://creativecommons.org/ns#license` properties are read as synonyms
+    when this property is absent, but only this property is written.
+  range:
+  - "fedify:absoluteIri"

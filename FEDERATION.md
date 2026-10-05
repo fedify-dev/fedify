@@ -40,6 +40,7 @@ Supported FEPs
  -  [FEP-044f][]: Consent-respecting quote posts
  -  [FEP-7aa9][]: Featuring recommendations using a dedicated collection
  -  [FEP-22cd][]: Attributing translations
+ -  [FEP-6757][]: Content license metadata
  -  [FEP-0837][]: Federated Marketplace
  -  [FEP-ae0c][]: Fediverse Relay Protocols: Mastodon and LitePub
  -  [FEP-ef61][]: Portable Objects (partial; see [below][FEP-ef61 section])
@@ -60,6 +61,7 @@ Supported FEPs
 [FEP-044f]: https://w3id.org/fep/044f
 [FEP-7aa9]: https://w3id.org/fep/7aa9
 [FEP-22cd]: https://w3id.org/fep/22cd
+[FEP-6757]: https://w3id.org/fep/6757
 [FEP-0837]: https://w3id.org/fep/0837
 [FEP-ae0c]: https://w3id.org/fep/ae0c
 [FEP-ef61 section]: #fep-ef61

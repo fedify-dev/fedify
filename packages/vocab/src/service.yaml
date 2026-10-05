@@ -351,3 +351,18 @@ properties:
     attached in some clients.
   range:
   - "http://www.w3.org/2001/XMLSchema#boolean"
+
+- singularName: preferredLicense
+  functional: true
+  compactName: preferredLicense
+  uri: "https://w3id.org/fep/6757#preferredLicense"
+  extraContext: "https://w3id.org/fep/6757"
+  description: |
+    The URI of the license this actor prefers for the new objects it creates,
+    as defined by [FEP-6757](https://w3id.org/fep/6757).  A client can use it
+    as the default `license` of a new object and let the user choose another.
+
+    This is not a fallback license: an object without its own `license` is not
+    licensed under its author's preferred license.
+  range:
+  - "fedify:absoluteIri"

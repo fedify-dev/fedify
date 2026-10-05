@@ -59,7 +59,12 @@ async function withFixture(
   const terms: Record<string, unknown> = { ...context };
   for (const name of ["value", "first", "second"]) {
     const term: Record<string, unknown> = { "@id": `${NS}${name}` };
-    if (property.range[0] === `${XSD}anyURI`) term["@type"] = "@id";
+    if (
+      property.range[0] === `${XSD}anyURI` ||
+      property.range[0] === "fedify:absoluteIri"
+    ) {
+      term["@type"] = "@id";
+    }
     if ("container" in property && property.container != null) {
       term["@container"] = `@${property.container}`;
     }
@@ -407,3 +412,68 @@ for (const functional of [false, true]) {
     }
   });
 }
+
+test("absolute IRIs are read from nodes and plain literals without a base", async () => {
+  await withFixture({
+    range: ["fedify:absoluteIri"],
+    redundantPropertiesWrite: "canonical",
+    redundantProperties: [{ uri: `${NS}first` }],
+  }, async (Fixture, contextLoader, source) => {
+    match(source, /PORTABLE_IRI_KEYS[^\n]+https:\/\/example.com\/value/);
+    match(source, /PORTABLE_IRI_KEYS[^\n]+https:\/\/example.com\/first/);
+    const values = [
+      { "@id": "https://example.com/node" },
+      literal("urn:example:literal"),
+      { "@value": "https://example.com/any-uri", "@type": `${XSD}anyURI` },
+      { "@value": "https://example.com/string", "@type": `${XSD}string` },
+      // A context's default language tags uncoerced strings:
+      { "@value": "https://example.com/tagged", "@language": "und" },
+      // Relative IRIs are never resolved against the object's ID:
+      { "@id": "CC-BY-4.0" },
+      { "@id": "_:b0" },
+      literal("Creative Commons Attribution 4.0 International"),
+      { "@value": "https://example.com/date", "@type": `${XSD}date` },
+    ];
+    const expected = [
+      new URL("https://example.com/node"),
+      new URL("urn:example:literal"),
+      new URL("https://example.com/any-uri"),
+      new URL("https://example.com/string"),
+      new URL("https://example.com/tagged"),
+    ];
+    for (const key of ["value", "first"]) {
+      const parsed = await Fixture.fromJsonLd(
+        {
+          "@id": "https://example.com/objects/1",
+          ...document({ [`${NS}${key}`]: values }),
+        },
+        { contextLoader, baseUrl: new URL("https://example.com/base/") },
+      );
+      deepStrictEqual(parsed.values, expected);
+    }
+    // An invalid canonical set is not replaced by a synonym:
+    const invalid = await Fixture.fromJsonLd(
+      document({
+        [`${NS}value`]: [{ "@id": "CC-BY-4.0" }],
+        [`${NS}first`]: [{ "@id": "https://example.com/fallback" }],
+      }),
+      { contextLoader },
+    );
+    deepStrictEqual(invalid.values, []);
+    const instance = new Fixture({ values: expected });
+    const expanded = await instance.toJsonLd({
+      format: "expand",
+      contextLoader,
+    }) as unknown as Record<string, unknown>[];
+    deepStrictEqual(
+      expanded[0][`${NS}value`],
+      expected.map((url) => ({ "@id": url.href })),
+    );
+    ok(!(`${NS}first` in expanded[0]));
+    const compact = await instance.toJsonLd({
+      format: "compact",
+      contextLoader,
+    });
+    deepStrictEqual(compact.value, expected.map((url) => url.href));
+  });
+});

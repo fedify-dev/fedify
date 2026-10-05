@@ -313,6 +313,7 @@ Range type reference
 | --------------------- | ------------------------------------------------------ | ----------------------------------- |
 | `fedify:langTag`      | `Intl.Locale`                                          | BCP 47 language tag as plain string |
 | `fedify:url`          | `URL`                                                  | URL stored as `@value` (not `@id`)  |
+| `fedify:absoluteIri`  | `URL`                                                  | Absolute IRI stored as `@id`; also reads literals, never resolves relative values |
 | `fedify:publicKey`    | `CryptoKey`                                            | PEM SPKI-encoded public key         |
 | `fedify:multibaseKey` | `CryptoKey`                                            | Multibase-encoded key (Ed25519)     |
 | `fedify:proofPurpose` | `"assertionMethod" \| "authentication" \| ...`         | Proof purpose string                |
