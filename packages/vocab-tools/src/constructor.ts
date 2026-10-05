@@ -211,6 +211,19 @@ export async function* generateCloner(
   /**
    * Clones this instance, optionally updating it with the given values.
    *
+   * This is a shallow copy: property arrays are copied, but nested objects
+   * and URLs are shared with this instance.  Dereferencing accessors cache
+   * fetched objects in the instance whose accessor is called.  Hydrating a
+   * shared nested object through the clone can affect the original as well,
+   * and can change JSON-LD output when either is embedded in another
+   * object.  Hydrating a top-level property of the clone does not update this
+   * instance's property.
+   *
+   * To resolve properties without sharing nested objects, serialize and
+   * re-parse the instance before hydration rather than using this method.
+   * See the [vocabulary manual](https://fedify.dev/manual/vocab#immutability)
+   * for details, including how cached JSON-LD affects serialization.
+   *
    * A clone never inherits a signed JSON-LD representation retained by
    * \`signObject()\`: the clone may differ from the document that the proof
    * covers, so embedding the original secured JSON in a parent document
