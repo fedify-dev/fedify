@@ -4,7 +4,7 @@ import {
   test,
 } from "@fedify/fixture";
 import type { CryptographicKey, Multikey } from "@fedify/vocab";
-import { exportSpki, FetchError } from "@fedify/vocab-runtime";
+import { exportSpki, FetchError, UrlError } from "@fedify/vocab-runtime";
 import {
   assert,
   assertEquals,
@@ -16,6 +16,8 @@ import {
 } from "@std/assert";
 import { encodeBase64 } from "byte-encodings/base64";
 import fetchMock from "fetch-mock";
+import { KvKeyCache } from "../federation/keycache.ts";
+import { MemoryKvStore } from "../federation/kv.ts";
 import {
   rsaPrivateKey2,
   rsaPublicKey1,
@@ -365,6 +367,77 @@ test("verifyRequestDetailed() records failure details on span", async () => {
   );
   assertEquals(span.attributes["http_signatures.key_id"], keyId.href);
   assertEquals(span.attributes["http_signatures.key_fetch_status"], 410);
+});
+
+test("verifyRequestDetailed() preserves cached key fetch errors", async (t) => {
+  const keyId = new URL("https://unreachable.example/actors/alice#main-key");
+  const timeout = new FetchError(
+    "https://unreachable.example/resolved-key",
+    "Timed out after 100 ms",
+  );
+  timeout.cause = new DOMException("The operation timed out", "TimeoutError");
+  const failures = [
+    timeout,
+    new UrlError("DNS lookup failed", {
+      reason: "dns",
+      cause: new TypeError("No usable IP addresses"),
+    }),
+    new UrlError("Private IP address is not allowed"),
+  ];
+
+  for (const failure of failures) {
+    await t.step(failure.message, async () => {
+      const kv = new MemoryKvStore();
+      let fetches = 0;
+      const documentLoader = (url: string) => {
+        if (url === keyId.href) {
+          fetches++;
+          throw failure;
+        }
+        return mockDocumentLoader(url);
+      };
+      for (const cached of [false, true]) {
+        const request = await signRequest(
+          new Request("https://example.com/inbox", {
+            method: "POST",
+            body: "Test activity",
+          }),
+          rsaPrivateKey2,
+          keyId,
+        );
+        const result = await verifyRequestDetailed(request, {
+          documentLoader,
+          contextLoader: mockDocumentLoader,
+          keyCache: new KvKeyCache(kv, ["pk"]),
+        });
+        assertFalse(result.verified);
+        assert(result.reason.type === "keyFetchError");
+        assert("error" in result.reason.result);
+        const error = result.reason.result.error;
+        assertEquals(error.name, failure.name);
+        assertEquals(error.message, failure.message);
+        if (failure instanceof FetchError) {
+          assert(error instanceof FetchError);
+          assertEquals(error.url.href, failure.url.href);
+          assertEquals(error.response, undefined);
+          assert(error.cause instanceof DOMException);
+          assertEquals(error.cause.name, "TimeoutError");
+          assertEquals(error.cause.message, "The operation timed out");
+        } else {
+          assert(error instanceof UrlError);
+          assertEquals(error.reason, failure.reason);
+          if (failure.cause instanceof Error) {
+            assert(error.cause instanceof Error);
+            assertEquals(error.cause.name, failure.cause.name);
+            assertEquals(error.cause.message, failure.cause.message);
+          } else {
+            assertEquals(error.cause, undefined);
+          }
+        }
+        assertEquals(fetches, 1, cached ? "Cached failure was refetched" : "");
+      }
+    });
+  }
 });
 
 test("signRequest() and verifyRequest() [rfc9421] implementation", async () => {

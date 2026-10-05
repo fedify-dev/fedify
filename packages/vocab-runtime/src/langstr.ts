@@ -1,3 +1,5 @@
+import { normalizeLanguageTag } from "./langtag.ts";
+
 /**
  * A language-tagged string which corresponds to the `rdf:langString` type.
  */
@@ -12,12 +14,14 @@ export class LanguageString extends String {
    * Constructs a new `LanguageString`.
    * @param value A string value written in the given language.
    * @param language The language of the string.  If a string is given, it will
-   *                 be parsed as a `Intl.Locale` object.
+   *                 be parsed as a `Intl.Locale` object.  Extended language
+   *                 subtags are normalized first, e.g., `zh-yue` is parsed as
+   *                 `yue`.
    */
   constructor(value: string, language: Intl.Locale | string) {
     super(value);
     this.locale = typeof language === "string"
-      ? new Intl.Locale(language)
+      ? new Intl.Locale(normalizeLanguageTag(language))
       : language;
   }
 }

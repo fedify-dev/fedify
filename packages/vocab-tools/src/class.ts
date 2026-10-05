@@ -196,6 +196,7 @@ export async function* generateClasses(
     "importPem",
     "isDecimal",
     "LanguageString",
+    "normalizeLanguageTag",
     "parseDecimal",
     "type RemoteDocument",
   ];
@@ -225,7 +226,7 @@ function decodeIri(iri: string): URL {
   yield `
 function isValidLanguageTag(language: string): boolean {
   try {
-    new Intl.Locale(language);
+    new Intl.Locale(normalizeLanguageTag(language));
     return true;
   } catch (error) {
     if (error instanceof RangeError) return false;
