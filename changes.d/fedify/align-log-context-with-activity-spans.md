@@ -1,3 +1,8 @@
+---
+links:
+  '#1030': https://github.com/fedify-dev/fedify/issues/1030
+  '#1205': https://github.com/fedify-dev/fedify/pull/1205
+---
  -  Fixed log entries emitted during an individual outbound activity delivery
     or inbound activity processing carrying the enclosing HTTP request's or
     queue worker's `traceId`/`spanId` instead of the delivery or processing
