@@ -111,6 +111,37 @@ test("KvKeyCache fetch error metadata", async () => {
   assertEquals(await cache.getFetchError(keyId), undefined);
 });
 
+test("KvKeyCache reads legacy fetch errors", async () => {
+  const kv = new MemoryKvStore();
+  const keyId = new URL("https://example.com/key");
+  await kv.set(["pk", "__fetchError", keyId.href], {
+    errorName: "FetchError",
+    errorMessage: "Legacy failure",
+  });
+
+  const result = await new KvKeyCache(kv, ["pk"]).getFetchError(keyId);
+  assert(result != null && "error" in result);
+  assertEquals(result.error.constructor, Error);
+  assertEquals(result.error.name, "FetchError");
+  assertEquals(result.error.message, "Legacy failure");
+  assertEquals(result.error.cause, undefined);
+});
+
+test("KvKeyCache keeps unknown error types generic", async () => {
+  class CustomError extends Error {}
+  const kv = new MemoryKvStore();
+  const keyId = new URL("https://example.com/key");
+  const error = new CustomError("Custom failure");
+  error.name = "FetchError";
+  await new KvKeyCache(kv, ["pk"]).setFetchError(keyId, { error });
+
+  const result = await new KvKeyCache(kv, ["pk"]).getFetchError(keyId);
+  assert(result != null && "error" in result);
+  assertEquals(result.error.constructor, Error);
+  assertEquals(result.error.name, "FetchError");
+  assertEquals(result.error.message, "Custom failure");
+});
+
 test("KvKeyCache unavailable entries expire", async () => {
   const kv = new MemoryKvStore();
   const cache = new KvKeyCache(kv, ["pk"], {
