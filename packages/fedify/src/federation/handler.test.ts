@@ -5246,6 +5246,14 @@ test("handleInbox() aligns the LogTape context with its own span", async (t) => 
           assert(logA != null && logB != null);
           assertEquals(logA.properties.spanId, spanA.spanContext().spanId);
           assertEquals(logB.properties.spanId, spanB.spanContext().spanId);
+          assertEquals(
+            logA.properties.traceId,
+            spanA.spanContext().traceId,
+          );
+          assertEquals(
+            logB.properties.traceId,
+            spanB.spanContext().traceId,
+          );
           assertNotEquals(logA.properties.spanId, logB.properties.spanId);
         } finally {
           exporter.clear();
