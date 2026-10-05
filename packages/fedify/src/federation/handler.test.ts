@@ -5171,7 +5171,7 @@ test("handleInbox() aligns the LogTape context with its own span", async (t) => 
           const federation = createFederation<void>({ kv, tracerProvider });
 
           let arrived = 0;
-          let release: () => void;
+          let release: () => void = () => {};
           const gate = new Promise<void>((resolve) => {
             release = resolve;
           });
@@ -5194,24 +5194,26 @@ test("handleInbox() aligns the LogTape context with its own span", async (t) => 
             ),
           ]);
 
-          const [responseA, responseB] = await Promise.all([
+          const [resultA, resultB] = await Promise.allSettled([
             callHandleInbox(
               federation,
               kv,
               tracerProvider,
               listeners,
               signedA,
-            ),
+            ).finally(release),
             callHandleInbox(
               federation,
               kv,
               tracerProvider,
               listeners,
               signedB,
-            ),
+            ).finally(release),
           ]);
-          assertEquals(responseA.status, 500);
-          assertEquals(responseB.status, 500);
+          assert(resultA.status === "fulfilled");
+          assert(resultB.status === "fulfilled");
+          assertEquals(resultA.value.status, 500);
+          assertEquals(resultB.value.status, 500);
 
           const spans = exporter.getSpans("activitypub.inbox");
           assertEquals(spans.length, 2);
