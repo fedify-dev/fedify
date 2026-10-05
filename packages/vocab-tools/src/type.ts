@@ -323,7 +323,7 @@ const scalarTypes: Record<string, ScalarType> = {
         && typeof ${v}["@value"] === "string" && !("@language" in ${v})`;
     },
     decoder(v) {
-      return `new Intl.Locale(${v}["@value"])`;
+      return `new Intl.Locale(normalizeLanguageTag(${v}["@value"]))`;
     },
   },
   "fedify:url": {
