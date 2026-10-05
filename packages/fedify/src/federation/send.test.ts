@@ -792,7 +792,7 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
       async () => {
         try {
           let arrived = 0;
-          let release: () => void;
+          let release: () => void = () => {};
           const gate = new Promise<void>((resolve) => {
             release = resolve;
           });
@@ -812,14 +812,14 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
                 "https://example.com/inbox-concurrent-a",
                 tracerProvider,
               ),
-            ),
+            ).finally(release),
             sendActivity(
               deliveryParams(
                 "https://example.com/activity/b",
                 "https://example.com/inbox-concurrent-b",
                 tracerProvider,
               ),
-            ),
+            ).finally(release),
           ]);
           assertEquals(resultA.status, "rejected");
           assertEquals(resultB.status, "rejected");
