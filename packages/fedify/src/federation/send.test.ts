@@ -628,48 +628,52 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
       "a warning logged during a successful send matches the resulting " +
         "TraceActivityRecord",
       async () => {
-        fetchMock.post("https://example.com/inbox-warn", { status: 202 });
+        try {
+          fetchMock.post("https://example.com/inbox-warn", { status: 202 });
 
-        await withContext({ requestId: "outer-request-warn" }, async () => {
-          await sendActivity({
-            ...deliveryParams(
-              "https://example.com/activity/warn",
-              "https://example.com/inbox-warn",
-              tracerProvider,
-            ),
-            keys: [{
-              keyId: ed25519Multikey.id!,
-              privateKey: ed25519PrivateKey,
-            }],
+          await withContext({ requestId: "outer-request-warn" }, async () => {
+            await sendActivity({
+              ...deliveryParams(
+                "https://example.com/activity/warn",
+                "https://example.com/inbox-warn",
+                tracerProvider,
+              ),
+              keys: [{
+                keyId: ed25519Multikey.id!,
+                privateKey: ed25519PrivateKey,
+              }],
+            });
           });
-        });
 
-        const span = exporter.getSpan("activitypub.send_activity");
-        assert(span != null);
-        const { traceId, spanId } = span.spanContext();
+          const span = exporter.getSpan("activitypub.send_activity");
+          assert(span != null);
+          const { traceId, spanId } = span.spanContext();
 
-        const kv = new MemoryKvStore();
-        const fedifyExporter = new FedifySpanExporter(kv);
-        await new Promise<void>((resolve) => {
-          fedifyExporter.export([span], () => resolve());
-        });
-        const [record] = await fedifyExporter.getActivitiesByTraceId(traceId);
-        assert(record != null);
-        assertEquals(record.direction, "outbound");
-        assertEquals(record.spanId, spanId);
+          const kv = new MemoryKvStore();
+          const fedifyExporter = new FedifySpanExporter(kv);
+          await new Promise<void>((resolve) => {
+            fedifyExporter.export([span], () => resolve());
+          });
+          const [record] = await fedifyExporter.getActivitiesByTraceId(
+            traceId,
+          );
+          assert(record != null);
+          assertEquals(record.direction, "outbound");
+          assertEquals(record.spanId, spanId);
 
-        const warnLog = records.find((r) =>
-          String(r.rawMessage).startsWith("No supported key found to sign")
-        );
-        assert(warnLog != null);
-        assertEquals(warnLog.properties.spanId, record.spanId);
-        assertEquals(warnLog.properties.traceId, record.traceId);
-        assertEquals(warnLog.properties.requestId, "outer-request-warn");
-
-        exporter.clear();
-        records.length = 0;
-        fetchMock.hardReset();
-        fetchMock.spyGlobal();
+          const warnLog = records.find((r) =>
+            String(r.rawMessage).startsWith("No supported key found to sign")
+          );
+          assert(warnLog != null);
+          assertEquals(warnLog.properties.spanId, record.spanId);
+          assertEquals(warnLog.properties.traceId, record.traceId);
+          assertEquals(warnLog.properties.requestId, "outer-request-warn");
+        } finally {
+          exporter.clear();
+          records.length = 0;
+          fetchMock.hardReset();
+          fetchMock.spyGlobal();
+        }
       },
     );
 
@@ -677,166 +681,182 @@ test("sendActivity() aligns the LogTape context with its own span", async (t) =>
       "a failed delivery's error log matches its own span, and the outer " +
         "context is restored once the rejection propagates",
       async () => {
-        fetchMock.post("https://example.com/inbox-failing", {
-          status: 500,
-          body: "Internal Server Error",
-        });
+        try {
+          fetchMock.post("https://example.com/inbox-failing", {
+            status: 500,
+            body: "Internal Server Error",
+          });
 
-        await withContext(outerContext, async () => {
-          await assertRejects(
-            () =>
-              sendActivity(
-                deliveryParams(
-                  "https://example.com/activity/failing",
-                  "https://example.com/inbox-failing",
-                  tracerProvider,
+          await withContext(outerContext, async () => {
+            await assertRejects(
+              () =>
+                sendActivity(
+                  deliveryParams(
+                    "https://example.com/activity/failing",
+                    "https://example.com/inbox-failing",
+                    tracerProvider,
+                  ),
                 ),
-              ),
-            SendActivityError,
+              SendActivityError,
+            );
+            getLogger(["fedify", "federation", "send.test"]).info(
+              "after failure",
+            );
+          });
+
+          const span = exporter.getSpan("activitypub.send_activity");
+          assert(span != null);
+          const { traceId, spanId } = span.spanContext();
+
+          const kv = new MemoryKvStore();
+          const fedifyExporter = new FedifySpanExporter(kv);
+          await new Promise<void>((resolve) => {
+            fedifyExporter.export([span], () => resolve());
+          });
+          assertEquals(
+            await fedifyExporter.getActivitiesByTraceId(traceId),
+            [],
           );
-          getLogger(["fedify", "federation", "send.test"]).info(
-            "after failure",
+
+          const failureLog = records.find((r) =>
+            String(r.rawMessage).startsWith(
+              "Failed to send activity {activityId} to {inbox} ({status}",
+            )
           );
-        });
+          assert(failureLog != null);
+          assertEquals(failureLog.properties.spanId, spanId);
+          assertEquals(failureLog.properties.traceId, traceId);
+          assertEquals(
+            failureLog.properties.requestId,
+            outerContext.requestId,
+          );
 
-        const span = exporter.getSpan("activitypub.send_activity");
-        assert(span != null);
-        const { traceId, spanId } = span.spanContext();
-
-        const kv = new MemoryKvStore();
-        const fedifyExporter = new FedifySpanExporter(kv);
-        await new Promise<void>((resolve) => {
-          fedifyExporter.export([span], () => resolve());
-        });
-        assertEquals(await fedifyExporter.getActivitiesByTraceId(traceId), []);
-
-        const failureLog = records.find((r) =>
-          String(r.rawMessage).startsWith(
-            "Failed to send activity {activityId} to {inbox} ({status}",
-          )
-        );
-        assert(failureLog != null);
-        assertEquals(failureLog.properties.spanId, spanId);
-        assertEquals(failureLog.properties.traceId, traceId);
-        assertEquals(failureLog.properties.requestId, outerContext.requestId);
-
-        const afterLog = records.find((r) => r.rawMessage === "after failure");
-        assert(afterLog != null);
-        assertEquals(afterLog.properties.requestId, outerContext.requestId);
-        assertEquals(afterLog.properties.traceId, outerContext.traceId);
-        assertEquals(afterLog.properties.spanId, outerContext.spanId);
-
-        exporter.clear();
-        records.length = 0;
-        fetchMock.hardReset();
-        fetchMock.spyGlobal();
+          const afterLog = records.find((r) =>
+            r.rawMessage === "after failure"
+          );
+          assert(afterLog != null);
+          assertEquals(afterLog.properties.requestId, outerContext.requestId);
+          assertEquals(afterLog.properties.traceId, outerContext.traceId);
+          assertEquals(afterLog.properties.spanId, outerContext.spanId);
+        } finally {
+          exporter.clear();
+          records.length = 0;
+          fetchMock.hardReset();
+          fetchMock.spyGlobal();
+        }
       },
     );
 
     await t.step(
       "outer context is restored after a successful send",
       async () => {
-        fetchMock.post("https://example.com/inbox-ok", { status: 202 });
+        try {
+          fetchMock.post("https://example.com/inbox-ok", { status: 202 });
 
-        await withContext(outerContext, async () => {
-          await sendActivity(
-            deliveryParams(
-              "https://example.com/activity/ok",
-              "https://example.com/inbox-ok",
-              tracerProvider,
-            ),
+          await withContext(outerContext, async () => {
+            await sendActivity(
+              deliveryParams(
+                "https://example.com/activity/ok",
+                "https://example.com/inbox-ok",
+                tracerProvider,
+              ),
+            );
+            getLogger(["fedify", "federation", "send.test"]).info(
+              "after success",
+            );
+          });
+
+          const span = exporter.getSpan("activitypub.send_activity");
+          assert(span != null);
+          const { spanId } = span.spanContext();
+
+          const afterLog = records.find((r) =>
+            r.rawMessage === "after success"
           );
-          getLogger(["fedify", "federation", "send.test"]).info(
-            "after success",
-          );
-        });
-
-        const span = exporter.getSpan("activitypub.send_activity");
-        assert(span != null);
-        const { spanId } = span.spanContext();
-
-        const afterLog = records.find((r) => r.rawMessage === "after success");
-        assert(afterLog != null);
-        assertNotEquals(afterLog.properties.spanId, spanId);
-        assertEquals(afterLog.properties.requestId, outerContext.requestId);
-        assertEquals(afterLog.properties.traceId, outerContext.traceId);
-        assertEquals(afterLog.properties.spanId, outerContext.spanId);
-
-        exporter.clear();
-        records.length = 0;
-        fetchMock.hardReset();
-        fetchMock.spyGlobal();
+          assert(afterLog != null);
+          assertNotEquals(afterLog.properties.spanId, spanId);
+          assertEquals(afterLog.properties.requestId, outerContext.requestId);
+          assertEquals(afterLog.properties.traceId, outerContext.traceId);
+          assertEquals(afterLog.properties.spanId, outerContext.spanId);
+        } finally {
+          exporter.clear();
+          records.length = 0;
+          fetchMock.hardReset();
+          fetchMock.spyGlobal();
+        }
       },
     );
 
     await t.step(
       "concurrent deliveries do not leak context into each other",
       async () => {
-        let arrived = 0;
-        let release: () => void;
-        const gate = new Promise<void>((resolve) => {
-          release = resolve;
-        });
-        const handler = () => async () => {
-          arrived++;
-          if (arrived >= 2) release();
-          await gate;
-          return { status: 500, body: "Internal Server Error" };
-        };
-        fetchMock.post("https://example.com/inbox-concurrent-a", handler());
-        fetchMock.post("https://example.com/inbox-concurrent-b", handler());
+        try {
+          let arrived = 0;
+          let release: () => void;
+          const gate = new Promise<void>((resolve) => {
+            release = resolve;
+          });
+          const handler = () => async () => {
+            arrived++;
+            if (arrived >= 2) release();
+            await gate;
+            return { status: 500, body: "Internal Server Error" };
+          };
+          fetchMock.post("https://example.com/inbox-concurrent-a", handler());
+          fetchMock.post("https://example.com/inbox-concurrent-b", handler());
 
-        const [resultA, resultB] = await Promise.allSettled([
-          sendActivity(
-            deliveryParams(
-              "https://example.com/activity/a",
-              "https://example.com/inbox-concurrent-a",
-              tracerProvider,
+          const [resultA, resultB] = await Promise.allSettled([
+            sendActivity(
+              deliveryParams(
+                "https://example.com/activity/a",
+                "https://example.com/inbox-concurrent-a",
+                tracerProvider,
+              ),
             ),
-          ),
-          sendActivity(
-            deliveryParams(
-              "https://example.com/activity/b",
-              "https://example.com/inbox-concurrent-b",
-              tracerProvider,
+            sendActivity(
+              deliveryParams(
+                "https://example.com/activity/b",
+                "https://example.com/inbox-concurrent-b",
+                tracerProvider,
+              ),
             ),
-          ),
-        ]);
-        assertEquals(resultA.status, "rejected");
-        assertEquals(resultB.status, "rejected");
+          ]);
+          assertEquals(resultA.status, "rejected");
+          assertEquals(resultB.status, "rejected");
 
-        const spans = exporter.getSpans("activitypub.send_activity");
-        assertEquals(spans.length, 2);
-        const spanA = spans.find((s) =>
-          s.attributes["activitypub.activity.id"] ===
-            "https://example.com/activity/a"
-        );
-        const spanB = spans.find((s) =>
-          s.attributes["activitypub.activity.id"] ===
-            "https://example.com/activity/b"
-        );
-        assert(spanA != null && spanB != null);
-        assertNotEquals(
-          spanA.spanContext().spanId,
-          spanB.spanContext().spanId,
-        );
+          const spans = exporter.getSpans("activitypub.send_activity");
+          assertEquals(spans.length, 2);
+          const spanA = spans.find((s) =>
+            s.attributes["activitypub.activity.id"] ===
+              "https://example.com/activity/a"
+          );
+          const spanB = spans.find((s) =>
+            s.attributes["activitypub.activity.id"] ===
+              "https://example.com/activity/b"
+          );
+          assert(spanA != null && spanB != null);
+          assertNotEquals(
+            spanA.spanContext().spanId,
+            spanB.spanContext().spanId,
+          );
 
-        const logA = records.find((r) =>
-          r.properties.activityId === "https://example.com/activity/a" &&
-          String(r.rawMessage).startsWith("Failed to send activity")
-        );
-        const logB = records.find((r) =>
-          r.properties.activityId === "https://example.com/activity/b" &&
-          String(r.rawMessage).startsWith("Failed to send activity")
-        );
-        assert(logA != null && logB != null);
-        assertEquals(logA.properties.spanId, spanA.spanContext().spanId);
-        assertEquals(logB.properties.spanId, spanB.spanContext().spanId);
-        assertNotEquals(logA.properties.spanId, logB.properties.spanId);
-
-        exporter.clear();
-        records.length = 0;
-        fetchMock.hardReset();
+          const logA = records.find((r) =>
+            r.properties.activityId === "https://example.com/activity/a" &&
+            String(r.rawMessage).startsWith("Failed to send activity")
+          );
+          const logB = records.find((r) =>
+            r.properties.activityId === "https://example.com/activity/b" &&
+            String(r.rawMessage).startsWith("Failed to send activity")
+          );
+          assert(logA != null && logB != null);
+          assertEquals(logA.properties.spanId, spanA.spanContext().spanId);
+          assertEquals(logB.properties.spanId, spanB.spanContext().spanId);
+          assertNotEquals(logA.properties.spanId, logB.properties.spanId);
+        } finally {
+          exporter.clear();
+          records.length = 0;
+          fetchMock.hardReset();
+        }
       },
     );
   } finally {
