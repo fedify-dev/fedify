@@ -253,8 +253,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
+      with:
+        # '0' as a string: the number 0 is falsy in expressions
+        fetch-depth: ${{ github.event_name == 'pull_request' && '0' || '1' }}
     - uses: ./.github/actions/setup-mise
     - run: mise run check
+    - if: github.event_name == 'pull_request' && github.repository == 'fedify-dev/fedify'
+      env:
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      run: >-
+        mise run --skip-deps check:changelog-pr-refs --
+        --pr "$PR_NUMBER" --base "$BASE_SHA" --head "$HEAD_SHA"
 
   release-test:
     runs-on: ubuntu-latest
